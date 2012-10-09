@@ -1,0 +1,66 @@
+README: test and developement notes
+
+In this folder is all the various branch for target
+using/testing/experimenting on top of libS52.so.
+
+The idea is to put here everything that is not handled as
+part of the core S52.
+
+
+------------------------------------------------------------
+
+Makefile Target:
+
+- s52glx:
+  simple test harness for GLX
+
+- s52gv, s52gv2:
+  use to test the S52 plugin when called from OpenEV & OpenEV2 (gv)
+
+- s52gtk2:
+  use to test GTK2 only
+  Usage of s52gtk2: -h or 'h' in the GL window.
+
+- s52win32:
+  wine/mingw
+
+- s52eglx:
+  EGL harness for X
+
+- s52eglarm:
+  Android
+
+- s52ais
+  gpsd cleint to feed AIS to s52eglx and s52android
+
+- sl4agps
+  feed android's GPS/GYRO to s52android
+  also some libS52.so test via android UI
+
+
+------------------------------------------------------------
+
+Other Files:
+
+- s52clutter.js, s52clutter.js.sh
+  Clutter + Javascript partial experiment
+
+- PLAUX_00.DAI, plib*
+  PLib for testing
+
+- *.ttf
+  Font for testing
+
+- s52.cfg
+  CHART & PLIB path for testing
+
+
+------------------------------------------------------------
+
+Ruby:
+
+s52gtk2.rb is a translation of s52gtk2.c to ruby.
+
+On Linux do:
+
+$ ln -s ../libS52.so libS52.so (to make a symbolic link)
