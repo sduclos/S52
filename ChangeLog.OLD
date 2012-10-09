@@ -1,0 +1,928 @@
+2012OCT05 
+    -mod s52/doc, add graphic/ and wiki/
+
+2012OCT01
+    -add exit(0) if env. var. S57_CSV not found, because GDAL need it
+     to work propely
+
+2012SEP26
+    -add experiment increse text kerning and decrese text size 
+     at new line char (TAB char, since '\n' break JSON/socket string)
+
+2012SEP25
+    -add S52_MAR_DISP_LAYER_LAST_SELECT to S52_MAR_DISP_LAYER_LAST
+    -add distclean target to Makefiles in S52/ S52/test/ S52/test/android
+    -mod round point in GLES2 shader
+
+2012SEP24
+    -refactor display category handling
+
+2012SEP23
+    -refactor UI color xml element to a template
+
+2012AUG26
+    -refactor projection code
+
+2012AUG21
+    -add pattern rendering for GLES2
+    -improve external sensor handling
+
+2012JUL25
+    -fix regression for target s52gtk2
+
+2012JUL09
+    -add renderAP() in GLES2 (preliminary)
+
+2012JUN29
+    -fix renderLC() line ending
+
+2012JUN28
+    -fix GLES2 arc
+    -fix renderLC() dotpitch
+
+2012JUN27
+    -fix GLES2 symbol with points
+
+2012JUN19
+    -add doc in README
+    -fix PID path for s52eglx
+
+2012JUN18
+    -add GLES2/ARM (Android)
+
+2011OCT14
+    -mod start using EGL in test/ (might be included in libS52 later on)
+
+2011JUL26
+    -mod start to use VBO instead Display List (OpenGL 1.5)
+
+2011JUL22
+    -fix get S52_MAR_DISP_CATEGORY, return number instead of char
+    -add S52_getS57ObjClassSupp() / S52_setS57ObjClassSupp()
+    -add S52_getAttList()
+    -add dbus for new call
+    -add display S57 object attributes in dashboard
+    -add User Selected (mouse) in dashboard
+    -mod various clean up
+
+2011JUN24
+    -add S52_dumpS57IDPixels() to help debug pixels fragments regression
+
+2011MAY31
+    -mod name S52_getObjNameList() to S52_getS57ObjClassList
+    -add S52_getObjList()
+    -fix missing dbus filter call
+
+2011MAY28
+    -add dbus for S52_getObjNameList() and S52_getCellNameList()
+
+2011MAY19
+    -add S52_getObjNameList() to get S57 object list in a cell
+    -add S52_getCellNameList() list of loaded cell name
+
+2011MAY15
+    -add dbus handling for S52_loadCell() and S52_loadPLib()
+
+2011MAY07
+    -mod load PLib colors using palette name
+    -add S52_setTextDisp() and S52_getTextDisp() to filter text
+
+2011MAY04
+    -mod init S52_MAR_NONE to ININITY
+    -add XUL/xuljet dashboard for testing (experimental)
+    -add dbus method for S52_getPalettesNameList() and S52_getPLibsIDList()
+
+2011APR26
+    -add S52_getPalettesNameList() that return a list of palette name loaded
+
+2011APR22
+    -fix type in param 'vescre' (Vessel report source)
+    -mod rename param 'maxpts' to 'xyznbrmax' (ie same as S52_newMarObj())
+    -mod para lat/lon Start to Begin in S52_newLEGLIN()
+    -add some doc in S52.h
+
+2011APR20
+    -fix lights sector culling for case of same light on 2 cell out view
+
+2011APR18
+    -add S52_getPLibsID() that return a string of PLib loaded
+
+2011APR14
+    -add ChangeLog.OLD the old way to note mods
+    -mod now ChangeLog generate itself with 'cvs2cl'
+    -add trap SIGINT to stop rendering
+    -add trap SIGSEGV to print backtrace when segfault
+
+2011APR08
+    -mod doc in S52.h for introspection annotation and doc generation
+    -mod vessel to show silhoutte and symbol
+    -mod select vessel symbol on silhoutte
+
+2011MAR31
+    -mod show ship silhoutte at 6mm instead of 10mm
+
+2011MAR27
+    -mod S52_newLEGLIN() add previousLEGLIN parameter
+
+2011MAR25
+    -mod rename S52_toggleObjSUP to S52_toggleDispMarObj
+
+2011MAR17
+    -mod rename S52_objType to S52ObjectType for instrospection
+    -mod rename S52_objHandle to S52ObjectHandle for introspection
+    -mod rename enum S52ObjectType suffix _T removed
+
+2011MAR16
+    -fix multiple text on an S52_object
+    -mod S52_MAR_param_t to	S52MarinersParameter for instrospection
+    -mod S52MarinersParameter emun to start with S52_MAR_ for instrospection
+
+2011MAR15
+    -add more annotation
+    -mod call s52gpsd_initAIS() to test/s52gtk2.c:realize() because data start
+         to come in before the main loop is up
+
+2011MAR06
+    -add test/s52clutter.js (does that same as s52gtk2 but with clutter & Javascript)
+    -add annotation in S52.h to make test/S52-1.0.typelib for test/s52clutter.js
+
+2011MAR04
+    -mod S52_init() param name from pixels_.. to screen_..
+    -mod draw() and drawLast() to trylock() mutex instead of lock()
+
+2011MAR03
+    -mod put test/s52gpsd.c:_gpsdClientInit() in a thread (was in main loop)
+
+2011MAR01
+    -fix curve
+
+2011FEB28
+    -mod move 'vestat' param from S52_newVESSEL() to S52_setVESSELstate()
+
+2011FEB15
+    -mod copyright years 2000-2011
+
+2011FEB14
+    -add S52_NODATA_LAYER_OFF to supress display of layer 0 (NODATA)
+
+2011FEB13
+    -fix draw arc leg at correct display priotity (mod S52_setRoute())
+
+2011FEB09
+    -fix do VESSEL CS update when calling S52_drawLast()
+    -add S52_setState() for VESSEL (more param will be added as need be)
+
+2011JAN13
+    -add start code for DBus IPC
+
+2010DEC29
+    -add 'waypnt' to S52_updObjGeo() (ie object that can be updated)
+
+2010DEC27
+    -fix update text lebal at each call to S52_setVESSELlabel()
+
+2010NOV30
+    -fix cursor pick of centroid
+
+2010NOV26
+    -fix centroid
+
+2010NOV22
+    -add S52_DRGARE_PATTERN_OFF - do not display DRGARE pattern (default off)
+    -fix vector for symbol WAYPNT11 (PLAUX_00.DAI)
+
+2010NOV15
+    -fix _route initialization
+
+2010NOV09
+    -fix overlapping lights sector of same size
+
+2010NOV07
+    -mod text prio for VESSEL01 & OWNSHP02 set to 11
+
+2010NOV02
+    -mod if seed is zero do not show vector
+    -add S52_MAR_DISP_CALIB to dispaly calibration symbol
+
+2010OCT17
+    -add cursor pick highlight
+    -fix safety contour
+
+2010OCT02
+    -add partial line overlap handling (experimental)
+    -add update VRMEBL when updating OWNSHP
+    -add label to ownshp
+    -add for_each() loop to draw over/under radar object
+    -mod rename Mariners' object call S52_ini*() to S52_new*()
+
+2010SEP21
+    -add mutex
+    -add S52_DOTPITCH_MM_X, S52_DOTPITCH_MM_Y to test dotpitch problem (experimental)
+
+2010SEP18
+    -fix clipping bug that draw LC outside screen
+    -fix un-rotate text
+    -add S52_toggleObjSUP() to supress display of a Mariners' Object
+
+2010SEP17
+    -add CHKSYM01 to S52_iniCSYMB()
+    -add BLKADJ01 to S52_iniCSYMB()
+    -add OWNSHP05 corrected vector in auxiliary PLib (PLAUX_00.DAI)
+
+2010SEP15
+    -add S52_LL2xy()
+    -remove dep to pango
+    -move AIS code to test/s52gpsd
+    -mod S52_setVRMEBL() to return brearing and range (experimental)
+    -add test to display bearing and range at cursor with S52 UI color
+
+2010SEP12
+    -fix mem leak detected by valgrind
+
+2010SEP03
+    -add AIS trail - synthetic afterglow (experimental)
+
+2010SEP02
+    -add gpsd AIS feed in s52gtk2.c
+    -fix mem leak in text (TE & TX)
+
+2010AUG30
+    -add S52_drawStr()
+    -add example of overlay in s52gtk2.c (graphical _dumpParam())
+
+2010AUG29
+    -add example (in test/s52gtk2.c) of raw OpenGL call
+    on top (after) S52_draw()
+    -add FTGL for text
+
+2010AUG28
+    -add NODATA pattern on layer 0
+
+2010AUG26
+    -fix arc
+
+2010AUG25
+    -add turn on/off object base on command word type (profiling)
+    -fix adding stuff on chart beteween Draw() DrawLast()
+
+2010AUG16
+    -fix dandling ref of old lights_sector
+
+2010AUG14
+    -add ENC coverage symbol
+
+2010AUG13
+    -add silhoutte on AIS
+    -add S52_setDimension()
+    -mod S52_iniOWNSHP()
+    -add waypoint in test/s52gtk2.c
+    -mod clip leg when drawing arc
+
+2010AUG12
+    -fix parsing vector for symbole OBSTRN11
+
+2010AUG11
+    -add Mariners' Object extent for culling
+
+2010AUG10
+    -mod API for VRMEBL
+    -del S52_updateObjGeo()
+
+2010JUL24
+    -add more check to parameter
+
+2010JUL18
+    -fix S52_setVector()
+    -fix NATSUR parse list
+
+2010JUL17
+    -add more check to parameter
+    -mod PASTRK time display, ':' separator
+    -add cell basic legend (need formatting)
+    -add S52_toggleObjClassON(), S52_toggleObjClassOFF()
+
+2010JUL10
+    -mod category selection
+    -fix Mariner selection of PLib (S52_DisCat)
+
+2010JUL04
+    -fix Pango font 0..255
+    -fix no deletion of display list when deleting Mariners' Object
+
+2010JUL03
+    -mod name change S52_delObj() -> S52_delMarObj()
+
+2010JUL02
+    -fix VESSEL01 time mark setup for each target
+    -fix Mariners' Object priotity selection
+
+2010JUN30
+    -fix test to S52_MAR_SHOW_TEXT is not true/false anymore
+     that fix a bug in lights caracteritic
+    -remove hack to get only one light caracteristic
+
+2010JUN29
+    -add prefix 't' to time-tag in past track
+
+2010JUN13
+    -add curve LEGLIN
+    -add S52_xy2LL()
+    -mob S52_centerAt() deprecated
+    -fix s52gtk2.c to use S52_xy2LL() / S52_setView() combinaition
+     intead of S52_centerAt() since the notion of view reside on the user side
+
+2010JUN05
+    -add some check for NULL pointer
+    -add object 'marfea' line & point
+    -add wholinDist param in S52_iniLEGLIN()
+
+2010JUN03
+    -mod deprecate S52_zoomView() and S52_moveView()
+
+2010JUN01
+    -fix S52_newMarObj() of type S52_AREAS_T
+    -add example for 'marfea' area in s52gtk2.c
+
+2010MAY31
+    -mod redo CS after a call to S52_newMarObj()
+    -add text label on vessel
+    -add S52_iniVESSELlabel()
+
+2010MAY30
+    -add ID in msg log for S52_updateObjGeo()
+    -add drawing of graticule
+    -mod flush colors only if new colors are found in the PLib
+
+2010MAY29
+    -add clrlin msg log
+    -fix ownshp rotation
+    -fix heading line (vessel & ownshp)
+
+2010MAY18
+    -fix rotation in s52gtk2.c
+
+2010MAY16
+    -mod force S52_MAR_ANTIALIAS OFF when calling S52_pickAt()
+    -mod s52gtk2.c use S52_setView() instead of S52_zoomView()
+         to preserve view variable current setting
+    -add S52_MAR_DISP_GRATICULE (experimental)
+    -fix layer callback in s52gtk2
+
+2010MAY15
+    -add cursor position (S52_MAR_DISP_CRSR_POS)
+
+2010MAY11
+    -add buoy light rotation S52_MAR_ROT_BUOY_LIGHT (unclutter chart, experimental)
+    -mod refactor 'touch' for local object
+
+2010MAY01
+    -add log msg for S52_set* and S52_add* Mariner's object
+    -del param ownshpCentered
+
+2010APR29
+    -add validate S52_MAR_HEADNG_LINE
+    -add check for NULL S52_objHandle
+    -fix S52_delObj() double free
+
+2010APR27
+    -add check that S52_objHandle are compatible when updating object
+
+2010APR24
+    -add hook for RADAR layer
+    -add code to read all CATLIT
+    -fix leglin/clrlin negative cog
+    -set speed box and text for leglin
+
+18APR2010
+    -add Revision CVS keyword
+    -fix hazzard symbol placement
+
+11APR2010
+    -fix s52gtk2.rb and S52.rb loadCell
+
+05APR2010
+    -del S52type.h
+
+04APR2010
+    -add FIXME in _renderSY_leglin/PLNPOS02 (not implemented yet)
+
+28MAR2010
+    -fix ownshp offset when rotating
+    -mod VRMEBL so that it receive mouse coordinate
+    -del S52_win2prj from S52.h (useless now)
+
+10MAR2010
+    -fix compiler warning
+
+24FEB2010
+    -mod mouse handling XY when when no viewPort
+    -mod S52oject handle
+    -start Qt4
+    -mod logging on at compile time
+
+14FEB2010
+    -fix callback S52_loadObj_cb S52_loadLayer_cb for win32
+
+04FEB2010
+    -fix s52gv2 target
+
+02FEB2010
+    -add S52_CHECK_INIT to make sure that init has been done before anything else
+
+24JAN2009
+    -mod S52_iniOWNSHP() to allow for off center outline
+    -mod struct S52_view as parameter replace with actual variable
+    -mod filter text according to view group
+
+13JAN2009
+    -add chart rotation
+
+12JAN2010
+    -fix alpha buffer corruption (S52_MAR_SHALLOW_PATTERN) when doing glReadPixels
+
+05JAN2010
+    -fix ruby for S52_MAR_param_t
+
+03JAN2010
+    -add CLRLIN
+    -add LEGLIN
+    -mod S52_MAR_param_t to enum
+
+28DEC2009
+    -add PASTRK
+
+27DEC2009
+    -add VESSEL
+
+19DEC2009
+    -fix regression in performance
+
+14DEC2009
+    -fix ENC loading via S57FileCollector
+    -fix S52_drawLast on win32
+
+06DEC2009
+    -add VRMEBL
+
+27NOV2009
+    -add scale bar, noth arrow, depthunit
+    -add Xerror() to s52glx
+
+25NOV2009
+    -fix load cell to GPtrArray
+    -mod minimal build for s52glx
+
+21NOV2009
+    -s52glx build using glib-2.0
+
+19NOV2009
+    -fix typo in INFITITE
+    -fix safety contour
+    -fix layer traversal
+
+17NOV2009
+    -fix s52glx target build with glib
+
+16NOV2009
+    -fix s52gv target to enable rendering AC command from GV
+
+13NOV2009
+    -remove default build with experimental call to S57FileCollector()
+    -fix g++ error and (some) warning
+
+09NOV2009
+    -fix text rendering, draw last in a SENC not all SENC
+
+06NOV209
+    -add debug option to show ALL (OTHER_ALL), ignoring suppression toggle
+
+04NOV2009
+    -fix typo in CS RESARE02
+    -add check for loaded file to prevent triggering g_assert()
+    -add fclose() to close ENC
+
+01NOV2009
+    -add "display overlap" mode (debug)
+    -fix lights leg out of view
+    -fix disp. cat. layer change
+
+30OCT2009
+    -fix Display category typo in enum
+    -refactor disc. cat. check
+    -fix lights sector out of view
+    -add code to draw intertwine cells layer
+
+25OCT2009
+    -fix target s52glx, s52gv
+    -add wrapper to glib call
+    -add build config to S52_version
+
+20OCT2009
+    -fix centroid
+    -optimise pattern NODATA
+
+15OCT2009
+    -fix symbol transparancy
+
+05OCT2009
+    -optimise pattern for DRGARE (glPolygonStipple)
+    -add nodata pattern
+
+30SEP2009
+    -mod refactor symbol creation for stracing pattern slowness
+
+23SEP2009
+    -add QuesoGLC - OpenGL Character Renderer (GLC)
+
+19SEP2009
+    -add 'ownshp'
+
+14SEP2009
+    -fix call old CS implementation when new CS is unavailable
+
+13SEP2009
+    -fix PLib parsing
+    -mod CS for missing condition
+    -fix color look up
+
+09AUG2009
+    -add merge PLib
+    -add get/set RGB
+    -add handle multi-line (experimental)
+
+28AUG2009
+    -add LUCM text filter (view group)
+
+27AUG2009
+    -fix point in poly (centroid)
+
+26AUG2009
+    -tune lookupLUP()
+    -fix sounding in CS
+
+20AUG2009
+    -fix bypass geometry of 0 lenght (npt=0, nbr of point)
+
+19AUG2009
+    -fix bug rounding in _SNDFRM02() (>100m)
+    -fix digit bug in _SNDFRM02() (>100m)
+    -fix text bug when more then one text label per object
+    -add S52_MAR_QUAPNT01 to supress display of CS QUAPNT01()
+
+18AUG2009
+    -mod update license GPL2 to GPL3
+    -mod change license from GPL3 to LGPL3
+
+17AUG2009
+    -flip Y axis in _renderLC()
+    -change winding for AREA (used in LC())
+    -fix blending for partial line in LC()
+    -fix lookup algo
+
+15AUG2009
+    -mod call S52_draw() after any keyboard event (simpler for debugging)
+
+14AUG2009
+    -fix Lookup algo
+    -tune antialias vs transparency
+
+12AUG2009
+    -add S52_MAR_ANTIALIAS (experimental anti-aliasing)
+
+10AUG2009
+    -fix cursor pick for POINT symbol
+    -widen pick region
+    -fix color name of lights
+    -fix multi-color name of lights
+    -refix rendering circular symbol
+    -fix LIGHTS CATLIT areo
+    -mod LITCHR remove trailling space
+
+09AUG2009
+    -start gtk cursor handling
+    -start port to OpenGL ES SC
+    -tune xyL --> RGB
+    -refactor (various)
+
+06AUG2009
+    -fix cursor pick centroid
+    -refactor PLib transparency
+
+05AUG2009
+    -remove TAB from Changelog
+    -fix transparency (PLib)
+
+03AUG2009
+    -fix transparency (ALPHA bits)
+
+31JUL2009
+    -add cursor pick (experimental)
+
+30JUL2009
+    -mod move object filter from draw() to cull()
+    -fix filter for lights
+    -fix filter for offseted centered symbole in area
+
+29JUL2009
+    -fix point symbol on line object
+    -clear screen with NODATA
+
+28JUL2009
+    -fix/refactor color handling
+
+27JUL2009
+    -add commentdanger color for S52 bug in OBSTRN04
+    -fix LIGHTS05 arc & leg
+
+26JUL2009
+    -fix clip object outside viewport (but not lights)
+    -fix OBSTRN
+
+24JUL2009
+    -fix SAFETY CONTOUR for datum adjustment
+
+22JUL2009
+    -fix Mercator
+    -fix DEPCNT02 for datum adjustement
+    -fix height for datum adjustment
+
+17JUL2009
+    -fix touch(), no need for GEOS now
+    -add S52_USE_OGR_FILECOLLECTOR to load all ENC in PATH
+
+16JUL2009
+    -add SCAMIN filter
+
+15JUL2009
+    -fix light caracteristic
+    -fix light symbol 'orient' parameter
+    -fix font size
+
+12JUL2009
+    -fix bug in light flare angle
+    -fix bug in light sector
+
+09JUL2009
+    -fix accent in text
+    -fix text offset
+    -expose S52_toggleObjClass()
+
+08JUL2009
+    -mod CS the account for datum adjustement
+    -tentative fix of 'orient'
+
+07JUL2009
+    -add Mariner Param for displaying depth as raster (from font)
+    -add Mariner Param to ajust datum
+    -fix bug in _SNDFRM02() when rendering  10 < sounding < 31
+
+06JUL2009
+    -fix centroid outside poly
+
+05JUL2009
+    -fix mercator
+    -fix point symbol on line
+    -fix text on line
+
+15JUN2009
+    -optimize pattern
+
+11JUN2009
+    -fix pattern
+
+08JUN2009
+    -fix s52gv Makefile target
+
+02JUN2009
+    -used Ruby-FFI for X86_64
+
+30MAY2009
+    -ajuste Conditional Symbology to Marine's Parameter at run-time
+
+20MAY2009
+    -remove need to switch RenderMode (for feedback and select)
+
+05MAY2009
+    -interface to mariner parameter
+
+29APR2009
+    -zoom/pan
+    -start culling
+
+14APR2009
+    -bypass feedback buffer for point symbol of point object
+
+13APR2009
+    -display list
+    -add DEBUG switch
+    -del various dead branch
+    -mod pointer to GV XYZ coord instead of local copy
+
+17JAN2009
+    -mingw (win32)
+    -update README
+    -mod test/* for debuging
+
+31DEC2008
+    -move X stuff to S52X
+    -mod Xcms to lcms
+    -mod exit() to g_assert
+
+22JUL2008
+    -remove some conditional compilation
+    -s52test.c: add command line options
+
+15JUL2008
+    -start moving test stuff to test/ folder
+
+26JUN2008
+    -move layer loading from gvS57layer.c to S57gv.c
+
+21MAY2008
+    -add thread & destroy() to s52test.c
+
+11MAY2008
+    -GTK2 port start
+
+20FEB2008
+    -rework Makefile to fix some missing deps
+
+18FEB2008
+    -test if OGR found the datasource
+    -strip blank from S57 filename
+    -fix chart extend guessing
+
+12OCT2007
+    -add deps to S52GL.h in S52glxsimple.c to quiet gcc warning
+    -mod include path to /usr/lib instead of ../local/..
+    -mod uncomment default (standard!) font instead of going for helvetica
+
+30OCT2005
+    -commit pending stuff (clean up and update)
+
+25OCT2004
+    -del useless files (S57gvgeo.c  S57src.h  data2obj.tmpl)
+
+07OCT2004
+    -add OGR/GEOS for CS obstrn04
+
+05OCT2004
+    -update new code to CVS
+
+04OCT2004
+    -rtag freeze_V-1_0
+
+22AUG2004
+    -add S52_obj handle
+    -refactor code to work with S52_obj
+    -change ex0 traget and code to S52glxsimple
+    -add target s52osg
+    -add code to create an .osg file for osgviewer
+    -reorganize Makefile
+
+21JUL2004
+    -add color palette switch 'on-the-fly'
+
+12JUL2004
+    -code clean up
+    -add better text handling (GL)
+    -add light translation into text (CS)
+    -various bug fix
+
+01JUL2004
+    -removed S52rgb
+    -add display supression of object (PL)
+    -add palette selection (utils)
+    -add font creation in gvS57layer
+    -code cleanup
+
+27JUN2004
+    -fix pattern/projection
+    -code cleanup
+    -fix unlink object after pick
+    -set correct extend by loading M_COVR first
+    -optimize tess to strip/fan
+
+26JUN2004
+    -add a bounch of update from Christian Tveen
+        -indexed color
+        -pick return list of S57 object
+        -parse attribute list for official att
+        -some work on priority handling
+        -fix leak
+        -add solaris switch
+    -clean up some projection code
+    -clean up code formatting
+
+21JUN2004
+    -move PROJ stuff in S57data
+
+20JUN2004
+    -generalise S57 loading (GV/OGR)
+    -mod initGL to S52_GL_initGL
+    -fix pattern
+
+22MAI2004
+    -move Christian code in main branch
+    -update README
+    -mod Makefile
+
+19MAI2004
+    -add Christian code to split GV/OGR dependency
+        --add ex0_xwin.c, ogrS57layers.c, S57data.[ch], S57ogr.[ch]
+
+07MAI2004
+    -mod LUP table name for indexing  (PL)
+    -add mariner selection for are/line (conf)
+    -mod for futur object layer switching code (GL)
+    -bunch of code cleanup
+    -add S52_MAR_SYMPLIFIED_PNT (utils)
+
+03MAI2004
+    -started cursor pick
+
+27APR2004
+    -add glcontext switching
+    -removed dependency to openev STENCIL glcontext
+    -start color handling (CIE->RGB)
+
+26APR2004
+    -extend size feedback buffer (GL)
+    -add Z clip plane for line removal (GL)
+
+25APR2004
+    -add GL selection for OBSTRN04 (CS)
+    -add GL selection for WRECKS02 (CS)
+
+20APR2004
+    -add GL selection for DEPCNT02 (CS)
+
+12APR2004
+    -add line mask for line object and area object
+
+09APR2004
+    -merge obj attributs with obj geo
+
+07APR2004
+    -move vector parser into PL module (GL/PL)
+    -code clean up
+
+02APR2004
+    -mariner parameter handling
+    -attribute handling
+    -start coding LIGHTS05
+
+18MAR2004
+    -fix area pattern upside down (GL)
+    -add layer override logic
+
+16MAR2004
+    -add antialiase
+    -fix line orientation for area object
+
+12MAR2004
+    -fix upside down complex line style (GL)
+
+10MAR2004
+    -fix typo: FSHRES51, ACHRES51, DIAMOND1 (CS)
+
+08MAR2004
+    -add symbol orientation
+
+07MAR2004
+    -add default color (PL)
+    -add nature of seabed abbreviation (PL)
+    -fix symbol creation (GL)
+    -fix symbol tansparency
+
+26FEB2004
+    -fix symbol drawn with point (SPRING)
+
+25FEB2004
+    -fix area obstruction in AA5C1JKL.000 (CS)
+
+20FEB2004
+    -fix list number (dec to octal in CS)
+    -check data type correctness w/ g++ (CS)
+
+16FEB2004
+    -fix depth symbols (CS)
+
+15FRB2004
+    -exclude stuff outside view window (GL)
+
+10FEB2004
+    -fix tess problem in Chart No 1
+
+20JAN2004
+    -patch removed since Frank commited it to OpenEV
+
+04JAN2004
+    -opaque pointer for global PLib struct
+    -opaque pointer for global geo data struct
+
+23DEC2003
+    -add code for plugin,
+    -add projection (mercator)
+    -code clean up
+
