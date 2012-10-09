@@ -1,0 +1,556 @@
+// S57ogr.c: interface to OGR S57 object data
+//
+// Project:  OpENCview
+
+/*
+    This file is part of the OpENCview project, a viewer of ENC.
+    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+
+    OpENCview is free software: you can redistribute it and/or modify
+    it under the terms of the Lesser GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OpENCview is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    Lesser GNU General Public License for more details.
+
+    You should have received a copy of the Lesser GNU General Public License
+    along with OpENCview.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+
+// Note: make a copy of OGR data
+
+#include "S57ogr.h"     // S57_geo
+#include "S52utils.h"   // PRINTF()
+#include "ogr_api.h"    // OGR*
+//#include "S57data.h"    // S57ogr.h include S57data.h
+
+
+#include <glib.h>       // GPtrArray
+
+//typedef struct _srcData srcData;
+//typedef OGRFeatureH _srcData;
+
+static int        _setExtent(S57_geo *geoData, OGRGeometryH geometry)
+{
+    OGREnvelope envelope;
+
+    if (NULL==geometry || NULL==geoData)
+        return FALSE;
+
+    OGR_G_GetEnvelope(geometry, &envelope);
+
+    S57_setExt(geoData, envelope.MinX, envelope.MinY, envelope.MaxX, envelope.MaxY);
+                  
+    return TRUE;
+}
+
+
+static int        _getGeoPtCount(OGRGeometryH hGeom, int iGeo, OGRGeometryH *hGeomRef )
+{
+    int vert_count = 0;
+
+    *hGeomRef  = OGR_G_GetGeometryRef(hGeom, iGeo);
+    if (NULL != *hGeomRef)
+        vert_count = OGR_G_GetPointCount(*hGeomRef);
+    else
+    {
+        /* FIXME: something is wrong in OGR if we get here
+         * ie the geometry handle doesn't refer to a geometry!
+         */
+      PRINTF("WARNING: got null geometry\n" );
+    }
+
+    return vert_count;
+}
+
+//static int        _loadAtt(OGRFeatureH hFeature, S57_geo *geoData)
+static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
+{
+    int field_index = 0;
+    int field_count = OGR_F_GetFieldCount(hFeature);
+
+    for (field_index=0; field_index<field_count; ++field_index) {
+        if (OGR_F_IsFieldSet(hFeature, field_index)) {
+            const char *propName  = OGR_Fld_GetNameRef(OGR_F_GetFieldDefnRef(hFeature,field_index));
+            const char *propValue = OGR_F_GetFieldAsString(hFeature, field_index);
+
+            S57_setAtt(geoData, propName, propValue);
+        }
+    }
+
+    return TRUE;
+}
+
+/*
+#ifdef _MINGW
+#include <windows.h>
+#define DLL __declspec (dllexport)
+#define STD __stdcall
+#else
+#define DLL
+#define STD
+#endif
+*/
+
+extern DLL int   STD S52_loadLayer (const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
+//extern DLL int   STD S52_loadObject(const char *objname,   void *shape);
+
+//static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb)
+static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
+{
+    int            iLayer      = 0;
+    int            nLayer      = 0;
+    OGRDataSourceH hDS         = NULL;;
+    OGRSFDriverH   hDriver     = NULL;
+    //OGRLayerH      m_covrLayer = NULL;
+    //const char    *drvName     = NULL;
+    //static int     silent      = FALSE;
+
+    PRINTF("DEBUG: starting to load cell (%s)\n", filename);
+
+    hDS = OGROpen(filename, FALSE, &hDriver);
+
+    if (NULL == hDS) {
+        PRINTF("WARNING: file loading failed (%s)\n", filename);
+        return FALSE;
+    }
+
+    if (NULL == loadLayer_cb) {
+        PRINTF("ERROR: should be using default S52_loadLayer() callback\n");
+        g_assert(0);
+    }
+
+    if (NULL == loadObject_cb) {
+        PRINTF("ERROR: should be using default S52_loadObject_cb() callback\n");
+        g_assert(0);
+    }
+
+
+    // debug: not verery usefull
+    //drvName = OGR_Dr_GetName(hDriver);
+    //if (NULL == drvName)
+    //   PRINTF("DEBUG: not drv name (!!) should be 'S57'\n", filename);
+
+    //_loadAux(hDS);
+    nLayer = OGR_DS_GetLayerCount(hDS);
+    for (iLayer=0; iLayer<nLayer; ++iLayer) {
+        OGRLayerH       ogrlayer  = OGR_DS_GetLayer(hDS, iLayer);
+        OGRFeatureDefnH defn      = OGR_L_GetLayerDefn(ogrlayer);
+        const char     *layername = OGR_FD_GetName(defn);
+
+#ifdef _MINGW
+        // on Windows 32 the callback is broken
+        S52_loadLayer(layername, ogrlayer, NULL);
+#else
+        //loadLayer_cb(layername, ogrlayer, NULL);
+        loadLayer_cb(layername, ogrlayer, loadObject_cb);
+#endif
+
+    }
+
+    //OGR_DS_Destroy(hDS);
+    OGRReleaseDataSource(hDS);
+
+    return TRUE;
+}
+
+//int            S57_ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb)
+int            S57_ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
+{
+    // check that geometric data type are in sync with OpenGL
+    g_assert(sizeof(geocoord) == sizeof(double));
+
+    OGRRegisterAll();
+
+    //_ogrLoadCell(filename, loadLayer_cb);
+    _ogrLoadCell(filename, loadLayer_cb, loadObject_cb);
+
+    return TRUE;
+}
+
+int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadObject_cb loadObject_cb)
+{
+    OGRFeatureH feature = NULL;
+    static int  silent  = FALSE;
+
+    if (NULL==layername || NULL==ogrlayer) {
+        PRINTF("ERROR: layername || ogrlayer || S52_loadLayer_cb is NULL\n");
+        g_assert(0);
+    }
+
+    if (NULL == loadObject_cb) {
+        if (FALSE == silent) {
+            PRINTF("NOTE: using default S52_loadObject() callback\n");
+            PRINTF("       (this msg will not repeat)\n");
+            silent = TRUE;
+        }
+        loadObject_cb = S52_loadObject;
+    }
+
+    while ( NULL != (feature = OGR_L_GetNextFeature((OGRLayerH)ogrlayer))) {
+        // debug
+        //PRINTF("layer:feature %X:%X\n",  ogrlayer, feature);
+
+#ifdef _MINGW
+        // on Windows 32 the callback is broken
+        S52_loadObject(layername, feature);
+#else
+        loadObject_cb(layername, (void*)feature);
+        //loadObject_cb((double*)feature);
+#endif
+
+        OGR_F_Destroy(feature);
+    }
+
+    return TRUE;
+}
+
+
+static S57_geo   *_ogrLoadObject(const char *objname, void *feature)
+{
+    S57_geo           *geoData = NULL;
+    //OGRGeometryH       hGeom   = OGR_F_GetGeometryRef((srcData*)feature);
+    OGRGeometryH       hGeom   = OGR_F_GetGeometryRef((OGRFeatureH)feature);
+    OGRwkbGeometryType eType   = wkbNone;
+
+    // debug
+    //PRINTF("before flatten name (feature): %s (%X) \n", objname, feature);
+
+    if (NULL != hGeom)
+        //eType = wkbFlatten(OGR_G_GetGeometryType(hGeom));
+        eType = OGR_G_GetGeometryType(hGeom);
+    else {
+        // DSIS
+        eType = wkbNone;
+        //geoData = S57_set_META();
+        //g_assert_not_reached();
+    }
+
+    //if (wkbNone == eType)
+    //    eType = defType;
+
+    // debug
+    //PRINTF("after flatten name: %s\n", objname);
+
+    switch (eType) {
+        // POINT
+        case wkbPoint25D:
+        case wkbPoint: {
+            geocoord *pointxyz = g_new(geocoord, 3);
+
+            pointxyz[0] = OGR_G_GetX(hGeom, 0);
+            pointxyz[1] = OGR_G_GetY(hGeom, 0);
+            pointxyz[2] = OGR_G_GetZ(hGeom, 0);
+
+            geoData = S57_setPOINT(pointxyz);
+            _setExtent(geoData, hGeom);
+
+            break;
+        }
+
+        // LINE
+        case wkbLineString25D:
+        case wkbLineString: {
+            //int       idx     = 0;
+            int       node    = 0;
+            int       count   = OGR_G_GetPointCount(hGeom);
+
+            // NOTE: Edge might have 0 node
+            //if (count < 2) {
+            //    PRINTF("WARNING: a line with less than 2 points!?\n");
+            //    //g_assert(0);
+            //    return NULL;
+            //}
+
+            geocoord *linexyz = NULL;
+            if (0 != count)
+                linexyz = g_new(geocoord, 3*count);
+
+            for (node=0; node<count; ++node) {
+            //for (idx=0, node=count-1; node>=0; --node) {
+                linexyz[node*3+0] = OGR_G_GetX(hGeom, node);
+                linexyz[node*3+1] = OGR_G_GetY(hGeom, node);
+                linexyz[node*3+2] = OGR_G_GetZ(hGeom, node);
+            }
+
+            geoData = S57_setLINES(count, linexyz);
+
+            _setExtent(geoData, hGeom);
+
+            break;
+        }
+
+        // AREA
+        case wkbMultiPolygon:
+        case wkbPolygon25D:
+        case wkbPolygon: {
+            OGRGeometryH hRing;
+            unsigned int iRing = 0;
+            guint        nRingCount = OGR_G_GetGeometryCount(hGeom);
+            guint       *ringxyznbr;
+            geocoord   **ringxyz;
+
+            ringxyznbr = g_new(guint, nRingCount);
+            ringxyz    = g_new(geocoord *, nRingCount);
+
+            for (iRing=0; iRing<nRingCount; ++iRing) {
+                guint node;
+                guint vert_count = _getGeoPtCount(hGeom, iRing, &hRing);
+
+                ringxyznbr[iRing] = vert_count;
+
+                // skip this ring if no vertex
+                if (0 == vert_count) {
+                    // FIXME: what should be done here,
+                    // FIX: S52 - discard this ring or the object or the layer or the whole chart (update)
+                    // FIX: GDAL/OGR - is it a bug in the reader or in the chart it self (S57)
+                    PRINTF("ERROR: S-57 ring with no node (%s)\n", objname);
+                    continue;
+                }
+
+                // why add a 1 !?!
+                //ringxyz[iRing]    = g_new(geocoord, (vert_count+1)*3*sizeof(geocoord));
+                ringxyz[iRing]    = g_new(geocoord, vert_count*3*sizeof(geocoord));
+
+                // debug: check winding
+                //for (i = n-1, j = 0; j < n; i = j, j++)
+                //{
+                //     ai = x[i] * y[j] - x[j] * y[i];
+                //}
+
+                unsigned int i;
+                double area = 0;
+                //for (i=0; i<vert_count; i++) {
+                for (i=0; i<vert_count-1; i++) {
+                    double x1 = OGR_G_GetX(hRing, i);
+                    double y1 = OGR_G_GetY(hRing, i);
+                    double x2 = OGR_G_GetX(hRing, i+1);
+                    double y2 = OGR_G_GetY(hRing, i+1);
+                    area += (x1*y2) - (x2*y1);
+                }
+
+                // if last vertex is NOT the first vertex
+                //for (i=vert_count-1, j=0; j<vert_count; i=j, ++j) {
+                //    double x1 = OGR_G_GetX(hRing, i);
+                //    double y1 = OGR_G_GetY(hRing, i);
+                //    double x2 = OGR_G_GetX(hRing, j);
+                //    double y2 = OGR_G_GetY(hRing, j);
+                //    area += (x1*y2) - (x2*y1);
+                //}
+
+                //int close = 0;
+                if ( (OGR_G_GetX(hRing, 0) == OGR_G_GetX(hRing, vert_count-1)) &&
+                     (OGR_G_GetY(hRing, 0) == OGR_G_GetY(hRing, vert_count-1)) )
+                    //close = 1;
+                    ;
+                else {
+                    PRINTF("ERROR: S-57 ring (AREA) not closed (%s)\n", objname);
+                    g_assert(0);
+                }
+
+                // CW = 1
+                //PRINTF("AREA(%i): %s %i\n", iRing, (area >= 0.0) ? "CW" : "CCW", close);
+
+                //if ((area<0.0) && (0==iRing)) {
+                //if (area<0.0) {
+                // reverse winding
+                if (area > 0.0) {
+                    // if first ring put winding CCW
+                    if (0==iRing) {
+                        for (node=0; node<vert_count; ++node) {
+                            ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, vert_count-node-1);
+                            ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, vert_count-node-1);
+                            ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, vert_count-node-1);
+                        }
+                    }
+
+
+                    else {
+                        for (node=0; node<vert_count; ++node) {
+                            ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, node);
+                            ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, node);
+                            ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, node);
+                        }
+                    }
+
+
+                } else {
+
+                    if (0==iRing) {
+                    // if NOT first ring put winding CW
+                        for (node=0; node<vert_count; ++node) {
+                            ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, node);
+                            ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, node);
+                            ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, node);
+                        }
+
+
+                     } else {
+                        for (node=0; node<vert_count; ++node) {
+                            ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, vert_count-node-1);
+                            ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, vert_count-node-1);
+                            ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, vert_count-node-1);
+                        }
+                    }
+
+                }
+            }     /* for loop */
+
+            geoData = S57_setAREAS(nRingCount, ringxyznbr, ringxyz);
+            _setExtent(geoData, hGeom);
+
+            break;
+        }
+
+        case wkbGeometryCollection:
+        case wkbMultiLineString: {
+/*
+#ifdef S52_USE_SUPP_LINE_OVERLAP
+            OGRGeometryH hLine;
+            int          iLine = 0;
+            guint        nLineCount = OGR_G_GetGeometryCount(hGeom);
+            //guint       *linexyznbr;
+            geocoord    *linexyz;
+
+            //linexyznbr = g_new(guint,      nLineCount);
+
+            for (iLine=0; iLine<nLineCount; ++iLine) {
+                guint node;
+                guint vert_count = _getGeoPtCount(hGeom, iLine, &hLine);
+
+                //linexyznbr[iLine] = vert_count;
+
+                // skip this ring if no vertex
+                if (0 == vert_count) {
+                    // FIXME: what should be done here,
+                    // FIX: S52 - discard this ring or the object or the layer or the whole chart (update)
+                    // FIX: GDAL/OGR - is it a bug in the reader or in the chart  itself (S57)
+                    PRINTF("ERROR: S-57 line with no node (%s)\n", objname);
+                    continue;
+                }
+
+                // why add a 1 !?!
+                //ringxyz[iRing]    = g_new(geocoord, (vert_count+1)*3*sizeof(geocoord));
+                //linexyz[iLine]    = g_new(geocoord, vert_count*3*sizeof(geocoord));
+                //geoData = S57_setLINES(nLineCount, linexyznbr, linexyz);
+
+                linexyz = g_new(geocoord, vert_count*3*sizeof(geocoord));
+
+                for (node=0; node<vert_count; ++node) {
+                    linexyz[node*3+0] = OGR_G_GetX(hLine, node);
+                    linexyz[node*3+1] = OGR_G_GetY(hLine, node);
+                    linexyz[node*3+2] = OGR_G_GetZ(hLine, node);
+                }
+
+
+                if (NULL == geoData)
+                    geoData = S57_setLINES(vert_count, linexyz);
+                else {
+                    S57_geo *geotmp = S57_setLINES(vert_count, linexyz);
+                    geoData = S57_setGeoNext(geotmp, geoData);
+
+                }
+
+                // FIXME: set extent of this chain-node to the extent
+                // of all  chain-node of this multi-line
+                _setExtent(geoData, hGeom);
+
+            }
+
+            break;
+#else
+            //g_assert_not_reached();  // land here if GDAL/OGR was patched multi-line
+#endif
+*/
+            g_assert_not_reached();  // land here if GDAL/OGR was patched multi-line
+        }
+
+        case wkbNone:
+            // DSID layer get here
+            //PRINTF("FIXME: 'wkbNone' found (%s) .. should be treated as META_T internaly ?\n", objname);
+            //g_assert_not_reached();
+            geoData = S57_set_META();
+            break; // META_T
+
+        case wkbMultiPoint:
+            // ogr SPLIT_MULTIPOINT prob !!
+            PRINTF("Multi-Pass!!!\n");
+            //PRINTF("ERROR: set env var OGR_S57_OPTIONS to SPLIT_MULTIPOINT:ON\n");
+            //PRINTF("FIXME: or wkbMultiLineString found!\n");
+            //g_assert_not_reached(); // MultiLineString (need this for line removal)
+
+            //geoData = S57_set_META();
+
+            //GvCollectionShape *collection  = (GvCollectionShape *) shape;
+            //int nCollection = gv_shape_collection_get_count(shape);
+            break;
+
+        default:
+            // FIXME: find a decent default (see openev/gvshapes.h)!!!
+            PRINTF("WKB type not handled  = %i %0x\n", eType, eType);
+
+            //g_assert_not_reached();  // wkbUnknown, wkbMultiPoint
+    }
+
+    // debug
+    //PRINTF("name: %s\n", objname);
+
+    return geoData;
+}
+
+S57_geo       *S57_ogrLoadObject(const char *objname, void *feature)
+{
+    if ((NULL==objname) || (NULL==feature)) {
+        //g_assert(0);
+        return NULL;
+    }
+
+    // debug
+    //PRINTF("DEBUG: start loading object (%s:%X)\n", objname, feature);
+
+    //S57_geo *geo = _ogrLoadObject(objname, feature);
+    S57_geo *geoData = _ogrLoadObject(objname, feature);
+    //S57_geo *geo     = geoData;
+    if (NULL == geoData)
+        return NULL;
+
+    if (0==strcmp("XX0WORLD", objname)) {
+        S57_setName(geoData, "LNDARE");
+    } else {
+        S57_setName(geoData, objname);
+    }
+    _setAtt(geoData, feature);
+
+//#ifdef S52_USE_SUPP_LINE_OVERLAP
+    //while (NULL != geo) {
+    //    S57_setName(geo, objname);
+    //    _setAtt(geo, feature);
+    //    geo = S57_getGeoNext(geo);
+    //}
+//#endif
+
+    // debug
+    //if (2186==S57_getGeoID(geoData)) {
+    //    S57_dumpData(geoData);
+    //}
+
+    //PRINTF("DEBUG: finish loading object (%s)\n", objname);
+
+    return geoData;
+    //return geo;
+}
+
+
+
+#if 0
+int main(int argc, char** argv)
+{
+
+   return 1;
+}
+#endif
