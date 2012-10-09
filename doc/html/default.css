@@ -1,0 +1,519 @@
+/* default.css
+/<style>
+/ */
+.detailList dd {
+	clear: both;
+}
+.left-class-list ol, .left-class-list ul {
+	list-style-image:none;
+	list-style-position:outside;
+	list-style-type:none;
+	margin: 4px;
+	padding: 4px;
+}
+.left-class-list {
+	background:#F8F8F8 none repeat scroll 0 0;
+	border:1px solid white;
+	float:left;
+	margin:5px;
+	padding:5px;
+	width:18%;
+}
+.class-picture {
+	float:right;
+	margin:20px 10px 10px;
+
+}
+
+body
+{
+	font: 12px "Lucida Grande", Tahoma, Arial, Helvetica, sans-serif;
+	/* width: 800px; */
+}
+
+.header
+{
+	clear: both;
+	background-color: #ccc;
+	padding: 8px;
+}
+
+h1
+{
+	font-size: 150%;
+	font-weight: bold;
+	padding: 0;
+	margin: 1em 0 0 .3em;
+}
+
+hr
+{
+	border: none 0;
+	border-top: 1px solid #7F8FB1;
+	height: 1px;
+}
+
+pre.code
+{
+	display: block;
+	padding: 8px;
+	border: 1px dashed #ccc;
+}
+
+#index
+{
+	margin-top: 24px;
+	float: left;
+	width: 160px;
+	position: absolute;
+	left: 8px;
+	background-color: #F3F3F3;
+	padding: 8px;
+}
+
+#content
+{
+	margin-left: 190px;
+	width: 600px;
+}
+
+.classList
+{
+	list-style-type: none;
+	padding: 0;
+	margin: 0 0 0 8px;
+	font-family: arial, sans-serif;
+	font-size: 1em;
+	overflow: auto;
+}
+
+.classList li
+{
+	padding: 0;
+	margin: 0 0 8px 0;
+}
+
+.summaryTable { width: 100%; }
+
+h1.classTitle
+{
+	font-size:170%;
+	line-height:130%;
+}
+
+h2 {
+  font-size: 110%;
+  padding-left: 1em;
+}
+
+/* --------- the labels at the top of the page... -------- */
+.class-summary-table .label
+{
+    vertical-align: top;
+    margin-bottom: 4px;
+}
+
+.class-summary-table
+{
+    margin-left:10px;
+    margin-top:5px;
+
+}
+.class-summary-table  td
+{
+    font-size:12px;
+    padding:2px 10px 2px 2px;
+}
+.elbow
+{
+  vertical-align: middle;
+  padding-right: 2px;
+}
+
+.elbow_indent2 {
+  padding-left: 10px;
+}
+
+.elbow_indent3 {
+  padding-left: 20px;
+}
+
+.elbow_indent4 {
+  padding-left: 40px;
+}
+
+.elbow_indent5 {
+  padding-left: 50px;
+}
+
+.elbow_indent6 {
+  padding-left: 50px;
+}
+
+.elbow_indent7 {
+  padding-left: 60px;
+}
+
+/** ---------------------   Caption above tables -----------------------**/
+caption.Empty,
+caption,
+div.sectionTitle
+{
+	background-color: #7F8FB1;
+	color: #fff;
+	font-size:130%;
+	text-align: left;
+	padding: 2px 6px 2px 6px;
+	border: 1px #7F8FB1 solid;
+    width: 100%;
+    font-weight: bold;
+}
+
+div.sectionTitle { margin-bottom: 8px; }
+.summaryTable thead { display: none; }
+
+.summaryTable td
+{
+	vertical-align: top;
+	padding: 4px;
+	border-bottom: 1px #7F8FB1 solid;
+	border-right: 1px #7F8FB1 solid;
+}
+
+/*col#summaryAttributes {}*/
+.summaryTable td.attributes
+{
+	border-left: 1px #7F8FB1 solid;
+	width: 140px;
+	text-align: right;
+}
+
+td.attributes, .fixedFont
+{
+	line-height: 15px;
+	font-family: "Courier New",Courier,monospace;
+	font-size: 13px;
+    margin-left: 10px;
+}
+td.attributes, .fixedFont a
+{
+	color: #999999;
+	font-family: "Lucida Grande", Tahoma, Arial, Helvetica, sans-serif;
+}
+td.attributes, .fixedFont b i
+{
+	font-family: "Lucida Grande", Tahoma, Arial, Helvetica, sans-serif;
+}
+.itemname
+{
+    color: #002EBE;
+}
+
+
+.summaryTable td.nameDescription
+{
+	text-align: left;
+	font-size: 13px;
+	line-height: 15px;
+}
+
+.summaryTable td.nameDescription, .description
+{
+	line-height: 15px;
+	padding: 4px;
+	padding-left: 4px;
+}
+
+.summaryTable { margin-bottom: 8px; }
+
+ul.inheritsList
+{
+	list-style: square;
+	margin-left: 20px;
+	padding-left: 0;
+}
+
+.detailList {
+	margin-left: 20px;
+    padding-top: 10px;
+	line-height: 20px;
+    clear: left;
+}
+.detailList dt
+{
+    margin-left: 20px;
+    clear: left;
+    float: left;
+
+}
+
+.detailList .heading
+{
+	font-weight: bold;
+	padding-bottom: 6px;
+	margin-left: 0;
+
+}
+
+.light, td.attributes, .light a:link, .light a:visited
+{
+	color: #777;
+	font-style: italic;
+}
+
+.fineprint
+{
+	text-align: right;
+	font-size: 10px;
+}
+
+.detailList dd
+{
+    clear: none;
+    float: left;
+    margin-left: 10px;
+
+
+}
+
+
+.detailList dt
+{
+
+
+    margin-bottom::	12px;
+    margin-left:	20px;
+}
+/** ----------------------- RooJS extra stuff  ----------------------- */
+
+.body-wrap {
+    margin: 5px;
+}
+
+.top-tools  {
+    text-align:right;
+}
+.inner-link {
+    margin-left: 10px;
+}
+.inheritance {
+    float:right;
+    margin-top:20px;
+    width:300px;
+}
+.res-block {
+    margin-bottom:15px;
+    padding-top:5px;
+   /* width:210px; */
+}
+.inheritance pre {
+    border:0pt none;
+    font-size:11px;
+    /* line-height:18px !important; */
+    margin:0pt;
+    padding:0pt 8px 5px !important;
+    text-align:left;
+    background-color: #f8f8f8;
+}
+div.hr {
+    background:#CCCCCC none repeat scroll 0%;
+    height:1px;
+    line-height:1px;
+    margin:5px 0pt;
+    overflow:hidden;
+        clear: both;
+}
+/** ----------------------- RooJS table stuff  ----------------------- */
+
+.member-table {
+    margin-bottom:10px;
+    width:100%;
+}
+
+.member-table th {
+    background-color:#eee;
+    border-left:1px solid #EEE;
+    border-right:1px solid #DDD;
+    border-top:1px solid #EEE;
+    padding:3px;
+    text-align:left;
+    vertical-align:middle;
+
+
+    font-size:11px;
+    white-space:nowrap;
+
+}
+
+.member-table td.micon {
+    background:#F9F9F9;
+    border-right:1px solid #D0D0D0;
+    padding:0px;
+    width:16px;
+}
+
+.member-table td.micon a {
+
+    display:block;
+
+    text-decoration: none;
+
+     height:18px;
+    width:16px;
+}
+
+.member-table td.micon,
+.member-table td.sig,
+.member-table td.msource {
+    border-top:1px solid #D0D0D0;
+    vertical-align:top;
+    padding: 5px;
+    font-size: 13px;
+}
+.expanded .mdesc .short{
+    display:none;
+}
+.expanded .mdesc .comments,
+.expanded .mdesc .long {
+    display:block;
+    margin-top: 10px;
+    margin-left: 10px;
+}
+
+
+.mdesc .comments,
+.mdesc .long {
+    display:none;
+}
+.mdesc .short {
+    color: #999;
+    margin-left: 10px;
+}
+
+.expandable td.micon a {
+    background:transparent url(elbow-plus-nl.gif) no-repeat scroll 0px 0px;
+    cursor:pointer}
+
+.expanded  td.micon a {
+    background:transparent url(elbow-minus-nl.gif) no-repeat scroll 0px 0px;
+    cursor:pointer;
+
+}
+
+
+/* ---- table with no contents */
+
+caption.Empty
+{
+    background-color:#EEEEEE;
+    border:medium none;
+    color:#666666;
+    font-size:10pt;
+    font-style:italic;
+    font-weight: normal;
+}
+
+
+/* fix up lists back to normal */
+
+
+.body-wrap ul
+{
+    ist-style-image:	none;
+    list-style-position:	outside;
+    list-style-type:	disc;
+    padding-left: 40px;
+}
+
+.long pre,
+.description pre  {
+    background:#F8F8F8 none repeat scroll 0% 0%;
+    border-color:#ccc;
+    border-style:solid;
+    border-width:1px 1px 1px 5px;
+    font-size:12px !important;
+    line-height:14px !important;
+    margin:10px 10px 10px 0px;
+    padding:10px;
+}
+
+
+.comments {
+    background:#F8F8F8 none repeat scroll 0% 0%;
+    border-color:#f30;
+    border-style:solid;
+    border-width:1px 15px 1px 15px;
+    font-size:12px !important;
+    line-height:14px !important;
+    margin:10px 10px 10px 0px;
+    padding:10px;
+    width:95%;
+    float:left;
+
+}
+
+
+/** methods etc. defined in this class are highlighted. **/
+
+/** -------- alternating rows.. ---- */
+
+.config-row-alt0 {
+    background-color : #f8f8f8;
+}
+.notInherited td.micon,
+.notInherited td.msource
+{
+
+    background-color: #7F8FB1; 
+    color : #fff;
+    font-weight: bold;
+}
+td.msource
+{
+    width: 160px;
+}
+
+.detailList dd {
+	clear: both;
+}
+.left-class-list ol, .left-class-list ul {
+	list-style-image:none;
+	list-style-position:outside;
+	list-style-type:none;
+	margin: 4px;
+	padding: 4px;
+}
+.left-class-list {
+	background:#F8F8F8 none repeat scroll 0 0;
+	border:1px solid white;
+	float:left;
+	margin:5px;
+	padding:5px;
+	width:18%;
+}
+.class-picture {
+	float:right;
+	margin:20px 10px 10px;
+	
+}
+.left-class-list ol, .left-class-list ul {
+	list-style-image:none;
+	list-style-position:outside;
+	list-style-type:none;
+	margin: 4px;
+	padding: 4px;
+}
+.left-class-list {
+	background:#F8F8F8 none repeat scroll 0 0;
+	border:1px solid white;
+	float:left;
+	margin:5px;
+	padding:5px;
+	width:18%;
+}
+.ns-list {
+        
+    display:block;
+    float:left;
+    margin:30px;
+}

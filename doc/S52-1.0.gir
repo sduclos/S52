@@ -1,0 +1,1042 @@
+<?xml version="1.0"?>
+<!-- This file was automatically generated from C sources - DO NOT EDIT!
+To affect the contents of this file, edit the original C definitions,
+and/or use gtk-doc annotations.  -->
+<repository version="1.2"
+            xmlns="http://www.gtk.org/introspection/core/1.0"
+            xmlns:c="http://www.gtk.org/introspection/c/1.0"
+            xmlns:glib="http://www.gtk.org/introspection/glib/1.0">
+  <package name="clutter-1.0"/>
+  <package name="gobject-2.0"/>
+  <namespace name="S52"
+             version="1.0"
+             shared-library="libS52-1.0.so"
+             c:identifier-prefixes="S52"
+             c:symbol-prefixes="s52">
+    <alias name="ObjectHandle" c:type="S52ObjectHandle">
+      <doc xml:whitespace="preserve">Type used for storing references to S52 objects, the S52ObjectHandle
+is a fully opaque type without any public data members.</doc>
+      <type name="guint64" c:type="guint64"/>
+    </alias>
+    <constant name="DBUS_OBJ_IFACE" value="nav.ecs.dbus">
+      <type name="utf8" c:type="gchar*"/>
+    </constant>
+    <constant name="DBUS_OBJ_NAME" value="nav.ecs.dbus">
+      <type name="utf8" c:type="gchar*"/>
+    </constant>
+    <constant name="DBUS_OBJ_PATH" value="/nav/ecs/dbus">
+      <type name="utf8" c:type="gchar*"/>
+    </constant>
+    <function name="LL2xy" c:identifier="S52_LL2xy">
+      <doc xml:whitespace="preserve">Convert longitude/latitude to X/Y (pixel)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="longitude"
+                   direction="inout"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <doc xml:whitespace="preserve">degree</doc>
+          <type name="gdouble" c:type="double*"/>
+        </parameter>
+        <parameter name="latitude"
+                   direction="inout"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <doc xml:whitespace="preserve">degree</doc>
+          <type name="gdouble" c:type="double*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <enumeration name="MarinerParameter" c:type="S52MarinerParameter">
+      <member name="none" value="0" c:identifier="S52_MAR_NONE"/>
+      <member name="show_text" value="1" c:identifier="S52_MAR_SHOW_TEXT"/>
+      <member name="two_shades" value="2" c:identifier="S52_MAR_TWO_SHADES"/>
+      <member name="safety_contour"
+              value="3"
+              c:identifier="S52_MAR_SAFETY_CONTOUR"/>
+      <member name="safety_depth"
+              value="4"
+              c:identifier="S52_MAR_SAFETY_DEPTH"/>
+      <member name="shallow_contour"
+              value="5"
+              c:identifier="S52_MAR_SHALLOW_CONTOUR"/>
+      <member name="deep_contour"
+              value="6"
+              c:identifier="S52_MAR_DEEP_CONTOUR"/>
+      <member name="shallow_pattern"
+              value="7"
+              c:identifier="S52_MAR_SHALLOW_PATTERN"/>
+      <member name="ships_outline"
+              value="8"
+              c:identifier="S52_MAR_SHIPS_OUTLINE"/>
+      <member name="distance_tags"
+              value="9"
+              c:identifier="S52_MAR_DISTANCE_TAGS"/>
+      <member name="time_tags" value="10" c:identifier="S52_MAR_TIME_TAGS"/>
+      <member name="full_sectors"
+              value="11"
+              c:identifier="S52_MAR_FULL_SECTORS"/>
+      <member name="symbolized_bnd"
+              value="12"
+              c:identifier="S52_MAR_SYMBOLIZED_BND"/>
+      <member name="symplified_pnt"
+              value="13"
+              c:identifier="S52_MAR_SYMPLIFIED_PNT"/>
+      <member name="disp_category"
+              value="14"
+              c:identifier="S52_MAR_DISP_CATEGORY"/>
+      <member name="color_palette"
+              value="15"
+              c:identifier="S52_MAR_COLOR_PALETTE"/>
+      <member name="vecper" value="16" c:identifier="S52_MAR_VECPER"/>
+      <member name="vecmrk" value="17" c:identifier="S52_MAR_VECMRK"/>
+      <member name="vecstb" value="18" c:identifier="S52_MAR_VECSTB"/>
+      <member name="headng_line"
+              value="19"
+              c:identifier="S52_MAR_HEADNG_LINE"/>
+      <member name="beam_brg_nm"
+              value="20"
+              c:identifier="S52_MAR_BEAM_BRG_NM"/>
+      <member name="font_soundg"
+              value="21"
+              c:identifier="S52_MAR_FONT_SOUNDG"/>
+      <member name="datum_offset"
+              value="22"
+              c:identifier="S52_MAR_DATUM_OFFSET"/>
+      <member name="scamin" value="23" c:identifier="S52_MAR_SCAMIN"/>
+      <member name="antialias" value="24" c:identifier="S52_MAR_ANTIALIAS"/>
+      <member name="quapnt01" value="25" c:identifier="S52_MAR_QUAPNT01"/>
+      <member name="disp_overlap"
+              value="26"
+              c:identifier="S52_MAR_DISP_OVERLAP"/>
+      <member name="disp_layer_last"
+              value="27"
+              c:identifier="S52_MAR_DISP_LAYER_LAST"/>
+      <member name="rot_buoy_light"
+              value="28"
+              c:identifier="S52_MAR_ROT_BUOY_LIGHT"/>
+      <member name="disp_crsr_pos"
+              value="29"
+              c:identifier="S52_MAR_DISP_CRSR_POS"/>
+      <member name="disp_graticule"
+              value="30"
+              c:identifier="S52_MAR_DISP_GRATICULE"/>
+      <member name="disp_wholin"
+              value="31"
+              c:identifier="S52_MAR_DISP_WHOLIN"/>
+      <member name="disp_legend"
+              value="32"
+              c:identifier="S52_MAR_DISP_LEGEND"/>
+      <member name="cmd_wrd_filter"
+              value="33"
+              c:identifier="S52_MAR_CMD_WRD_FILTER"/>
+      <member name="dotpitch_mm_x"
+              value="34"
+              c:identifier="S52_MAR_DOTPITCH_MM_X"/>
+      <member name="dotpitch_mm_y"
+              value="35"
+              c:identifier="S52_MAR_DOTPITCH_MM_Y"/>
+      <member name="disp_calib" value="36" c:identifier="S52_MAR_DISP_CALIB"/>
+      <member name="drgare_pattern_off"
+              value="37"
+              c:identifier="S52_MAR_DRGARE_PATTERN_OFF"/>
+      <member name="nodata_layer_off"
+              value="38"
+              c:identifier="S52_MAR_NODATA_LAYER_OFF"/>
+      <member name="num" value="39" c:identifier="S52_MAR_NUM"/>
+    </enumeration>
+    <enumeration name="ObjectType" c:type="S52ObjectType">
+      <member name="_meta" value="0" c:identifier="S52__META"/>
+      <member name="areas" value="1" c:identifier="S52_AREAS"/>
+      <member name="lines" value="2" c:identifier="S52_LINES"/>
+      <member name="point" value="3" c:identifier="S52_POINT"/>
+      <member name="n_obj" value="4" c:identifier="S52_N_OBJ"/>
+    </enumeration>
+    <callback name="RADAR_cb" c:type="S52_RADAR_cb">
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+    </callback>
+    <bitfield name="_CMD_WRD_FILTER_t" c:type="S52_CMD_WRD_FILTER_t">
+      <member name="sy" value="1" c:identifier="S52_CMD_WRD_FILTER_SY"/>
+      <member name="ls" value="2" c:identifier="S52_CMD_WRD_FILTER_LS"/>
+      <member name="lc" value="4" c:identifier="S52_CMD_WRD_FILTER_LC"/>
+      <member name="ac" value="8" c:identifier="S52_CMD_WRD_FILTER_AC"/>
+      <member name="ap" value="16" c:identifier="S52_CMD_WRD_FILTER_AP"/>
+      <member name="tx" value="32" c:identifier="S52_CMD_WRD_FILTER_TX"/>
+    </bitfield>
+    <function name="delMarObj" c:identifier="S52_delMarObj">
+      <doc xml:whitespace="preserve">Delete ressources in libS52 for this S52_obj.</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">NULL if S52_obj was deleted successfully, if call fail return the handle</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="objH" transfer-ownership="none">
+          <doc xml:whitespace="preserve">addressed S52ObjectHandle</doc>
+          <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="done" c:identifier="S52_done">
+      <doc xml:whitespace="preserve">Free up all ressources</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+    </function>
+    <function name="doneCell" c:identifier="S52_doneCell">
+      <doc xml:whitespace="preserve">Free up all ressources used by a cell (no implemented)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="filename" transfer-ownership="none">
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="draw" c:identifier="S52_draw">
+      <doc xml:whitespace="preserve">Draw S57 object (cell) on layer 0-8</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+    </function>
+    <function name="drawLast" c:identifier="S52_drawLast">
+      <doc xml:whitespace="preserve">Draw layer 9 (last) stuff that change all the time (ex AIS)
+fast update</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+    </function>
+    <function name="drawStr" c:identifier="S52_drawStr">
+      <doc xml:whitespace="preserve">S52 UI color name "UINFD", "UINFF", "UIBCK", "UIAFD",
+"UINFR", "UINFG", "UINFO", "UINFB", "UINFM", "UIBDR", "UIAFF"</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="pixels_x" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="pixels_y" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="colorName" transfer-ownership="none">
+          <doc xml:whitespace="preserve">S52 UI color name</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+        <parameter name="bsize" transfer-ownership="none">
+          <doc xml:whitespace="preserve">body size (1..)</doc>
+          <type name="guint" c:type="unsigned int"/>
+        </parameter>
+        <parameter name="str" transfer-ownership="none">
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="drawText" c:identifier="S52_drawText">
+      <doc xml:whitespace="preserve">Draw pending text (used to render Cogl text)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+    </function>
+    <callback name="error_cb" c:type="S52_error_cb">
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="err" transfer-ownership="none">
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+      </parameters>
+    </callback>
+    <function name="getCellExtent" c:identifier="S52_getCellExtent">
+      <doc xml:whitespace="preserve">Cell extent; South, West, North, East
+if @filename is NULL then return the extent of all cells loaded</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="filename" transfer-ownership="none" allow-none="1">
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+        <parameter name="S"
+                   direction="out"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <doc xml:whitespace="preserve">latitude in deg</doc>
+          <type name="gdouble" c:type="double*"/>
+        </parameter>
+        <parameter name="W"
+                   direction="out"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <doc xml:whitespace="preserve">longitude in deg</doc>
+          <type name="gdouble" c:type="double*"/>
+        </parameter>
+        <parameter name="N"
+                   direction="out"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <doc xml:whitespace="preserve">latitude in deg</doc>
+          <type name="gdouble" c:type="double*"/>
+        </parameter>
+        <parameter name="E"
+                   direction="out"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <doc xml:whitespace="preserve">longitude in deg</doc>
+          <type name="gdouble" c:type="double*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="getMarinerParam" c:identifier="S52_getMarinerParam">
+      <doc xml:whitespace="preserve">Get the value of the global variables @paramID
+used by Mariners' Object</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gdouble" c:type="double"/>
+      </return-value>
+      <parameters>
+        <parameter name="paramID" transfer-ownership="none">
+          <doc xml:whitespace="preserve">ID of Mariners' Object Parameter</doc>
+          <type name="MarinerParameter" c:type="S52MarinerParameter"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="getPLibLoaded" c:identifier="S52_getPLibLoaded">
+      <doc xml:whitespace="preserve">List of PLib name loaded delimited by ','</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">string</doc>
+        <type name="utf8" c:type="char*"/>
+      </return-value>
+    </function>
+    <function name="getPalettesName" c:identifier="S52_getPalettesName">
+      <doc xml:whitespace="preserve">List of palette name loaded delimited by ','</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">string</doc>
+        <type name="utf8" c:type="char*"/>
+      </return-value>
+    </function>
+    <function name="getRGB" c:identifier="S52_getRGB">
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="colorName" transfer-ownership="none">
+          <doc xml:whitespace="preserve">S52 color name</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+        <parameter name="R"
+                   direction="out"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <doc xml:whitespace="preserve">red,   [0..255]</doc>
+          <type name="guint8" c:type="unsigned char*"/>
+        </parameter>
+        <parameter name="G"
+                   direction="out"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <doc xml:whitespace="preserve">green, [0..255]</doc>
+          <type name="guint8" c:type="unsigned char*"/>
+        </parameter>
+        <parameter name="B"
+                   direction="out"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <doc xml:whitespace="preserve">blue,  [0..255]</doc>
+          <type name="guint8" c:type="unsigned char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="getTextDisp" c:identifier="S52_getTextDisp">
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="dispPrioIdx" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="init" c:identifier="S52_init">
+      <doc xml:whitespace="preserve">Initialize libS52, install SIGINT handler to abort drawing (Ctrl-C)
+set physical dimension of screen (used in dotpitch)
+xrandr can be used if framework doesn't do it (ie Clutter)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="screen_pixels_w" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="screen_pixels_h" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="screen_mm_w" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="screen_mm_h" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="err_cb"
+                   transfer-ownership="none"
+                   allow-none="1"
+                   scope="call">
+          <doc xml:whitespace="preserve">callback</doc>
+          <type name="error_cb" c:type="S52_error_cb"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="loadCell" c:identifier="S52_loadCell">
+      <doc xml:whitespace="preserve">if @encPath is NULL look for label 'CHART' in s52.cfg
+if @encPath is a path load all S57 base cell + update
+if @loadObject_cb is NULL then S52_loadObject() is executed</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="encPath" transfer-ownership="none" allow-none="1">
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+        <parameter name="loadObject_cb"
+                   transfer-ownership="none"
+                   allow-none="1"
+                   scope="call">
+          <type name="loadObject_cb" c:type="S52_loadObject_cb"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="loadObject" c:identifier="S52_loadObject">
+      <doc xml:whitespace="preserve">Can be called more than once (in theorie)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="objname" transfer-ownership="none">
+          <doc xml:whitespace="preserve">name of S57 object (same as layer name)</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+        <parameter name="feature" transfer-ownership="none">
+          <doc xml:whitespace="preserve">S57 object feature passed from GDAL/OGR</doc>
+          <type name="gpointer" c:type="void*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <callback name="loadObject_cb" c:type="S52_loadObject_cb">
+      <doc xml:whitespace="preserve">This callback provide a way to maninulate each S57 object before
+they are inserted into the scenegraph via S52_loadObject()</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="objname" transfer-ownership="none">
+          <doc xml:whitespace="preserve">name of S57 object (same as layer name)</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+        <parameter name="feature" transfer-ownership="none">
+          <doc xml:whitespace="preserve">S57 object feature passed from GDAL/OGR (OGRFeatureH)</doc>
+          <type name="gpointer" c:type="void*"/>
+        </parameter>
+      </parameters>
+    </callback>
+    <function name="loadPLib" c:identifier="S52_loadPLib">
+      <doc xml:whitespace="preserve">If @plibName is NULL look for label 'PLIB' in s52.cfg</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="plibName" transfer-ownership="none" allow-none="1">
+          <doc xml:whitespace="preserve">name or path+name</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="newCLRLIN" c:identifier="S52_newCLRLIN">
+      <doc xml:whitespace="preserve">new S52_obj "Clearing Line"
+'clrlin': CS(CLRLIN--)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="catclr" transfer-ownership="none">
+          <doc xml:whitespace="preserve">0 - undefined, 1 - NMT (not more than), 2 - NLT (not less than)</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="latBegin" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="lonBegin" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="latEnd" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="lonEnd" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="newCSYMB" c:identifier="S52_newCSYMB">
+      <doc xml:whitespace="preserve">Create SCALEB10, SCALEB11, NORTHAR1, UNITMTR1, CHKSYM01
+note that the S52ObjectHandle of these S52 object are kept inside libS52 (for no particular reason)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+    </function>
+    <function name="newLEGLIN" c:identifier="S52_newLEGLIN">
+      <doc xml:whitespace="preserve">new S52_obj "Leg Line" segment
+'leglin': CS(LEGLIN--)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="select" transfer-ownership="none">
+          <doc xml:whitespace="preserve">Selection: 0 - undefined, 1 - planned, 2 - alternate</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="plnspd" transfer-ownership="none">
+          <doc xml:whitespace="preserve">planned speed (0.0 for no speed label)</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="wholinDist" transfer-ownership="none">
+          <doc xml:whitespace="preserve">distance of the 'wholin' (wheel-over-line) from End in NM</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="latBegin" transfer-ownership="none">
+          <doc xml:whitespace="preserve">latitude of LEGLIN beginning (deg)</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="lonBegin" transfer-ownership="none">
+          <doc xml:whitespace="preserve">longitude of LEGLIN  beginning(deg)</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="latEnd" transfer-ownership="none">
+          <doc xml:whitespace="preserve">latitude of LEGLIN ending (deg)</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="lonEnd" transfer-ownership="none">
+          <doc xml:whitespace="preserve">longitude of LEGLIN ending (deg)</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="previousLEGLIN"
+                   transfer-ownership="none"
+                   allow-none="1">
+          <doc xml:whitespace="preserve">handle to the previous LEGLIN, used to draw 'wholin' and/or curve</doc>
+          <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="newMarObj" c:identifier="S52_newMarObj">
+      <doc xml:whitespace="preserve">Create new S52_obj - Basic Call.
+All other call of the form S52_new*() are a specialisation of this one.
+for Mariners' Object. Lower case attribute name starting with an unserscore ('_')
+are reserve for internal libS52 needs.</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="plibObjName" transfer-ownership="none">
+          <type name="utf8"/>
+        </parameter>
+        <parameter name="objType" transfer-ownership="none">
+          <doc xml:whitespace="preserve">S52ObjectType</doc>
+          <type name="ObjectType" c:type="S52ObjectType"/>
+        </parameter>
+        <parameter name="xyznbrmax" transfer-ownership="none">
+          <doc xml:whitespace="preserve">maximum number of xyz (point)(see S52_pushPosition())</doc>
+          <type name="guint" c:type="unsigned int"/>
+        </parameter>
+        <parameter name="xyz" transfer-ownership="none" allow-none="1">
+          <type name="gpointer"/>
+        </parameter>
+        <parameter name="listAttVal" transfer-ownership="none">
+          <doc xml:whitespace="preserve">format "att1:val1,att2:val2,..."</doc>
+          <type name="utf8"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="newMercPrj" c:identifier="S52_newMercPrj">
+      <doc xml:whitespace="preserve">DEBUG - set Mercator Projection by hand --done automaticaly via S52_loadCell()</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="latitude" transfer-ownership="none">
+          <doc xml:whitespace="preserve">latitude to project Mercator to</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="newOWNSHP" c:identifier="S52_newOWNSHP">
+      <doc xml:whitespace="preserve">new S52_obj "Own Ship"
+'ownshp': CS(OWNSHP--)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="label" transfer-ownership="none" allow-none="1">
+          <doc xml:whitespace="preserve">for example Ship's name or MMSI or NULL</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="newPASTRK" c:identifier="S52_newPASTRK">
+      <doc xml:whitespace="preserve">'pastrk': CS(PASTRK--)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="catpst" transfer-ownership="none">
+          <doc xml:whitespace="preserve">Category of past track: 0 - undefined, 1 - primary, 2 - secondary</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="xyznbrmax" transfer-ownership="none">
+          <doc xml:whitespace="preserve">maximum number of PASTRK positon (point)</doc>
+          <type name="guint" c:type="unsigned int"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="newVESSEL" c:identifier="S52_newVESSEL">
+      <doc xml:whitespace="preserve">'vessel': CS(VESSEL--) ARPA &amp; AIS</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="vesrce" transfer-ownership="none">
+          <doc xml:whitespace="preserve">Vessel report source: 1 - ARPA target, 2 - AIS vessel report, 3 - VTS report</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="label" transfer-ownership="none" allow-none="1">
+          <doc xml:whitespace="preserve">NULL or a string</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="newVRMEBL" c:identifier="S52_newVRMEBL">
+      <doc xml:whitespace="preserve">'vrmebl' CS(VRMEBL--)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="vrm" transfer-ownership="none">
+          <doc xml:whitespace="preserve">Variable Range Marker TRUE/FALSE</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="ebl" transfer-ownership="none">
+          <doc xml:whitespace="preserve">Electronic Bearing Line TRUE/FALSE</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="normalLineStyle" transfer-ownership="none">
+          <doc xml:whitespace="preserve">TRUE  - normal line style, FALSE - alternate line style</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="setOrigin" transfer-ownership="none">
+          <doc xml:whitespace="preserve">TRUE  - will setup a freely movable VRMEBL origin, FALSE - centered on ownshp or screen center if no ownshp</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="pickAt" c:identifier="S52_pickAt">
+      <doc xml:whitespace="preserve">Cursor pick
+(in the next frame, the object is drawn with the "DNGHL" color (experimental))</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">the name of the S57 object, else NULL</doc>
+        <type name="utf8" c:type="char*"/>
+      </return-value>
+      <parameters>
+        <parameter name="pixels_x" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="pixels_y" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="pushPosition" c:identifier="S52_pushPosition">
+      <doc xml:whitespace="preserve">Push a position on a FIFO stack. The size of the stack is one for object of type S52_POINT.
+For object of type S52_LINES and S52_AREAS the size of the stack is set via 'xyznbrmax'.
+S52_AREAS are expected to have the same first and last point (as any S57 area).
+'data' is used to display time (hh.mm) if the object is PASTRK.
+If the object is VESSEL or OWNSHP then 'data' is the heading.</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="objH" transfer-ownership="none">
+          <doc xml:whitespace="preserve">addressed S52ObjectHandle</doc>
+          <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+        </parameter>
+        <parameter name="latitude" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="longitude" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="data" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="setDimension" c:identifier="S52_setDimension">
+      <doc xml:whitespace="preserve">conning position - for AIS this is the antenna position</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="objH" transfer-ownership="none">
+          <doc xml:whitespace="preserve">addressed S52ObjectHandle</doc>
+          <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+        </parameter>
+        <parameter name="a" transfer-ownership="none">
+          <doc xml:whitespace="preserve">dist form foward</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="b" transfer-ownership="none">
+          <doc xml:whitespace="preserve">dist from aft       (a + b = lenght)</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="c" transfer-ownership="none">
+          <doc xml:whitespace="preserve">dist from port</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="d" transfer-ownership="none">
+          <doc xml:whitespace="preserve">dist from starboard (c + d = beam)</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="setMarinerParam" c:identifier="S52_setMarinerParam">
+      <doc xml:whitespace="preserve">Set the value of the global variables @paramID
+used by Mariners' Object</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="paramID" transfer-ownership="none">
+          <doc xml:whitespace="preserve">ID of Mariners' Object Parameter</doc>
+          <type name="MarinerParameter" c:type="S52MarinerParameter"/>
+        </parameter>
+        <parameter name="val" transfer-ownership="none">
+          <doc xml:whitespace="preserve">value</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="setRADARCallBack" c:identifier="S52_setRADARCallBack">
+      <doc xml:whitespace="preserve">Signal that libS52 is at RADAR layer in the layer's sequence in S52_draw()</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="cb"
+                   transfer-ownership="none"
+                   allow-none="1"
+                   scope="call">
+          <type name="RADAR_cb" c:type="S52_RADAR_cb"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="setRGB" c:identifier="S52_setRGB">
+      <doc xml:whitespace="preserve">Overright the current RGB for @colorName of current palette</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="colorName" transfer-ownership="none">
+          <doc xml:whitespace="preserve">S52 color name</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+        <parameter name="R" transfer-ownership="none">
+          <doc xml:whitespace="preserve">red,   [0..255]</doc>
+          <type name="guint8" c:type="unsigned char"/>
+        </parameter>
+        <parameter name="G" transfer-ownership="none">
+          <doc xml:whitespace="preserve">green, [0..255]</doc>
+          <type name="guint8" c:type="unsigned char"/>
+        </parameter>
+        <parameter name="B" transfer-ownership="none">
+          <doc xml:whitespace="preserve">blue,  [0..255]</doc>
+          <type name="guint8" c:type="unsigned char"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="setTextDisp" c:identifier="S52_setTextDisp">
+      <return-value transfer-ownership="none">
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="dispPrioIdx" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="count" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="state" transfer-ownership="none">
+          <type name="gint" c:type="int"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="setVESSELlabel" c:identifier="S52_setVESSELlabel">
+      <doc xml:whitespace="preserve">(re) set label</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="objH" transfer-ownership="none">
+          <doc xml:whitespace="preserve">addressed S52ObjectHandle</doc>
+          <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+        </parameter>
+        <parameter name="newLabel" transfer-ownership="none" allow-none="1">
+          <doc xml:whitespace="preserve">NULL or a string</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="setVESSELstate" c:identifier="S52_setVESSELstate">
+      <doc xml:whitespace="preserve">undefined mean that the current value of the variable of this objH is unafected</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="objH" transfer-ownership="none">
+          <doc xml:whitespace="preserve">addressed S52ObjectHandle</doc>
+          <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+        </parameter>
+        <parameter name="vesselSelect" transfer-ownership="none">
+          <doc xml:whitespace="preserve">0 - undefined, 1 - selected (ON), 2 - not seltected (OFF),  (ie bracket symbol on vessel),</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="vestat" transfer-ownership="none">
+          <doc xml:whitespace="preserve">0 - undefined, 1 - AIS active,    2 - AIS sleeping</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="vesselTurn" transfer-ownership="none">
+          <doc xml:whitespace="preserve">Turn rate is encoded as follows: [from gpsd doc] 0       - not turning 1..126  - turning right at up to 708 degrees per minute or higher -1..-126 - turning left at up to 708 degrees per minute or higher 127     - turning right at more than 5deg/30s (No TI available) -127     - turning left at more than 5deg/30s (No TI available) 128     - (80 hex) indicates no turn information available (default)</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="setVRMEBL" c:identifier="S52_setVRMEBL">
+      <doc xml:whitespace="preserve">The fist (x,y) will set the origine in the case that this object was
+created (new) with the parameter @setOrigin set to TRUE</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="objH" transfer-ownership="none">
+          <doc xml:whitespace="preserve">addressed S52ObjectHandle</doc>
+          <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+        </parameter>
+        <parameter name="pixels_x" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="pixels_y" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="brg" transfer-ownership="none">
+          <doc xml:whitespace="preserve">bearing and range from origine (no offset from S52_setDimension())</doc>
+          <type name="gdouble" c:type="double*"/>
+        </parameter>
+        <parameter name="rge" transfer-ownership="none">
+          <doc xml:whitespace="preserve">bearing and range from origine (no offset from S52_setDimension())</doc>
+          <type name="gdouble" c:type="double*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="setVector" c:identifier="S52_setVector">
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="objH" transfer-ownership="none">
+          <doc xml:whitespace="preserve">addressed S52ObjectHandle</doc>
+          <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+        </parameter>
+        <parameter name="vecstb" transfer-ownership="none">
+          <doc xml:whitespace="preserve">0 - none, 1 - ground, 2 - water</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="course" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="speed" transfer-ownership="none">
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="setView" c:identifier="S52_setView">
+      <doc xml:whitespace="preserve">Set center of view / where to place the camera on model</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="cLat" transfer-ownership="none">
+          <doc xml:whitespace="preserve">latitude of the center of the view</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="cLon" transfer-ownership="none">
+          <doc xml:whitespace="preserve">longitude of the center of the view</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="rNM" transfer-ownership="none">
+          <doc xml:whitespace="preserve">range (radius of view (NM)</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+        <parameter name="north" transfer-ownership="none">
+          <doc xml:whitespace="preserve">angle from north (deg)</doc>
+          <type name="gdouble" c:type="double"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="setViewPort" c:identifier="S52_setViewPort">
+      <doc xml:whitespace="preserve">From WebGL (OpenGL ES 2.0) spec:
+that set it manually. Applications are expected to use onresize handlers to
+respond to changes in size of the canvas and set the OpenGL viewport in turn.
+So this call is simply a wrapper on 'void glViewport(GLint x, GLint y, GLsizei width, GLsizei height)'
+Use this call in conjuction with S52_view() and S52_draw() to setup a magnifying glass
+or an overview</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="pixels_x" transfer-ownership="none">
+          <doc xml:whitespace="preserve">origine LL corner</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="pixels_y" transfer-ownership="none">
+          <doc xml:whitespace="preserve">origine LL corner</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="pixels_width" transfer-ownership="none">
+          <doc xml:whitespace="preserve">viewport width in pixels</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+        <parameter name="pixels_height" transfer-ownership="none">
+          <doc xml:whitespace="preserve">viewport height in pixels</doc>
+          <type name="gint" c:type="int"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="toggleDispMarObj" c:identifier="S52_toggleDispMarObj">
+      <doc xml:whitespace="preserve">Initially Mariners' Object are ON (ie display of object NOT suppressed)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">an handle to a new S52_obj or NULL if call fail</doc>
+        <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+      </return-value>
+      <parameters>
+        <parameter name="objH" transfer-ownership="none">
+          <doc xml:whitespace="preserve">addressed S52ObjectHandle</doc>
+          <type name="ObjectHandle" c:type="S52ObjectHandle"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="toggleObjClass" c:identifier="S52_toggleObjClass">
+      <doc xml:whitespace="preserve">Toggle display all S57 objects of class @className
+S52_MAR_DISP_CATEGORY must be set to SELECT (3).</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE if transition ON to OFF or OFF to ON, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="className" transfer-ownership="none">
+          <doc xml:whitespace="preserve">name of the classe of S57 object</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="toggleObjClassOFF" c:identifier="S52_toggleObjClassOFF">
+      <doc xml:whitespace="preserve">Object class to suppress display (OFF)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE if transition ON to OFF, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="className" transfer-ownership="none">
+          <doc xml:whitespace="preserve">name of the classe of S57 object</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="toggleObjClassON" c:identifier="S52_toggleObjClassON">
+      <doc xml:whitespace="preserve">Object class to display (ON)</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE if transition OFF to ON, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="className" transfer-ownership="none">
+          <doc xml:whitespace="preserve">name of the classe of S57 object</doc>
+          <type name="utf8" c:type="char*"/>
+        </parameter>
+      </parameters>
+    </function>
+    <function name="version" c:identifier="S52_version">
+      <doc xml:whitespace="preserve">Internal Version</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">String with the version of libS52 and the '#define' used to build it</doc>
+        <type name="utf8" c:type="char*"/>
+      </return-value>
+    </function>
+    <function name="xy2LL" c:identifier="S52_xy2LL">
+      <doc xml:whitespace="preserve">Convert pixel X/Y to longitude/latitude</doc>
+      <return-value transfer-ownership="none">
+        <doc xml:whitespace="preserve">TRUE on success, else FALSE</doc>
+        <type name="gint" c:type="int"/>
+      </return-value>
+      <parameters>
+        <parameter name="pixels_x"
+                   direction="inout"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <doc xml:whitespace="preserve">degree</doc>
+          <type name="gdouble" c:type="double*"/>
+        </parameter>
+        <parameter name="pixels_y"
+                   direction="inout"
+                   caller-allocates="0"
+                   transfer-ownership="full">
+          <doc xml:whitespace="preserve">degree</doc>
+          <type name="gdouble" c:type="double*"/>
+        </parameter>
+      </parameters>
+    </function>
+  </namespace>
+</repository>

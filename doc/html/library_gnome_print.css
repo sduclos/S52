@@ -1,0 +1,9 @@
+ul#general,
+div#header,
+div.sidebar {
+	display: none;
+}
+
+div.body-sidebar {
+	margin-right: 0;
+}

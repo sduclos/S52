@@ -1,0 +1,47 @@
+# README: info about file in this folder
+#
+# SD 2011MAR30 - created
+# SD 2012OCT03 - clean up, restructure
+
+doc/
+- README                (this file)
+- OpENCview_project.txt (summery of goals)
+- att.txt               (extract from <FIXME>.pdf: IHO S-57 Ed. 3.1 November 2000, Appendix A)
+- obj.txt               (extract from <FIXME>.pdf: IHO S-57 Ed. 3.1 November 2000, Appendix A)
+- lup.txt               (extract from pslb03_2.pdf, p. I-74)
+- pslb03_2.pdf          (IHO S-52 Users' Manual, Ed. 3.2 March 2000, Annex A of Appendix 2)
+- S52-1.0.gir
+- c1-cs.txt
+- c1-cs_mp.txt
+- C1.dispPrioSwitch.txt
+
+doc/wiki/
+- libS52wiki.html       (root doc)
+
+doc/html/
+- index.html            (root of libS52 interface annotation)
+- S52.html
+- S52.MarinerParameter.html
+- S52.ObjectType.html
+- S52._CMD_WRD_FILTER_t.html
+- _ix_S52.shtml
+- default.css
+- library_gnome.css
+- library_gnome_print.css
+- elbow-minus-nl.gif
+- elbow-end.gif
+- elbow-plus-nl.gif
+- library.png           (maybe johnny_automatic_Captain_and_spyglass.png)
+- page.js
+
+doc/graphic/
+- BOYLAT24.dia
+- BOYLAT24.png
+- OWNSHP05.dia
+- OWNSHP05.png
+- SCALEB10.dia
+- SCALEB10.png
+- flow.dia              (S52.h calls flow)
+- flow.png
+- libS52-layout.dia     (internal files deps)
+- libS52-layout.png

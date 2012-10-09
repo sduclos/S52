@@ -1,0 +1,1423 @@
+# c1-dispPrioSwitch.txt: LUP Objet classe of Chart No 1 that as
+# more the one display prority.
+# For example the first LUP for SBDARE has a display prioritie of 0 (low)
+# and the next 5 LUP for SBDARE have a display proritie of 3 (higher)
+#
+# SD 2012SEP28 - update comment
+
+# the ouput bellow was produce by the code at bottom of
+# S52PL.c:_parseLUPT():1939
+
+
+Object Class has different display priority
+NEW LUP RecID:44 ObjNm:DAMCON prio:6 rad:S
+TOP LUP RecID:43 ObjNm:DAMCON prio:3 rad:S
+Object Class has different display priority
+NEW LUP RecID:169 ObjNm:SBDARE prio:3 rad:S
+TOP LUP RecID:168 ObjNm:SBDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:170 ObjNm:SBDARE prio:3 rad:S
+TOP LUP RecID:168 ObjNm:SBDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:171 ObjNm:SBDARE prio:3 rad:S
+TOP LUP RecID:168 ObjNm:SBDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:172 ObjNm:SBDARE prio:3 rad:S
+TOP LUP RecID:168 ObjNm:SBDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:173 ObjNm:SBDARE prio:3 rad:S
+TOP LUP RecID:168 ObjNm:SBDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:179 ObjNm:SLOGRD prio:3 rad:S
+TOP LUP RecID:178 ObjNm:SLOGRD prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:189 ObjNm:TS_FEB prio:4 rad:S
+TOP LUP RecID:188 ObjNm:TS_FEB prio:2 rad:S
+Object Class has different display priority
+NEW LUP RecID:190 ObjNm:TS_FEB prio:4 rad:S
+TOP LUP RecID:188 ObjNm:TS_FEB prio:2 rad:S
+Object Class has different display priority
+NEW LUP RecID:191 ObjNm:TS_FEB prio:4 rad:S
+TOP LUP RecID:188 ObjNm:TS_FEB prio:2 rad:S
+Object Class has different display priority
+NEW LUP RecID:212 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:213 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:214 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:215 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:216 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:217 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:218 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:219 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:220 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:221 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:222 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:223 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:224 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:225 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:226 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:211 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:237 ObjNm:$AREAS prio:3 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:239 ObjNm:$AREAS prio:3 rad:S
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:240 ObjNm:$AREAS prio:2 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:241 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:242 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:243 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:244 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:245 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:246 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:247 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:248 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:249 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:250 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:251 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:252 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:253 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:254 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:255 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:256 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:257 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:258 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:259 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:260 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:234 ObjNm:$AREAS prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:299 ObjNm:DAMCON prio:6 rad:S
+TOP LUP RecID:298 ObjNm:DAMCON prio:3 rad:S
+Object Class has different display priority
+NEW LUP RecID:424 ObjNm:SBDARE prio:3 rad:S
+TOP LUP RecID:423 ObjNm:SBDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:425 ObjNm:SBDARE prio:3 rad:S
+TOP LUP RecID:423 ObjNm:SBDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:426 ObjNm:SBDARE prio:3 rad:S
+TOP LUP RecID:423 ObjNm:SBDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:427 ObjNm:SBDARE prio:3 rad:S
+TOP LUP RecID:423 ObjNm:SBDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:428 ObjNm:SBDARE prio:3 rad:S
+TOP LUP RecID:423 ObjNm:SBDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:434 ObjNm:SLOGRD prio:3 rad:S
+TOP LUP RecID:433 ObjNm:SLOGRD prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:444 ObjNm:TS_FEB prio:4 rad:S
+TOP LUP RecID:443 ObjNm:TS_FEB prio:2 rad:S
+Object Class has different display priority
+NEW LUP RecID:445 ObjNm:TS_FEB prio:4 rad:S
+TOP LUP RecID:443 ObjNm:TS_FEB prio:2 rad:S
+Object Class has different display priority
+NEW LUP RecID:446 ObjNm:TS_FEB prio:4 rad:S
+TOP LUP RecID:443 ObjNm:TS_FEB prio:2 rad:S
+Object Class has different display priority
+NEW LUP RecID:467 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:468 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:469 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:470 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:471 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:472 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:473 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:474 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:475 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:476 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:477 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:478 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:479 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:480 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:481 ObjNm:VEGATN prio:3 rad:S
+TOP LUP RecID:466 ObjNm:VEGATN prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:492 ObjNm:$AREAS prio:3 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:494 ObjNm:$AREAS prio:3 rad:S
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:495 ObjNm:$AREAS prio:2 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:496 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:497 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:498 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:499 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:500 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:501 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:502 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:503 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:504 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:505 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:506 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:507 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:508 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:509 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:510 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:511 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:512 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:513 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:514 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:515 ObjNm:$AREAS prio:5 rad:O
+TOP LUP RecID:489 ObjNm:$AREAS prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:539 ObjNm:CBLSUB prio:6 rad:O
+TOP LUP RecID:538 ObjNm:CBLSUB prio:3 rad:O
+Object Class has different display priority
+NEW LUP RecID:680 ObjNm:$LINES prio:3 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:682 ObjNm:$LINES prio:6 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:683 ObjNm:$LINES prio:6 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:684 ObjNm:$LINES prio:9 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:685 ObjNm:$LINES prio:3 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:686 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:687 ObjNm:$LINES prio:2 rad:S
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:688 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:689 ObjNm:$LINES prio:0 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:690 ObjNm:$LINES prio:0 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:691 ObjNm:$LINES prio:4 rad:S
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:692 ObjNm:$LINES prio:9 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:693 ObjNm:$LINES prio:9 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:694 ObjNm:$LINES prio:9 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:695 ObjNm:$LINES prio:9 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:696 ObjNm:$LINES prio:9 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:697 ObjNm:$LINES prio:9 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:698 ObjNm:$LINES prio:9 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:699 ObjNm:$LINES prio:3 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:700 ObjNm:$LINES prio:3 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:701 ObjNm:$LINES prio:9 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:702 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:703 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:704 ObjNm:$LINES prio:9 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:705 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:706 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:707 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:708 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:709 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:710 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:711 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:712 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:713 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:714 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:715 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:716 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:717 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:718 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:719 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:720 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:721 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:722 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:723 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:724 ObjNm:$LINES prio:5 rad:O
+TOP LUP RecID:679 ObjNm:$LINES prio:5 rad:S
+Object Class has different display priority
+NEW LUP RecID:820 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:819 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:821 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:819 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:822 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:819 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:823 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:819 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:824 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:819 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:825 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:819 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:826 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:819 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:827 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:819 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:828 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:819 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:829 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:819 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:830 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:819 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:832 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:819 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:850 ObjNm:CURENT prio:5 rad:O
+TOP LUP RecID:849 ObjNm:CURENT prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:851 ObjNm:CURENT prio:5 rad:O
+TOP LUP RecID:849 ObjNm:CURENT prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:853 ObjNm:DAMCON prio:4 rad:O
+TOP LUP RecID:852 ObjNm:DAMCON prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:888 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:889 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:890 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:891 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:892 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:893 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:894 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:895 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:896 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:898 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:899 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:900 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:901 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:902 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:903 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:904 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:905 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:906 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:907 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:908 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:909 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:910 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:911 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:912 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:913 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:914 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:924 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:887 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:937 ObjNm:MORFAC prio:8 rad:O
+TOP LUP RecID:932 ObjNm:MORFAC prio:6 rad:O
+Object Class has different display priority
+NEW LUP RecID:948 ObjNm:PRDARE prio:4 rad:O
+TOP LUP RecID:947 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:949 ObjNm:PRDARE prio:4 rad:O
+TOP LUP RecID:947 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:950 ObjNm:PRDARE prio:4 rad:O
+TOP LUP RecID:947 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:951 ObjNm:PRDARE prio:3 rad:O
+TOP LUP RecID:947 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:952 ObjNm:PRDARE prio:3 rad:O
+TOP LUP RecID:947 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:953 ObjNm:PRDARE prio:3 rad:O
+TOP LUP RecID:947 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:954 ObjNm:PRDARE prio:3 rad:O
+TOP LUP RecID:947 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:955 ObjNm:PRDARE prio:3 rad:O
+TOP LUP RecID:947 ObjNm:PRDARE prio:0 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:1055 ObjNm:$CSYMB prio:5 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1056 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1057 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1058 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1059 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1060 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1061 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1062 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1063 ObjNm:$CSYMB prio:7 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1064 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1065 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1068 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1069 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1070 ObjNm:$CSYMB prio:7 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1071 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1072 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1077 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1078 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1079 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1080 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1081 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1082 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1083 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1084 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1085 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1086 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1087 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1088 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1089 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1090 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1091 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1092 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1093 ObjNm:$CSYMB prio:6 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1094 ObjNm:$CSYMB prio:6 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1095 ObjNm:$CSYMB prio:6 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1096 ObjNm:$CSYMB prio:6 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1097 ObjNm:$CSYMB prio:6 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1098 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1099 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1100 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1101 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1102 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different RADAR priority
+NEW LUP RecID:1103 ObjNm:$CSYMB prio:5 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different RADAR priority
+NEW LUP RecID:1104 ObjNm:$CSYMB prio:5 rad:S
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1105 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1106 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1107 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1108 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1109 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1110 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1111 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1112 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1113 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1114 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1115 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1116 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1117 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1118 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1119 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1120 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1122 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1123 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1124 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1125 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1127 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1128 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1129 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1130 ObjNm:$CSYMB prio:7 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1131 ObjNm:$CSYMB prio:7 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1132 ObjNm:$CSYMB prio:7 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1133 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1134 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1135 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1136 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1137 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1138 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1139 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1140 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1141 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1054 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1236 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:1235 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1237 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:1235 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1238 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:1235 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1239 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:1235 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1240 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:1235 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1241 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:1235 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1242 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:1235 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1243 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:1235 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1244 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:1235 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1245 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:1235 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1246 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:1235 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1248 ObjNm:BUISGL prio:6 rad:O
+TOP LUP RecID:1235 ObjNm:BUISGL prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1266 ObjNm:CURENT prio:5 rad:O
+TOP LUP RecID:1265 ObjNm:CURENT prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:1267 ObjNm:CURENT prio:5 rad:O
+TOP LUP RecID:1265 ObjNm:CURENT prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:1269 ObjNm:DAMCON prio:4 rad:O
+TOP LUP RecID:1268 ObjNm:DAMCON prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:1304 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1305 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1306 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1307 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1308 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1309 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1310 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1311 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1312 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1314 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1315 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1316 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1317 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1318 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1319 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1320 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1321 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1322 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1323 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1324 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1325 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1326 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1327 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1328 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1329 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1330 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1349 ObjNm:LNDMRK prio:6 rad:O
+TOP LUP RecID:1303 ObjNm:LNDMRK prio:4 rad:O
+Object Class has different display priority
+NEW LUP RecID:1358 ObjNm:MORFAC prio:8 rad:O
+TOP LUP RecID:1357 ObjNm:MORFAC prio:6 rad:O
+Object Class has different display priority
+NEW LUP RecID:1359 ObjNm:MORFAC prio:8 rad:O
+TOP LUP RecID:1357 ObjNm:MORFAC prio:6 rad:O
+Object Class has different display priority
+NEW LUP RecID:1364 ObjNm:MORFAC prio:8 rad:O
+TOP LUP RecID:1357 ObjNm:MORFAC prio:6 rad:O
+Object Class has different display priority
+NEW LUP RecID:1375 ObjNm:PRDARE prio:4 rad:O
+TOP LUP RecID:1374 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:1376 ObjNm:PRDARE prio:4 rad:O
+TOP LUP RecID:1374 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:1377 ObjNm:PRDARE prio:4 rad:O
+TOP LUP RecID:1374 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:1378 ObjNm:PRDARE prio:3 rad:O
+TOP LUP RecID:1374 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:1379 ObjNm:PRDARE prio:3 rad:O
+TOP LUP RecID:1374 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:1380 ObjNm:PRDARE prio:3 rad:O
+TOP LUP RecID:1374 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:1381 ObjNm:PRDARE prio:3 rad:O
+TOP LUP RecID:1374 ObjNm:PRDARE prio:0 rad:S
+Object Class has different display priority
+NEW LUP RecID:1382 ObjNm:PRDARE prio:3 rad:O
+TOP LUP RecID:1374 ObjNm:PRDARE prio:0 rad:S
+Object Class has different RADAR priority
+NEW LUP RecID:1482 ObjNm:$CSYMB prio:5 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1483 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1484 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1485 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1486 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1487 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1488 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1489 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1490 ObjNm:$CSYMB prio:7 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1491 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1492 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1495 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1496 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1497 ObjNm:$CSYMB prio:7 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1498 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1499 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1504 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1505 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1506 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1507 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1508 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1509 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1510 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1511 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1512 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1513 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1514 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1515 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1516 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1517 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1518 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1519 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1520 ObjNm:$CSYMB prio:6 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1521 ObjNm:$CSYMB prio:6 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1522 ObjNm:$CSYMB prio:6 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1523 ObjNm:$CSYMB prio:6 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1524 ObjNm:$CSYMB prio:6 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1525 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1526 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1527 ObjNm:$CSYMB prio:4 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1528 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1529 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different RADAR priority
+NEW LUP RecID:1530 ObjNm:$CSYMB prio:5 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different RADAR priority
+NEW LUP RecID:1531 ObjNm:$CSYMB prio:5 rad:S
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1532 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1533 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1534 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1535 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1536 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1537 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1538 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1539 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1540 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1541 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1542 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1543 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1544 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1545 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1546 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1547 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1549 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1550 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1551 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1552 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1554 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1555 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1556 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1557 ObjNm:$CSYMB prio:7 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1558 ObjNm:$CSYMB prio:7 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1559 ObjNm:$CSYMB prio:7 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1560 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1561 ObjNm:$CSYMB prio:9 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1562 ObjNm:$CSYMB prio:8 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1563 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1564 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1565 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1566 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1567 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+Object Class has different display priority
+NEW LUP RecID:1568 ObjNm:$CSYMB prio:4 rad:O
+TOP LUP RecID:1481 ObjNm:$CSYMB prio:5 rad:O
+;S52_dummy.BRIGHT.txt: dummy RBG value for S52 color table DAY_BRIGHT
+;
+;
+NODTA 171 192 177
+CURSR 230 121 56
+CHBLK 0 0 0
+CHGRD 136 152 139
+CHGRF 171 192 177
+CHRED 238  90 108
+CHGRN 124 240 91
+CHYLW 243 229 77
+CHMGD 198 77 187
+CHMGF 212 177 221
+CHBRN 182 157 64
+CHWHT 216 244 225
+SCLBR 230 121 56
+CHCOR 230 121 56
+LITRD 238 90 108
+LITGN 124 240 91
+LITYW 243 229 77
+ISDNG 198 77 187
+DNGHL 238 90 108
+TRFCD 198 77 187
+TRFCF 212 177 221
+LANDA 204 197 123
+LANDF 147 116 39
+CSTLN 95 106 96
+SNDG1 136 152 139
+SNDG2 0 0 0
+DEPSC 95 106 96
+DEPCN 136 152 139
+DEPDW 216 244 225
+DEPMD 192 225 214
+DEPMS 162 210 229
+DEPVS 129 195 226
+DEPIT 143 191 147
+RADHI 82 153 60
+RADLO 124 240 91
+ARPAT 82 153 60
+NINFO 230 121 56
+RESBL 76 135 227
+ADINF 184 172 60
+RESGR 136 152 139
+SHIPS 0 0 0
+PSTRK 0 0 0
+SYTRK 136 152 139
+PLRTE 218 70 45
+APLRT 230 121 56
+UINFD 0 0 3
+UINFF 240 240 240
+UIBCK 150 150 150
+UIAFD 220 220 220
+UINFR 251 95 99
+UINFG 75 210 86
+UINFO 255 240 70
+UINFB 54 130 244
+UINFM 200 72 201
+UIBDR 125 125 125
+UIAFF 185 185 185
+OUTLW 0 0 0
+OUTLL 204 197 123
+RES01 171 192 177
+RES02 171 192 177
+RES03 171 192 177
+BKAJ1 0 0 0
+BKAJ2 0 0 0
+Line LUP             :67
+Area Plain LUP       :119
+Area Symbolized LUP  :119
+Point Simplified LUP :116
+Point Paper Chart LUP:116
+Line Symbology       :52
+Pattern Symbology    :25
+Symbol Symbology     :446
+Conditional Symbology:26
+gv_S57_layer_class_init
+NAME: ACHARE
+LAYER NAME: ACHARE (2)
+NAME: BCNSPP
+LAYER NAME: BCNSPP (1)
+perfect match: break here with debugger line 363
+NAME: BUISGL
+LAYER NAME: BUISGL (2)
+NAME: BOYCAR
+LAYER NAME: BOYCAR (1)
+perfect match: break here with debugger line 363
+NAME: BOYSPP
+LAYER NAME: BOYSPP (2)
+NAME: COALNE
+LAYER NAME: COALNE (4)
+NAME: CRANES
+LAYER NAME: CRANES (1)
+NAME: DAMCON
+LAYER NAME: DAMCON (1)
+NAME: DEPARE
+LAYER NAME: DEPARE (12)
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+NAME: DEPCNT
+LAYER NAME: DEPCNT (6)
+NAME: DRGARE
+LAYER NAME: DRGARE (1)
+NAME: DMPGRD
+LAYER NAME: DMPGRD (1)
+perfect match: break here with debugger line 363
+NAME: HULKES
+LAYER NAME: HULKES (1)
+NAME: LNDARE
+LAYER NAME: LNDARE (3)
+NAME: LNDMRK
+LAYER NAME: LNDMRK (7)
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+NAME: LIGHTS
+LAYER NAME: LIGHTS (3)
+NAME: NAVLNE
+LAYER NAME: NAVLNE (2)
+NAME: OBSTRN
+LAYER NAME: OBSTRN (2)
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+NAME: PIPOHD
+LAYER NAME: PIPOHD (1)
+perfect match: break here with debugger line 363
+NAME: PIPSOL
+LAYER NAME: PIPSOL (1)
+NAME: RECTRC
+LAYER NAME: RECTRC (2)
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+NAME: RESARE
+LAYER NAME: RESARE (1)
+NAME: SBDARE
+LAYER NAME: SBDARE (13)
+NAME: SLCONS
+LAYER NAME: SLCONS (18)
+NAME: SILTNK
+LAYER NAME: SILTNK (1)
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+NAME: SLOTOP
+LAYER NAME: SLOTOP (4)
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+perfect match: break here with debugger line 363
+NAME: SLOGRD
+LAYER NAME: SLOGRD (1)
+NAME: SOUNDG
+LAYER NAME: SOUNDG (0)
+NAME: SWPARE
+LAYER NAME: SWPARE (1)
+NAME: TOPMAR
+LAYER NAME: TOPMAR (1)
+NAME: UWTROC
+LAYER NAME: UWTROC (3)
+NAME: M_ACCY
+LAYER NAME: M_ACCY (1)
+NAME: M_COVR
+LAYER NAME: M_COVR (1)
+NAME: M_NSYS
+LAYER NAME: M_NSYS (1)
+NAME: M_QUAL
+LAYER NAME: M_QUAL (1)
+perfect match: break here with debugger line 363
+NAME: C_AGGR
+LAYER NAME: C_AGGR (0)
+NAME: C_ASSO
+LAYER NAME: C_ASSO (0)

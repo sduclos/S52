@@ -1,0 +1,59 @@
+# OpENCview_project.txt: projet goals / features / brain dump
+# 
+# SD 02NOV2009
+
+* Open Source code 
+    - lib S52
+    - lib S52 deps
+    - specs
+        + S52 / S57 
+        + OpenGL
+        + GIS (WKT format)
+        + projection (WGS84)
+        + color (CEIxyL -> RGB)
+        
+* Platform Neutral (GTK+ framework)
+    - Linux (Unix)
+    - OSX   (Unix)
+    - Win32 (Windows)
+    
+* Architecture Neutral 
+    - X86    32 bits (Linux, Win32, OSX)
+    - X86_64 64 bits (Linux)
+    - ARM            (Linux, OSX)
+    
+* Open Cross-Compiling Developpement Framework
+    - use Open Source dev tool
+	- create binairies on one platform targetted for an other platfrom
+    - allow interpreted language to drive the lib (ex: Ruby for driving libS52.dll and the UI)
+    
+* OpenGL 
+    - V1.4 (VBO - Vertex Buffer Object live on GPU)
+    - hardware accelerated graphic (GPU)
+        * super fast chart rendering (<10 ms)
+        * hence quick feedback to the Mariner/User
+        * free up CPU because GPU does all the work
+    - ES SC - Embeded System Safety Critical (need work for 64 -> 32 geo convertion)
+        * minimal OpenGL
+        * minimal color handling
+        * use for avionic, medical, military, automotive app (but not marine!)
+        * serve as a guideline for what rendering capability is essential and what is not
+    - EGL / GLES2
+        * OpenGL for Embeded System V2.0 (Android)
+        * EGL is an interface to OpenGL ES and the underlying native platform windowing system.
+        
+* Workbench / Experimenting
+    - depth / height adjustement
+    - cursor pick via GPU (possible to handle alarm the same way)
+    - centroid of clipped concave poly
+    - hardware accelerated anti-aliase (OpenGL) 
+        * cleaner symbol
+        * cleaner overall look
+    - hardware accelereted (OpenGL) anti-aliase international (UTF-8) font rendering
+    - provide a route to brige evolving tech. best practice to navigation
+        * pick best and proven shore solution
+        * academic atmosphere to innovation (rather then economic - profit drivent)
+        * sharing of knowledge  (cross-polenisation of ideas)
+        * open the silo mentality
+        * governed by interroperability of open standard
+        * ...

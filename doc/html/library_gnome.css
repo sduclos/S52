@@ -1,0 +1,715 @@
+body {
+	margin: 0px;
+	padding: 0px;
+	font-family: sans-serif;
+	background: white;
+	color: black;
+	height: 101%;
+}
+
+div {
+	margin: 0;
+}
+
+body.with-star {
+	background: white url(star.png) -100px -200px no-repeat;
+}
+
+#page {
+	margin: 0px;
+	padding: 0px;
+}
+
+#page ul {
+	margin: 0;
+}
+
+div.in-column {
+	margin: 0 0 2em 1em;
+	float: right;
+	max-width: 12em;
+}
+
+hr {
+	color: #888;
+	background: #888;
+	border: 0;
+	height: 1px;
+	width: 90%;
+	text-align: center;
+	clear: both;
+}
+
+
+div.body {
+	clear: both;
+}
+
+
+div.sidebar {
+	position: absolute;
+	text-align: left;
+	right: 0px;
+	top: 60px;
+	width: 27ex;
+	padding-left: 1ex;
+	border-left: 1ex solid #eee;
+	margin-top: 4em;
+}
+
+div.sidebar h2 {
+	margin-top: 0;
+	padding: 5px 2ex 5px 2ex;
+	background: url(t.png) top left repeat-y;
+	font-size: 100%;
+}
+
+ul.i18n,
+ul.toc {
+	padding: 0;
+	padding-left: 20px;
+	margin: 0;
+	margin-right: 10px;
+	list-style: none;
+}
+
+ul.i18n li,
+ul.toc li {
+	margin: 0;
+	margin-left: 1em;
+	padding: 0;
+	list-style: circle;
+}
+
+ul.toc li a {
+	text-decoration: none;
+	color: black;
+}
+
+ul.toc li a:hover {
+	text-decoration: underline;
+}
+
+#general {
+	list-style: none;
+	background: #2E3436 url(general_bg.png) 0 100% repeat-x;
+	text-align: right;
+	padding: 0 1ex;
+	margin: 0;
+	font-size: 70%;
+}
+
+#general li {
+	display: inline;
+	background: url(general_separator.png) 0 0 no-repeat;
+	padding-top: 10px;
+	padding-bottom: 8px;
+	margin-left: 0px;
+	margin-top: 0px;
+}
+
+#general li a {
+	font-weight: bold;
+	color: #FFFFFF;
+	margin: 0 2ex;
+	text-decoration: none;
+	line-height: 30px;
+}
+
+#general li a:hover {
+	text-decoration: underline;
+}
+
+#general .home {
+	float: left;
+	background: url(general_separator.png) 100% 0 no-repeat;
+	padding-top: 0;
+	padding-bottom: 0;
+}
+
+#general .home a {
+	float: left;
+	background: url(foot.png) 7px 50% no-repeat;
+	margin-left: 0;
+	padding-left: 27px;
+}
+
+
+#header {
+	background: #729FCF url(top-header-gradient.png) top left repeat-x;
+	float: left;
+	width: 100%;
+	font-size: 75%;
+}
+
+#header-wrap {
+	background: transparent url(library.png) 15px 10px no-repeat;
+	min-height: 67px;
+}
+
+#header h1 {
+	margin: 0;
+	margin-left: 85px;
+	padding-top: 25px;
+	font-size: 200%;
+	color: #eeeeec;
+}
+
+#tabs {
+	background: url(bar.png) 0 100% repeat-x;
+	width: 100%;
+	float: left;
+	margin: 0;
+	padding: 0;
+}
+
+#portal-globalnav {
+	float: right;
+	list-style: none;
+	margin: 0;
+	margin-right: 3ex;
+}
+
+#portal-globalnav li {
+	float: left;
+	margin: 0;
+	margin-left: 0.2ex;
+	font-size: 2ex;
+}
+
+#portal-globalnav li a:hover {
+	color: #111111;
+}
+
+#portal-globalnav li a {
+	float: left;
+	text-decoration: none;
+	color: #555555;
+	background: url(tab_left.png) 0 0 no-repeat;
+	padding: 7px 0 7px 7px;
+	border-bottom: 2px solid #CCCCCC;
+}
+
+#portal-globalnav li span {
+	background: url(tab_right.png) 100% 0 no-repeat;
+	padding: 7px 28px 7px 19px;
+}
+
+#portal-globalnav li.selected a {
+	color: #3566A5;
+	background: url(tab_left.png) 0 -57px no-repeat;
+	border-bottom: none;
+	padding-top: 8px;
+	padding-bottom: 8px;
+}
+
+#portal-globalnav li.selected a span {
+	background: url(tab_right.png) 100% -57px no-repeat;
+	padding-top: 8px;
+	padding-bottom: 8px;
+}
+
+
+
+div.articleinfo h1 {
+	padding-top: 1ex;
+	color: #3f3f3f;
+}
+
+div.articleinfo h3.abstract {
+	font-weight: normal;
+	border: 5px solid #eee;
+	padding: 1ex;
+	-moz-border-radius: 10px;
+	-khtml-border-radius: 10px;
+	font-size: 100%;
+	background: white;
+}
+
+div.articleinfo dd.affiliation {
+	color: #a4a4a4;
+	margin-bottom: 1ex;
+}
+
+div.articleinfo dl {
+	margin-left: 1em;
+}
+
+dl.doc-index {
+	margin-left: 1em;
+}
+
+dl.doc-index p {
+	margin: 0.5ex 0;
+}
+
+dl.doc-index dt {
+	margin-top: 2em;
+}
+
+dl.doc-index dd {
+	margin: 0em 1em 2em 1em;
+}
+
+dl.doc-index dt a {
+	text-decoration: none;
+	font-weight: bold;
+	font-size: 110%;
+}
+
+dl.doc-index dt a:hover {
+	text-decoration: underline;
+}
+
+div.body {
+	background-color: transparent;
+	border: none;
+	padding: 1em;
+} 
+
+div.body-sidebar {
+	margin-right: 27ex;
+}
+
+a {
+	color: #3465a4;
+}
+
+div.navbar {
+	margin: 0 29ex 0 2ex;
+}
+
+h1.title {
+	font-size: 1.72em;
+	margin: 0; padding: 0;
+	color: #3f3f3f;
+}
+
+h1.title a {
+	color: inherit;
+	text-decoration: none;
+}
+
+div#language {
+	position: absolute;
+	right: 2em;
+	top: 6ex;
+}
+
+/* from goran css */
+
+#dev, #usr, #adm {
+	float: left;
+	margin: 20px 3% 0px 3%;
+	width: 42%;
+	padding: 5px;
+}
+
+div.sidebar #dev, div.sidebar #usr, div.sidebar #adm {
+	float: none;
+	width: 90%;
+	font-size: 90%;
+	margin-top: 0;
+}
+
+br.clear {
+	clear: both;
+}
+
+#dev p, #usr p, #adm p {
+	margin: 20px;
+}
+
+#usr h2 a, #usr h2 span,
+#dev h2 a, #dev h2 span,
+#adm h2 a, #adm h2 span {
+	display: block; width: 80%;
+	text-decoration: none;	
+	padding: 10px 20px;
+}
+#usr h2 a, #usr h2 span { color: #ffffff; }
+#dev h2 a, #dev h2 span { color: #2e3436; }
+#adm h2 a, #adm h2 span { color: #ffffff; }
+
+#usr h2, #dev h2, #adm h2 {
+	height: 40px;
+	font-size: 11pt;
+	-moz-border-radius: 10px;
+	-khtml-border-radius: 10px;
+	padding: 0px;
+	background: none;
+}
+
+#usr h2 { background: #729fcf url(user-icon.png) 95% no-repeat; }
+#dev h2 { background: #edd400 url(dev-icon.png) 95% no-repeat; }
+#adm h2 { background: #00b147 url(adm-icon.png) 95% no-repeat; }
+
+#updated h3 { margin-bottom: 15px; }
+
+div.sidebar h4 a {
+	text-decoration: none;
+	margin: 0px;
+}
+div.sidebar p.i18n {
+	margin-top: -15px;
+}
+
+div.sidebar fieldset { 
+	margin-top: 30px;
+	border: none;
+}
+
+table#top {
+	margin: 1em auto;
+	clear: both;
+	border: 1px solid #faa;
+	background: #fee;
+	width: 95%;
+}
+
+div.book, div.chapter, div.refentry, div.sect1, div.index {
+	margin: 1em;
+}
+
+.synopsis, .classsynopsis 
+{
+	background: #eee;
+	border: solid 1px #aaa;
+	padding: 0.5em;
+}
+.programlisting 
+{
+	background: #eef;
+	border: solid 1px #aaf;
+	padding: 0.5em;
+}
+.variablelist 
+{
+	padding: 4px;
+	margin-left: 3em;
+}
+.variablelist td:first-child
+{
+	vertical-align: top;
+}
+
+.variablelist p {
+	margin: 0;
+}
+
+div.other-languages ul, div.downloads ul {
+	list-style: none;
+	padding: 0 1em;
+	margin: 0;
+}
+
+div.other-languages ul li, div.downloads ul li {
+	margin: 0;
+	padding: 0;
+}
+
+div.other-languages a, div.downloads a {
+	text-decoration: none;
+}
+
+div.other-languages a:hover, div.downloads a:hover {
+	text-decoration: underline;
+}
+
+ul.versions {
+	margin: 0;
+	padding: 0;
+	padding-left: 1em;
+}
+
+ul.versions li {
+	display: inline;
+	margin: 0 0.5ex;
+}
+
+h2.category {
+	background-position: center left;
+	background-repeat: no-repeat;
+	margin-top: 2em;
+	color: #006;
+	min-height: 32px;
+}
+
+h2.cat-accessibility-directory { padding-left: 40px; background-image: url(icons/accessibility-directory.png); }
+h2.cat-gnome-util { padding-left: 40px; background-image: url(icons/gnome-util.png); }
+h2.cat-gnome-joystick { padding-left: 40px; background-image: url(icons/gnome-joystick.png); }
+h2.cat-gnome-graphics { padding-left: 40px; background-image: url(icons/gnome-graphics.png); }
+h2.cat-gnome-globe { padding-left: 40px; background-image: url(icons/gnome-globe.png); }
+h2.cat-gnome-applications { padding-left: 40px; background-image: url(icons/gnome-applications.png); }
+h2.cat-gnome-other { padding-left: 40px; background-image: url(icons/gnome-other.png); }
+h2.cat-gnome-devel { padding-left: 40px; background-image: url(icons/gnome-devel.png); }
+h2.cat-gnome-multimedia { padding-left: 40px; background-image: url(icons/gnome-multimedia.png); }
+h2.cat-gnome-system { padding-left: 40px; background-image: url(icons/gnome-system.png); }
+h2.cat-gnome-other { padding-left: 40px; background-image: url(icons/gnome-other.png); }
+
+h2.cat-gdp-documentation { padding-left: 40px; background-image: url(icons/gdp-32.png); }
+
+h3.subsection {
+	color: #006;
+	font-style: italic;
+	margin-left: 1ex;
+}
+
+span.lang-code {
+	font-size: 70%;
+	color: #666;
+}
+
+li.active-language {
+	font-weight: bold;
+	margin-bottom: 1ex;
+}
+
+p.no-translation {
+	font-style: italic;
+	color: #888;
+	font-size: 80%;
+}
+
+p.no-translation a {
+	text-decoration: none;
+}
+
+div.subindex {
+	margin: 2em 7em 1em 4em;
+	padding-left: 110px;
+	background-position: top left;
+	background-repeat: no-repeat;
+	min-height: 96px;
+}
+
+div.subindex p {
+	color: #666;
+}
+
+div.subindex h2 {
+	padding: 0;
+	margin: 0;
+}
+
+div.subindex h2 a {
+	text-decoration: inherit;
+}
+
+div.subindex h2 a:hover {
+	text-decoration: underline;
+}
+
+h1.subindex {
+	padding-left: 110px;
+	background-position: top left;
+	background-repeat: no-repeat;
+	line-height: 96px;
+	min-height: 96px;
+}
+
+#subindex-references { background-image: url(icons/api-96.png); }
+#subindex-guides { background-image: url(icons/guides-96.png); }
+#subindex-tools { background-image: url(icons/tools-96.png); }
+#subindex-gdp { background-image: url(icons/gdp-96.png); }
+#subindex-gnome-devel { background-image: url(icons/gnome-development-96.png); }
+
+div#search {
+	position: absolute;
+	text-align: right;
+	right: 1em;
+	top: 5em;
+	font-size: 75%;
+}
+
+form#symlookup {
+	margin: 2em 1em 2em 0em;
+	text-align: right;
+}
+
+input.searchTerms {
+	border: 1px solid #888888;
+}
+
+div#search input.searchTerms {
+	margin-right: 1ex;
+}
+
+input.searchButton {
+	background: white url(search_icon.gif) no-repeat scroll 2px center;
+	color: black;
+	cursor: pointer;
+	padding: 1px 1px 1px 15px;
+	text-transform: none;
+	border: 1px solid #888888;
+}
+
+form#symlookup input.searchTerms {
+	width: 100%;
+	margin-bottom: 1ex;
+}
+
+p.other-versions {
+	font-size: 80%;
+	color: #888;
+}
+
+p.other-versions a {
+	text-decoration: none;
+}
+
+p.upcoming-deprecation {
+	padding: 0.5em 1em 0.5em 60px;
+	min-height: 48px;
+	border: solid 1px #e0e0df;
+	background-color: #fffff0;
+	background-position: 6px 0.5em;
+	background-repeat: no-repeat;
+	background-image: url(/skin/admon-warning.png);
+}
+
+p.canonical-ref {
+	padding: 0.5em 1em 0.5em 60px;
+	min-height: 48px;
+	border: solid 1px #e0e0df;
+	margin-right: 29ex;
+	background-color: #fffff0;
+	background-position: 6px 0.5em;
+	background-repeat: no-repeat;
+	background-image: url(/skin/admon-note.png);
+}
+
+ul.indextoc {
+	margin: 1em 0;
+	padding: 0 0 0 1em;
+	list-style: circle;
+}
+
+ul.indextoc ul {
+	padding: 0 0 0 1em;
+}
+
+ul.indextoc li {
+	font-weight: bold;
+}
+
+ul.indextoc li li {
+	font-weight: normal;
+}
+
+ul.indextoc > li {
+	margin-bottom: 1ex;
+}
+
+ul.indextoc a {
+	text-decoration: none;
+}
+
+div.downloads h4 {
+	min-height: 24px;
+	line-height: 24px;
+	background: transparent url(gnome-mime-application-x-archive.png) top left no-repeat;
+	padding-left: 26px;
+}
+
+div.downloads p.devhelp-note {
+	font-size: 80%;
+}
+
+div.downloads p.devhelp-note {
+	font-size: 80%;
+	color: #444;
+}
+
+span.module-more {
+	font-size: 75%;
+}
+
+dl.doc-index dt span.module-more a {
+	font-weight: normal;
+}
+
+div#footer {
+	margin: 2ex 30ex 2ex 1ex;
+	clear: both;
+	text-align: center;
+	border-top: 1px solid gray;
+	padding-top: 1.5em;
+	color: #888;
+}
+
+div#footer p {
+	margin: 0;
+	font-size: 80%;
+}
+
+div#footer a {
+	color: #3465a4;
+	text-decoration: none;
+}
+
+div#footer a:hover {
+	text-decoration: underline;
+}
+
+div.devel-remark {
+	font-style: italic;
+	color: #800;
+	margin: 1ex 0;
+}
+
+p.caution-nightly {
+	background: #eee url(caution-nightly.png) no-repeat;
+	font-weight: bold;
+	border: 1px outset black;
+	padding: 2px 2px 2px 50px;
+	text-align: center;
+	margin-bottom: 2em;
+	min-height: 50px;
+}
+
+/* code listings */
+
+.listing_code .programlisting .cbracket   { color: #a40000; } /* tango: scarlet red 3 */
+.listing_code .programlisting .comment    { color: #a1a39d; } /* tango: aluminium 4 */
+.listing_code .programlisting .function   { color: #000000; font-weight: bold; }
+.listing_code .programlisting .function a { color: #11326b; font-weight: bold; } /* tango: sky blue 4 */
+.listing_code .programlisting .keyword    { color: #4e9a06; } /* tango: chameleon 3  */
+.listing_code .programlisting .linenum    { color: #babdb6; } /* tango: aluminium 3 */
+.listing_code .programlisting .normal     { color: #000000; }
+.listing_code .programlisting .number     { color: #75507b; } /* tango: plum 2 */
+.listing_code .programlisting .preproc    { color: #204a87; } /* tango: sky blue 3  */
+.listing_code .programlisting .string     { color: #c17d11; } /* tango: chocolate 2 */
+.listing_code .programlisting .type       { color: #000000; }
+.listing_code .programlisting .type a     { color: #11326b; } /* tango: sky blue 4 */
+.listing_code .programlisting .symbol     { color: #ce5c00; } /* tango: orange 3 */
+
+.listing_frame {
+  /* tango:sky blue 1 */
+  border: solid 1px #729fcf;
+  padding: 0px;
+}
+
+.listing_lines, .listing_code {
+  margin-top: 0px;
+  margin-bottom: 0px;
+  padding: 0.5em;
+}
+.listing_lines {
+  /* tango:sky blue 0.5 */
+  background: #a6c5e3;
+  /* tango:aluminium 6 */
+  color: #2e3436;
+}
+.listing_code {
+  /* tango:sky blue 0 */
+  background: #e6f3ff;
+}
+.listing_code .programlisting {
+  /* override from previous */
+  border: none 0px;
+  padding: 0px;
+}
+.listing_lines pre, .listing_code pre {
+  margin: 0px;
+}
