@@ -45,7 +45,7 @@ IHO            S-52           IHO S-52 USERS' MANUAL, Ed. 3.2
                               cvs.sourceforge.net:/cvsxroot/openev/contrib/S52
 
 IHO            S-57           IHO S-57 Appendix B.1
-                              www.iho.shom.fr/general/ecdis/20SOC.pdf
+                              www.iho.shom.fr/general/ecdis/20USOC.pdf
                               Implementor: Frank Warmerdam
                               gdal.velocet.ca/projects/s57/
 
@@ -64,40 +64,58 @@ X.Org          X Window Sys.  X Window System
                               Implementor: The XFree86 Project Inc.
                               www.xfree86.org
 
+NOTE: http://archive.org maintaint a backup of public IHO files
+
 
 
 INSTALLATION:
 =============
 
+TL;DR
+-----
+
+1.0 - $ cd S52
+
+1.1 - $ make s52glx    - simple testing build for X11
+      $ make s52gtk2   - more elaborate testing using GTK2
+
+      --- Other Interesting Targets ---
+
+      $ make s52eglx   - EGL/GLES2 build for X11
+      $ make s52eglarm - EGL/GLES2 build for ARM for testing on Android Xoom
+
+OLD WAY (and wrong)
+-------------------
+
 1- generate configure for openev:
-       $cd ../../openev
-       $autoconf
+       $ cd ../../openev
+       $ autoconf
 
 2- configure openev:
-       $./configure  --with-gdal=<your_full_path_to>/gdal \
+       $ ./configure  --with-gdal=<your_full_path_to>/gdal \
                      --with-ogr --with-double-geocoord --with-render-plugin
 
 3- compile openev:
-       $make clean
-       $make
+       $ make clean
+       $ make
 
 4- compile libS52:
-       $cd openev/contrib/S52
-       $make
+       $ cd openev/contrib/S52
+       $ make
 
 5- install libS52.so (as root):
-       #make install
+       # make install
 
 6- set environnement variable:
-       $export S57_CSV=<path_to_gdal_data_directory>
-       $export OGR_S57_OPTIONS=LNAM_REFS:ON,UPDATES:ON,\
-               SPLIT_MULTIPOINT:ON,PRESERVE_EMPTY_NUMBERS:ON,\
-               RETURN_LINKAGES:ON
+       $ export S57_CSV=<path_to_gdal_data_directory>
+       $ export OGR_S57_OPTIONS=LNAM_REFS:ON,UPDATES:ON,\
+                SPLIT_MULTIPOINT:ON,PRESERVE_EMPTY_NUMBERS:ON,\
+                RETURN_LINKAGES:ON
 
 7- test:
-       $openev/openev/gvtest -ogr=<ENC>
+       $ openev/openev/gvtest -ogr=<ENC>
     -OR-
-       $openev/contrib/S52/test/s52...
+       $ openev/contrib/S52/test/s52...
        (s52.cfg will need ENC path ajusted)
 
 
@@ -109,7 +127,7 @@ Various experimental targets are available:
 #all: s52glx         # OGR & GLX
 #all: s52eglx        # OGR & EGL & X11 (for testing EGL/GLES2 on Linux)
 #all: s52eglarm      # OGR & EGL & ARM/Android (for testing EGL/GLES2 on ARM)
-#all: s52gv          # GV  (GTK)   <---- this is the normal target for using OpenEV/libgv.so
+#all: s52gv          # GV  (GTK)   using OpenEV/libgv.so
 #all: s52gv2         # GV2 (GTK2)
 #all: s52gtk2        # OGR & GTK2
 #all: s52gtk2p       # profiling
@@ -175,26 +193,37 @@ In openev/contrib/S52 are the following files:
    S57ogr.h         -interface
    TODO             -jot pad for missing stuff,
    gvS57layer.c     -plugin entree point / interface to openev (static link),
-   gvS57layer.h     -interface to plugin (for completness --useless in real life),
-   lib/freetype_gl  -GL freetype rendering from Nicolas P. Rougier (http://code.google.com/p/freetype-gl/)
-   lib/tesselator   -tesselator from Mesa3D
-   doc/C1.lup_collision.txt -list of objects that can switch layers (IHO)
-   doc/S57.note     -note on S57 DB structure,
-   doc/obj.txt      -S57 objects
-   doc/att.txt      -S57 attibutes
-   doc/boylat24.dia -BOYLAT24 object construct seen from S52 (Dia)
-   doc/boylat24.png -boylat24.dia converted to PNG
-   doc/html         -html doc of S52.h using https://github.com/GNOME/introspection-doc-generator
-   test/Makefile    -build test harness for traget
-   test/REAME       -notes for test
-   test/s52glx.c    -harness for X
-   test/s52gv.c     -harness for GV
-   test/s52gtk2.c   -harness for GTK2
-   test/s52gtk2.rb  -same thing but in Ruby
-   test/s52.cfg     -local configuration (debug)
-   test/s52egl.c    -EGL harness for X and Android
-   test/s52ais.c    -feed data from AIS via GPSD
-   test/sl4agps.c   -UI/GPS/Gyro from Android via SL4A (RPC Bridge to Android)
+   gvS57layer.h     -interface to plugin
+                     (for completness -useless in real life),
+
+   lib/freetype_gl/ -GL freetype rendering from Nicolas P. Rougier
+                     http://code.google.com/p/freetype-gl/
+
+   lib/tesselator/  -tesselator from Mesa3D
+
+   doc/
+   C1.dispCatSwitch.txt -list of objects that can switch layers (IHO)
+   obj.txt              -S57 objects
+   att.txt              -S57 attibutes
+
+   doc/symbol/
+   boylat24.dia    -BOYLAT24 object construct (Dia)
+   boylat24.png    -boylat24.dia converted to PNG
+
+   doc/html/       -html doc of S52.h using
+                    https://github.com/GNOME/introspection-doc-generator
+
+   test/
+   Makefile        -build test harness for traget
+   REAME           -notes for test
+   s52glx.c        -harness for X
+   s52gv.c         -harness for GV
+   s52gtk2.c       -harness for GTK2
+   s52gtk2.rb      -same thing but in Ruby
+   s52.cfg         -local configuration (debug)
+   s52egl.c        -EGL harness for X and Android
+   s52ais.c        -feed data from AIS via GPSD
+   sl4agps.c       -UI/GPS/Gyro from Android via SL4A (RPC Bridge to Android)
 
 
 REQUIREMENT:
