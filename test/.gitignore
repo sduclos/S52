@@ -1,4 +1,5 @@
 .cvsignore
 CVS
+ENC_ROOT
 s52.cfg.local
 s52.cfg.bak
