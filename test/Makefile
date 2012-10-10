@@ -203,8 +203,11 @@ android/dist/sdcard/s52android/UI.xml: android/dist/sdcard/s52android/UI.tmpl.xm
     android/dist/sdcard/s52android/UI.tmpl.xml > android/dist/sdcard/s52android/UI.xml                  
 	adb push  android/dist/sdcard/s52android/UI.xml /sdcard/s52android/UI.xml                           
 
+sl4agps.cfg:
+	rm android/dist/sdcard/s52android/UI.xml
+
 #$(STRIP)  sl4agps
-sl4agps: android/dist/sdcard/s52android/UI.xml sl4agps.c
+sl4agps: sl4agps.c sl4agps.cfg android/dist/sdcard/s52android/UI.xml
 	$(CC)  $(CFLAGS)    sl4agps.c $(LIBS) -o sl4agps
 	cp        sl4agps   android/dist/sdcard/s52android/bin
 	adb push  sl4agps   /sdcard/s52android/bin
