@@ -1419,12 +1419,12 @@ S57_geo   *S57_setGeoLink(_S57_geo *geoData, _S57_geo *link)
 #endif
 
 #ifdef S52_USE_WORLD
-S57_geo  *S57_setNextPoly(_S57_geo *geoData, _S57_geo *nextPoly)
+S57_geo   *S57_setNextPoly(_S57_geo *geoData, _S57_geo *nextPoly)
 {
     return_if_null(geoData);
 
     if (NULL != geoData->nextPoly)
-        nextPoly = geoData->nextPoly;
+        nextPoly->nextPoly = geoData->nextPoly;
 
     geoData->nextPoly = nextPoly;
 
@@ -1438,6 +1438,21 @@ S57_geo   *S57_getNextPoly(_S57_geo *geoData)
 
     return geoData->nextPoly;
 }
+
+S57_geo   *S57_delNextPoly(_S57_geo *geoData)
+// unlink Poly chain
+{
+    return_if_null(geoData);
+
+    while (NULL != geoData) {
+        S57_geo *nextPoly = geoData->nextPoly;
+        geoData->nextPoly = NULL;
+        geoData = nextPoly;
+    }
+
+    return NULL;
+}
+
 #endif
 
 unsigned int S57_getGeoID(S57_geo *geoData)

@@ -204,7 +204,7 @@ static S52ObjectHandle _vessel_ais_afglow = NULL;
 
 
 
-static int      _egl_init       (struct s52engine *engine)
+static int      _egl_init       (struct s52engine *engine) /*fold00*/
 {
     LOGI("s52egl:_egl_init(): starting ..\n");
 
@@ -422,7 +422,7 @@ static int      _egl_init       (struct s52engine *engine)
     return 1;
 }
 
-static void     _egl_done       (struct s52engine *engine)
+static void     _egl_done       (struct s52engine *engine) /*fold00*/
 // Tear down the EGL context currently associated with the display.
 {
     if (engine->eglDisplay != EGL_NO_DISPLAY) {
@@ -446,7 +446,7 @@ static void     _egl_done       (struct s52engine *engine)
 
 
 
-static int      _s52_computeView(s52android_state_t *state)
+static int      _s52_computeView(s52android_state_t *state) /*fold00*/
 {
      S52_extent ext;
 
@@ -462,7 +462,7 @@ static int      _s52_computeView(s52android_state_t *state)
 }
 
 #ifdef S52_USE_FAKE_AIS
-static int      _s52_setupVESSEL(s52android_state_t *state)
+static int      _s52_setupVESSEL(s52android_state_t *state) /*fold00*/
 {
     // ARPA
     //_vessel_arpa = S52_newVESSEL(1, dummy, "ARPA label");
@@ -497,7 +497,7 @@ static int      _s52_setupVESSEL(s52android_state_t *state)
     return TRUE;
 }
 
-static int      _s52_setupOWNSHP(s52android_state_t *state)
+static int      _s52_setupOWNSHP(s52android_state_t *state) /*fold00*/
 {
     _ownshp = S52_newOWNSHP(OWNSHPLABEL);
     //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 0.0, 30.0);
@@ -518,7 +518,7 @@ static int      _s52_setupOWNSHP(s52android_state_t *state)
 }
 #endif  // S52_USE_FAKE_AIS
 
-static int      _s52_setupLEGLIN(void)
+static int      _s52_setupLEGLIN(void) /*fold00*/
 {
 /*
 
@@ -601,7 +601,7 @@ route normale de navigation.
     return TRUE;
 }
 
-static int      _s52_setupVRMEBL(s52android_state_t *state)
+static int      _s52_setupVRMEBL(s52android_state_t *state) /*fold00*/
 {
     char attVal[] = "cursty:2";
     double xyz[3] = {state->cLon, state->cLat, 0.0};
@@ -615,7 +615,7 @@ static int      _s52_setupVRMEBL(s52android_state_t *state)
     return TRUE;
 }
 
-static int      _s52_setupPRDARE(s52android_state_t *state)
+static int      _s52_setupPRDARE(s52android_state_t *state) /*fold00*/
 // test - centroid 
 {
     //*
@@ -637,7 +637,7 @@ static int      _s52_setupPRDARE(s52android_state_t *state)
     return TRUE;
 }
 
-static int      _s52_init       (struct s52engine *engine)
+static int      _s52_init       (struct s52engine *engine) /*FOLD00*/
 {
     if ((NULL==engine->eglDisplay) || (EGL_NO_DISPLAY==engine->eglDisplay)) {
         LOGE("_init_S52(): no EGL display ..\n");
@@ -711,7 +711,6 @@ static int      _s52_init       (struct s52engine *engine)
 
 
     S52_loadPLib(PLIB);
-
     S52_loadPLib(COLS);
 
     S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
@@ -825,7 +824,7 @@ static int      _s52_init       (struct s52engine *engine)
     return EGL_TRUE;
 }
 
-static int      _s52_done       (struct s52engine *engine)
+static int      _s52_done       (struct s52engine *engine) /*fold00*/
 {
     (void)engine;
 
@@ -834,7 +833,7 @@ static int      _s52_done       (struct s52engine *engine)
     return TRUE;
 }
 
-static int      _s52_updTimeTag (struct s52engine *engine)
+static int      _s52_updTimeTag (struct s52engine *engine) /*fold00*/
 {
     (void)engine;
 
@@ -865,7 +864,7 @@ static int      _s52_updTimeTag (struct s52engine *engine)
     return TRUE;
 }
 
-static int      _s52_draw_cb    (gpointer user_data)
+static int      _s52_draw_cb    (gpointer user_data) /*fold00*/
 // return TRUE for the signal to be called again
 // TODO: see if EGL can be sqeezed inside libS52!
 {
@@ -968,7 +967,7 @@ exit:
 
 static int _androidUIon = FALSE;
 
-static int      _android_done_external_sensors(void)
+static int      _android_done_external_sensors(void) /*fold00*/
 {
     GError *error = NULL;
     char run_allstop_sh[] = "/system/bin/sh -c "  ALLSTOP ;
@@ -987,7 +986,7 @@ static int      _android_done_external_sensors(void)
     return TRUE;
 }
 
-static int      _android_init_external_gps(void)
+static int      _android_init_external_gps(void) /*fold00*/
 // start sl4agps - get GPS & Gyro from Android
 {
     GError *error = NULL;
@@ -1015,7 +1014,7 @@ static int      _android_init_external_gps(void)
     return TRUE;
 }
 
-static int      _android_init_external_ais(void)
+static int      _android_init_external_ais(void) /*fold00*/
 // FIXME: this func is the same as _android_spawn_gps()
 {
     GError *error = NULL;
@@ -1044,7 +1043,7 @@ static int      _android_init_external_ais(void)
 }
 
 #if 0
-static int      _android_sensors_gyro(gpointer user_data)
+static int      _android_sensors_gyro(gpointer user_data) /*fold00*/
 // Android Native poll event
 {
     struct s52engine* engine = (struct s52engine*)user_data;
@@ -1133,7 +1132,7 @@ static int      _android_sensors_gyro(gpointer user_data)
     return TRUE;
 }
 
-static int      _android_sensorsList_dump(ASensorManager *sensorManager)
+static int      _android_sensorsList_dump(ASensorManager *sensorManager) /*fold00*/
 {
 /*
 I/s52android( 2683): 0 - sensor name: KXTF9 3-axis Accelerometer
@@ -1161,7 +1160,7 @@ I/s52android( 2683): 9 - sensor name: Corrected Gyroscope Sensor
 }
 #endif
 
-static int      _android_display_init(struct s52engine *engine)
+static int      _android_display_init(struct s52engine *engine) /*fold00*/
 {
     // is that even possible
     if (NULL == engine) {
@@ -1193,7 +1192,7 @@ static int      _android_display_init(struct s52engine *engine)
 }
 
 
-static int      _android_motion_event(struct s52engine *engine, AInputEvent *event)
+static int      _android_motion_event(struct s52engine *engine, AInputEvent *event) /*fold00*/
 {
     static int    ticks       = 0;
 
@@ -1538,7 +1537,7 @@ static int      _android_motion_event(struct s52engine *engine, AInputEvent *eve
     return TRUE;
 }
 
-static int32_t  _android_handle_input(struct android_app *app, AInputEvent *event)
+static int32_t  _android_handle_input(struct android_app *app, AInputEvent *event) /*fold00*/
 // Process the next input event.
 // Return 1 the event was handled, 0 for any default dispatching.
 {
@@ -1615,7 +1614,7 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
     return EGL_TRUE;
 }
 
-static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
+static void     _android_handle_cmd(struct android_app *app, int32_t cmd) /*fold00*/
 // process the next main command.
 {
     struct s52engine* engine = (struct s52engine*)app->userData;
@@ -1765,7 +1764,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
     }
 }
 
-void android_main(struct android_app *app)
+void android_main(struct android_app *app) /*fold00*/
 // This is the main entry point of a native application that is using
 // android_native_app_glue.  It runs in its own thread, with its own
 // event loop for receiving input events and doing other things.
@@ -1959,7 +1958,7 @@ exit:
 
 #include </usr/include/X11/XKBlib.h>  // XkbKeycodeToKeysym()
 
-static int      _X11_error(Display *display, XErrorEvent *err)
+static int      _X11_error(Display *display, XErrorEvent *err) /*fold00*/
 {
     char buf[80];
     XGetErrorText(display, err->error_code, buf, 80);
@@ -1976,7 +1975,7 @@ static int      _X11_error(Display *display, XErrorEvent *err)
     return 1;
 }
 
-static int      _X11_handleXevent(gpointer user_data)
+static int      _X11_handleXevent(gpointer user_data) /*fold00*/
 {
     struct s52engine *engine = (struct s52engine *) user_data;
     unsigned int keycode;
@@ -2135,7 +2134,7 @@ static int      _X11_handleXevent(gpointer user_data)
     return TRUE;
 }
 
-int  main(int argc, char *argv[])
+int  main(int argc, char *argv[]) /*fold00*/
 {
     g_printf("main():starting: argc=%i, argv[0]=%s\n", argc, argv[0]);
 

@@ -65,6 +65,7 @@ extern S57_geo  *S57_setGeoLink(S57_geo *geoData, S57_geo *link);
 #ifdef S52_USE_WORLD
 extern S57_geo  *S57_setNextPoly(S57_geo *geoData, S57_geo *nextPoly);
 extern S57_geo  *S57_getNextPoly(S57_geo *geoData);
+extern S57_geo  *S57_delNextPoly(S57_geo *geoData);
 #endif
 
 extern int       S57_setName  (S57_geo *geoData, const char *name);

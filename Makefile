@@ -146,7 +146,7 @@ CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl egl` \
          -DS52_USE_OGR_FILECOLLECTOR                   \
          -DS52_USE_SUPP_LINE_OVERLAP                   \
          -DS52_USE_BACKTRACE                           \
-		 -DS52_USE_OPENGL_VBO                          \
+         -DS52_USE_OPENGL_VBO                          \
          -DS52_DEBUG $(DBG)
 
 s52clutter, s52clutter.js :                                 \
@@ -179,8 +179,8 @@ s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
                   -I/usr/include/freetype2       \
-				  -I./lib/freetype-gl            \
-				  -I./lib/parson                 \
+                  -I./lib/freetype-gl            \
+                  -I./lib/parson                 \
                   -DS52_USE_PROJ                 \
                   -DS52_USE_GLIB2                \
                   -DS52_USE_DOTPITCH             \
@@ -191,6 +191,7 @@ s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   -DS52_USE_OGR_FILECOLLECTOR    \
                   -DS52_USE_SUPP_LINE_OVERLAP    \
                   -DS52_USE_SOCK                 \
+                  -DS52_USE_WORLD                \
                   -DS52_DEBUG $(DBG)
 
 
