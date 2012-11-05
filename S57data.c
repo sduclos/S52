@@ -141,6 +141,11 @@ typedef struct _S57_geo {
     guint   centroidIdx;
     GArray *centroid;
 
+#ifdef S52_USE_WORLD
+    S57_geo     *nextPoly;
+#endif
+
+
 } _S57_geo;
 
 static GString *_attList = NULL;
@@ -168,25 +173,6 @@ static int    _doneGeoData(_S57_geo *geoData)
         geoData->linexyz = NULL;
     }
 
-    /*
-    // MLINE
-    if (NULL != geoData->linexyz){
-        int i;
-        for(i = 0; i < geoData->linenbr; ++i) {
-            if (NULL != geoData->linexyz[i])
-                g_free((geocoord*)geoData->linexyz[i]);
-            geoData->linexyz[i] = NULL;
-        }
-        g_free((geocoord*)geoData->linexyz);
-        geoData->linexyz = NULL;
-    }
-
-    if (NULL != geoData->linexyznbr) {
-        g_free(geoData->linexyznbr);
-        geoData->linexyznbr = NULL;
-    }
-    */
-
     // AREAS
     if (NULL != geoData->ringxyz){
         unsigned int i;
@@ -213,10 +199,17 @@ static int    _doneGeoData(_S57_geo *geoData)
 int        S57_doneData   (_S57_geo *geoData, gpointer user_data)
 {
     // quiet line overlap analysis that trigger a bunch of harmless warning
-    if (NULL != user_data && NULL == geoData)
+    if (NULL!=user_data && NULL==geoData)
         return FALSE;
 
-    return_if_null(geoData);
+#ifdef S52_USE_WORLD
+    {
+        S57_geo *geoDataNext = NULL;
+        if (NULL != (geoDataNext = S57_getNextPoly(geoData))) {
+            S57_doneData(geoDataNext, user_data);
+        }
+    }
+#endif
 
 
 #ifndef S52_USE_GV
@@ -235,7 +228,6 @@ int        S57_doneData   (_S57_geo *geoData, gpointer user_data)
     if (NULL != geoData->centroid)
         g_array_free(geoData->centroid, TRUE);
 
-    //g_free((gpointer*)geoData);
     g_free(geoData);
 
     return TRUE;
@@ -409,13 +401,9 @@ S57_geo   *S57_setPOINT(geocoord *xyz)
 
     geoData->scamin  =  INFINITY;
 
-
-    //geoData->rect.x1 = -UNKNOWN; //INFINITY;
-    //geoData->rect.y1 = -UNKNOWN; //INFINITY;
-    //geoData->rect.x2 =  UNKNOWN; //INFINITY;
-    //geoData->rect.y2 =  UNKNOWN; //INFINITY;
-
-    //geoData->scamin  =  UNKNOWN; //INFINITY;
+#ifdef S52_USE_WORLD
+    geoData->nextPoly = NULL;
+#endif
 
     return geoData;
 }
@@ -454,12 +442,9 @@ S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
     geoData->scamin  =  INFINITY;
 
 
-    //geoData->rect.x1 = -UNKNOWN; //INFINITY;
-    //geoData->rect.y1 = -UNKNOWN; //INFINITY;
-    //geoData->rect.x2 =  UNKNOWN; //INFINITY;
-    //geoData->rect.y2 =  UNKNOWN; //INFINITY;
-
-    //geoData->scamin  =  UNKNOWN; //INFINITY;
+#ifdef S52_USE_WORLD
+    geoData->nextPoly = NULL;
+#endif
 
     return geoData;
 }
@@ -474,11 +459,13 @@ S57_geo   *S57_setMLINE(guint nLineCount, guint *linexyznbr, geocoord **linexyz)
 
     geoData->id         = _id++;
     geoData->obj_t      = MLINE_T;
-    //geoData->linexyznbr = xyznbr;
-    //geoData->linexyz    = xyz;
     geoData->linenbr    = nLineCount;
     geoData->linexyznbr = linexyznbr;
     geoData->linexyz    = linexyz;
+
+#ifdef S52_USE_WORLD
+    geoData->nextPoly = NULL;
+#endif
 
     return geoData;
 }
@@ -507,13 +494,9 @@ S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
 
     geoData->scamin  =  INFINITY;
 
-
-    //geoData->rect.x1 = -UNKNOWN; //INFINITY;
-    //geoData->rect.y1 = -UNKNOWN; //INFINITY;
-    //geoData->rect.x2 =  UNKNOWN; //INFINITY;
-    //geoData->rect.y2 =  UNKNOWN; //INFINITY;
-
-    //geoData->scamin  =  UNKNOWN; //INFINITY;
+#ifdef S52_USE_WORLD
+    geoData->nextPoly = NULL;
+#endif
 
     return geoData;
 }
@@ -535,13 +518,9 @@ S57_geo   *S57_set_META()
 
     geoData->scamin  =  INFINITY;
 
-
-    //geoData->rect.x1 = -UNKNOWN; //INFINITY;
-    //geoData->rect.y1 = -UNKNOWN; //INFINITY;
-    //geoData->rect.x2 =  UNKNOWN; //INFINITY;
-    //geoData->rect.y2 =  UNKNOWN; //INFINITY;
-
-    //geoData->scamin  =  UNKNOWN; //INFINITY;
+#ifdef S52_USE_WORLD
+    geoData->nextPoly = NULL;
+#endif
 
     return geoData;
 }
@@ -1420,7 +1399,7 @@ int        S57_sameChainNode(_S57_geo *geoA, _S57_geo *geoB)
 }
 
 //S57_geo   *S57_getGeoNext(S57_geo *geoData)
-S57_geo   *S57_getGeoLink(S57_geo *geoData)
+S57_geo   *S57_getGeoLink(_S57_geo *geoData)
 {
     return_if_null(geoData);
 
@@ -1428,7 +1407,7 @@ S57_geo   *S57_getGeoLink(S57_geo *geoData)
     return geoData->link;
 }
 
-S57_geo   *S57_setGeoLink(S57_geo *geoData, S57_geo *link)
+S57_geo   *S57_setGeoLink(_S57_geo *geoData, _S57_geo *link)
 {
     return_if_null(geoData);
 
@@ -1436,6 +1415,28 @@ S57_geo   *S57_setGeoLink(S57_geo *geoData, S57_geo *link)
     geoData->link = link;
 
     return geoData;
+}
+#endif
+
+#ifdef S52_USE_WORLD
+S57_geo  *S57_setNextPoly(_S57_geo *geoData, _S57_geo *nextPoly)
+{
+    return_if_null(geoData);
+
+    if (NULL != geoData->nextPoly)
+        nextPoly = geoData->nextPoly;
+
+    geoData->nextPoly = nextPoly;
+
+    return geoData;
+}
+
+
+S57_geo   *S57_getNextPoly(_S57_geo *geoData)
+{
+    return_if_null(geoData);
+
+    return geoData->nextPoly;
 }
 #endif
 

@@ -68,7 +68,6 @@ static int        _getGeoPtCount(OGRGeometryH hGeom, int iGeo, OGRGeometryH *hGe
     return vert_count;
 }
 
-//static int        _loadAtt(OGRFeatureH hFeature, S57_geo *geoData)
 static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
 {
     int field_index = 0;
@@ -211,31 +210,24 @@ int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadO
 }
 
 
-static S57_geo   *_ogrLoadObject(const char *objname, void *feature)
+static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometryH hGeomNext)
 {
     S57_geo           *geoData = NULL;
-    //OGRGeometryH       hGeom   = OGR_F_GetGeometryRef((srcData*)feature);
-    OGRGeometryH       hGeom   = OGR_F_GetGeometryRef((OGRFeatureH)feature);
+    //OGRGeometryH       hGeom   = OGR_F_GetGeometryRef((OGRFeatureH)feature);
+    OGRGeometryH       hGeom   = NULL;
     OGRwkbGeometryType eType   = wkbNone;
 
-    // debug
-    //PRINTF("before flatten name (feature): %s (%X) \n", objname, feature);
+    if (NULL != feature)
+        hGeom = OGR_F_GetGeometryRef((OGRFeatureH)feature);
+    else
+        hGeom = hGeomNext;
 
-    if (NULL != hGeom)
-        //eType = wkbFlatten(OGR_G_GetGeometryType(hGeom));
+    if (NULL != hGeom) {
         eType = OGR_G_GetGeometryType(hGeom);
-    else {
+    } else {
         // DSIS
         eType = wkbNone;
-        //geoData = S57_set_META();
-        //g_assert_not_reached();
     }
-
-    //if (wkbNone == eType)
-    //    eType = defType;
-
-    // debug
-    //PRINTF("after flatten name: %s\n", objname);
 
     switch (eType) {
         // POINT
@@ -286,19 +278,18 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature)
         }
 
         // AREA
-        case wkbMultiPolygon:
         case wkbPolygon25D:
         case wkbPolygon: {
-            OGRGeometryH hRing;
             unsigned int iRing = 0;
             guint        nRingCount = OGR_G_GetGeometryCount(hGeom);
             guint       *ringxyznbr;
             geocoord   **ringxyz;
 
-            ringxyznbr = g_new(guint, nRingCount);
+            ringxyznbr = g_new(guint,      nRingCount);
             ringxyz    = g_new(geocoord *, nRingCount);
 
             for (iRing=0; iRing<nRingCount; ++iRing) {
+                OGRGeometryH hRing;
                 guint node;
                 guint vert_count = _getGeoPtCount(hGeom, iRing, &hRing);
 
@@ -309,7 +300,8 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature)
                     // FIXME: what should be done here,
                     // FIX: S52 - discard this ring or the object or the layer or the whole chart (update)
                     // FIX: GDAL/OGR - is it a bug in the reader or in the chart it self (S57)
-                    PRINTF("ERROR: S-57 ring with no node (%s)\n", objname);
+                    // FIX: or this is an empty Geo
+                    PRINTF("WARNING: wkbPolygon, empty ring  (%s)\n", objname);
                     continue;
                 }
 
@@ -399,74 +391,41 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature)
                     }
 
                 }
-            }     /* for loop */
+            }     // for loop
 
             geoData = S57_setAREAS(nRingCount, ringxyznbr, ringxyz);
             _setExtent(geoData, hGeom);
 
+            if (0==strcmp("XX0WORLD", objname)) {
+                S57_setName(geoData, "marfea");
+            }
+
+            // set nothing for now
+            //_setAtt(geoData, feature);
+
             break;
         }
 
-        case wkbGeometryCollection:
-        case wkbMultiLineString: {
-/*
-#ifdef S52_USE_SUPP_LINE_OVERLAP
-            OGRGeometryH hLine;
-            int          iLine = 0;
-            guint        nLineCount = OGR_G_GetGeometryCount(hGeom);
-            //guint       *linexyznbr;
-            geocoord    *linexyz;
-
-            //linexyznbr = g_new(guint,      nLineCount);
-
-            for (iLine=0; iLine<nLineCount; ++iLine) {
-                guint node;
-                guint vert_count = _getGeoPtCount(hGeom, iLine, &hLine);
-
-                //linexyznbr[iLine] = vert_count;
-
-                // skip this ring if no vertex
-                if (0 == vert_count) {
-                    // FIXME: what should be done here,
-                    // FIX: S52 - discard this ring or the object or the layer or the whole chart (update)
-                    // FIX: GDAL/OGR - is it a bug in the reader or in the chart  itself (S57)
-                    PRINTF("ERROR: S-57 line with no node (%s)\n", objname);
-                    continue;
-                }
-
-                // why add a 1 !?!
-                //ringxyz[iRing]    = g_new(geocoord, (vert_count+1)*3*sizeof(geocoord));
-                //linexyz[iLine]    = g_new(geocoord, vert_count*3*sizeof(geocoord));
-                //geoData = S57_setLINES(nLineCount, linexyznbr, linexyz);
-
-                linexyz = g_new(geocoord, vert_count*3*sizeof(geocoord));
-
-                for (node=0; node<vert_count; ++node) {
-                    linexyz[node*3+0] = OGR_G_GetX(hLine, node);
-                    linexyz[node*3+1] = OGR_G_GetY(hLine, node);
-                    linexyz[node*3+2] = OGR_G_GetZ(hLine, node);
-                }
-
-
+#ifdef S52_USE_WORLD
+        // shapefile area
+        case wkbMultiPolygon: {
+            guint nPolyCount = OGR_G_GetGeometryCount(hGeom);
+            for (guint iPoly=0; iPoly<nPolyCount; ++iPoly) {
+                OGRGeometryH hGeomNext = OGR_G_GetGeometryRef(hGeom, iPoly);
+                // recursion
+                S57_geo *geo = _ogrLoadObject(objname, NULL, hGeomNext);
                 if (NULL == geoData)
-                    geoData = S57_setLINES(vert_count, linexyz);
-                else {
-                    S57_geo *geotmp = S57_setLINES(vert_count, linexyz);
-                    geoData = S57_setGeoNext(geotmp, geoData);
-
-                }
-
-                // FIXME: set extent of this chain-node to the extent
-                // of all  chain-node of this multi-line
-                _setExtent(geoData, hGeom);
+                    geoData = geo;
+                else
+                    S57_setNextPoly(geoData, geo);
 
             }
-
             break;
-#else
-            //g_assert_not_reached();  // land here if GDAL/OGR was patched multi-line
+        }
 #endif
-*/
+
+        case wkbGeometryCollection:
+        case wkbMultiLineString: {
             g_assert_not_reached();  // land here if GDAL/OGR was patched multi-line
         }
 
@@ -513,26 +472,15 @@ S57_geo       *S57_ogrLoadObject(const char *objname, void *feature)
     // debug
     //PRINTF("DEBUG: start loading object (%s:%X)\n", objname, feature);
 
-    //S57_geo *geo = _ogrLoadObject(objname, feature);
-    S57_geo *geoData = _ogrLoadObject(objname, feature);
-    //S57_geo *geo     = geoData;
+    S57_geo *geoData = _ogrLoadObject(objname, feature, 0);
     if (NULL == geoData)
         return NULL;
 
-    if (0==strcmp("XX0WORLD", objname)) {
-        S57_setName(geoData, "LNDARE");
-    } else {
+    if (0 != strcmp("XX0WORLD", objname)) {
         S57_setName(geoData, objname);
     }
     _setAtt(geoData, feature);
 
-//#ifdef S52_USE_SUPP_LINE_OVERLAP
-    //while (NULL != geo) {
-    //    S57_setName(geo, objname);
-    //    _setAtt(geo, feature);
-    //    geo = S57_getGeoNext(geo);
-    //}
-//#endif
 
     // debug
     //if (2186==S57_getGeoID(geoData)) {

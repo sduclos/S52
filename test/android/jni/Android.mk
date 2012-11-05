@@ -24,17 +24,19 @@ LOCAL_CFLAGS     := -Wall -g -DG_LOG_DOMAIN=\"s52android\"                      
 LOCAL_LDFLAGS    := -rdynamic -fexception
 
 #TIAMATLIBS       := /home/sduclos/dev/prog/Android/xoom/tiamat-xoom-rom/Xoom.Zone-Tiamat.Rom.2.2.2/system/lib
-TIAMATLIBS       := /home/sduclos/dev/prog/Android/xoom/tiamat-xoom-rom/Eos-wingray/system/lib
+#TIAMATLIBS       := /home/sduclos/dev/prog/Android/xoom/tiamat-xoom-rom/Eos-wingray/system/lib
+TEAMEOSLIBS      := /home/sduclos/dev/prog/Android/xoom/TeamEOS-wingray-rom/system/lib
 S52ANDRIODLIBS   := /home/sduclos/S52/test/android/dist/system/lib
 ARMTOOLCHAINROOT := /home/sduclos/dev/prog/Android/dev/android-9-toolchain
 #ARMTOOLCHAINROOT := /home/sduclos/dev/prog/Android/dev/android-14-toolchain
 #ARMLIBS          := $(ARMTOOLCHAINROOT)/sysroot/usr/lib
 # -lGLESv1_CM
 # $(S52ANDRIODLIBS)/libgio-2.0.a
-LOCAL_LDLIBS     := -L$(TIAMATLIBS) -lEGL -lGLESv2                                               \
+#-lsurfaceflinger_client 
+LOCAL_LDLIBS     := -L$(TEAMEOSLIBS) -lEGL -lGLESv2                                               \
                     -llog -lcutils -lz -lutils                                                   \
                     -lbinder -lpixelflinger -lhardware -lhardware_legacy -lskia -lui -lgui       \
-                    -lsurfaceflinger_client -landroid -lexpat -lnativehelper -lnetutils          \
+                    -landroid -lexpat -lnativehelper -lnetutils          \
                     -lcamera_client -lsqlite -ldvm -lETC1 -lsonivox -lcrypto                     \
                     -lssl -licuuc -licui18n -lmedia -lwpa_client -ljpeg -lnfc_ndef -lusbhost     \
                     -lhwui -lbluedroid -ldbus -lemoji -lstlport -lstagefright_foundation         \

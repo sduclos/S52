@@ -12,21 +12,23 @@ SEP2010
 2011APR
 2012JUN
 2012SEP
+2012OCT
 
 
 Curent focus (top priority *):
 
     GL:
+**  -load raster (RADAR Layer, high densit bathy)
 **  -alarm (safety perimeter, x-track!), try the GL cursor pick trick
 *   -handle overlaping symbol at the center of the window
     -fading chart boudary, calib symb, ..
     -implement patern scale spacing (PASP field)
     -handle GLU_TESS_MAX_COORD
-    -raster (high densit bathy)
     -dump gl* call in clear text to diff with reference dump (debug)
     -GL: write to file raw GL call --for self test
 
     PL:
+**  -load Chart No 1 for testing C1-PLib 3.1 (the default PLib)
 *   -view group or somme equivalent functionality
     -overscale (DATCVR01)
     -experimental:supression of overlapping lines of same disp prio but diff categorie
@@ -38,6 +40,7 @@ Curent focus (top priority *):
     -isobath tag
 
     Coding:
+    -handling world shapefile
     -compare to test/ref_dump/, for self testing, regression, ..
     -check handling anti-meridian (need a chart that overlap the meridian)
     -chart manager / show world contour / chart extent / CATALOG.031

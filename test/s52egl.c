@@ -189,7 +189,7 @@ static S52ObjectHandle _vessel_ais        = NULL;
 #define VESSELLABEL "~~MV Non Such~~"
 // test - ownshp
 static S52ObjectHandle _ownshp            = NULL;
-#define OWNSHPLABEL "OWNSHP\t220 deg / 6.0 kt"
+#define OWNSHPLABEL "OWNSHP\n220 deg / 6.0 kt"
 
 
 #ifdef S52_USE_AFGLOW
@@ -499,8 +499,6 @@ static int      _s52_setupVESSEL(s52android_state_t *state)
 
 static int      _s52_setupOWNSHP(s52android_state_t *state)
 {
-    //char *label = "OWNSHP\n220° / 6.0kt";
-    //char *label = "OWNSHP bla bla";
     _ownshp = S52_newOWNSHP(OWNSHPLABEL);
     //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 0.0, 30.0);
     //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 15.0, 15.0);
@@ -706,10 +704,10 @@ static int      _s52_init       (struct s52engine *engine)
 #endif
 
     // debug - remove clutter from this symb in SELECT mode
-    //S52_setS57ObjClassSupp("M_QUAL", TRUE);  // the U pattern
-    S52_setS57ObjClassSupp("M_QUAL", FALSE);  // the U pattern
-    //S52_toggleObjClassON ("M_QUAL");         //
-    //S52_toggleObjClassOFF("M_QUAL");         //
+    //S52_setS57ObjClassSupp("M_QUAL", TRUE);  // supress display of the U pattern
+    //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // displaythe U pattern
+    S52_toggleObjClassON ("M_QUAL");           //  suppression ON
+    //S52_toggleObjClassOFF("M_QUAL");         //  suppression OFF
 
 
     S52_loadPLib(PLIB);
@@ -750,8 +748,10 @@ static int      _s52_init       (struct s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // default
     S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
 
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );  // default
-    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER); // All Mariner (Standard(default) + Other)
+    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE );
+    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // default
+    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);
+    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT); // All Mariner (Standard(default) + Other)
 
     S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK

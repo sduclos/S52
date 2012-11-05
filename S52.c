@@ -311,8 +311,8 @@ static double _cursor_lon = 0.0;
 
 //static GArray  *_arrTmp = NULL;
 
-static char _version[] = "$Revision: 1.100 $\n"
-      "libS52 0.77\n"
+static char _version[] = "$Revision: 1.103 $\n"
+      "libS52 0.78\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -373,7 +373,15 @@ static char _version[] = "$Revision: 1.100 $\n"
 #ifdef S52_USE_FREETYPE_GL
       "S52_USE_FREETYPE_GL\n"
 #endif
+#ifdef S52_USE_SYM_AISSEL01
+      "S52_USE_SYM_AISSEL01\n"
+#endif
+#ifdef S52_USE_WORLD
+      "S52_USE_WORLD\n"
+#endif
 ;
+
+
 
 
 // check basic init
@@ -1648,11 +1656,11 @@ DLL int    STD S52_init(void)
     _doInit = FALSE;
 
 
-    /*
+#ifdef S52_USE_WORLD
     { // load world shapefile
         valueBuf chartPath = {'\0'};
         if (0 == S52_getConfig(CONF_WORLD, &chartPath)) {
-            PRINTF("WORLD7 file not found!\n");
+            PRINTF("WORLD file not found!\n");
             return FALSE;
         }
         S52_loadLayer_cb  loadLayer_cb  = S52_loadLayer;
@@ -1661,7 +1669,7 @@ DLL int    STD S52_init(void)
         _initPROJ();
         _projectCells();
     }
-    */
+#endif
 
     PRINTF("S52_INIT() .. DONE\n");
 
@@ -1953,11 +1961,12 @@ static int        _suppLineOverlap()
 
 
                 // FIXME: warn if a line need masking
+                // FIXME: add info to find out what this mask mask
                 //MASK (IntegerList) = (7:255,255,255,255,255,255,255)
-                GString *maskstr = S57_getAttVal(geo, "MASK");
-                if (NULL != maskstr) {
-                    PRINTF("INFO: MASK found [%s]\n", maskstr->str);
-                }
+                //GString *maskstr = S57_getAttVal(geo, "MASK");
+                //if (NULL != maskstr) {
+                //    PRINTF("INFO: MASK found [%s]\n", maskstr->str);
+                //}
 
 
 
@@ -2209,9 +2218,9 @@ static int        _loadCATALOG(char *filename)
 
             const char *impl = poRecord->GetStringSubfield("CATD", 0, "IMPL", 0);
             //SLAT = -32.566667
-            //    WLON = 60.866667
-            //    NLAT = -32.500000
-            //    ELON = 60.966667
+            //WLON =  60.866667
+            //NLAT = -32.500000
+            //ELON =  60.966667
 
             const char *file = poRecord->GetStringSubfield("CATD",0,"FILE",0);
 
@@ -2289,11 +2298,11 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         //    // cell extend - build cell index
         //    _loadCATALOG(fname);
         //}
-
         //g_chdir("ENC_ROOT");
         //char **encList = S57FileCollector("CATALOG.031");
-        char **encList = S57FileCollector(fname);
 
+
+        char **encList = S57FileCollector(fname);
         if (NULL == encList) {
             PRINTF("WARNING: S57FileCollector(%s) return NULL\n", fname);
             g_free(fname);
@@ -2798,6 +2807,16 @@ static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
         g_ptr_array_add(c->renderBin[disPrioIdx][obj_t], obj);
     }
 
+#ifdef S52_USE_WORLD
+    {
+        S57_geo *geoDataNext = NULL;
+        if (NULL != (geoDataNext = S57_getNextPoly(geoData))) {
+            // recurssion
+            _insertS57Obj(c, geoDataNext);
+        }
+    }
+#endif
+
     return obj;
 }
 
@@ -2961,7 +2980,7 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
     // set cell extent from each object
     // NOTE:should be the same as CATALOG.03?
     if (_META_T != S57_getObjtype(geoData)) {
-        //S52_extent ext;
+    //if ((_META_T!=S57_getObjtype(geoData)) && (0!=strcmp(objname, "XX0WORLD"))) {
         _extent ext;
 
         S57_getExt(geoData, &ext.W, &ext.S, &ext.E, &ext.N);
@@ -4876,9 +4895,16 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     }
 
     // FIXME: overscale
-    if (rNM<MIN_RANGE || rNM>MAX_RANGE) {
-        PRINTF("WARNING: call fail - OVERSCALE (%f)\n", rNM);
-        return FALSE;
+    //if (rNM<MIN_RANGE || rNM>MAX_RANGE) {
+    if (rNM < MIN_RANGE) {
+        PRINTF("WARNING: OVERSCALE (%f)\n", rNM);
+        rNM = MIN_RANGE;
+        //return FALSE;
+    }
+    if (rNM > MAX_RANGE) {
+        PRINTF("WARNING: OVERSCALE (%f)\n", rNM);
+        rNM = MAX_RANGE;
+        //return FALSE;
     }
 
     // FIXME: PROJ4 will explode here (INFINITY) for mercator
@@ -6820,7 +6846,7 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
         S52_PL_setTimeNow(vessel);
     }
 
-    PRINTF("vessel: %P\n", vessel);
+    PRINTF("vessel objH: %lu\n", vessel);
 
     return vessel;
 }
@@ -8818,48 +8844,13 @@ static int                 _initDBus()
 //
 #ifdef S52_USE_SOCK
 #include <gio/gio.h>
+#include "parson.h"
+
 #define BLOCK 2048
 static char  _result[BLOCK];
 static char  _response[BLOCK];
 static int   _request_id = 0;
 static int   _strCursor  = 0;  // cursor for writing strings in _result[]
-
-#if 0
-/*
-static gchar              *_parseString(gchar *instr, gchar cend)
-// FIXME: check for overflow in _result[]
-{
-    //gchar *valstr = g_strrstr(instr, key);
-    //if (NULL == valstr)
-    //    return NULL;
-
-    //valstr += strlen(key);
-
-    //gchar *endptr = valstr;
-    //while (*endptr != '\0' && *endptr != '\"')
-    //    ++endptr;
-
-    gchar *endptr = instr;
-    while (*endptr != '\0' && *endptr != '\"')
-        ++endptr;
-
-    gchar *dst = _result + _strCursor;
-    size_t n   = endptr-instr;
-
-    //memcpy(_result+_strCursor, valstr, endptr-valstr);
-    //_strCursor += endptr-valstr;
-    //_result[_strCursor] = '\0';
-    //++_strCursor;
-
-    memcpy(dst, instr, n);
-    _strCursor += n;
-    _result[_strCursor] = '\0';
-    ++_strCursor;
-
-    return dst;
-}
-*/
-#endif
 
 static gchar               _setErr(gchar *errmsg)
 {
@@ -8892,13 +8883,437 @@ static int                 _encode(char *buffer, const char *frmt, ...)
 }
 
 static int                 _handle_method(GString *instr)
+// call the correponding S52_* function named 'method'
+// here 'method' meen function name (or command name)
+// SL4A call it method since is OOP
 {
     // FIXME: use btree for name/function lookup
+    // -OR-
+    // FIXME: order cmdName by frequency
+
+
     // debug
-    //PRINTF("instr->str:%s\n", instr->str);
+    //PRINTF("------------------\n");
+    //PRINTF("instr->str:%s", instr->str);
+
+    // JSON parser
+    JSON_Value *val       = json_parse_string(instr->str);
+    if (NULL == val) {
+        PRINTF("ERROR: json_parse_string() failed (NULL) \n");
+        return FALSE;
+    }
+
+    // init JSON Object
+    JSON_Object *obj      = json_value_get_object(val);
+
+    // get S52_* Command Name
+    const char  *cmdName  = json_object_dotget_string(obj, "method");
+    //PRINTF("JSON cmdName:%s\n", cmdName);
+
+    // start work - fetch cmdName parameters
+    JSON_Array *paramsArr = json_object_get_array(obj, "params");
+    if (NULL == paramsArr)
+        goto exit;
+
+    // get the number of parameters
+    size_t      count     = json_array_get_count (paramsArr);
+
+    // FIXME: check param type
+    // ...
+
+
+    // ---------------------------------------------------------------------
+    //
+    // call command - return answer to caller
+    //
+
+    //extern DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
+    if (0 == S52_strncmp(cmdName, "S52_newOWNSHP", strlen("S52_newOWNSHP"))) {
+        const char *label = json_array_get_string (paramsArr, 0);
+        if ((NULL==label) || (1!=count)) {
+            _setErr("params 'label' not found");
+            goto exit;
+        }
+
+        S52ObjectHandle objH = S52_newOWNSHP(label);
+        _encode(_result, "[%lu]", (long unsigned int *) objH);
+
+        goto exit;
+    }
+
+    //extern DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
+    if (0 == S52_strncmp(cmdName, "S52_newVESSEL", strlen("S52_newVESSEL"))) {
+        if (2 != count) {
+            _setErr("params 'vesrce'/'label' not found");
+            goto exit;
+        }
+
+        int         vesrce = (int)json_array_get_number(paramsArr, 0);
+        const char *label  =      json_array_get_string(paramsArr, 1);
+        if (NULL == label) {
+            _setErr("params 'label' not found");
+            goto exit;
+        }
+
+        S52ObjectHandle objH = S52_newVESSEL(vesrce, label);
+        _encode(_result, "[%lu]", (long unsigned int *) objH);
+        //PRINTF("objH: %lu\n", objH);
+
+        goto exit;
+    }
+
+    // extern DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel);
+    if (0 == S52_strncmp(cmdName, "S52_setVESSELlabel", strlen("S52_setVESSELlabel"))) {
+        if (2 != count) {
+            _setErr("params 'objH'/'newLabel' not found");
+            goto exit;
+        }
+
+        long unsigned int lui = (long unsigned int) json_array_get_number(paramsArr, 0);
+        S52ObjectHandle objH  = (S52ObjectHandle) lui;
+        const char *label = json_array_get_string (paramsArr, 1);
+        if (NULL == label) {
+            _setErr("params 'label' not found");
+            goto exit;
+        }
+
+        objH = S52_setVESSELlabel(objH, label);
+        _encode(_result, "[%lu]", (long unsigned int *) objH);
+
+        goto exit;
+    }
+
+    //extern DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data);
+    if (0 == S52_strncmp(cmdName, "S52_pushPosition", strlen("S52_pushPosition"))) {
+        if (4 != count) {
+            _setErr("params 'objH'/'latitude'/'longitude'/'data' not found");
+            goto exit;
+        }
+
+        long unsigned int lui     = (long unsigned int) json_array_get_number(paramsArr, 0);
+        S52ObjectHandle objH      = (S52ObjectHandle) lui;
+        double          latitude  = json_array_get_number(paramsArr, 1);
+        double          longitude = json_array_get_number(paramsArr, 2);
+        double          data      = json_array_get_number(paramsArr, 3);
+
+        objH  = S52_pushPosition(objH, latitude, longitude, data);
+
+        _encode(_result, "[%lu]", (long unsigned int *) objH);
+
+        goto exit;
+    }
+
+    //extern DLL S52ObjectHandle STD S52_setVector   (S52ObjectHandle objH, int vecstb, double course, double speed);
+    if (0 == S52_strncmp(cmdName, "S52_setVector", strlen("S52_setVector"))) {
+        if (4 != count) {
+            _setErr("params 'objH'/'vecstb'/'course'/'speed' not found");
+            goto exit;
+        }
+
+        long unsigned int lui  = (long unsigned int) json_array_get_number(paramsArr, 0);
+        S52ObjectHandle objH   = (S52ObjectHandle) lui;
+        int             vecstb = (int) json_array_get_number(paramsArr, 1);
+        double          course = json_array_get_number(paramsArr, 2);
+        double          speed  = json_array_get_number(paramsArr, 3);
+
+        objH  = S52_setVector(objH, vecstb, course, speed);
+
+        _encode(_result, "[%lu]", (long unsigned int *) objH);
+
+        goto exit;
+    }
+
+    //extern DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d);
+    if (0 == S52_strncmp(cmdName, "S52_setDimension", strlen("S52_setDimension"))) {
+        if (5 != count) {
+            _setErr("params 'objH'/'a'/'b'/'c'/'d' not found");
+            goto exit;
+        }
+
+        long unsigned int lui = (long unsigned int) json_array_get_number(paramsArr, 0);
+        S52ObjectHandle objH  = (S52ObjectHandle) lui;
+        double          a     = json_array_get_number(paramsArr, 1);
+        double          b     = json_array_get_number(paramsArr, 2);
+        double          c     = json_array_get_number(paramsArr, 3);
+        double          d     = json_array_get_number(paramsArr, 4);
+
+        objH  = S52_setDimension(objH, a, b, c, d);
+
+        _encode(_result, "[%lu]", (long unsigned int *) objH);
+
+        goto exit;
+
+    }
+
+    //extern DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn);
+    if (0 == S52_strncmp(cmdName, "S52_setVESSELstate", strlen("S52_setVESSELstate"))) {
+        if (4 != count) {
+            _setErr("params 'objH'/'vesselSelect'/'vestat'/'vesselTurn' not found");
+            goto exit;
+        }
+
+        long unsigned int lui        = (long unsigned int) json_array_get_number(paramsArr, 0);
+        S52ObjectHandle objH         = (S52ObjectHandle) lui;
+        int             vesselSelect = (int) json_array_get_number(paramsArr, 1);
+        int             vestat       = (int) json_array_get_number(paramsArr, 2);
+        int             vesselTurn   = (int) json_array_get_number(paramsArr, 3);
+
+
+        objH  = S52_setVESSELstate(objH, vesselSelect, vestat, vesselTurn);
+
+        _encode(_result, "[%lu]", (long unsigned int *) objH);
+
+        goto exit;
+    }
+
+
+    //extern DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
+    if (0 == S52_strncmp(cmdName, "S52_delMarObj", strlen("S52_delMarObj"))) {
+        if (1 != count) {
+            _setErr("params 'objH' not found");
+            goto exit;
+        }
+
+        long unsigned int lui  = (long unsigned int) json_array_get_number(paramsArr, 0);
+        S52ObjectHandle   objH = (S52ObjectHandle) lui;
+        objH = S52_delMarObj(objH);
+
+        _encode(_result, "[%lu]", (long unsigned int *) objH);
+
+        goto exit;
+    }
+
+    // FIXME: not all param paresed
+    //extern DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
+    //                                     unsigned int xyznbrmax, double *xyz, const char *listAttVal);
+    if (0 == S52_strncmp(cmdName, "S52_newMarObj", strlen("S52_newMarObj"))) {
+        if (3 != count) {
+            _setErr("params 'plibObjName'/'objType'/'xyznbrmax' not found");
+            goto exit;
+        }
+
+        const char *plibObjName = json_array_get_string(paramsArr, 0);
+        int         objType     = (int) json_array_get_number(paramsArr, 1);
+        int         xyznbrmax   = (int) json_array_get_number(paramsArr, 2);
+        double     *xyz         = NULL;
+        gchar      *listAttVal  = NULL;
+
+
+        S52ObjectHandle objH = S52_newMarObj(plibObjName, objType, xyznbrmax, xyz, listAttVal);
+
+        // debug
+        //PRINTF("S52_newMarObj -> objH: %lu\n", (long unsigned int *) objH);
+
+        _encode(_result, "[%lu]", (long unsigned int *) objH);
+
+        goto exit;
+    }
+
+    //extern DLL const char * STD S52_getPalettesNameList(void);
+    if (0 == S52_strncmp(cmdName, "S52_getPalettesNameList", strlen("S52_getPalettesNameList"))) {
+        const gchar *palListstr = S52_getPalettesNameList();
+
+        _encode(_result, "%s", palListstr);
+
+        //PRINTF("%s", _result);
+
+        goto exit;
+    }
+
+    //extern DLL const char * STD S52_getCellNameList(void);
+    if (0 == S52_strncmp(cmdName, "S52_getCellNameList", strlen("S52_getCellNameList"))) {
+        const gchar *cellNmListstr = S52_getCellNameList();
+
+        _encode(_result, "%s", cellNmListstr);
+
+        //PRINTF("%s", _result);
+
+        goto exit;
+    }
+
+    //extern DLL double STD S52_getMarinerParam(S52MarinerParameter paramID);
+    if (0 == S52_strncmp(cmdName, "S52_getMarinerParam", strlen("S52_getMarinerParam"))) {
+        if (1 != count) {
+            _setErr("params 'paramID' not found");
+            goto exit;
+        }
+
+        int paramID = (int) json_array_get_number(paramsArr, 0);
+
+        double d = S52_getMarinerParam(paramID);
+
+        _encode(_result, "[%f]", d);
+
+        //PRINTF("%s", _result);
+
+        goto exit;
+    }
+
+    //extern DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
+    if (0 == S52_strncmp(cmdName, "S52_setMarinerParam", strlen("S52_setMarinerParam"))) {
+        if (2 != count) {
+            _setErr("params 'paramID'/'val' not found");
+            goto exit;
+        }
+
+        int paramID = (int) json_array_get_number(paramsArr, 0);
+        double val  =       json_array_get_number(paramsArr, 1);
+        double d = S52_setMarinerParam(paramID, val);
+
+        _encode(_result, "[%f]", d);
+
+        //PRINTF("%s", _result);
+
+        goto exit;
+    }
+
+    //extern DLL int    STD S52_drawLast(void);
+    if (0 == S52_strncmp(cmdName, "S52_drawLast", strlen("S52_drawLast"))) {
+        int i = S52_drawLast();
+
+        _encode(_result, "[%i]", i);
+
+        //PRINTF("%s", _result);
+
+        goto exit;
+    }
+
+    //extern DLL int    STD S52_draw(void);
+    if (0 == S52_strncmp(cmdName, "S52_draw", strlen("S52_draw"))) {
+        int i = S52_draw();
+
+        _encode(_result, "[%i]", i);
+
+        //PRINTF("%s", _result);
+
+        goto exit;
+    }
+
+    //extern DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
+    if (0 == S52_strncmp(cmdName, "S52_getRGB", strlen("S52_getRGB"))) {
+        if (1 != count) {
+            _setErr("params 'colorName' not found");
+            goto exit;
+        }
+
+        const char *colorName  = json_array_get_string(paramsArr, 0);
+
+        unsigned char R;
+        unsigned char G;
+        unsigned char B;
+        int ret = S52_getRGB(colorName, &R, &G, &B);
+        PRINTF("%i, %i, %i\n", R,G,B);
+        //PRINTF("%c, %c, %c\n", R,G,B);
+
+        if (TRUE == ret)
+            _encode(_result, "[%i,%i,%i]", R, G, B);
+        else
+            _encode(_result, "[0]");
+
+        //PRINTF("%s\n", _result);
+
+        goto exit;
+    }
+
+    //extern DLL int    STD S52_setTextDisp(int dispPrioIdx, int count, int state);
+    if (0 == S52_strncmp(cmdName, "S52_setTextDisp", strlen("S52_setTextDisp"))) {
+        if (3 != count) {
+            _setErr("params '&dispPrioIdx' / 'count' / 'state' not found");
+            goto exit;
+        }
+
+        int dispPrioIdx = (int) json_array_get_number(paramsArr, 0);
+        int count       = (int) json_array_get_number(paramsArr, 1);
+        int state       = (int) json_array_get_number(paramsArr, 2);
+
+        int ret = S52_setTextDisp(dispPrioIdx, count, state);
+
+        if (TRUE == ret)
+            _encode(_result, "[1]");
+        else
+            _encode(_result, "[0]");
+
+        //PRINTF("%s\n", _result);
+
+        goto exit;
+    }
+
+    //extern DLL int    STD S52_getTextDisp(int dispPrioIdx);
+    if (0 == S52_strncmp(cmdName, "S52_getTextDisp", strlen("S52_getTextDisp"))) {
+        if (1 != count) {
+            _setErr("params 'dispPrioIdx' not found");
+            goto exit;
+        }
+
+        int dispPrioIdx = (int) json_array_get_number(paramsArr, 0);
+
+        int ret = S52_getTextDisp(dispPrioIdx);
+
+        if (TRUE == ret)
+            _encode(_result, "[1]");
+        else {
+            if (-1 == ret)
+                _encode(_result, "[-1]");
+            else // FALSE
+                _encode(_result, "[0]");
+        }
+
+        //PRINTF("%s\n", _result);
+
+        goto exit;
+    }
+
+    //extern DLL int    STD S52_loadCell        (const char *encPath,  S52_loadObject_cb loadObject_cb);
+    if (0 == S52_strncmp(cmdName, "S52_loadCell", strlen("S52_loadCell"))) {
+        if (1 != count) {
+            _setErr("params 'encPath' not found");
+            goto exit;
+        }
+
+        const char *encPath = json_array_get_string(paramsArr, 0);
+
+        int ret = S52_loadCell(encPath, NULL);
+
+        if (TRUE == ret)
+            _encode(_result, "[1]");
+        else {
+            _encode(_result, "[0]");
+        }
+
+        //PRINTF("%s\n", _result);
+
+        goto exit;
+    }
+
+    //extern DLL int    STD S52_doneCell        (const char *encPath);
+    if (0 == S52_strncmp(cmdName, "S52_doneCell", strlen("S52_doneCell"))) {
+        if (1 != count) {
+            _setErr("params 'encPath' not found");
+            goto exit;
+        }
+
+        const char *encPath = json_array_get_string(paramsArr, 0);
+        int ret = S52_doneCell(encPath);
+
+        if (TRUE == ret)
+            _encode(_result, "[1]");
+        else {
+            _encode(_result, "[0]");
+        }
+
+        //PRINTF("%s\n", _result);
+
+        goto exit;
+    }
+
+    return FALSE;
+
+exit:
+    json_value_free(val);
+    return TRUE;
 
     // read command name
-    //gchar *cmdstr = g_strrstr(instr->str, "\"command\"");
+    /*
     gchar *cmdstr = g_strrstr(instr->str, "\"method\"");
     gchar cmdName[32];
     if (NULL != cmdstr) {
@@ -8911,14 +9326,17 @@ static int                 _handle_method(GString *instr)
         _setErr("key 'method' not found");
         return FALSE;
     }
+    */
 
-    //PRINTF("cmdName:%s\n", cmdName);
 
+    // need this to compile
+    //gchar jsonarr[128];
+
+    /*
     // read parameter array
     gchar *paramsstr = g_strrstr(instr->str, "\"params\"");
     gchar jsonarr[128];
     if (NULL != paramsstr) {
-        //int ret = sscanf(paramsstr, "\"params\" : [ \"%s", jsonarr);
         int ret = sscanf(paramsstr, "\"params\" : [ %127c", jsonarr);
         if (0 == ret) {
             _setErr("array value for key 'params' not found");
@@ -8998,7 +9416,6 @@ static int                 _handle_method(GString *instr)
 
     //extern DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data);
     if (0 == S52_strncmp(cmdName, "S52_pushPosition", strlen("S52_pushPosition"))) {
-        //*
         S52ObjectHandle objH      ;
         double          latitude  ;
         double          longitude ;
@@ -9014,13 +9431,11 @@ static int                 _handle_method(GString *instr)
         objH  = S52_pushPosition(objH, latitude, longitude, data);
 
         _encode(_result, "[%p]", objH);
-        //*/
         return TRUE;
     }
 
     //extern DLL S52ObjectHandle STD S52_setVector   (S52ObjectHandle objH, int vecstb, double course, double speed);
     if (0 == S52_strncmp(cmdName, "S52_setVector", strlen("S52_setVector"))) {
-        //*
         S52ObjectHandle objH   ;
         int             vecstb ;
         double          course ;
@@ -9035,7 +9450,6 @@ static int                 _handle_method(GString *instr)
         objH  = S52_setVector(objH, vecstb, course, speed);
 
         _encode(_result, "[%p]", objH);
-        //*/
         return TRUE;
     }
 
@@ -9080,6 +9494,7 @@ static int                 _handle_method(GString *instr)
 
         return TRUE;
     }
+
 
     //extern DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
     if (0 == S52_strncmp(cmdName, "S52_delMarObj", strlen("S52_delMarObj"))) {
@@ -9203,7 +9618,7 @@ static int                 _handle_method(GString *instr)
 
         //PRINTF("%s", _result);
 
-        return TRUE;
+        goto exit;
     }
 
     //extern DLL int    STD S52_draw(void);
@@ -9214,7 +9629,7 @@ static int                 _handle_method(GString *instr)
 
         //PRINTF("%s", _result);
 
-        return TRUE;
+        goto exit;
     }
 
     //extern DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
@@ -9322,16 +9737,16 @@ static int                 _handle_method(GString *instr)
 
     //extern DLL int    STD S52_doneCell        (const char *encPath);
     if (0 == S52_strncmp(cmdName, "S52_doneCell", strlen("S52_doneCell"))) {
+        if (1 != count) {
+            _setErr("params 'encPath' not found");
+            return FALSE;
+        }
+
         char encPath[128];
 
         //PRINTF("XXXX %s\n", jsonarr);
 
         int r = sscanf(jsonarr, " \"%127c ", encPath);
-        if (1 != r) {
-            _setErr("params 'encPath' not found");
-            return FALSE;
-        }
-
         //PRINTF("XXXX %s\n", encPath);
 
         gchar  *cptr = encPath;
@@ -9350,10 +9765,7 @@ static int                 _handle_method(GString *instr)
 
         return TRUE;
     }
-
-
-
-    return FALSE;
+    //*/
 }
 
 gboolean                   _socket_read_write(GIOChannel *source, GIOCondition cond, gpointer user_data)

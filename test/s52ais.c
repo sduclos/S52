@@ -558,9 +558,7 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         }
     }
 
-    // NEW AIS (not found hence new)
-    {
-        //char mmsistr[40];
+    {   // NEW AIS (not found hence new)
         _ais_t newais;
         newais.mmsi     = mmsi;
         newais.status   = -1;     // 0 indicate that status form report is needed
@@ -576,16 +574,15 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         // debug: make ferry acte as ownshp
         if (OWNSHIP == mmsi) {
             gchar *resp = _encodeNsend("S52_newOWNSHP", "\"%s\"", newais.name);
-            if (NULL != resp)
-                sscanf(resp, "[ %p", &newais.vesselH);
-
-            //newais.vesselH = S52_newOWNSHP(newais.name);
+            if (NULL != resp) {
+                sscanf(resp, "[ %lu", (long unsigned int *) &newais.vesselH);
+            }
         } else {
             gchar *resp = _encodeNsend("S52_newVESSEL", "%i,\"%s\"", 2, newais.name);
-            if (NULL != resp)
-                sscanf(resp, "[ %p", &newais.vesselH);
-
-            //newais.vesselH = S52_newVESSEL(2, newais.name);
+            if (NULL != resp) {
+                sscanf(resp, "[ %lu", (long unsigned int *) &newais.vesselH);
+            }
+            g_printf("vesselH:%lu\n", (long unsigned int) newais.vesselH);
         }
 #else
         // debug: make ferry acte as ownshp
@@ -607,15 +604,15 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         if (OWNSHIP == mmsi) {
             gchar *resp = _encodeNsend("S52_newMarObj", "\"%s\",%i,%i", "afgshp", S52_LINES, MAX_AFGLOW_PT);
             if (NULL != resp)
-                sscanf(resp, "[ %p", &newais.afglowH);
+                sscanf(resp, "[ %lu", (long unsigned int *) &newais.afglowH);
 
-            //newais.afglowH = S52_newMarObj("afgshp", S52_LINES, MAX_AFGLOW_PT, NULL, NULL);
         } else {
             gchar *resp = _encodeNsend("S52_newMarObj", "\"%s\",%i,%i", "afgves", S52_LINES, MAX_AFGLOW_PT);
             if (NULL != resp)
-                sscanf(resp, "[ %p", &newais.afglowH);
+                sscanf(resp, "[ %lu", (long unsigned int *) &newais.afglowH);
 
-            //newais.afglowH = S52_newMarObj("afgves", S52_LINES, MAX_AFGLOW_PT, NULL, NULL);
+            g_printf("afglowH:%lu\n", (long unsigned int) newais.afglowH);
+
         }
 #else
         // debug: make ferry acte as ownshp
@@ -651,9 +648,9 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
 }
 
 static int           _setAISInfo(unsigned int mmsi, unsigned int imo, char *callsign,
-                                  unsigned int shiptype,
-                                  unsigned int month, unsigned int day, unsigned int hour, unsigned int minute,
-                                  unsigned int draught, char *destination)
+                                 unsigned int shiptype,
+                                 unsigned int month, unsigned int day, unsigned int hour, unsigned int minute,
+                                 unsigned int draught, char *destination)
 {
     _ais_t *ais = _getAIS(mmsi);
     if (NULL == ais)
@@ -678,24 +675,14 @@ static int           _setAISPos (unsigned int mmsi, double lat, double lon, doub
 
 
 #ifdef S52_USE_SOCK
-    _encodeNsend("S52_pushPosition", "%p,%lf,%lf,%lf", ais->vesselH, lat, lon, heading);
-    /*
-    {
-        gchar    str[80+1];
-        GTimeVal now;
-
-        g_get_current_time(&now);
-        g_snprintf(str, 80, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
-        _encodeNsend("S52_setVESSELlabel", "%p,\"%s\"", ais->vesselH, str);
-    }
-    */
+    _encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int *)ais->vesselH, lat, lon, heading);
 #else
     S52_pushPosition(ais->vesselH, lat, lon, heading);
 #endif
 
 #ifdef S52_USE_AFGLOW
 #ifdef S52_USE_SOCK
-    _encodeNsend("S52_pushPosition", "%p,%lf,%lf,%lf", ais->afglowH, lat, lon, heading);
+    _encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int *)ais->afglowH, lat, lon, heading);
 #else
     S52_pushPosition(ais->afglowH, lat, lon, 0.0);
 #endif
@@ -722,7 +709,7 @@ static int           _setAISVec (unsigned int mmsi, double course, double speed)
     ais->speed  = speed;
 
 #ifdef S52_USE_SOCK
-    _encodeNsend("S52_setVector", "%p,%i,%lf,%lf", ais->vesselH, vecstb, course, speed);
+    _encodeNsend("S52_setVector", "%lu,%i,%lf,%lf", ais->vesselH, vecstb, course, speed);
 #else
     S52_setVector(ais->vesselH, vecstb, course, speed);
 #endif
@@ -748,7 +735,7 @@ static int           _setAISLab (unsigned int mmsi, const char *name)
 
 /*
 #ifdef S52_USE_SOCK
-        gchar *resp = _encodeNsend("S52_setVESSELlabel", "%p,\"%s\"", ais->vesselH, name);
+        gchar *resp = _encodeNsend("S52_setVESSELlabel", "%i,\"%s\"", ais->vesselH, name);
         if (NULL != resp) {
             S52ObjectHandle tmpObjH;
             sscanf(resp, "[ %p", &tmpObjH);
@@ -781,7 +768,7 @@ static int           _setAISDim (unsigned int mmsi, double a, double b, double c
         return FALSE;
 
 #ifdef S52_USE_SOCK
-    _encodeNsend("S52_setDimension", "%p,%lf,%lf,%lf,%lf", ais->vesselH, a, b, c, d);
+    _encodeNsend("S52_setDimension", "%lu,%lf,%lf,%lf,%lf", ais->vesselH, a, b, c, d);
 #else
     S52_setDimension(ais->vesselH, a, b, c, d);
 #endif
@@ -822,13 +809,13 @@ static int           _setAISSta (unsigned int mmsi, int status, int turn)
 
         if (1==status || 5==status || 6==status) {
 #ifdef S52_USE_SOCK
-            _encodeNsend("S52_setVESSELstate", "%p,%i,%i,%i", ais->vesselH, 0, 2, turn );
+            _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, 2, turn );
 #else
             S52_setVESSELstate(ais->vesselH, 0, 2, turn);   // AIS sleeping
 #endif
         } else {
 #ifdef S52_USE_SOCK
-            _encodeNsend("S52_setVESSELstate", "%p,%i,%i,%i", ais->vesselH, 0, 1, turn );
+            _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, 1, turn );
 
 #else
             S52_setVESSELstate(ais->vesselH, 0, 1, turn);   // AIS active
@@ -862,7 +849,7 @@ static int           _setAISDel (_ais_t *ais)
 #endif
 
 #ifdef S52_USE_SOCK
-    _encodeNsend("S52_delMarObj", "%p", ais->vesselH);
+    _encodeNsend("S52_delMarObj", "%lu", ais->vesselH);
 #else
     ais->vesselH = S52_delMarObj(ais->vesselH);
     if (NULL != ais->vesselH) {
@@ -874,7 +861,7 @@ static int           _setAISDel (_ais_t *ais)
 
 #ifdef S52_USE_AFGLOW
 #ifdef S52_USE_SOCK
-    _encodeNsend("S52_delMarObj", "%p", ais->afglowH);
+    _encodeNsend("S52_delMarObj", "%lu", ais->afglowH);
 #else
     ais->afglowH = S52_delMarObj(ais->afglowH);
     if (NULL != ais->afglowH) {
@@ -963,7 +950,6 @@ static int           _updateTimeTag(void)
     while (TRUE == _removeOldAIS())
         _dumpAIS();
 
-    //unsigned int i = 0;
     for (unsigned int i=0; i<_ais_list->len; ++i) {
         gchar         str[127+1] = {'\0'};
         GTimeVal      now;
@@ -971,19 +957,15 @@ static int           _updateTimeTag(void)
 
         g_get_current_time(&now);
 
-        //g_snprintf(str, 80, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
-        //g_snprintf(str, 80, "%s %lis\n%3f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
-        //g_snprintf(str, 255, "%s %lis %03.f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
         if (-1.0 != ais->course) {
-            //g_snprintf(str, 127, "%s %lis\t%03.f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
-            g_snprintf(str, 127, "%s %lis\t%03.f deg | %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
+            g_snprintf(str, 127, "%s %lis\\n%03.f deg | %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
         } else {
             g_snprintf(str, 127, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
         }
 
 
 #ifdef S52_USE_SOCK
-        _encodeNsend("S52_setVESSELlabel", "%p,\"%s\"", ais->vesselH, str);
+        _encodeNsend("S52_setVESSELlabel", "%lu,\"%s\"", ais->vesselH, str);
 #else
         S52_setVESSELlabel(ais->vesselH, str);
 #endif
@@ -1356,7 +1338,8 @@ int            s52ais_updateTimeTag(void)
         g_get_current_time(&now);
 
         //g_snprintf(str, 80, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
-        g_snprintf(str, 80, "%s %lis\n%3f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
+        //g_snprintf(str, 80, "%s %lis \\n %3f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
+        g_snprintf(str, 80, "%s %lis\\n%3f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
         S52_setVESSELlabel(ais->vesselH, str);
     }
 

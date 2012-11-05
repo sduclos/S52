@@ -246,6 +246,8 @@ static gchar   *_s52_encodeNsend(const char *command, const char *frmt, ...)
     if (NULL != resp) {
         while (*resp != '[')
             resp++;
+    } else {
+        g_print("WARNING:sl4agps:_s52_encodeNsend():_send_cmd(): failed (NULL)\n");
     }
 
     return resp;
@@ -261,20 +263,17 @@ static int      _s52_init(void)
     _s52_ownshp = NULL;
     gchar *resp = _s52_encodeNsend("S52_newOWNSHP", "\"%s\"", "OWNSHP");
     if (NULL != resp)
-        sscanf(resp, "[ %p", &_s52_ownshp);
+        sscanf(resp, "[ %lu", (long unsigned int *) &_s52_ownshp);
 
     if (NULL != _s52_ownshp)
-        _s52_encodeNsend("S52_setDimension", "%p,%lf,%lf,%lf,%lf", _s52_ownshp, 0.0, 100.0, 15.0, 0.0);
-
-    //if (NULL != resp)
-    //    sscanf(resp, "[ %p", &_ownshp);
+        _s52_encodeNsend("S52_setDimension", "%lu,%lf,%lf,%lf,%lf", (long unsigned int) _s52_ownshp, 0.0, 100.0, 15.0, 0.0);
 
     return TRUE;
 }
 
 static int      _s52_done(void)
 {
-    _s52_encodeNsend("S52_delMarObj", "%p", _s52_ownshp);
+    _s52_encodeNsend("S52_delMarObj", "%lu", (long unsigned int) _s52_ownshp);
 
     if (NULL != _s52_connection)
         g_object_unref(_s52_connection);
@@ -343,41 +342,44 @@ static int      _sl4a_init_sock  (char *hostname, int port)
 
 static int      _sl4a_init       (void)
 {
-    //*
-    const gchar cmdSL4A[] =
-        "sh   /system/bin/am start                                                     "
-        "-a   com.googlecode.android_scripting.action.LAUNCH_SERVER                    "
-        "-n   com.googlecode.android_scripting/.activity.ScriptingLayerServiceLauncher "
-        "--ei com.googlecode.android_scripting.extra.USE_SERVICE_PORT 45001            "
-        "--activity-previous-is-top";
-    //*/
-    /*
-    const gchar cmdSL4A[] =
-        "sh   /system/bin/am start                                                     "
-        "-a   com.googlecode.android_scripting.action.LAUNCH_BACKGROUND_SCRIPT         "
-        "-n   com.googlecode.android_scripting/.activity.ScriptingLayerServiceLauncher "
-        "--ei com.googlecode.android_scripting.extra.USE_SERVICE_PORT 45001            "
-        "--activity-previous-is-top";
-    */
+    // FIXME: try sending something (init()) first to see if SL4A is allready up from
+    // previous run and if so skip init().
+    // BUG: starting SL4A twice slow down SL4A
+    // first check if SL4A is allready up
+    if (NULL == (_sl4a_connectionA = _init_sock(_localhost, SL4A_PORT))) {
 
-    // Android quirk: g_spawn() return the return value of the cmd (here 0)
-    // check this: so it return FALSE to meen SUCCESS!!
-    int ret = g_spawn_command_line_async(cmdSL4A, NULL);
-    if (FALSE == ret) {
-        g_print("sl4agps:_sl4a_init(): fail to start sl4a server script .. exit\n", ret);
-        return FALSE;
+        //    "-a   com.googlecode.android_scripting.action.LAUNCH_BACKGROUND_SCRIPT         "
+        //    "--activity-previous-is-top";
+        // launch public server
+        //    "--ez com.googlecode.android_scripting.extra.USE_PUBLIC_IP true"
+        const gchar cmdSL4A[] =
+            "sh   /system/bin/am start                                                     "
+            "-a   com.googlecode.android_scripting.action.LAUNCH_SERVER                    "
+            "-n   com.googlecode.android_scripting/.activity.ScriptingLayerServiceLauncher "
+            "--ei com.googlecode.android_scripting.extra.USE_SERVICE_PORT 45001            "
+            "--ez com.googlecode.android_scripting.extra.USE_PUBLIC_IP true                "
+            "--activity-previous-is-top";
+
+        // Android quirk: g_spawn() return the return value of the cmd (here 0)
+        // check this: return FALSE to meen SUCCESS!!
+        int ret = g_spawn_command_line_async(cmdSL4A, NULL);
+        if (FALSE == ret) {
+            g_print("sl4agps:_sl4a_init(): fail to start sl4a server script .. exit\n", ret);
+            return FALSE;
+        }
+
+        while (NULL == (_sl4a_connectionA = _init_sock(_localhost, SL4A_PORT))) {
+            g_print("sl4agps:DEBUG: _sl4a_init():_sl4a_init_sock() failed .. wait 1 sec for the server to come on-line\n");
+            g_usleep(1000 * 1000); // 1.0 sec
+        }
+
+        // this needs to be called only once, after the SL4A server starts:
+        // (maybe usefull on remote app, unneeded at the moment since sl4a work just fine without)
+        //sl4a_rpc_method(_sl4a_socket_fd, (char*)"_authenticate", (char)'v', (void*)"s", "");
+        //_send_cmd(_sl4a_connectionA, (char*)"_authenticate", "''");
+    } else {
+        g_print("sl4agps:_sl4a_init(): SL4A allready on-line\n");
     }
-
-    while (NULL == (_sl4a_connectionA = _init_sock(_localhost, SL4A_PORT))) {
-        g_print("sl4agps:DEBUG: _sl4a_init():_sl4a_init_sock() failed .. wait 1 sec for the server to come on-line\n");
-        g_usleep(1000 * 1000); // 1.0 sec
-    }
-
-    // this needs to be called only once, after the SL4A server starts:
-    // (maybe usefull on remote app, unneeded at the moment since sl4a work just fine now)
-    //sl4a_rpc_method(_sl4a_socket_fd, (char*)"_authenticate", (char)'v', (void*)"s", "");
-    //_send_cmd(_sl4a_connectionA, (char*)"_authenticate", "''");
-
 
 
     // Gyro v=ii
@@ -388,7 +390,9 @@ static int      _sl4a_init       (void)
     // GPS  v=ii
     // Integer minDistance[optional, default 60000]: minimum time between updates in uSec,
     // Integer minUpdateDistance[optional, default 30]: minimum distance between updates in meters)
-    _send_cmd(&_sl4a_connectionA, "startLocating", "");    // 0.5 sec
+    //_send_cmd(&_sl4a_connectionA, "startLocating", "");    // 0.5 sec
+    //_send_cmd(&_sl4a_connectionA, "startLocating", "");    // 0.5 sec
+    _send_cmd(&_sl4a_connectionA, "startLocating", "30,1000000");    // 30m, 1.0sec
 
     _sl4a_init_sensor = TRUE;
 
@@ -574,23 +578,27 @@ static int      _sl4a_fullShowSet(void)
     const char *rgbstr = _s52_encodeNsend("S52_getRGB", "\"UIBCK\"");
     if (NULL != rgbstr) {
         char str[STRSZ];
-        g_snprintf(str, STRSZ, "'LeftPane','background','#88%c%c%c%c%c%c'", rgbstr[1],rgbstr[2], rgbstr[4],rgbstr[5], rgbstr[7],rgbstr[8]);
-        g_print("sl4agps:_sl4a_fullShowSet():str=%s, rgbstr=%s\n", str, rgbstr);
-        //_sl4a_fullShow():str='LeftPane','background','#55 \x81 \x84 \x87', rgbstr=[C8,ED,FE]}
+        unsigned int R,G,B;
+        //g_print("sl4agps:_sl4a_fullShowSet():rgbstr=%s\n", rgbstr);
+        sscanf(rgbstr, "[ %u , %u , %u", &R,&G,&B);
+
+        g_snprintf(str, STRSZ, "'LeftPane','background','#88%02x%02x%02x'", R,G,B);
+        //g_print("sl4agps:_sl4a_fullShowSet():str=%s, RGB=%x %x %x\n", str, R,G,B);
 
         _send_cmd(&_sl4a_connectionA, "fullSetProperty", str);
-        //_send_cmd(_sl4a_connectionA, "fullSetProperty", "'textView','textColor','#ff00ff00'");
     }
 
+    //*
     // set S52 UI Text Color
     rgbstr = _s52_encodeNsend("S52_getRGB", "\"UINFF\"");
     if (NULL != rgbstr) {
+        char str[STRSZ];
+        unsigned int R,G,B;
+        sscanf(rgbstr, "[ %u , %u , %u", &R,&G,&B);
         for (int i=0; i<NBR_TEXT; ++i) {
-            char str[STRSZ];
-            // this will set the first ID 'textView' not all of them
-            //g_snprintf(str, STRSZ, "'textView','textColor','#ff%c%c%c%c%c%c'", rgbstr[1],rgbstr[2], rgbstr[4],rgbstr[5], rgbstr[7],rgbstr[8]);
-            //g_snprintf(str, STRSZ, "'s52_text_%03i','textColor','#ff%c%c%c%c%c%c'", i, rgbstr[1],rgbstr[2], rgbstr[4],rgbstr[5], rgbstr[7],rgbstr[8]);
-            g_snprintf(str, STRSZ, "'s52_text_%i','textColor','#ff%c%c%c%c%c%c'", i, rgbstr[1],rgbstr[2], rgbstr[4],rgbstr[5], rgbstr[7],rgbstr[8]);
+            //g_snprintf(str, STRSZ, "'s52_text_%i','textColor','#ff%c%c%c%c%c%c'", i, rgbstr[1],rgbstr[2], rgbstr[4],rgbstr[5], rgbstr[7],rgbstr[8]);
+            g_snprintf(str, STRSZ, "'s52_text_%i','textColor','#ff%02x%02x%02x'", i, R,G,B);
+
             _send_cmd(&_sl4a_connectionA, "fullSetProperty", str);
         }
     }
@@ -598,15 +606,18 @@ static int      _sl4a_fullShowSet(void)
     // set S52 UI Border Color
     rgbstr = _s52_encodeNsend("S52_getRGB", "\"UIBDR\"");
     if (NULL != rgbstr) {
-        // FIXME: find a way to get the number of border!
+        char str[STRSZ];
+        unsigned int R,G,B;
+        sscanf(rgbstr, "[ %u , %u , %u", &R,&G,&B);
         for (int i=0; i<NBR_BORDER; ++i) {
-            char str[STRSZ];
-            //g_snprintf(str, STRSZ, "'line1','background','#ff%c%c%c%c%c%c'", rgbstr[1],rgbstr[2], rgbstr[4],rgbstr[5], rgbstr[7],rgbstr[8]);
-            //g_snprintf(str, STRSZ, "'s52_border_%03i','background','#ff%c%c%c%c%c%c'", i, rgbstr[1],rgbstr[2], rgbstr[4],rgbstr[5], rgbstr[7],rgbstr[8]);
-            g_snprintf(str, STRSZ, "'s52_border_%i','background','#ff%c%c%c%c%c%c'", i, rgbstr[1],rgbstr[2], rgbstr[4],rgbstr[5], rgbstr[7],rgbstr[8]);
+            //g_snprintf(str, STRSZ, "'s52_border_%i','background','#ff%c%c%c%c%c%c'", i, rgbstr[1],rgbstr[2], rgbstr[4],rgbstr[5], rgbstr[7],rgbstr[8]);
+            g_snprintf(str, STRSZ, "'s52_border_%i','background','#ff%02x%02x%02x'", i, R,G,B);
+
             _send_cmd(&_sl4a_connectionA, "fullSetProperty", str);
         }
     }
+    //*/
+
 
     _sl4a_setCheckBox_key(S52_MAR_DISP_CATEGORY,   "DISPCATSTDcheckBox",       S52_MAR_DISP_CATEGORY_STD     );
     _sl4a_setCheckBox_key(S52_MAR_DISP_CATEGORY,   "DISPCATOTHERcheckBox",     S52_MAR_DISP_CATEGORY_OTHER   );
@@ -1370,14 +1381,14 @@ static int      _sl4a_sendS52cmd (gpointer user_data)
         double speed   = 60.0;
         double azimuth = _sl4a_getGyro();
         if (-1.0 != azimuth) {
-            _s52_encodeNsend("S52_setVector", "%p,%i,%lf,%lf", _s52_ownshp, vecstb, azimuth, speed);
+            _s52_encodeNsend("S52_setVector", "%lu,%i,%lf,%lf", (long unsigned int) _s52_ownshp, vecstb, azimuth, speed);
             //S52_setVector(_ownshp, vecstb, azimuth, speed);
         }
 
         double lat = 0.0;
         double lon = 0.0;
         if (TRUE == _sl4a_getGPS(&lat, &lon)) {
-            _s52_encodeNsend("S52_pushPosition", "%p,%lf,%lf,%lf", _s52_ownshp, lat, lon, azimuth);
+            _s52_encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int) _s52_ownshp, lat, lon, azimuth);
             //g_print("sl4agps:lat:%f lon:%f az:%f\n", lat, lon, azimuth);
         }
 

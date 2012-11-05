@@ -516,7 +516,7 @@ extern DLL int    STD S52_toggleObjClass   (const char *className);
  * S52_toggleObjClassON:
  * @className: (in): name of the classe of S57 object
  *
- * Object class to display (ON).
+ * supress display of Object class (suppression ON.)
  *
  * NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT (3).
  *
@@ -529,7 +529,7 @@ extern DLL int    STD S52_toggleObjClassON (const char *className);
  * S52_toggleObjClassOFF:
  * @className: (in): name of the classe of S57 object
  *
- * Object class to suppress display (OFF).
+ * display Object class (suppression OFF.)
  *
  * NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT (3).
  *
@@ -551,10 +551,10 @@ extern DLL int    STD S52_getS57ObjClassSupp(const char *className);
 
 /**
  * S52_setS57ObjClassSupp:
- * @className: (in): name of the classe of S57 object
+ * @className: (in): name of the S57 classe
  * @value: (in): TRUE / FALSE
  *
- * set Object class suppression
+ * set suppression (TRUE/FALSE) from display of all Objects of the S57 class @className
  *
  *
  * Return: TRUE if call successfull else FALSE, error -1 (DISPLAYBASE or invalid className)

@@ -26,7 +26,8 @@
 // the end of this file.
 
 
-
+    //glPixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    //glTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
 
 #include "S52GL.h"
 #include "S52MP.h"        // S52_MP_get/set()
@@ -168,6 +169,7 @@ static GLuint  _text_textureID = 0;
 static GArray *_textWorkBuf    = NULL;
 #define S52_LF  '\r'   // Line Feed
 #define S52_TAB '\t'   // Tabulation
+#define S52_NL  '\n'   // New Line
 
 #endif // S52_USE_GLES2
 #endif // S52_USE_FREETYPE_GL
@@ -3228,9 +3230,9 @@ static int       _computeCentroid(S57_geo *geoData)
     //if (0 ==  g_strcmp0("ISTZNE", S57_getName(geoData))) {
     //    PRINTF("ISTZNEA found\n");
     //}
-    if (0 ==  g_strcmp0("PRDARE", S57_getName(geoData))) {
-        PRINTF("PRDARE found\n");
-    }
+    //if (0 ==  g_strcmp0("PRDARE", S57_getName(geoData))) {
+    //    PRINTF("PRDARE found\n");
+    //}
 
 
     //PRINTF("%s EXT %f,%f -- %f,%f\n", S57_getName(geoData), _pmin.u, _pmin.v, _pmax.u, _pmax.v);
@@ -3832,8 +3834,10 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
         // symbol to be used for checking and adjusting the brightness and contrast controls
         if (0==g_strcmp0(attval->str, "BLKADJ01")) {
-            double x = 50;
-            double y = 100;
+            //double x = 50;
+            double x = 1230;
+            //double y = 100;
+            double y = 710;
 
             _glMatrixSet(VP_PRJ);
             _win2prj(&x, &y);
@@ -4173,7 +4177,7 @@ static int       _renderSY_vessel(S52_obj *obj)
     // AIS selected: experimental, put selected symbol on taget
     if ((0 == S52_PL_cmpCmdParam(obj, "AISSEL01")) &&
         (NULL!=vestatstr                           &&
-         ('1'==*vestatstr->str || '2'==*vestatstr->str ))
+        ('1'==*vestatstr->str || '2'==*vestatstr->str ))
        )
     {
         GString *_vessel_selectstr = S57_getAttVal(geo, "_vessel_select");
@@ -7275,7 +7279,7 @@ static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
     //float pen_y = 0.0;
     int pen_x = 0;
     int pen_y = 0;
-    int   space = FALSE;
+    int space = FALSE;
 
     size_t i   = 0;
     size_t len = S52_strlen(str);
@@ -7284,13 +7288,15 @@ static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
 
     //for (i=0; i<wcslen(str); ++i) {
     for (i=0; i<len; ++i) {
-        if (S52_TAB == str[i]) {
+        //if (S52_TAB == str[i]) {
+        //if (('\\'==str[i]) && ('n'==str[i+1])) {
+        if ('\n' == str[i]) {
             weight = (0<weight) ? weight-1 : weight;
             texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], 'A');
             pen_x =  0;
             pen_y = (NULL!=glyph) ? -(glyph->height+5) : 10 ;
             space = TRUE;
-            //continue;
+            ++i;
         }
 
 
@@ -7298,7 +7304,8 @@ static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
         if (NULL != glyph) {
 
             //*
-            if (i > 0) {
+            //if (i > 0) {
+            if (pen_x > 0) {
                 //float kerning = texture_glyph_get_kerning(glyph, str[i-1]);
                 //pen_x += kerning;
                 pen_x += texture_glyph_get_kerning(glyph, str[i-1]);

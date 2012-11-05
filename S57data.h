@@ -62,6 +62,11 @@ extern S57_geo  *S57_setGeoLine(S57_geo *geoData, guint xyznbr, geocoord *xyz);
 extern S57_geo  *S57_getGeoLink(S57_geo *geoData);
 extern S57_geo  *S57_setGeoLink(S57_geo *geoData, S57_geo *link);
 
+#ifdef S52_USE_WORLD
+extern S57_geo  *S57_setNextPoly(S57_geo *geoData, S57_geo *nextPoly);
+extern S57_geo  *S57_getNextPoly(S57_geo *geoData);
+#endif
+
 extern int       S57_setName  (S57_geo *geoData, const char *name);
 extern char     *S57_getName  (S57_geo *geoData);
 

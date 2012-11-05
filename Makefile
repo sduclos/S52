@@ -8,6 +8,8 @@
 # SD JUN2009   - fix s52gv
 # SD FEB2010   - fix s52gv2 (now default)
 # SD 2011NOV08 - add s52eglarm (android)
+# SD 2012NOV04 - add Parson lib (simple JSON parser) to handle SOCK stream
+# SD 2012NOV05 - move sduc-git.txt note inside Makefile (bottom)
 
 
 ##### TARGET #########
@@ -90,6 +92,7 @@ OBJS_TESS = ./lib/tesselator/dict.o      ./lib/tesselator/geom.o     \
             ./lib/tesselator/sweep.o     ./lib/tesselator/tessmono.o \
             ./lib/tesselator/tess.o
 
+OBJ_PARSON = ./lib/parson/parson.o
 
 OPENEV_HOME  = `pwd -P`/../../openev-cvs
 OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
@@ -171,11 +174,13 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0`\
 # -DS52_USE_OGR_FILECOLLECTOR
 # -DS52_USE_SYM_AISSEL01         (experimental - symbol in plib-test-priv.rle)
 # -DS52_USE_SOCK
+# -DS52_USE_WORLD
 s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
                   -I/usr/include/freetype2       \
 				  -I./lib/freetype-gl            \
+				  -I./lib/parson                 \
                   -DS52_USE_PROJ                 \
                   -DS52_USE_GLIB2                \
                   -DS52_USE_DOTPITCH             \
@@ -226,16 +231,17 @@ s52eglarm : S52ANDROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
-					 -DS52_DEBUG                           \
+                     -DS52_DEBUG                           \
                      -DG_DISABLE_ASSERT
 
 s52eglarm : CFLAGS = -I$(S52ANDROIDINC)                    \
                      -I$(S52ANDROIDINC)/glib-2.0           \
                      -I$(S52ANDROIDINC)/glib-2.0/include   \
                      -I/usr/include/freetype2              \
-					 -I./lib/freetype-gl                   \
-					 -I./lib/tesselator                    \
-					 $(DEFS)
+                     -I./lib/freetype-gl                   \
+                     -I./lib/tesselator                    \
+                     -I./lib/parson                        \
+                     $(DEFS)
 
 # check this; gv use glib-1 S52 use glib-2
 #                 -DS52_USE_PROJ
@@ -365,11 +371,14 @@ S52raz-3.2.rle.o: S52raz.s
 ./lib/freetype-gl/%.o: ./lib/freetype-gl/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(S52ANDROIDLIB)/libS52.a: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) tags
-	$(AR) r   $(S52ANDROIDLIB)/libS52.a $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS)
+./lib/parson/%.o: ./lib/parson/%.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
-libS52.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) tags
-	$(CXX) -rdynamic -shared $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(LIBS) -o $@
+$(S52ANDROIDLIB)/libS52.a: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
+	$(AR) r   $(S52ANDROIDLIB)/libS52.a $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
+
+libS52.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
+	$(CXX) -rdynamic -shared $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON) $(LIBS) -o $@
 
 libS52gv.so: $(OBJS_S52) $(OBJS_GV)
 	$(CXX) -shared $(OBJS_S52) $(OBJS_GV) $(LIBS) -o libS52.so
@@ -439,7 +448,8 @@ s52win32fini:
 #../../openev/pymod/_gvmodule.so
 
 clean:
-	rm -f *.o tags openc.* *~ *.so *.dll err.txt ./lib/tesselator/*.o ./lib/freetype-gl/*.o
+	rm -f *.o tags openc.* *~ *.so *.dll err.txt                \
+	./lib/tesselator/*.o ./lib/freetype-gl/*.o ./lib/parson/*.o
 	(cd test; make clean)
 
 distclean: clean
@@ -469,3 +479,31 @@ err.txt: *.c *.h
 #	git commit -m "new"
 #	git remote add origin https://github.com/sduclos/S52.git (one time !)
 #	git push -u origin master (sync local .git with github !)
+
+# sduc-git.txt: note on working with git
+#
+# SD 2012OCT06
+
+# 0 - init (do once)
+# Assigns the original repo to a 'remote' called "upstream"
+# $ git remote add upstream https://github.com/rikulo/rikulo
+
+
+# --- normal flow ---
+
+# 1 - sync .git with official git
+# Fetches any new changes from the original repo
+# Pulls in changes not present in your local repository, 
+# without modifying your files
+# SD this will sync LOCAL .git with official Rikulo
+# $ git fetch upstream
+
+# 2 - sync LOCAL files with .git
+# Merges any changes fetched into your working files
+#
+# $ git merge upstream/master
+
+
+# 3 - sync .git with sduc git on GitHub
+# Pushes commits (.git) to your remote repo stored on GitHub
+# $ git push origin master
