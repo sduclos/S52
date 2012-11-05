@@ -311,7 +311,7 @@ static double _cursor_lon = 0.0;
 
 //static GArray  *_arrTmp = NULL;
 
-static char _version[] = "$Revision: 1.103 $\n"
+static char _version[] = "$Revision: 1.104 $\n"
       "libS52 0.78\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
@@ -1149,7 +1149,7 @@ static int        _get_backtrace (void** buffer, int n) /*fold00*/
 //*/
 #endif
 
-static int        _unwind(void) /*fold00*/
+static int        _unwind(void) /*FOLD00*/
 {
 // ============ test using Unwind ====================================
 /*
@@ -1661,7 +1661,7 @@ DLL int    STD S52_init(void) /*fold00*/
         valueBuf chartPath = {'\0'};
         if (0 == S52_getConfig(CONF_WORLD, &chartPath)) {
             PRINTF("WORLD file not found!\n");
-            return FALSE;
+            return TRUE;
         }
         S52_loadLayer_cb  loadLayer_cb  = S52_loadLayer;
         S52_loadObject_cb loadObject_cb = S52_loadObject;
@@ -2771,7 +2771,7 @@ static int        _insertLightSec(_cell *c, S52_obj *obj) /*fold00*/
 }
 
 //static S52_obj   *_cellAddGeo(_cell *c, S57_geo *geoData)
-static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData) /*FOLD00*/
+static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData) /*fold00*/
 // insert a S52_obj in a cell from a S57_obj
 // return the new S52_obj
 {
@@ -2976,11 +2976,20 @@ DLL int    STD S52_loadObject(const char *objname, void *shape) /*FOLD00*/
     if (NULL == geoData)
         return FALSE;
 
+#ifdef S52_USE_WORLD
+    if (0 == strcmp(objname, "XX0WORLD")) {
+        _insertS57Obj(_crntCell, geoData);
+        // unlink Poly chain - else will loop forever in S52_loadPLib()
+        S57_delNextPoly(geoData);
+
+        return TRUE;
+    }
+#endif
 
     // set cell extent from each object
     // NOTE:should be the same as CATALOG.03?
     if (_META_T != S57_getObjtype(geoData)) {
-    //if ((_META_T!=S57_getObjtype(geoData)) && (0!=strcmp(objname, "XX0WORLD"))) {
+    //if ((_META_T!=S57_getObjtype(geoData)) && )) {
         _extent ext;
 
         S57_getExt(geoData, &ext.W, &ext.S, &ext.E, &ext.N);
@@ -3053,8 +3062,6 @@ DLL int    STD S52_loadObject(const char *objname, void *shape) /*FOLD00*/
     }
 
     _insertS57Obj(_crntCell, geoData);
-    // unlink Poly chain - else will loop forever in S52_loadPLib()
-    S57_delNextPoly(geoData);
 
     S52_CS_add(_crntCell->local, geoData);
 
@@ -3315,17 +3322,14 @@ static int        _cullObj(_cell *c) /*fold00*/
 // one cell; cull object out side the view and object supressed
 // object culled are not inserted in the list of object to draw
 {
-    int j;
     //for (j=0; j<S52_PRIO_NUM; ++j) {
-    for (j=0; j<S52_PRIO_MARINR; ++j) {
+    for (int j=0; j<S52_PRIO_MARINR; ++j) {
 
         // one layer
-        int k;
-        for (k=0; k<N_OBJ_T; ++k) {
+        for (int k=0; k<N_OBJ_T; ++k) {
             GPtrArray *rbin = c->renderBin[j][k];
 
             // one object
-            //unsigned int idx;
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                 S57_geo *geo = S52_PL_getGeo(obj);
@@ -4206,7 +4210,7 @@ DLL int    STD S52_draw(void) /*fold00*/
     if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
         PRINTF("WARNING: no cell loaded\n");
         g_static_mutex_unlock(&_mp_mutex);
-        g_assert(0);
+        //g_assert(0);
         return FALSE;
     }
 
@@ -4346,6 +4350,13 @@ DLL int    STD S52_drawLast(void) /*fold00*/
 
     if (S52_MAR_DISP_LAYER_LAST_NONE == S52_MP_get(S52_MAR_DISP_LAYER_LAST))
         return TRUE;
+
+    if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
+        PRINTF("WARNING: no cell loaded\n");
+        g_static_mutex_unlock(&_mp_mutex);
+        //g_assert(0);
+        return FALSE;
+    }
 
     g_atomic_int_set(&_atomicAbort, FALSE);
 
@@ -5216,7 +5227,7 @@ DLL int    STD S52_setS57ObjClassSupp(const char *className, int value) /*fold00
 
 
 //static GPtrArray *_cloneCellList(const char *plibName)
-DLL int    STD S52_loadPLib(const char *plibName) /*FOLD00*/
+DLL int    STD S52_loadPLib(const char *plibName) /*fold00*/
 {
     S52_CHECK_INIT;
 
