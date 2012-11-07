@@ -349,6 +349,36 @@
                 android:layout_marginLeft  = '30px'
                 />
 
+            <!-- S52_MAR_DISP_WORLD (42) - flag for world shapefile (on/off) -->
+            <RelativeLayout
+                android:layout_width  = 'match_parent'
+                android:layout_height = 'wrap_content'
+                android:layout_marginLeft = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:id        = '@+id/s52_text_'
+                    android:textSize  = '10pt'
+                    android:text      = 'Show World'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/WORLDcheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:id            = '@+id/s52_border_'
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
             <!-- S52_MAR_ANTIALIAS (24) - flag for color blending (anti-aliasing) (on/off) -->
             <RelativeLayout
                 android:layout_width  = 'match_parent'

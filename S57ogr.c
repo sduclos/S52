@@ -32,6 +32,10 @@
 
 #include <glib.h>       // GPtrArray
 
+
+// WARNING: must be in sync with S52.c:WORLD_SHP
+#define WORLD_BASENM   "--0WORLD"
+
 //typedef struct _srcData srcData;
 //typedef OGRFeatureH _srcData;
 
@@ -396,7 +400,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
             geoData = S57_setAREAS(nRingCount, ringxyznbr, ringxyz);
             _setExtent(geoData, hGeom);
 
-            if (0==strcmp("XX0WORLD", objname)) {
+            if (0==strcmp(WORLD_BASENM, objname)) {
                 S57_setName(geoData, "marfea");
             }
 
@@ -476,7 +480,7 @@ S57_geo       *S57_ogrLoadObject(const char *objname, void *feature)
     if (NULL == geoData)
         return NULL;
 
-    if (0 != strcmp("XX0WORLD", objname)) {
+    if (0 != strcmp(WORLD_BASENM, objname)) {
         S57_setName(geoData, objname);
     }
     _setAtt(geoData, feature);

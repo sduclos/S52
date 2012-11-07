@@ -632,6 +632,7 @@ static int      _sl4a_fullShowSet(void)
     _sl4a_setCheckBox(S52_MAR_DISP_AFTERGLOW,      "AFTERGLOWcheckBox"    );
     _sl4a_setCheckBox(S52_MAR_DISP_CALIB,          "CALIBRATIONcheckBox"  );
     _sl4a_setCheckBox(S52_MAR_DISP_LEGEND,         "LEGENDcheckBox"       );
+    _sl4a_setCheckBox(S52_MAR_DISP_WORLD,          "WORLDcheckBox"        );
     _sl4a_setCheckBox(S52_MAR_ANTIALIAS,           "ANTIALIAScheckBox"    );
     _sl4a_setCheckBox(S52_MAR_DISP_CENTROIDS,      "CENTROIDScheckBox"    );
     _sl4a_setCheckBox(S52_MAR_QUAPNT01,            "QUAPNT01checkBox"     );
@@ -1180,14 +1181,28 @@ static int      _sl4a_parseEvent (void)
         return TRUE;
     }
 
+    // WORLD check box
+    const gchar *worldstr = g_strrstr(retstr, "\"id\":\"WORLDcheckBox\"");
+    if (NULL != worldstr) {
+        const gchar *checkedstr = g_strrstr(retstr, "\"checked\":\"false\"");
+        if (NULL == checkedstr)
+            _s52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);  // on
+        else
+            _s52_setMarinerParam(S52_MAR_DISP_WORLD, 0.0);  // off
+
+        _s52_encodeNsend("S52_draw", "");
+
+        return TRUE;
+    }
+
     // ANTIALIAS check box
     const gchar *antialiasstr = g_strrstr(retstr, "\"id\":\"ANTIALIAScheckBox\"");
     if (NULL != antialiasstr) {
         const gchar *checkedstr = g_strrstr(retstr, "\"checked\":\"false\"");
         if (NULL == checkedstr)
-            _s52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);  // on
+            _s52_setMarinerParam(S52_MAR_ANTIALIAS, 1.0);  // on
         else
-            _s52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);  // off
+            _s52_setMarinerParam(S52_MAR_ANTIALIAS, 0.0);  // off
 
         _s52_encodeNsend("S52_draw", "");
 

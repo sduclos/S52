@@ -301,11 +301,11 @@
                 <TextView
                     android:id        = '@+id/s52_text_12'
                     android:textSize  = '10pt'
-                    android:text      = 'Anti-Alias'
+                    android:text      = 'Show World'
                     android:layout_centerVertical = 'true'
                     />
                <CheckBox
-                    android:id        = '@+id/ANTIALIAScheckBox'
+                    android:id        = '@+id/WORLDcheckBox'
                     android:checked   = 'true'
                     android:layout_alignParentRight = 'true'
                     />
@@ -327,11 +327,11 @@
                 <TextView
                     android:id        = '@+id/s52_text_13'
                     android:textSize  = '10pt'
-                    android:text      = 'Afterglow'
+                    android:text      = 'Anti-Alias'
                     android:layout_centerVertical = 'true'
                     />
                <CheckBox
-                    android:id        = '@+id/AFTERGLOWcheckBox'
+                    android:id        = '@+id/ANTIALIAScheckBox'
                     android:checked   = 'true'
                     android:layout_alignParentRight = 'true'
                     />
@@ -353,11 +353,11 @@
                 <TextView
                     android:id        = '@+id/s52_text_14'
                     android:textSize  = '10pt'
-                    android:text      = 'Calibration Symbols'
+                    android:text      = 'Afterglow'
                     android:layout_centerVertical = 'true'
                     />
                <CheckBox
-                    android:id        = '@+id/CALIBRATIONcheckBox'
+                    android:id        = '@+id/AFTERGLOWcheckBox'
                     android:checked   = 'true'
                     android:layout_alignParentRight = 'true'
                     />
@@ -379,11 +379,11 @@
                 <TextView
                     android:id        = '@+id/s52_text_15'
                     android:textSize  = '10pt'
-                    android:text      = 'Legend'
+                    android:text      = 'Calibration Symbols'
                     android:layout_centerVertical = 'true'
                     />
                <CheckBox
-                    android:id        = '@+id/LEGENDcheckBox'
+                    android:id        = '@+id/CALIBRATIONcheckBox'
                     android:checked   = 'true'
                     android:layout_alignParentRight = 'true'
                     />
@@ -405,11 +405,11 @@
                 <TextView
                     android:id        = '@+id/s52_text_16'
                     android:textSize  = '10pt'
-                    android:text      = 'Centroids'
+                    android:text      = 'Legend'
                     android:layout_centerVertical = 'true'
                     />
                <CheckBox
-                    android:id        = '@+id/CENTROIDScheckBox'
+                    android:id        = '@+id/LEGENDcheckBox'
                     android:checked   = 'true'
                     android:layout_alignParentRight = 'true'
                     />
@@ -431,11 +431,11 @@
                 <TextView
                     android:id        = '@+id/s52_text_17'
                     android:textSize  = '10pt'
-                    android:text      = 'Quality Of Position'
+                    android:text      = 'Centroids'
                     android:layout_centerVertical = 'true'
                     />
                <CheckBox
-                    android:id        = '@+id/QUAPNT01checkBox'
+                    android:id        = '@+id/CENTROIDScheckBox'
                     android:checked   = 'true'
                     android:layout_alignParentRight = 'true'
                     />
@@ -457,11 +457,11 @@
                 <TextView
                     android:id        = '@+id/s52_text_18'
                     android:textSize  = '10pt'
-                    android:text      = 'Dredge Pattern'
+                    android:text      = 'Quality Of Position'
                     android:layout_centerVertical = 'true'
                     />
                <CheckBox
-                    android:id        = '@+id/DRGAREPATTERNcheckBox'
+                    android:id        = '@+id/QUAPNT01checkBox'
                     android:checked   = 'true'
                     android:layout_alignParentRight = 'true'
                     />
@@ -483,11 +483,11 @@
                 <TextView
                     android:id        = '@+id/s52_text_19'
                     android:textSize  = '10pt'
-                    android:text      = 'Nodata Layer'
+                    android:text      = 'Dredge Pattern'
                     android:layout_centerVertical = 'true'
                     />
                <CheckBox
-                    android:id        = '@+id/NODATALAYERcheckBox'
+                    android:id        = '@+id/DRGAREPATTERNcheckBox'
                     android:checked   = 'true'
                     android:layout_alignParentRight = 'true'
                     />
@@ -509,6 +509,32 @@
                 <TextView
                     android:id        = '@+id/s52_text_20'
                     android:textSize  = '10pt'
+                    android:text      = 'Nodata Layer'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/NODATALAYERcheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+            <LinearLayout
+                android:id            = '@+id/s52_border_15'
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+            <RelativeLayout
+                android:layout_width  = 'match_parent'
+                android:layout_height = 'wrap_content'
+                android:layout_marginLeft = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:id        = '@+id/s52_text_21'
+                    android:textSize  = '10pt'
                     android:text      = 'Vessel Label'
                     android:layout_centerVertical = 'true'
                     />
@@ -519,7 +545,7 @@
                     />
             </RelativeLayout>
             <LinearLayout
-                android:id            = '@+id/s52_border_15'
+                android:id            = '@+id/s52_border_16'
                 android:orientation   = 'horizontal'
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
@@ -535,7 +561,7 @@
                 android:layout_marginLeft  = '30px'
                 >
                 <TextView
-                    android:id            = '@+id/s52_text_21'
+                    android:id            = '@+id/s52_text_22'
                     android:textSize      = '10pt'
                     android:gravity       = 'left'
                     android:text          = 'Rotate Buoy Light: '
@@ -552,7 +578,7 @@
                     />
             </RelativeLayout>
             <LinearLayout
-                android:id            = '@+id/s52_border_16'
+                android:id            = '@+id/s52_border_17'
                 android:orientation   = 'horizontal'
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
@@ -567,7 +593,7 @@
                 android:layout_marginLeft  = '30px'
                 >
                 <TextView
-                    android:id            = '@+id/s52_text_22'
+                    android:id            = '@+id/s52_text_23'
                     android:textSize      = '10pt'
                     android:gravity       = 'left'
                     android:text          = 'Dotpitch X'
@@ -584,7 +610,7 @@
                     />
             </RelativeLayout>
             <LinearLayout
-                android:id            = '@+id/s52_border_17'
+                android:id            = '@+id/s52_border_18'
                 android:orientation   = 'horizontal'
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
@@ -599,7 +625,7 @@
                 android:layout_marginLeft  = '30px'
                 >
                 <TextView
-                    android:id            = '@+id/s52_text_23'
+                    android:id            = '@+id/s52_text_24'
                     android:layout_width  = 'match_parent'
                     android:layout_height = 'wrap_content'
                     android:textSize      = '10pt'
@@ -619,7 +645,7 @@
                     />
             </RelativeLayout>
             <LinearLayout
-                android:id            = '@+id/s52_border_18'
+                android:id            = '@+id/s52_border_19'
                 android:orientation   = 'horizontal'
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
@@ -639,7 +665,7 @@
                     />
             </LinearLayout>
             <LinearLayout
-                android:id            = '@+id/s52_border_19'
+                android:id            = '@+id/s52_border_20'
                 android:orientation   = 'horizontal'
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
@@ -652,7 +678,7 @@
                 android:layout_marginRight = '10px'
                 >
                 <TextView
-                    android:id        = '@+id/s52_text_24'
+                    android:id        = '@+id/s52_text_25'
                     android:textSize  = '10pt'
                     android:text      = 'CMD_WRD_FILTER_SY'
                     android:layout_centerVertical = 'true'
@@ -670,7 +696,7 @@
                 android:layout_marginRight = '10px'
                 >
                 <TextView
-                    android:id        = '@+id/s52_text_25'
+                    android:id        = '@+id/s52_text_26'
                     android:textSize  = '10pt'
                     android:text      = 'CMD_WRD_FILTER_LS'
                     android:layout_centerVertical = 'true'
@@ -688,7 +714,7 @@
                 android:layout_marginRight = '10px'
                 >
                 <TextView
-                    android:id        = '@+id/s52_text_26'
+                    android:id        = '@+id/s52_text_27'
                     android:textSize  = '10pt'
                     android:text      = 'CMD_WRD_FILTER_LC'
                     android:layout_centerVertical = 'true'
@@ -706,7 +732,7 @@
                 android:layout_marginRight = '10px'
                 >
                 <TextView
-                    android:id        = '@+id/s52_text_27'
+                    android:id        = '@+id/s52_text_28'
                     android:textSize  = '10pt'
                     android:text      = 'CMD_WRD_FILTER_AC'
                     android:layout_centerVertical = 'true'
@@ -724,7 +750,7 @@
                 android:layout_marginRight = '10px'
                 >
                 <TextView
-                    android:id        = '@+id/s52_text_28'
+                    android:id        = '@+id/s52_text_29'
                     android:textSize  = '10pt'
                     android:text      = 'CMD_WRD_FILTER_AP'
                     android:layout_centerVertical = 'true'
@@ -742,7 +768,7 @@
                 android:layout_marginRight = '10px'
                 >
                 <TextView
-                    android:id        = '@+id/s52_text_29'
+                    android:id        = '@+id/s52_text_30'
                     android:textSize  = '10pt'
                     android:text      = 'CMD_WRD_FILTER_TX'
                     android:layout_centerVertical = 'true'
@@ -763,13 +789,13 @@
                 android:layout_marginLeft = '30px'
                 >
                 <TextView
-                    android:id        = '@+id/s52_text_30'
+                    android:id        = '@+id/s52_text_31'
                     android:textSize  = '30pt'
                     android:text      = '1 - Test'
                     />
             </LinearLayout>
             <LinearLayout
-                android:id            = '@+id/s52_border_20'
+                android:id            = '@+id/s52_border_21'
                 android:orientation   = 'horizontal'
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
@@ -785,7 +811,7 @@
                 android:layout_marginLeft = '30px'
                 >
                 <TextView
-                    android:id        = '@+id/s52_text_31'
+                    android:id        = '@+id/s52_text_32'
                     android:textSize  = '30pt'
                     android:text      = '2 - Test'
                     />
@@ -799,7 +825,7 @@
                 android:layout_marginLeft = '30px'
                 >
                 <TextView
-                    android:id        = '@+id/s52_text_32'
+                    android:id        = '@+id/s52_text_33'
                     android:textSize  = '15pt'
                     android:text      = 'View GPS in Google Map'
                     />

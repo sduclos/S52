@@ -196,7 +196,10 @@ typedef struct _cell {
 static GPtrArray *_cellList    = NULL;    // list of loaded cells - sorted, big to small scale (small to large region)
 static _cell     *_crntCell    = NULL;    // current cell (passed around when loading --FIXME:global (dumb)
 static _cell     *_marinerCell = NULL;    // palce holder MIO's, and other (fake S57) object
-#define MARINER_CELL "--6MARIN.000"
+#define MARINER_CELL   "--6MARIN.000"
+#define WORLD_SHP      "--0WORLD.shp"
+// WARNING: must be in sync with WORLD_SHP
+#define WORLD_BASENM   "--0WORLD"
 
 static GString   *_plibNameList = NULL;    // string that gather plibName
 static GString   *_paltNameList = NULL;    // string that gather palette name
@@ -311,7 +314,7 @@ static double _cursor_lon = 0.0;
 
 //static GArray  *_arrTmp = NULL;
 
-static char _version[] = "$Revision: 1.104 $\n"
+static char _version[] = "$Revision: 1.105 $\n"
       "libS52 0.78\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
@@ -756,6 +759,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val) /*fo
         case S52_MAR_DEL_VESSEL_DELAY    : val = _validate_int(val);                    break;
         case S52_MAR_DISP_AFTERGLOW      : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_CENTROIDS      : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_WORLD          : val = _validate_bool(val);                   break;
 
         case S52_MAR_CMD_WRD_FILTER      : g_static_mutex_unlock(&_mp_mutex);
                                            val = _validate_filter(val);
@@ -1149,7 +1153,7 @@ static int        _get_backtrace (void** buffer, int n) /*fold00*/
 //*/
 #endif
 
-static int        _unwind(void) /*FOLD00*/
+static int        _unwind(void) /*fold00*/
 {
 // ============ test using Unwind ====================================
 /*
@@ -1376,8 +1380,13 @@ static int        _getCellsExt(_extent* ext);
 static int        _initPROJ(void) /*fold00*/
 {
     double clat = 0.0;
+
     _extent ext;
-    _getCellsExt(&ext);
+    if (FALSE == _getCellsExt(&ext)) {
+        PRINTF("WARNING: failed, no cell loaded!\n");
+        return FALSE;
+    }
+
     clat = (ext.N + ext.S) / 2.0;
 
     S57_setMercPrj(clat);
@@ -1398,7 +1407,7 @@ static int        _initPROJ(void) /*fold00*/
     return TRUE;
 }
 
-static int        _projectCells(void) /*fold00*/
+static int        _projectCells(void) /*FOLD00*/
 {
     for (guint k=0; k<_cellList->len; ++k) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
@@ -1655,21 +1664,6 @@ DLL int    STD S52_init(void) /*fold00*/
 
     _doInit = FALSE;
 
-
-#ifdef S52_USE_WORLD
-    { // load world shapefile
-        valueBuf chartPath = {'\0'};
-        if (0 == S52_getConfig(CONF_WORLD, &chartPath)) {
-            PRINTF("WORLD file not found!\n");
-            return TRUE;
-        }
-        S52_loadLayer_cb  loadLayer_cb  = S52_loadLayer;
-        S52_loadObject_cb loadObject_cb = S52_loadObject;
-        _loadBaseCell((char *)chartPath, loadLayer_cb, loadObject_cb);
-        _initPROJ();
-        _projectCells();
-    }
-#endif
 
     PRINTF("S52_INIT() .. DONE\n");
 
@@ -2094,7 +2088,7 @@ static int        _suppLineOverlap() /*fold00*/
 #endif
 
 
-static _cell*     _loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb) /*fold00*/
+static _cell*     _loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb) /*FOLD00*/
 // FIXME: MUTEX
 {
     _cell   *ch = NULL;
@@ -2238,11 +2232,18 @@ static int        _loadCATALOG(char *filename) /*fold00*/
 DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
 
 //DLL int    STD S52_loadCell(const char *encPath, S52_loadLayer_cb layer_cb)
-DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb) /*fold00*/
+DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb) /*FOLD00*/
+// FIXME: handle each type of cell separatly
+// OGR:
+// - S57:
+//    - CATALOG
+//    - *.000 (and update)
+//    - ENC_ROOT/
+// - shapefile
 {
     valueBuf chartPath = {'\0'};
     char    *fname     = NULL;
-    _cell   *ch        = NULL;
+    //_cell   *ch        = NULL;
     static int  silent = FALSE;
 
     S52_CHECK_INIT;
@@ -2285,10 +2286,34 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     fname = g_strstrip(fname);
 
     if (TRUE != g_file_test(fname, (GFileTest) (G_FILE_TEST_EXISTS | G_FILE_TEST_IS_DIR))) {
-        PRINTF("S57 file or DIR not found (%s)\n", fname);
+        PRINTF("file or DIR not found (%s)\n", fname);
         g_static_mutex_unlock(&_mp_mutex);
         return FALSE;
     }
+
+#ifdef S52_USE_WORLD
+    { // load world shapefile
+        //const char *base = g_basename(fname);
+        //if (0 == g_strcmp0(base, WORLD_SHP)) {
+        //    // cell extend - build cell index
+        //    _loadCATALOG(fname);
+        //}
+        //valueBuf chartPath = {'\0'};
+        //if (0 == S52_getConfig(CONF_WORLD, &chartPath)) {
+        //    PRINTF("WORLD file not found!\n");
+        //    return TRUE;
+        //}
+        //S52_loadLayer_cb  loadLayer_cb  = S52_loadLayer;
+        //S52_loadObject_cb loadObject_cb = S52_loadObject;
+        //_loadBaseCell((char *)chartPath, loadLayer_cb, loadObject_cb);
+        const char *base = g_basename(fname);
+        if (0 == g_strcmp0(base, WORLD_SHP))
+            _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
+        //_initPROJ();
+        //_projectCells();
+    }
+#endif
+
 
 #ifdef S52_USE_OGR_FILECOLLECTOR
     {
@@ -2302,16 +2327,18 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         //char **encList = S57FileCollector("CATALOG.031");
 
 
-        char **encList = S57FileCollector(fname);
-        if (NULL == encList) {
-            PRINTF("WARNING: S57FileCollector(%s) return NULL\n", fname);
-            g_free(fname);
-            g_static_mutex_unlock(&_mp_mutex);
-            return FALSE;
-        } else {
-            guint i = 0;
+        //char **encList = S57FileCollector(fname);
+        //if (NULL == encList) {
+        //    PRINTF("WARNING: S57FileCollector(%s) return NULL\n", fname);
+        //    g_free(fname);
+        //    g_static_mutex_unlock(&_mp_mutex);
+        //    return FALSE;
+        //} else {
+            //guint i = 0;
 
-            for (i=0; NULL!=encList[i]; ++i) {
+        char **encList = S57FileCollector(fname);
+        if (NULL != encList) {
+            for (guint i=0; NULL!=encList[i]; ++i) {
                 char *encName = encList[i];
 
                 // HACK: g_mem_profile() break the call to S57FileCollector()
@@ -2320,7 +2347,8 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
                     break;
 
                 //ch = _loadBaseCell(encName, layer_cb);
-                ch = _loadBaseCell(encName, loadLayer_cb, loadObject_cb);
+                //ch = _loadBaseCell(encName, loadLayer_cb, loadObject_cb);
+                _loadBaseCell(encName, loadLayer_cb, loadObject_cb);
                 g_free(encName);
             }
             g_free(encList);
@@ -2328,21 +2356,23 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     }
     g_free(fname);
 
-    if (NULL == ch) {
-        g_static_mutex_unlock(&_mp_mutex);
-        return FALSE;
-    }
+    //if (NULL == ch) {
+    //    g_static_mutex_unlock(&_mp_mutex);
+    //    return FALSE;
+    //}
 
 #else
     //ch = _loadBaseCell(fname, layer_cb);
-    ch = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
+    //ch = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
+    _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
     g_free(fname);
 
-    if (NULL == ch) {
-        g_static_mutex_unlock(&_mp_mutex);
-        return FALSE;
-    }
+    //if (NULL == ch) {
+    //    g_static_mutex_unlock(&_mp_mutex);
+    //    return FALSE;
+    //}
 #endif
+
 
 #ifdef S52_USE_PROJ
     {
@@ -2976,16 +3006,6 @@ DLL int    STD S52_loadObject(const char *objname, void *shape) /*FOLD00*/
     if (NULL == geoData)
         return FALSE;
 
-#ifdef S52_USE_WORLD
-    if (0 == strcmp(objname, "XX0WORLD")) {
-        _insertS57Obj(_crntCell, geoData);
-        // unlink Poly chain - else will loop forever in S52_loadPLib()
-        S57_delNextPoly(geoData);
-
-        return TRUE;
-    }
-#endif
-
     // set cell extent from each object
     // NOTE:should be the same as CATALOG.03?
     if (_META_T != S57_getObjtype(geoData)) {
@@ -3060,6 +3080,16 @@ DLL int    STD S52_loadObject(const char *objname, void *shape) /*FOLD00*/
 
 
     }
+
+#ifdef S52_USE_WORLD
+    if (0 == strcmp(objname, WORLD_BASENM)) {
+        _insertS57Obj(_crntCell, geoData);
+        // unlink Poly chain - else will loop forever in S52_loadPLib()
+        S57_delNextPoly(geoData);
+
+        return TRUE;
+    }
+#endif
 
     _insertS57Obj(_crntCell, geoData);
 
@@ -3421,77 +3451,12 @@ static int        _cullObj(_cell *c) /*fold00*/
 static int        _cull(_extent ext) /*fold00*/
 // - viewport
 // - small cell region on top
-// - later:line removal
 {
-
-    // light are allway drawn - event if outside view (sector might be inside)
-
-    // assume: cellList is sorted, big ti small scale (small to large region)
-
-    // CULL: filter out cells that are outside the view
-
-    // BUG: traversing order differ from drawing this cause to cull
-    // object that should be drawn
-    // this can happen where 2 cells of same scale overlap
-    /*
-    {
-        //int i = 0;
-        //int j = 0;
-        for (guint i=0; i<_cellList->len; ++i) {
-        //for (i=_cellList->len-1; i>=0 ; --i) {
-            _cell *ci = &g_array_index(_cellList, _cell, i);
-            PRINTF("cell name i(%i): %s\n", i, ci->filename->str);
-            if (TRUE == _intersec(ci->ext, ext)) {
-                //int j = 0;
-                for (guint j=i+1; j<_cellList->len; ++j) {
-                    _cell *cj = &g_array_index(_cellList, _cell, j);
-                    PRINTF("\tcell name j(%i): %s\n", j, cj->filename->str);
-                    if (TRUE == _intersec(ci->ext, cj->ext)) {
-                        // supress display of object that are 'under' a cell
-                        _suppObject(ci->ext, cj);
-                    }
-                }
-            } else {
-                // cell outside view
-            }
-        }
-    }
-    */
-
-    /*
-    // mark object for drawing
-    // A - initialy all object of every cell are not culled
-    // B - current  cell is 'this' cell
-    // C - following cell is 'other' cells
-    // for all cell do
-    //   1 - show all object in 'this' cell that are not culled allready
-    //   2 - cull all object in 'other' cells within 'this' cell
-    {
-        int i = 0;
-        int j = 0;
-        while (i < cellList->len) {
-            // show object in the current cell
-            // that have not been remove allready
-            // SCANMIN fit here
-            _showObject(cellList[i]);
-
-
-            j = i;
-            while (j < cellList->len) {
-                // remove object in rectangle of current cell
-                // for all the following cells
-                _cullObject(cellList[j], cellList[i].rect);
-                ++j;
-            }
-        }
-    }
-    */
-
-    //unsigned int i = 0;
+    // skip World if S52_MAR_DISP_WORLD off
+    guint worldOff = (TRUE == S52_MP_get(S52_MAR_DISP_WORLD)) ? 0 : 1;
 
     // all cells - larger region first (small scale)
-    //for (guint i=0; i<_cellList->len; ++i) {
-    for (guint i=_cellList->len; i>0 ; --i) {
+    for (guint i=_cellList->len-worldOff; i>0 ; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
 
         // is this chart visible
@@ -3499,37 +3464,6 @@ static int        _cull(_extent ext) /*fold00*/
             _cullObj(c);
         }
     }
-
-    /*  // BUG: sector outside view must show sector leg inside view
-    {   // cull lights outside view
-        // light outside the view are shown
-        //unsigned int i = 0;
-        // --6MARIN.000 doesn't have lights so no need to look at it
-        //for (i=0; i<_cellList->len; ++i) {
-        for (guint i=_cellList->len-1; i>0 ; --i) {
-            //_cell *c = &g_array_index(_cellList, _cell, i);
-            _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
-            //if (FALSE == _intersec(c->ext, ext)) {
-                //unsigned int j = 0;
-                for (guint j=0; j<c->lights_sector->len; ++j) {
-                    S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
-                    S57_geo *geo = S52_PL_getGeo(obj);
-
-                    // here we hit lights in view that we're allready
-                    // processed in the first part of the cull() .. not optimal
-                    S57_setSupp(geo, FALSE);
-
-                    // SCAMIN & PLib
-                    if (TRUE == S52_GL_isSupp(obj)) {
-                        S57_geo *geo = S52_PL_getGeo(obj);
-                        S57_setSupp(geo, TRUE);
-                        ++_nCull;
-                    }
-                }
-            //}
-        }
-    }
-    */
 
     return TRUE;
 }
@@ -4892,14 +4826,6 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north) /
     // debug
     PRINTF("lat:%f, long:%f, range:%f north:%f\n", cLat, cLon, rNM, north);
 
-
-    //if ((view->cLat-view->rNM/60.0 <  -90.0)  ||
-    //    (view->cLat+view->rNM/60.0 >   90.0)  ||
-    //    (view->cLon-view->rNM/60.0 < -180.0)  ||
-    //    (view->cLon+view->rNM/60.0 >  180.0)) {
-
-    //if (((view->cLat <  -90.0) && (view->cLat >  90.0))  ||
-    //    ((view->cLon < -180.0) && (view->cLon > 180.0))) {
     if (((cLat <  -90.0) && (cLat >  90.0))  ||
         ((cLon < -180.0) && (cLon > 180.0))) {
 
@@ -4922,16 +4848,13 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north) /
 
     // FIXME: PROJ4 will explode here (INFINITY) for mercator
     //if (view->rNM > (90.0*60)) {
-    if ((ABS(cLat)*60.0 + rNM) > (90.0*60)) {
     //if (rNM > (90.0*60)) {
-        PRINTF("WARNING: rangeNM reset to 90*60 NM (%f)\n", rNM);
-        //view->rNM = 90.0 * 60.0;
+    if ((ABS(cLat)*60.0 + rNM) > (90.0*60)) {
+        PRINTF("WARNING: rangeNM > 90*60 NM, call failed (%f)\n", rNM);
         return FALSE;
     }
 
     if ((north>=360.0) || (north<0.0)) {
-        //PRINTF("WARNING: north clamped to [0..360[ (%f->%f)\n", view->rNM,  360.0 * ((int)view->north % 360));
-        //north = 360.0 * ((int)view->north % 360);
         PRINTF("WARNING: reset north 0.0 (%f)\n", north);
         north = 0.0;
         //return FALSE;
@@ -4985,9 +4908,9 @@ DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int
     return TRUE;
 }
 
-static int        _getCellsExt(_extent* ext) /*fold00*/
+static int        _getCellsExt(_extent* ext) /*FOLD00*/
 {
-    //unsigned int i;
+    int ret = FALSE;
 
     ext->S =  INFINITY;
     ext->W =  INFINITY;
@@ -5005,16 +4928,32 @@ static int        _getCellsExt(_extent* ext) /*fold00*/
         // for now just skip this pseudo cell
         if (0 == S52_strncmp(MARINER_CELL, c->filename->str, S57_CELL_NAME_MAX_LEN))
             continue;
-        if (0 == S52_strncmp(MARINER_CELL, c->filename->str, S57_CELL_NAME_MAX_LEN))
+        if (0 == S52_strncmp(WORLD_SHP,    c->filename->str, S57_CELL_NAME_MAX_LEN))
             continue;
 
         ext->S = (c->ext.S < ext->S) ? c->ext.S : ext->S;
         ext->W = (c->ext.W < ext->W) ? c->ext.W : ext->W;
         ext->N = (c->ext.N > ext->N) ? c->ext.N : ext->N;
         ext->E = (c->ext.E > ext->E) ? c->ext.E : ext->E;
+
+        ret = TRUE;
     }
 
-    return TRUE;
+#ifdef S52_USE_WORLD
+    // if only world is loaded
+    if (FALSE == ret) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, _cellList->len-1);
+
+        ext->S = (c->ext.S < ext->S) ? c->ext.S : ext->S;
+        ext->W = (c->ext.W < ext->W) ? c->ext.W : ext->W;
+        ext->N = (c->ext.N > ext->N) ? c->ext.N : ext->N;
+        ext->E = (c->ext.E > ext->E) ? c->ext.E : ext->E;
+
+        ret = TRUE;
+    }
+#endif
+
+    return ret;
 }
  /*fold00*/
 //DLL int    STD S52_getCellExtent(_cell *c, S52_extent *ext)
@@ -9929,3 +9868,103 @@ int                        _initSock() /*fold00*/
     return TRUE;
 }
 #endif
+
+
+
+// ================================= J U N K =======================================================
+
+
+// light are allway drawn - event if outside view (sector might be inside)
+
+    // assume: cellList is sorted, big to small scale (small to large region)
+
+    // CULL: filter out cells that are outside the view
+
+    // BUG: traversing order differ from drawing this cause to cull
+    // object that should be drawn
+    // this can happen where 2 cells of same scale overlap
+    /*
+    {
+        //int i = 0;
+        //int j = 0;
+        for (guint i=0; i<_cellList->len; ++i) {
+        //for (i=_cellList->len-1; i>=0 ; --i) {
+            _cell *ci = &g_array_index(_cellList, _cell, i);
+            PRINTF("cell name i(%i): %s\n", i, ci->filename->str);
+            if (TRUE == _intersec(ci->ext, ext)) {
+                //int j = 0;
+                for (guint j=i+1; j<_cellList->len; ++j) {
+                    _cell *cj = &g_array_index(_cellList, _cell, j);
+                    PRINTF("\tcell name j(%i): %s\n", j, cj->filename->str);
+                    if (TRUE == _intersec(ci->ext, cj->ext)) {
+                        // supress display of object that are 'under' a cell
+                        _suppObject(ci->ext, cj);
+                    }
+                }
+            } else {
+                // cell outside view
+            }
+        }
+    }
+    */
+
+    /*
+    // mark object for drawing
+    // A - initialy all object of every cell are not culled
+    // B - current  cell is 'this' cell
+    // C - following cell is 'other' cells
+    // for all cell do
+    //   1 - show all object in 'this' cell that are not culled allready
+    //   2 - cull all object in 'other' cells within 'this' cell
+    {
+        int i = 0;
+        int j = 0;
+        while (i < cellList->len) {
+            // show object in the current cell
+            // that have not been remove allready
+            // SCANMIN fit here
+            _showObject(cellList[i]);
+
+
+            j = i;
+            while (j < cellList->len) {
+                // remove object in rectangle of current cell
+                // for all the following cells
+                _cullObject(cellList[j], cellList[i].rect);
+                ++j;
+            }
+        }
+    }
+    */
+
+
+    /*  // BUG: sector outside view must show sector leg inside view
+    {   // cull lights outside view
+        // light outside the view are shown
+        //unsigned int i = 0;
+        // --6MARIN.000 doesn't have lights so no need to look at it
+        //for (i=0; i<_cellList->len; ++i) {
+        for (guint i=_cellList->len-1; i>0 ; --i) {
+            //_cell *c = &g_array_index(_cellList, _cell, i);
+            _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+            //if (FALSE == _intersec(c->ext, ext)) {
+                //unsigned int j = 0;
+                for (guint j=0; j<c->lights_sector->len; ++j) {
+                    S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
+                    S57_geo *geo = S52_PL_getGeo(obj);
+
+                    // here we hit lights in view that we're allready
+                    // processed in the first part of the cull() .. not optimal
+                    S57_setSupp(geo, FALSE);
+
+                    // SCAMIN & PLib
+                    if (TRUE == S52_GL_isSupp(obj)) {
+                        S57_geo *geo = S52_PL_getGeo(obj);
+                        S57_setSupp(geo, TRUE);
+                        ++_nCull;
+                    }
+                }
+            //}
+        }
+    }
+    */

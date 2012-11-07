@@ -118,7 +118,9 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_DISP_CENTROIDS      = 41,   // Display all centered symb of one area (on/off) (default off)
 
-    S52_MAR_NUM                 = 42    // number of parameters
+    S52_MAR_DISP_WORLD          = 42,   // Display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
+
+    S52_MAR_NUM                 = 43    // number of parameters
 } S52MarinerParameter;
 
 // command word filter for profiling

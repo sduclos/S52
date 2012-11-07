@@ -191,7 +191,10 @@ static double _MARparamVal[] = {
     //0.0,      // 41 - S52_MAR_DISP_CENTROIDS Display all centered symb of one area (on/off) (default off)
     1.0,      // 41 - S52_MAR_DISP_CENTROIDS Display all centered symb of one area (on/off) (default off)
 
-    42.0      // number of parameter type
+    0.0,      // 42 - S52_MAR_DISP_WORLD Display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
+    //1.0,      // 42 - S52_MAR_DISP_WORLD Display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
+
+    43.0      // number of parameter type
 };
 
 double S52_MP_get(S52MarinerParameter param)

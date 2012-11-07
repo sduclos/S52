@@ -695,12 +695,21 @@ static int      _s52_init       (struct s52engine *engine) /*FOLD00*/
     //S52_loadCell("/data/media/s52android/ENC_ROOT/CA279037.000", NULL);
     // Rimouski
     S52_loadCell("/data/media/s52android/ENC_ROOT/CA579041.000", NULL);
-    // load all 3 chart
+    // load all 3 S57 charts
     //S52_loadCell("/data/media/s52android/ENC_ROOT", NULL);
 
+    // World data
+    S52_loadCell("/data/media/s52android/gdal_data/--0WORLD.shp", NULL);
+    // show world
+    S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);
 #else
     // read cell location fron s52.cfg
     S52_loadCell(NULL, NULL);
+
+    // World data
+    S52_loadCell("/home/sduclos/dev/gis/data/--0WORLD.shp", NULL);
+    // show world
+    S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);
 #endif
 
     // debug - remove clutter from this symb in SELECT mode
@@ -712,10 +721,6 @@ static int      _s52_init       (struct s52engine *engine) /*FOLD00*/
 
     S52_loadPLib(PLIB);
     S52_loadPLib(COLS);
-
-    S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
-    //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
-
 
     // -- DEPTH COLOR ------------------------------------
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
@@ -775,6 +780,9 @@ static int      _s52_init       (struct s52engine *engine) /*FOLD00*/
     S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);   // hide
     // -------------------------------------------------------
 
+
+    S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
+    //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
 
     // trick to force symbole size (smaller on xoom so that
     // proportion look the same as a 'normal' screen)
@@ -2027,9 +2035,7 @@ static int      _X11_handleXevent(gpointer user_data) /*fold00*/
         case KeyRelease:
             // /usr/include/X11/keysymdef.h
             keycode = ((XKeyEvent *)&event)->keycode;
-            //keysym  = XKeycodeToKeysym(engine->dpy, keycode, 0);
             keysym  = XkbKeycodeToKeysym(engine->dpy, keycode, 0, 1);
-            // exit
             if (XK_Escape == keysym) {
                 g_main_loop_quit(engine->state.main_loop);
                 return TRUE;
@@ -2058,37 +2064,51 @@ static int      _X11_handleXevent(gpointer user_data) /*fold00*/
             // debug
             g_printf("keysym: %i\n", keysym);
 
+
+            //
             // debug - basic view movement
+            //
+
+            double delta = (engine->state.rNM / 10.0) / 60.0;
 
             // Move left, left arrow
             if (XK_Left      == keysym) {
-                engine->state.cLon -= (engine->state.rNM  > 2.0) ? 0.01 : 0.001;
+                //engine->state.cLon -= (engine->state.rNM  > 2.0) ? 0.01 : 0.001;
+                engine->state.cLon -= delta;
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // Move up, up arrow
             if (XK_Up        == keysym) {
-                engine->state.cLat += (engine->state.rNM  > 2.0) ? 0.01 : 0.001;
+                //engine->state.cLat += (engine->state.rNM  > 2.0) ? 0.01 : 0.001;
+                engine->state.cLat += delta;
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // Move right, right arrow
             if (XK_Right     == keysym) {
-                engine->state.cLon += (engine->state.rNM  > 2.0) ? 0.01 : 0.001;
+                //engine->state.cLon += (engine->state.rNM  > 2.0) ? 0.01 : 0.001;
+                engine->state.cLon += delta;
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // Move down, down arrow
             if (XK_Down      == keysym) {
-                engine->state.cLat -= (engine->state.rNM  > 2.0) ? 0.01 : 0.001;
+                //engine->state.cLat -= (engine->state.rNM  > 2.0) ? 0.01 : 0.001;
+                engine->state.cLat -= delta;
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
-            if (XK_Page_Up   == keysym) {  // zoom in
-                engine->state.rNM -= (engine->state.rNM  > 2.0) ? 2.0 : 0.1;
+            // zoom in
+            if (XK_Page_Up   == keysym) {  
+                //engine->state.rNM -= (engine->state.rNM  > 2.0) ? 2.0 : 0.1;
+                engine->state.rNM -= (engine->state.rNM / 10.0);
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
-            if (XK_Page_Down == keysym) {  // zoom out
-                engine->state.rNM += (engine->state.rNM  > 2.0) ? 2.0 : 0.1;
+            // zoom out
+            if (XK_Page_Down == keysym) {  
+                //engine->state.rNM += (engine->state.rNM  > 2.0) ? 2.0 : 0.1;
+                engine->state.rNM += (engine->state.rNM / 10.0);
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
-            if (XK_Home      == keysym) {  // rot -10.0 deg
+            // rot -10.0 deg
+            if (XK_Home      == keysym) {
                 if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
                     g_print("_X11_handleXevent((): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
                     return FALSE;
@@ -2105,7 +2125,8 @@ static int      _X11_handleXevent(gpointer user_data) /*fold00*/
                 if (0.0 > engine->state.north) engine->state.north += 360.0;
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
-            if (XK_End       == keysym) {  // rot +10.0 deg
+            // rot +10.0 deg
+            if (XK_End       == keysym) {  
                 if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
                     g_print("_X11_handleXevent((): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
                     return FALSE;
