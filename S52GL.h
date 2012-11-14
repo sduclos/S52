@@ -27,81 +27,80 @@
 
 #include "S52PL.h"	// S52_obj
 
-extern int   S52_GL_init(void);
-extern int   S52_GL_setDotPitch(int w, int h, int wmm, int hmm);
-extern int   S52_GL_setFontDL(int fontDL);
+int   S52_GL_init(void);
+int   S52_GL_setDotPitch(int w, int h, int wmm, int hmm);
+int   S52_GL_setFontDL(int fontDL);
 
 // -- framebuffer stuff --------------------------------
 // init frame, save OpenGL state (see S52_GL_end())
-extern int   S52_GL_begin(int cursorPick, int drawLast);
+int   S52_GL_begin(int cursorPick, int drawLast);
 // render an object to frame
-extern int   S52_GL_draw(S52_obj *obj, gpointer user_data);
+int   S52_GL_draw(S52_obj *obj, gpointer user_data);
 // draw lights
-extern int   S52_GL_drawLIGHTS(S52_obj *obj);
+int   S52_GL_drawLIGHTS(S52_obj *obj);
 // draw text
-extern int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
+int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
 // copy from frame buffer to memory, return pixels
-extern unsigned char *S52_GL_readFBPixels(void);
+unsigned char *S52_GL_readFBPixels(void);
 // debug, caller must free mem
-//extern unsigned char *S52_GL_readPixels(int x, int y, int width, int height);
+//unsigned char *S52_GL_readPixels(int x, int y, int width, int height);
 // debug
-extern int            S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height);
+int            S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height);
 
 // copy from memory to frame buffer
-extern int   S52_GL_drawFBPixels(void);
-extern int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north);
+int   S52_GL_drawFBPixels(void);
+int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north);
 
-extern int   S52_GL_resetVBOID(void);
+int   S52_GL_resetVBOID(void);
 
 // done frame, restore OpenGL state
 // drawLast: FALSE then the next S52_drawLast() will pull the chart background from memory
-extern int   S52_GL_end(int drawLast);
+int   S52_GL_end(int drawLast);
 // ----------------------------------
 
 
-extern int   S52_GL_isSupp(S52_obj *obj);
-extern int   S52_GL_isOFFscreen(S52_obj *obj);
+int   S52_GL_isSupp(S52_obj *obj);
+int   S52_GL_isOFFscreen(S52_obj *obj);
 
 
 // delete GL data of object (DL of geo)
-extern int   S52_GL_del(S52_obj *obj);
+int   S52_GL_del(S52_obj *obj);
 
 // next S52_GL_draw call will do cursor pick instead of rendering
-//extern S57_geo* S52_GL_doPick(double x, double y);
+//S57_geo* S52_GL_doPick(double x, double y);
 
 // flush GL objects, clean up mem
-extern int   S52_GL_done(void);
+int   S52_GL_done(void);
 
-extern int   S52_GL_setView(double centerLat, double centerLon, double rangeNM, double north);
-//extern int  S52_GL_getView(double *s, double *w, double *n, double *e);
+int   S52_GL_setView(double centerLat, double centerLon, double rangeNM, double north);
+//int  S52_GL_getView(double *s, double *w, double *n, double *e);
 
-extern int   S52_GL_getPRJView(double *s, double *w, double *n, double *e);
-extern int   S52_GL_setPRJView(double  s, double  w, double  n, double  e);
+int   S52_GL_getPRJView(double *s, double *w, double *n, double *e);
+int   S52_GL_setPRJView(double  s, double  w, double  n, double  e);
 
-//extern int   S52_GL_win2prj(double *x, double *y, double *z);
-//extern int   S52_GL_prj2win(double *x, double *y, double *z);
-extern int   S52_GL_win2prj(double *x, double *y);
-extern int   S52_GL_prj2win(double *x, double *y);
+//int   S52_GL_win2prj(double *x, double *y, double *z);
+//int   S52_GL_prj2win(double *x, double *y, double *z);
+int   S52_GL_win2prj(double *x, double *y);
+int   S52_GL_prj2win(double *x, double *y);
 
-extern int   S52_GL_setViewPort(int  x, int  y, int  width, int  height);
-extern int   S52_GL_getViewPort(int *x, int *y, int *width, int *height);
+int   S52_GL_setViewPort(int  x, int  y, int  width, int  height);
+int   S52_GL_getViewPort(int *x, int *y, int *width, int *height);
 
 // return the name of the top object
-extern char *S52_GL_getNameObjPick(void);
+char *S52_GL_getNameObjPick(void);
 
-//extern int   S52_GL_setOWNSHP(double breadth, double length);
-//extern int   S52_GL_setOWNSHP(S52_obj *obj);
+//int   S52_GL_setOWNSHP(double breadth, double length);
+//int   S52_GL_setOWNSHP(S52_obj *obj);
 
-//extern int   S52_GL_tess(S57_geo *geoData);
-extern int   S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, unsigned int weight);
-extern int   S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);
-extern int   S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str);
+//int   S52_GL_tess(S57_geo *geoData);
+int   S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, unsigned int weight);
+int   S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);
+int   S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str);
 
-extern int   S52_GL_drawGraticule(void);
+int   S52_GL_drawGraticule(void);
 // draw an arc from A to B
-//extern int   S52_GL_drawArc(S52_obj *objA, S52_obj *objB);
-extern int   S52_GL_movePoint(double *x, double *y, double angle, double dist_m);
+//int   S52_GL_drawArc(S52_obj *objA, S52_obj *objB);
+int   S52_GL_movePoint(double *x, double *y, double angle, double dist_m);
 
 
-
-#endif
+#endif // _S52GL_H_

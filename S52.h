@@ -173,7 +173,7 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_draw(void);
+DLL int    STD S52_draw(void);
 
 /**
  * S52_drawLast:
@@ -184,7 +184,7 @@ extern DLL int    STD S52_draw(void);
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_drawLast(void);
+DLL int    STD S52_drawLast(void);
 
 /**
  * S52_drawText: DEPRECATED
@@ -194,14 +194,14 @@ extern DLL int    STD S52_drawLast(void);
  *
  * Return: TRUE on success, else FALSE
  */
-//extern DLL int    STD S52_drawText(void);
+//DLL int    STD S52_drawText(void);
 
 #ifdef S52_USE_GV
-extern DLL int    STD S52_drawLayer(const char *name);
+DLL int    STD S52_drawLayer(const char *name);
 #endif
 
 // DEPRECATE, set display list for a font
-//extern DLL int    STD S52_setFont(int font);
+//DLL int    STD S52_setFont(int font);
 //
 
 /**
@@ -217,7 +217,7 @@ extern DLL int    STD S52_drawLayer(const char *name);
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_drawStr(double pixels_x, double pixels_y,
+DLL int    STD S52_drawStr(double pixels_x, double pixels_y,
                                   const char *colorName, unsigned int bsize, const char *str);
 
 /**
@@ -230,7 +230,7 @@ extern DLL int    STD S52_drawStr(double pixels_x, double pixels_y,
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north);
+DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north);
 
 /**
  * S52_setViewPort:
@@ -251,7 +251,7 @@ extern DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height);
+DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height);
 
 /**
  * S52_pickAt:
@@ -264,7 +264,7 @@ extern DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_wid
  *
  * Return: (transfer none): the '<name>:<S57ID>' of the S57 object, else NULL
  */
-extern DLL const char * STD S52_pickAt(double pixels_x, double pixels_y);
+DLL const char * STD S52_pickAt(double pixels_x, double pixels_y);
 
 
 // --- Helper ---
@@ -279,7 +279,7 @@ extern DLL const char * STD S52_pickAt(double pixels_x, double pixels_y);
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_xy2LL (double *pixels_x,  double *pixels_y);
+DLL int    STD S52_xy2LL (double *pixels_x,  double *pixels_y);
 
 /**
  * S52_LL2xy:
@@ -290,7 +290,7 @@ extern DLL int    STD S52_xy2LL (double *pixels_x,  double *pixels_y);
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_LL2xy (double *longitude, double *latitude);
+DLL int    STD S52_LL2xy (double *longitude, double *latitude);
 
 
 //----- NO GL context (can work outside main loop) ----------
@@ -312,11 +312,11 @@ typedef     int   STD (*S52_error_cb) (const char *err);
  *
  * Return: TRUE on success, else FALSE
  */
-extern  DLL int   STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb);
-//extern  DLL int   STD S52_init(unsigned int screen_pixels_w, unsigned int screen_pixels_h, unsigned int screen_mm_w, unsigned int screen_mm_h, S52_error_cb err_cb);
-//extern  DLL int   STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h);
+DLL int   STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb);
+//DLL int   STD S52_init(unsigned int screen_pixels_w, unsigned int screen_pixels_h, unsigned int screen_mm_w, unsigned int screen_mm_h, S52_error_cb err_cb);
+//DLL int   STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h);
 #else  // when using GTK1
-extern  DLL int   STD S52_init(void);
+DLL int   STD S52_init(void);
 #endif
 
 /**
@@ -327,7 +327,7 @@ extern  DLL int   STD S52_init(void);
  *
  * Return: (transfer none): String with the version of libS52 and the '#define' used to build it
  */
-extern  DLL const char * STD S52_version(void);
+DLL const char * STD S52_version(void);
 
 /**
  * S52_done:
@@ -337,7 +337,7 @@ extern  DLL const char * STD S52_version(void);
  *
  * Return: TRUE on success, else FALSE
  */
-extern  DLL int   STD S52_done(void);
+DLL int   STD S52_done(void);
 
 
 // ---- CHART LOADING (cell) -------------------------------------------
@@ -359,7 +359,7 @@ extern  DLL int   STD S52_done(void);
  *
  * Return: TRUE on success, else FALSE
  */
-extern  DLL int   STD S52_loadObject      (const char *objname, void *feature);
+DLL int   STD S52_loadObject      (const char *objname, void *feature);
 
 /**
  * S52_loadObject_cb:
@@ -386,7 +386,7 @@ typedef DLL int STD (*S52_loadObject_cb)  (const char *objname, void *feature);
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_loadCell        (const char *encPath,  S52_loadObject_cb loadObject_cb);
+DLL int    STD S52_loadCell        (const char *encPath,  S52_loadObject_cb loadObject_cb);
 
 /**
  * S52_doneCell:
@@ -397,7 +397,7 @@ extern DLL int    STD S52_loadCell        (const char *encPath,  S52_loadObject_
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_doneCell        (const char *encPath);
+DLL int    STD S52_doneCell        (const char *encPath);
 
 /**
  * S52_newMercPrj:
@@ -408,7 +408,7 @@ extern DLL int    STD S52_doneCell        (const char *encPath);
  *
  * Return: TRUE on success, else FALSE
  */
-//extern DLL int    STD S52_newMercPrj(double latitude);
+//DLL int    STD S52_newMercPrj(double latitude);
 
 
 //typedef struct S52_view {
@@ -427,7 +427,7 @@ extern DLL int    STD S52_doneCell        (const char *encPath);
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north);
+DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north);
 
 /**
  * S52_getCellExtent:
@@ -443,7 +443,7 @@ extern DLL int    STD S52_setView(double cLat, double cLon, double rNM, double n
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, double *N, double *E);
+DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, double *N, double *E);
 
 /**
  * S52_getMarinerParam:
@@ -456,7 +456,7 @@ extern DLL int    STD S52_getCellExtent(const char *filename, double *S, double 
  *
  * Return: value
  */
-extern DLL double STD S52_getMarinerParam(S52MarinerParameter paramID);
+DLL double STD S52_getMarinerParam(S52MarinerParameter paramID);
 
 /**
  * S52_setMarinerParam:
@@ -469,7 +469,7 @@ extern DLL double STD S52_getMarinerParam(S52MarinerParameter paramID);
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
+DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
 
 
 /**
@@ -486,7 +486,7 @@ extern DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double va
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_setTextDisp(int dispPrioIdx, int count, int state);
+DLL int    STD S52_setTextDisp(int dispPrioIdx, int count, int state);
 
 /**
  * S52_getTextDispPrio:
@@ -497,7 +497,7 @@ extern DLL int    STD S52_setTextDisp(int dispPrioIdx, int count, int state);
  *
  * Return: state, TRUE / FALSE / -1 (fail)
  */
-extern DLL int    STD S52_getTextDisp(int dispPrioIdx);
+DLL int    STD S52_getTextDisp(int dispPrioIdx);
 
 // DEPRECATED
 /**
@@ -512,7 +512,7 @@ extern DLL int    STD S52_getTextDisp(int dispPrioIdx);
  *
  * Return: TRUE if transition ON to OFF or OFF to ON, else FALSE
  */
-extern DLL int    STD S52_toggleObjClass   (const char *className);
+DLL int    STD S52_toggleObjClass   (const char *className);
 
 /**
  * S52_toggleObjClassON:
@@ -523,9 +523,9 @@ extern DLL int    STD S52_toggleObjClass   (const char *className);
  * NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT (3).
  *
  *
- * Return: TRUE if transition OFF to ON, else FALSE
+ * Return: TRUE if transition OFF to ON, else FALSE, error -1 (DISPLAYBASE or invalid className)
  */
-extern DLL int    STD S52_toggleObjClassON (const char *className);
+DLL int    STD S52_toggleObjClassON (const char *className);
 
 /**
  * S52_toggleObjClassOFF:
@@ -536,9 +536,9 @@ extern DLL int    STD S52_toggleObjClassON (const char *className);
  * NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT (3).
  *
  *
- * Return: TRUE if transition ON to OFF, else FALSE
+ * Return: TRUE if transition ON to OFF, else FALSE, error -1 (DISPLAYBASE or invalid className)
  */
-extern DLL int    STD S52_toggleObjClassOFF(const char *className);
+DLL int    STD S52_toggleObjClassOFF(const char *className);
 
 /**
  * S52_getS57ObjClassSupp:
@@ -549,7 +549,7 @@ extern DLL int    STD S52_toggleObjClassOFF(const char *className);
  *
  * Return: TRUE if suppression is ON else FALSE, error -1 (DISPLAYBASE or invalid className)
  */
-extern DLL int    STD S52_getS57ObjClassSupp(const char *className);
+DLL int    STD S52_getS57ObjClassSupp(const char *className);
 
 /**
  * S52_setS57ObjClassSupp:
@@ -561,7 +561,7 @@ extern DLL int    STD S52_getS57ObjClassSupp(const char *className);
  *
  * Return: TRUE if call successfull else FALSE, error -1 (DISPLAYBASE or invalid className)
  */
-extern DLL int    STD S52_setS57ObjClassSupp(const char *className, int value);
+DLL int    STD S52_setS57ObjClassSupp(const char *className, int value);
 
 /**
  * S52_loadPLib:
@@ -572,7 +572,7 @@ extern DLL int    STD S52_setS57ObjClassSupp(const char *className, int value);
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_loadPLib(const char *plibName);
+DLL int    STD S52_loadPLib(const char *plibName);
 
 /**
  * S52_getPLibsIDList:
@@ -584,7 +584,7 @@ extern DLL int    STD S52_loadPLib(const char *plibName);
  *
  * Return: (transfer none): string
  */
-extern DLL const char * STD S52_getPLibsIDList(void);
+DLL const char * STD S52_getPLibsIDList(void);
 
 /**
  * S52_getPalettesNameList:
@@ -596,7 +596,7 @@ extern DLL const char * STD S52_getPLibsIDList(void);
  *
  * Return: (transfer none): JSONArray, NULL if call fail
  */
-extern DLL const char * STD S52_getPalettesNameList(void);
+DLL const char * STD S52_getPalettesNameList(void);
 
 /**
  * S52_getCellNameList:
@@ -608,7 +608,7 @@ extern DLL const char * STD S52_getPalettesNameList(void);
  *
  * Return: (transfer none): JSONArray, NULL if call fail
  */
-extern DLL const char * STD S52_getCellNameList(void);
+DLL const char * STD S52_getCellNameList(void);
 
 /**
  * S52_getS57ObjClassList: get object class in this cell
@@ -623,7 +623,7 @@ extern DLL const char * STD S52_getCellNameList(void);
  *
  * Return: (transfer none): string of all object separeted by ',', NULL if call fail
  */
-extern DLL const char * STD S52_getS57ObjClassList(const char *cellName);
+DLL const char * STD S52_getS57ObjClassList(const char *cellName);
 
 /**
  * S52_getObjList: get S52 objets of className in this cell
@@ -645,7 +645,7 @@ extern DLL const char * STD S52_getS57ObjClassList(const char *cellName);
  *
  * Return: (transfer none): string of all element separeted by ',', NULL if call fail
  */
-extern DLL const char * STD S52_getObjList(const char *cellName, const char *className);
+DLL const char * STD S52_getObjList(const char *cellName, const char *className);
 
 /**
  * S52_getAttList: get Attributes of a S52 object (S57ID)
@@ -658,7 +658,7 @@ extern DLL const char * STD S52_getObjList(const char *cellName, const char *cla
  *
  * Return: (transfer none): string of all element separeted by ',', NULL if call fail
  */
-extern DLL const char * STD S52_getAttList(unsigned int S57ID);
+DLL const char * STD S52_getAttList(unsigned int S57ID);
 
 /**
  * S52_setRGB:
@@ -672,7 +672,7 @@ extern DLL const char * STD S52_getAttList(unsigned int S57ID);
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B);
+DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B);
 
 /**
  * S52_getRGB:
@@ -684,7 +684,7 @@ extern DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsign
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
+DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
 
 // RADAR
 typedef DLL int   STD (*S52_RADAR_cb)(void);
@@ -698,7 +698,7 @@ typedef DLL int   STD (*S52_RADAR_cb)(void);
  *
  * Return: TRUE on success, else FALSE
  */
-extern  DLL int   STD S52_setRADARCallBack(S52_RADAR_cb cb);
+DLL int   STD S52_setRADARCallBack(S52_RADAR_cb cb);
 
 /**
  * S52_dumpS57IDPixels:
@@ -717,7 +717,7 @@ extern  DLL int   STD S52_setRADARCallBack(S52_RADAR_cb cb);
  * Return: TRUE on success, else FALSE
  */
 
-extern  DLL int   STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height);
+DLL int   STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height);
 
 ///////////////////////////////////////////////////////////////
 //
@@ -789,7 +789,7 @@ typedef void*   S52ObjectHandle;
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
+DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
                                              unsigned int xyznbrmax, double *xyz, const char *listAttVal);
 
 /**
@@ -801,7 +801,7 @@ extern DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectT
  *
  * Return: (transfer none): NULL if S52_obj was deleted successfully, if call fail return the handle
  */
-extern DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
+DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
 
 /**
  * S52_getMarObjH: get Mariners' Object handle
@@ -813,7 +813,7 @@ extern DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
  *
  * Return: (transfer none): the S52_obj handle or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID);
+DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID);
 
 /**
  * S52_toggleDispMarObj:
@@ -824,7 +824,7 @@ extern DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID);
  *
  * Return: (transfer none): the S52_obj handle or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle objH);
+DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle objH);
 
 
 // ---- Mariners' Objects that call the Conditional Symbology (CS) code ----
@@ -849,7 +849,7 @@ extern DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle objH);
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBegin, double latEnd, double lonEnd);
+DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBegin, double latEnd, double lonEnd);
 
 /**
  * S52_newLEGLIN:
@@ -868,7 +868,7 @@ extern DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDist,
+DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDist,
                                              double latBegin, double lonBegin, double latEnd, double lonEnd,
                                              S52ObjectHandle previousLEGLIN);
 
@@ -882,7 +882,7 @@ extern DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double w
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
+DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
 
 
 // --- Vector & Dimension of OWNSHP and VESSEL object -------------------
@@ -900,7 +900,7 @@ extern DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
  *
  * Return: (transfer none): the handle to S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d);
+DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d);
 
 /**
  * S52_setVector:
@@ -912,7 +912,7 @@ extern DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, 
  *
  * Return: (transfer none): the handle to S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_setVector   (S52ObjectHandle objH, int vecstb, double course, double speed);
+DLL S52ObjectHandle STD S52_setVector   (S52ObjectHandle objH, int vecstb, double course, double speed);
 
 /**
  * S52_newPASTRK:
@@ -924,7 +924,7 @@ extern DLL S52ObjectHandle STD S52_setVector   (S52ObjectHandle objH, int vecstb
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int xyznbrmax);
+DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int xyznbrmax);
 
 /**
  * S52_pushPosition:
@@ -943,7 +943,7 @@ extern DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int xyznbrmax)
  *
  * Return: (transfer none): the handle to S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data);
+DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data);
 
 /**
  * S52_newVESSEL:
@@ -955,7 +955,7 @@ extern DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double lat
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
+DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
 
 /**
  * S52_setVESSELlabel:
@@ -967,7 +967,7 @@ extern DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
  *
  * Return: (transfer none): the handle to S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel);
+DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel);
 
 /**
  * S52_setVESSELstate:
@@ -988,7 +988,7 @@ extern DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const ch
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn);
+DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn);
 
 
 // --- VRM & EBL -------------------
@@ -1006,7 +1006,7 @@ extern DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vess
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin);
+DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin);
 
 /**
  * S52_setVRMEBL:
@@ -1022,7 +1022,7 @@ extern DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineSty
  *
  * Return: (transfer none): the handle to S52_obj or NULL if call fail
  */
-extern DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, double *brg, double *rge);
+DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, double *brg, double *rge);
 
 
 // --- CS that need to be called by the system --------------
@@ -1041,7 +1041,7 @@ extern DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels
  *
  * Return: TRUE on success, else FALSE
  */
-extern DLL int            STD S52_newCSYMB(void);
+DLL int            STD S52_newCSYMB(void);
 
 
 #ifdef __cplusplus

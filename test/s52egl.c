@@ -102,10 +102,12 @@ static S52ObjectHandle _leglin2 = NULL;
 static S52ObjectHandle _leglin3 = NULL;
 
 // test - VRMEBL
+// S52 object name:"ebline"
 static S52ObjectHandle _vrmeblA = NULL;
 
 // test - cursor DISP 9 (instead of IHO PLib DISP 8)
 // need to load PLAUX
+// S52 object name:"ebline"
 static S52ObjectHandle _cursor2 = NULL;
 
 // test - centroid
@@ -126,7 +128,7 @@ typedef struct s52android_state_t {
 } s52android_state_t;
 
 //
-struct s52engine {
+typedef struct s52engine {
 
 #ifdef S52_USE_ANDROID
     struct android_app        *app;
@@ -168,8 +170,9 @@ struct s52engine {
     GTimeVal            timeLastDraw;
 
     s52android_state_t  state;
-} engine;
+} s52engine;
 
+static s52engine engine;
 
 //----------------------------------------------
 //
@@ -204,7 +207,7 @@ static S52ObjectHandle _vessel_ais_afglow = NULL;
 
 
 
-static int      _egl_init       (struct s52engine *engine) /*fold00*/
+static int      _egl_init       (s52engine *engine)
 {
     LOGI("s52egl:_egl_init(): starting ..\n");
 
@@ -422,7 +425,7 @@ static int      _egl_init       (struct s52engine *engine) /*fold00*/
     return 1;
 }
 
-static void     _egl_done       (struct s52engine *engine) /*fold00*/
+static void     _egl_done       (s52engine *engine)
 // Tear down the EGL context currently associated with the display.
 {
     if (engine->eglDisplay != EGL_NO_DISPLAY) {
@@ -446,7 +449,7 @@ static void     _egl_done       (struct s52engine *engine) /*fold00*/
 
 
 
-static int      _s52_computeView(s52android_state_t *state) /*fold00*/
+static int      _s52_computeView(s52android_state_t *state)
 {
      S52_extent ext;
 
@@ -462,7 +465,7 @@ static int      _s52_computeView(s52android_state_t *state) /*fold00*/
 }
 
 #ifdef S52_USE_FAKE_AIS
-static int      _s52_setupVESSEL(s52android_state_t *state) /*fold00*/
+static int      _s52_setupVESSEL(s52android_state_t *state)
 {
     // ARPA
     //_vessel_arpa = S52_newVESSEL(1, dummy, "ARPA label");
@@ -497,7 +500,7 @@ static int      _s52_setupVESSEL(s52android_state_t *state) /*fold00*/
     return TRUE;
 }
 
-static int      _s52_setupOWNSHP(s52android_state_t *state) /*fold00*/
+static int      _s52_setupOWNSHP(s52android_state_t *state)
 {
     _ownshp = S52_newOWNSHP(OWNSHPLABEL);
     //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 0.0, 30.0);
@@ -506,7 +509,7 @@ static int      _s52_setupOWNSHP(s52android_state_t *state) /*fold00*/
     //_ownshp = S52_setDimension(_ownshp, 100.0, 0.0, 15.0, 0.0);
     _ownshp = S52_setDimension(_ownshp, 0.0, 100.0, 15.0, 0.0);
     //_ownshp = S52_setDimension(_ownshp, 1000.0, 50.0, 15.0, 15.0);
- 
+
     //S52_setPosition(_ownshp, state->cLat, state->cLon, 030.0);
     //S52_setPosition(_ownshp, state->cLat, state->cLon, 000.0);
     //S52_setPosition(_ownshp, state->cLat, state->cLon, 180.0+045.0);
@@ -518,7 +521,7 @@ static int      _s52_setupOWNSHP(s52android_state_t *state) /*fold00*/
 }
 #endif  // S52_USE_FAKE_AIS
 
-static int      _s52_setupLEGLIN(void) /*fold00*/
+static int      _s52_setupLEGLIN(void)
 {
 /*
 
@@ -601,22 +604,27 @@ route normale de navigation.
     return TRUE;
 }
 
-static int      _s52_setupVRMEBL(s52android_state_t *state) /*fold00*/
+static int      _s52_setupVRMEBL(s52android_state_t *state)
 {
     char attVal[] = "cursty:2";
     double xyz[3] = {state->cLon, state->cLat, 0.0};
 
     _cursor2 = S52_newMarObj("cursor", S52_POINT, 1, xyz, attVal);
-    //S52_toggleDispMarObj(_cursor2); // off
+    //int ret = S52_toggleObjClassOFF("cursor");
+    //LOGE("_s52_setupVRMEBL(): S52_toggleObjClassOFF('cursor'); ret=%i\n", ret);
+    //int ret =
+        S52_toggleObjClassON("cursor");
+    //LOGE("_s52_setupVRMEBL(): S52_toggleObjClassON('cursor'); ret=%i\n", ret);
+
 
     _vrmeblA = S52_newVRMEBL(TRUE, TRUE, TRUE, FALSE);
-    //S52_toggleDispMarObj(_vrmeblA); // off
+    S52_toggleObjClassON("ebline");
 
     return TRUE;
 }
 
-static int      _s52_setupPRDARE(s52android_state_t *state) /*fold00*/
-// test - centroid 
+static int      _s52_setupPRDARE(s52android_state_t *state)
+// test - centroid
 {
     //*
     // AREA (CW: to center the text)
@@ -637,7 +645,7 @@ static int      _s52_setupPRDARE(s52android_state_t *state) /*fold00*/
     return TRUE;
 }
 
-static int      _s52_init       (struct s52engine *engine) /*FOLD00*/
+static int      _s52_init       (s52engine *engine)
 {
     if ((NULL==engine->eglDisplay) || (EGL_NO_DISPLAY==engine->eglDisplay)) {
         LOGE("_init_S52(): no EGL display ..\n");
@@ -806,9 +814,9 @@ static int      _s52_init       (struct s52engine *engine) /*FOLD00*/
     // then (re)position the 'camera'
     S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
 
-    // also create 'cursor', must be first to be
-    // on top of OWNSHP/VESSEL
-    //_s52_setupVRMEBL(&engine->state);
+    // must be first mariners' object so that the
+    // rendering engine place it on top of OWNSHP/VESSEL
+    _s52_setupVRMEBL(&engine->state);
 
     S52_newCSYMB();
 
@@ -832,7 +840,7 @@ static int      _s52_init       (struct s52engine *engine) /*FOLD00*/
     return EGL_TRUE;
 }
 
-static int      _s52_done       (struct s52engine *engine) /*fold00*/
+static int      _s52_done       (s52engine *engine)
 {
     (void)engine;
 
@@ -841,7 +849,7 @@ static int      _s52_done       (struct s52engine *engine) /*fold00*/
     return TRUE;
 }
 
-static int      _s52_updTimeTag (struct s52engine *engine) /*fold00*/
+static int      _s52_updTimeTag (s52engine *engine)
 {
     (void)engine;
 
@@ -872,7 +880,7 @@ static int      _s52_updTimeTag (struct s52engine *engine) /*fold00*/
     return TRUE;
 }
 
-static int      _s52_draw_cb    (gpointer user_data) /*fold00*/
+static int      _s52_draw_cb    (gpointer user_data)
 // return TRUE for the signal to be called again
 // TODO: see if EGL can be sqeezed inside libS52!
 {
@@ -975,7 +983,7 @@ exit:
 
 static int _androidUIon = FALSE;
 
-static int      _android_done_external_sensors(void) /*fold00*/
+static int      _android_done_external_sensors(void)
 {
     GError *error = NULL;
     char run_allstop_sh[] = "/system/bin/sh -c "  ALLSTOP ;
@@ -994,7 +1002,7 @@ static int      _android_done_external_sensors(void) /*fold00*/
     return TRUE;
 }
 
-static int      _android_init_external_gps(void) /*fold00*/
+static int      _android_init_external_gps(void)
 // start sl4agps - get GPS & Gyro from Android
 {
     GError *error = NULL;
@@ -1022,7 +1030,7 @@ static int      _android_init_external_gps(void) /*fold00*/
     return TRUE;
 }
 
-static int      _android_init_external_ais(void) /*fold00*/
+static int      _android_init_external_ais(void)
 // FIXME: this func is the same as _android_spawn_gps()
 {
     GError *error = NULL;
@@ -1051,7 +1059,7 @@ static int      _android_init_external_ais(void) /*fold00*/
 }
 
 #if 0
-static int      _android_sensors_gyro(gpointer user_data) /*fold00*/
+static int      _android_sensors_gyro(gpointer user_data)
 // Android Native poll event
 {
     struct s52engine* engine = (struct s52engine*)user_data;
@@ -1140,7 +1148,7 @@ static int      _android_sensors_gyro(gpointer user_data) /*fold00*/
     return TRUE;
 }
 
-static int      _android_sensorsList_dump(ASensorManager *sensorManager) /*fold00*/
+static int      _android_sensorsList_dump(ASensorManager *sensorManager)
 {
 /*
 I/s52android( 2683): 0 - sensor name: KXTF9 3-axis Accelerometer
@@ -1168,7 +1176,7 @@ I/s52android( 2683): 9 - sensor name: Corrected Gyroscope Sensor
 }
 #endif
 
-static int      _android_display_init(struct s52engine *engine) /*fold00*/
+static int      _android_display_init(s52engine *engine)
 {
     // is that even possible
     if (NULL == engine) {
@@ -1199,15 +1207,41 @@ static int      _android_display_init(struct s52engine *engine) /*fold00*/
     return EGL_TRUE;
 }
 
+static int      _android_render      (s52engine *engine, double new_y, double new_x, double new_z, double new_r)
+{
+    if (TRUE == S52_setView(new_y, new_x, new_z, new_r)) {
+        engine->state.cLat  = new_y;
+        engine->state.cLon  = new_x;
+        engine->state.rNM   = new_z;
+        engine->state.north = new_r;
 
-static int      _android_motion_event(struct s52engine *engine, AInputEvent *event) /*fold00*/
+        if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
+            LOGE("_android_motion_event(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
+            return FALSE;
+        }
+
+        S52_draw();
+        S52_drawLast();
+
+        if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
+            LOGE("_android_motion_event(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
+static int      _android_motion_event(s52engine *engine, AInputEvent *event)
 {
     static int    ticks       = 0;
 
     // FIXME: use enum for mode
-    static int    mode_zoom   = FALSE;
-    static int    mode_rot    = FALSE;
-    static int    mode_vrmebl = FALSE;
+    static int    mode_scroll     = FALSE;
+    static int    mode_zoom       = FALSE;
+    static int    mode_rot        = FALSE;
+    static int    mode_vrmebl     = FALSE;
+    static int    mode_vrmebl_set = FALSE;
 
     static double start_x     = 0.0;
     static double start_y     = 0.0;
@@ -1237,47 +1271,92 @@ static int      _android_motion_event(struct s52engine *engine, AInputEvent *eve
 
         mode_zoom   = (start_x < EDGE_X0) ? TRUE : FALSE;
         mode_rot    = (start_y < EDGE_Y0) ? TRUE : FALSE;
-        mode_vrmebl = FALSE;
 
         // corner case: (x,y) in corner then zoom mode is selected over rotation mode
         if ((TRUE==mode_zoom) && (TRUE==mode_rot))
             mode_rot = FALSE;
 
+        mode_vrmebl     = FALSE;
+        mode_vrmebl_set = FALSE;
+        mode_scroll     = FALSE;
+
         break;
 
     case AMOTION_EVENT_ACTION_MOVE:
+        // FIXME: do rendering outside main thread
+
         ++ticks;
 
-        //engine->do_S52draw     = FALSE;
-        //engine->do_S52drawLast = FALSE;
-
-        // FIXME: do this outside main thread
+        // long press
         if (ticks > TICKS_PER_TAP) {
             double new_x = AMotionEvent_getX(event, 0);
             double new_y = AMotionEvent_getY(event, 0);
 
-            // blit
+            // no motion
+            if ((abs(start_x - new_x) < 5) && (abs(start_y - new_y) < 5)) {
+                // ensure that a minimum number of call to libS52
+                // to turn vrmebl ON/OFF
+                if (FALSE == mode_vrmebl_set) {
+                    mode_vrmebl = (TRUE==mode_vrmebl) ? FALSE : TRUE;
+                    if (TRUE == mode_vrmebl) {
+                        S52_toggleObjClassOFF("cursor");
+                        S52_toggleObjClassOFF("ebline");
+                    } else {
+                        S52_toggleObjClassON("cursor");
+                        S52_toggleObjClassON("ebline");
+                    }
+                    mode_vrmebl_set = TRUE;
+                }
+            } else {
+                // motion - find is scroll or vrmebl
+                if (TRUE != mode_vrmebl_set && FALSE==mode_zoom && FALSE==mode_zoom)
+                    mode_scroll = TRUE;
+            }
+
+
+            // blit start
             if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
                 LOGE("_android_motion_event(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
                 return FALSE;
             }
 
-            if ((TRUE==mode_rot) || (TRUE==mode_zoom)) {
-                if (TRUE == mode_rot) {
-                    double north = engine->state.north + (90.0 * ((start_x - new_x) / engine->width));
-                    if (north <    0.0) north += 360.0;
-                    if (north >= 360.0) north -= 360.0;
+            if (TRUE == mode_rot) {
+                double north = engine->state.north + (90.0 * ((start_x - new_x) / engine->width));
+                if (north <    0.0) north += 360.0;
+                if (north >= 360.0) north -= 360.0;
 
-                    S52_drawBlit(0.0, 0.0, 0.0, north);
-                    //LOGI("s52egl:_android_motion_event():AMOTION_EVENT_ACTION_MOVE: north=%f start_y=%f new_y=%f width=%i\n",
-                    //     north, start_y, new_y, engine->width);
+                S52_drawBlit(0.0, 0.0, 0.0, north);
+                //LOGI("s52egl:_android_motion_event():AMOTION_EVENT_ACTION_MOVE: north=%f start_y=%f new_y=%f width=%i\n",
+                //     north, start_y, new_y, engine->width);
+            }
+
+            if (TRUE == mode_zoom) {
+                double dz_pc =  (start_y - new_y) / engine->height; // %
+                if (TRUE == S52_drawBlit(0.0, 0.0, dz_pc, 0.0))
+                    zoom_fac = dz_pc;
+            }
+
+            if (TRUE == mode_vrmebl) {
+                double brg = 0.0;
+                double rge = 0.0;
+                S52_setVRMEBL(_vrmeblA, new_x, new_y, &brg, &rge);
+
+                // update cursor position (lon/lat)
+                if (TRUE == S52_xy2LL(&new_x, &new_y)) {
+                    char str[80] = {'\0'};
+                    sprintf(str, "%05.1f° / %.1f m", brg, rge);
+                    S52_drawStr(new_x + 5, engine->height - new_y - 15, "UINFF", 1, str);
+
+                    S52_pushPosition(_cursor2, new_y, new_x, 0.0);
+
+                    // debug
+                    //LOGI("s52egl:_android_motion_event(): lat= %f, lon= %f\n", new_y, new_x);
+
+                    S52_drawLast();
                 }
-                if (TRUE == mode_zoom) {
-                    double dz_pc =  (start_y - new_y) / engine->height; // %
-                    if (TRUE == S52_drawBlit(0.0, 0.0, dz_pc, 0.0))
-                        zoom_fac = dz_pc;
-                }
-            } else {
+            }
+
+            if (TRUE==mode_scroll && FALSE==mode_zoom && FALSE==mode_rot && FALSE==mode_vrmebl) {
                 double dx_pc =  (start_x - new_x) / engine->width;  // %
                 double dy_pc = -(start_y - new_y) / engine->height; // %
 
@@ -1288,144 +1367,88 @@ static int      _android_motion_event(struct s52engine *engine, AInputEvent *eve
                 LOGE("_android_motion_event(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
                 return FALSE;
             }
+
             return TRUE;
-
-
-            // ---------------------------------------------------------------------------
-            /*
-
-            // init normal VRM/EBL
-            if ( (DELTA > ABS(start_x-new_x)) && (DELTA > ABS(start_y-new_y)) ) {
-                //LOGI("s52egl:mode_vrmebl ON");
-                //mode_vrmebl = TRUE;
-                mode_vrmebl = !mode_vrmebl;
-                LOGI("s52egl:mode_vrmebl: %s\n", mode_vrmebl? "ON" : "OFF");
-
-                //if (TRUE == mode_vrmebl) {
-                    S52_toggleDispMarObj(_cursor2); // ON
-                    S52_toggleDispMarObj(_vrmeblA); // ON
-                //}
-
-                return TRUE;
-            }
-
-            // move VRMEBL
-            if (TRUE == mode_vrmebl) {
-                double brg = 0.0;
-                double rge = 0.0;
-                S52_setVRMEBL(_vrmeblA, new_x, new_y, &brg, &rge);
-
-                //char str[80] = {'\0'};
-                //sprintf(str, "%05.1f° / %.1f m", brg, rge);
-                //S52_drawStr(x + 5, _height - y - 15, "UINFF", 1, str);
-
-                // update cursor position
-                if (FALSE == S52_xy2LL(&new_x, &new_y))
-                    return FALSE;
-                S52_pushPosition(_cursor2, new_y, new_x, 0.0);
-
-                // debug
-                LOGI("s52egl:new_x: %f, new_y: %f\n", new_x, new_y);
-
-
-                engine->do_S52draw     = FALSE;
-                engine->do_S52drawLast = TRUE;
-                _s52_draw_cb(engine);
-                return TRUE;
-            }
-            */
         }
         break;
 
-        /*
-                if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
-                    LOGE("_android_motion_event(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
-                    return FALSE;
-                }
-
-                S52_drawLast();
-
-                if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
-                    LOGE("_android_motion_event(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
-                    return FALSE;
-                }
-        */
-
-
     case AMOTION_EVENT_ACTION_UP: {
-
         double new_x  = AMotionEvent_getX(event, 0);
         double new_y  = AMotionEvent_getY(event, 0);
         double new_z  = 0.0;
         double new_r  = 0.0;
 
-        /* FIXME: crash when no data
+        // cursor pick
         if (ticks < TICKS_PER_TAP) {
-            const char *name = S52_pickAt(new_x, new_y);
-            if (NULL != name) {
-                unsigned int S57ID = atoi(name+7);
-                LOGI("s52egl:OBJ(%f, %f): %s:%i ATT:%s\n", new_x, new_y, name, S57ID, S52_getAttList(S57ID));
+            new_x = (new_x < 10.0) ? 10.0 : new_x;
+            new_y = (new_y < 10.0) ? 10.0 : new_y;
+            const char *nameid = S52_pickAt(new_x, new_y);
+            if (NULL != nameid) {
+                unsigned int S57ID = atoi(nameid+7);
+                LOGI("s52egl:_android_motion_event(): XY(%f, %f): NAME:ID=%s ATT=%s\n",
+                     new_x, new_y, nameid, S52_getAttList(S57ID));
 
                 engine->do_S52draw     = TRUE;
                 engine->do_S52drawLast = TRUE;
             }
             return TRUE;
         }
-        */
 
-        /*
-        if (TRUE == mode_vrmebl) {
-            engine->do_S52draw     = TRUE;
-            engine->do_S52drawLast = TRUE;
+        // long press
+        if (ticks > TICKS_PER_TAP) {
+            double new_x = AMotionEvent_getX(event, 0);
+            double new_y = AMotionEvent_getY(event, 0);
 
-            S52_toggleDispMarObj(_cursor2); // OFF
-
-            return TRUE;
+            // no motion
+            if ((abs(start_x - new_x) < 5) && (abs(start_y - new_y) < 5)) {
+                // ensure that a minimum number of call to libS52
+                // to turn vrmebl ON/OFF
+                if (TRUE == mode_vrmebl_set) {
+                    mode_vrmebl = (TRUE==mode_vrmebl) ? FALSE : TRUE;
+                    if (TRUE == mode_vrmebl) {
+                        S52_toggleObjClassOFF("cursor");
+                        S52_toggleObjClassOFF("ebline");
+                    } else {
+                        S52_toggleObjClassON("cursor");
+                        S52_toggleObjClassON("ebline");
+                    }
+                    mode_vrmebl_set = FALSE;
+                }
+            }
         }
-        */
 
-        // touch North reset everything
+        // touch North reset chart upright
         if ((new_x < EDGE_X0) && (new_y < EDGE_Y0) && (start_x < EDGE_X0) && (start_y < EDGE_Y0)) {
             new_x = engine->state.cLon;
             new_y = engine->state.cLat;
             new_z = engine->state.rNM;
             new_r = 0.0;
-            /*
-            if (TRUE == S52_setView(new_y, new_x, new_z, new_r)) {
-                engine->state.cLat     = new_y;
-                engine->state.cLon     = new_x;
-                engine->state.rNM      = new_z;
-                engine->state.north    = new_r;
 
-                engine->do_S52draw     = TRUE;
-                engine->do_S52drawLast = TRUE;
+            //_android_render(engine, new_y, new_x, new_z, new_r);
 
-                //S52_draw();
-                //S52_drawLast();
-            }
-            return TRUE;
-            */
         } else {
-            if ((TRUE==mode_rot) || (TRUE==mode_zoom)) {
-                if (TRUE == mode_rot) {
-                    double north = engine->state.north + (90.0 * ((start_x - new_x) / engine->width));
-                    if (north <    0.0) north += 360.0;
-                    if (north >= 360.0) north -= 360.0;
 
-                    new_x = engine->state.cLon;
-                    new_y = engine->state.cLat;
-                    new_z = engine->state.rNM;
-                    new_r = north;
-                    //LOGI("s52egl:_android_motion_event():AMOTION_EVENT_ACTION_UP: north=%f\n", north);
-                }
-                if (TRUE == mode_zoom) {
-                    new_x = engine->state.cLon;
-                    new_y = engine->state.cLat;
-                    new_z = engine->state.rNM   - (zoom_fac * engine->state.rNM * 2);
-                    new_r = engine->state.north;
-                }
-            } else {
-                // mode_scroll
+            if (TRUE == mode_rot) {
+                double north = engine->state.north + (90.0 * ((start_x - new_x) / engine->width));
+                if (north <    0.0) north += 360.0;
+                if (north >= 360.0) north -= 360.0;
+
+                new_x = engine->state.cLon;
+                new_y = engine->state.cLat;
+                new_z = engine->state.rNM;
+                new_r = north;
+                //LOGI("s52egl:_android_motion_event():AMOTION_EVENT_ACTION_UP: north=%f\n", north);
+            }
+
+            if (TRUE == mode_zoom) {
+                new_x = engine->state.cLon;
+                new_y = engine->state.cLat;
+                new_z = engine->state.rNM   - (zoom_fac * engine->state.rNM * 2);
+                new_r = engine->state.north;
+            }
+
+            // mode_scroll
+            if (TRUE==mode_scroll && FALSE==mode_zoom && FALSE==mode_rot && FALSE==mode_vrmebl) {
                 if (FALSE == S52_xy2LL(&new_x, &new_y))
                     return FALSE;
 
@@ -1437,50 +1460,19 @@ static int      _android_motion_event(struct s52engine *engine, AInputEvent *eve
                 new_z = engine->state.rNM;
                 new_r = engine->state.north;
             }
+
         }
 
-        if (TRUE == S52_setView(new_y, new_x, new_z, new_r)) {
-            engine->state.cLat     = new_y;
-            engine->state.cLon     = new_x;
-            engine->state.rNM      = new_z;
-            engine->state.north    = new_r;
-
-            /*
-            // update all
-            engine->do_S52draw     = TRUE;
-            engine->do_S52drawLast = TRUE;
-            _s52_draw_cb(engine);
-            */
-
-            //*
-            if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
-                LOGE("_android_motion_event(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
-                return FALSE;
-            }
-
-            S52_draw();
-            S52_drawLast();
-
-            if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
-                LOGE("_android_motion_event(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
-                return FALSE;
-            }
-            //*/
-
-            // normal mode
-            engine->do_S52draw     = FALSE;
-            engine->do_S52drawLast = TRUE;
-            LOGI("s52egl:_android_motion_event():AMOTION_EVENT_ACTION_UP: north=%f\n", new_r);
-        }
-        //else {
-        //    engine->do_S52draw     = FALSE;
-        //    engine->do_S52drawLast = FALSE;
-        //}
-
+        _android_render(engine, new_y, new_x, new_z, new_r);
+        //LOGI("s52egl:_android_motion_event():AMOTION_EVENT_ACTION_UP: north=%f\n", new_r);
     }
     break;
 
     }
+
+    // normal mode
+    engine->do_S52draw     = FALSE;
+    engine->do_S52drawLast = TRUE;
 
 
 
@@ -1496,18 +1488,8 @@ static int      _android_motion_event(struct s52engine *engine, AInputEvent *eve
     //size_t  hSz    = AMotionEvent_getHistorySize(event);
     //int64_t dTime  = AMotionEvent_getDownTime(event);
     //LOGI("s52egl:hSz:%i dTime:%i action:0x%X actmsk:0x%X\n", hSz, dTime, acteve, action);
-    //static int    silent  = FALSE;
-
-    // init pos
-
 
     /*
-    // blit zoom
-    double dy_px = start_y - new_y;
-    dz_pc = dy_px / engine->height; // %
-    S52_drawBlit(0.0, 0.0, dz_pc);
-
-
     size_t  ptrCnt = AMotionEvent_getPointerCount(event);
     if (1 < ptrCnt)
         return FALSE;
@@ -1529,11 +1511,8 @@ static int      _android_motion_event(struct s52engine *engine, AInputEvent *eve
 
         return TRUE;
     }
-    */
 
-    /*
-    size_t i = 0;
-    for (i=0; i<ptrCnt; ++i) {
+    for (size_t i=0; i<ptrCnt; ++i) {
         float x = AMotionEvent_getX(event, i);
         float y = AMotionEvent_getY(event, i);
 
@@ -1545,7 +1524,7 @@ static int      _android_motion_event(struct s52engine *engine, AInputEvent *eve
     return TRUE;
 }
 
-static int32_t  _android_handle_input(struct android_app *app, AInputEvent *event) /*fold00*/
+static int32_t  _android_handle_input(struct android_app *app, AInputEvent *event)
 // Process the next input event.
 // Return 1 the event was handled, 0 for any default dispatching.
 {
@@ -1622,7 +1601,7 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
     return EGL_TRUE;
 }
 
-static void     _android_handle_cmd(struct android_app *app, int32_t cmd) /*fold00*/
+static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 // process the next main command.
 {
     struct s52engine* engine = (struct s52engine*)app->userData;
@@ -1772,7 +1751,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd) /*fold
     }
 }
 
-void android_main(struct android_app *app) /*fold00*/
+void android_main(struct android_app *app)
 // This is the main entry point of a native application that is using
 // android_native_app_glue.  It runs in its own thread, with its own
 // event loop for receiving input events and doing other things.
@@ -1966,7 +1945,7 @@ exit:
 
 #include </usr/include/X11/XKBlib.h>  // XkbKeycodeToKeysym()
 
-static int      _X11_error(Display *display, XErrorEvent *err) /*fold00*/
+static int      _X11_error(Display *display, XErrorEvent *err)
 {
     char buf[80];
     XGetErrorText(display, err->error_code, buf, 80);
@@ -1983,7 +1962,7 @@ static int      _X11_error(Display *display, XErrorEvent *err) /*fold00*/
     return 1;
 }
 
-static int      _X11_handleXevent(gpointer user_data) /*fold00*/
+static int      _X11_handleXevent(gpointer user_data)
 {
     struct s52engine *engine = (struct s52engine *) user_data;
     unsigned int keycode;
@@ -2096,13 +2075,13 @@ static int      _X11_handleXevent(gpointer user_data) /*fold00*/
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // zoom in
-            if (XK_Page_Up   == keysym) {  
+            if (XK_Page_Up   == keysym) {
                 //engine->state.rNM -= (engine->state.rNM  > 2.0) ? 2.0 : 0.1;
                 engine->state.rNM -= (engine->state.rNM / 10.0);
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // zoom out
-            if (XK_Page_Down == keysym) {  
+            if (XK_Page_Down == keysym) {
                 //engine->state.rNM += (engine->state.rNM  > 2.0) ? 2.0 : 0.1;
                 engine->state.rNM += (engine->state.rNM / 10.0);
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
@@ -2126,7 +2105,7 @@ static int      _X11_handleXevent(gpointer user_data) /*fold00*/
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // rot +10.0 deg
-            if (XK_End       == keysym) {  
+            if (XK_End       == keysym) {
                 if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
                     g_print("_X11_handleXevent((): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
                     return FALSE;
@@ -2155,7 +2134,7 @@ static int      _X11_handleXevent(gpointer user_data) /*fold00*/
     return TRUE;
 }
 
-int  main(int argc, char *argv[]) /*fold00*/
+int  main(int argc, char *argv[])
 {
     g_printf("main():starting: argc=%i, argv[0]=%s\n", argc, argv[0]);
 

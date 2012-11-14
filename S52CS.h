@@ -43,12 +43,12 @@ typedef struct S52_CS_condSymb {
 extern S52_CS_condSymb S52_CS_condTable[];
 
 
-extern const char *S52_CS_version();
+const char *S52_CS_version();
 
 typedef struct _localObj localObj;
-extern localObj   *S52_CS_init ();
-extern localObj   *S52_CS_done (localObj *local);
-extern int         S52_CS_add  (localObj *local, S57_geo *geo);
-extern int         S52_CS_touch(localObj *local, S57_geo *geo);
+localObj   *S52_CS_init ();
+localObj   *S52_CS_done (localObj *local);
+int         S52_CS_add  (localObj *local, S57_geo *geo);
+int         S52_CS_touch(localObj *local, S57_geo *geo);
 
 #endif //_S52CS_H_

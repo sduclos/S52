@@ -50,7 +50,7 @@
 //#define PRINTF g_print(__FILE__":%i: %s(): ", __LINE__, __FUNCTION__),g_print
 //#define PRINTF g_message(__FILE__":%i: %s(): ", __LINE__, __FUNCTION__),g_message
 
-extern void _printf(const char *file, int line, const char *function, const char *frmt, ...);
+void _printf(const char *file, int line, const char *function, const char *frmt, ...);
 #define PRINTF(...) _printf(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__)
 
 
@@ -93,27 +93,27 @@ extern void _printf(const char *file, int line, const char *function, const char
 #define MAXL 256    // MAX lenght of buffer _including_ '\0'
 typedef char    valueBuf[MAXL];
 
-extern int      S52_getConfig(const char *label, valueBuf *vbuf);
+int      S52_getConfig(const char *label, valueBuf *vbuf);
 
-extern double   S52_atof   (const char *str);
-extern int      S52_atoi   (const char *str);
-extern size_t   S52_strlen (const char *str);
-//extern gchar*   S52_strstr (const gchar *haystack, const gchar *needle);
-extern char*    S52_strstr (const char *haystack, const char *needle);
-extern gint     S52_strncmp(const char *s1, const char *s2, gsize n);
-extern FILE *   S52_fopen  (const char *filename, const char *mode);
-extern int      S52_fclose (FILE *fd);
-extern gboolean S52_string_equal(const GString *v, const GString *v2);
+double   S52_atof   (const char *str);
+int      S52_atoi   (const char *str);
+size_t   S52_strlen (const char *str);
+//gchar*   S52_strstr (const gchar *haystack, const gchar *needle);
+char*    S52_strstr (const char *haystack, const char *needle);
+gint     S52_strncmp(const char *s1, const char *s2, gsize n);
+FILE *   S52_fopen  (const char *filename, const char *mode);
+int      S52_fclose (FILE *fd);
+gboolean S52_string_equal(const GString *v, const GString *v2);
 
-extern void     S52_tree_replace(GTree *tree, gpointer key, gpointer value);
+void     S52_tree_replace(GTree *tree, gpointer key, gpointer value);
 
-//extern int      S52_initLog();
+//int      S52_initLog();
 //typedef int     (*S52_error_cb) (const char *err);
-extern int      S52_initLog(S52_error_cb err_cb);
-extern int      S52_doneLog();
+int      S52_initLog(S52_error_cb err_cb);
+int      S52_doneLog();
 
 // testing: xyL -> rgb done by hand
-//extern int    S52_xyL2rgb(double *xr, double *yg, double *Lb)
+//int    S52_xyL2rgb(double *xr, double *yg, double *Lb)
 
 
 /*
@@ -137,4 +137,4 @@ extern int      S52_doneLog();
 #define ___config_enabled(__ignored, val, ...) val
 
 
-#endif  // _S52UTILS_H_
+#endif // _S52UTILS_H_

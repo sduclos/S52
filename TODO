@@ -1,6 +1,6 @@
-TODO: jot pad for libS52.so missing stuff, bug, snag, ...
+TODO: jot pad for libS52.so missing stuff, bug, snag, ... , brain dump
 
-Last update: 
+Last update:
 OCT2004
 FEB2009
 MAY2009
@@ -13,6 +13,7 @@ SEP2010
 2012JUN
 2012SEP
 2012OCT
+2012NOV
 
 
 Curent focus (top priority *):
@@ -40,7 +41,6 @@ Curent focus (top priority *):
     -isobath tag
 
     Coding:
-    -handling world shapefile
     -compare to test/ref_dump/, for self testing, regression, ..
     -check handling anti-meridian (need a chart that overlap the meridian)
     -chart manager / show world contour / chart extent / CATALOG.031
@@ -51,6 +51,7 @@ Curent focus (top priority *):
     -use "freedesktop.org" specs for .cfg (ie XDG_*)
 
 In a day:
+    -code: static global variable should all be inside a context struct .. of course!
     -GL: save display list / VBO(somehow!)
     -S52: use masked lines field (S57 MASK/FSPT)
     -BUG: S-52 specs 3.2 for TOPMAR01 (init 'floating' inside loop)
@@ -62,7 +63,7 @@ In a day:
     -PL: implement vector instruction command: symbol call (SC), arc (AA)
     -PL: implement raster instruction for pattern and symbol (PBTM, SBTM)
     -PL: editor
-    -connect to postGIS/SQLite 
+    -connect to postGIS/SQLite
     -SVG!
     -WWW!
 
@@ -71,12 +72,13 @@ DONE
 ====
 (put here TODO's that has been done)
 
+    -handling world shapefile
     -test for proper configure of openev when loading libS52.so
     -text grouping
-    -click on north arrow to get north up (the code is in s52egl.c - tested on Android) 
+    -click on north arrow to get north up (the code is in s52egl.c - tested on Android)
 	-ARM / android / EGL / GLESv2
     -(!!)PL: GFileMonitor for new (drop in) PLib
-    -put 'cursor' symbol on layer 9 (S52 say 8, but ownshp is on layer 9) 
+    -put 'cursor' symbol on layer 9 (S52 say 8, but ownshp is on layer 9)
      and then use drawLast()
     -GL: S52_viewport(): overview/magnifying glass a la ghostview (debug)
     -ajust height for datum, diff in VDAT/SDAT of DSPM (Data Set Parameter --DISD layer in OGR)
@@ -110,5 +112,5 @@ DONE
     -mingw (portabilty)
     -draw text at 'display priority' 8
     -use GEOS instead of stencil for CS --GEOS too slow
-    -jitter/mismatch "Line Style" or "Line Color" with "Area Color" 
-      * was due to overscale .. at nanometer zoom double implode 
+    -jitter/mismatch "Line Style" or "Line Color" with "Area Color"
+      * was due to overscale .. at nanometer zoom double implode

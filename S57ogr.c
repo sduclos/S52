@@ -401,10 +401,16 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
             _setExtent(geoData, hGeom);
 
             if (0==strcmp(WORLD_BASENM, objname)) {
+                // Note: loading shapefile as a 'marfea' use a transparent fill so NODATA
+                // is still visible (seem better than 'mnufea' wich has no colour fill)
                 S57_setName(geoData, "marfea");
+
+                // pslb3_2.pdf (p. II-22): Mariners' Object Class: Manufacturers' feature
+                //    Note that manufacturers' areas, whether non-chart or chart areas, should not use area colour fill.
+                //S57_setName(geoData, "mnufea");
             }
 
-            // set nothing for now
+            // Att not set nothing for now
             //_setAtt(geoData, feature);
 
             break;

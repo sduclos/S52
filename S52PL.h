@@ -184,188 +184,188 @@ typedef struct _S52_vec    S52_vec;
 typedef struct _S52_obj    S52_obj;
 
 // load/init presentation library
-extern int           S52_PL_init();
+int           S52_PL_init();
 // load supplemental PLib
-extern int           S52_PL_load(const char *PLib);
+int           S52_PL_load(const char *PLib);
 // free presentation library
-extern int           S52_PL_done();
+int           S52_PL_done();
 
 // get RGB from color name, for the currently selected color table
-extern S52_Color    *S52_PL_getColor(const char *colorName);
+S52_Color    *S52_PL_getColor(const char *colorName);
 // get currently selected color table
-//extern GArray     *S52_PL_getColorTable();
+//GArray     *S52_PL_getColorTable();
 // return color at index, for the currently selected color table
-extern S52_Color     *S52_PL_getColorAt(guchar index);
+S52_Color     *S52_PL_getColorAt(guchar index);
 
 // get a rasterising rules for this S57 object
-extern S52_obj       *S52_PL_newObj(S57_geo *geoData);
-extern S52_obj       *S52_PL_delObj(S52_obj *obj);
+S52_obj       *S52_PL_newObj(S57_geo *geoData);
+S52_obj       *S52_PL_delObj(S52_obj *obj);
 // get the geo part (S57) of this S52 object
-extern S57_geo       *S52_PL_getGeo(S52_obj *obj);
-extern S57_geo       *S52_PL_setGeo(S52_obj *obj, S57_geo *geoData);
+S57_geo       *S52_PL_getGeo(S52_obj *obj);
+S57_geo       *S52_PL_setGeo(S52_obj *obj, S57_geo *geoData);
 
 // get LUP name
-extern const char    *S52_PL_getOBCL(S52_obj *obj);
+const char    *S52_PL_getOBCL(S52_obj *obj);
 // get addressed object TYPe
 // Note: return the same thing as a call to S57_getObjtype()
-extern S52_Obj_t      S52_PL_getFTYP(S52_obj *obj);
+S52_Obj_t      S52_PL_getFTYP(S52_obj *obj);
 // get Display PRIority
-extern S52_disPrio    S52_PL_getDPRI(S52_obj *obj);
+S52_disPrio    S52_PL_getDPRI(S52_obj *obj);
 // get DISplay Category
-extern S52_DisCat     S52_PL_getDISC(S52_obj *obj);
+S52_DisCat     S52_PL_getDISC(S52_obj *obj);
 // get LUP table name - not used anymore
-//extern S52_LUPtnm     S52_PL_getTNAM(S52_obj *obj);
+//S52_LUPtnm     S52_PL_getTNAM(S52_obj *obj);
 // get LUCM (view group)
-extern int            S52_PL_getLUCM(S52_obj *obj);
+int            S52_PL_getLUCM(S52_obj *obj);
 // get RADAR Priority
-extern S52_RadPrio    S52_PL_getRPRI(S52_obj *obj);
+S52_RadPrio    S52_PL_getRPRI(S52_obj *obj);
 // return plain text info for this type (TNAM) of lookup
-extern const char    *S52_PL_infoLUP(S52_obj *obj);
+const char    *S52_PL_infoLUP(S52_obj *obj);
 // debug
-extern const char    *S52_PL_getCMD(S52_obj *obj);
+const char    *S52_PL_getCMD(S52_obj *obj);
 
 // command word list handling
 // get next command word in the list
-extern S52_CmdWrd     S52_PL_iniCmd(S52_obj *obj);
-extern S52_CmdWrd     S52_PL_getCmdNext(S52_obj *obj);
+S52_CmdWrd     S52_PL_iniCmd(S52_obj *obj);
+S52_CmdWrd     S52_PL_getCmdNext(S52_obj *obj);
 // get current command word
-//extern S52_Cmd      S52_PL_getCmdWord(S52_obj *obj);
+//S52_Cmd      S52_PL_getCmdWord(S52_obj *obj);
 // compare name to parameter of current command word
-extern int            S52_PL_cmpCmdParam(S52_obj *obj, const char *name);
+int            S52_PL_cmpCmdParam(S52_obj *obj, const char *name);
 
-extern S52_DListData *S52_PL_getDLData(S52_cmdDef *def);
+S52_DListData *S52_PL_getDLData(S52_cmdDef *def);
 
 //-------------------------------------------------------
 // init vector commands parser
-extern S52_vec    *S52_PL_initVOCmd(S52_cmdDef *def);
+S52_vec    *S52_PL_initVOCmd(S52_cmdDef *def);
 // free parser mem
-extern int         S52_PL_doneVOCmd(S52_vec *vecObj);
+int         S52_PL_doneVOCmd(S52_vec *vecObj);
 // get (parse) next vector command, width in ASCII (1 pixel=0.32 mm)
-extern S52_vCmd    S52_PL_getVOCmd(S52_vec *vecObj);
+S52_vCmd    S52_PL_getVOCmd(S52_vec *vecObj);
 // get vextor for this command
-extern S57_prim   *S52_PL_getVOprim(S52_vec *vecObj);
+S57_prim   *S52_PL_getVOprim(S52_vec *vecObj);
 // get pen width
-extern char        S52_PL_getVOwidth(S52_vec *vecObj);
+char        S52_PL_getVOwidth(S52_vec *vecObj);
 // get disk radius
-extern double      S52_PL_getVOradius(S52_vec *vecObj);
+double      S52_PL_getVOradius(S52_vec *vecObj);
 // get vextex array
-extern GArray     *S52_PL_getVOdata(S52_vec *vecObj);
+GArray     *S52_PL_getVOdata(S52_vec *vecObj);
 // get name --debug
-extern const char *S52_PL_getVOname(S52_vec *vecObj);
+const char *S52_PL_getVOname(S52_vec *vecObj);
 //-------------------------------------------------------
 
 
 // return symbol orientation [0..360[
-extern int            S52_PL_setSYorient(S52_obj *obj, double orient);
-extern double         S52_PL_getSYorient(S52_obj *obj);
-extern int            S52_PL_getSYbbox  (S52_obj *obj, int *width, int *height);
+int            S52_PL_setSYorient(S52_obj *obj, double orient);
+double         S52_PL_getSYorient(S52_obj *obj);
+int            S52_PL_getSYbbox  (S52_obj *obj, int *width, int *height);
 
-extern int            S52_PL_setSYspeed (S52_obj *obj, double  speed);
-extern int            S52_PL_getSYspeed (S52_obj *obj, double *speed);
+int            S52_PL_setSYspeed (S52_obj *obj, double  speed);
+int            S52_PL_getSYspeed (S52_obj *obj, double *speed);
 
 // get Line Style data, width in ASCII (1 pixel=0.32 mm)
-extern int            S52_PL_getLSdata(S52_obj *obj, char *pen_w, char *style, S52_Color **color);
+int            S52_PL_getLSdata(S52_obj *obj, char *pen_w, char *style, S52_Color **color);
 // set Line Complex data, width in ASCII (1 pixel=0.32 mm)
-extern int            S52_PL_setLCdata(S52_cmdDef *def, char pen_w);
+int            S52_PL_setLCdata(S52_cmdDef *def, char pen_w);
 // get Line Complex data
-extern int            S52_PL_getLCdata(S52_obj *obj, double *symlen, char *pen_w);
+int            S52_PL_getLCdata(S52_obj *obj, double *symlen, char *pen_w);
 // get Area Color data
-extern S52_Color     *S52_PL_getACdata(S52_obj *obj);
+S52_Color     *S52_PL_getACdata(S52_obj *obj);
 // get Area Pattern data
-extern int            S52_PL_getAPTileDim(S52_obj *obj, double *tw,  double *th,  double *dx);
+int            S52_PL_getAPTileDim(S52_obj *obj, double *tw,  double *th,  double *dx);
 #ifdef S52_USE_GLES2
 // get Area Pattern Position
-extern int            S52_PL_getAPTilePos(S52_obj *obj, double *bbx, double *bby, double *pivot_x, double *pivot_y);
+int            S52_PL_getAPTilePos(S52_obj *obj, double *bbx, double *bby, double *pivot_x, double *pivot_y);
 // store texture ID of patterns in GLES2
-extern int            S52_PL_setAPtexID(S52_obj *obj, guint mask_texID);
-extern guint          S52_PL_getAPtexID(S52_obj *obj);
+int            S52_PL_setAPtexID(S52_obj *obj, guint mask_texID);
+guint          S52_PL_getAPtexID(S52_obj *obj);
 #endif
 
 // get symbol offset
-//extern int        S52_PL_getSymOff(S52_cmdDef* def, int patt, int *off_x, int *off_y);
+//int        S52_PL_getSymOff(S52_cmdDef* def, int patt, int *off_x, int *off_y);
 // traverse a symbology table calling 'callback' for each entree
-extern gint           S52_PL_traverse(S52_SMBtblName tableNm, GTraverseFunc callBack);
+gint           S52_PL_traverse(S52_SMBtblName tableNm, GTraverseFunc callBack);
 // return the number of entree in a symbology table
-//extern gint       S52_PL_getTableSz(S52_SMBtblName tableNm);
+//gint       S52_PL_getTableSz(S52_SMBtblName tableNm);
 
 // return a list of Display List --one per color
-extern S52_DListData *S52_PL_newDListData(S52_obj *obj);
-extern S52_DListData *S52_PL_getDListData(S52_obj *obj);
+S52_DListData *S52_PL_newDListData(S52_obj *obj);
+S52_DListData *S52_PL_getDListData(S52_obj *obj);
 
 // text parser
-//extern S52_Text  *S52_PL_parseTX(S57_geo *geoData, S52_CmdL *cmd);
-//extern S52_Text  *S52_PL_parseTE(S57_geo *geoData, S52_CmdL *cmd);
-//extern gint       S52_PL_getTEXT(S52_Text  *text, S52_Color **col,
-extern const char    *S52_PL_getEX(S52_obj *obj, S52_Color **col,
+//S52_Text  *S52_PL_parseTX(S57_geo *geoData, S52_CmdL *cmd);
+//S52_Text  *S52_PL_parseTE(S57_geo *geoData, S52_CmdL *cmd);
+//gint       S52_PL_getTEXT(S52_Text  *text, S52_Color **col,
+const char    *S52_PL_getEX(S52_obj *obj, S52_Color **col,
                                int *xoffs, int *yoffs, unsigned int *bsize, unsigned int *weight, int *dis);
-//extern gint       S52_PL_doneTXT(S52_Text *text);
+//gint       S52_PL_doneTXT(S52_Text *text);
 
 // TRUE: flag to run the text parser again
-extern int            S52_PL_resetParseText(S52_obj *obj);
+int            S52_PL_resetParseText(S52_obj *obj);
 // TRUE: flag that the text(s) (ie TXs and TEs) has been parsed
 // for the current type of symbol (normal or alternate)
-extern int            S52_PL_setTextParsed(S52_obj *obj);
+int            S52_PL_setTextParsed(S52_obj *obj);
 
 // TRUE if this object has text else FALSE
-extern int            S52_PL_hasText(S52_obj *obj);
+int            S52_PL_hasText(S52_obj *obj);
 // TRUE if this object has LC (Line Complex) else FALSE
-extern int            S52_PL_hasLC(S52_obj *obj);
+int            S52_PL_hasLC(S52_obj *obj);
 
 
 
 // parse/compute/expand cond. symb.
-//extern GString   *S52_PL_parseCS(S52_obj *obj);
+//GString   *S52_PL_parseCS(S52_obj *obj);
 // compare symbology instruction againt name (0==match)
-//extern int        S52_PL_cmpCSname(S52_obj *obj, char *name);
+//int        S52_PL_cmpCSname(S52_obj *obj, char *name);
 
 
 // get new display priority
-//extern S52_disPrio S52_PL_getOPprio(S52_obj *obj);
+//S52_disPrio S52_PL_getOPprio(S52_obj *obj);
 
 // toggle display supression of this object
-//extern S52_objSup S52_PL_toggleObjSUP(S52_obj *obj);
+//S52_objSup S52_PL_toggleObjSUP(S52_obj *obj);
 
 // toggle display supression of this type of object
-//extern S52_objSup     S52_PL_toggleObjType(S52_obj *obj);
+//S52_objSup     S52_PL_toggleObjType(S52_obj *obj);
 
 // toggle display suppression of this class of object
-extern S52_objSup     S52_PL_toggleObjClass(const char *className);
+S52_objSup     S52_PL_toggleObjClass(const char *className);
 // get display state for this type of object
-extern S52_objSup     S52_PL_getToggleState(S52_obj *obj);
-extern S52_objSup     S52_PL_getObjClassState(const char *className);
+S52_objSup     S52_PL_getToggleState(S52_obj *obj);
+S52_objSup     S52_PL_getObjClassState(const char *className);
 
-extern int            S52_PL_resloveCS(S52_obj *obj);
+int            S52_PL_resloveCS(S52_obj *obj);
 
-extern int            S52_PL_getOffset(S52_obj *obj, double *offset_x, double *offset_y);
+int            S52_PL_getOffset(S52_obj *obj, double *offset_x, double *offset_y);
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 // link chain-node
-extern int            S52_PL_setNextCN(S52_obj *objA, S52_obj *objB);
+int            S52_PL_setNextCN(S52_obj *objA, S52_obj *objB);
 #endif
 
-extern int            S52_PL_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B);
-extern int            S52_PL_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
+int            S52_PL_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B);
+int            S52_PL_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
 
-extern int            S52_PL_getPalTableSz();
-extern const char    *S52_PL_getPalTableNm(unsigned int idx);
+int            S52_PL_getPalTableSz();
+const char    *S52_PL_getPalTableNm(unsigned int idx);
 
-extern int            S52_PL_highlightON (S52_obj *obj);
-extern int            S52_PL_highlightOFF(S52_obj *obj);
+int            S52_PL_highlightON (S52_obj *obj);
+int            S52_PL_highlightOFF(S52_obj *obj);
 
-extern int            S52_PL_setNextLeg(S52_obj *obj, S52_obj *objNextLeg);
-extern S52_obj       *S52_PL_getNextLeg(S52_obj *obj);
-extern S52_obj       *S52_PL_getPrevLeg(S52_obj *obj);
+int            S52_PL_setNextLeg(S52_obj *obj, S52_obj *objNextLeg);
+S52_obj       *S52_PL_getNextLeg(S52_obj *obj);
+S52_obj       *S52_PL_getPrevLeg(S52_obj *obj);
 
-extern S52_obj       *S52_PL_getWholin (S52_obj *obj);
-extern S52_obj       *S52_PL_setWholin (S52_obj *obj);
+S52_obj       *S52_PL_getWholin (S52_obj *obj);
+S52_obj       *S52_PL_setWholin (S52_obj *obj);
 
-extern int            S52_PL_setTimeNow(S52_obj *obj);
-extern long           S52_PL_getTimeSec(S52_obj *obj);
+int            S52_PL_setTimeNow(S52_obj *obj);
+long           S52_PL_getTimeSec(S52_obj *obj);
 
 
 #ifdef S52_USE_FREETYPE_GL
-extern GArray        *S52_PL_getFtglBuf(S52_obj *obj, guint *VID);
-extern int            S52_PL_setFtglBuf(S52_obj *obj, GArray *buf, guint VID);
+GArray        *S52_PL_getFtglBuf(S52_obj *obj, guint *VID);
+int            S52_PL_setFtglBuf(S52_obj *obj, GArray *buf, guint VID);
 #endif
 
 #endif // _S52PL_H_

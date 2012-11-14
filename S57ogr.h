@@ -30,8 +30,8 @@
 
 typedef int   (*S52_loadLayer_cb)(const char *layername, void *layer,    S52_loadObject_cb loadObject_cb);
 
-extern int      S57_ogrLoadCell  (const char *filename,                  S52_loadLayer_cb  loadLayer_cb, S52_loadObject_cb loadObject_cb);
-extern int      S57_ogrLoadLayer (const char *layername, void *ogrlayer, S52_loadObject_cb loadObject_cb);
-extern S57_geo *S57_ogrLoadObject(const char *objname,   void *shape);
+int      S57_ogrLoadCell  (const char *filename,                  S52_loadLayer_cb  loadLayer_cb, S52_loadObject_cb loadObject_cb);
+int      S57_ogrLoadLayer (const char *layername, void *ogrlayer, S52_loadObject_cb loadObject_cb);
+S57_geo *S57_ogrLoadObject(const char *objname,   void *shape);
 
-#endif
+#endif // _S57OGR_H_

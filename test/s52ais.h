@@ -20,6 +20,7 @@
     along with OpENCview.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
 #ifndef _S52AIS_H_
 #define _S52AIS_H_
 
@@ -27,12 +28,12 @@
 extern "C" {
 #endif
 
-extern  int s52ais_initAIS      (void);
-//extern  int s52gps_updateTimeTag(void);
-extern  int s52ais_doneAIS      (void);
+int s52ais_initAIS      (void);
+//int s52gps_updateTimeTag(void);
+int s52ais_doneAIS      (void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+#endif // _S52AIS_H_

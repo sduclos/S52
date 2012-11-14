@@ -1,3 +1,10 @@
+2012NOV14
+    - from https://git.kernel.org/?p=linux/kernel/git/kay/libabc.git;a=blob_plain;f=README
+           Don't put "extern" in front of your function prototypes in headers
+           - It has no effect, no effect at all.
+    -remove 'extern', it has no effect, really
+    -add world shapefile
+
 2012OCT05 
     -mod s52/doc, add graphic/ and wiki/
 

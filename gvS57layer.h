@@ -63,5 +63,4 @@ const gchar  *_ogr_driver_name();
 const gchar *g_module_check_init(GModule *module);
 void         g_module_unload();
 
-#endif /* __GVS57LAYER_H__ */
-
+#endif // __GVS57LAYER_H__

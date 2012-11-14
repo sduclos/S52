@@ -27,11 +27,11 @@
 
 #include "S52.h"   // S52MarinerParameter
 
-extern double S52_MP_get(S52MarinerParameter param);
-extern int    S52_MP_set(S52MarinerParameter param, double val);
+double S52_MP_get(S52MarinerParameter param);
+int    S52_MP_set(S52MarinerParameter param, double val);
 
-extern int    S52_MP_setTextDisp(unsigned int prioIdx, unsigned int count, unsigned int state);
-extern int    S52_MP_getTextDisp(unsigned int prioIdx);
+int    S52_MP_setTextDisp(unsigned int prioIdx, unsigned int count, unsigned int state);
+int    S52_MP_getTextDisp(unsigned int prioIdx);
 
 
 #endif //_S52MP_H_

@@ -31,9 +31,9 @@
 //#include "gvshapeslayer.h"  // GvShapesLayerClass, GvShapesLayer, GvShapes
 
 
-extern int      S57_gvLoadCell  (const char *filename,  S52_loadLayer_cb cb);
-//extern int      S57_gvLoadLayer (const char *layername, GvShapesLayer *gvlayer, _loadObj_cb cb);
-extern int      S57_gvLoadLayer (const char *layername, void *layer, S52_loadObj_cb cb);
-extern S57_geo *S57_gvLoadObject(const char *objname,   void *shape);
+int      S57_gvLoadCell  (const char *filename,  S52_loadLayer_cb cb);
+//int      S57_gvLoadLayer (const char *layername, GvShapesLayer *gvlayer, _loadObj_cb cb);
+int      S57_gvLoadLayer (const char *layername, void *layer, S52_loadObj_cb cb);
+S57_geo *S57_gvLoadObject(const char *objname,   void *shape);
 
-#endif
+#endif // _S57GV_H_
