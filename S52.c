@@ -315,8 +315,8 @@ static double _cursor_lon = 0.0;
 
 //static GArray  *_arrTmp = NULL;
 
-static char _version[] = "$Revision: 1.105 $\n"
-      "libS52 0.78\n"
+static char _version[] = "$Revision: 1.106 $\n"
+      "libS52 0.79\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -4293,8 +4293,6 @@ DLL int    STD S52_drawLast(void)
         return FALSE;
     }
 
-    g_atomic_int_set(&_atomicAbort, FALSE);
-
     // do not wait if an other thread is allready drawing
     //g_static_mutex_lock(&_mp_mutex);
     if (FALSE == g_static_mutex_trylock(&_mp_mutex))
@@ -4306,6 +4304,8 @@ DLL int    STD S52_drawLast(void)
         g_assert(0);
         return FALSE;
     }
+
+    g_atomic_int_set(&_atomicAbort, FALSE);
 
     g_timer_reset(_timer);
 
@@ -4582,16 +4582,13 @@ DLL const char* STD S52_pickAt(double pixels_x, double pixels_y)
     int width;
     int height;
 
-    //S52_extent ext;         // pick extent
     _extent ext;         // pick extent
     double s,w,n,e;         // used to save old view
-    char     *name  = NULL;  // object's name at XY
-    double    oldAA = 0.0;
+    char   *name = NULL;  // object's name at XY
+    double oldAA = 0.0;
 
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
     S52_CHECK_MUTX;
-
 
     if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
         PRINTF("WARNING: no cell loaded\n");
@@ -4600,8 +4597,6 @@ DLL const char* STD S52_pickAt(double pixels_x, double pixels_y)
         return FALSE;
     }
 
-    // debug
-    PRINTF("pixels_x:%f, pixels_y:%f\n", pixels_x, pixels_y);
     // check bound
     if (FALSE == _validate_screenPos(&pixels_x, &pixels_y)) {
         g_static_mutex_unlock(&_mp_mutex);
@@ -4621,6 +4616,9 @@ DLL const char* STD S52_pickAt(double pixels_x, double pixels_y)
         {
             S52_GL_getViewPort(&x, &y, &width, &height);
             pixels_y = y + height - pixels_y;
+
+            // debug
+            PRINTF("pixels_x:%f, pixels_y:%f gl_pixels_y:%f\n", pixels_x, pixels_y, (y + height - pixels_y));
         }
 
         // FIXME: check bound
@@ -4673,14 +4671,13 @@ DLL const char* STD S52_pickAt(double pixels_x, double pixels_y)
         //PRINTF("nbr of object culled: %i (%i)\n", _nCull, _nTotal);
 
         // render object that fall in the pick view
-        //_draw(ext);
-        //_draw(ext, S52_RAD_SUPP);
-        //_draw(ext, S52_RAD_OVER);
         _draw();
 
-
-        //*
-        {   // FIXME: move this to _drawLast() some day
+        // FIXME: move this to _drawLast() someday
+        // FIX: need to refactor S52_drawLast()
+        // FIXME: something wrong with coords of VESSEL
+        /*
+        {   
             int i = 0;
 
             // then draw the Mariners' Object on top of it
@@ -5918,7 +5915,6 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
                                     unsigned int xyznbr, double *xyz, const char *listAttVal)
 {
 
-    //S52_obj     *obj     = NULL;
     S57_geo     *geo     = NULL;
     unsigned int npt     = 0;
     double      *gxyz    = NULL;
@@ -5926,7 +5922,6 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     guint       *gxyznbr = NULL;
 
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
     S52_CHECK_MUTX;
 
     // here we can load mariners' object event if no ENC are loaded yet
@@ -6067,10 +6062,7 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     //S57_doneData(geo);
 
     S52_obj *obj = S52_PL_newObj(geo);
-
     _insertS52Obj(_marinerCell, obj);
-
-    // //S52_obj *obj = _cellAddGeo(_marinerCell, geo);
 
     // redo CS, because some object might have a CS command word (ex leglin)
     _doCS = TRUE;
@@ -6738,7 +6730,7 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
             ppt[sz*3 + 2] = data;
             S57_setGeoSize(geo, sz+1);
         } else {
-            // if sz == npt, shift npt-1 coord - FIFO
+            // FIFO - if sz == npt, shift npt-1 coord
             g_memmove(ppt, ppt+3, (npt-1) * sizeof(double) * 3);
             ppt[((npt-1) * 3) + 0] = xyz[0];
             ppt[((npt-1) * 3) + 1] = xyz[1];

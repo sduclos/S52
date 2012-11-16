@@ -601,6 +601,7 @@ route normale de navigation.
         _wholin = S52_newMarObj("wholin", S52_LINES, 2, xyz, attVal);
     }
     */
+
     return TRUE;
 }
 
@@ -613,12 +614,13 @@ static int      _s52_setupVRMEBL(s52android_state_t *state)
     //int ret = S52_toggleObjClassOFF("cursor");
     //LOGE("_s52_setupVRMEBL(): S52_toggleObjClassOFF('cursor'); ret=%i\n", ret);
     //int ret =
-        S52_toggleObjClassON("cursor");
+    //    S52_toggleObjClassON("cursor");
     //LOGE("_s52_setupVRMEBL(): S52_toggleObjClassON('cursor'); ret=%i\n", ret);
 
 
     _vrmeblA = S52_newVRMEBL(TRUE, TRUE, TRUE, FALSE);
-    S52_toggleObjClassON("ebline");
+    //_vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, S52_VRMEBL_ebl, S52_VRMEBL_sty, !S52_VRMEBL_ori);
+    //S52_toggleObjClassON("ebline");
 
     return TRUE;
 }
@@ -849,11 +851,11 @@ static int      _s52_done       (s52engine *engine)
     return TRUE;
 }
 
+#ifdef S52_USE_FAKE_AIS
 static int      _s52_updTimeTag (s52engine *engine)
 {
     (void)engine;
 
-#ifdef S52_USE_FAKE_AIS
 
     // fake one AIS
     if (NULL != _vessel_ais) {
@@ -875,10 +877,10 @@ static int      _s52_updTimeTag (s52engine *engine)
 #endif
     }
 
-#endif
 
     return TRUE;
 }
+#endif
 
 static int      _s52_draw_cb    (gpointer user_data)
 // return TRUE for the signal to be called again
@@ -937,13 +939,14 @@ static int      _s52_draw_cb    (gpointer user_data)
 
     // draw AIS
     if (TRUE == engine->do_S52drawLast) {
+
+#ifdef S52_USE_FAKE_AIS
         //LOGI("s52egl:CALL _s52_updTimeTag()\n");
-        //_s52_updTimeTag(engine);
+        _s52_updTimeTag(engine);
+#endif
         //LOGI("s52egl:CALL drawlast() .. start\n");
         S52_drawLast();
         //LOGI("s52egl:CALL drawlast() .. end\n");
-
-        //engine->timeLastDraw = now;
     }
 
     if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
@@ -1234,9 +1237,10 @@ static int      _android_render      (s52engine *engine, double new_y, double ne
 
 static int      _android_motion_event(s52engine *engine, AInputEvent *event)
 {
-    static int    ticks       = 0;
+    static int    ticks;
 
     // FIXME: use enum for mode
+    //static int    mode        = MODE_NONE;
     static int    mode_scroll     = FALSE;
     static int    mode_zoom       = FALSE;
     static int    mode_rot        = FALSE;
@@ -1246,7 +1250,6 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
     static double start_x     = 0.0;
     static double start_y     = 0.0;
     static double zoom_fac    = 0.0;
-    //static int    mode        = MODE_NONE;
 
 #define TICKS_PER_TAP  6
 #define EDGE_X0       50   // 0 at left
@@ -1260,7 +1263,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
     switch (action) {
 
     case AMOTION_EVENT_ACTION_DOWN:
-        ticks   = 0;
+        ticks = 0;
 
         start_x = AMotionEvent_getX(event, 0);
         start_y = AMotionEvent_getY(event, 0);
@@ -1343,14 +1346,13 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
 
                 // update cursor position (lon/lat)
                 if (TRUE == S52_xy2LL(&new_x, &new_y)) {
-                    char str[80] = {'\0'};
-                    sprintf(str, "%05.1f° / %.1f m", brg, rge);
-                    S52_drawStr(new_x + 5, engine->height - new_y - 15, "UINFF", 1, str);
+
+                    // FIXME: need call to swapBuffer
+                    //char str[80] = {'\0'};
+                    //sprintf(str, "%05.1f° / %.1f m", brg, rge);
+                    //S52_drawStr(new_x + 5, engine->height - new_y - 15, "UINFF", 1, str);
 
                     S52_pushPosition(_cursor2, new_y, new_x, 0.0);
-
-                    // debug
-                    //LOGI("s52egl:_android_motion_event(): lat= %f, lon= %f\n", new_y, new_x);
 
                     S52_drawLast();
                 }
@@ -1385,10 +1387,17 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             const char *nameid = S52_pickAt(new_x, new_y);
             if (NULL != nameid) {
                 unsigned int S57ID = atoi(nameid+7);
-                LOGI("s52egl:_android_motion_event(): XY(%f, %f): NAME:ID=%s ATT=%s\n",
+                LOGI("s52egl:_android_motion_event(): XY(%f, %f): NAME:ID=%s ATT(%s)\n",
                      new_x, new_y, nameid, S52_getAttList(S57ID));
 
-                engine->do_S52draw     = TRUE;
+                new_x = engine->state.cLon;
+                new_y = engine->state.cLat;
+                new_z = engine->state.rNM;
+                new_r = engine->state.north;
+
+                _android_render(engine, new_y, new_x, new_z, new_r);
+
+                engine->do_S52draw     = FALSE;
                 engine->do_S52drawLast = TRUE;
             }
             return TRUE;
@@ -2023,7 +2032,6 @@ static int      _X11_handleXevent(gpointer user_data)
             if (XK_F1 == keysym) {
                 S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
                 S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA379035.000", NULL);
-
                 //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
                 engine->do_S52draw = TRUE;
                 return TRUE;
@@ -2039,6 +2047,30 @@ static int      _X11_handleXevent(gpointer user_data)
                 engine->do_S52draw = TRUE;
                 return TRUE;
             }
+            if (XK_F4 == keysym) {
+                double new_x = 500.0;
+                double new_y = 500.0;
+                double brg   = 0.0;
+                double rge   = 0.0;
+                S52_setVRMEBL(_vrmeblA, 500, 500, &brg, &rge);
+
+                // update cursor position (lon/lat)
+                if (TRUE == S52_xy2LL(&new_x, &new_y)) {
+                    // FIXME: need call to swapBuffer
+                    //char str[80] = {'\0'};
+                    //sprintf(str, "%05.1f° / %.1f m", brg, rge);
+                    ////S52_drawStr(new_x + 5, engine->height - new_y - 15, "UINFF", 1, str);
+                    //S52_drawStr(100, 100, "UINFF", 1, str);
+
+                    S52_pushPosition(_cursor2, new_y, new_x, 0.0);
+
+                    // debug
+                    //LOGI("s52egl:_android_motion_event(): lat= %f, lon= %f\n", new_y, new_x);
+
+                    //S52_drawLast();
+                }
+                return TRUE;
+            }
 
             // debug
             g_printf("keysym: %i\n", keysym);
@@ -2052,37 +2084,31 @@ static int      _X11_handleXevent(gpointer user_data)
 
             // Move left, left arrow
             if (XK_Left      == keysym) {
-                //engine->state.cLon -= (engine->state.rNM  > 2.0) ? 0.01 : 0.001;
                 engine->state.cLon -= delta;
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // Move up, up arrow
             if (XK_Up        == keysym) {
-                //engine->state.cLat += (engine->state.rNM  > 2.0) ? 0.01 : 0.001;
                 engine->state.cLat += delta;
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // Move right, right arrow
             if (XK_Right     == keysym) {
-                //engine->state.cLon += (engine->state.rNM  > 2.0) ? 0.01 : 0.001;
                 engine->state.cLon += delta;
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // Move down, down arrow
             if (XK_Down      == keysym) {
-                //engine->state.cLat -= (engine->state.rNM  > 2.0) ? 0.01 : 0.001;
                 engine->state.cLat -= delta;
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // zoom in
             if (XK_Page_Up   == keysym) {
-                //engine->state.rNM -= (engine->state.rNM  > 2.0) ? 2.0 : 0.1;
                 engine->state.rNM -= (engine->state.rNM / 10.0);
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // zoom out
             if (XK_Page_Down == keysym) {
-                //engine->state.rNM += (engine->state.rNM  > 2.0) ? 2.0 : 0.1;
                 engine->state.rNM += (engine->state.rNM / 10.0);
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
@@ -2101,7 +2127,8 @@ static int      _X11_handleXevent(gpointer user_data)
                 }
 
                 engine->state.north -= 10.0;
-                if (0.0 > engine->state.north) engine->state.north += 360.0;
+                if (0.0 > engine->state.north)
+                    engine->state.north += 360.0;
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // rot +10.0 deg
@@ -2119,7 +2146,8 @@ static int      _X11_handleXevent(gpointer user_data)
                 }
 
                 engine->state.north += 10.0;  // + 90deg/10
-                if (360.0 <= engine->state.north) engine->state.north -= 360.0;
+                if (360.0 <= engine->state.north)
+                    engine->state.north -= 360.0;
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
 

@@ -28,9 +28,8 @@
 extern "C" {
 #endif
 
-int s52ais_initAIS      (void);
-//int s52gps_updateTimeTag(void);
-int s52ais_doneAIS      (void);
+int s52ais_initAIS(void);
+int s52ais_doneAIS(void);
 
 #ifdef __cplusplus
 }

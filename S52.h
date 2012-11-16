@@ -215,10 +215,14 @@ DLL int    STD S52_drawLayer(const char *name);
  * S52 UI color name "UINFD", "UINFF", "UIBCK", "UIAFD",
  * "UINFR", "UINFG", "UINFO", "UINFB", "UINFM", "UIBDR", "UIAFF"
  *
+ * Client must handle the framebuffer at this time:
+ *    eglMakeCurrent();S52_drawStr();eglSwapBuffers();
+ *
+ *
  * Return: TRUE on success, else FALSE
  */
 DLL int    STD S52_drawStr(double pixels_x, double pixels_y,
-                                  const char *colorName, unsigned int bsize, const char *str);
+                           const char *colorName, unsigned int bsize, const char *str);
 
 /**
  * S52_drawBlit: Blitting
@@ -790,7 +794,7 @@ typedef void*   S52ObjectHandle;
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
  */
 DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
-                                             unsigned int xyznbrmax, double *xyz, const char *listAttVal);
+                                      unsigned int xyznbrmax, double *xyz, const char *listAttVal);
 
 /**
  * S52_delMarObj:
@@ -869,8 +873,8 @@ DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBeg
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
  */
 DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDist,
-                                             double latBegin, double lonBegin, double latEnd, double lonEnd,
-                                             S52ObjectHandle previousLEGLIN);
+                                      double latBegin, double lonBegin, double latEnd, double lonEnd,
+                                      S52ObjectHandle previousLEGLIN);
 
 /**
  * S52_newOWNSHP:
@@ -992,6 +996,14 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
 
 
 // --- VRM & EBL -------------------
+
+// FIXME: use an alternate S52_newVRMEBL() that accept flags instead
+typedef enum S52_VRMEBL_t {
+    S52_VRMEBL_vrm = 1 << 0, //0x000001 - vrm
+    S52_VRMEBL_ebl = 1 << 1, //0x000010 - ebl
+    S52_VRMEBL_sty = 1 << 2, //0x000100 - normalLineStyle
+    S52_VRMEBL_ori = 1 << 3, //0x001000 - setOrigin
+} S52_VRMEBL_t;
 
 /**
  * S52_newVRMEBL:

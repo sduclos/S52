@@ -930,7 +930,7 @@ static int           _updateTimeTag(void)
         return FALSE;
 
     if (0 == _ais_list->len) {
-        //g_print("s52gps_updateTimeTag(): no vessel - check if GPSD is on-line\nFIXME: reconnect to GPSD!!!!\n");
+        //g_print("_updateTimeTag(): no vessel - check if GPSD is on-line\nFIXME: reconnect to GPSD!!!!\n");
         //silent = TRUE;
         //g_static_mutex_unlock(&_ais_list_mutex);
         return FALSE;
@@ -1308,7 +1308,7 @@ int            s52ais_updateTimeTag(void)
     g_static_mutex_lock(&_ais_list_mutex);
 
     if (NULL == _ais_list) {
-        g_print("s52ais:s52gps_updateTimeTag(): no AIS list\n");
+        g_print("s52ais:s52ais_updateTimeTag(): no AIS list\n");
         g_static_mutex_unlock(&_ais_list_mutex);
         return TRUE;
     }

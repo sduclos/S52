@@ -5362,6 +5362,11 @@ static int       _renderLS_afterglow(S52_obj *obj)
     //if (228 == pti) {
     //    PRINTF("228\n");
     //}
+    // FIXME: when pti = 229, glDrawArrays() call fail
+    if (229 == pti) {
+        PRINTF("pti == 229\n");
+    }
+
 
 
     //glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -5413,6 +5418,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
     //_checkError("_renderLS_afterglow(): before glDrawArrays()");
 
     // 3 - draw
+    // FIXME: when pti = 229, this call fail
     glDrawArrays(GL_POINTS, 0, pti);
 
 
