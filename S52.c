@@ -315,8 +315,8 @@ static double _cursor_lon = 0.0;
 
 //static GArray  *_arrTmp = NULL;
 
-static char _version[] = "$Revision: 1.106 $\n"
-      "libS52 0.79\n"
+static char _version[] = "$Revision: 1.107 $\n"
+      "libS52 0.80\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -474,7 +474,6 @@ static double     _validate_disp(double val)
         return crntMask;
     }
 
-
     if (!(0 == newMask)                           &&
         !(S52_MAR_DISP_CATEGORY_BASE   & newMask) &&
         !(S52_MAR_DISP_CATEGORY_STD    & newMask) &&
@@ -486,8 +485,12 @@ static double     _validate_disp(double val)
         return crntMask;
     }
 
-    PRINTF("Display Priority: current mask:0x%x (mask to apply:0x%x)\n", crntMask, newMask);
+    //PRINTF("Display Priority: current mask:0x%x (mask to apply:0x%x)\n", crntMask, newMask);
+    PRINTF("Display Priority: current mask:0x%x --> new mask:0x%x)\n", crntMask, newMask);
 
+    return (double)newMask;
+
+    /*
     if (crntMask &  newMask)
         crntMask &= ~newMask;
     else
@@ -496,6 +499,7 @@ static double     _validate_disp(double val)
     PRINTF("Display Priority: new current mask is:0x%x\n", crntMask);
 
     return (double)crntMask;
+    */
 }
 
 static double     _validate_mar(double val)
@@ -2801,7 +2805,6 @@ static int        _insertLightSec(_cell *c, S52_obj *obj)
     return FALSE;
 }
 
-//static S52_obj   *_cellAddGeo(_cell *c, S57_geo *geoData)
 static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
 // insert a S52_obj in a cell from a S57_obj
 // return the new S52_obj
@@ -2835,6 +2838,12 @@ static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
     // special prossesing for light sector
     if (FALSE == _insertLightSec(c, obj)) {
         // insert normal object (ie not a light with sector)
+
+        // test to insert Chart No 1 object on layer 9 (Mariners' Objects)
+        // fail in GL at second drawLast!
+        //if (S52_PRIO_MARINR == disPrioIdx)
+        //    g_ptr_array_add(_marinerCell->renderBin[disPrioIdx][obj_t], obj);
+        //else
         g_ptr_array_add(c->renderBin[disPrioIdx][obj_t], obj);
     }
 
@@ -3353,8 +3362,9 @@ static int        _cullObj(_cell *c)
 // one cell; cull object out side the view and object supressed
 // object culled are not inserted in the list of object to draw
 {
-    //for (j=0; j<S52_PRIO_NUM; ++j) {
-    for (int j=0; j<S52_PRIO_MARINR; ++j) {
+    // Chart No 1 put object on layer 9 (Mariners' Objects)
+    for (int j=0; j<S52_PRIO_NUM; ++j) {
+    //for (int j=0; j<S52_PRIO_MARINR; ++j) {
 
         // one layer
         for (int k=0; k<N_OBJ_T; ++k) {
@@ -3398,18 +3408,15 @@ static int        _cullObj(_cell *c)
                 // sort object according to radar flags
                 // note: default to 'over' if something else than 'supp'
                 if (S52_RAD_SUPP == S52_PL_getRPRI(obj)) {
-                    //g_ptr_array_add(_objList_supp, obj);
                     g_ptr_array_add(c->objList_supp, obj);
                 } else {
-                    //g_ptr_array_add(_objList_over, obj);
                     g_ptr_array_add(c->objList_over, obj);
                 }
                 //*/
                 // ------------------------------------------
 
-                // if this object has TX or TE, draw text last
+                // if this object has TX or TE, draw text last (on top)
                 if (TRUE == S52_PL_hasText(obj)) {
-                    //g_ptr_array_add(_textList, obj);
                     g_ptr_array_add(c->textList, obj);
                 }
             }
@@ -3418,29 +3425,23 @@ static int        _cullObj(_cell *c)
             // that are bellow S52_PRIO_MARINR
             // BUG: this over draw mariner object (ex: all pastck is drawn on each chart)
             // FIX: use chart extent to clip
-            //    for (k=0; k<N_OBJ_T; ++k) {
             {
-                    GPtrArray *rbin = _marinerCell->renderBin[j][k];
+                GPtrArray *rbin = _marinerCell->renderBin[j][k];
+                for (guint idx=0; idx<rbin->len; ++idx) {
+                    S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+                    S57_geo *geo = S52_PL_getGeo(obj);
 
-                    // one object
-                    //unsigned int idx;
-                    for (guint idx=0; idx<rbin->len; ++idx) {
-                        S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                        S57_geo *geo = S52_PL_getGeo(obj);
-
-                        if (TRUE != S57_getSup(geo) && FALSE == S52_GL_isSupp(obj)) {
-                            //S52_GL_draw(obj, NULL);
-                            if (S52_RAD_SUPP == S52_PL_getRPRI(obj)) {
-                                g_ptr_array_add(c->objList_supp, obj);
-                            } else {
-                                g_ptr_array_add(c->objList_over, obj);
-                            }
-
-                            if (TRUE == S52_PL_hasText(obj))
-                                g_ptr_array_add(c->textList, obj);
+                    if (TRUE != S57_getSup(geo) && FALSE == S52_GL_isSupp(obj)) {
+                        if (S52_RAD_SUPP == S52_PL_getRPRI(obj)) {
+                            g_ptr_array_add(c->objList_supp, obj);
+                        } else {
+                            g_ptr_array_add(c->objList_over, obj);
                         }
+
+                        if (TRUE == S52_PL_hasText(obj))
+                            g_ptr_array_add(c->textList, obj);
                     }
-            //    }
+                }
             }
 
         }
@@ -3576,127 +3577,10 @@ static int        _draw()
     //*/
 
 
-    /*
-    // all cells --larger region first
-    // do not draw last cell "--6MARIN.000"
-    unsigned int i = 0;
-    unsigned int n = _cellList->len-1;
-    for (i=n; i>0; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-
-        // dont traverse cells that are outside view
-        if (TRUE == _intersec(c->ext, ext)) {
-
-
-            // one cell
-            int j;
-            //for (j=0; j<S52_PRIO_NUM; ++j) {
-            for (j=0; j<S52_PRIO_MARINR; ++j) {
-            //for (j=S52_PRIO_GROUP1; j<S52_PRIO_NUM; ++j) {
-
-                // one layer
-                int k;
-                for (k=0; k<N_OBJ_T; ++k) {
-                    GPtrArray *rbin = c->renderBin[j][k];
-
-                    // one object
-                    //unsigned int idx;
-                    for (guint idx=0; idx<rbin->len; ++idx) {
-                        S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                        S57_geo *geo = S52_PL_getGeo(obj);
-
-                        // debug
-                        //if (573 == S57_getGeoID(geo)) {
-                        //    PRINTF("%s\n", S57_getName(geo));
-                        //}
-
-                        //if (radPri == S52_PL_getRPRI(obj)) {
-                            // if display of object is not suppressed
-                            if (TRUE != S57_getSupp(geo)) {
-                                //PRINTF("%s\n", S57_getName(geo));
-
-                                //if (573 == S57_getGeoID(geo)) {
-                                //    PRINTF("%s\n", S57_getName(geo));
-                                //}
-
-                                S52_GL_draw(obj, NULL);
-
-                                // doing this after the draw because draw() will
-                                // parse the text
-                                //if (TRUE == S52_PL_hasText(obj))
-                                //    g_ptr_array_add(_textList, obj);
-
-                            } //else
-                                // unsuppress object (for next frame)
-                            //  S57_setSupp(geo, FALSE);
-                        //}
-                    }
-                }
-
-                // traverse and draw all mariner object for each layer (of each chart)
-                // that are bellow S52_PRIO_MARINR
-                // BUG: this over draw mariner object (ex: all pastck is drawn on each chart)
-                // FIX: use chart extent to clip
-                for (k=0; k<N_OBJ_T; ++k) {
-                    GPtrArray *rbin = _marinerCell->renderBin[j][k];
-
-                    // one object
-                    //unsigned int idx;
-                    for (guint idx=0; idx<rbin->len; ++idx) {
-                        S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                        S57_geo *geo = S52_PL_getGeo(obj);
-
-                        if (TRUE != S57_getSupp(geo)) {
-                            S52_GL_draw(obj, NULL);
-
-                            if (TRUE == S52_PL_hasText(obj))
-                                g_ptr_array_add(_textList, obj);
-                        }
-                    }
-                }
-
-                // add curve to route here
-                if (j==S52_PRIO_HAZRDS && NULL!=_route) {
-                    // if mariner want arc drawn
-                    if (2.0 == S52_MP_get(S52_MAR_DISP_WHOLIN) || 3.0 == S52_MP_get(S52_MAR_DISP_WHOLIN)) {
-                        //unsigned int i = 0;
-                        for (guint i=1; i<_route->len; ++i) {
-                            S52_obj *objA = (S52_obj *)g_ptr_array_index(_route, i-1);
-                            S52_obj *objB = (S52_obj *)g_ptr_array_index(_route, i+0);
-
-                            S52_GL_drawArc(objA, objB);
-                        }
-                    }
-
-                    // wholin
-                    //
-                    //if (1.0 == S52_MP_get(S52_MAR_DISP_WHOLIN) || 3.0 == S52_MP_get(S52_MAR_DISP_WHOLIN)) {
-                    //    //unsigned int i = 0;
-                    //    for (guint i=0; i<_wholin->len; ++i) {
-                    //        S52_obj *objA = (S52_obj *)g_ptr_array_index(_wholin, i);
-                    //        S52_obj *objB = objA;
-                    //
-                    //        S52_GL_drawArc(objA, objB);
-                    //    }
-                    //}
-                }
-
-            }
-            // for each cell, not after all cell,
-            // because city name appear twice
-            // FIXME: cull object of overlapping region of cell of DIFFERENT nav pourpose
-            // NOTE: no culling of object of overlapping region of cell of SAME nav pourpose
-            //display priority 8
-            S52_drawText();
-
-        }
-    }
-    //*/
 
     return TRUE;
 }
 
-//static int        _drawLayer(S52_extent ext, int layer)
 static int        _drawLayer(_extent ext, int layer)
 {
     //unsigned int i = 0;

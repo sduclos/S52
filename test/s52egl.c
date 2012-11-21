@@ -759,19 +759,23 @@ static int      _s52_init       (s52engine *engine)
 
     //S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);    // (default ON)
 
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // always ON
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // default
-    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_OTHER);
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE | S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
+    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,     S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
 
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE );
-    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // default
+    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // default
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);
     S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT); // All Mariner (Standard(default) + Other)
 
     S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
 
-    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0); // ON
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0); // debug OFF - show all (default ON)
+    //S52_setMarinerParam(S52_MAR_SCAMIN,          1.0); // ON
+    S52_setMarinerParam(S52_MAR_SCAMIN,          0.0); // debug OFF - show all (default ON)
 
     // remove QUAPNT01 symbole (black diagonal and a '?')
     S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);   // off
@@ -816,18 +820,19 @@ static int      _s52_init       (s52engine *engine)
     // then (re)position the 'camera'
     S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
 
+    S52_newCSYMB();
+
+
+#ifdef S52_USE_FAKE_AIS
     // must be first mariners' object so that the
     // rendering engine place it on top of OWNSHP/VESSEL
     _s52_setupVRMEBL(&engine->state);
-
-    S52_newCSYMB();
 
     _s52_setupLEGLIN();
 
     _s52_setupPRDARE(&engine->state);
 
 
-#ifdef S52_USE_FAKE_AIS
     _s52_setupVESSEL(&engine->state);
 
     _s52_setupOWNSHP(&engine->state);

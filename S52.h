@@ -134,7 +134,7 @@ typedef enum S52_CMD_WRD_FILTER_t {
 } S52_CMD_WRD_FILTER_t;
 
 // [1] S52_MAR_DISP_CATEGORY / S52_MAR_DISP_LAYER_LAST
-// 0x0000000 - only objects of the DISPLAYBASE category are shown
+// 0x0000000 - only objects of the DISPLAYBASE category are shown (always ON)
 // 0x0000001 - only objects of the categorys DISPLAYBASE and STANDARD are shown (default)
 // 0x0000010 - only objects of the categorys DISPLAYBASE and OTHER are shown
 // 0x0000100 - initialy all objects are show (DISPLAYBASE + STANDARD + OHTER.)

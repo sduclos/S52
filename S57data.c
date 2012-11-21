@@ -67,7 +67,6 @@ typedef struct _prim {
     int mode;
     int first;
     int count;
-    //int cIdx;
 } _prim;
 
 typedef struct _S57_prim {
@@ -727,7 +726,6 @@ S57_geo   *S57_donePrimGeo(_S57_geo *geoData)
 }
 
 int        S57_begPrim(_S57_prim *prim, int mode)
-//int        S57_begPrim(_S57_prim *prim, int mode, int cIdx)
 {
     struct _prim p;
 
@@ -818,7 +816,6 @@ int        S57_setPrimDList (_S57_prim *prim, guint DList)
 }
 
 int        S57_getPrimIdx(_S57_prim *prim, unsigned int i, int *mode, int *first, int *count)
-//int        S57_getPrimIdx(_S57_prim *prim, unsigned int i, int *mode, int *first, int *count, int *cIdx)
 {
     return_if_null(prim);
 
@@ -835,7 +832,6 @@ int        S57_getPrimIdx(_S57_prim *prim, unsigned int i, int *mode, int *first
     *mode  = p->mode;
     *first = p->first;
     *count = p->count;
-    //*cIdx  = p->cIdx;
 
     return TRUE;
 }

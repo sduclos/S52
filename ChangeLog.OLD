@@ -1,10 +1,33 @@
+# ChangeLog.OLD: the old way to note mods
+#                real ChangeLog is generated with 'cvs2cl'
+#
+
+
+2012NOV20
+    -fix C1 ed3.1, mariners' objects are part of the ENCs
+    
+2012NOV19
+    -fix C1 ed3.1 AA5C1ABO.000 $SCODE point symb on GLES2
+
+2012NOV18
+    -mod logic to S52_MAR_DISP_CATEGORY, one call to set many OR'ed flags
+    
+2012NOV17
+    -fix 'TAP/long TAP' logic on Android: 'cursor pick/vrmebl'
+    
 2012NOV14
     - from https://git.kernel.org/?p=linux/kernel/git/kay/libabc.git;a=blob_plain;f=README
-           Don't put "extern" in front of your function prototypes in headers
-           - It has no effect, no effect at all.
+           "Don't put "extern" in front of your function prototypes in headers
+           - It has no effect, no effect at all."
     -remove 'extern', it has no effect, really
     -add world shapefile
+    
+2012NOV01
+    -add lib parson, replace TAB with NL in JSON
 
+2012OCT20
+    -add source code to github 
+    
 2012OCT05 
     -mod s52/doc, add graphic/ and wiki/
 

@@ -546,8 +546,8 @@ static int _GL_BEGIN = FALSE;
 #define   GLU_FILL                           100012
 #define   GLU_SILHOUETTE                     100013
 /* Boolean */
-#define GLU_FALSE                          0
-#define GLU_TRUE                           1
+#define   GLU_FALSE                          0
+#define   GLU_TRUE                           1
 
 static    GLenum   _mode = GL_MODELVIEW;  // GL_MODELVIEW (initial) or GL_PROJECTION
 static    GLfloat  _mvm[MATRIX_STACK_MAX][16];       // modelview matrix
@@ -817,14 +817,15 @@ static int       _getCentroidClose(guint npt, double *ppt)
 
         if (TRUE == S57_isPtInside(npt, ppt, pt.x, pt.y, TRUE)) {
             g_array_append_val(_centroids, pt);
-            PRINTF("point is inside polygone\n");
+            //PRINTF("point is inside polygone\n");
+
             return TRUE;
         }
 
         // use heuristique to find centroid
         if (1.0 == S52_MP_get(S52_MAR_DISP_CENTROIDS)) {
             _findCentInside(npt, (pt3*)ppt);
-            PRINTF("point is outside polygone\n");
+            PRINTF("point is outside polygone, heuristique used to find an place inside\n");
 
             return TRUE;
         }
@@ -1080,9 +1081,9 @@ typedef struct _GLUquadricObj {
     fint  cb_error;
 } _GLUquadricObj;
 
-static _GLUquadricObj *_qobj    = NULL;
+static _GLUquadricObj *_qobj = NULL;
 #else
-static GLUquadricObj  *_qobj    = NULL;
+static  GLUquadricObj *_qobj = NULL;
 #endif
 
 static S57_prim       *_diskPrimTmp = NULL;
@@ -2800,7 +2801,6 @@ static int       _VBODraw(S57_prim *prim)
 
 static int       _VBOvalidate(S52_DListData *DListData)
 {
-#ifdef S52_USE_OPENGL_VBO
     if (FALSE == glIsBuffer(DListData->vboIds[0])) {
         guint i = 0;
         for (i=0; i<DListData->nbr; ++i) {
@@ -2811,7 +2811,6 @@ static int       _VBOvalidate(S52_DListData *DListData)
         // return to normal mode
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
-#endif
 
     return TRUE;
 }
@@ -3661,16 +3660,18 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 {
     S57_geo *geoData = S52_PL_getGeo(obj);
     char    *attname = "$SCODE";
-    GString *attval  = NULL;
 
-    //attval = S57_getAttVal(geoData, "$SCODE");
-    attval = S57_getAttVal(geoData, attname);
-    if (NULL == attval)
+    GString *attval  =  S57_getAttVal(geoData, attname);
+    if (NULL == attval) {
+        PRINTF("DEBUG: no attval\n");
         return FALSE;
+    }
 
     S52_DListData *DListData = S52_PL_getDListData(obj);
-    if ((NULL==DListData) || (FALSE==_VBOvalidate(DListData)))
+    if ((NULL==DListData) || (FALSE==_VBOvalidate(DListData))) {
+        PRINTF("DEBUG: no DListData\n");
         return FALSE;
+    }
 
     // scale bar
     if (0==g_strcmp0(attval->str, "SCALEB10") ||
@@ -3850,21 +3851,34 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         }
     }
 
-    // debug --should reach that
+    {   // C1 ed3.1: AA5C1ABO.000
+        // LOWACC01 QUESMRK1 CHINFO11 CHINFO10 REFPNT02 QUAPOS01
+        // CURSRA01 CURSRB01 CHINFO09 CHINFO08 INFORM01
+
+        guint     npt     = 0;
+        GLdouble *ppt     = NULL;
+        if (TRUE == S57_getGeoData(geoData, 0, &npt, &ppt)) {
+
+            _renderSY_POINT_T(obj, ppt[0], ppt[1], _north);
+
+            return TRUE;
+        }
+    }
+
+    // debug --should not reach this point
     PRINTF("CSYMB symbol not rendere: %s\n", attval->str);
     //g_assert(0);
 
-    return TRUE;
+    return FALSE;
 }
 
 static int       _renderSY_ownshp(S52_obj *obj)
 {
-    S57_geo       *geoData   = S52_PL_getGeo(obj);
-    GLdouble       orient    = S52_PL_getSYorient(obj);
+    S57_geo  *geoData = S52_PL_getGeo(obj);
+    GLdouble  orient  = S52_PL_getSYorient(obj);
 
     guint     npt     = 0;
     GLdouble *ppt     = NULL;
-
     if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt))
         return FALSE;
 
@@ -4607,23 +4621,10 @@ static int       _renderSY(S52_obj *obj)
                     S52_DListData *DListData = S52_PL_getDListData(obj);
                     if ((NULL==DListData) || (FALSE==_VBOvalidate(DListData)))
                         return FALSE;
-/*
-                    if (NULL==DListData || NULL==DListData->colors) {
-                        return FALSE;
-                    }
-                    if (FALSE == glIsBuffer(DListData->vboIds[0])) {
-                        guint i = 0;
-                        for (i=0; i<DListData->nbr; ++i) {
-                            DListData->vboIds[i] = _VBOCreate(DListData->prim[i]);
-                        }
-                        // return to normal mode
-                        glBindBuffer(GL_ARRAY_BUFFER, 0);
-                    }
-*/
+
                     colors = DListData->colors;
                     if (0 == g_strcmp0(colors->colName, "LITRD"))
-                        //orient = 180.0 + deg;
-                        orient = 90.0 + deg;
+                        orient = deg + 90.0;
                     if (0 == g_strcmp0(colors->colName, "LITGN"))
                         orient = deg - 90.0;
 
@@ -7027,6 +7028,8 @@ static int       _renderAP(S52_obj *obj)
 
             // render to texture
 
+            _checkError("_renderAP() -0.1-");
+
             _glMatrixSet(VP_WIN);
             if (0.0 == stagOffsetPix) {
                 // move to center
@@ -7058,6 +7061,7 @@ static int       _renderAP(S52_obj *obj)
                 _glScaled(0.05, -0.05, 1.0);
             }
 
+
             glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
             glUniform4f(_uColor, 0.0, 0.0, 0.0, 1.0);
@@ -7076,12 +7080,19 @@ static int       _renderAP(S52_obj *obj)
                 vertex_t *v = (vertex_t*)vert->data;
 
                 glVertexAttribPointer(_aPosition, 3, GL_FLOAT, GL_FALSE, 0, v);
+                _checkError("_renderAP() -10-");
 
                 while (TRUE == S57_getPrimIdx(DListData->prim[i], j, &mode, &first, &count)) {
-                    glDrawArrays(mode, first, count);
+                    if (_QUADRIC_TRANSLATE == mode) {
+                        PRINTF("FIXME: handle _QUADRIC_TRANSLATE\n");
+                    } else {
+                        glDrawArrays(mode, first, count);
+                    }
                     ++j;
                 }
             }
+
+            _checkError("_renderAP() -0-");
 
             // 2nd row (top up right)
             //* stag ON
@@ -7107,7 +7118,11 @@ static int       _renderAP(S52_obj *obj)
                     glVertexAttribPointer(_aPosition, 3, GL_FLOAT, GL_FALSE, 0, v);
 
                     while (TRUE == S57_getPrimIdx(DListData->prim[i], j, &mode, &first, &count)) {
-                        glDrawArrays(mode, first, count);
+                        if (_QUADRIC_TRANSLATE == mode) {
+                            PRINTF("FIXME: handle _QUADRIC_TRANSLATE\n");
+                        } else {
+                            glDrawArrays(mode, first, count);
+                        }
                         ++j;
                     }
                 }
@@ -7130,6 +7145,7 @@ static int       _renderAP(S52_obj *obj)
                 _DrawArrays_LINE_STRIP(2, (vertex_t*)&pt2);
             }
             //*/
+
 
 
             _glMatrixDel(VP_WIN);
@@ -8461,7 +8477,7 @@ int        S52_GL_isOFFscreen(S52_obj *obj)
         if (0 == g_strcmp0(attval->str, "BLKADJ01"))
             return FALSE;
 
-        PRINTF("%s\n", S57_getName(geo));
+        PRINTF("%s:%s\n", S57_getName(geo), attval->str);
         return FALSE;
     }
 
