@@ -1,0 +1,69 @@
+body {
+  font-family : 'Open Sans', sans-serif;
+  font-size   : 14px;
+  font-weight : normal;
+  line-height : 1.2em;
+  margin      : 15px;
+  //background-color : transparent;
+  background-color : rgba(0,0,0,0);
+  //opacity  :.40;
+}
+input {
+  position: absolute;
+  left:90%;
+}
+hr {
+  width  : 90%;
+  height : 1px;
+  border : 0px;
+  background-color : blue;
+}
+h3>hr {
+  width  : 100%;
+  height : 3px;
+  border : 0px;
+}
+label {
+  font-size  : 14pt;
+}
+article {
+  width            : 100%;
+  position         : relative;
+  text-indent      : 5%;
+  background-color : transparent;
+}
+span {
+  width            : 100%;
+  height           : 100%;
+  position         : relative;
+  background-color : transparent;
+}
+#td_buttonCell
+{
+  text-indent      : 5%;
+  -webkit-animation : mymove 2s;
+  -webkit-animation-iteration-count : 0;
+}
+@-webkit-keyframes mymove /*Safari and Chrome*/
+{
+  from {background-color:red;}
+  to   {background-color:transparent;}
+}
+
+div {
+  width            : 100%;
+  position         : relative;
+  border           : 3px solid #f00;
+  background-color : transparent;
+}
+
+.scrollTableL
+{
+  float:left;
+  background-color:#00e0e6;
+}
+.scrollTableR
+{
+  float:right;
+  background-color:rgba(200,0,0,0.5);
+}

@@ -1,0 +1,797 @@
+<?xml version='1.0' encoding='utf-8'?>
+<LinearLayout xmlns:android='http://schemas.android.com/apk/res/android'
+    android:orientation   = 'vertical'
+    >
+
+    <LinearLayout
+        android:orientation   = 'horizontal'
+        >
+
+        <ScrollView
+            android:layout_weight = '1'
+            >
+
+        <LinearLayout
+            android:id            = '@+id/LeftPane'
+            android:orientation   = 'vertical'
+            android:background    = '#55000000'
+            >
+
+            <!-- MARINERS OPTIONS -->
+
+            <TextView
+                android:textSize      = '15pt'
+                android:text          = 'MARINERS OPTIONS'
+                android:layout_marginTop = '10px'
+                />
+
+            <!-- Line - Separator - Grey -->
+            <LinearLayout
+                android:layout_width  = 'match_parent'
+                android:layout_height = '2dp'
+                android:orientation   = 'horizontal'
+                android:background    = '#ff999999'
+                />
+
+
+            <!-- S52_MAR_COLOR_PALETTE (15) - Color Palette -->
+            <RelativeLayout
+                android:id            = '@+id/PLibColorPalBtn'
+                android:clickable     = 'true'
+                android:layout_marginLeft  = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:layout_height = 'match_parent'
+                    android:textSize      = '10pt'
+                    android:gravity       = 'left'
+                    android:singleLine    = 'true'
+                    android:text          = 'Color Palettes'
+                    android:layout_centerVertical = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- ENC -->
+            <RelativeLayout
+                android:id            = '@+id/ENCBtn'
+                android:clickable     = 'true'
+                android:layout_marginLeft = '30px'
+                >
+                <TextView
+                    android:gravity       = 'left'
+                    android:singleLine    = 'true'
+                    android:textSize      = '10pt'
+                    android:text          = 'ENC'
+                    android:layout_centerVertical = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_SHOW_TEXT (1) (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Show Text'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/SHOWTEXTcheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+
+            <!-- S52_MAR_DISP_CATEGORY (14) -->
+
+
+            <!-- STANDRARD (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '40px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Display Standard'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/DISPCATSTDcheckBox'
+                    android:checked   = 'false'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- OTHER (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '40px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Display Other'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/DISPCATOTHERcheckBox'
+                    android:checked   = 'false'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- SELECT (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '40px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Display Selection (override)'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/DISPCATSELECTcheckBox'
+                    android:checked   = 'false'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Mariners Standard (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '40px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Display Mariners Standard'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/DISPCATMARSTDcheckBox'
+                    android:checked   = 'false'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Mariners Other (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '40px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Display Mariners Other'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/DISPCATMAROTHERcheckBox'
+                    android:checked   = 'false'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Mariners Select (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '40px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Display Mariners Selection (override)'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/DISPCATMARSELECTcheckBox'
+                    android:checked   = 'false'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+
+
+
+            <!-- ======================== EXPERIMENTAL / DEBUG ========================= -->
+            <LinearLayout
+                android:orientation   = 'vertical'
+                >
+
+                <TextView
+                    android:layout_width  = 'match_parent'
+                    android:textSize      = '15pt'
+                    android:text          = 'EXPERIMENTAL / DEBUG'
+                    android:layout_marginTop = '10px'
+                    />
+            </LinearLayout>
+
+            <!-- Line - Separator - Grey -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '2dp'
+                android:background    = '#ff999999'
+                />
+
+            <!-- S52_MAR_SCAMIN (23) - flag for using SCAMIN filter (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Scamin'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/SCAMINcheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_DISP_WORLD (42) - flag for world shapefile (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Show World'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/WORLDcheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_ANTIALIAS (24) - flag for color blending (anti-aliasing) (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Anti-Alias'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/ANTIALIAScheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_DISP_AFTERGLOW (40) - synthetic afterglow (in PLAUX_00.DAI) for OWNSHP & VESSEL (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Afterglow'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/AFTERGLOWcheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_DISP_CALIB (36) - display calibration symbol (on/off)  -->
+            <RelativeLayout
+                android:layout_marginLeft = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Calibration Symbols'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/CALIBRATIONcheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_DISP_LEGEND (32) - display legend (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Legend'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/LEGENDcheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_DISP_CENTROIDS (41) - display centroids (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Centroids'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/CENTROIDScheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_QUAPNT01 (25) QUAPNT01 (quality of position symbol, on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Quality Of Position'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/QUAPNT01checkBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_DISP_DRGARE_PATTERN (37) - display DRGARE pattern (default on) -->
+            <RelativeLayout
+                android:layout_marginLeft = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Dredge Pattern'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/DRGAREPATTERNcheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_DISP_NODATA_LAYER (38) - display layer 0  (default on) -->
+            <RelativeLayout
+                android:layout_marginLeft = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Nodata Layer'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/NODATALAYERcheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_DISP_VESSEL_LABEL (42) - display vessel label -->
+            <RelativeLayout
+                android:layout_marginLeft = '30px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'Vessel Label'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/VESSELLABELcheckBox'
+                    android:checked   = 'true'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+
+            <!-- S52_MAR_ROT_BUOY_LIGHT (28) - rotate buoy light (deg from north) -->
+            <RelativeLayout
+                android:id            = '@+id/ROTBUOYLIGHTlayout'
+                android:clickable     = 'true'
+                android:layout_marginLeft  = '30px'
+                >
+                <TextView
+                    android:textSize      = '10pt'
+                    android:gravity       = 'left'
+                    android:text          = 'Rotate Buoy Light: '
+                    android:layout_centerVertical = 'true'
+                    />
+                <EditText
+                    android:id            = '@+id/ROTBUOYLIGHTeditText'
+                    android:background    = '#55000000'
+                    android:textSize      = '10pt'
+                    android:text          = '--.-°'
+                    android:inputType     = 'none'
+                    android:tag           = 'edit_off'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_DOTPITCH_MM_X (34) - dotpitch X (mm) -->
+            <RelativeLayout
+                android:clickable     = 'true'
+                android:layout_marginLeft  = '30px'
+                >
+                <TextView
+                    android:textSize      = '10pt'
+                    android:gravity       = 'left'
+                    android:text          = 'Dotpitch X'
+                    android:layout_centerVertical = 'true'
+                    />
+                <EditText
+                    android:id            = '@+id/DOTPITCHXeditText'
+                    android:background    = '#55000000'
+                    android:textSize      = '10pt'
+                    android:text          = '0.3 mm'
+                    android:inputType     = 'none'
+                    android:tag           = 'edit_off'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+            <!-- S52_MAR_DOTPITCH_MM_Y (35) - dotpitch Y (mm) -->
+            <RelativeLayout
+                android:clickable     = 'true'
+                android:layout_marginLeft  = '30px'
+                >
+                <TextView
+                    android:textSize      = '10pt'
+                    android:gravity       = 'left'
+                    android:singleLine    = 'true'
+                    android:text          = 'Dotpitch Y'
+                    android:layout_centerVertical = 'true'
+                    />
+                <EditText
+                    android:id            = '@+id/DOTPITCHYeditText'
+                    android:background    = '#55000000'
+                    android:textSize      = '10pt'
+                    android:text          = '0.3 mm'
+                    android:inputType     = 'none'
+                    android:tag           = 'edit_off'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- Line - Separator -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#55000000'
+                android:layout_marginLeft  = '30px'
+                />
+
+
+<!--  profiling -->
+
+            <!-- S52_CMD_WRD_FILTER_SY (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '40px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'CMD_WRD_FILTER_SY'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/CMDWRDFILTERSYcheckBox'
+                    android:checked   = 'false'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- S52_CMD_WRD_FILTER_LS (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '40px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'CMD_WRD_FILTER_LS'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/CMDWRDFILTERLScheckBox'
+                    android:checked   = 'false'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- S52_CMD_WRD_FILTER_LC (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '40px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'CMD_WRD_FILTER_LC'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/CMDWRDFILTERLCcheckBox'
+                    android:checked   = 'false'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- S52_CMD_WRD_FILTER_AC (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '40px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'CMD_WRD_FILTER_AC'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/CMDWRDFILTERACcheckBox'
+                    android:checked   = 'false'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- S52_CMD_WRD_FILTER_AP (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '40px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'CMD_WRD_FILTER_AP'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/CMDWRDFILTERAPcheckBox'
+                    android:checked   = 'false'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+            <!-- S52_CMD_WRD_FILTER_TX (on/off) -->
+            <RelativeLayout
+                android:layout_marginLeft  = '40px'
+                android:layout_marginRight = '10px'
+                >
+                <TextView
+                    android:textSize  = '10pt'
+                    android:text      = 'CMD_WRD_FILTER_TX'
+                    android:layout_centerVertical = 'true'
+                    />
+               <CheckBox
+                    android:id        = '@+id/CMDWRDFILTERTXcheckBox'
+                    android:checked   = 'false'
+                    android:layout_alignParentRight = 'true'
+                    />
+            </RelativeLayout>
+
+<!--  profiling -->
+
+
+        </LinearLayout>
+
+        </ScrollView>
+
+    <!--
+    S52_MAR_FONT_SOUNDG         = 21,   // use font for sounding (on/off)
+    S52_MAR_DATUM_OFFSET        = 22,   // value of chart datum offset (S52_MAR_FONT_SOUNDG must be ON)
+    S52_MAR_DISP_OVERLAP        = 26,   // display overlapping symbol (debug)
+    S52_MAR_DISP_LAYER_LAST     = 27,   // enable S52_drawLast (0 - NONE, 1 - MARINERS STANDARD(default), 2 - MARINERS OTHER, 3 - ALL (STANDARD+OTHER))
+    S52_MAR_DISP_CRSR_POS       = 29,   // display cursor position (on/off)
+    S52_MAR_DISP_GRATICULE      = 30,   // display graticule (on/off)
+    S52_MAR_DISP_WHOLIN         = 31,   // wholin auto placement: 0 - off, 1 - wholin, 2 - arc, 3 - wholin + arc  (default off)
+    S52_MAR_CMD_WRD_FILTER      = 33,   // command word filter mask for profiling
+    S52_MAR_DEL_VESSEL_DELAY    = 39,   // time delay (sec) defore deleting old AIS (default 600 sec, 0 - OFF)
+    -->
+
+        <!-- ======================== FRAGMENT RIGHT PANE ============================================= -->
+
+        <LinearLayout
+            android:orientation   = 'vertical'
+            android:layout_weight = '1'
+            android:gravity       = 'center'
+            android:background    = '#55000000'
+            >
+
+            <TextView
+                android:id            = '@+id/ListViewTitle'
+                android:layout_width  = 'match_parent'
+                android:textSize      = '15pt'
+                android:text          = '---'
+                android:layout_marginTop = '10px'
+                />
+
+            <!-- Line - Separator - Grey -->
+            <LinearLayout
+                android:orientation   = 'horizontal'
+                android:layout_width  = 'match_parent'
+                android:layout_height = '1dp'
+                android:background    = '#ff999999'
+                />
+
+            <ListView
+                android:id            = '@+id/listView1'
+                android:layout_marginLeft = '30px'
+                />
+
+            <ListView
+                android:id            = '@+id/listView2'
+                android:background    = '#55ff0000'
+                android:layout_marginLeft = '30px'
+                />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>
