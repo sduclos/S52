@@ -216,7 +216,7 @@ typedef enum _LUPtnm {
 //-- LOOKUP MODULE STRUCTURE ----------------------------------------
 typedef struct _S52_LUP {
     int          RCID;          // record identifier
-    char         OBCL[S52_LUP_NMLN+1]; // LUP name --'\0' terminated
+    char         OBCL[S52_PL_NMLN+1]; // LUP name --'\0' terminated
     S52_Obj_t    FTYP;          // 'A' Area, 'L' Line, 'P' Point
     //S57_Obj_t    FTYP;          // 'A' Area, 'L' Line, 'P' Point
     S52_disPrio  DPRI;          // Display Priority
@@ -609,7 +609,7 @@ static gint       _cmpLUP(gconstpointer nameA, gconstpointer nameB)
 #endif
 
     //PRINTF("%s - %s\n",(char*)nameA,(char*)nameB);
-    return strncmp((char*)nameA, (char*)nameB, S52_LUP_NMLN);
+    return strncmp((char*)nameA, (char*)nameB, S52_PL_NMLN);
 }
 
 #ifdef S52_USE_GLIB2
@@ -766,7 +766,7 @@ static _S52_LUP  *_lookUpLUP(_S52_LUP *LUPlist, S57_geo *geoData)
     }
 
     // special case [S52-A-2:8.3.3.4(iii)]
-    if (0 == strncmp(LUP->OBCL, "TSSLPT", S52_LUP_NMLN)){
+    if (0 == strncmp(LUP->OBCL, "TSSLPT", S52_PL_NMLN)){
         if (NULL == S57_getAttVal(geoData, "ORIENT")) {
             // FIXME: hit this in S-64 ENC
             PRINTF("FIXME: TSSLPT found ... check this ... no ORIENT\n");
@@ -1803,7 +1803,7 @@ static int        _parseLUPT(_PL *fp)
 
     sscanf(pBuf+11, "%d", &LUP->RCID);
     //sscanf(pBuf+11, "%i", &LUP->RCID);
-    strncpy(LUP->OBCL, pBuf+19, S52_LUP_NMLN);
+    strncpy(LUP->OBCL, pBuf+19, S52_PL_NMLN);
     LUP->FTYP = (S52_Obj_t  )  pBuf[25];
     //LUP->FTYP = (S57_Obj_t  )  pBuf[25];
     LUP->DPRI = (S52_disPrio) (pBuf[30] - '0');
@@ -2330,7 +2330,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
         }
 
         // special case ENC return an index
-        if (0==strncmp(buf, "NATSUR", S52_LUP_NMLN)) {
+        if (0==strncmp(buf, "NATSUR", S52_PL_NMLN)) {
 #ifdef S52_USE_GLIB2
             gchar** attvalL = g_strsplit_set(value->str, ",", 0);  // can't handle UTF-8, check g_strsplit() if needed
             gchar** freeL   = attvalL;

@@ -358,9 +358,6 @@ typedef enum _VP{   // set GL_PROJECTION matrix to
 //static gint _fontDListIdx = 0;
 
 
-// debug GL crash
-//extern GMutex * mutex;
-
 // NOTE: S52 pixels for symb are 0.3 mm
 // this is the real dotpitch of the device
 // as computed at init() time
@@ -3517,7 +3514,13 @@ static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rota
     _glTranslated(x, y, 0.0);
     _glScaled(1.0, -1.0, 1.0);
 
+    //_glRotated(rotation, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
+
+    _pushScaletoPixel(TRUE);
+    //_pushScaletoPixel(FALSE);
+
     _glRotated(rotation, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
+
 #else
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -3525,11 +3528,14 @@ static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rota
     glTranslated(x, y, 0.0);
     glScaled(1.0, -1.0, 1.0);
 
-    glRotated(rotation, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
-#endif
+    //glRotated(rotation, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
     _pushScaletoPixel(TRUE);
     //_pushScaletoPixel(FALSE);
+
+    glRotated(rotation, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
+#endif
+
 
     _glCallList(DListData);
 
@@ -4502,7 +4508,7 @@ static int       _renderSY(S52_obj *obj)
     return FALSE;
 #endif
 
-    if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_MAR_CMD_WRD_FILTER))
+    if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
     // bebug filter out all but ..
@@ -4613,7 +4619,7 @@ static int       _renderSY(S52_obj *obj)
             if (0 == g_strcmp0(S57_getName(geoData), "LIGHTS")) {
                 S57_geo *other = S57_getTouchLIGHTS(geoData);
                 // this light 'touch' a buoy
-                if ((NULL!=other) && (0 == g_strcmp0(S57_getName(other), "BOYLAT"))) {
+                if ((NULL!=other) && (0==g_strcmp0(S57_getName(other), "BOYLAT"))) {
                     // assume that light have a single color in List
                     S52_Color     *colors    = NULL;
                     double         deg       = S52_MP_get(S52_MAR_ROT_BUOY_LIGHT);
@@ -4914,6 +4920,9 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
 
         //_pushScaletoPixel(TRUE);
         _pushScaletoPixel(FALSE);
+
+        //_glRotated(90.0-o, 0.0, 0.0, 1.0);
+
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 #else
         glMatrixMode(GL_MODELVIEW);
@@ -5464,7 +5473,7 @@ static int       _renderLS(S52_obj *obj)
     //    return TRUE;
     //}
 
-    if (S52_CMD_WRD_FILTER_LS & (int) S52_MP_get(S52_MAR_CMD_WRD_FILTER))
+    if (S52_CMD_WRD_FILTER_LS & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
     S52_PL_getLSdata(obj, &pen_w, &style, &col);
@@ -5602,20 +5611,22 @@ static int       _renderLS(S52_obj *obj)
 
 
 
+#ifdef S52_USE_GLES2
+            // Not usefull with AA
+            //_d2f(_tessWorkBuf_f, npt, ppt);
+            //_DrawArrays_POINTS(npt, (vertex_t *)_tessWorkBuf_f->data);
+#else
             // add point on thick line to round corner
             // BUG: dot showup on transparent line
             // FIX: don't draw dot on tranparent line!
-            if ((3 <= (pen_w -'0')) && ('0'==col->trans))  {
+            //if ((3 <= (pen_w -'0')) && ('0'==col->trans))  {
+            //if ((3 <= (pen_w -'0')) && ('0'==col->trans) && (TRUE==(int)S52_MP_get(S52_MAR_DISP_RND_LN_END))) {
+            if ((3 <= (pen_w -'0')) && ('0'==col->trans) && (1.0==S52_MP_get(S52_MAR_DISP_RND_LN_END))) {
                 _glPointSize(pen_w  - '0');
 
-#ifdef S52_USE_GLES2
-                //_d2f(_tessWorkBuf_f, npt, ppt);
-                //_DrawArrays_POINTS(npt, (vertex_t *)_tessWorkBuf_f->data);
-#else
                 _DrawArrays_POINTS(npt, (vertex_t *)ppt);
-#endif
             }
-
+#endif
         }
     }
 
@@ -5763,7 +5774,7 @@ static int       _renderLC(S52_obj *obj)
     return FALSE;
 #endif
 
-    if (S52_CMD_WRD_FILTER_LC & (int) S52_MP_get(S52_MAR_CMD_WRD_FILTER))
+    if (S52_CMD_WRD_FILTER_LC & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
     // draw arc if this is a leglin
@@ -6383,7 +6394,7 @@ static int       _renderAC(S52_obj *obj)
     S52_Color *c       = S52_PL_getACdata(obj);
     S57_geo   *geoData = S52_PL_getGeo(obj);
 
-    if (S52_CMD_WRD_FILTER_AC & (int) S52_MP_get(S52_MAR_CMD_WRD_FILTER))
+    if (S52_CMD_WRD_FILTER_AC & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
     // debug
@@ -6676,7 +6687,7 @@ static int       _renderAP_DRGARE(S52_obj *obj)
 static int       _renderAP(S52_obj *obj)
 // Area Pattern
 {
-    if (S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_MAR_CMD_WRD_FILTER))
+    if (S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
 #ifdef S52_USE_GV
@@ -6761,9 +6772,17 @@ static int       _renderAP(S52_obj *obj)
     // FIXME: get the name of the pattern instead
     // optimisation --experimental
     // TODO: optimisation: if proven to be faster, compare S57 object number instead of string name
-    /*
-    if (0==g_strcmp0("DRGARE", S52_PL_getOBCL(obj), 6)) {
-        //_renderAP_DRGARE(obj);
+#ifdef S52_USE_GLES2
+    if (0 == g_ascii_strncasecmp("DRGARE", S52_PL_getOBCL(obj), 6)) {
+        if (TRUE != (int) S52_MP_get(S52_MAR_DISP_DRGARE_PATTERN))
+            return TRUE;
+    }
+#else
+    if (0 == g_ascii_strncasecmp("DRGARE", S52_PL_getOBCL(obj), 6)) {
+        if (TRUE != (int) S52_MP_get(S52_MAR_DISP_DRGARE_PATTERN))
+            return TRUE;
+
+        _renderAP_DRGARE(obj);
         return TRUE;
     } else {
         // fill area with NODATA pattern
@@ -6790,8 +6809,7 @@ static int       _renderAP(S52_obj *obj)
             }
         }
     }
-    //*/
-
+#endif
 
     S52_DListData *DListData = S52_PL_getDListData(obj);
     if ((NULL==DListData) || (FALSE==_VBOvalidate(DListData))) {
@@ -7393,7 +7411,7 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
     // TODO: use 'bsize'
     (void) bsize;
 
-    if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_MAR_CMD_WRD_FILTER))
+    if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
     if (weight >= S52_MAX_FONT) {
@@ -7438,30 +7456,24 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
 
     glBindTexture(GL_TEXTURE_2D, _freetype_gl_atlas->id);
 
-    {   // FIXME: un-rotate text _north
-        //double n = _north;
-        //_north = 0.0;
+    _glMatrixMode(GL_MODELVIEW);
+    _glLoadIdentity();
 
-        //_glMatrixSet(VP_PRJ);
 
-        _glMatrixMode(GL_MODELVIEW);
-        _glLoadIdentity();
+    _glTranslated(x, y, 0.0);
 
-        _glTranslated(x, y, 0.0);
+    _pushScaletoPixel(FALSE);
 
-        _pushScaletoPixel(FALSE);
+    _glRotated   (-_north, 0.0, 0.0, 1.0);
 
-        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
-        //PRINTF("x:%f, x:%f, str:%s\n", x, y, str);
-        for (guint i=0; i<S52_strlen(str); ++i) {
-            glDrawArrays(GL_TRIANGLE_FAN, i*4, 4);
-        }
-
-        _popScaletoPixel();
-
-        //_north = n;
+    //PRINTF("x:%f, x:%f, str:%s\n", x, y, str);
+    for (guint i=0; i<S52_strlen(str); ++i) {
+        glDrawArrays(GL_TRIANGLE_FAN, i*4, 4);
     }
+
+    _popScaletoPixel();
 
     //glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindTexture(GL_TEXTURE_2D,  0);
@@ -8538,7 +8550,7 @@ int        S52_GL_drawText(S52_obj *obj, gpointer user_data)
     //}
 
     // optimisation - shortcut all code
-    //if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_MAR_CMD_WRD_FILTER))
+    //if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
     //    return TRUE;
 
     S52_CmdWrd cmdWrd = S52_PL_iniCmd(obj);
@@ -10158,8 +10170,8 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
 
     _glMatrixSet(VP_PRJ);
 
-    // set viewport here to clip artefac from old FB
-    //...
+    // FIXME: clip artefac from old FB
+    //_renderAC_NODATA_layer0();
 
 
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
@@ -10204,7 +10216,7 @@ int        S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, uns
 // draw string in world coords
 {
     // optimisation - shortcut all code
-    //if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_MAR_CMD_WRD_FILTER))
+    //if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
     //    return TRUE;
 
     S52_Color *c = S52_PL_getColor("CHBLK");
@@ -10223,7 +10235,7 @@ int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *color
 // draw a string in window coords
 {
     // optimisation - shortcut all code
-    //if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_MAR_CMD_WRD_FILTER))
+    //if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
     //    return TRUE;
 
     S52_Color *c = S52_PL_getColor(colorName);

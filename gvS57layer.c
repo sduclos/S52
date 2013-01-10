@@ -25,11 +25,11 @@
 #include "gvS57layer.h"
 
 //#include "S52.h"            // S52_loadLayer(), S52_drawLayer()
-extern int S52_init();
-extern int S52_drawLayer();
-extern int S52_loadLayer(const char *layername, void *layer);
-extern int S52_pickAt(double x, double y);
-extern int S52_done();
+int S52_init();
+int S52_drawLayer();
+int S52_loadLayer(const char *layername, void *layer);
+int S52_pickAt(double x, double y);
+int S52_done();
 
 #include "S52utils.h"       // PRINTF()
 

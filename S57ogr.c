@@ -21,23 +21,15 @@
 */
 
 
-
-// Note: make a copy of OGR data
-
 #include "S57ogr.h"     // S57_geo
 #include "S52utils.h"   // PRINTF()
 #include "ogr_api.h"    // OGR*
-//#include "S57data.h"    // S57ogr.h include S57data.h
-
 
 #include <glib.h>       // GPtrArray
 
 
 // WARNING: must be in sync with S52.c:WORLD_SHP
 #define WORLD_BASENM   "--0WORLD"
-
-//typedef struct _srcData srcData;
-//typedef OGRFeatureH _srcData;
 
 static int        _setExtent(S57_geo *geoData, OGRGeometryH geometry)
 {
@@ -83,6 +75,12 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
             const char *propValue = OGR_F_GetFieldAsString(hFeature, field_index);
 
             S57_setAtt(geoData, propName, propValue);
+
+            // debug - neg value on home made chart US500001.000
+            if ((0==strcmp("FIDN", propName)) && ('-'==propValue[0])) {
+                PRINTF("DEBUG: negative FIDN:%s\n", propValue);
+                g_assert(0);
+            }
         }
     }
 
@@ -100,8 +98,8 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
 #endif
 */
 
-extern DLL int   STD S52_loadLayer (const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
-//extern DLL int   STD S52_loadObject(const char *objname,   void *shape);
+DLL int   STD S52_loadLayer (const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
+//DLL int   STD S52_loadObject(const char *objname,   void *shape);
 
 //static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb)
 static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
@@ -500,7 +498,6 @@ S57_geo       *S57_ogrLoadObject(const char *objname, void *feature)
     //PRINTF("DEBUG: finish loading object (%s)\n", objname);
 
     return geoData;
-    //return geo;
 }
 
 

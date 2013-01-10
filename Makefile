@@ -174,7 +174,7 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0`\
 # -DS52_USE_OGR_FILECOLLECTOR
 # -DS52_USE_SYM_AISSEL01         (experimental - symbol in plib-test-priv.rle)
 # -DS52_USE_SOCK
-# -DS52_USE_WORLD
+# -DS52_USE_WORLD - rename shapefile to WORLD_SHP in S52.c:201 ("--0WORLD.shp")
 s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
@@ -506,6 +506,6 @@ err.txt: *.c *.h
 # $ git merge upstream/master
 
 
-# 3 - sync .git with sduc git on GitHub
+# 3 - sync .git with sduclos git on GitHub
 # Pushes commits (.git) to your remote repo stored on GitHub
 # $ git push origin master

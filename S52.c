@@ -73,9 +73,10 @@ typedef struct { double u, v; } projUV;
 static int _mercPrjSet = FALSE;
 #endif
 
-//#ifdef S52_USE_SOCK
-//static GSocketConnection *_connection = NULL;
-//#endif
+#ifdef S52_USE_SOCK
+#include <sys/types.h>
+#include <sys/socket.h>
+#endif
 
 #ifdef S52_USE_DBUS
 #include <dbus/dbus.h>
@@ -102,6 +103,8 @@ static struct   sigaction             _old_signal_handler_SIGABRT;
 static struct   sigaction             _old_signal_handler_SIGKILL;
 static struct   sigaction             _old_signal_handler_SIGSEGV;
 static struct   sigaction             _old_signal_handler_SIGTERM;
+static struct   sigaction             _old_signal_handler_SIGUSR1;
+static struct   sigaction             _old_signal_handler_SIGUSR2;
 
 // not available on win32
 #ifdef S52_USE_BACKTRACE
@@ -195,9 +198,9 @@ typedef struct _cell {
 // FIXME: mutex this
 static GPtrArray *_cellList    = NULL;    // list of loaded cells - sorted, big to small scale (small to large region)
 static _cell     *_crntCell    = NULL;    // current cell (passed around when loading --FIXME:global (dumb)
-static _cell     *_marinerCell = NULL;    // palce holder MIO's, and other (fake S57) object
+static _cell     *_marinerCell = NULL;    // palce holder MIO's, and other (fake) S57 object
 #define MARINER_CELL   "--6MARIN.000"
-#define WORLD_SHP      "--0WORLD.shp"
+#define WORLD_SHP      "--0WORLD.shp"     // '--' - agency (none), 0 - chart purpose (S52 is 1-6)
 // WARNING: must be in sync with WORLD_SHP
 #define WORLD_BASENM   "--0WORLD"
 
@@ -315,8 +318,8 @@ static double _cursor_lon = 0.0;
 
 //static GArray  *_arrTmp = NULL;
 
-static char _version[] = "$Revision: 1.107 $\n"
-      "libS52 0.80\n"
+static char _version[] = "$Revision: 1.108 $\n"
+      "libS52 0.81\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -393,15 +396,6 @@ static char _version[] = "$Revision: 1.107 $\n"
                            PRINTF("WARNING: libS52 not initialized --try S52_init() first\n"); \
                            return FALSE;                                                       \
                         }
-/*
-// check if chart is loaded
-static int    _mercPrjSet = FALSE;
-static double _mercLat    = 0.0;
-#define S52_CHECK_MERC  if (FALSE == _mercPrjSet) {                                                    \
-                           PRINTF("WARNING: Mercator Projetion not set --use S52_loadCell() first\n"); \
-                           return FALSE;                                                               \
-                        }
-*/
 
 // CHECK THIS: check if we are shuting down also
 #define S52_CHECK_MUTX  g_static_mutex_lock(&_mp_mutex);       \
@@ -474,6 +468,7 @@ static double     _validate_disp(double val)
         return crntMask;
     }
 
+    // check if the newMask has one of possible bit
     if (!(0 == newMask)                           &&
         !(S52_MAR_DISP_CATEGORY_BASE   & newMask) &&
         !(S52_MAR_DISP_CATEGORY_STD    & newMask) &&
@@ -487,8 +482,7 @@ static double     _validate_disp(double val)
 
     //PRINTF("Display Priority: current mask:0x%x (mask to apply:0x%x)\n", crntMask, newMask);
     PRINTF("Display Priority: current mask:0x%x --> new mask:0x%x)\n", crntMask, newMask);
-
-    return (double)newMask;
+    //return (double)newMask;
 
     /*
     if (crntMask &  newMask)
@@ -500,6 +494,15 @@ static double     _validate_disp(double val)
 
     return (double)crntMask;
     */
+
+    //*
+    if (crntMask  & newMask)
+        crntMask -= newMask;
+    else
+        crntMask += newMask;
+
+    return (double)crntMask;
+    //*/
 }
 
 static double     _validate_mar(double val)
@@ -627,7 +630,7 @@ static int        _validate_screenPos(double *xx, double *yy)
 
 static double     _validate_filter(double mask)
 {
-    int crntMask = (int) S52_getMarinerParam(S52_MAR_CMD_WRD_FILTER);
+    int crntMask = (int) S52_getMarinerParam(S52_CMD_WRD_FILTER);
     int newMask  = (int) mask;
     int maxMask  =
         S52_CMD_WRD_FILTER_SY +
@@ -640,10 +643,9 @@ static double     _validate_filter(double mask)
     if (newMask < S52_CMD_WRD_FILTER_SY || newMask > maxMask) {
         PRINTF("WARNING: ignoring filter mask (%i)\n", newMask);
         return crntMask;
-        //return S52_getMarinerParam(S52_MAR_CMD_WRD_FILTER);
     }
 
-    if (newMask & crntMask)
+    if (crntMask  & newMask)
         crntMask -= newMask;
     else
         crntMask += newMask;
@@ -765,8 +767,9 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
         case S52_MAR_DISP_AFTERGLOW      : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_CENTROIDS      : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_WORLD          : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_RND_LN_END     : val = _validate_bool(val);                   break;
 
-        case S52_MAR_CMD_WRD_FILTER      : g_static_mutex_unlock(&_mp_mutex);
+        case S52_CMD_WRD_FILTER          : g_static_mutex_unlock(&_mp_mutex);
                                            val = _validate_filter(val);
                                            S52_CHECK_MUTX;
                                            break;
@@ -854,10 +857,6 @@ static gint       _cmpLine(gconstpointer pointA, gconstpointer pointB, gpointer 
     g_assert(0);
 
     return 0;
-
-
-
-    //return strncmp((char*)nameA, (char*)nameB, S52_LUP_NMLN);
 }
 #endif
 
@@ -1290,6 +1289,16 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
         //return;
     }
 
+    // 10
+    if (SIGUSR1 == sig) {
+        PRINTF("Signal 'User-defined 1' cought - SIGUSR1(%i)\n", sig);
+    }
+    // 12
+    if (SIGUSR2 == sig) {
+        PRINTF("Signal 'User-defined 2' cought - SIGUSR2(%i)\n", sig);
+    }
+
+
 
 #ifdef S52_USE_ANDROID
         // break loop - android debuggerd rethrow SIGSEGV
@@ -1447,10 +1456,15 @@ DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_
 DLL int    STD S52_loadObject(const char *objname, void *shape);
 static _cell*     _loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb);
 
+#ifdef S52_USE_DBUS
+static int        _initDBus(void);
+#endif
+static int        _initSock(void); // froward
+
 #ifdef S52_USE_DOTPITCH
 //DLL int    STD S52_init(int pixels_w, int pixels_h, int pixels_wmm, int pixels_hmm)
 //DLL int    STD S52_init(unsigned int screen_pixels_w, unsigned int screen_pixels_h, unsigned int screen_mm_w, unsigned int screen_mm_h, S52_error_cb err_cb)
-//DLL int   STD  S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h)
+//DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h)
 DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb)
 #else
 DLL int    STD S52_init(void)
@@ -1475,7 +1489,7 @@ DLL int    STD S52_init(void)
     //
     // init mem stat stuff
     //
-    //extern GMemVTable *glib_mem_profiler_table;
+    //GMemVTable *glib_mem_profiler_table;
     //g_mem_set_vtable(glib_mem_profiler_table);
     //g_mem_profile();
 
@@ -1519,6 +1533,10 @@ DLL int    STD S52_init(void)
         sigaction(SIGSEGV, &sa, &_old_signal_handler_SIGSEGV);   // loop in android
         // 15 - Termination (ANSI)
         //sigaction(SIGTERM, &sa, &_old_signal_handler_SIGTERM);
+        // 10
+        sigaction(SIGUSR1, &sa, &_old_signal_handler_SIGUSR1);
+        // 12
+        sigaction(SIGUSR2, &sa, &_old_signal_handler_SIGUSR2);
 
         // debug - will trigger SIGSEGV for testing
         //_cell *c = 0x0;
@@ -1594,7 +1612,7 @@ DLL int    STD S52_init(void)
 
     //setenv("OGR_S57_OPTIONS", "LNAM_REFS:ON,UPDATES:ON,SPLIT_MULTIPOINT:ON", 1);
 #include <stdlib.h>
-    //extern int setenv(const char *name, const char *value, int overwrite);
+    //int setenv(const char *name, const char *value, int overwrite);
     setenv(name, value, 1);
     env = g_getenv("OGR_S57_OPTIONS");
     PRINTF("%s\n", env);
@@ -1652,12 +1670,10 @@ DLL int    STD S52_init(void)
     //
 
 #ifdef S52_USE_DBUS
-    int _initDBus();
     _initDBus();
 #endif
 
 #ifdef S52_USE_SOCK
-    int _initSock();
     _initSock();
 #endif
 
@@ -1920,7 +1936,7 @@ static GArray    *_parseIntList(GString *intstr)
 #endif
 
 static int        _suppLineOverlap()
-// no SUPP in case manual chart corection (LC(CHCRIDnn) and LC(CHCRDELn))
+// no SUPP in case manual chart correction (LC(CHCRIDnn) and LC(CHCRDELn))
 {
     int prio;
     int obj_t;
@@ -2168,7 +2184,7 @@ static _cell*     _loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 #ifdef S52_USE_OGR_FILECOLLECTOR
 // in libgdal.so
 // Note: must add 'extern "C"' to GDAL/OGR at S57.h:40
-extern char   **S57FileCollector( const char *pszDataset );
+char **S57FileCollector( const char *pszDataset );
 
 //#include "iso8211.h"
 
@@ -2248,7 +2264,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 {
     valueBuf chartPath = {'\0'};
     char    *fname     = NULL;
-    //_cell   *ch        = NULL;
+    _cell   *ch        = NULL;
     static int  silent = FALSE;
 
     S52_CHECK_INIT;
@@ -2313,9 +2329,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         //_loadBaseCell((char *)chartPath, loadLayer_cb, loadObject_cb);
         const char *base = g_basename(fname);
         if (0 == g_strcmp0(base, WORLD_SHP))
-            _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
-        //_initPROJ();
-        //_projectCells();
+            ch = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
     }
 #endif
 
@@ -2352,8 +2366,8 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
                     break;
 
                 //ch = _loadBaseCell(encName, layer_cb);
-                //ch = _loadBaseCell(encName, loadLayer_cb, loadObject_cb);
-                _loadBaseCell(encName, loadLayer_cb, loadObject_cb);
+                ch = _loadBaseCell(encName, loadLayer_cb, loadObject_cb);
+                //_loadBaseCell(encName, loadLayer_cb, loadObject_cb);
                 g_free(encName);
             }
             g_free(encList);
@@ -2361,21 +2375,21 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     }
     g_free(fname);
 
-    //if (NULL == ch) {
-    //    g_static_mutex_unlock(&_mp_mutex);
-    //    return FALSE;
-    //}
+    if (NULL == ch) {
+        g_static_mutex_unlock(&_mp_mutex);
+        return FALSE;
+    }
 
 #else
     //ch = _loadBaseCell(fname, layer_cb);
-    //ch = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
-    _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
+    ch = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
+    //_loadBaseCell(fname, loadLayer_cb, loadObject_cb);
     g_free(fname);
 
-    //if (NULL == ch) {
-    //    g_static_mutex_unlock(&_mp_mutex);
-    //    return FALSE;
-    //}
+    if (NULL == ch) {
+        g_static_mutex_unlock(&_mp_mutex);
+        return FALSE;
+    }
 #endif
 
 
@@ -2458,21 +2472,17 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 }
 
 DLL int    STD S52_doneCell(const char *encPath)
+// FIXME: the (futur) chart manager (CM) should to this by itself
+// so loadCell would load a CATALOG then CM would load individual cell
+// to fill the view (and unload cell outside the view)
 {
-    //valueBuf chartPath = {'\0'};
-    //char    *fname     = NULL;
-    //_cell   *ch        = NULL;
-    //static int  silent = FALSE;
-
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
 
-    // FIXME: the (futur) chart manager (CM) should to this by itself
-    // so loadCell would load a CATALOG then CM would load individual cell
-    // to fill the view (and unload cell outside the view)
-
     gchar *base = g_path_get_basename(encPath);
     base = g_strstrip(base);
+
+    PRINTF("%s\n", encPath);
 
     // skip file not terminated by .000
     //const char *base = g_basename(filename);
@@ -2492,7 +2502,12 @@ DLL int    STD S52_doneCell(const char *encPath)
         if (0 == S52_strncmp(base, c->filename->str, S57_CELL_NAME_MAX_LEN)) {
             _freeCell(c);
             g_ptr_array_remove_index(_cellList, idx);
-            break;
+
+            g_free(base);
+            g_static_mutex_unlock(&_mp_mutex);
+
+            return TRUE;
+            //break;
         }
     }
 
@@ -2500,7 +2515,7 @@ DLL int    STD S52_doneCell(const char *encPath)
 
     g_static_mutex_unlock(&_mp_mutex);
 
-    return TRUE;
+    return FALSE;
 }
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
@@ -2841,10 +2856,10 @@ static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
 
         // test to insert Chart No 1 object on layer 9 (Mariners' Objects)
         // fail in GL at second drawLast!
-        //if (S52_PRIO_MARINR == disPrioIdx)
-        //    g_ptr_array_add(_marinerCell->renderBin[disPrioIdx][obj_t], obj);
-        //else
-        g_ptr_array_add(c->renderBin[disPrioIdx][obj_t], obj);
+        if (S52_PRIO_MARINR == disPrioIdx)
+            g_ptr_array_add(_marinerCell->renderBin[disPrioIdx][obj_t], obj);
+        else
+            g_ptr_array_add(c->renderBin[disPrioIdx][obj_t], obj);
     }
 
 #ifdef S52_USE_WORLD
@@ -3363,8 +3378,8 @@ static int        _cullObj(_cell *c)
 // object culled are not inserted in the list of object to draw
 {
     // Chart No 1 put object on layer 9 (Mariners' Objects)
-    for (int j=0; j<S52_PRIO_NUM; ++j) {
-    //for (int j=0; j<S52_PRIO_MARINR; ++j) {
+    //for (int j=0; j<S52_PRIO_NUM; ++j) {
+    for (int j=0; j<S52_PRIO_MARINR; ++j) {
 
         // one layer
         for (int k=0; k<N_OBJ_T; ++k) {
@@ -4443,13 +4458,15 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
     // debug
     PRINTF("scale_x:%f, scale_y:%f, scale_z:%f, north:%f\n", scale_x, scale_y, scale_z, north);
 
-
     g_timer_reset(_timer);
-    // FIXME: handle return FALSE case
+
     if (TRUE == S52_GL_begin(FALSE, FALSE)) {
         S52_GL_drawBlit(scale_x, scale_y, scale_z, north);
         S52_GL_end(FALSE);
+    } else {
+        PRINTF("WARNING:S52_GL_begin() failed\n");
     }
+
     gdouble sec = g_timer_elapsed(_timer, NULL);
     PRINTF("DRAWBLIT: %.0f msec\n", sec * 1000);
 
@@ -5236,29 +5253,23 @@ DLL const char * STD S52_getPalettesNameList(void)
     S52_CHECK_MUTX;
 
     const char *str = NULL;
-    int palTblsz = S52_PL_getPalTableSz();
-    //int i = 0;
+    int palTblsz    = S52_PL_getPalTableSz();
+    //int palTblsz    = 1; // debug
 
     g_string_set_size(_paltNameList, 0);
 
     g_string_append_printf(_paltNameList, "[");
 
     for (int i=0; i<palTblsz; ++i) {
-        //if (0 != _paltNameList->len)
-        //    g_string_append_printf(_paltNameList, ",%s", (char*)S52_PL_getPalTableNm(i));
-        //else
-        //    g_string_append_printf(_paltNameList, "%s",  (char*)S52_PL_getPalTableNm(i));
-
         if (0 == i)
-            g_string_append_printf(_paltNameList, "'%s'",  (char*)S52_PL_getPalTableNm(i));
+            g_string_append_printf(_paltNameList, "\"%s\"",  (char*)S52_PL_getPalTableNm(i));
         else
-            g_string_append_printf(_paltNameList, ",'%s'", (char*)S52_PL_getPalTableNm(i));
+            g_string_append_printf(_paltNameList, ",\"%s\"", (char*)S52_PL_getPalTableNm(i));
     }
 
-    g_string_append_printf(_paltNameList, "]");
+    g_string_append_c(_paltNameList, ']');
 
-    if (0 != _paltNameList->len)
-        str = _paltNameList->str;
+    str = _paltNameList->str;
 
     g_static_mutex_unlock(&_mp_mutex);
 
@@ -5369,7 +5380,7 @@ DLL const char * STD S52_getObjList(const char *cellName, const char *className)
                     for (guint idx=0; idx<rbin->len; ++idx) {
                         S52_obj    *obj   = (S52_obj *)g_ptr_array_index(rbin, idx);
                         const char *oname = S52_PL_getOBCL(obj);
-                        if (0 == S52_strncmp(className, oname, S52_LUP_NMLN)) {
+                        if (0 == S52_strncmp(className, oname, S52_PL_NMLN)) {
                             if (header) {
                                 g_string_printf(_objClassList, "%s,%s", cellName, className);
                                 header = FALSE;
@@ -7455,18 +7466,6 @@ exit:
 
 // FIXME: use GDBus (in Gio) instead (thread prob with low-level DBus API)
 
-/*
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern gboolean  update_cb();
-
-#ifdef __cplusplus
-}
-#endif
-*/
-
 static DBusHandlerResult   _sendDBusMessage         (DBusConnection *dbus, DBusMessage *reply)
 // send the reply && flush the connection
 {
@@ -8671,16 +8670,14 @@ static int                 _initDBus()
 #include "parson.h"
 
 #define BLOCK 2048
-static char  _result[BLOCK];
-static char  _response[BLOCK];
-static int   _request_id = 0;
-static int   _strCursor  = 0;  // cursor for writing strings in _result[]
+static char  _err[BLOCK]      = {'\0'};
+static char  _result[BLOCK]   = {'\0'};
+static char  _response[BLOCK] = {'\0'};
 
 static gchar               _setErr(gchar *errmsg)
 {
-    //gchar errmsg[] = "key \"command\" not found";
-    memcpy(_result, errmsg, strlen(errmsg));
-    _result[strlen(errmsg) + 1] = '\0';
+    //_err[0] = '\0';
+    g_snprintf(_err, BLOCK, "%s", errmsg);
 
     return TRUE;
 }
@@ -8706,10 +8703,12 @@ static int                 _encode(char *buffer, const char *frmt, ...)
 
 }
 
-static int                 _handle_method(GString *instr)
-// call the correponding S52_* function named 'method'
+static int                 _handle_method(const gchar *str)
+// call the correponding S52_* function named 'method' in JSON object
 // here 'method' meen function name (or command name)
-// SL4A call it method since is OOP
+// SL4A call it 'method' since JAVA is OOP
+// expect:{"id":1,"method":"S52_*","params":["???"]}
+// return: id, JSON array in _result and error msg in _err
 {
     // FIXME: use btree for name/function lookup
     // -OR-
@@ -8719,16 +8718,22 @@ static int                 _handle_method(GString *instr)
     // debug
     //PRINTF("------------------\n");
     //PRINTF("instr->str:%s", instr->str);
+    _err[0] = '\0';
 
     // JSON parser
-    JSON_Value *val       = json_parse_string(instr->str);
+    JSON_Value *val       = json_parse_string(str);
     if (NULL == val) {
-        PRINTF("ERROR: json_parse_string() failed (NULL) \n");
-        return FALSE;
+        _setErr("can't parse json str");
+        _encode(_result, "[0]");
+        PRINTF("ERROR: json_parse_string() failed (%s)\n", str);
+        return 0;
     }
 
     // init JSON Object
     JSON_Object *obj      = json_value_get_object(val);
+
+    double       id       = json_object_get_number(obj, "id");
+
 
     // get S52_* Command Name
     const char  *cmdName  = json_object_dotget_string(obj, "method");
@@ -8751,7 +8756,7 @@ static int                 _handle_method(GString *instr)
     // call command - return answer to caller
     //
 
-    //extern DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
+    //S52ObjectHandle STD S52_newOWNSHP(const char *label);
     if (0 == S52_strncmp(cmdName, "S52_newOWNSHP", strlen("S52_newOWNSHP"))) {
         const char *label = json_array_get_string (paramsArr, 0);
         if ((NULL==label) || (1!=count)) {
@@ -8765,15 +8770,15 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
+    //S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
     if (0 == S52_strncmp(cmdName, "S52_newVESSEL", strlen("S52_newVESSEL"))) {
         if (2 != count) {
             _setErr("params 'vesrce'/'label' not found");
             goto exit;
         }
 
-        int         vesrce = (int)json_array_get_number(paramsArr, 0);
-        const char *label  =      json_array_get_string(paramsArr, 1);
+        double      vesrce = json_array_get_number(paramsArr, 0);
+        const char *label  = json_array_get_string(paramsArr, 1);
         if (NULL == label) {
             _setErr("params 'label' not found");
             goto exit;
@@ -8786,28 +8791,28 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    // extern DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel);
+    //S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel);
     if (0 == S52_strncmp(cmdName, "S52_setVESSELlabel", strlen("S52_setVESSELlabel"))) {
         if (2 != count) {
             _setErr("params 'objH'/'newLabel' not found");
             goto exit;
         }
 
-        long unsigned int lui = (long unsigned int) json_array_get_number(paramsArr, 0);
-        S52ObjectHandle objH  = (S52ObjectHandle) lui;
         const char *label = json_array_get_string (paramsArr, 1);
         if (NULL == label) {
             _setErr("params 'label' not found");
             goto exit;
         }
 
+        long unsigned int lui = (long unsigned int) json_array_get_number(paramsArr, 0);
+        S52ObjectHandle objH  = (S52ObjectHandle) lui;
         objH = S52_setVESSELlabel(objH, label);
         _encode(_result, "[%lu]", (long unsigned int *) objH);
 
         goto exit;
     }
 
-    //extern DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data);
+    //S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data);
     if (0 == S52_strncmp(cmdName, "S52_pushPosition", strlen("S52_pushPosition"))) {
         if (4 != count) {
             _setErr("params 'objH'/'latitude'/'longitude'/'data' not found");
@@ -8827,7 +8832,7 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL S52ObjectHandle STD S52_setVector   (S52ObjectHandle objH, int vecstb, double course, double speed);
+    //S52ObjectHandle STD S52_setVector   (S52ObjectHandle objH, int vecstb, double course, double speed);
     if (0 == S52_strncmp(cmdName, "S52_setVector", strlen("S52_setVector"))) {
         if (4 != count) {
             _setErr("params 'objH'/'vecstb'/'course'/'speed' not found");
@@ -8836,7 +8841,7 @@ static int                 _handle_method(GString *instr)
 
         long unsigned int lui  = (long unsigned int) json_array_get_number(paramsArr, 0);
         S52ObjectHandle objH   = (S52ObjectHandle) lui;
-        int             vecstb = (int) json_array_get_number(paramsArr, 1);
+        double          vecstb = json_array_get_number(paramsArr, 1);
         double          course = json_array_get_number(paramsArr, 2);
         double          speed  = json_array_get_number(paramsArr, 3);
 
@@ -8847,7 +8852,7 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d);
+    //S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d);
     if (0 == S52_strncmp(cmdName, "S52_setDimension", strlen("S52_setDimension"))) {
         if (5 != count) {
             _setErr("params 'objH'/'a'/'b'/'c'/'d' not found");
@@ -8869,7 +8874,7 @@ static int                 _handle_method(GString *instr)
 
     }
 
-    //extern DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn);
+    //S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn);
     if (0 == S52_strncmp(cmdName, "S52_setVESSELstate", strlen("S52_setVESSELstate"))) {
         if (4 != count) {
             _setErr("params 'objH'/'vesselSelect'/'vestat'/'vesselTurn' not found");
@@ -8878,10 +8883,9 @@ static int                 _handle_method(GString *instr)
 
         long unsigned int lui        = (long unsigned int) json_array_get_number(paramsArr, 0);
         S52ObjectHandle objH         = (S52ObjectHandle) lui;
-        int             vesselSelect = (int) json_array_get_number(paramsArr, 1);
-        int             vestat       = (int) json_array_get_number(paramsArr, 2);
-        int             vesselTurn   = (int) json_array_get_number(paramsArr, 3);
-
+        double          vesselSelect = json_array_get_number(paramsArr, 1);
+        double          vestat       = json_array_get_number(paramsArr, 2);
+        double          vesselTurn   = json_array_get_number(paramsArr, 3);
 
         objH  = S52_setVESSELstate(objH, vesselSelect, vestat, vesselTurn);
 
@@ -8891,7 +8895,7 @@ static int                 _handle_method(GString *instr)
     }
 
 
-    //extern DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
+    //S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
     if (0 == S52_strncmp(cmdName, "S52_delMarObj", strlen("S52_delMarObj"))) {
         if (1 != count) {
             _setErr("params 'objH' not found");
@@ -8908,7 +8912,7 @@ static int                 _handle_method(GString *instr)
     }
 
     // FIXME: not all param paresed
-    //extern DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
+    //S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
     //                                     unsigned int xyznbrmax, double *xyz, const char *listAttVal);
     if (0 == S52_strncmp(cmdName, "S52_newMarObj", strlen("S52_newMarObj"))) {
         if (3 != count) {
@@ -8917,8 +8921,8 @@ static int                 _handle_method(GString *instr)
         }
 
         const char *plibObjName = json_array_get_string(paramsArr, 0);
-        int         objType     = (int) json_array_get_number(paramsArr, 1);
-        int         xyznbrmax   = (int) json_array_get_number(paramsArr, 2);
+        double      objType     = json_array_get_number(paramsArr, 1);
+        double      xyznbrmax   = json_array_get_number(paramsArr, 2);
         double     *xyz         = NULL;
         gchar      *listAttVal  = NULL;
 
@@ -8933,7 +8937,7 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL const char * STD S52_getPalettesNameList(void);
+    //const char * STD S52_getPalettesNameList(void);
     if (0 == S52_strncmp(cmdName, "S52_getPalettesNameList", strlen("S52_getPalettesNameList"))) {
         const gchar *palListstr = S52_getPalettesNameList();
 
@@ -8944,7 +8948,7 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL const char * STD S52_getCellNameList(void);
+    //const char * STD S52_getCellNameList(void);
     if (0 == S52_strncmp(cmdName, "S52_getCellNameList", strlen("S52_getCellNameList"))) {
         const gchar *cellNmListstr = S52_getCellNameList();
 
@@ -8955,14 +8959,14 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL double STD S52_getMarinerParam(S52MarinerParameter paramID);
+    //double STD S52_getMarinerParam(S52MarinerParameter paramID);
     if (0 == S52_strncmp(cmdName, "S52_getMarinerParam", strlen("S52_getMarinerParam"))) {
         if (1 != count) {
             _setErr("params 'paramID' not found");
             goto exit;
         }
 
-        int paramID = (int) json_array_get_number(paramsArr, 0);
+        double paramID = json_array_get_number(paramsArr, 0);
 
         double d = S52_getMarinerParam(paramID);
 
@@ -8973,15 +8977,16 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
+    //int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
     if (0 == S52_strncmp(cmdName, "S52_setMarinerParam", strlen("S52_setMarinerParam"))) {
         if (2 != count) {
             _setErr("params 'paramID'/'val' not found");
             goto exit;
         }
 
-        int paramID = (int) json_array_get_number(paramsArr, 0);
-        double val  =       json_array_get_number(paramsArr, 1);
+        double paramID = json_array_get_number(paramsArr, 0);
+        double val     = json_array_get_number(paramsArr, 1);
+
         double d = S52_setMarinerParam(paramID, val);
 
         _encode(_result, "[%f]", d);
@@ -8991,7 +8996,7 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL int    STD S52_drawLast(void);
+    //int    STD S52_drawLast(void);
     if (0 == S52_strncmp(cmdName, "S52_drawLast", strlen("S52_drawLast"))) {
         int i = S52_drawLast();
 
@@ -9002,7 +9007,7 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL int    STD S52_draw(void);
+    //int    STD S52_draw(void);
     if (0 == S52_strncmp(cmdName, "S52_draw", strlen("S52_draw"))) {
         int i = S52_draw();
 
@@ -9013,7 +9018,7 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
+    //int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
     if (0 == S52_strncmp(cmdName, "S52_getRGB", strlen("S52_getRGB"))) {
         if (1 != count) {
             _setErr("params 'colorName' not found");
@@ -9026,8 +9031,8 @@ static int                 _handle_method(GString *instr)
         unsigned char G;
         unsigned char B;
         int ret = S52_getRGB(colorName, &R, &G, &B);
+
         PRINTF("%i, %i, %i\n", R,G,B);
-        //PRINTF("%c, %c, %c\n", R,G,B);
 
         if (TRUE == ret)
             _encode(_result, "[%i,%i,%i]", R, G, B);
@@ -9039,16 +9044,16 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL int    STD S52_setTextDisp(int dispPrioIdx, int count, int state);
+    //int    STD S52_setTextDisp(int dispPrioIdx, int count, int state);
     if (0 == S52_strncmp(cmdName, "S52_setTextDisp", strlen("S52_setTextDisp"))) {
         if (3 != count) {
             _setErr("params '&dispPrioIdx' / 'count' / 'state' not found");
             goto exit;
         }
 
-        int dispPrioIdx = (int) json_array_get_number(paramsArr, 0);
-        int count       = (int) json_array_get_number(paramsArr, 1);
-        int state       = (int) json_array_get_number(paramsArr, 2);
+        double dispPrioIdx = json_array_get_number(paramsArr, 0);
+        double count       = json_array_get_number(paramsArr, 1);
+        double state       = json_array_get_number(paramsArr, 2);
 
         int ret = S52_setTextDisp(dispPrioIdx, count, state);
 
@@ -9062,14 +9067,14 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL int    STD S52_getTextDisp(int dispPrioIdx);
+    //int    STD S52_getTextDisp(int dispPrioIdx);
     if (0 == S52_strncmp(cmdName, "S52_getTextDisp", strlen("S52_getTextDisp"))) {
         if (1 != count) {
             _setErr("params 'dispPrioIdx' not found");
             goto exit;
         }
 
-        int dispPrioIdx = (int) json_array_get_number(paramsArr, 0);
+        double dispPrioIdx = json_array_get_number(paramsArr, 0);
 
         int ret = S52_getTextDisp(dispPrioIdx);
 
@@ -9087,7 +9092,7 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL int    STD S52_loadCell        (const char *encPath,  S52_loadObject_cb loadObject_cb);
+    //int    STD S52_loadCell        (const char *encPath,  S52_loadObject_cb loadObject_cb);
     if (0 == S52_strncmp(cmdName, "S52_loadCell", strlen("S52_loadCell"))) {
         if (1 != count) {
             _setErr("params 'encPath' not found");
@@ -9109,7 +9114,7 @@ static int                 _handle_method(GString *instr)
         goto exit;
     }
 
-    //extern DLL int    STD S52_doneCell        (const char *encPath);
+    //int    STD S52_doneCell        (const char *encPath);
     if (0 == S52_strncmp(cmdName, "S52_doneCell", strlen("S52_doneCell"))) {
         if (1 != count) {
             _setErr("params 'encPath' not found");
@@ -9117,6 +9122,7 @@ static int                 _handle_method(GString *instr)
         }
 
         const char *encPath = json_array_get_string(paramsArr, 0);
+
         int ret = S52_doneCell(encPath);
 
         if (TRUE == ret)
@@ -9125,563 +9131,226 @@ static int                 _handle_method(GString *instr)
             _encode(_result, "[0]");
         }
 
-        //PRINTF("%s\n", _result);
+        PRINTF("SOCK:S52_doneCell(): %s\n", _result);
 
         goto exit;
     }
 
-    return FALSE;
 
 exit:
     json_value_free(val);
-    return TRUE;
-
-    // read command name
-    /*
-    gchar *cmdstr = g_strrstr(instr->str, "\"method\"");
-    gchar cmdName[32];
-    if (NULL != cmdstr) {
-        int r = sscanf(cmdstr, "\"method\" : \"%31c", cmdName);
-        if (0 == r) {
-            _setErr("method name not found");
-            return FALSE;
-        }
-    } else {
-        _setErr("key 'method' not found");
-        return FALSE;
-    }
-    */
-
-
-    // need this to compile
-    //gchar jsonarr[128];
-
-    /*
-    // read parameter array
-    gchar *paramsstr = g_strrstr(instr->str, "\"params\"");
-    gchar jsonarr[128];
-    if (NULL != paramsstr) {
-        int ret = sscanf(paramsstr, "\"params\" : [ %127c", jsonarr);
-        if (0 == ret) {
-            _setErr("array value for key 'params' not found");
-            return FALSE;
-        }
-    } else {
-        _setErr("key 'params' not found");
-        return FALSE;
-    }
-
-    // {"id":0,"command":"S52_newOWNSHP","params":["test"]}
-    //extern DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
-    if (0 == S52_strncmp(cmdName, "S52_newOWNSHP", strlen("S52_newOWNSHP"))) {
-        gchar label[128];
-        int r = sscanf(jsonarr, "\"%127c", label);
-        if (0 == r) {
-            _setErr("params 'label' not found");
-            return FALSE;
-        }
-        gchar  *cptr = label;
-        while (*cptr != '\"') cptr++;
-        *cptr = '\0';
-        S52ObjectHandle objH  = S52_newOWNSHP(label);
-
-        _encode(_result, "[%p]", objH);
-
-        return TRUE;
-    }
-
-    // {'id':0,'command':'S52_newVESSEL','vesrce':2,'label':'test'}
-    //extern DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
-    if (0 == S52_strncmp(cmdName, "S52_newVESSEL", strlen("S52_newVESSEL"))) {
-        int       vesrce = 0;
-        gchar     label[128];
-
-        // debug
-        //PRINTF("%s", jsonarr);
-
-        int r = sscanf(jsonarr, "%i , \"%127c", &vesrce, label);
-        if (2 != r) {
-            _setErr("params 'vesrce'/'label' not found");
-            return FALSE;
-        }
-        gchar  *cptr = label;
-        while (*cptr != '\"') cptr++;
-        *cptr = '\0';
-        S52ObjectHandle objH   = S52_newVESSEL(vesrce, label);
-
-        _encode(_result, "[%p]", objH);
-
-        // debug
-        //PRINTF("%s", _result);
-
-        return TRUE;
-    }
-
-    // {'id':0,'command':'S52_setVESSELlabel','objH':9064736,'newLabel':'test-2'}
-    // extern DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel);
-    if (0 == S52_strncmp(cmdName, "S52_setVESSELlabel", strlen("S52_setVESSELlabel"))) {
-        S52ObjectHandle objH;
-        gchar    label[128];
-        int r = sscanf(jsonarr, "%p , \"%127c", &objH, label);
-        if (2 != r) {
-            _setErr("params 'objH'/'newLabel' not found");
-            return FALSE;
-        }
-        gchar  *cptr = label;
-        while (*cptr != '\"') cptr++;
-        *cptr = '\0';
-
-        objH  = S52_setVESSELlabel(objH, label);
-
-        _encode(_result, "[%p]", objH);
-
-        return TRUE;
-    }
-
-    //extern DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data);
-    if (0 == S52_strncmp(cmdName, "S52_pushPosition", strlen("S52_pushPosition"))) {
-        S52ObjectHandle objH      ;
-        double          latitude  ;
-        double          longitude ;
-        double          data      ;
-
-        int r = sscanf(jsonarr, "%p , %lf , %lf , %lf", &objH, &latitude, &longitude, &data);
-        if (4 != r) {
-            _setErr("params 'objH'/'latitude'/'longitude'/'data' not found");
-            return FALSE;
-        }
-
-
-        objH  = S52_pushPosition(objH, latitude, longitude, data);
-
-        _encode(_result, "[%p]", objH);
-        return TRUE;
-    }
-
-    //extern DLL S52ObjectHandle STD S52_setVector   (S52ObjectHandle objH, int vecstb, double course, double speed);
-    if (0 == S52_strncmp(cmdName, "S52_setVector", strlen("S52_setVector"))) {
-        S52ObjectHandle objH   ;
-        int             vecstb ;
-        double          course ;
-        double          speed  ;
-
-        int r = sscanf(jsonarr, "%p , %i , %lf , %lf", &objH, &vecstb, &course, &speed);
-        if (4 != r) {
-            _setErr("params 'objH'/'vecstb'/'course'/'speed' not found");
-            return FALSE;
-        }
-
-        objH  = S52_setVector(objH, vecstb, course, speed);
-
-        _encode(_result, "[%p]", objH);
-        return TRUE;
-    }
-
-    //extern DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d);
-    if (0 == S52_strncmp(cmdName, "S52_setDimension", strlen("S52_setDimension"))) {
-        S52ObjectHandle objH;
-        double          a   ;
-        double          b   ;
-        double          c   ;
-        double          d   ;
-
-        int r = sscanf(jsonarr, "%p , %lf , %lf , %lf , %lf", &objH, &a, &b, &c, &d);
-        if (5 != r) {
-            _setErr("params 'objH'/'a'/'b'/'c'/'d' not found");
-            return FALSE;
-        }
-
-
-        objH  = S52_setDimension(objH, a, b, c, d);
-
-        _encode(_result, "[%p]", objH);
-
-        return TRUE;
-    }
-
-    //extern DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn);
-    if (0 == S52_strncmp(cmdName, "S52_setVESSELstate", strlen("S52_setVESSELstate"))) {
-        S52ObjectHandle objH        ;
-        int             vesselSelect;
-        int             vestat      ;
-        int             vesselTurn  ;
-
-        int r = sscanf(jsonarr, "%p , %i , %i , %i", &objH, &vesselSelect, &vestat, &vesselTurn);
-        if (4 != r) {
-            _setErr("params 'objH'/'vesselSelect'/'vestat'/'vesselTurn' not found");
-            return FALSE;
-        }
-
-        objH  = S52_setVESSELstate(objH, vesselSelect, vestat, vesselTurn);
-
-        _encode(_result, "[%p]", objH);
-
-        return TRUE;
-    }
-
-
-    //extern DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
-    if (0 == S52_strncmp(cmdName, "S52_delMarObj", strlen("S52_delMarObj"))) {
-        S52ObjectHandle objH;
-        int r = sscanf(jsonarr, "%p", &objH);
-        if (1 != r) {
-            _setErr("params 'objH' not found");
-            return FALSE;
-        }
-
-        objH = S52_delMarObj(objH);
-
-        _encode(_result, "[%p]", objH);
-
-        return TRUE;
-    }
-
-    //extern DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
-    //                                     unsigned int xyznbrmax, double *xyz, const char *listAttVal);
-    if (0 == S52_strncmp(cmdName, "S52_newMarObj", strlen("S52_newMarObj"))) {
-        gchar   plibObjName[32];
-        int     objType     ;
-        int     xyznbrmax   ;
-        double *xyz        = NULL;
-        gchar  *listAttVal = NULL;
-        gchar  *cptr       = jsonarr;
-
-        // 1 - get string plibObjName
-        cptr++;
-        while (*cptr != '"') cptr++;
-        memcpy(plibObjName, jsonarr+1, cptr-(jsonarr+1));
-        //memcpy(plibObjName, jsonarr+1, cptr-jsonarr);
-        plibObjName[6] = '\0';
-
-        // 2 & 3 - objType, xyznbrmax
-        //int r = sscanf(jsonarr, "\"%s\" , %i , %i , %s", plibObjName, &objType, &xyznbrmax, &rest);
-        //int r = sscanf(jsonarr, "\"%31c\" , %i , %i", plibObjName, &objType, &xyznbrmax);
-        int r = sscanf(cptr, "\" , %i , %i", &objType, &xyznbrmax);
-        //PRINTF("plibObjName:%s objType:%i &xyznbrmax:%i jsonarr:%s", plibObjName, objType, xyznbrmax, jsonarr);
-        if (2 != r) {
-            _setErr("params 'objType'/'xyznbrmax' not found");
-            return FALSE;
-        }
-
-        // 4 & 5 - FIXME: NULL for now
-        S52ObjectHandle objH = S52_newMarObj(plibObjName, objType, xyznbrmax, xyz, listAttVal);
-
-        _encode(_result, "[%p]", objH);
-
-        return TRUE;
-    }
-
-    // {"id":0,"command":"S52_getPalettesNameList","params":[]}
-    //extern DLL const char * STD S52_getPalettesNameList(void);
-    if (0 == S52_strncmp(cmdName, "S52_getPalettesNameList", strlen("S52_getPalettesNameList"))) {
-        const gchar *palListstr = S52_getPalettesNameList();
-
-        _encode(_result, "%s", palListstr);
-
-        //PRINTF("%s", _result);
-
-        return TRUE;
-    }
-
-    // {"id":0,"command":"S52_getCellNameList","params":[]}
-    //extern DLL const char * STD S52_getCellNameList(void);
-    if (0 == S52_strncmp(cmdName, "S52_getCellNameList", strlen("S52_getCellNameList"))) {
-        const gchar *cellNmListstr = S52_getCellNameList();
-
-        _encode(_result, "%s", cellNmListstr);
-
-        PRINTF("%s", _result);
-
-        return TRUE;
-    }
-
-    //extern DLL double STD S52_getMarinerParam(S52MarinerParameter paramID);
-    if (0 == S52_strncmp(cmdName, "S52_getMarinerParam", strlen("S52_getMarinerParam"))) {
-        int paramID;
-
-        //PRINTF("S52_getMarinerParam: %s", jsonarr);
-
-        int r = sscanf(jsonarr, " %i", &paramID);
-        if (1 != r) {
-            _setErr("params 'paramID' not found");
-            return FALSE;
-        }
-        double d = S52_getMarinerParam(paramID);
-
-        _encode(_result, "[%f]", d);
-
-        //PRINTF("%s", _result);
-
-        return TRUE;
-    }
-
-    //extern DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
-    if (0 == S52_strncmp(cmdName, "S52_setMarinerParam", strlen("S52_setMarinerParam"))) {
-        int paramID;
-        double val;
-        int r = sscanf(jsonarr, " %i , %lf", &paramID, &val);
-        if (2 != r) {
-            _setErr("params 'paramID'/'val' not found");
-            return FALSE;
-        }
-        double d = S52_setMarinerParam(paramID, val);
-
-        _encode(_result, "[%f]", d);
-
-        //PRINTF("%s", _result);
-
-        return TRUE;
-    }
-
-    // WARNING: check for drawLast() before draw()
-    //extern DLL int    STD S52_drawLast(void);
-    if (0 == S52_strncmp(cmdName, "S52_drawLast", strlen("S52_drawLast"))) {
-        int i = S52_drawLast();
-
-        _encode(_result, "[%i]", i);
-
-        //PRINTF("%s", _result);
-
-        goto exit;
-    }
-
-    //extern DLL int    STD S52_draw(void);
-    if (0 == S52_strncmp(cmdName, "S52_draw", strlen("S52_draw"))) {
-        int i = S52_draw();
-
-        _encode(_result, "[%i]", i);
-
-        //PRINTF("%s", _result);
-
-        goto exit;
-    }
-
-    //extern DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
-    if (0 == S52_strncmp(cmdName, "S52_getRGB", strlen("S52_getRGB"))) {
-        gchar colorName[6];
-        int r = sscanf(jsonarr, " \"%5c", colorName);
-        if (1 != r) {
-            _setErr("params 'colorName' not found");
-            return FALSE;
-        }
-        colorName[5] = '\0';
-
-        unsigned char R;
-        unsigned char G;
-        unsigned char B;
-        int ret = S52_getRGB(colorName, &R, &G, &B);
-        //PRINTF("%i, %i, %i\n", R,G,B);
-
-        if (TRUE == ret)
-            _encode(_result, "[%02X,%02X,%02X]", R, G, B);
-        else
-            _encode(_result, "[0]");
-
-        //PRINTF("%s\n", _result);
-
-        return TRUE;
-    }
-
-    //extern DLL int    STD S52_setTextDisp(int dispPrioIdx, int count, int state);
-    if (0 == S52_strncmp(cmdName, "S52_setTextDisp", strlen("S52_setTextDisp"))) {
-        int dispPrioIdx;
-        int count;
-        int state;
-        int r = sscanf(jsonarr, " %i , %i , %i", &dispPrioIdx, &count, &state);
-        if (3 != r) {
-            _setErr("params '&dispPrioIdx' / 'count' / 'state' not found");
-            return FALSE;
-        }
-        int ret = S52_setTextDisp(dispPrioIdx, count, state);
-
-        if (TRUE == ret)
-            _encode(_result, "[1]");
-        else
-            _encode(_result, "[0]");
-
-        //PRINTF("%s\n", _result);
-
-        return TRUE;
-    }
-
-    //extern DLL int    STD S52_getTextDisp(int dispPrioIdx);
-    if (0 == S52_strncmp(cmdName, "S52_getTextDisp", strlen("S52_getTextDisp"))) {
-        int dispPrioIdx;
-        int r = sscanf(jsonarr, " %i ", &dispPrioIdx);
-        if (1 != r) {
-            _setErr("params 'dispPrioIdx' not found");
-            return FALSE;
-        }
-        int ret = S52_getTextDisp(dispPrioIdx);
-
-        if (TRUE == ret)
-            _encode(_result, "[1]");
-        else {
-            if (-1 == ret)
-                _encode(_result, "[-1]");
-            else // FALSE
-                _encode(_result, "[0]");
-        }
-
-        //PRINTF("%s\n", _result);
-
-        return TRUE;
-    }
-
-    //extern DLL int    STD S52_loadCell        (const char *encPath,  S52_loadObject_cb loadObject_cb);
-    if (0 == S52_strncmp(cmdName, "S52_loadCell", strlen("S52_loadCell"))) {
-        char encPath[128];
-
-        //PRINTF("XXXX %s\n", jsonarr);
-
-        int r = sscanf(jsonarr, " \"%127c ", encPath);
-        if (1 != r) {
-            _setErr("params 'encPath' not found");
-            return FALSE;
-        }
-
-        //PRINTF("XXXX %s\n", encPath);
-
-        gchar  *cptr = encPath;
-        while (*cptr != '\"') cptr++;
-        *cptr = '\0';
-
-        int ret = S52_loadCell(encPath, NULL);
-
-        if (TRUE == ret)
-            _encode(_result, "[1]");
-        else {
-            _encode(_result, "[0]");
-        }
-
-        //PRINTF("%s\n", _result);
-
-        return TRUE;
-    }
-
-    //extern DLL int    STD S52_doneCell        (const char *encPath);
-    if (0 == S52_strncmp(cmdName, "S52_doneCell", strlen("S52_doneCell"))) {
-        if (1 != count) {
-            _setErr("params 'encPath' not found");
-            return FALSE;
-        }
-
-        char encPath[128];
-
-        //PRINTF("XXXX %s\n", jsonarr);
-
-        int r = sscanf(jsonarr, " \"%127c ", encPath);
-        //PRINTF("XXXX %s\n", encPath);
-
-        gchar  *cptr = encPath;
-        while (*cptr != '\"') cptr++;
-        *cptr = '\0';
-
-        int ret = S52_doneCell(encPath);
-
-        if (TRUE == ret)
-            _encode(_result, "[1]");
-        else {
-            _encode(_result, "[0]");
-        }
-
-        //PRINTF("%s\n", _result);
-
-        return TRUE;
-    }
-    //*/
+    return (int)id;
 }
 
-gboolean                   _socket_read_write(GIOChannel *source, GIOCondition cond, gpointer user_data)
+static gboolean            _socket_read_write(GIOChannel *source, GIOCondition cond, gpointer user_data)
+// WARNING: multi-thread here so PRINTF is a bit clunky
 {
-    GString *instr = g_string_new(NULL);
     GError  *error = NULL;
+    gchar     str_return[1024] = {'\0'};
+    //gchar   *str_return = NULL;
+
+    static int inFrame = FALSE;
 
     switch(cond) {
-    case G_IO_IN: {
+    	case G_IO_IN: {
 
-        //PRINTF("G_IO_IN\n");
+            //PRINTF("G_IO_IN\n");
 
-        GIOStatus ret = g_io_channel_read_line_string(source, instr, NULL, &error);
-        if (NULL != error) {
-            g_string_free(instr, TRUE);
-            g_object_unref((GSocketConnection*)user_data);
-            PRINTF("ERROR receiving:[ret:%i err:%s]\n", ret, error->message);
-            return FALSE;
-        }
+            gint  socket = g_io_channel_unix_get_fd(source);
+            //gsize length =
+                recv(socket, str_return, 1024, 0);
+            //GIOStatus stat = g_io_channel_read_to_end(source, &str_return, &length, &error);
 
-        // catch TERM
-        if (0 == instr->len) {
-            g_object_unref((GSocketConnection*)user_data);
-            return FALSE;
-        }
+            // debug
+            //if (0 != length) {
+            //    PRINTF("received (%i byte):%s\n", length, str_return);
+            //}
 
-        // debug
-        //PRINTF("received:%s\n", instr->str);
+            if (0 == str_return[0]) {
+            //if ((NULL==str_return) || (0==str_return[0])) {
+                PRINTF("connection close, text lenght = 0\n");
 
-        _strCursor    = 0;
-        guint  n      = 0;
-        int    outstr = _handle_method(instr);
-        if (FALSE == outstr) {
-            //_encode(_response, "{\"id\":%i,\"error\":\"%s\"}\n", _request_id, _result);
-            n = g_snprintf(_response, BLOCK, "{\"id\":%i,\"error\":\"%s\"}\n", _request_id, _result);
-            _response[n] = '\0';
-            /*
-            n = g_snprintf(_response, BLOCK, "{\"id\":%i,\"error\":\"%s\"}\n", _request_id, _result);
-            if (n > BLOCK) {
-                PRINTF("g_snprintf(): no space in buffer\n");
+                g_object_unref((GSocketConnection*)user_data);
+
+                inFrame = FALSE;
+
+                //break;
                 return FALSE;
             }
-            _response[n] = '\0';
-            outstr = _response;
-            */
-        } else {
-            //_encode(_response, "{\"id\":%i,\"error\":\"no error\",\"result\":%s}\n", _request_id, outstr);
-            //_encode(_response, "{\"id\":%i,\"error\":\"no error\",\"result\":%s}\n", _request_id, _result);
-            //*                              "{\"id\":%i,\"error\":\"no error\",\"result\":%s}\n"
-            //n = g_snprintf(_response, BLOCK, "{\"id\":%i,\"error\":\"no error\",\"result\":%s}\n", _request_id, outstr);
-            n = g_snprintf(_response, BLOCK, "{\"id\":%i,\"error\":\"no error\",\"result\":%s}\n", _request_id, _result);
-            _response[n] = '\0';
-            //PRINTF("n:%i\n", n);
-            //*/
 
-            // FIXME: _encode() & g_snprintf() do basically the same thing and the resulting
-            // string is the same .. but only g_snprintf() string pass io channel !!!
+            if ((TRUE==inFrame) && (0!=str_return[0])) {
+                guint len = 0;
+                PRINTF("in Frame .. first byte: 0x%hhX\n", str_return[0]);
+                if ('\x81' == str_return[0]) {
+                    len = str_return[1] & 0x7F;
+                    PRINTF("Frame: text lenght = %i, (0x%hhX)\n", len, str_return[1]);
+                } else {
+                    break;
+                }
+
+                {
+                    char *key = str_return+2;
+                    char *data = key + 4;
+
+                    for (guint i = 0; i<len; ++i) {
+                        data[i] ^= key[i%4];
+                    }
+                    PRINTF("msg:%s\n", data);
+
+                    int id = _handle_method(data);
+                    guint n = g_snprintf(_response, BLOCK, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}",
+                                         id, (_err[0] == '\0') ? "no error" : _err, _result);
+                    _response[n] = '\0';
+                }
+
+                guint n = 0;
+                unsigned int dataLen = strlen(_response);
+                if (dataLen <= 125) {
+                    // lenght coded with 7 bits <= 125
+                    n = g_snprintf(str_return, 1024, "\x81%c%s", (char)(dataLen & 0x7F), _response);
+                } else {
+                    if (dataLen < 65536) {
+                        // lenght coded with 16 bits (code 126)
+                        // bytesFormatted[1] = 126
+                        // bytesFormatted[2] = ( bytesRaw.length >> 8 )
+                        // bytesFormatted[3] = ( bytesRaw.length      )
+
+                        n = g_snprintf(str_return, 1024, "\x81%c%c%c%s", 126, (char)(dataLen>>8), (char)dataLen, _response);
+                    } else {
+                        // if need more then 65536 bytes to transfer (code 127)
+                        /* dataLen max = 2^64
+                        bytesFormatted[1] = 127
+                        bytesFormatted[2] = ( bytesRaw.length >> 56 )
+                        bytesFormatted[3] = ( bytesRaw.length >> 48 )
+                        bytesFormatted[4] = ( bytesRaw.length >> 40 )
+                        bytesFormatted[5] = ( bytesRaw.length >> 32 )
+                        bytesFormatted[6] = ( bytesRaw.length >> 24 )
+                        bytesFormatted[7] = ( bytesRaw.length >> 16 )
+                        bytesFormatted[8] = ( bytesRaw.length >>  8 )
+                        bytesFormatted[9] = ( bytesRaw.length       )
+                        */
+                        g_assert(0);
+                    }
+                }
+
+                PRINTF("send bytes:%i, msg:%s\n", n, str_return);
+
+                send(socket, str_return, n, 0);
+
+                g_io_channel_flush(source, NULL);
+
+                return TRUE;
+            }
+
+
+
+            if (FALSE == inFrame) {
+                // FIXME: find an better way to detect a websocket handshake
+                int   n   = strlen("Sec-WebSocket-Key:");
+                char *str = strstr(str_return, "Sec-WebSocket-Key:");
+                if (NULL != str) {
+                    GString *secWebSocketKey = g_string_new(str + n + 1); // FIXME: +1 is for skipping the space
+                    //secWebSocketKey = g_string_new(str + n);
+                    secWebSocketKey = g_string_truncate(secWebSocketKey, 24); // shop
+                    //PRINTF("secWebSocketKey: %s\n", secWebSocketKey->str);
+                    secWebSocketKey = g_string_append(secWebSocketKey, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
+                    PRINTF("_SecWebSocketKey>>>%s<<<\n", secWebSocketKey->str);
+
+
+                    GChecksum *checksum = g_checksum_new(G_CHECKSUM_SHA1);
+                    g_checksum_update(checksum, (const guchar *)secWebSocketKey->str, secWebSocketKey->len);
+                    g_string_free(secWebSocketKey, TRUE);
+
+                    guint8 buffer[1024];
+                    gsize digest_len = 1023;
+                    g_checksum_get_digest(checksum, buffer, &digest_len);
+                    gchar *acceptstr = g_base64_encode(buffer, digest_len);
+
+                    GString *respstr = g_string_new("HTTP/1.1 101 Web Socket Protocol Handshake\r\n"
+                                                    "Server: Bla Gateway\r\n"
+                                                    "Upgrade: WebSocket\r\n"
+                                                    "Connection: Upgrade\r\n"
+                                                    "Access-Control-Allow-Origin:http://127.0.0.1:3030\r\n"
+                                                    "Access-Control-Allow-Credentials: true\r\n"
+                                                    "Access-Control-Allow-Headers: content-type\r\n"
+                                                   );
+
+                    g_string_append_printf(respstr,
+                                           "Sec-WebSocket-Accept:%s\r\n"
+                                           "\r\n",
+                                           acceptstr);
+
+                    gsize bytes_written = 0;
+                    GIOStatus stat = g_io_channel_write_chars(source, respstr->str, respstr->len, &bytes_written, &error);
+
+                    // WARNING: multi-thread here so PRINTF is a bit clunky
+                    PRINTF("stat=%i, send(%i,%i):\n%s\n", stat, respstr->len, bytes_written, respstr->str);
+
+                    g_string_free(respstr, TRUE);
+
+                    if (NULL != error) {
+                        g_object_unref((GSocketConnection*)user_data);
+                        PRINTF("g_io_channel_write_chars(): failed [ret:%i err:%s]\n", stat, error->message);
+                        return FALSE;
+                    }
+
+                    g_io_channel_flush(source, NULL);
+
+                    inFrame = TRUE;
+
+                    g_free(acceptstr);
+                    g_checksum_free(checksum);
+
+                    break;
+                }
+
+            }
+
+            // Not a WebSocket - normal JSON handling
+            {
+                //*
+                // FIXME: _encode() & g_snprintf() do basically the same thing and the resulting
+                // string is the same .. but only g_snprintf() string pass io channel !!!
+                int   id = _handle_method(str_return);
+                //guint n  = g_snprintf(_response, BLOCK, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}\n",
+                guint n  = g_snprintf(_response, BLOCK, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}",
+                                      id, (_err[0] == '\0') ? "no error" : _err, _result);
+                _response[n] = '\0';
+                //PRINTF("n:%i\n", n);
+
+                gsize bytes_written = 0;
+                g_io_channel_write_chars(source, _response, n, &bytes_written, &error);
+                if (NULL != error) {
+                    g_object_unref((GSocketConnection*)user_data);
+                    PRINTF("g_io_channel_write_chars(): failed sending msg [err:%s]\n", error->message);
+                    return FALSE;
+                }
+                g_io_channel_flush(source, NULL);
+
+                // debug
+                //PRINTF("sended:%s", _response);
+                //*/
+            }
+
+            break;
         }
 
-        gsize bytes_written = 0;
-        ret = g_io_channel_write_chars(source, _response, n, &bytes_written, &error);
-        if (NULL != error) {
-            g_string_free(instr, TRUE);
-            g_object_unref((GSocketConnection*)user_data);
-            PRINTF("ERROR sending:[ret:%i err:%s]\n", ret, error->message);
-            return FALSE;
-        }
-        g_io_channel_flush(source, NULL);
-        ++_request_id;
 
-        // debug
-        //PRINTF("sended:%s", _response);
-
-        break;
+    	case G_IO_OUT: PRINTF("G_IO_OUT \n"); return FALSE; break;
+    	case G_IO_PRI: PRINTF("G_IO_PRI \n"); break;
+    	case G_IO_ERR: PRINTF("G_IO_ERR \n"); break;
+    	case G_IO_HUP: PRINTF("G_IO_HUP \n"); break;
+    	case G_IO_NVAL:PRINTF("G_IO_NVAL\n"); break;
     }
 
-    //case G_IO_IN:
-    case G_IO_OUT: PRINTF("G_IO_OUT\n"); return FALSE; break;
-    case G_IO_PRI: PRINTF("G_IO_PRI\n"); break;
-    case G_IO_ERR: PRINTF("G_IO_ERR\n"); break;
-    case G_IO_HUP: PRINTF("G_IO_HUP\n"); break;
-    case G_IO_NVAL:PRINTF("G_IO_NVAL\n");break;
-    }
-
-    g_string_free(instr, TRUE);
+    //g_free(str_return);
 
     return TRUE;
     //return FALSE;
 }
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
-gboolean                   _new_connection(GSocketService    *service,
+static gboolean            _new_connection(GSocketService    *service,
                                            GSocketConnection *connection,
                                            GObject           *source_object,
                                            gpointer           user_data)
@@ -9703,17 +9372,26 @@ gboolean                   _new_connection(GSocketService    *service,
     gint        fd      = g_socket_get_fd(socket);
     GIOChannel *channel = g_io_channel_unix_new(fd);
 
+    GError     *error   = NULL;
+    GIOStatus   stat    = g_io_channel_set_encoding(channel, NULL, &error);
+    if (NULL != error) {
+        g_object_unref(connection);
+        PRINTF("g_io_channel_set_encoding(): failed [stat:%i err:%s]\n", stat, error->message);
+        return FALSE;
+    }
+
+    g_io_channel_set_buffered(channel, FALSE);
+
+
     g_io_add_watch(channel, G_IO_IN , (GIOFunc)_socket_read_write, connection);
 
     return FALSE;
 }
 
-//static
-int                        _initSock()
+static int                 _initSock(void)
 {
     PRINTF("start to listen to socket ..\n");
 
-    //_sockReadThread(NULL);
     GError *error = NULL;
 
     g_type_init();

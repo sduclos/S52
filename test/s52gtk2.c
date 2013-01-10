@@ -361,7 +361,7 @@ static int      _renderHelp(GtkWidget *widget)
     //S52_drawStr(x, y-=dy, "UINFF", 0, str);
 
     y-=dy;
-    int crntVal = (int) S52_getMarinerParam(S52_MAR_CMD_WRD_FILTER);
+    int crntVal = (int) S52_getMarinerParam(S52_CMD_WRD_FILTER);
 
     g_sprintf(str, "Command Word Filter State:");
     S52_drawStr(x, y-=dy, "UINFF", 0, str);
@@ -971,12 +971,12 @@ static gboolean _dumpParam()
     g_print("S52_MAR_HEADNG_LINE       5 %4.1f\n", S52_getMarinerParam(S52_MAR_HEADNG_LINE));
     g_print("S52_MAR_DISP_WHOLIN       6 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_WHOLIN));
     g_print("S52_MAR_DISP_LEGEND       3 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_LEGEND));
-    g_print("S52_MAR_CMD_WRD_FILTER F1-5 %4.1f\n", S52_getMarinerParam(S52_MAR_CMD_WRD_FILTER));
+    g_print("S52_CMD_WRD_FILTER     F1-5 %4.1f\n", S52_getMarinerParam(S52_CMD_WRD_FILTER));
     g_print("S52_MAR_DOTPITCH_MM_X    F7 %4.2f\n", S52_getMarinerParam(S52_MAR_DOTPITCH_MM_X));
     g_print("S52_MAR_DOTPITCH_MM_Y    F8 %4.2f\n", S52_getMarinerParam(S52_MAR_DOTPITCH_MM_Y));
     g_print("S52_MAR_DISP_NODATA_LAYER F9 %4.2f\n", S52_getMarinerParam(S52_MAR_DISP_NODATA_LAYER));
 
-    int crntVal = (int) S52_getMarinerParam(S52_MAR_CMD_WRD_FILTER);
+    int crntVal = (int) S52_getMarinerParam(S52_CMD_WRD_FILTER);
 
     g_print("\tFilter State:\n");
     g_print("\tF1 - S52_CMD_WRD_FILTER_SY: %s\n", (S52_CMD_WRD_FILTER_SY & crntVal) ? "TRUE" : "FALSE");
@@ -1089,12 +1089,12 @@ static gboolean key_release_event(GtkWidget   *widget,
         //case GDK_4     :_cpal("S52_MAR_COLOR_PALETTE", 3.0); break; // DUSK
         //case GDK_5     :_cpal("S52_MAR_COLOR_PALETTE", 4.0); break; // NIGHT
 
-        case GDK_F1    :S52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY); break;
-        case GDK_F2    :S52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS); break;
-        case GDK_F3    :S52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC); break;
-        case GDK_F4    :S52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC); break;
-        case GDK_F5    :S52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP); break;
-        case GDK_F6    :S52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX); break;
+        case GDK_F1    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY); break;
+        case GDK_F2    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS); break;
+        case GDK_F3    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC); break;
+        case GDK_F4    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC); break;
+        case GDK_F5    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP); break;
+        case GDK_F6    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX); break;
 
         case GDK_F7    :_mmInc(S52_MAR_DOTPITCH_MM_X); break;
         case GDK_F8    :_mmInc(S52_MAR_DOTPITCH_MM_Y); break;

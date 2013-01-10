@@ -101,7 +101,7 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_DISP_LEGEND         = 32,   // display legend (on/off) (default off)
 
-    S52_MAR_CMD_WRD_FILTER      = 33,   // toggle command word filter mask for profiling
+    S52_CMD_WRD_FILTER          = 33,   // toggle command word filter mask for profiling
 
     S52_MAR_DOTPITCH_MM_X       = 34,   // dotpitch X (mm) - pixel size in X
     S52_MAR_DOTPITCH_MM_Y       = 35,   // dotpitch Y (mm) - pixel size in Y
@@ -116,21 +116,23 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_DISP_AFTERGLOW      = 40,   // display synthetic afterglow (in PLAUX_00.DAI) for OWNSHP & VESSEL (on/off)
 
-    S52_MAR_DISP_CENTROIDS      = 41,   // Display all centered symb of one area (on/off) (default off)
+    S52_MAR_DISP_CENTROIDS      = 41,   // display all centered symb of one area (on/off) (default off)
 
-    S52_MAR_DISP_WORLD          = 42,   // Display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
+    S52_MAR_DISP_WORLD          = 42,   // display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
 
-    S52_MAR_NUM                 = 43    // number of parameters
+    S52_MAR_DISP_RND_LN_END     = 43,   // display rounded line segment ending (on/off)
+
+    S52_MAR_NUM                 = 44    // number of parameters
 } S52MarinerParameter;
 
 // command word filter for profiling
 typedef enum S52_CMD_WRD_FILTER_t {
-    S52_CMD_WRD_FILTER_SY = 1 << 0, //0x000001 - SY
-    S52_CMD_WRD_FILTER_LS = 1 << 1, //0x000010 - LS
-    S52_CMD_WRD_FILTER_LC = 1 << 2, //0x000100 - LC
-    S52_CMD_WRD_FILTER_AC = 1 << 3, //0x001000 - AC
-    S52_CMD_WRD_FILTER_AP = 1 << 4, //0x010000 - AP
-    S52_CMD_WRD_FILTER_TX = 1 << 5  //0x100000 - TE & TX
+    S52_CMD_WRD_FILTER_SY = 1 << 0, // 000001 - SY
+    S52_CMD_WRD_FILTER_LS = 1 << 1, // 000010 - LS
+    S52_CMD_WRD_FILTER_LC = 1 << 2, // 000100 - LC
+    S52_CMD_WRD_FILTER_AC = 1 << 3, // 001000 - AC
+    S52_CMD_WRD_FILTER_AP = 1 << 4, // 010000 - AP
+    S52_CMD_WRD_FILTER_TX = 1 << 5  // 100000 - TE & TX
 } S52_CMD_WRD_FILTER_t;
 
 // [1] S52_MAR_DISP_CATEGORY / S52_MAR_DISP_LAYER_LAST
@@ -144,16 +146,16 @@ typedef enum S52_CMD_WRD_FILTER_t {
 // 0x0100000 - MARINERS' OTHER    -
 // 0x1000000 - MARINERS' SELECT   - set via S52_toggleObjClass/ON/OFF(), initialy ON
 typedef enum S52_MAR_DISP_CATEGORY_t {
-    S52_MAR_DISP_CATEGORY_BASE     = 0,        // 0x0000000 - DISPLAY BASE
-    S52_MAR_DISP_CATEGORY_STD      = 1 << 0,   // 0x0000001 - STANDARD
-    S52_MAR_DISP_CATEGORY_OTHER    = 1 << 1,   // 0x0000010 - OTHER
-    S52_MAR_DISP_CATEGORY_SELECT   = 1 << 2,   // 0x0000100 - SELECT
+    S52_MAR_DISP_CATEGORY_BASE     = 0,        // 0000000 - DISPLAY BASE
+    S52_MAR_DISP_CATEGORY_STD      = 1 << 0,   // 0000001 - STANDARD
+    S52_MAR_DISP_CATEGORY_OTHER    = 1 << 1,   // 0000010 - OTHER
+    S52_MAR_DISP_CATEGORY_SELECT   = 1 << 2,   // 0000100 - SELECT
 
     //S52_MAR_DISP_LAYER_LAST  - MARINERS' CATEGORY (drawn on top - last)
-    S52_MAR_DISP_LAYER_LAST_NONE   = 1 << 3,   // 0x0001000 - MARINERS' NONE
-    S52_MAR_DISP_LAYER_LAST_STD    = 1 << 4,   // 0x0010000 - MARINERS' STANDARD
-    S52_MAR_DISP_LAYER_LAST_OTHER  = 1 << 5,   // 0x0100000 - MARINERS' OTHER
-    S52_MAR_DISP_LAYER_LAST_SELECT = 1 << 6    // 0x1000000 - MARINERS' SELECT
+    S52_MAR_DISP_LAYER_LAST_NONE   = 1 << 3,   // 0001000 - MARINERS' NONE
+    S52_MAR_DISP_LAYER_LAST_STD    = 1 << 4,   // 0010000 - MARINERS' STANDARD
+    S52_MAR_DISP_LAYER_LAST_OTHER  = 1 << 5,   // 0100000 - MARINERS' OTHER
+    S52_MAR_DISP_LAYER_LAST_SELECT = 1 << 6    // 1000000 - MARINERS' SELECT
 } S52_MAR_DISP_CATEGORY_t;
 
 
@@ -715,7 +717,7 @@ DLL int   STD S52_setRADARCallBack(S52_RADAR_cb cb);
  * Note: changing the size of the viewport require a call to draw() before this call
  * (ie size of framebuffer must be in sync with the size of the viewport).
  *
- * If @S57ID is zero (0) then thhe whole framebuffer is dumped (ie @width and @height are ignore)
+ * If @S57ID is zero (0) then the whole framebuffer is dumped (ie @width and @height are ignore)
  *
  *
  * Return: TRUE on success, else FALSE
@@ -824,6 +826,7 @@ DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID);
  * @objH: (in) (transfer none): addressed S52ObjectHandle
  *
  * Initially Mariners' Object are ON (ie display of object NOT suppressed)
+ * FIXME: maybe add toggleDispMarObj ON / OFF for clarity as toggleObjClass..
  *
  *
  * Return: (transfer none): the S52_obj handle or NULL if call fail
@@ -860,10 +863,10 @@ DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBeg
  * @select:     (in): Selection: 0 - undefined, 1 - planned, 2 - alternate
  * @plnspd:     (in): planned speed (0.0 for no speed label)
  * @wholinDist: (in): distance of the 'wholin' (wheel-over-line) from End in NM
- * @latBegin:   (in): latitude of LEGLIN beginning (deg)
- * @lonBegin:   (in): longitude of LEGLIN  beginning(deg)
- * @latEnd:     (in): latitude of LEGLIN ending (deg)
- * @lonEnd:     (in): longitude of LEGLIN ending (deg)
+ * @latBegin:   (in): lat of LEGLIN beginning (degdecimal)
+ * @lonBegin:   (in): lon of LEGLIN beginning (degdecimal)
+ * @latEnd:     (in): lat of LEGLIN ending    (degdecimal)
+ * @lonEnd:     (in): lon of LEGLIN ending    (degdecimal)
  * @previousLEGLIN: (allow-none): handle to the previous LEGLIN, used to draw 'wholin' and/or curve
  *
  * new S52_obj "Leg Line" segment
@@ -889,7 +892,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
 DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
 
 
-// --- Vector & Dimension of OWNSHP and VESSEL object -------------------
+// --- Vector, Dimension, ... of OWNSHP and VESSEL object -------------------
 
 /**
  * S52_setDimension:
@@ -1047,8 +1050,9 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
 /**
  * S52_newCSYMB:
  *
- * Create SCALEB10, SCALEB11, NORTHAR1, UNITMTR1, CHKSYM01
- * note that the S52ObjectHandle of these S52 object are kept inside libS52 (for no particular reason)
+ * Create SCALEB10, SCALEB11, NORTHAR1, UNITMTR1, CHKSYM01, Calibration Symb.
+ * note that the S52ObjectHandle of these S52 object are kept inside libS52.
+ * Calibration Symb. are turn ON / OFF via S52_MAR_DISP_CALIB
  *
  *
  * Return: TRUE on success, else FALSE

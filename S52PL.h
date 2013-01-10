@@ -28,7 +28,8 @@
 #include "S57data.h"     // S57_geo, S52_Obj_t
 #include <glib.h>        // GString, GData, GArray
 
-#define S52_LUP_NMLN   6 // lookup name lenght
+#define S52_PL_NMLN   6 // lookup name lenght
+#define S52_PL_COLN   5 // color name lenght
 
 /* not used anymore
 // S52 lookup table name (fifth letter)
@@ -121,7 +122,8 @@ typedef struct S52_Color {
                         // but not VBO
     //--------------------------
 
-    char     colName[5];
+    //char     colName[5];
+    char     colName[S52_PL_COLN+1];   // '\0' terminated
     double   x;
     double   y;
     double   L;

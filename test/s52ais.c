@@ -44,7 +44,10 @@
 #ifdef S52_USE_ANDROID
 #include <android/log.h>
 #define  LOG_TAG    "s52ais"
-#define AIS  "/data/media/s52android/bin/s52ais"
+
+#define PATH "/data/media"
+//#define PATH "/data/media/0"
+#define AIS  PATH "/s52android/bin/s52ais"
 #define PID  ".pid"
 //#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 //#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -480,7 +483,6 @@ static char         *_s52_send_cmd(const char *command, const char *params)
 
     //g_print("s52ais.c:_s52_send_cmd(): sended:%s", _response);
 
-
     // wait response - blocking socket
     gssize szrcv = g_socket_receive_with_blocking(socket, _response, BUFSZ, TRUE, NULL, &error);
     if ((NULL!=error) || (0==szrcv) || (-1==szrcv)) {
@@ -582,7 +584,7 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
             if (NULL != resp) {
                 sscanf(resp, "[ %lu", (long unsigned int *) &newais.vesselH);
             }
-            g_printf("vesselH:%lu\n", (long unsigned int) newais.vesselH);
+            g_printf("s52ais:_getAIS(): new vesselH:%lu\n", (long unsigned int) newais.vesselH);
         }
 #else
         // debug: make ferry acte as ownshp
@@ -611,7 +613,7 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
             if (NULL != resp)
                 sscanf(resp, "[ %lu", (long unsigned int *) &newais.afglowH);
 
-            g_printf("afglowH:%lu\n", (long unsigned int) newais.afglowH);
+            g_printf("s52ais:_getAIS(): new afglowH:%lu\n", (long unsigned int) newais.afglowH);
 
         }
 #else
@@ -830,8 +832,6 @@ static int           _setAISSta (unsigned int mmsi, int status, int turn)
     // need to send the status every time because AIS-monitor.js
     // can be restarted wild libS52 is running hence status is not updated (ie no change)
     _signal_setVESSELstate(_dbus, ais->vesselH,  0, status, turn);
-    // debug
-    //_signal_setVESSELstate(_dbus, ais->vesselH,  0, status, ais->turn);
 #endif
 
     return TRUE;
@@ -1359,8 +1359,8 @@ static int           _startGPSD(void)
 
 
     GError    *error           = NULL;
-    const char run_gpsd_sh[]   = "/system/bin/sh -c /data/media/s52android/bin/run_gpsd.sh";
-    const char path_gpsd_pid[] = "/data/media/s52android/bin/gpsd.pid";
+    const char run_gpsd_sh[]   = "/system/bin/sh -c " PATH "/s52android/bin/run_gpsd.sh";
+    const char path_gpsd_pid[] = PATH "/s52android/bin/gpsd.pid";
     GStatBuf buf;
 
     //g_print("_startGPSD(): check if GPSD on-line ..\n");
@@ -1504,11 +1504,14 @@ static void          _trapSIG(int sig, siginfo_t *info, void *secret)
 {
     switch(sig) {
 
+        // 2
     case SIGINT:
         g_print("s52ais:_trapSIG(): Signal 'Interrupt' cought - SIGINT(%i)\n", sig);
         s52ais_doneAIS();
+        //exit(0);
         break;
 
+        // 11
     case SIGSEGV:
         g_print("s52ais:_trapSIG(): Signal 'Segmentation violation' cought - SIGSEGV(%i)\n", sig);
 #ifdef S52_USE_ANDROID
@@ -1518,6 +1521,7 @@ static void          _trapSIG(int sig, siginfo_t *info, void *secret)
         _old_signal_handler_SIGSEGV.sa_sigaction(sig, info, secret);
         break;
 
+        // 15
     case SIGTERM:
         g_print("s52ais:_trapSIG(): Signal 'Termination (ANSI)' cought - SIGTERM(%i)\n", sig);
 #ifdef S52_USE_ANDROID
@@ -1528,12 +1532,14 @@ static void          _trapSIG(int sig, siginfo_t *info, void *secret)
 
         break;
 
+        // 10
     case SIGUSR1:
         g_print("s52ais:_trapSIG(): Signal 'User-defined 1' cought - SIGUSR1(%i)\n", sig);
         // continue with normal sig handling
         //_old_signal_handler.sa_sigaction(sig, info, secret);
         break;
 
+        // 12
     case SIGUSR2:
         g_print("s52ais:_trapSIG(): Signal 'User-defined 2' cought - SIGUSR2(%i)\n", sig);
         // continue with normal sig handling

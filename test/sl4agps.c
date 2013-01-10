@@ -38,46 +38,39 @@
 
 #define RAD_TO_DEG             57.29577951308232
 
-#define GPS  "/data/media/s52android/bin/sl4agps"
+#define PATH "/data/media" // android 4.1
+//#define PATH "/data/media/0" // android 4.2
+#define GPS   PATH "/s52android/bin/sl4agps"  
 #define PID  ".pid"
 
 static char _localhost[] = "127.0.0.1";
 
 #define SL4A_PORT           45001
 #define SL4A_HEART_BEAT_SEC    10
-static int                 _sl4a_show_dialog     = FALSE;
-static int                 _sl4a_show_buoy_deg   = FALSE;
-static int                 _sl4a_show_dotpitch_x = FALSE;
-static int                 _sl4a_show_dotpitch_y = FALSE;
-static int                 _sl4a_init_sensor     = FALSE;
-static int                 _sl4a_request_id      = 0;
-static GSocketConnection  *_sl4a_connectionA     = NULL;
-// nop can't have 2 connections on same port at the same time
-//static GSocketConnection  *_sl4a_connectionB = NULL;
+static int                 _sl4a_show_dialog = FALSE;
+static GSocketConnection  *_sl4a_connectionA = NULL;
+
+#define S52_PORT           2950
+static GSocketConnection  *_s52_connection  = NULL;
+static S52ObjectHandle     _s52_ownshp      = NULL;
+
+static int                 _request_id      = 0;
+
+static GStaticMutex        _mp_mutex = G_STATIC_MUTEX_INIT;
 
 
-#define STRSZ  256
+//#define STRSZ  256
+#define STRSZ  512
 #define BUFSZ 1024
 //#define BUFSZ 4096
 //#define BUFSZ 8192
 
 static GString *_json_obj = NULL;
-static GString *_params   = NULL; //[BUFSZ]; // param part that will late be in the final _json_obj
+static GString *_params   = NULL; //[BUFSZ]; // param part that will later be in the final _json_obj
 
 
-#define S52_PORT           2950
-static GSocketConnection  *_s52_connection  = NULL;
-static S52ObjectHandle     _s52_ownshp      = NULL;
-static int                 _s52_request_id  = 0;
-static int                 _s52_initOK      = FALSE; //
-
-
-// this file  is created by running sl4agps.awk
+// this file is created when building sl4agps
 #include "sl4agps.cfg"
-// grep s52_text_   UI.xml
-//#define NBR_TEXT   29
-// grep s52_border_ UI.xml
-//#define NBR_BORDER 21
 
 // trap signal
 // must be compiled with -std=gnu99
@@ -175,7 +168,7 @@ static char    *_send_cmd(GSocketConnection **conn, const char *command, const c
     }
 
     // build a full JSON object
-    g_string_printf(_json_obj, "{\"id\":%i,\"method\":\"%s\",\"params\":[%s]}\n", _s52_request_id++, command, params);
+    g_string_printf(_json_obj, "{\"id\":%i,\"method\":\"%s\",\"params\":[%s]}\n", _request_id++, command, params);
 
     GError *error = NULL;
     gssize szsnd = g_socket_send_with_blocking(socket, _json_obj->str, _json_obj->len, FALSE, NULL, &error);
@@ -364,8 +357,10 @@ static int      _sl4a_init       (void)
         // check this: return FALSE to meen SUCCESS!!
         int ret = g_spawn_command_line_async(cmdSL4A, NULL);
         if (FALSE == ret) {
-            g_print("sl4agps:_sl4a_init(): fail to start sl4a server script .. exit\n", ret);
+            g_print("sl4agps:_sl4a_init(): fail to start sl4a server script .. exit\n");
             return FALSE;
+        } else {
+            g_print("sl4agps:_sl4a_init(): started sl4a server script ..\n");
         }
 
         while (NULL == (_sl4a_connectionA = _init_sock(_localhost, SL4A_PORT))) {
@@ -391,22 +386,19 @@ static int      _sl4a_init       (void)
     // Integer minDistance[optional, default 60000]: minimum time between updates in uSec,
     // Integer minUpdateDistance[optional, default 30]: minimum distance between updates in meters)
     //_send_cmd(&_sl4a_connectionA, "startLocating", "");    // 0.5 sec
-    //_send_cmd(&_sl4a_connectionA, "startLocating", "");    // 0.5 sec
     _send_cmd(&_sl4a_connectionA, "startLocating", "30,1000000");    // 30m, 1.0sec
-
-    _sl4a_init_sensor = TRUE;
 
     return TRUE;
 }
 
 static int      _sl4a_done       (void)
 {
-    //if ((NULL!=_sl4a_connectionA) && (TRUE==G_IS_OBJECT(_sl4a_connectionA)))
-    if (NULL != _sl4a_connectionA)
+    if (NULL != _sl4a_connectionA) {
+        _send_cmd(&_sl4a_connectionA, "fullDismiss", "");
         g_object_unref(_sl4a_connectionA);
-
-    //if (NULL != _sl4a_connectionB)
-    //    g_object_unref(_sl4a_connectionB);
+        g_print("sl4agps:_sl4a_done(): connection to SL4A closed\n");
+        _sl4a_connectionA = NULL;
+    }
 
     return TRUE;
 }
@@ -639,12 +631,12 @@ static int      _sl4a_fullShowSet(void)
     _sl4a_setCheckBox(S52_MAR_DISP_DRGARE_PATTERN, "DRGAREPATTERNcheckBox");
     _sl4a_setCheckBox(S52_MAR_DISP_NODATA_LAYER,   "NODATALAYERcheckBox"  );
 
-    _sl4a_setCheckBox_key(S52_MAR_CMD_WRD_FILTER,  "CMDWRDFILTERSYcheckBox", S52_CMD_WRD_FILTER_SY);
-    _sl4a_setCheckBox_key(S52_MAR_CMD_WRD_FILTER,  "CMDWRDFILTERLScheckBox", S52_CMD_WRD_FILTER_LS);
-    _sl4a_setCheckBox_key(S52_MAR_CMD_WRD_FILTER,  "CMDWRDFILTERLCcheckBox", S52_CMD_WRD_FILTER_LC);
-    _sl4a_setCheckBox_key(S52_MAR_CMD_WRD_FILTER,  "CMDWRDFILTERACcheckBox", S52_CMD_WRD_FILTER_AC);
-    _sl4a_setCheckBox_key(S52_MAR_CMD_WRD_FILTER,  "CMDWRDFILTERAPcheckBox", S52_CMD_WRD_FILTER_AP);
-    _sl4a_setCheckBox_key(S52_MAR_CMD_WRD_FILTER,  "CMDWRDFILTERTXcheckBox", S52_CMD_WRD_FILTER_TX);
+    _sl4a_setCheckBox_key(S52_CMD_WRD_FILTER,      "CMDWRDFILTERSYcheckBox", S52_CMD_WRD_FILTER_SY);
+    _sl4a_setCheckBox_key(S52_CMD_WRD_FILTER,      "CMDWRDFILTERLScheckBox", S52_CMD_WRD_FILTER_LS);
+    _sl4a_setCheckBox_key(S52_CMD_WRD_FILTER,      "CMDWRDFILTERLCcheckBox", S52_CMD_WRD_FILTER_LC);
+    _sl4a_setCheckBox_key(S52_CMD_WRD_FILTER,      "CMDWRDFILTERACcheckBox", S52_CMD_WRD_FILTER_AC);
+    _sl4a_setCheckBox_key(S52_CMD_WRD_FILTER,      "CMDWRDFILTERAPcheckBox", S52_CMD_WRD_FILTER_AP);
+    _sl4a_setCheckBox_key(S52_CMD_WRD_FILTER,      "CMDWRDFILTERTXcheckBox", S52_CMD_WRD_FILTER_TX);
 
     //_sl4a_setCheckBoxS52TXT();
 
@@ -663,7 +655,7 @@ static int      _sl4a_fullShow   (void)
     gsize   len    = 0;
     //gchar  *retstr = NULL;
 
-    if (TRUE == g_file_get_contents("/data/media/s52android/UI.xml", &layout, &len, &error)) {
+    if (TRUE == g_file_get_contents(PATH "/s52android/UI.xml", &layout, &len, &error)) {
         _flattenstr(layout, len);
         //retstr =
         _send_cmd(&_sl4a_connectionA, "fullShow", layout);
@@ -684,9 +676,27 @@ static int      _sl4a_fullShow   (void)
 static int      _sl4a_webViewShow(void)
 {
     gchar *html = "'file:///data/media/dart/helloWeb.html',false"; // url, wait
-    //gchar *html = "'http://192.168.1.67:3030/home/sduclos/dart/helloWeb/helloWeb.html',false"; // url, wait
+    //gchar *html = "'file:///data/media/0/dart/s52ui/s52ui.html',false"; // url, wait
+    //gchar *html = "'file:///sdcard/dart/s52ui/s52ui.html',false"; // url, wait
+    //gchar *html = "'file:///data/data/com.android.chrome/s52ui/s52ui.html',false";
     //gchar *html = "'http://192.168.1.67:3030/home/sduclos/dev/prog/dart/dart-test/helloWeb/helloWeb.html',false"; // url, wait
+    //gchar *html = "'http://192.168.1.67:3030/home/sduclos/dev/gis/openev-cvs/contrib/S52/test/s52ui/s52ui.html',false"; // url, wait
+    //gchar *html = "'chrome://version/',false"; // url, wait
     _send_cmd(&_sl4a_connectionA, "webViewShow", html);
+
+    return TRUE;
+}
+
+static int      _sl4a_viewHtml   (void)
+{
+    gchar *html = "'file:///data/media/dart/s52ui/s52ui.html'"; // url
+    //gchar *html = "'/data/media/dart/s52ui/s52ui.html'"; // url
+    //gchar *html = "'/sdcard/dart/s52ui/s52ui.html'"; // url
+    //gchar *html = "'http://192.168.1.67:3030/home/sduclos/dev/gis/openev-cvs/contrib/S52/test/s52ui/s52ui.html'"; // url
+    _send_cmd(&_sl4a_connectionA, "viewHtml", html);
+
+    // FIXME: SL4A crash
+    //_send_cmd(&_sl4a_connectionA, "view", html);
 
     return TRUE;
 }
@@ -783,8 +793,9 @@ static double   _sl4a_getGyro    (void)
 static int      _sl4a_parseEvent (void)
 // FIXME: refactor check box
 {
+    //FIXME: find and order (need refactoring first)
 
-    // check for event from user
+    // check/poll for event from user
     char *retstr = _send_cmd(&_sl4a_connectionA, "eventWait", "1");
     if (NULL == retstr) {
         g_print("sl4agps:eventWait(): fail!\n\n");
@@ -792,8 +803,10 @@ static int      _sl4a_parseEvent (void)
     }
 
     // NOTE: there is no order in JSON, "id" can come before of after other element
-    // this also meen that '}' can apper in the needle string
+    // this also meen that '}' can apper in the meedle string
 
+    // debug
+    //g_print("sl4agps:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> eventWait(): %s\n", retstr);
 
     // no event - normal case
     // "result":null
@@ -806,6 +819,13 @@ static int      _sl4a_parseEvent (void)
 
     // debug
     g_print("sl4agps:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> eventWait(): %s\n", retstr);
+
+    // typical SL4A output
+    // Android in HTML: droid.eventPost("say", "test 1 2 3", true);
+    // I/stdout  ( 5093): sl4agps:>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> eventWait():
+    //{"error":null,"id":1958,"result":{"data":"test 1 2 3","time":1353698208423000,"name":"say"}}
+
+
 
     // menu key event
     //"key":"82"
@@ -953,7 +973,7 @@ static int      _sl4a_parseEvent (void)
         gchar **pstr = g_strsplit_set(cellNmliststr, "[',]}", 0);
 
 
-        GDir *encdir = g_dir_open("/sdcard/s52android/ENC_ROOT", 0, NULL);
+        GDir *encdir = g_dir_open(PATH "/s52android/ENC_ROOT", 0, NULL);
         if (NULL != encdir) {
             int          adddelim = FALSE;
             const gchar *encstr   = NULL;
@@ -1033,7 +1053,7 @@ static int      _sl4a_parseEvent (void)
             if (NULL != positionstr) {
                 int i = (int)g_ascii_strtod(positionstr+12, NULL);
 
-                GDir *encdir = g_dir_open("/sdcard/s52android/ENC_ROOT", 0, NULL);
+                GDir *encdir = g_dir_open(PATH "/s52android/ENC_ROOT", 0, NULL);
                 if (NULL != encdir) {
                     int          count  = 0;
                     const gchar *encstr = NULL;
@@ -1044,9 +1064,12 @@ static int      _sl4a_parseEvent (void)
                             _send_cmd(&_sl4a_connectionA, "fullDismiss", "");
                             _send_cmd(&_sl4a_connectionA, "makeToast", encstrstr);  // v=a
 
-                            const gchar *retstr = _s52_encodeNsend("S52_loadCell", "\"/sdcard/s52android/ENC_ROOT/%s\"", encstr);
+                            const gchar *retstr = _s52_encodeNsend("S52_loadCell", "\"%s/s52android/ENC_ROOT/%s\"", PATH, encstr);
+                            //g_print("sl4agps:DEBUG:%s\n", retstr);
                             if ((NULL!=retstr) && ('0'==*(retstr+1)))
-                                _s52_encodeNsend("S52_doneCell", "\"/sdcard/s52android/ENC_ROOT/%s\"", encstr);
+                                _s52_encodeNsend("S52_doneCell", "\"%s/s52android/ENC_ROOT/%s\"", PATH, encstr);
+
+                            _s52_encodeNsend("S52_draw", "");
 
                             break;
                         }
@@ -1061,60 +1084,60 @@ static int      _sl4a_parseEvent (void)
 
     // --- PROFILING SWITCH -----------------------------------
     //
-    // S52_MAR_CMD_WRD_FILTER/CMDWRDFILTERSYcheckBox
+    // S52_CMD_WRD_FILTER/CMDWRDFILTERSYcheckBox
     const gchar *filersystr = g_strrstr(retstr, "\"id\":\"CMDWRDFILTERSYcheckBox\"");
     if (NULL != filersystr) {
-        _s52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);  // toggle
+        _s52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);  // toggle
 
         _s52_encodeNsend("S52_draw", "");
 
         return TRUE;
     }
 
-    // S52_MAR_CMD_WRD_FILTER/CMDWRDFILTERLScheckBox
+    // S52_CMD_WRD_FILTER/CMDWRDFILTERLScheckBox
     const gchar *filerlsstr = g_strrstr(retstr, "\"id\":\"CMDWRDFILTERLScheckBox\"");
     if (NULL != filerlsstr) {
-        _s52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);  // toggle
+        _s52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);  // toggle
 
         _s52_encodeNsend("S52_draw", "");
 
         return TRUE;
     }
 
-    // S52_MAR_CMD_WRD_FILTER/CMDWRDFILTERLCcheckBox
+    // S52_CMD_WRD_FILTER/CMDWRDFILTERLCcheckBox
     const gchar *filerlcstr = g_strrstr(retstr, "\"id\":\"CMDWRDFILTERLCcheckBox\"");
     if (NULL != filerlcstr) {
-        _s52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);  // toggle
+        _s52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);  // toggle
 
         _s52_encodeNsend("S52_draw", "");
 
         return TRUE;
     }
 
-    // S52_MAR_CMD_WRD_FILTER/CMDWRDFILTERACcheckBox
+    // S52_CMD_WRD_FILTER/CMDWRDFILTERACcheckBox
     const gchar *fileracstr = g_strrstr(retstr, "\"id\":\"CMDWRDFILTERACcheckBox\"");
     if (NULL != fileracstr) {
-        _s52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);  // toggle
+        _s52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);  // toggle
 
         _s52_encodeNsend("S52_draw", "");
 
         return TRUE;
     }
 
-    // S52_MAR_CMD_WRD_FILTER/CMDWRDFILTERAPcheckBox
+    // S52_CMD_WRD_FILTER/CMDWRDFILTERAPcheckBox
     const gchar *filerapstr = g_strrstr(retstr, "\"id\":\"CMDWRDFILTERAPcheckBox\"");
     if (NULL != filerapstr) {
-        _s52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);  // toggle
+        _s52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);  // toggle
 
         _s52_encodeNsend("S52_draw", "");
 
         return TRUE;
     }
 
-    // S52_MAR_CMD_WRD_FILTER/CMDWRDFILTERTXcheckBox
+    // S52_CMD_WRD_FILTER/CMDWRDFILTERTXcheckBox
     const gchar *filertxstr = g_strrstr(retstr, "\"id\":\"CMDWRDFILTERTXcheckBox\"");
     if (NULL != filertxstr) {
-        _s52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);  // toggle
+        _s52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);  // toggle
 
         _s52_encodeNsend("S52_draw", "");
 
@@ -1397,7 +1420,6 @@ static int      _sl4a_sendS52cmd (gpointer user_data)
         double azimuth = _sl4a_getGyro();
         if (-1.0 != azimuth) {
             _s52_encodeNsend("S52_setVector", "%lu,%i,%lf,%lf", (long unsigned int) _s52_ownshp, vecstb, azimuth, speed);
-            //S52_setVector(_ownshp, vecstb, azimuth, speed);
         }
 
         double lat = 0.0;
@@ -1406,60 +1428,7 @@ static int      _sl4a_sendS52cmd (gpointer user_data)
             _s52_encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int) _s52_ownshp, lat, lon, azimuth);
             //g_print("sl4agps:lat:%f lon:%f az:%f\n", lat, lon, azimuth);
         }
-
     }
-
-    /*
-    // fetch use choice in dialog
-    if (TRUE == _sl4a_show_dialog) {
-        int item = _sl4a_diagGetResp();
-        if (-1 != item) {
-            _s52_setMarinerParam(S52_MAR_COLOR_PALETTE, item);
-            _s52_encodeNsend("S52_draw", "");
-            _sl4a_setColorPalName();
-            _sl4a_show_dialog = FALSE;
-        }
-    }
-    */
-
-    /*
-    // fetch number in dialog
-    if (TRUE == _sl4a_show_buoy_deg) {
-        double number = 0.0;
-        if (TRUE == _sl4a_diagGetNum(&number)) {
-            _s52_setMarinerParam(S52_MAR_ROT_BUOY_LIGHT, number);
-            _s52_encodeNsend("S52_draw", "");
-            _sl4a_setDegText(S52_MAR_ROT_BUOY_LIGHT, "ROTBUOYLIGHTeditText");
-            _sl4a_show_buoy_deg = FALSE;
-        }
-    }
-    */
-
-    /*
-    // fetch number in dialog
-    if (TRUE == _sl4a_show_dotpitch_x) {
-        double number = 0.0;
-        if (TRUE == _sl4a_diagGetNum(&number)) {
-            _s52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, number);
-            _s52_encodeNsend("S52_draw", "");
-            _sl4a_setText(S52_MAR_DOTPITCH_MM_X, "DOTPITCHXeditText");
-            _sl4a_show_dotpitch_x = FALSE;
-        }
-    }
-    */
-
-    /*
-    // fetch number in dialog
-    if (TRUE == _sl4a_show_dotpitch_y) {
-        double number = 0.0;
-        if (TRUE == _sl4a_diagGetNum(&number)) {
-            _s52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, number);
-            _s52_encodeNsend("S52_draw", "");
-            _sl4a_setText(S52_MAR_DOTPITCH_MM_Y, "DOTPITCHYeditText");
-            _sl4a_show_dotpitch_y = FALSE;
-        }
-    }
-    */
 
     // check if user touch something
     _sl4a_parseEvent();
@@ -1472,6 +1441,7 @@ static void     _trapSIG(int sig, siginfo_t *info, void *secret)
 {
     switch (sig) {
 
+        // 2
     case SIGINT:
         g_print("sl4agps:_trapSIG(): Signal 'Interrupt' cought - SIGINT(%i)\n", sig);
         _send_cmd(&_sl4a_connectionA, "fullDismiss", "");
@@ -1481,29 +1451,41 @@ static void     _trapSIG(int sig, siginfo_t *info, void *secret)
         g_main_loop_quit(_main_loop);
         break;
 
+        // 11
     case SIGSEGV:
         g_print("sl4agps:_trapSIG(): Signal 'Segmentation violation' cought - SIGSEGV(%i)\n", sig);
         unlink(GPS PID);
+        _send_cmd(&_sl4a_connectionA, "fullDismiss", "");
+
         // continue with normal sig handling
         _old_signal_handler_SIGSEGV.sa_sigaction(sig, info, secret);
         break;
 
+        // 15
     case SIGTERM:
         g_print("sl4agps:_trapSIG(): Signal 'Termination (ANSI)' cought - SIGTERM(%i)\n", sig);
         unlink(GPS PID);
+
+        _send_cmd(&_sl4a_connectionA, "fullDismiss", "");
+        g_main_loop_quit(_main_loop);
+
         // continue with normal sig handling
         _old_signal_handler_SIGTERM.sa_sigaction(sig, info, secret);
         break;
 
-    // 10
+        // 10
     case SIGUSR1: {
         //if (TRUE == _fullShowUp) {
         //    _sl4a_moveToForeground();
         //} else {
-            char str[]  = "'LOADING GUI ..'";
-            _send_cmd(&_sl4a_connectionA, "makeToast", str);  // v=a
-
             g_print("sl4agps:_trapSIG(): Signal 'User-defined 1' cought - SIGUSR1(%i)\n", sig);
+
+
+            // prevent call from _trapSIG and main_loop to _send_cmd()
+            // at the same time
+            g_static_mutex_lock(&_mp_mutex);
+
+            _send_cmd(&_sl4a_connectionA, "makeToast", "'LOADING GUI ..'");  // v=a
 
             // the stop/start of sensor save CPU for processing fullShow()
             // with this it take 2 sec instead of 3 sec to load the XML layout
@@ -1511,23 +1493,30 @@ static void     _trapSIG(int sig, siginfo_t *info, void *secret)
             //_send_cmd(_sl4a_connectionA, "stopLocating", "");    // 0.5 sec
 
             _sl4a_fullShow();
+
+
+            // 2012NOV: loading html5 via sl4a webKit is very fast compare to fullshow()
             //_sl4a_webViewShow();
+
+            // 2012DEC: loading html5 via sl4a
+            //_sl4a_viewHtml();
 
             //_send_cmd(_sl4a_connectionA, "startSensingTimed", "1,1000000");
             //_send_cmd(_sl4a_connectionA, "startLocating", "");    // 0.5 sec
 
             //_fullShowUp = TRUE;
+
+            g_static_mutex_unlock(&_mp_mutex);
+
             // continue with normal sig handling
-            //_old_signal_handler.sa_sigaction(sig, info, secret);
-            //}
+            if (NULL != _old_signal_handler_SIGUSR1.sa_sigaction)
+                _old_signal_handler_SIGUSR1.sa_sigaction(sig, info, secret);
+
             break;
     }
     // 12
     case SIGUSR2:
         g_print("sl4agps:_trapSIG(): Signal 'User-defined 2' cought - SIGUSR2(%i)\n", sig);
-
-        // continue with normal sig handling
-        //_old_signal_handler.sa_sigaction(sig, info, secret);
 
         // re-connect to libS52
         if (NULL == _s52_connection) {
@@ -1536,6 +1525,10 @@ static void     _trapSIG(int sig, siginfo_t *info, void *secret)
             _s52_init();
             g_print("sl4agps:_trapSIG(): re-connect to libS52\n");
         }
+
+        // continue with normal sig handling
+        if (NULL != _old_signal_handler_SIGUSR2.sa_sigaction)
+            _old_signal_handler_SIGUSR2.sa_sigaction(sig, info, secret);
 
         break;
 
@@ -1558,12 +1551,15 @@ int main(int argc, char *argv[])
     _json_obj = g_string_sized_new(128);
     _params   = g_string_sized_new(128);
 
-    if (FALSE == _sl4a_init())
+    if (FALSE == _sl4a_init()) {
+        g_print("sl4agps:_sl4a_init() failed\n");
         return FALSE;
+    }
 
-    if (FALSE == (_s52_initOK=_s52_init()))
+    if (FALSE == _s52_init()) {
+        g_print("sl4agps:_s52_init() failed\n");
         return FALSE;
-
+    }
 
     //////////////////////////////////////////////////////////
     // init signal handler
@@ -1601,7 +1597,6 @@ int main(int argc, char *argv[])
         // an signal it somehow to reconnect to libS52
         // -OR- kill the previous instance first!
         if (TRUE == g_file_test(GPS PID, (GFileTest) (G_FILE_TEST_EXISTS))) {
-            //kill -SIGINT `cat /data/media/s52android/bin/sl4agps.pid`
             GError    *error    = NULL;
             const char done[] = "/system/bin/sh -c 'kill -SIGINT `cat " GPS PID "`'";
             if (TRUE != g_spawn_command_line_async(done, &error)) {
@@ -1617,13 +1612,14 @@ int main(int argc, char *argv[])
 
         pid_t pid = getpid();
         FILE *fd  = fopen(GPS PID, "w");
-        if (NULL == fd) {
+        if (NULL != fd) {
+            fprintf(fd, "%i", pid);
+            fclose(fd);
+        } else {
             g_print("sl4agps:fopen(): fail .. exit");
             return TRUE;
         }
 
-        fprintf(fd, "%i", pid);
-        fclose(fd);
     }
 
     guint timeoutID = g_timeout_add(1000, _sl4a_sendS52cmd, NULL);  // 1.0 sec

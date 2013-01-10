@@ -73,7 +73,7 @@ DONE
 ====
 (put here TODO's that has been done)
 
-    -handling world shapefile
+    -handling GDAL (world) shapefile to fit S52 framework
     -test for proper configure of openev when loading libS52.so
     -text grouping
     -click on north arrow to get north up (the code is in s52egl.c - tested on Android)

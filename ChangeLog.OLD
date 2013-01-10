@@ -1,8 +1,20 @@
 # ChangeLog.OLD: the old way to note mods
-#                real ChangeLog is generated with 'cvs2cl'
+#                The 'real' ChangeLog is generated with the Perl script cvs2cl.pl
 #
 
-
+2013JAN09
+    -fix rotation of buoy light (g_strcmp0())
+    
+2013JAN08
+    -fix S52_doneCell() from socket (s52webUI)
+    
+2013JAN05
+    -fix text rotation for GLES2
+    
+2012DEC12
+    -add Websocket server - exprimental
+    -add dep. 'lib/parson' to handle JSON from Websocket
+    
 2012NOV20
     -fix C1 ed3.1, mariners' objects are part of the ENCs
     

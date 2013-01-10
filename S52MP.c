@@ -188,13 +188,15 @@ static double _MARparamVal[] = {
 
     1.0,      // 40 - S52_MAR_DISP_AFTERGLOW (default on)
 
-    //0.0,      // 41 - S52_MAR_DISP_CENTROIDS Display all centered symb of one area (on/off) (default off)
-    1.0,      // 41 - S52_MAR_DISP_CENTROIDS Display all centered symb of one area (on/off) (default off)
+    //0.0,      // 41 - S52_MAR_DISP_CENTROIDS display all centered symb of one area (on/off) (default off)
+    1.0,      // 41 - S52_MAR_DISP_CENTROIDS display all centered symb of one area (on/off) (default off)
 
-    0.0,      // 42 - S52_MAR_DISP_WORLD Display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
-    //1.0,      // 42 - S52_MAR_DISP_WORLD Display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
+    0.0,      // 42 - S52_MAR_DISP_WORLD display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
+    //1.0,      // 42 - S52_MAR_DISP_WORLD display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
 
-    43.0      // number of parameter type
+    1.0,      // 43 - S52_MAR_DISP_RND_LN_END - display rounded line ending (on/off)
+
+    44.0      // number of parameter type
 };
 
 double S52_MP_get(S52MarinerParameter param)

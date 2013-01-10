@@ -84,8 +84,8 @@ TL;DR
       $ make s52eglx   - EGL/GLES2 build for X11
       $ make s52eglarm - EGL/GLES2 build for ARM for testing on Android Xoom
 
-OLD WAY (and wrong)
--------------------
+OLD WAY (and probably broken)
+-----------------------------
 
 1- generate configure for openev:
        $ cd ../../openev
@@ -146,7 +146,7 @@ MAKEFILE BUILD FLAGS:
 # -DS52_USE_GLC              : text rendering
 # -DS52_USE_FREETYPE_GL      : text rendering, need -DS52_USE_GLES2
 # -DS52_USE_LOG              : log every S52_* in tmp file
-# -DS52_USE_SUPP_LINE_OVERLAP: suppress display of overlapping line (gdal need patching)
+# -DS52_USE_SUPP_LINE_OVERLAP: suppress display of overlapping line (gdal/ogr need patching, see S52.c:_suppLineOverlap())
 # -DS52_USE_OGR_FILECOLLECTOR: call OGR fileColletor() to apply S57 update
 # -DS52_USE_DBUS             : mimic S52.h
 # -DS52_USE_SOCK             : same as DBus
@@ -159,6 +159,7 @@ MAKEFILE BUILD FLAGS:
 # -DS52_USE_OPENGL_VBO       : GL VBO v1.x and up
 # -DS52_USE_EGL              : handle host window manager connection
 # -DS52_USE_GLES2            : OpenGL ES 2.0, need -DS52_USE_EGL and -DS52_USE_OPENGL_VBO
+# -DS52_USE_WORLD            : experiment to load world shapefile (see S52.c:201)
 # -DS52_DEBUG                : internal debug info
 
 

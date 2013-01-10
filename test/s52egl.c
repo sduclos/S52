@@ -69,14 +69,14 @@
 
 #define RAD_TO_DEG    57.29577951308232
 
-#define PATH     "/sdcard"
-#define PLIB     "/sdcard/s52android/PLAUX_00.DAI"
-#define COLS     "/sdcard/s52android/plib_COLS-3.4.1.rle"
-#define GPS      "/data/media/s52android/bin/sl4agps"
-#define AIS      "/data/media/s52android/bin/s52ais"
+#define PATH     "/data/media"         // android 4.1
+//#define PATH     "/data/media/0"     // android 4.2
+#define PLIB     PATH "/s52android/PLAUX_00.DAI"
+#define COLS     PATH "/s52android/plib_COLS-3.4.1.rle"
+#define GPS      PATH "/s52android/bin/sl4agps"
+#define AIS      PATH "/s52android/bin/s52ais"
 #define PID      ".pid"
-#define ALLSTOP  "/data/media/s52android/bin/run_allstop.sh"
-//#define ALLSTOP  "/media/internal/s52android/bin/run_allstop.sh"
+#define ALLSTOP  PATH "/s52android/bin/run_allstop.sh"
 
 #include <glibconfig.h>
 #include <gio/gio.h>
@@ -704,12 +704,12 @@ static int      _s52_init       (s52engine *engine)
     //S52_loadCell(NULL, NULL);
     //S52_loadCell("/data/media/s52android/ENC_ROOT/CA279037.000", NULL);
     // Rimouski
-    S52_loadCell("/data/media/s52android/ENC_ROOT/CA579041.000", NULL);
+    S52_loadCell("/sdcard/s52android/ENC_ROOT/CA579041.000", NULL);
     // load all 3 S57 charts
     //S52_loadCell("/data/media/s52android/ENC_ROOT", NULL);
 
     // World data
-    S52_loadCell("/data/media/s52android/gdal_data/--0WORLD.shp", NULL);
+    S52_loadCell("/sdcard/s52android/gdal_data/--0WORLD.shp", NULL);
     // show world
     S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);
 #else
@@ -756,26 +756,25 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);
     S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);
     S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);
-
     //S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);    // (default ON)
 
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // always ON
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // default
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_OTHER);
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE | S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
-    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,     S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
+    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
 
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE );
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // default
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);
-    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT); // All Mariner (Standard(default) + Other)
+    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Standard(default) + Other)
 
     S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
 
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          1.0); // ON
-    S52_setMarinerParam(S52_MAR_SCAMIN,          0.0); // debug OFF - show all (default ON)
+    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0); // ON
+    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0); // debug OFF - show all (default ON)
 
     // remove QUAPNT01 symbole (black diagonal and a '?')
     S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);   // off
@@ -795,6 +794,8 @@ static int      _s52_init       (s52engine *engine)
     // -------------------------------------------------------
 
 
+    S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // default ON
+
     S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
     //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
 
@@ -807,12 +808,12 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
 
     // debug - use for timing redering
-    //S52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
-    //S52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
-    //S52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
-    //S52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
-    //S52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
-    //S52_setMarinerParam(S52_MAR_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
 
 
     // if first start find where we are looking
@@ -822,8 +823,6 @@ static int      _s52_init       (s52engine *engine)
 
     S52_newCSYMB();
 
-
-#ifdef S52_USE_FAKE_AIS
     // must be first mariners' object so that the
     // rendering engine place it on top of OWNSHP/VESSEL
     _s52_setupVRMEBL(&engine->state);
@@ -832,7 +831,7 @@ static int      _s52_init       (s52engine *engine)
 
     _s52_setupPRDARE(&engine->state);
 
-
+#ifdef S52_USE_FAKE_AIS
     _s52_setupVESSEL(&engine->state);
 
     _s52_setupOWNSHP(&engine->state);
@@ -1043,7 +1042,7 @@ static int      _android_init_external_ais(void)
 {
     GError *error = NULL;
 
-    // tel AIS to re-connect to libS52 if AIS is allready UP
+    // tell AIS to re-connect to libS52 if AIS is allready UP
     if (TRUE == g_file_test(AIS PID, (GFileTest) (G_FILE_TEST_EXISTS))) {
         LOGI("s52egl:AIS prog is allready running (%s)\n", AIS);
         const char connS52[] = "/system/bin/sh -c 'kill -SIGUSR2 `cat " AIS PID "`'";
@@ -1351,15 +1350,13 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
 
                 // update cursor position (lon/lat)
                 if (TRUE == S52_xy2LL(&new_x, &new_y)) {
+                    S52_pushPosition(_cursor2, new_y, new_x, 0.0);
+                    S52_drawLast();
 
-                    // FIXME: need call to swapBuffer
                     //char str[80] = {'\0'};
                     //sprintf(str, "%05.1f° / %.1f m", brg, rge);
                     //S52_drawStr(new_x + 5, engine->height - new_y - 15, "UINFF", 1, str);
 
-                    S52_pushPosition(_cursor2, new_y, new_x, 0.0);
-
-                    S52_drawLast();
                 }
             }
 
@@ -1557,17 +1554,17 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
 
         case AINPUT_EVENT_TYPE_KEY: {
             LOGI("s52egl:--> AINPUT_EVENT_TYPE_KEY\n");
-            //int32_t devID = AInputEvent_getDeviceId(event);
+            int32_t devID = AInputEvent_getDeviceId(event);
 
             // Get the input event source.
-            //int32_t source = AInputEvent_getSource(event);
+            int32_t source = AInputEvent_getSource(event);
 
 
             // *** Accessors for key events only. ***
             const AInputEvent* key_event = event;
 
             // Get the key event flags.
-            //int32_t flags = AKeyEvent_getFlags(key_event);
+            int32_t flags = AKeyEvent_getFlags(key_event);
 
             // Get the key code of the key event.
             // This is the physical key that was pressed, not the Unicode character.
@@ -1582,6 +1579,8 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
 
             // Get the key event action.
             int32_t action = AKeyEvent_getAction(key_event);
+            LOGI("s52egl:AInputEvent - eType:%i devID:%i source:%i action:%i flags:%X code:%i\n",
+                                       eType,   devID,   source,   action,   flags,   code);
             if (AKEYCODE_MENU==code && 0==action) {
                 if (TRUE != g_file_test(GPS PID, (GFileTest) (G_FILE_TEST_EXISTS))) {
                     LOGI("s52egl:GPS prog not running (%s)\n", GPS);
@@ -1592,7 +1591,7 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
                 const char showUI[] = "/system/bin/sh -c 'kill -SIGUSR1 `cat " GPS PID "`'";
                 if (TRUE != g_spawn_command_line_async(showUI, &error)) {
                     LOGI("s52egl:_android_handle_input(): MENU EVENT: g_spawn_command_line_async() failed [%s]\n", error->message);
-                    _androidUIon = !_androidUIon;
+                    //_androidUIon = !_androidUIon;
                 }
             }
 
@@ -1621,6 +1620,24 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
     struct s52engine* engine = (struct s52engine*)app->userData;
 
     switch (cmd) {
+        case APP_CMD_START: {
+            // onRestart()  only in Java !!
+            LOGI("s52egl:--> APP_CMD_START\n");
+            if (NULL == engine->app->window)
+                LOGI("s52egl:APP_CMD_START: ANativeWindow is NULL\n");
+            else
+                LOGI("s52egl:APP_CMD_START: ANativeWindow is NOT NULL\n");
+            break;
+        }
+        case APP_CMD_RESUME: {
+            LOGI("s52egl:--> APP_CMD_RESUME\n");
+
+            //engine->do_S52draw     = FALSE;
+            engine->do_S52draw     = TRUE;
+            engine->do_S52drawLast = TRUE;
+
+            break;
+        }
         case APP_CMD_SAVE_STATE: {
             // android tell to save the current state
             LOGI("s52egl:--> APP_CMD_SAVE_STATE\n");
@@ -1673,7 +1690,6 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
         case APP_CMD_GAINED_FOCUS: {
             // app gains focus, start monitoring sensor
             LOGI("s52egl:--> APP_CMD_GAINED_FOCUS\n");
-            // WARNING: enableSensor take CPU (100%) (tested with gyro & light)
 
             if (NULL == engine->app->window) {
                 LOGI("s52egl:APP_CMD_GAINED_FOCUS: ANativeWindow is NULL\n");
@@ -1720,47 +1736,29 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 
             break;
         }
-        case APP_CMD_RESUME: {
-            LOGI("s52egl:--> APP_CMD_RESUME\n");
-
-            //engine->do_S52draw     = FALSE;
-            engine->do_S52draw     = TRUE;
-            engine->do_S52drawLast = TRUE;
-
-            break;
-        }
-        case APP_CMD_START: {
-            // onRestart()  only in Java !!
-            LOGI("s52egl:--> APP_CMD_START\n");
-            if (NULL == engine->app->window)
-                LOGI("s52egl:APP_CMD_START: ANativeWindow is NULL\n");
-            else
-                LOGI("s52egl:APP_CMD_START: ANativeWindow is NOT NULL\n");
-            break;
-        }
 
 
     // TODO: what about those !
     case APP_CMD_INPUT_CHANGED:
-        LOGI("s52egl:--> APP_CMD_INPUT_CHANGED\n");
+        LOGI("s52egl:TODO:--> APP_CMD_INPUT_CHANGED\n");
         break;
     case APP_CMD_WINDOW_RESIZED:
-        LOGI("s52egl:--> APP_CMD_WINDOW_RESIZED\n");
+        LOGI("s52egl:TODO:--> APP_CMD_WINDOW_RESIZED\n");
         break;
     case APP_CMD_WINDOW_REDRAW_NEEDED:
-        LOGI("s52egl:--> APP_CMD_WINDOW_REDRAW_NEEDED\n");
+        LOGI("s52egl:TODO:--> APP_CMD_WINDOW_REDRAW_NEEDED\n");
         break;
     case APP_CMD_CONTENT_RECT_CHANGED:
-        LOGI("s52egl:--> APP_CMD_CONTENT_RECT_CHANGED\n");
+        LOGI("s52egl:TODO:--> APP_CMD_CONTENT_RECT_CHANGED\n");
         break;
     case APP_CMD_LOW_MEMORY:
-        LOGI("s52egl:--> APP_CMD_LOW_MEMORY\n");
+        LOGI("s52egl:TODO:--> APP_CMD_LOW_MEMORY\n");
         break;
     case APP_CMD_PAUSE:
-        LOGI("s52egl:--> APP_CMD_PAUSE\n");
+        LOGI("s52egl:TODO:--> APP_CMD_PAUSE\n");
         break;
     case APP_CMD_STOP:
-        LOGI("s52egl:--> APP_CMD_STOP\n");
+        LOGI("s52egl:TODO:--> APP_CMD_STOP\n");
         break;
     }
 }
@@ -1866,10 +1864,8 @@ void android_main(struct android_app *app)
         engine.state.handler = g_signal_connect(G_OBJECT(engine.state.gobject), "s52-draw",
                                                 G_CALLBACK(_s52_draw_cb), (gpointer)&engine);
 
-        g_timeout_add        (500,                 _s52_draw_cb,    (void*)&engine);     // 0.5 sec (500msec)
+        g_timeout_add(500, _s52_draw_cb, (void*)&engine);     // 0.5 sec (500msec)
 
-        //guint g_idle_add(GSourceFunc function, gpointer data);
-        //g_idle_add(_s52_draw_cb, (void*)&engine);
 
     } else {
         // if re-starting - the process is already up
@@ -2029,11 +2025,13 @@ static int      _X11_handleXevent(gpointer user_data)
             // /usr/include/X11/keysymdef.h
             keycode = ((XKeyEvent *)&event)->keycode;
             keysym  = XkbKeycodeToKeysym(engine->dpy, keycode, 0, 1);
+
+            // ESC
             if (XK_Escape == keysym) {
                 g_main_loop_quit(engine->state.main_loop);
                 return TRUE;
             }
-
+            // Load Cell
             if (XK_F1 == keysym) {
                 S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
                 S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA379035.000", NULL);
@@ -2041,17 +2039,20 @@ static int      _X11_handleXevent(gpointer user_data)
                 engine->do_S52draw = TRUE;
                 return TRUE;
             }
+            // Done Cell
             if (XK_F2 == keysym) {
                 S52_doneCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000");
                 //S52_doneCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000");
                 engine->do_S52draw = TRUE;
                 return TRUE;
             }
+            // Disp. Cat. SELECT
             if (XK_F3 == keysym) {
                 S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT);
                 engine->do_S52draw = TRUE;
                 return TRUE;
             }
+            // VRMEBL ON
             if (XK_F4 == keysym) {
                 double new_x = 500.0;
                 double new_y = 500.0;
@@ -2076,9 +2077,16 @@ static int      _X11_handleXevent(gpointer user_data)
                 }
                 return TRUE;
             }
+            // Rot. Buoy Light
+            if (XK_F5 == keysym) {
+                S52_setMarinerParam(S52_MAR_ROT_BUOY_LIGHT, 180.0);
+                engine->do_S52draw = TRUE;
+                return TRUE;
+            }
+
 
             // debug
-            g_printf("keysym: %i\n", keysym);
+            g_printf("s52egl.c:keysym: %i\n", keysym);
 
 
             //

@@ -67,7 +67,7 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:id            = '@+id/ENCBtn'
@@ -99,7 +99,7 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:layout_width  = 'match_parent'
@@ -125,7 +125,7 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
 
             <RelativeLayout
@@ -242,7 +242,7 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
 
 
@@ -290,12 +290,12 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'wrap_content'
-                android:layout_marginLeft = '30px'
+                android:layout_marginLeft  = '30px'
                 android:layout_marginRight = '10px'
                 >
                 <TextView
@@ -316,12 +316,12 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'wrap_content'
-                android:layout_marginLeft = '30px'
+                android:layout_marginLeft  = '30px'
                 android:layout_marginRight = '10px'
                 >
                 <TextView
@@ -333,6 +333,7 @@
                <CheckBox
                     android:id        = '@+id/ANTIALIAScheckBox'
                     android:checked   = 'true'
+                    android:enabled   = 'false'
                     android:layout_alignParentRight = 'true'
                     />
             </RelativeLayout>
@@ -342,12 +343,12 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'wrap_content'
-                android:layout_marginLeft = '30px'
+                android:layout_marginLeft  = '30px'
                 android:layout_marginRight = '10px'
                 >
                 <TextView
@@ -368,12 +369,12 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'wrap_content'
-                android:layout_marginLeft = '30px'
+                android:layout_marginLeft  = '30px'
                 android:layout_marginRight = '10px'
                 >
                 <TextView
@@ -394,12 +395,12 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'wrap_content'
-                android:layout_marginLeft = '30px'
+                android:layout_marginLeft  = '30px'
                 android:layout_marginRight = '10px'
                 >
                 <TextView
@@ -420,12 +421,12 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'wrap_content'
-                android:layout_marginLeft = '30px'
+                android:layout_marginLeft  = '30px'
                 android:layout_marginRight = '10px'
                 >
                 <TextView
@@ -446,12 +447,12 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'wrap_content'
-                android:layout_marginLeft = '30px'
+                android:layout_marginLeft  = '30px'
                 android:layout_marginRight = '10px'
                 >
                 <TextView
@@ -472,12 +473,12 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'wrap_content'
-                android:layout_marginLeft = '30px'
+                android:layout_marginLeft  = '30px'
                 android:layout_marginRight = '10px'
                 >
                 <TextView
@@ -498,12 +499,12 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'wrap_content'
-                android:layout_marginLeft = '30px'
+                android:layout_marginLeft  = '30px'
                 android:layout_marginRight = '10px'
                 >
                 <TextView
@@ -524,12 +525,12 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'wrap_content'
-                android:layout_marginLeft = '30px'
+                android:layout_marginLeft  = '30px'
                 android:layout_marginRight = '10px'
                 >
                 <TextView
@@ -550,7 +551,7 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
 
             <RelativeLayout
@@ -558,7 +559,7 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'match_parent'
                 android:clickable     = 'true'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 >
                 <TextView
                     android:id            = '@+id/s52_text_22'
@@ -583,14 +584,14 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:id            = '@+id/DOTPITCHXlayout'
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'match_parent'
                 android:clickable     = 'true'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 >
                 <TextView
                     android:id            = '@+id/s52_text_23'
@@ -615,14 +616,14 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <RelativeLayout
                 android:id            = '@+id/DOTPITCHYlayout'
                 android:layout_width  = 'match_parent'
                 android:layout_height = 'match_parent'
                 android:clickable     = 'true'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 >
                 <TextView
                     android:id            = '@+id/s52_text_24'
@@ -650,7 +651,7 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
 
             <LinearLayout
@@ -800,7 +801,7 @@
                 android:layout_width  = 'match_parent'
                 android:layout_height = '1dp'
                 android:background    = '#55000000'
-                android:layout_marginLeft  = '30px'
+                android:layout_marginLeft = '30px'
                 />
             <LinearLayout
                 android:id            = '@+id/test2'

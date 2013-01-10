@@ -290,7 +290,10 @@ class S52 {
         //S52_CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
         //checked = query("#f$subParam").checked;
         s52.setMarinerParam(param, subParam).then((ret) {
-          if (1 == ret[0]) { print("OK"); }
+          if (1 == ret[0]) {
+            print("OK");
+            s52.draw();
+          }
         });
         return;
 
@@ -300,40 +303,12 @@ class S52 {
 
     double val = (true == checked) ? 1.0 : 0.0;
     s52.setMarinerParam(param, val).then((ret) {
-      if (1 == ret[0]) { print("OK"); }
+      if (1 == ret[0]) {
+        print("OK");
+        s52.draw();
+      }
     });
   }
-
-  /*
-  Future<bool> _setUIcolor_0() {
-    Completer completer = new Completer();
-    // set S52 UI background color
-    s52.getRGB("UIBCK").then((UIBCK) {
-      _UIBCK = UIBCK;
-      query(".scrollTableL").style.backgroundColor =
-          "rgba(${_UIBCK[0]},${_UIBCK[1]},${_UIBCK[2]}, 0.6)";
-
-          // set S52 UI Text Color
-          s52.getRGB("UINFF").then((UINFF) {
-            _UINFF = UINFF;
-            List l = queryAll("span");
-            l.forEach((s) => s.style.textFillColor =
-                    "rgb(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]})");
-
-                // set S52 UI Border Color
-                s52.getRGB("UIBDR").then((UIBDR) {
-                  _UIBDR = UIBDR;
-                  List l = queryAll("hr");
-                  l.forEach((s) => s.style.backgroundColor =
-                      "rgb(${_UIBDR[0]},${_UIBDR[1]},${_UIBDR[2]})");
-                  completer.complete(true);
-                });
-          });
-    });
-
-    return completer.future;
-  }
-  */
 
   Future<bool> _getS52UIcolor() {
     Completer completer = new Completer();
@@ -354,7 +329,8 @@ class S52 {
       return completer.future;
   }
 
-  void _setUIcolor() {
+  Future<bool> _setUIcolor() {
+    Completer completer = new Completer();
      _getS52UIcolor().then((value) {
        // set S52 UI background color
        query(".scrollTableL").style.backgroundColor =
@@ -365,7 +341,10 @@ class S52 {
        // set S52 UI Text Color
        queryAll("span").forEach((s) => s.style.color =
             "rgb(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]})");
+
+       completer.complete(true);
      });
+     return completer.future;
   }
 
   void _updateUIcol(int idx) {
@@ -377,7 +356,7 @@ class S52 {
    });
   }
 
-  /*
+  //*
   void _insertPalR(String txt, int idx) {
     SpanElement      s = new SpanElement();
     s.text = txt;
@@ -387,9 +366,9 @@ class S52 {
     TableRowElement  l = query("#tableR").insertRow(-1); // add at the end
     l.nodes.add(c);
   }
-  */
+  //*/
 
-  /*
+  //*
   void _listPal(MouseEvent e) {
     // start color highlight animation
     query("#td_buttonCell").style.animationIterationCount = '1';
@@ -416,7 +395,7 @@ class S52 {
       query("#td_buttonCell").style.animationIterationCount = '0';
     });
   }
-  */
+  //*/
 
 
 List _checkButton = [
@@ -432,7 +411,7 @@ List _checkButton = [
 // Init UI from libS52 state
 //
 
-/*
+//*
 void _initCheckBox(List lst, int idx, String prefix) {
   if (idx < _checkButton.length) {
     int el = _checkButton[idx];
@@ -447,13 +426,13 @@ void _initCheckBox(List lst, int idx, String prefix) {
     });
   }
 }
-*/
+//*/
 
 void _init() {
-  //_setUIcolor().then((ret) {
-  _setUIcolor();
+  _setUIcolor().then((ret) {
+  //_setUIcolor();
 
-  /*
+  //*
   // S52_MAR_CMD_WRD_FILTER(33)
   s52.getMarinerParam(S52_CMD_WRD_FILTER).then((ret) {
     [S52_CMD_WRD_FILTER_SY,S52_CMD_WRD_FILTER_LS,S52_CMD_WRD_FILTER_LC,
@@ -484,7 +463,7 @@ void _init() {
           query("#c$el")
             ..checked = (0 != (filter & el))? true : false
             ..on.click.add((ev) => outputMsg("id:'c$el'"))
-            ..on.click.add((ev) => _handleInput(S52_MAR_DISP_CATEGORY, el));
+            ..on.click.add((ev) => _handleInput(S52_MAR_DISP_CATEGORY, el.toDouble()));
         }
       });
 
@@ -500,7 +479,7 @@ void _init() {
            query("#l$el")
              ..checked = (0 != (filter & el))? true : false
              ..on.click.add((ev) => outputMsg("id:'l$el'"))
-             ..on.click.add((ev) => _handleInput(S52_MAR_DISP_LAYER_LAST, el));
+             ..on.click.add((ev) => _handleInput(S52_MAR_DISP_LAYER_LAST, el.toDouble()));
         });
 
         query("#td_buttonCell")
@@ -513,8 +492,8 @@ void _init() {
       });
     });
   });
-  //});
-   */
+  });
+  // */
 }
 
 
