@@ -94,6 +94,10 @@ class s52obj {
 
 S52  s52;
 //s52obj _ownshp;
+
+//String S52_WS_SRVR = 'ws://127.0.0.1:2950';
+String S52_WS_SRVR = 'ws://192.168.1.67:2950'; // laptop
+//String S52_WS_SRVR = 'ws://192.168.1.66:2950'; // Xoom
 List _UIBCK;
 List _UINFF;
 List _UIBDR;
@@ -134,12 +138,13 @@ const int S52_CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & T
 
 class S52 {
   Completer _completer;
-  WebSocket _ws   = new WebSocket('ws://127.0.0.1:2950');
+  WebSocket _ws;
   //WebSocket _ws   = new WebSocket('ws://192.168.1.66:2950');
   Map       _data = JSON.parse('{"id":0,"method":"???","params":["???"]}');
   int       _id   = 1;
 
-  S52() {
+  S52(WebSocket ws) {
+    _ws = ws;
     _ws.on.open.add   ((Event e)        {_open(e);    });
     _ws.on.close.add  ((Event e)        {_close(e);   });
     _ws.on.error.add  ((Event e)        {_error(e);   });
@@ -248,7 +253,7 @@ class S52 {
     print(msg);
   }
 
-  void _handleInput(int param, double subParam) {
+  void _handleInput(int param, double value) {
     bool checked = false;
     switch (param) {
       case S52_MAR_SHOW_TEXT            : //=  1;
@@ -262,7 +267,11 @@ class S52 {
       case S52_MAR_DISP_AFTERGLOW       : //= 40;
       case S52_MAR_DISP_CENTROIDS       : //= 41;
       case S52_MAR_DISP_WORLD           : //= 42;
-        checked = query("#i$param").checked;
+
+        //checked = query("#i$param").checked;
+
+        InputElement i = query("#i$param");
+        checked = i.checked;
         break;
 
       case S52_MAR_DISP_CATEGORY        :  //= 14;
@@ -289,7 +298,7 @@ class S52 {
         //S52_CMD_WRD_FILTER_AP          =       16;  // 1 << 4; 010000 - AP
         //S52_CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
         //checked = query("#f$subParam").checked;
-        s52.setMarinerParam(param, subParam).then((ret) {
+        s52.setMarinerParam(param, value).then((ret) {
           if (1 == ret[0]) {
             print("OK");
             s52.draw();
@@ -313,72 +322,73 @@ class S52 {
   Future<bool> _getS52UIcolor() {
     Completer completer = new Completer();
 
-      // get S52 UI background color
-      s52.getRGB("UIBCK").then((UIBCK) {
-        _UIBCK = UIBCK;
-        // get S52 UI Text Color
-        s52.getRGB("UINFF").then((UINFF) {
-          _UINFF = UINFF;
-          // get S52 UI Border Color
-          s52.getRGB("UIBDR").then((UIBDR) {
-            _UIBDR = UIBDR;
-            completer.complete(true);
-          });
+    // get S52 UI background color
+    s52.getRGB("UIBCK").then((UIBCK) {
+      _UIBCK = UIBCK;
+      // get S52 UI Text Color
+      s52.getRGB("UINFF").then((UINFF) {
+        _UINFF = UINFF;
+        // get S52 UI Border Color
+        s52.getRGB("UIBDR").then((UIBDR) {
+          _UIBDR = UIBDR;
+          completer.complete(true);
         });
       });
-      return completer.future;
+    });
+    return completer.future;
   }
 
   Future<bool> _setUIcolor() {
     Completer completer = new Completer();
-     _getS52UIcolor().then((value) {
-       // set S52 UI background color
-       query(".scrollTableL").style.backgroundColor =
-            "rgba(${_UIBCK[0]},${_UIBCK[1]},${_UIBCK[2]}, 0.6)";
-       // set S52 UI Border Color
-       queryAll("hr").forEach((s) => s.style.backgroundColor =
-            "rgb(${_UIBDR[0]},${_UIBDR[1]},${_UIBDR[2]})");
-       // set S52 UI Text Color
-       queryAll("span").forEach((s) => s.style.color =
-            "rgb(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]})");
+    _getS52UIcolor().then((value) {
+      // set S52 UI background color
+      query(".scrollTableL").style.backgroundColor =
+           "rgba(${_UIBCK[0]},${_UIBCK[1]},${_UIBCK[2]}, 0.6)";
+      // set S52 UI Border Color
+      queryAll("hr").forEach((s) => s.style.backgroundColor =
+           "rgb(${_UIBDR[0]},${_UIBDR[1]},${_UIBDR[2]})");
+      // set S52 UI Text Color
+      queryAll("span").forEach((s) => s.style.color =
+           "rgb(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]})");
 
-       completer.complete(true);
-     });
-     return completer.future;
+      completer.complete(true);
+    });
+    return completer.future;
   }
 
   void _updateUIcol(int idx) {
     s52.setMarinerParam(S52_MAR_COLOR_PALETTE, idx.toDouble()).then((ret) {
       _setUIcolor();
       s52.draw().then((ret) {
-          s52.drawLast();
+        s52.drawLast();
       });
    });
   }
 
-  //*
   void _insertPalR(String txt, int idx) {
     SpanElement      s = new SpanElement();
     s.text = txt;
     TableCellElement c = new TableCellElement();
     c.on.click.add((ev) => _updateUIcol(idx));
     c.nodes.add(s);
-    TableRowElement  l = query("#tableR").insertRow(-1); // add at the end
-    l.nodes.add(c);
+    // add at the end
+    TableElement t = query("#tableR");
+    TableRowElement r = t.insertRow(-1);
+    r.nodes.add(c);
   }
-  //*/
 
-  //*
   void _listPal(MouseEvent e) {
     // start color highlight animation
     query("#td_buttonCell").style.animationIterationCount = '1';
 
-    // clear #tableR
-    //TableElement  t =
-    bool nr = query("#tableR").rows.isEmpty;
+    // clear #tableR(ight)
+    TableElement  t = query("#tableR");
+    //bool nr = query("#tableR").rows.isEmpty;
+    bool nr = t.rows.isEmpty;
     while (!nr) {
-      query("#tableR").deleteRow(0);
-      nr = query("#tableR").rows.isEmpty;
+      //query("#tableR")
+      t.deleteRow(0);
+      nr = t.rows.isEmpty;
     }
     //while (NULL != t)
     //= t.deleteRow(1);
@@ -416,7 +426,8 @@ void _initCheckBox(List lst, int idx, String prefix) {
   if (idx < _checkButton.length) {
     int el = _checkButton[idx];
     s52.getMarinerParam(el).then((ret) {
-      query("#$prefix$el")
+      InputElement i = query("#$prefix$el");
+      i
         ..checked = (1.0 == ret[0])? true : false
         ..on.click.add((ev) => outputMsg("id:'$prefix$el'"))
         ..on.click.add((ev) => _handleInput(el, 0.0));
@@ -440,7 +451,8 @@ void _init() {
     ].forEach((el) {
 
       int filter = ret[0].toInt();
-      query("#f$el")
+      InputElement i = query("#f$el");
+      i
         ..checked = (0 != (filter & el))? true : false
         ..on.click.add((ev) => outputMsg("id:'f$el'"))
         ..on.click.add((ev) => _handleInput(S52_CMD_WRD_FILTER, el));
@@ -455,12 +467,14 @@ void _init() {
       ].forEach((el) {
 
         if (0 == el) { // S52_MAR_DISP_CATEGORY_BASE is alway ON
-          query("#c$el")
+          InputElement i = query("#c$el");
+          i
             ..checked  = true
             ..disabled = true;
         } else {
           int filter = ret[0].toInt();
-          query("#c$el")
+          InputElement i = query("#c$el");
+          i
             ..checked = (0 != (filter & el))? true : false
             ..on.click.add((ev) => outputMsg("id:'c$el'"))
             ..on.click.add((ev) => _handleInput(S52_MAR_DISP_CATEGORY, el.toDouble()));
@@ -476,7 +490,8 @@ void _init() {
         ].forEach((el) {
 
            int filter = ret[0].toInt();
-           query("#l$el")
+           InputElement i = query("#l$el");
+           i
              ..checked = (0 != (filter & el))? true : false
              ..on.click.add((ev) => outputMsg("id:'l$el'"))
              ..on.click.add((ev) => _handleInput(S52_MAR_DISP_LAYER_LAST, el.toDouble()));
@@ -505,7 +520,7 @@ void _init() {
 void main() {
 
   //_ownshp = new s52obj("OWNSHP");
-  s52 = new S52();
+  s52 = new S52(new WebSocket(S52_WS_SRVR));
 
 
   //_init();

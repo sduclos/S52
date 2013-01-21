@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -103,7 +103,8 @@ static S52ObjectHandle _leglin3 = NULL;
 
 // test - VRMEBL
 // S52 object name:"ebline"
-static S52ObjectHandle _vrmeblA = NULL;
+static int             _drawVRMEBLtxt = FALSE;
+static S52ObjectHandle _vrmeblA       = NULL;
 
 // test - cursor DISP 9 (instead of IHO PLib DISP 8)
 // need to load PLAUX
@@ -510,10 +511,7 @@ static int      _s52_setupOWNSHP(s52android_state_t *state)
     _ownshp = S52_setDimension(_ownshp, 0.0, 100.0, 15.0, 0.0);
     //_ownshp = S52_setDimension(_ownshp, 1000.0, 50.0, 15.0, 15.0);
 
-    //S52_setPosition(_ownshp, state->cLat, state->cLon, 030.0);
-    //S52_setPosition(_ownshp, state->cLat, state->cLon, 000.0);
-    //S52_setPosition(_ownshp, state->cLat, state->cLon, 180.0+045.0);
-    S52_pushPosition(_ownshp, state->cLat, state->cLon, 180.0+045.0);
+    S52_pushPosition(_ownshp, state->cLat - 0.02, state->cLon - 0.01, 180.0 + 045.0);
 
     S52_setVector(_ownshp, 0, 220.0, 6.0);  // ownship use S52_MAR_VECSTB
 
@@ -607,28 +605,35 @@ route normale de navigation.
 
 static int      _s52_setupVRMEBL(s52android_state_t *state)
 {
-    char attVal[] = "cursty:2";
+    //char *attVal   = NULL;      // ordinary cursor
+    char  attVal[] = "cursty:2,_cursor_label:0.0N 0.0W";  // open cursor
     double xyz[3] = {state->cLon, state->cLat, 0.0};
+    int S52_VRMEBL_vrm = TRUE;
+    int S52_VRMEBL_ebl = TRUE;
+    int S52_VRMEBL_sty = TRUE;  // normalLineStyle
+    int S52_VRMEBL_ori = TRUE;  // (user) setOrigin
 
     _cursor2 = S52_newMarObj("cursor", S52_POINT, 1, xyz, attVal);
     //int ret = S52_toggleObjClassOFF("cursor");
     //LOGE("_s52_setupVRMEBL(): S52_toggleObjClassOFF('cursor'); ret=%i\n", ret);
-    //int ret =
-    //    S52_toggleObjClassON("cursor");
+    //int ret = S52_toggleObjClassON("cursor");
     //LOGE("_s52_setupVRMEBL(): S52_toggleObjClassON('cursor'); ret=%i\n", ret);
 
 
-    _vrmeblA = S52_newVRMEBL(TRUE, TRUE, TRUE, FALSE);
-    //_vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, S52_VRMEBL_ebl, S52_VRMEBL_sty, !S52_VRMEBL_ori);
-    //S52_toggleObjClassON("ebline");
+    _vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, S52_VRMEBL_ebl, S52_VRMEBL_sty, S52_VRMEBL_ori);
+    //_vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, !S52_VRMEBL_ebl, S52_VRMEBL_sty, !S52_VRMEBL_ori);
+    //_vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, !S52_VRMEBL_ebl, S52_VRMEBL_sty,  S52_VRMEBL_ori);
+
+    S52_toggleObjClassON("cursor");  // suppression ON
+    S52_toggleObjClassON("ebline");
+    S52_toggleObjClassON("vrmark");
 
     return TRUE;
 }
 
 static int      _s52_setupPRDARE(s52android_state_t *state)
-// test - centroid
+// test - centroid (PRDARE: wind farm)
 {
-    //*
     // AREA (CW: to center the text)
     double xyzArea[6*3]  = {
         state->cLon + 0.000, state->cLat + 0.000, 0.0,
@@ -638,7 +643,6 @@ static int      _s52_setupPRDARE(s52android_state_t *state)
         state->cLon + 0.000, state->cLat + 0.005, 0.0,
         state->cLon + 0.000, state->cLat + 0.000, 0.0,
     };
-    //*/
 
     // PRDARE/WNDFRM51/CATPRA9
     char attVal[] = "CATPRA:9";
@@ -1316,10 +1320,9 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
                 }
             } else {
                 // motion - find is scroll or vrmebl
-                if (TRUE != mode_vrmebl_set && FALSE==mode_zoom && FALSE==mode_zoom)
+                if (TRUE!=mode_vrmebl_set && FALSE==mode_zoom && FALSE==mode_zoom)
                     mode_scroll = TRUE;
             }
-
 
             // blit start
             if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
@@ -1355,8 +1358,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
 
                     //char str[80] = {'\0'};
                     //sprintf(str, "%05.1f° / %.1f m", brg, rge);
-                    //S52_drawStr(new_x + 5, engine->height - new_y - 15, "UINFF", 1, str);
-
+                    //S52_drawStr(new_x + 5, engine->height - new_y - 15, "CURSR", 1, str);
                 }
             }
 
@@ -1434,8 +1436,6 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             new_y = engine->state.cLat;
             new_z = engine->state.rNM;
             new_r = 0.0;
-
-            //_android_render(engine, new_y, new_x, new_z, new_r);
 
         } else {
 
@@ -1974,12 +1974,10 @@ static int      _X11_error(Display *display, XErrorEvent *err)
 
 static int      _X11_handleXevent(gpointer user_data)
 {
-    struct s52engine *engine = (struct s52engine *) user_data;
-    unsigned int keycode;
-    unsigned int keysym;
+    s52engine *engine = (s52engine *) user_data;
 
-    XEvent event;
     while (XPending(engine->dpy)) {
+        XEvent event;
         XNextEvent(engine->dpy, &event);
 
         switch (event.type) {
@@ -1995,12 +1993,14 @@ static int      _X11_handleXevent(gpointer user_data)
         //*
         case ButtonRelease:
             {
-                //keycode = ((XButtonReleasedEvent *)&event)->keycode;
                 XButtonReleasedEvent *mouseEvent = (XButtonReleasedEvent *)&event;
 
                 const char *name = S52_pickAt(mouseEvent->x, mouseEvent->y);
-                if (NULL != name)
+                if (NULL != name) {
+                    unsigned int S57ID = atoi(name+7);
                     g_print("OBJ(%i, %i): %s\n", mouseEvent->x, mouseEvent->y, name);
+                    g_print("ATT:%s\n", S52_getAttList(S57ID));
+                }
 
                 if (0 == g_ascii_strncasecmp("vessel", name, 6)) {
                     g_print("vessel found\n");
@@ -2011,7 +2011,7 @@ static int      _X11_handleXevent(gpointer user_data)
                     S52ObjectHandle vessel = S52_getMarObjH(S57ID);
                     if (NULL != vessel) {
                         S52_setVESSELstate(vessel, 1, 0, 0);
-                        g_print("ATT: %s\n",S52_getAttList(S57ID));
+                        g_print("ATT: %s\n", S52_getAttList(S57ID));
                     }
                 }
             }
@@ -2021,10 +2021,10 @@ static int      _X11_handleXevent(gpointer user_data)
             break;
         //*/
         case KeyPress:
-        case KeyRelease:
+        case KeyRelease: {
             // /usr/include/X11/keysymdef.h
-            keycode = ((XKeyEvent *)&event)->keycode;
-            keysym  = XkbKeycodeToKeysym(engine->dpy, keycode, 0, 1);
+            unsigned int keycode = ((XKeyEvent *)&event)->keycode;
+            unsigned int keysym  = XkbKeycodeToKeysym(engine->dpy, keycode, 0, 1);
 
             // ESC
             if (XK_Escape == keysym) {
@@ -2052,29 +2052,29 @@ static int      _X11_handleXevent(gpointer user_data)
                 engine->do_S52draw = TRUE;
                 return TRUE;
             }
-            // VRMEBL ON
+            // VRMEBL toggle
             if (XK_F4 == keysym) {
-                double new_x = 500.0;
-                double new_y = 500.0;
-                double brg   = 0.0;
-                double rge   = 0.0;
-                S52_setVRMEBL(_vrmeblA, 500, 500, &brg, &rge);
+                _drawVRMEBLtxt = !_drawVRMEBLtxt;
+                if (TRUE == _drawVRMEBLtxt) {
+                    S52_toggleObjClassOFF("cursor");
+                    S52_toggleObjClassOFF("ebline");
+                    S52_toggleObjClassOFF("vrmark");
 
-                // update cursor position (lon/lat)
-                if (TRUE == S52_xy2LL(&new_x, &new_y)) {
-                    // FIXME: need call to swapBuffer
-                    //char str[80] = {'\0'};
-                    //sprintf(str, "%05.1f° / %.1f m", brg, rge);
-                    ////S52_drawStr(new_x + 5, engine->height - new_y - 15, "UINFF", 1, str);
-                    //S52_drawStr(100, 100, "UINFF", 1, str);
+                    {
+                        double brg = 0.0;
+                        double rge = 0.0;
+                        S52_setVRMEBL(_vrmeblA, 100, 100, &brg, &rge);
+                        S52_setVRMEBL(_vrmeblA, 100, 500, &brg, &rge);
+                    }
 
-                    S52_pushPosition(_cursor2, new_y, new_x, 0.0);
+                    S52_pushPosition(_cursor2, engine->state.cLat, engine->state.cLon, 0.0);
 
-                    // debug
-                    //LOGI("s52egl:_android_motion_event(): lat= %f, lon= %f\n", new_y, new_x);
-
-                    //S52_drawLast();
+                } else {
+                    S52_toggleObjClassON("cursor");
+                    S52_toggleObjClassON("ebline");
+                    S52_toggleObjClassON("vrmark");
                 }
+
                 return TRUE;
             }
             // Rot. Buoy Light
@@ -2158,7 +2158,7 @@ static int      _X11_handleXevent(gpointer user_data)
                     return FALSE;
                 }
 
-                engine->state.north += 10.0;  // + 90deg/10
+                engine->state.north += 10.0;  // +10.0 deg
                 if (360.0 <= engine->state.north)
                     engine->state.north -= 360.0;
                 S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
@@ -2167,7 +2167,7 @@ static int      _X11_handleXevent(gpointer user_data)
             engine->do_S52draw     = TRUE;
             engine->do_S52drawLast = TRUE;
             //g_signal_emit(G_OBJECT(_gobject), _s52_draw_signal, 0);
-
+            }
             break;
         }
     }

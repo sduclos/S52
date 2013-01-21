@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -122,7 +122,9 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_DISP_RND_LN_END     = 43,   // display rounded line segment ending (on/off)
 
-    S52_MAR_NUM                 = 44    // number of parameters
+    S52_MAR_DISP_VRMEBL_LABEL   = 44,   // display bearing / range label on VRMEBL (on/off)
+
+    S52_MAR_NUM                 = 45    // number of parameters
 } S52MarinerParameter;
 
 // command word filter for profiling
@@ -188,23 +190,11 @@ DLL int    STD S52_draw(void);
  */
 DLL int    STD S52_drawLast(void);
 
-/**
- * S52_drawText: DEPRECATED
- *
- * Draw pending text (used to render Cogl text)
- *
- *
- * Return: TRUE on success, else FALSE
- */
-//DLL int    STD S52_drawText(void);
 
 #ifdef S52_USE_GV
 DLL int    STD S52_drawLayer(const char *name);
 #endif
 
-// DEPRECATE, set display list for a font
-//DLL int    STD S52_setFont(int font);
-//
 
 /**
  * S52_drawStr:
@@ -214,10 +204,11 @@ DLL int    STD S52_drawLayer(const char *name);
  * @bsize:     (in): body size (1..)
  * @str:       (in):
  *
- * S52 UI color name "UINFD", "UINFF", "UIBCK", "UIAFD",
- * "UINFR", "UINFG", "UINFO", "UINFB", "UINFM", "UIBDR", "UIAFF"
+ * S52 UI color name: "UINFD", "UINFF", "UIBCK", "UIAFD",
+ *                    "UINFR", "UINFG", "UINFO", "UINFB",
+ *                    "UINFM", "UIBDR", "UIAFF"
  *
- * Client must handle the framebuffer at this time:
+ * Note: client must handle the framebuffer at this time:
  *    eglMakeCurrent();S52_drawStr();eglSwapBuffers();
  *
  *
@@ -479,7 +470,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
 
 
 /**
- * S52_setTextDispPrio:
+ * S52_setTextDisp:
  * @dispPrioIdx: (in): display priority index  (0..99)
  * @count:       (in): count
  * @state:       (in): display state (TRUE/FALSE)
@@ -495,7 +486,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
 DLL int    STD S52_setTextDisp(int dispPrioIdx, int count, int state);
 
 /**
- * S52_getTextDispPrio:
+ * S52_getTextDisp:
  * @dispPrioIdx: (in): display priority index  (0..99)
  *
  * Get the @state of text display priority at @dispPrioIdx
@@ -724,6 +715,7 @@ DLL int   STD S52_setRADARCallBack(S52_RADAR_cb cb);
  */
 
 DLL int   STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height);
+
 
 ///////////////////////////////////////////////////////////////
 //
@@ -1001,12 +993,12 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
 // --- VRM & EBL -------------------
 
 // FIXME: use an alternate S52_newVRMEBL() that accept flags instead
-typedef enum S52_VRMEBL_t {
-    S52_VRMEBL_vrm = 1 << 0, //0x000001 - vrm
-    S52_VRMEBL_ebl = 1 << 1, //0x000010 - ebl
-    S52_VRMEBL_sty = 1 << 2, //0x000100 - normalLineStyle
-    S52_VRMEBL_ori = 1 << 3, //0x001000 - setOrigin
-} S52_VRMEBL_t;
+//typedef enum S52_VRMEBL_t {
+//    S52_VRMEBL_vrm = 1 << 0, //0x000001 - vrm
+//    S52_VRMEBL_ebl = 1 << 1, //0x000010 - ebl
+//    S52_VRMEBL_sty = 1 << 2, //0x000100 - normalLineStyle
+//    S52_VRMEBL_ori = 1 << 3, //0x001000 - setOrigin
+//} S52_VRMEBL_t;
 
 /**
  * S52_newVRMEBL:
@@ -1017,6 +1009,7 @@ typedef enum S52_VRMEBL_t {
  *                         FALSE - centered on ownshp or screen center if no ownshp
  *
  * 'vrmebl' CS(VRMEBL--)
+ * Note: if @ebl is TRUE then an "ebline" is created else "vrmark"
  *
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
@@ -1028,8 +1021,8 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
  * @objH:     (in) (transfer none): addressed S52ObjectHandle
  * @pixels_x: (in):
  * @pixels_y: (in):
- * @brg:      (in): bearing and range from origine (no offset from S52_setDimension())
- * @rge:      (in): bearing and range from origine (no offset from S52_setDimension())
+ * @brg:      (in): bearing from origine (FIXME: no offset from S52_setDimension())
+ * @rge:      (in): range   from origine (FIXME: no offset from S52_setDimension())
  *
  * The first (x,y) will set the origine in the case that this object was
  * created (new) with the parameter @setOrigin set to TRUE

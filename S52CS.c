@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -3399,24 +3399,15 @@ static GString *VRMEBL01 (S57_geo *geo)
 // circle, bearing line and range/bearing line. VRM's and EBL's can be ship-centred
 // or freely movable, and two line-styles are available
 {
-    //PRINTF("Mariner's object not drawn\n");
     GString *vrmebl01str = g_string_new("");
 
     // freely movable origine symb (a dot)
-    //GString *ownshpcenteredstr = S57_getAttVal(geo, "_ownshpcentered");
-    //if (NULL!=ownshpcenteredstr && 0==g_strcasecmp("N", ownshpcenteredstr->str))
-    //    g_string_append(vrmebl01str, ";SY(EBLVRM11)");
-    //GString *ownshpcenteredstr = S57_getAttVal(geo, "_origin");
     GString *ownshpcenteredstr = S57_getAttVal(geo, "_setOrigin");
-    //if (NULL!=ownshpcenteredstr && 0==g_strcasecmp("Y", ownshpcenteredstr->str))
-    if (NULL!=ownshpcenteredstr && 'Y'==*ownshpcenteredstr->str)
+    if (NULL!=ownshpcenteredstr && ('Y'==*ownshpcenteredstr->str || 'I'==*ownshpcenteredstr->str))
         g_string_append(vrmebl01str, ";SY(EBLVRM11)");
-    //if (NULL != ownshpcenteredstr)
-    //    g_string_append(vrmebl01str, ";SY(EBLVRM11)");
 
     // line style
     GString *normallinestylestr = S57_getAttVal(geo, "_normallinestyle");
-    //if (NULL!=normallinestylestr && 0==g_strcasecmp("Y", normallinestylestr->str))
     if (NULL!=normallinestylestr && 'Y'==*normallinestylestr->str)
         g_string_append(vrmebl01str, ";LC(ERBLNA01)");
     else
@@ -3429,6 +3420,8 @@ static GString *VRMEBL01 (S57_geo *geo)
     else
         g_string_append(vrmebl01str, ";AC(CURSR)");
 
+    // EXPERIMENTAL: add text, bearing & range
+    g_string_append(vrmebl01str, ";TX(_vrmebl_label,3,3,3,'15110',1,1,CURSR,77)");
 
     return vrmebl01str;
 }

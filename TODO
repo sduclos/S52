@@ -26,10 +26,9 @@ Curent focus (top priority *):
     -implement patern scale spacing (PASP field)
     -handle GLU_TESS_MAX_COORD
     -dump gl* call in clear text to diff with reference dump (debug)
-    -GL: write to file raw GL call --for self test
+    -write to file raw GL call --for self test
 
     PL:
-**  -load Chart No 1 for testing C1-PLib 3.1 (the default PLib)
 *   -view group or somme equivalent functionality
     -overscale (DATCVR01)
     -experimental:supression of overlapping lines of same disp prio but diff categorie
@@ -73,6 +72,7 @@ DONE
 ====
 (put here TODO's that has been done)
 
+    -load Chart No 1 for testing C1-PLib 3.1 (the default PLib)
     -handling GDAL (world) shapefile to fit S52 framework
     -test for proper configure of openev when loading libS52.so
     -text grouping

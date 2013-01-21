@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -528,19 +528,6 @@ static char         *_encodeNsend(const char *command, const char *frmt, ...)
 }
 #endif
 
-static int           _getAISIdx (unsigned int mmsi)
-{
-    unsigned int i = 0;
-    for (i=0; i<_ais_list->len; ++i) {
-        _ais_t *ais = &g_array_index(_ais_list, _ais_t, i);
-        if (mmsi == ais->mmsi) {
-            return i;
-        }
-    }
-
-    return -1;
-}
-
 static _ais_t       *_getAIS    (unsigned int mmsi)
 {
     // return this
@@ -734,24 +721,6 @@ static int           _setAISLab (unsigned int mmsi, const char *name)
 
     if (NULL != name) {
         g_snprintf(ais->name, AIS_SHIPNAME_MAXLEN, "%s", name);
-
-/*
-#ifdef S52_USE_SOCK
-        gchar *resp = _encodeNsend("S52_setVESSELlabel", "%i,\"%s\"", ais->vesselH, name);
-        if (NULL != resp) {
-            S52ObjectHandle tmpObjH;
-            sscanf(resp, "[ %p", &tmpObjH);
-            if (NULL == tmpObjH) {
-                int i = _getAISIdx(ais->mmsi);
-                g_array_remove_index_fast(_ais_list,i);
-            }
-        }
-
-
-#else
-        S52_setVESSELlabel(ais->vesselH, ais->name);
-#endif
-*/
 
 #ifdef S52_USE_DBUS
         _signal_setVESSELlabel(_dbus, ais->vesselH, ais->name);
@@ -958,7 +927,7 @@ static int           _updateTimeTag(void)
         g_get_current_time(&now);
 
         if (-1.0 != ais->course) {
-            g_snprintf(str, 127, "%s %lis\\n%03.f deg | %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
+            g_snprintf(str, 127, "%s %lis\\n%03.f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
         } else {
             g_snprintf(str, 127, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
         }
@@ -1218,6 +1187,7 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
 
 static gpointer      _gpsdClientRead(gpointer dummy)
 // start gpsd client - loop forever
+// if _ais_list is NULL then exit
 {
     g_print("s52ais:_gpsdClientRead(): start looping ..\n");
 
@@ -1468,22 +1438,6 @@ static int           _flushAIS(int all)
 
 int            s52ais_doneAIS()
 {
-    /*
-    g_static_mutex_lock(&_ais_list_mutex);
-    if (NULL != _ais_list) {
-        unsigned int i = 0;
-        for (i=0; i<_ais_list->len; ++i) {
-            _ais_t *ais = &g_array_index(_ais_list, _ais_t, i);
-            _setAISDel(ais);
-        }
-
-        //g_array_unref(_ais_list);
-        g_array_free(_ais_list, TRUE);
-        _ais_list = NULL;
-    }
-    g_static_mutex_unlock(&_ais_list_mutex);
-    */
-
     _flushAIS(TRUE);
 
     g_print("s52ais:s52gpsd_doneAIS() .. \n");
@@ -1507,8 +1461,9 @@ static void          _trapSIG(int sig, siginfo_t *info, void *secret)
         // 2
     case SIGINT:
         g_print("s52ais:_trapSIG(): Signal 'Interrupt' cought - SIGINT(%i)\n", sig);
+
+        // this call flush AIS, so this signal _gpsdClientRead() to exit
         s52ais_doneAIS();
-        //exit(0);
         break;
 
         // 11
@@ -1527,8 +1482,8 @@ static void          _trapSIG(int sig, siginfo_t *info, void *secret)
 #ifdef S52_USE_ANDROID
         unlink(AIS PID);
 #endif
-        // continue with normal sig handling
-        _old_signal_handler_SIGTERM.sa_sigaction(sig, info, secret);
+        // CRASH continue with normal sig handling
+        //_old_signal_handler_SIGTERM.sa_sigaction(sig, info, secret);
 
         break;
 
@@ -1562,6 +1517,29 @@ static void          _trapSIG(int sig, siginfo_t *info, void *secret)
     return;
 }
 
+static int           _initSIG(void)
+// init signal handler
+// CTRL-C/SIGINT/SIGTERM
+// SIGUSR1 	User-defined 1 	10
+// SIGUSR2 	User-defined 2 	12
+{
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = _trapSIG;
+    //sigemptyset(&sa.sa_mask);
+    //sa.sa_flags = SA_RESTART | SA_SIGINFO;
+    sa.sa_flags = SA_SIGINFO;
+
+    //  2 - Interrupt (ANSI) - user press ESC to stop rendering
+    sigaction(SIGINT,  &sa, &_old_signal_handler_SIGINT);
+    sigaction(SIGUSR1, &sa, &_old_signal_handler_SIGUSR1);
+    sigaction(SIGUSR2, &sa, &_old_signal_handler_SIGUSR2);
+    // 11 - Segmentation violation (ANSI).
+    sigaction(SIGSEGV, &sa, &_old_signal_handler_SIGSEGV);   // loop in android
+    sigaction(SIGTERM, &sa, &_old_signal_handler_SIGTERM);
+
+    return TRUE;
+}
 
 #ifdef S52AIS_STANDALONE
 int main(int argc, char *argv[])
@@ -1571,29 +1549,7 @@ int main(int argc, char *argv[])
     g_thread_init(NULL);
     g_type_init();
 
-        //////////////////////////////////////////////////////////
-    // init signal handler
-    // CTRL-C/SIGINT/SIGTERM
-    // SIGUSR1 	User-defined 1 	10
-    // SIGUSR2 	User-defined 2 	12
-    {
-        struct sigaction sa;
-        memset(&sa, 0, sizeof(sa));
-        sa.sa_sigaction = _trapSIG;
-        //sigemptyset(&sa.sa_mask);
-        //sa.sa_flags = SA_RESTART | SA_SIGINFO;
-        sa.sa_flags = SA_SIGINFO;
-
-        //  2 - Interrupt (ANSI) - user press ESC to stop rendering
-        sigaction(SIGINT,  &sa, &_old_signal_handler_SIGINT);
-        sigaction(SIGUSR1, &sa, &_old_signal_handler_SIGUSR1);
-        sigaction(SIGUSR2, &sa, &_old_signal_handler_SIGUSR2);
-        // 11 - Segmentation violation (ANSI).
-        sigaction(SIGSEGV, &sa, &_old_signal_handler_SIGSEGV);   // loop in android
-        sigaction(SIGTERM, &sa, &_old_signal_handler_SIGTERM);
-
-    }
-
+    _initSIG();
 
 #ifdef S52_USE_ANDROID
     {   // save pid

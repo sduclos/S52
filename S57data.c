@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforgue.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -574,7 +574,7 @@ int        S57_getGeoData(_S57_geo *geoData, guint ringNo, guint *npt, double **
     //if (ringNo<0 ||
         //(LINES_T==geoData->obj_t && 1 != ringNo)  ||
     if  (AREAS_T==geoData->obj_t && geoData->ringnbr<ringNo) {
-        PRINTF("ERROR: invalid ring number requested! \n");
+        PRINTF("WARNING: invalid ring number requested! \n");
         *npt = 0;
         g_assert(0);
     }
@@ -595,8 +595,6 @@ int        S57_getGeoData(_S57_geo *geoData, guint ringNo, guint *npt, double **
             if (NULL != geoData->linexyz) {
                 *npt = geoData->linexyznbr;
                 *ppt = geoData->linexyz;
-                //*npt = geoData->linexyznbr[ringNo];
-                //*ppt = geoData->linexyz[ringNo];
             } else {
                 *npt = 0;
             }
@@ -1223,11 +1221,10 @@ int        S57_dumpData(_S57_geo *geoData, int dumpCoords)
 
 static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
 {
-    // 'user_data' not used
-    GString *attList = (GString *) user_data;
 
     const gchar *attName  = g_quark_to_string(key_id);
-    GString     *attValue = (GString*) data;
+    GString     *attValue = (GString*)  data;
+    GString     *attList  = (GString *) user_data;
 
     /*
     // save S57 attrib only - assuming that OGR att are not 6 char in lenght!!
@@ -1239,6 +1236,13 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     }
     */
 
+    // filter out OGR internal S57 info
+    if (0 == g_strcmp0("MASK", attName)) return;
+    if (0 == g_strcmp0("USAG", attName)) return;
+    if (0 == g_strcmp0("ORNT", attName)) return;
+    if (0 == g_strcmp0("NAME_RCNM", attName)) return;
+    if (0 == g_strcmp0("NAME_RCID", attName)) return;
+
     // save S57 attribute + system attribute (ex vessel name - AIS)
     if (0 != attList->len)
         g_string_append(attList, ",");
@@ -1248,6 +1252,8 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     g_string_append(attList, attValue->str);
 
     //PRINTF("\t%s : %s\n", attName, (char*)attValue->str);
+
+    return;
 }
 
 

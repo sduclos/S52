@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -87,7 +87,7 @@ static DBusError       _dbusError;
 #endif
 
 
-static GTimer            *_timer      = NULL;  // lap timer
+static GTimer         *_timer   = NULL;  // debug - lap timer
 
 // trap signal (ESC abort rendering)
 // must be compiled with -std=gnu99
@@ -231,47 +231,22 @@ static char      *_intl     = NULL;
 static int        _nCull    = 0;
 static int        _nTotal   = 0;
 
-//typedef struct _vp {
-//    int x;
-//    int y;
-//    int width;
-//    int height;
-//} _vp;
-//static _vp _viewPort;
-
-//static S52_view _view = {INFINITY, INFINITY, INFINITY, INFINITY};
-//typedef
-static struct {
+typedef struct {
     double cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
-} _view;
+} _view_t;
+//static _view_t _view = {INFINITY, INFINITY, INFINITY, INFINITY};
+static _view_t _view = {0.0, 0.0, 0.0, 0.0};
 
 // Note: prenvent two threads from writing into the 'scene graph' at once
-// ex data comming from gpsd, so this is mostly Mariners' Object.
+// (ex data comming from gpsd,) so this is mostly Mariners' Object.
 // Could be extended to all calls but since the main_loop already serialize
 // event there is no point in doing that ATM.
 // Note that DBus run from the main loop.
 static  GStaticMutex _mp_mutex = G_STATIC_MUTEX_INIT;
 
-//typedef void *_S52_objHandle;
-
-// VRM/EBL
-//static S52_objHandle *_vrmebl = NULL;
-//static S52_objHandle *_vrmark = NULL;
-//static double _beginLat = 0.0;
-//static double _beginLon = 0.0;
-//static double _endLat = 0.0;
-//static double _endLon = 0.0;
-// atlternate VRM/EBL
-//static S52_objHandle *_vrmebl_alt = NULL;
-//static S52_objHandle *_vrmark_alt = NULL;
-//static double _beginLat_alt = 0.0;
-//static double _beginLon_alt = 0.0;
-//static double _endLat_alt = 0.0;
-//static double _endLon_alt = 0.0;
-
 // ownship
 #ifdef S52_USE_GOBJECT
-//static S52ObjectHandle _ownshp   = 0;
+static S52ObjectHandle _OWNSHP   = 0;
 static S52ObjectHandle _SCALEB10 = 0;
 static S52ObjectHandle _SCALEB11 = 0;
 static S52ObjectHandle _NORTHAR1 = 0;
@@ -279,7 +254,7 @@ static S52ObjectHandle _UNITMTR1 = 0;
 static S52ObjectHandle _CHKSYM01 = 0;
 static S52ObjectHandle _BLKADJ01 = 0;
 #else
-//static S52ObjectHandle _ownshp   = NULL;
+static S52ObjectHandle _OWNSHP   = NULL;
 static S52ObjectHandle _SCALEB10 = NULL;
 static S52ObjectHandle _SCALEB11 = NULL;
 static S52ObjectHandle _NORTHAR1 = NULL;
@@ -287,14 +262,6 @@ static S52ObjectHandle _UNITMTR1 = NULL;
 static S52ObjectHandle _CHKSYM01 = NULL;
 static S52ObjectHandle _BLKADJ01 = NULL;
 #endif
-
-static double          _ownshp_lat = INFINITY;
-static double          _ownshp_lon = INFINITY;
-
-// VRMEBL freely movable origine
-//static int           _origineIsSet = FALSE;
-//static double        _origine_lat  = 0.0;
-//static double        _origine_lon  = 0.0;
 
 // CSYMB init scale bar, north arrow, unit, CHKSYM
 static int _iniCSYMB  = TRUE;
@@ -309,17 +276,11 @@ static S52_RADAR_cb  _RADAR_cb = NULL;
 //static int          _doRADAR  = TRUE;
 
 // to write cursor lat/long on screen
-static double _cursor_lat = 0.0;
-static double _cursor_lon = 0.0;
+//static double _cursor_lat = 0.0;
+//static double _cursor_lon = 0.0;
 
-// routes
-//static GPtrArray *_route = NULL;    // list of legs to form a route
-//static GPtrArray *_wholin= NULL;    // list of legs to form a route
-
-//static GArray  *_arrTmp = NULL;
-
-static char _version[] = "$Revision: 1.108 $\n"
-      "libS52 0.81\n"
+static char _version[] = "$Revision: 1.109 $\n"
+      "libS52 0.82\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -768,6 +729,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
         case S52_MAR_DISP_CENTROIDS      : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_WORLD          : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_RND_LN_END     : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_VRMEBL_LABEL   : val = _validate_bool(val);                   break;
 
         case S52_CMD_WRD_FILTER          : g_static_mutex_unlock(&_mp_mutex);
                                            val = _validate_filter(val);
@@ -1779,7 +1741,7 @@ DLL int    STD    _freeCell(_cell *c)
 }
 
 DLL int    STD S52_done(void)
-// clear all --shutdown
+// clear all --shutingdown libS52
 {
     //unsigned int i;
 
@@ -1788,7 +1750,6 @@ DLL int    STD S52_done(void)
 
     if (NULL != _cellList) {
         for (guint i=0; i<_cellList->len; ++i) {
-            //_cell *c = &g_array_index(_cellList, _cell, i);
             _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
             _freeCell(c);
         }
@@ -1880,28 +1841,6 @@ DLL int    STD S52_setFont(int font)
 */
 #endif
 
-//#ifdef S52_USE_SUPP_LINE_OVERLAP
-//static gint       _cmpLINES(gconstpointer a, gconstpointer b)
-//{
-//    S52_diPrio prioA = S52_PL_getDPRI((S52_obj*)a);
-//    S52_diPrio prioB = S52_PL_getDPRI((S52_obj*)b);
-//
-//    if (prioA < prioB) return -1;
-//    if (prioA > prioB) return  1;
-//
-//    return 0;
-//}
-//#endif
-
-//static gint       _cmpEdgeID(gconstpointer a, gconstpointer b)
-//{
-//    GString *olnam = S57_getAttVal((S57_geo *)a, "LNAM");
-//
-//    if (prioA < prioB) return -1;
-//    if (prioA > prioB) return  1;
-//
-//    return 0;
-//}
 
 //DLL int    STD S52_newMercPrj(double latitude)
 #ifdef S52_USE_SUPP_LINE_OVERLAP
@@ -2904,69 +2843,6 @@ static S52_obj   *_insertS52Obj(_cell *c, S52_obj *obj)
     return obj;
 }
 
-static S52_obj   *_isObjValid(_cell *c, S52_obj *obj)
-// return  obj if the oject is in cell else NULL
-// Used to validate User Mariners' Object
-{
-    /*
-
-     // NOP, this doesn't work as the obj could be dandling
-     // if an AIS as expired (and deleted) the client obj handle
-     // is now invalid
-
-    return_if_null(c);
-    return_if_null(obj);
-
-    S57_geo    *geo        = S52_PL_getGeo(obj);
-    S52_disPrio disPrioIdx = S52_PL_getDPRI(obj);
-    S52_Obj_t   ot         = S57_getObjtype(geo);
-    int         obj_t      = N_OBJ_T;
-
-    // connect S52ObjectType (public enum) to S57 object type (private)
-    switch (ot) {
-        case _META_T: obj_t = S52__META; break; // meta geo stuff (ex: C_AGGR)
-        case AREAS_T: obj_t = S52_AREAS; break;
-        case LINES_T: obj_t = S52_LINES; break;
-        case POINT_T: obj_t = S52_POINT; break;
-        default:
-            PRINTF("ERROR: unknown index of addressed object type\n");
-            g_assert(0);
-    }
-
-    GPtrArray *rbin = c->renderBin[disPrioIdx][obj_t];
-    unsigned int idx;
-    for (guint idx=0; idx<rbin->len; ++idx) {
-        S52_obj *o = (S52_obj *)g_ptr_array_index(rbin, idx);
-
-        if (obj == o) {
-            return obj;
-        }
-    }
-    */
-
-    //*
-    int i;
-    for (i=0; i<S52_PRIO_NUM; ++i) {
-        int j;
-        for (j=0; j<N_OBJ_T; ++j) {
-            GPtrArray *rbin = c->renderBin[i][j];
-            //unsigned int idx;
-            for (guint idx=0; idx<rbin->len; ++idx) {
-                S52_obj *o = (S52_obj *)g_ptr_array_index(rbin, idx);
-
-                if (obj == o) {
-                    return obj;
-                }
-            }
-        }
-    }
-    //*/
-
-    PRINTF("WARNING: object handle not found\n");
-
-    return NULL;
-}
-
 static S52_obj   *_removeObj(_cell *c, S52_obj *obj)
 // remove the S52 object from the cell (not the object itself)
 // return the oject removed, else return NULL if object not found
@@ -3218,11 +3094,11 @@ static int        _app()
     for (guint i=0; i<_objToDelList->len; ++i) {
         S52_obj *obj = (S52_obj *)g_ptr_array_index(_objToDelList, i);
 
-        // delete ref to ownshp
-        //S57_geo *geo = S52_PL_getGeo(obj);
-        //if (0==g_strcmp0(S57_getName(geo), "ownshp", 6)) {
-        //    _ownshp = FALSE;  // NULL but S52ObjectHandle can be an gint in some config
-        //}
+        // delete ref to _OWNSHP
+        S57_geo *geo = S52_PL_getGeo(obj);
+        if (0==g_strcmp0(S57_getName(geo), "ownshp") && obj==_OWNSHP) {
+            _OWNSHP = FALSE;  // NULL but S52ObjectHandle can be an gint in some config
+        }
 
         _delObj(obj);
     }
@@ -4177,10 +4053,9 @@ static void       _delOldVessel(gpointer data, gpointer user_data)
 DLL int    STD S52_drawLast(void)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
 
     // debug
-    //PRINTF("DRAWLAST: .. start -0- XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
+    //PRINTF("DRAWLAST: .. start -0- XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
 
     if (S52_MAR_DISP_LAYER_LAST_NONE == S52_MP_get(S52_MAR_DISP_LAYER_LAST))
         return TRUE;
@@ -4272,9 +4147,9 @@ DLL int    STD S52_drawLast(void)
         // debug
         //PRINTF("DRAWLAST: ..  -3-\n");
 
-        // deprecated
-        //S52_drawText();
 
+        /*
+        // HACK
         if (TRUE == S52_MP_get(S52_MAR_DISP_CRSR_POS)) {
             char str[80];
             projXY uv = {_cursor_lon, _cursor_lat};
@@ -4282,16 +4157,17 @@ DLL int    STD S52_drawLast(void)
             SPRINTF(str, "%f %f", uv.v, uv.u);
             S52_GL_drawStr(_cursor_lon, _cursor_lat, str, 1, 1);
         }
+        */
     //*/
 
         S52_GL_end(TRUE);
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
-
     // debug
     gdouble sec = g_timer_elapsed(_timer, NULL);
     PRINTF("DRAWLAST: %.0f msec\n", sec * 1000);
+
+    g_static_mutex_unlock(&_mp_mutex);
 
     return TRUE;
 }
@@ -4432,6 +4308,8 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
 
     S52_CHECK_MUTX;
 
+    //PRINTF("X:%f Y:%f color:%s bsize:%i str:%s\n", pixels_x, pixels_y, colorName, bsize, str);
+
     // FIXME: check x,y
     S52_GL_drawStrWin(pixels_x, pixels_y, colorName, bsize, str);
 
@@ -4500,6 +4378,7 @@ DLL const char* STD S52_pickAt(double pixels_x, double pixels_y)
 
     // check bound
     if (FALSE == _validate_screenPos(&pixels_x, &pixels_y)) {
+        PRINTF("WARNING: coord out of scteen\n");
         g_static_mutex_unlock(&_mp_mutex);
         g_assert(0);
         return FALSE;
@@ -4577,35 +4456,6 @@ DLL const char* STD S52_pickAt(double pixels_x, double pixels_y)
         // FIXME: move this to _drawLast() someday
         // FIX: need to refactor S52_drawLast()
         // FIXME: something wrong with coords of VESSEL
-        /*
-        {   
-            int i = 0;
-
-            // then draw the Mariners' Object on top of it
-            for (i=0; i<N_OBJ_T; ++i) {
-                GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][i];
-
-                //unsigned int idx;
-                for (guint idx=0; idx<rbin->len; ++idx) {
-                    S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-
-                    // FIXME: debug if Mariner's Object outside 'view'
-                    // are effectively culled via _cull()
-
-                    if (FALSE == S52_GL_isSupp(obj)) {
-                        //S52_GL_draw(obj);
-                        S52_GL_draw(obj, NULL);
-
-                        //if (TRUE == S52_PL_hasText(obj))
-                        //    g_ptr_array_add(_textList, obj);
-                        S52_GL_drawText(obj, NULL);
-
-                    }
-                }
-            }
-        }
-        //*/
-
 
         S52_GL_end(FALSE);
     }
@@ -4639,11 +4489,6 @@ static int        _win2prj(double *pixels_x, double *pixels_y)
     // debug timming
     //return TRUE;
 
-    //if (_doInit) {
-    //    PRINTF("ERROR: libS52 not initialized --try S52_init() first\n");
-    //    return FALSE;
-    //}
-
     // FIXME: coordinate correction varie from cursor to cursor!
     int x;
     int y;
@@ -4655,7 +4500,6 @@ static int        _win2prj(double *pixels_x, double *pixels_y)
     *pixels_y  = height - *pixels_y - 1;
     *pixels_x += 1.35;
 
-    //if (FALSE == S52_GL_win2prj(pixels_x, pixels_y, &dummy))
     if (FALSE == S52_GL_win2prj(pixels_x, pixels_y))
         return FALSE;
 
@@ -4665,7 +4509,6 @@ static int        _win2prj(double *pixels_x, double *pixels_y)
 DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
     S52_CHECK_MUTX;
 
     // check bound
@@ -5674,27 +5517,43 @@ static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
     return TRUE;
 }
 
-static int        _isObjNameValid(S52ObjectHandle obj, const char *objName)
-// return TRUE if obj is valid else FALSE
+static S52_obj   *_isObjValid(_cell *c, S52_obj *obj)
+// return  obj if the oject is in cell else NULL
+// Used to validate User Mariners' Object
 {
-    // FIXME: what if objName is anonymous! .. any object
+    int i;
+    for (i=0; i<S52_PRIO_NUM; ++i) {
+        int j;
+        for (j=0; j<N_OBJ_T; ++j) {
+            GPtrArray *rbin = c->renderBin[i][j];
+            //unsigned int idx;
+            for (guint idx=0; idx<rbin->len; ++idx) {
+                S52_obj *o = (S52_obj *)g_ptr_array_index(rbin, idx);
 
-    //S52_obj *obj = _isObj(_marinerCell, (S52_obj *)objH);
+                if (obj == o) {
+                    return obj;
+                }
+            }
+        }
+    }
 
-    //return_if_null(obj);
-    //if (NULL == obj)
-    //    return FALSE;
+    PRINTF("WARNING: object handle not found\n");
 
+    return NULL;
+}
+
+static int        _isObjNameValid(S52ObjectHandle obj, const char *objName)
+// return TRUE if obj is objName else FALSE
+{
     S57_geo *geo = S52_PL_getGeo(obj);
     if (0 != S52_strncmp(objName, S57_getName(geo), 6))
+    //if (0 != g_strcmp0(objName, S57_getName(geo), 6))   // better?
         return FALSE;
 
     return TRUE;
 }
 
 struct _user_data {
-    //GPtrArray   *objList_supp;
-    //GPtrArray   *objList_over;
     unsigned int S57ID;
     S52_obj     *obj;
 };
@@ -5888,11 +5747,6 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
         else {
             // create an empty xyz buffer
             gxyz = g_new0(double, xyznbr*3);
-            //gxyz[0] = 0.0;
-            //gxyz[1] = 0.0;
-            //xyz = gxyz;
-            //PRINTF("WARNING: NULL xyz .. but xyznbr > 0\n");
-            //return FALSE;
         }
     }
 
@@ -5953,11 +5807,14 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     // SCAMIN Mariners' object
     //S57_setScamin(geo, 0.0);
 
-    // debug imidiatly destroy it
+    // debug - imidiatly destroy it
     //S57_doneData(geo);
 
     S52_obj *obj = S52_PL_newObj(geo);
     _insertS52Obj(_marinerCell, obj);
+
+    // init TX & TE
+    S52_PL_resetParseText(obj);
 
     // redo CS, because some object might have a CS command word (ex leglin)
     _doCS = TRUE;
@@ -6059,7 +5916,6 @@ unlock:
 DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
     S52_CHECK_MUTX;
 
     if (0 == S57ID) {
@@ -6072,7 +5928,6 @@ DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
     for (int i=0; i<S52_PRIO_NUM; ++i) {
         for (int j=0; j<N_OBJ_T; ++j) {
             GPtrArray *rbin = _marinerCell->renderBin[i][j];
-            //unsigned int idx;
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                 S57_geo *geo = S52_PL_getGeo(obj);
@@ -6090,12 +5945,8 @@ DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
 }
 
 static
-    //S52ObjectHandle       _updateGeoNattVal(S52ObjectHandle objH, double *xyz, const char *listAttVal)
-    S52ObjectHandle       _updateGeo(S52ObjectHandle objH, double *xyz)
+    S52ObjectHandle        _updateGeo(S52ObjectHandle objH, double *xyz)
 {
-    //S52_CHECK_INIT;
-    //S52_CHECK_MERC;
-
     return_if_null((void*)objH);
 
     S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)objH);
@@ -6114,21 +5965,13 @@ static
 
     // update geo
     if (NULL != xyz) {
-        guint    i   = 0;
         guint    npt = 0;
         double  *ppt = NULL;
-
-        //if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
-        //    return FALSE;
         S57_getGeoData(geo, 0, &npt, &ppt);
 
-        for (i=0; i<(npt*3); ++i)
+        for (guint i=0; i<(npt*3); ++i)
             *ppt++ = *xyz++;
     }
-
-    // update attribute
-    //if (NULL != listAttVal)
-    //    _setAtt(geo, listAttVal);
 
     return objH;
 }
@@ -6308,33 +6151,18 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
 DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
 
-    /*
-    if (FALSE != _ownshp) {
-        PRINTF("WARNING: OWNSHP already initialize\n");
-        //g_assert(0);
-        //return NULL;
-    }
-    */
+    return_if_null((void*)label);  // what if we need to erase label!
 
     char   attval[256];
     double xyz[3] = {_view.cLon, _view.cLat, 0.0};      // quiet the warning in S52_newMarObj()
 
-    // debug
-    //label = NULL;
+    SPRINTF(attval, "_vessel_label:%s", label);
 
-    if (NULL == label) {
-        SPRINTF(attval, "_vessel_label: ");
-    } else {
-        SPRINTF(attval, "_vessel_label:%s", label);
-    }
+    _OWNSHP = S52_newMarObj("ownshp", S52_POINT, 1, xyz, attval);
 
-    //_ownshp = S52_newMarObj("ownshp", S52_POINT, 1, xyz, attval);
-    return S52_newMarObj("ownshp", S52_POINT, 1, xyz, attval);
-
-    //return _ownshp;
+    return _OWNSHP;
 }
 
 DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d)
@@ -6457,14 +6285,10 @@ DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int maxpts)
     return pastrk;
 }
 
-DLL S52ObjectHandle STD    _setPointPosition(S52ObjectHandle objH, double latitude, double longitude, double heading)
+static
+    S52ObjectHandle STD    _setPointPosition(S52ObjectHandle objH, double latitude, double longitude, double heading)
 {
     //PRINTF("-0- latitude:%f, longitude:%f, heading:%f\n", latitude, longitude, heading);
-    //latitude  = _validate_lat(latitude);
-    //longitude = _validate_lon(longitude);
-    //heading   = _validate_deg(heading);
-
-    char   attval[256];
     double xyz[3] = {longitude, latitude, 0.0};
 
     // update extent
@@ -6479,56 +6303,18 @@ DLL S52ObjectHandle STD    _setPointPosition(S52ObjectHandle objH, double latitu
         return objH;
     }
 #endif
-
-    // FIXME: this look like a hack
-    {  // set origine for VRM-EBL
-        S57_geo *geo = S52_PL_getGeo((S52_obj *)objH);
-        if (0 == g_strcmp0("ownshp", S57_getName(geo))) {
-            //_ownshp_lat = xyz[1];
-            //_ownshp_lon = xyz[0];
-            _ownshp_lat = latitude;
-            _ownshp_lon = longitude;
-        }
-    }
+    _updateGeo(objH, xyz);
 
     // optimisation (out of the blue): set 'orient' obj var directly
     S52_PL_setSYorient((S52_obj *)objH, heading);
 
-        /*
-        // update VRMEBL if ownshp move
-        if (0 == g_strcmp0("ownshp", S57_getName(geo), 6)) {
-            //unsigned int i = 0;
-            GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][S52_LINES_T];
-            for (guint i=0; i<rbin->len; ++i) {
-                S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, i);
-                S57_geo *geo = S52_PL_getGeo(obj);
-
-                if ((0==g_strcmp0("ebline", S57_getName(geo), 6)) ||
-                    (0==g_strcmp0("vrmark", S57_getName(geo), 6))
-                   ) {
-
-                    // only VRMEBL can have an attribure _setOrigin
-                    GString *setOriginstr = S57_getAttVal(geo, "_setOrigin");
-                    if (NULL != setOriginstr && 'N' == *setOriginstr->str) {
-                        guint    npt    = 0;
-                        double  *ppt    = NULL;
-                        S57_getGeoData(geo, 0, &npt, &ppt);
-                        ppt[0] = xyz[0];
-                        ppt[1] = xyz[1];
-                    }
-                }
-            }
-        }
-        */
-
     //PRINTF("-2- latitude:%f, longitude:%f, heading:%f\n", latitude, longitude, heading);
+    {
+        char   attval[256];
+        SPRINTF(attval, "headng:%f", heading);
+        _setAtt(geo, attval);
+    }
 
-    SPRINTF(attval, "headng:%f", heading);
-    //_updateGeoNattVal(objH, xyz, attval);
-    _updateGeo(objH, xyz);
-
-    //S57_geo *geo = S52_PL_getGeo(objH);
-    _setAtt(geo, attval);
 
     //S52_GL_setOWNSHP(obj, heading);
 
@@ -6543,7 +6329,6 @@ DLL S52ObjectHandle STD    _setPointPosition(S52ObjectHandle objH, double latitu
 DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
 
     return_if_null((void*)objH);
 
@@ -6582,11 +6367,21 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
 
     // POINT
     if (POINT_T == S57_getObjtype(geo)) {
+        _setPointPosition(objH, latitude, longitude, data);
+        if (0 == g_strcmp0("cursor", S57_getName(geo))) {
+            char attval[80] = {'\0'};
+            SPRINTF(attval, "_cursor_label:%f%c %f%c", fabs(latitude), (latitude<0)? 'S':'N', fabs(longitude), (longitude<0)? 'W':'E');
+            _setAtt(geo, attval);
+            S52_PL_resetParseText(obj);
+        }
+
+        /*
         if (NULL == _setPointPosition(objH, latitude, longitude, data)) {
             PRINTF("_setPointPosition() .. fini\n");
             g_static_mutex_unlock(&_mp_mutex);
             return FALSE;
         }
+        */
     }
     else // LINE AREA
     {
@@ -6689,7 +6484,6 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
 DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
 
     return_if_null((void*)objH);
     return_if_null((void*)newLabel);  // what if we need to erase label!
@@ -6705,16 +6499,10 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
     //PRINTF("label:%s\n", newLabel);
 
     if (TRUE == _isObjNameValid(objH, "ownshp") || TRUE == _isObjNameValid(objH, "vessel")) {
-        char attval[256];
-        //SPRINTF(attval, "_vessel_label:%s", newLabel);
-
-        if (NULL == newLabel) {
-            SPRINTF(attval, "_vessel_label: ");
-        } else {
-            SPRINTF(attval, "[_vessel_label,%s]", newLabel);
-        }
-        //_updateGeoNattVal(objH, NULL, attval);
+        char attval[256] = {'\0'};
         S57_geo *geo = S52_PL_getGeo(objH);
+
+        SPRINTF(attval, "[_vessel_label,%s]", newLabel);
         _setAtt(geo, attval);
 
 
@@ -6852,7 +6640,6 @@ DLL int             STD S52_newCSYMB(void)
 DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
 
     // debug
@@ -6862,21 +6649,19 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
     S52ObjectHandle vrmebl = FALSE;
 
     char attval[256];
-    //SPRINTF(attval, "%s%c,%s%c,%s%c",
-    //"_ownshpcentered:",  ((TRUE == ownshpCentered)      ? 'Y' : 'N'),
-
     if (TRUE == setOrigin) {
+        // initialy when user set origine
         SPRINTF(attval, "%s%c,%s%c,%s",
-                "_normallinestyle:", ((TRUE == normalLineStyle)     ? 'Y' : 'N'),
-                "_symbrngmrk:",      ((TRUE == vrm && TRUE == ebl ) ? 'Y' : 'N'),
-                "_setOrigin:Y"
+                "_normallinestyle:", ((TRUE == normalLineStyle)    ? 'Y' : 'N'),
+                "_symbrngmrk:",      ((TRUE == vrm && TRUE == ebl) ? 'Y' : 'N'),
+                "_setOrigin:Init"
                );
     } else {
-        //SPRINTF(attval, "%s%c,%s%c,%s",
-        SPRINTF(attval, "%s%c,%s%c",
-                "_normallinestyle:", ((TRUE == normalLineStyle)     ? 'Y' : 'N'),
-                "_symbrngmrk:",      ((TRUE == vrm && TRUE == ebl ) ? 'Y' : 'N')
-                //"_setOrigin:N"
+        SPRINTF(attval, "%s%c,%s%c,%s",
+        //SPRINTF(attval, "%s%c,%s%c",
+                "_normallinestyle:", ((TRUE == normalLineStyle)    ? 'Y' : 'N'),
+                "_symbrngmrk:",      ((TRUE == vrm && TRUE == ebl) ? 'Y' : 'N'),
+                "_setOrigin:N"
                );
     }
 
@@ -6885,32 +6670,17 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
         return FALSE;
     }
 
-    //*
-    // try to get some starting position that make sens
-    double latA, lonA;
-    //if (NULL == _ownshp) {
-    if (INFINITY == _ownshp_lat) {
-        latA = _view.cLat;
-        lonA = _view.cLon;
-    } else {
-        latA = _ownshp_lat;
-        lonA = _ownshp_lon;
-    }
-    //*/
-
-    //double xyz[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
-    double xyz[6] = {lonA, latA, 0.0, 0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
-    //double xyz[6] = {_view.cLon, _view.cLat, 0.0, 0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
+    //double xyz[6] = {lonA, latA, 0.0, 0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
+    //double xyz[6] = {INFINITY, INFINITY, 0.0, 0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
 
     if (TRUE == ebl) {
-        //vrmebl = S52_newMarObj("ebline", S52_LINES_T, 2, NULL, attval);
-        vrmebl = S52_newMarObj("ebline", S52_LINES, 2, xyz, attval);
+        //vrmebl = S52_newMarObj("ebline", S52_LINES, 2, xyz, attval);
+        vrmebl = S52_newMarObj("ebline", S52_LINES, 2, NULL, attval);
     } else {
-        //double xyz[6] = {0.0, 0.0, 0.0, 0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
-        //double xyz[6] = {_view.cLon, _view.cLat, 0.0, 0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
-        //vrmebl = S52_newMarObj("vrmark", S52_LINES_T, 2, NULL, attval);
-        vrmebl = S52_newMarObj("vrmark", S52_LINES, 2, xyz, attval);
+        //vrmebl = S52_newMarObj("vrmark", S52_LINES, 2, xyz, attval);
+        vrmebl = S52_newMarObj("vrmark", S52_LINES, 2, NULL, attval);
     }
+
     return vrmebl;
 }
 
@@ -6921,31 +6691,10 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
 DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, double *brg, double *rge)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
 
     return_if_null((void*)objH);
 
     S52_CHECK_MUTX;
-
-    // user can put NULL
-    //return_if_null(brg);
-    //return_if_null(rge);
-    //*brg = 0.0;
-    //*rge = 0.0;
-
-    // debug: this fire at each mouse move
-    //PRINTF("x:%f, y:%f, origne:%i\n", x, y, origine);
-    //PRINTF("pixels_x:%f, pixels_y:%f\n", pixels_x, pixels_y);
-
-    /*
-    g_static_mutex_lock(&_mp_mutex);
-    //  check if we are shuting down
-    if (NULL == _marinerCell) {
-        g_static_mutex_unlock(&_mp_mutex);
-        g_assert(0);
-        return NULL;
-    }
-    */
 
     if (NULL == _isObjValid(_marinerCell, (S52_obj *)objH))
         goto exit;
@@ -6956,109 +6705,100 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
         return FALSE;
     }
 
-    double latA;
-    double lonA;
-    double latB;
-    double lonB;
+    double latA = 0.0;
+    double lonA = 0.0;
+    double latB = pixels_x;
+    double lonB = pixels_y;
+    _win2prj(&lonB, &latB);
 
-    S57_geo *geo           = S52_PL_getGeo((S52_obj *)objH);
-    GString *_setOriginstr = S57_getAttVal(geo, "_setOrigin");
+    guint    npt = 0;
+    double  *ppt = NULL;
+    S57_geo *geo = S52_PL_getGeo((S52_obj *)objH);
+    S57_getGeoData(geo, 0, &npt, &ppt);
 
-    // set origine
-    if (NULL == _setOriginstr) {
-        //if (FALSE == _ownshp) {
-        if (INFINITY == _ownshp_lat) {
-            latA = _view.cLat;
-            lonA = _view.cLon;
-        } else {
-            latA = _ownshp_lat;
-            lonA = _ownshp_lon;
-        }
+    GString *setOriginstr = S57_getAttVal(geo, "_setOrigin");
+    char     c            = *setOriginstr->str;
 
-        // to prj
-        double xyz[3] = {lonA, latA, 0.0};
-        if (FALSE == S57_geo2prj3dv(1, xyz)) {
-            g_static_mutex_unlock(&_mp_mutex);
-            return FALSE;
-        }
-
-        lonA = xyz[0];
-        latA = xyz[1];
-
-        latB = pixels_y;
-        lonB = pixels_x;
-        _win2prj(&lonB, &latB);
-    } else {
-        if ('Y' == *_setOriginstr->str) {
-            lonA = pixels_x;
-            latA = pixels_y;
-            _win2prj(&lonA, &latA);
-            lonB = lonA;
-            latB = latA;
-        } else {
+    switch (c) {
+    case 'I':    // Init freely moveable origin
+        lonA = lonB;
+        latA = latB;
+        _setAtt(geo, "_setOrigin:Y"); // CHECK THIS: does setOriginstr->str become dandling ??
+        break;
+    case 'Y':    // user set freely moveable origin
+        lonA = ppt[0];
+        latA = ppt[1];
+        break;
+    case 'N':    // _OWNSHP origin (FIXME: apply ownshp offset set by S52_setDimension())
+        if (NULL != _OWNSHP) {
             guint    npt = 0;
             double  *ppt = NULL;
-            S57_geo *geo = S52_PL_getGeo((S52_obj *)objH);
-
+            S57_geo *geo = S52_PL_getGeo(_OWNSHP);
             S57_getGeoData(geo, 0, &npt, &ppt);
             lonA = ppt[0];
             latA = ppt[1];
-
-            lonB = pixels_x;
-            latB = pixels_y;
-            _win2prj(&lonB, &latB);
+        } else {
+            lonA = _view.cLon;
+            latA = _view.cLat;
         }
+        break;
     }
 
-    // save cursor position
-    _cursor_lat = latB;
-    _cursor_lon = lonB;
+    /*
+    // Init freely moveable origin
+    if ('I' == *setOriginstr->str) {
+        lonA = lonB;
+        latA = latB;
+        _setAtt(geo, "_setOrigin:Y");
+    }
+    // user set freely moveable origin
+    if ('Y' == *setOriginstr->str) {
+        lonA = ppt[0];
+        latA = ppt[1];
+    }
+
+    // ownshp origin
+    if ('N' == *setOriginstr->str) {
+        // fetch origin (GPS)
+        // apply offset here
+        if (NULL != _OWNSHP) {
+            guint    npt = 0;
+            double  *ppt = NULL;
+            S57_geo *geo = S52_PL_getGeo(_OWNSHP);
+            S57_getGeoData(geo, 0, &npt, &ppt);
+            lonA = ppt[0];
+            latA = ppt[1];
+        } else {
+            lonA = _view.cLon;
+            latA = _view.cLat;
+        }
+    }
+    */
 
     {
-        //double xyz[6] = {longitudeA, latitudeA, 0.0, longitudeBprj, latitudeBprj, 0.0};
         double xyz[6] = {lonA, latA, 0.0, lonB, latB, 0.0};
-        double dist   = sqrt(pow(xyz[3]-xyz[0], 2) + pow( xyz[4]-xyz[1], 2));
-        //double deg    = atan2(xyz[3]-xyz[0], xyz[4]-xyz[1]) * RAD_TO_DEG;
-        double deg   = ATAN2TODEG(xyz);
-        //char   unit  = 'm';
+        double dist   = sqrt(pow(xyz[3]-xyz[0], 2) + pow(xyz[4]-xyz[1], 2));
+        double deg    = ATAN2TODEG(xyz);
+        char   unit   = 'm';
+        char attval[256] = {'\0'};
 
-        // debug
-        //projXY uv     = {lonB, latB};
-        //.uv = S57_prj2geo(uv);
-        //printf("lat/long: %f, %f\n", uv.v, uv.u);
+        _updateGeo(objH, xyz);
 
-        // in metre bellow 1852 m
-        //if (dist >  1852) {
-        //    dist /= 1852;
-        //    unit  = 'N';
-        //}
+        // in Nautical Mile if > 1852 m (1NM)
+        if (dist >  1852) {
+            dist /= 1852;
+            unit  = 'M';
+        }
 
         if (deg < 0)
             deg += 360;
 
-        //printf("%.1f%c / %.1f deg\n", dist, unit, deg);
+        SPRINTF(attval, "_vrmebl_label:%.1f deg / %.1f%c", deg, dist, unit);
+        _setAtt(geo, attval);
+        S52_PL_resetParseText((S52_obj *)objH);
 
-
-        if (NULL != brg)
-            *brg = deg;
-        if (NULL != rge)
-            *rge = dist;
-
-        /*
-        if (NULL != _setOriginstr)
-            _updateGeoNattVal(objH, xyz, "_setOrigin:N");
-        else
-            _updateGeoNattVal(objH, xyz, NULL);
-        */
-
-        _updateGeo(objH, xyz);
-
-        if (NULL != _setOriginstr) {
-            S57_geo *geo = S52_PL_getGeo(objH);
-            _setAtt(geo, "_setOrigin:N");
-        }
-
-
+        if (NULL != brg) *brg = deg;
+        if (NULL != rge) *rge = dist;
     }
 
 exit:
@@ -9382,7 +9122,6 @@ static gboolean            _new_connection(GSocketService    *service,
 
     g_io_channel_set_buffered(channel, FALSE);
 
-
     g_io_add_watch(channel, G_IO_IN , (GIOFunc)_socket_read_write, connection);
 
     return FALSE;
@@ -9390,13 +9129,18 @@ static gboolean            _new_connection(GSocketService    *service,
 
 static int                 _initSock(void)
 {
-    PRINTF("start to listen to socket ..\n");
-
     GError *error = NULL;
 
+    PRINTF("start to listen to socket ..\n");
+
     g_type_init();
+
     GSocketService *service        = g_socket_service_new();
-    GInetAddress   *address        = g_inet_address_new_from_string("127.0.0.1");
+
+    //GInetAddress   *address        = g_inet_address_new_from_string("127.0.0.1");
+    GInetAddress   *address        = g_inet_address_new_any(G_SOCKET_FAMILY_IPV4);
+    //GInetAddress   *address        = g_inet_address_new_from_string("192.168.1.67");
+
     //GSocketAddress *socket_address = g_inet_socket_address_new(address, 4000);
     GSocketAddress *socket_address = g_inet_socket_address_new(address, 2950); // GPSD use 2947
 

@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -45,7 +45,7 @@ unsigned char *S52_GL_readFBPixels(void);
 // debug, caller must free mem
 //unsigned char *S52_GL_readPixels(int x, int y, int width, int height);
 // debug
-int            S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height);
+int   S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height);
 
 // copy from memory to frame buffer
 int   S52_GL_drawFBPixels(void);

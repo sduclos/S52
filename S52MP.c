@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -196,7 +196,9 @@ static double _MARparamVal[] = {
 
     1.0,      // 43 - S52_MAR_DISP_RND_LN_END - display rounded line ending (on/off)
 
-    44.0      // number of parameter type
+    1.0,      // 44 - S52_MAR_DISP_VRMEBL_LABEL - display bearing / range label on VRMEBL (on/off)
+
+    45.0      // number of parameter type
 };
 
 double S52_MP_get(S52MarinerParameter param)

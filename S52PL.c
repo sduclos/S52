@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -1209,25 +1209,6 @@ static int        _resolveCS(_S52_obj *obj, int alt)
     //    PRINTF("%s\n",FIDNstr->str);
     //}
 
-    /*
-    _S52_CmdL *cmd = obj->cmdL[alt];
-
-    // create (merge) cmd list (normal + CS)
-    g_array_set_size(obj->cmdAlt[alt], 0);
-
-    // scan for a CS
-    while (NULL != cmd) {
-        if (S52_CMD_CND_SY == cmd->cmdWord)
-            break;
-        g_array_append_val(obj->cmdAlt[alt], *cmd);
-        cmd = cmd->next;
-    }
-
-    // NO CS found
-    if (NULL == cmd)
-        return TRUE;
-    */
-
     // clear old CS instruction
     if (NULL != obj->CSinst[alt])
         g_string_free(obj->CSinst[alt], TRUE);
@@ -1242,6 +1223,7 @@ static int        _resolveCS(_S52_obj *obj, int alt)
     if (NULL == cmd)
         return FALSE;
 
+
     // CS found, merge cmd list in command array (normal + CS)
 
     // reset priority override
@@ -1252,8 +1234,6 @@ static int        _resolveCS(_S52_obj *obj, int alt)
     obj->LUCM = obj->LUP->LUCM;
 
     // expand CS
-    //CScb_t CScb = (CScb_t)cmd->def;
-    //S52_CS_cb CScb = (S52_CS_cb)cmd->cmd.CScb;
     S52_CS_cb CScb = cmd->cmd.CS->CScb;
     if (NULL != CScb) {
         obj->CSinst[alt] = CScb(obj->geoData);
@@ -1320,18 +1300,14 @@ int         S52_PL_resloveCS(_S52_obj *obj)
 
     // First: delete all text attache to each command word
     // this will force to re-parse text
-    //_doneTXT(obj, 0);
-    //_doneTXT(obj, 1);
-
     S52_PL_resetParseText(obj);
-    //_freeAllTXT(obj, 0);
-    //_freeAllTXT(obj, 1);
-    //obj->textParsed[0] = FALSE;
-    //obj->textParsed[1] = FALSE;
 
     // Then: pull new command word from CS (wich could have diffent text)
     _resolveCS(obj, 0);
     _resolveCS(obj, 1);
+
+    // FIXME: get LXPO/PXPO/SXPO field from PLib
+    // and copy it to S57_obj ATT for cursor pick
 
     return TRUE;
 }
@@ -2966,7 +2942,6 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     obj->nextLeg = NULL; // this is the default anyway (ie g_new0)
     obj->prevLeg = NULL; // this is the default anyway (ie g_new0)
 
-
     return obj;
 }
 
@@ -4575,10 +4550,8 @@ static S52_objSup _toggleObjType(_S52_LUP *LUP)
     return LUP->sup;
 }
 
-
 /*
-
- S52_objSup  S52_PL_toggleObjSUP(S52_obj *obj)
+S52_objSup  S52_PL_toggleObjSUP(S52_obj *obj)
 {
     // some Mariners' Object (ex waypnt) are in this category
     // Note that waypnt/select2 is on MARINERS STANDARD
@@ -5054,52 +5027,5 @@ int main()
    S52_flush_Plib();
 
    return TRUE;
-}
-
-static _S52_LUP   *_lookup(S52_table_t tableNm, const char * objectName,
-                   char * objAtt, GArray *objAttVal)
-// for test driver
-{
-   int err = 0;
-   _S52_LUP *LUP = NULL;
-   TraverseFuncData userData;
-
-   if (   tableNm < S52_LUP_PT_SIMPL
-       || S52_LINE_SYM <= tableNm
-       || objectName == NULL                         //|| objAtt == NULL
-       || _table[tableNm] == NULL) {
-
-       if (objectName == NULL)
-           PRINTF("ERROR no object name !!!\n");
-       else
-           PRINTF("ERROR in parameter invalid tableNm:%d\n", tableNm);
-
-       return NULL;
-   }
-
-   // scan LUP for objectName
-   userData.objname = objectName;
-   //g_tree_traverse(_table[tableNm], _collectLUP, G_IN_ORDER, (gpointer *)&userData);
-   g_tree_foreach(_table[tableNm], _collectLUP, (gpointer *)&userData);
-
-   if (NULL == userData.LUPlist) {
-      PRINTF("ERROR no LUP for object name: %s\n",objectName);
-   } else {
-      LUP = _findFromATT(nameMatch, objAtt, objAttVal);
-      LUP->cmdList = _LUP2cmd(LUP, NULL, LUP->INST->str);
-   }
-
-   /*
-   //debug
-   { Definition *patt = NULL;
-     patt  = (Definition*)g_tree_lookup(_patt_sym,(gpointer*)"PRTSUR01");
-     PRINTF("test\n");
-     if (0 != strncmp(patt->colRef.PCRF, "ACHGRD", 6))
-        PRINTF("bug\n");
-
-   }
-   */
-
-   return LUP;
 }
 #endif

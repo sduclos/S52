@@ -8,7 +8,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -36,7 +36,7 @@
 #include <unistd.h>        // PID
 #include <math.h>          // INFINITY
 
-#define RAD_TO_DEG             57.29577951308232
+#define RAD_TO_DEG         57.29577951308232
 
 #define PATH "/data/media" // android 4.1
 //#define PATH "/data/media/0" // android 4.2
@@ -254,7 +254,7 @@ static int      _s52_init(void)
         return FALSE;
 
     _s52_ownshp = NULL;
-    gchar *resp = _s52_encodeNsend("S52_newOWNSHP", "\"%s\"", "OWNSHP");
+    gchar *resp = _s52_encodeNsend("S52_newOWNSHP", "\"%s\"", "OWNSHP\nxxx.x deg / y.ykt");
     if (NULL != resp)
         sscanf(resp, "[ %lu", (long unsigned int *) &_s52_ownshp);
 

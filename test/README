@@ -45,7 +45,10 @@ Other Files:
 - s52clutter.js, s52clutter.js.sh
   Clutter + Javascript partial experiment
 
-- PLAUX_00.DAI, plib*
+- PLAUX_00.DAI
+  (add some info about this paticular PLib)
+
+- plib*
   PLib for testing
 
 - *.ttf

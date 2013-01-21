@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -1992,38 +1992,38 @@ static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16])
     GLfloat inv[16], det;
     int i;
 
-    inv[0] =   m[5]*m[10]*m[15] - m[5]*m[11]*m[14] - m[9]*m[6]*m[15]
-             + m[9]*m[7]*m[14] + m[13]*m[6]*m[11] - m[13]*m[7]*m[10];
-    inv[4] =  -m[4]*m[10]*m[15] + m[4]*m[11]*m[14] + m[8]*m[6]*m[15]
-             - m[8]*m[7]*m[14] - m[12]*m[6]*m[11] + m[12]*m[7]*m[10];
-    inv[8] =   m[4]*m[9]*m[15] - m[4]*m[11]*m[13] - m[8]*m[5]*m[15]
-             + m[8]*m[7]*m[13] + m[12]*m[5]*m[11] - m[12]*m[7]*m[9];
-    inv[12] = -m[4]*m[9]*m[14] + m[4]*m[10]*m[13] + m[8]*m[5]*m[14]
-             - m[8]*m[6]*m[13] - m[12]*m[5]*m[10] + m[12]*m[6]*m[9];
-    inv[1] =  -m[1]*m[10]*m[15] + m[1]*m[11]*m[14] + m[9]*m[2]*m[15]
-             - m[9]*m[3]*m[14] - m[13]*m[2]*m[11] + m[13]*m[3]*m[10];
-    inv[5] =   m[0]*m[10]*m[15] - m[0]*m[11]*m[14] - m[8]*m[2]*m[15]
-             + m[8]*m[3]*m[14] + m[12]*m[2]*m[11] - m[12]*m[3]*m[10];
-    inv[9] =  -m[0]*m[9]*m[15] + m[0]*m[11]*m[13] + m[8]*m[1]*m[15]
-             - m[8]*m[3]*m[13] - m[12]*m[1]*m[11] + m[12]*m[3]*m[9];
-    inv[13] =  m[0]*m[9]*m[14] - m[0]*m[10]*m[13] - m[8]*m[1]*m[14]
-             + m[8]*m[2]*m[13] + m[12]*m[1]*m[10] - m[12]*m[2]*m[9];
-    inv[2] =   m[1]*m[6]*m[15] - m[1]*m[7]*m[14] - m[5]*m[2]*m[15]
-             + m[5]*m[3]*m[14] + m[13]*m[2]*m[7] - m[13]*m[3]*m[6];
-    inv[6] =  -m[0]*m[6]*m[15] + m[0]*m[7]*m[14] + m[4]*m[2]*m[15]
-             - m[4]*m[3]*m[14] - m[12]*m[2]*m[7] + m[12]*m[3]*m[6];
-    inv[10] =  m[0]*m[5]*m[15] - m[0]*m[7]*m[13] - m[4]*m[1]*m[15]
-             + m[4]*m[3]*m[13] + m[12]*m[1]*m[7] - m[12]*m[3]*m[5];
-    inv[14] = -m[0]*m[5]*m[14] + m[0]*m[6]*m[13] + m[4]*m[1]*m[14]
-             - m[4]*m[2]*m[13] - m[12]*m[1]*m[6] + m[12]*m[2]*m[5];
-    inv[3] =  -m[1]*m[6]*m[11] + m[1]*m[7]*m[10] + m[5]*m[2]*m[11]
-             - m[5]*m[3]*m[10] - m[9]*m[2]*m[7] + m[9]*m[3]*m[6];
-    inv[7] =   m[0]*m[6]*m[11] - m[0]*m[7]*m[10] - m[4]*m[2]*m[11]
-             + m[4]*m[3]*m[10] + m[8]*m[2]*m[7] - m[8]*m[3]*m[6];
-    inv[11] = -m[0]*m[5]*m[11] + m[0]*m[7]*m[9] + m[4]*m[1]*m[11]
-             - m[4]*m[3]*m[9] - m[8]*m[1]*m[7] + m[8]*m[3]*m[5];
-    inv[15] =  m[0]*m[5]*m[10] - m[0]*m[6]*m[9] - m[4]*m[1]*m[10]
-             + m[4]*m[2]*m[9] + m[8]*m[1]*m[6] - m[8]*m[2]*m[5];
+    inv[0] =   m[5]*m[10]*m[15] - m[5] *m[11]*m[14] - m[9]*m[6]*m[15]
+             + m[9]*m[7] *m[14] + m[13]*m[6] *m[11] - m[13]*m[7]*m[10];
+    inv[4] = - m[4]*m[10]*m[15] + m[4] *m[11]*m[14] + m[8]*m[6]*m[15]
+             - m[8]*m[7] *m[14] - m[12]*m[6] *m[11] + m[12]*m[7]*m[10];
+    inv[8] =   m[4]*m[9] *m[15] - m[4] *m[11]*m[13] - m[8]*m[5]*m[15]
+             + m[8]*m[7] *m[13] + m[12]*m[5] *m[11] - m[12]*m[7]*m[9];
+    inv[12]= - m[4]*m[9] *m[14] + m[4] *m[10]*m[13] + m[8]*m[5]*m[14]
+             - m[8]*m[6] *m[13] - m[12]*m[5] *m[10] + m[12]*m[6]*m[9];
+    inv[1] = - m[1]*m[10]*m[15] + m[1] *m[11]*m[14] + m[9]*m[2]*m[15]
+             - m[9]*m[3] *m[14] - m[13]*m[2] *m[11] + m[13]*m[3]*m[10];
+    inv[5] =   m[0]*m[10]*m[15] - m[0] *m[11]*m[14] - m[8]*m[2]*m[15]
+             + m[8]*m[3] *m[14] + m[12]*m[2] *m[11] - m[12]*m[3]*m[10];
+    inv[9] = - m[0]*m[9] *m[15] + m[0] *m[11]*m[13] + m[8]*m[1]*m[15]
+             - m[8]*m[3] *m[13] - m[12]*m[1] *m[11] + m[12]*m[3]*m[9];
+    inv[13]=   m[0]*m[9] *m[14] - m[0] *m[10]*m[13] - m[8]*m[1]*m[14]
+             + m[8]*m[2] *m[13] + m[12]*m[1] *m[10] - m[12]*m[2]*m[9];
+    inv[2] =   m[1]*m[6] *m[15] - m[1] *m[7] *m[14] - m[5]*m[2]*m[15]
+             + m[5]*m[3] *m[14] + m[13]*m[2] *m[7]  - m[13]*m[3]*m[6];
+    inv[6] = - m[0]*m[6] *m[15] + m[0] *m[7] *m[14] + m[4]*m[2]*m[15]
+             - m[4]*m[3] *m[14] - m[12]*m[2] *m[7]  + m[12]*m[3]*m[6];
+    inv[10]=   m[0]*m[5] *m[15] - m[0] *m[7] *m[13] - m[4]*m[1]*m[15]
+             + m[4]*m[3] *m[13] + m[12]*m[1] *m[7]  - m[12]*m[3]*m[5];
+    inv[14]= - m[0]*m[5] *m[14] + m[0] *m[6] *m[13] + m[4]*m[1]*m[14]
+             - m[4]*m[2] *m[13] - m[12]*m[1] *m[6]  + m[12]*m[2]*m[5];
+    inv[3] = - m[1]*m[6] *m[11] + m[1] *m[7] *m[10] + m[5]*m[2]*m[11]
+             - m[5]*m[3] *m[10] - m[9] *m[2] *m[7]  + m[9]*m[3]*m[6];
+    inv[7] =   m[0]*m[6] *m[11] - m[0] *m[7] *m[10] - m[4]*m[2]*m[11]
+             + m[4]*m[3] *m[10] + m[8] *m[2] *m[7]  - m[8]*m[3]*m[6];
+    inv[11]= - m[0]*m[5] *m[11] + m[0] *m[7] *m[9]  + m[4]*m[1]*m[11]
+             - m[4]*m[3] *m[9]  - m[8] *m[1] *m[7]  + m[8]*m[3]*m[5];
+    inv[15]=   m[0]*m[5] *m[10] - m[0] *m[6] *m[9]  - m[4]*m[1]*m[10]
+             + m[4]*m[2] *m[9]  + m[8] *m[1] *m[6]  - m[8]*m[2]*m[5];
 
     det = m[0]*inv[0] + m[1]*inv[4] + m[2]*inv[8] + m[3]*inv[12];
     if (det == 0)
@@ -2039,12 +2039,8 @@ static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16])
 
 static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GLfloat r[16])
 {
-    int i, j;
-
-    for (i = 0; i < 4; i++)
-    {
-        for (j = 0; j < 4; j++)
-        {
+    for (int i=0; i<4; ++i) {
+        for (int j=0; j<4; ++j) {
             r[i*4+j] = a[i*4+0]*b[0*4+j] +
                        a[i*4+1]*b[1*4+j] +
                        a[i*4+2]*b[2*4+j] +
@@ -2060,18 +2056,16 @@ static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz,
                              const GLint   viewport[4],
                              GLfloat* winx, GLfloat* winy, GLfloat* winz)
 {
-    GLfloat in [4];
+    GLfloat in [4] = {objx, objy, objz, 1.0};
     GLfloat out[4];
 
-    in[0] = objx;
-    in[1] = objy;
-    in[2] = objz;
-    in[3] = 1.0;
+    //in[0] = objx;
+    //in[1] = objy;
+    //in[2] = objz;
+    //in[3] = 1.0;
 
     __gluMultMatrixVecf(modelMatrix, in,  out);
     __gluMultMatrixVecf(projMatrix,  out, in);
-    //__gluMultMatrixVecf(projMatrix,  in,  out);
-    //__gluMultMatrixVecf(modelMatrix, out, in);
 
     if (0.0 == in[3])
         return GL_FALSE;
@@ -2097,19 +2091,18 @@ static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz,
 }
 
 static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
-             const GLfloat modelMatrix[16],
-             const GLfloat projMatrix[16],
-             const GLint viewport[4],
-             GLfloat* objx, GLfloat* objy, GLfloat* objz)
+                               const GLfloat modelMatrix[16],
+                               const GLfloat projMatrix[16],
+                               const GLint viewport[4],
+                               GLfloat* objx, GLfloat* objy, GLfloat* objz)
 {
     GLfloat finalMatrix[16];
-    GLfloat in[4];
+    GLfloat in [4];
     GLfloat out[4];
 
     __gluMultMatricesf(modelMatrix, projMatrix, finalMatrix);
-    if (!__gluInvertMatrixf(finalMatrix, finalMatrix))
-    {
-        return(GL_FALSE);
+    if (!__gluInvertMatrixf(finalMatrix, finalMatrix)) {
+        return GL_FALSE;
     }
 
     in[0]=winx;
@@ -2127,9 +2120,8 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
     in[2] = in[2] * 2 - 1;
 
     __gluMultMatrixVecf(finalMatrix, in, out);
-    if (out[3] == 0.0)
-    {
-        return(GL_FALSE);
+    if (out[3] == 0.0) {
+        return GL_FALSE;
     }
 
     out[0] /= out[3];
@@ -2139,8 +2131,9 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
     *objy = out[1];
     *objz = out[2];
 
-    return(GL_TRUE);
+    return GL_TRUE;
 }
+
 #endif
 //-----------------------------------------
 
@@ -2346,10 +2339,12 @@ static int       _win2prj(double *x, double *y)
 // convert coordinate: window --> projected
 {
 #ifdef S52_USE_GLES2
-    float u = *x;
-    float v = *y;
+    float u       = *x;
+    float v       = *y;
     float dummy_z = 0.0;
+    float coord[] = {u,v,0.0};
     if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, &u, &v, &dummy_z)) {
+    //if (GL_FALSE == glhUnProjectf(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, coord)) {
         PRINTF("WARNING: UnProjection faild\n");
 
         g_assert(0);
@@ -2431,8 +2426,10 @@ int        S52_GL_win2prj(double *x, double *y)
 // convert coordinate: window --> projected
 {
     // FIXME: find a better way -
-    if (0 == _pjm[0])
+    if (0 == _pjm[0]) {
+        g_assert(0);
         return FALSE;
+    }
 
     _glMatrixSet(VP_PRJ);
 
@@ -2539,7 +2536,7 @@ static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
 
 #ifdef S52_USE_GLES2
     glEnableVertexAttribArray(_aPosition);
-    glVertexAttribPointer(_aPosition, 3, GL_FLOAT, GL_FALSE, 0, ppt);
+    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 0, ppt);
 #else
 
     //glEnableClientState(GL_VERTEX_ARRAY);
@@ -2553,6 +2550,7 @@ static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
 #endif // S52_USE_GLES2
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, npt);
+    glDisableVertexAttribArray(_aPosition);
 
     _checkError("_DrawArrays_TRIANGLE_FAN() end");
 
@@ -2597,12 +2595,14 @@ static GLvoid    _DrawArrays_LINE_STRIP(guint npt, vertex_t *ppt)
 #endif // S52_USE_GLES2
 
     glDrawArrays(GL_LINE_STRIP, 0, npt);
+    glDisableVertexAttribArray(_aPosition);
 
+/*
 #ifndef S52_USE_GLES2
     // test
     glVertexPointer(3, GL_DOUBLE, 0, 0);
 #endif
-
+*/
     _checkError("_DrawArrays_LINE_STRIP() .. end");
 
     return;
@@ -2616,11 +2616,11 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
         return;
 
 #ifdef S52_USE_GLES2
-    // silence warning
-    (void)ppt;
+    glEnableVertexAttribArray(_aPosition);
+    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 0, ppt);
 #else
-    //glEnableClientState(GL_VERTEX_ARRAY);
 
+    glEnableClientState(GL_VERTEX_ARRAY);
 
 #ifdef S52_USE_OPENGL_SAFETY_CRITICAL
     glVertexPointer(3, GL_FLOAT, 0, ppt);
@@ -2631,6 +2631,8 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
 #endif
 
     glDrawArrays(GL_LINES, 0, npt);
+
+    glDisableVertexAttribArray(_aPosition);
 
     _checkError("_DrawArrays_LINES() .. end");
 
@@ -2644,10 +2646,8 @@ static GLvoid    _DrawArrays_POINTS(guint npt, vertex_t *ppt)
         return;
 
 #ifdef S52_USE_GLES2
-    //PRINTF("FIXME: use VBO data\n");
-    //return;
-    //glEnableVertexAttribArray(_aPosition);
-    glVertexAttribPointer(_aPosition, 3, GL_FLOAT, GL_FALSE, 0, ppt);
+    glEnableVertexAttribArray(_aPosition);
+    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 0, ppt);
 #else
 
 #ifdef S52_USE_OPENGL_SAFETY_CRITICAL
@@ -2659,6 +2659,7 @@ static GLvoid    _DrawArrays_POINTS(guint npt, vertex_t *ppt)
 #endif
 
     glDrawArrays(GL_POINTS, 0, npt);
+    glDisableVertexAttribArray(_aPosition);
 
     _checkError("_DrawArrays_POINTS() -end-");
 
@@ -2787,6 +2788,7 @@ static int       _VBODraw(S57_prim *prim)
 #endif
 
     _VBODrawArrays(prim);
+    glDisableVertexAttribArray(_aPosition);
 
     // bind with 0 - switch back to normal pointer operation
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -2821,7 +2823,6 @@ static int       _DrawArrays(S57_prim *prim)
     guint     vertNbr = 0;
     guint     vboID   = 0;
 
-    //S57_getPrimData(prim, &primNbr, &vertex);
     if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
         return FALSE;
 
@@ -3129,6 +3130,7 @@ static int       _glCallList(S52_DListData *DListData)
 
         // switch back to normal pointer operation
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glDisableVertexAttribArray(_aPosition);
 
 #else
         //glEnableClientState(GL_VERTEX_ARRAY);             // activate vertex coords array
@@ -4511,7 +4513,7 @@ static int       _renderSY(S52_obj *obj)
     if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
-    // bebug filter out all but ..
+    // bebug - filter out all but ..
     //if (0 != S52_PL_cmpCmdParam(obj, "BOYLAT23") &&
     //    0 != S52_PL_cmpCmdParam(obj, "BOYLAT14")) {
     //    return TRUE;
@@ -4808,6 +4810,7 @@ static int       _renderSY(S52_obj *obj)
                 // check if offset move the object outside pick region
                 // that symbole 'Y' axis is down, so '-offsety'
                 //_renderSY_POINT_T(obj, pt->x, pt->y, orient+_north);
+                //_renderSY_POINT_T(obj, pt->x + offset_x, pt->y - offset_y, orient+_north);
                 _renderSY_POINT_T(obj, pt->x + offset_x, pt->y - offset_y, orient);
 
                 // display only one centroid
@@ -5430,6 +5433,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
     // 3 - draw
     // FIXME: when pti = 229, this call fail
     glDrawArrays(GL_POINTS, 0, pti);
+    glDisableVertexAttribArray(_aPosition);
 
 
     // 4 - done
@@ -5829,50 +5833,6 @@ static int       _renderLC(S52_obj *obj)
     //    PRINTF("%s: _dotpitch_mm_x=%f, symlen_pixl=%f, symlen_wrld=%f\n", name, _dotpitch_mm_x, symlen_pixl, symlen_wrld);
     //}
 
-    /* move to _renderAC_VRMEBL01()
-    if (0==g_strcmp0("vrmark", S57_getName(geo))) {
-        GLdouble slice  = 360.0;
-        GLdouble loops  = 2.0;
-        // the circle has a tickness of 2 pixels
-        //GLdouble len    = 2.0 * (_pmax.u - _pmin.u) / (double)_vp[2];
-        //GLdouble len    = 1.0 * (_pmax.u - _pmin.u) / (double)_vp[2];
-        GLdouble len    = 0.5 * (_pmax.u - _pmin.u) / (double)_vp[2];
-        GLdouble radius = sqrt(pow((ppt[0]-ppt[3]), 2) + pow((ppt[1]-ppt[4]), 2));
-        //GLdouble rout   = rin + len
-        GLenum   style  = GLU_LINE;
-        //GLenum   style  = GLU_SILHOUETTE;
-
-        _glMatrixMode(GL_MODELVIEW);
-        _glLoadIdentity();
-        _glTranslated(ppt[0], ppt[1], ppt[2]);
-
-        // FIXME: alternate S52 line style for drawing circle doesn't
-        // translate well to OpenGL Quadric Object
-        // experimental: GLU_POINT is an attempt to stranslate the 'spirit' of S52
-        GString *normallinestylestr = S57_getAttVal(geo, "_normallinestyle");
-        if (NULL!=normallinestylestr && 0==g_strcmp0("N", normallinestylestr->str)) {
-            style = GLU_POINT;
-
-            // experiment: mark at 10 deg
-            //gluQuadricDrawStyle(qobj, style);
-            //gluDisk(qobj, radius, radius + (len * 2.0), slice/10.0, loops);
-        }
-
-        _gluQuadricDrawStyle(_qobj, style);
-
-        _setBlend(TRUE);
-
-        _gluDisk(_qobj, radius, radius + len, slice, loops);
-
-        _setBlend(FALSE);
-
-        _checkError("_renderLC()");
-
-        return TRUE;
-    }
-    */
-
-    unsigned int i;
     double off_x = ppt[0];
     double off_y = ppt[1];
     //double run   = 0.0;
@@ -5885,7 +5845,7 @@ static int       _renderLC(S52_obj *obj)
     //    PRINTF("DEBUG: found PILBOP\n");
     //}
 
-    for (i=0; i<npt-1; ++i) {
+    for (guint i=0; i<npt-1; ++i) {
         // set coordinate
         x1 = ppt[0];
         y1 = ppt[1];
@@ -6313,13 +6273,12 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
 
     S52_DListData *DListData = S52_PL_getDListData(obj);
     if (NULL == DListData) {
-        S52_Color *cursr = S52_PL_getColor("CURSR");
+        //S52_Color *cursr = S52_PL_getColor("CURSR");
         DListData = S52_PL_newDListData(obj);
-        DListData->nbr = 1;
-
-        DListData->prim[0] = S57_initPrim(NULL);
-
-        DListData->colors[0] = *cursr;
+        DListData->nbr       = 1;
+        DListData->prim[0]   = S57_initPrim(NULL);
+        DListData->colors[0] = *S52_PL_getColor("CURSR");
+        //DListData->colors[0] = *cursr;
     }
 
     //_setBlend(TRUE);
@@ -6346,7 +6305,6 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
 
     GLdouble slice  = 360.0;
     GLdouble loops  = 1.0;
-
     GLdouble radius = sqrt(pow((ppt[0]-ppt[3]), 2) + pow((ppt[1]-ppt[4]), 2));
 
     _diskPrimTmp = DListData->prim[0];
@@ -6391,29 +6349,29 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
 static int       _renderAC(S52_obj *obj)
 // Area Color (also filter light sector)
 {
-    S52_Color *c       = S52_PL_getACdata(obj);
-    S57_geo   *geoData = S52_PL_getGeo(obj);
+    S52_Color *c   = S52_PL_getACdata(obj);
+    S57_geo   *geo = S52_PL_getGeo(obj);
 
     if (S52_CMD_WRD_FILTER_AC & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
     // debug
-    //if (557 == S57_getGeoID(geoData)) {
-    //    PRINTF("%s\n", S57_getName(geoData));
+    //if (557 == S57_getGeoID(geo)) {
+    //    PRINTF("%s\n", S57_getName(geo));
     //}
-    //if (467 == S57_getGeoID(geoData)) {
-    //    PRINTF("%s\n", S57_getName(geoData));
+    //if (467 == S57_getGeoID(geo)) {
+    //    PRINTF("%s\n", S57_getName(geo));
     //    S52_PL_highlightON(obj);
     //}
 
     // LIGHTS05
-    if (POINT_T == S57_getObjtype(geoData)) {
+    if (POINT_T == S57_getObjtype(geo)) {
         _renderAC_LIGHTS05(obj);
         return TRUE;
     }
 
     // VRM
-    if (LINES_T == S57_getObjtype(geoData)) {
+    if ((LINES_T==S57_getObjtype(geo)) && (0==g_strcmp0("vrmark", S57_getName(geo)))) {
         _renderAC_VRMEBL01(obj);
         return TRUE;
     }
@@ -6436,7 +6394,7 @@ static int       _renderAC(S52_obj *obj)
 #endif
 #endif
 
-    _fillarea(geoData);
+    _fillarea(geo);
 
     _checkError("_renderAC()");
 
@@ -7176,6 +7134,7 @@ static int       _renderAP(S52_obj *obj)
             glBindTexture(GL_TEXTURE_2D, 0);
 
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glDisableVertexAttribArray(_aPosition);
             //*/
 
             _checkError("_renderAP() -1-");
@@ -7315,8 +7274,6 @@ static int       _traceOP(S52_obj *obj)
 //static GArray   *_fillFtglBuf(texture_font_t *font, GArray *buf, const char *str)
 static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
 {
-    //float pen_x = 0.0;
-    //float pen_y = 0.0;
     int pen_x = 0;
     int pen_y = 0;
     int space = FALSE;
@@ -7876,7 +7833,8 @@ static int       _drawText(S52_obj *obj)
 
             // find segment's center point closess to view center
             // FIXME: clip segments to view
-            for (i=0; i<npt-1; ++i) {
+            //for (i=0; i<npt-1; ++i) {
+            for (i=0; i<npt; ++i) {
                 double x = (ppt[i*3+3] + ppt[i*3+0]) / 2.0;
                 double y = (ppt[i*3+4] + ppt[i*3+1]) / 2.0;
                 double d = sqrt(pow(x-cView_x, 2) + pow(y-cView_y, 2));
@@ -9882,10 +9840,10 @@ int        S52_GL_getViewPort(int *x, int *y, int *width, int *height)
 
 char      *S52_GL_getNameObjPick(void)
 {
-    char        *name  = NULL;
-    unsigned int S57ID = 0;
-
     if (_objPick->len > 0) {
+        char        *name  = NULL;
+        unsigned int S57ID = 0;
+
         PRINTF("----------- PICK(%i) ---------------\n", _objPick->len);
 
         for (guint i=0; i<_objPick->len; ++i) {
@@ -9905,15 +9863,13 @@ char      *S52_GL_getNameObjPick(void)
         _objhighlight = (S52_obj*)g_ptr_array_index(_objPick, _objPick->len-1);
         S52_PL_highlightON(_objhighlight);
 
-    } else
+        SPRINTF(_strPick, "%s:%i", name, S57ID);
+
+    } else {
         PRINTF("NOTE: no S57 object\n");
-
-    SPRINTF(_strPick, "%s:%i", name, S57ID);
-    //sprintf(str, "%s:%i", name, S57ID);
-
+    }
 
     return _strPick;
-    //return name;
 }
 
 #if 0
@@ -10128,6 +10084,8 @@ int        S52_GL_drawFBPixels(void)
     // turn OFF 'sampler2d'
     glUniform1f(_uBlitOn, 0.0);
     glBindTexture(GL_TEXTURE_2D, 0);
+    glDisableVertexAttribArray(_aUV);
+    glDisableVertexAttribArray(_aPosition);
 
     _glMatrixDel(VP_PRJ);
 
@@ -10196,6 +10154,8 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     // turn OFF 'sampler2d'
     glUniform1f(_uBlitOn, 0.0);
     glBindTexture(GL_TEXTURE_2D, 0);
+    glDisableVertexAttribArray(_aUV);
+    glDisableVertexAttribArray(_aPosition);
 
     _glMatrixDel(VP_PRJ);
 
@@ -10247,8 +10207,10 @@ int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *color
 #ifdef S52_USE_GLES2
     S52_GL_win2prj(&pixels_x, &pixels_y);
 
-    //_drawTextAA(NULL, pixels_x, pixels_x, bsize, weight, str);
-    _drawTextAA(NULL, pixels_x, pixels_x, bsize, 1, str);
+    _glMatrixSet(VP_PRJ);
+    _drawTextAA(NULL, pixels_x, pixels_y, bsize, 1, str);
+    _glMatrixDel(VP_PRJ);
+
 #else
     glRasterPos2d(pixels_x, pixels_y);
 #endif
