@@ -167,9 +167,9 @@ typedef struct {
 // legend has no S52_obj, so this a place holder
 static GLuint  _text_textureID = 0;
 static GArray *_textWorkBuf    = NULL;
-#define S52_LF  '\r'   // Line Feed
-#define S52_TAB '\t'   // Tabulation
-#define S52_NL  '\n'   // New Line
+#define LF  '\r'   // Line Feed
+#define TB  '\t'   // Tabulation
+#define NL  '\n'   // New Line
 
 #endif // S52_USE_GLES2
 #endif // S52_USE_FREETYPE_GL
@@ -7273,6 +7273,8 @@ static int       _traceOP(S52_obj *obj)
 #ifdef S52_USE_FREETYPE_GL
 //static GArray   *_fillFtglBuf(texture_font_t *font, GArray *buf, const char *str)
 static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
+// experimental: smaller text size if second line
+// could translate into a TX command word to be added in the PLib
 {
     int pen_x = 0;
     int pen_y = 0;
@@ -7285,9 +7287,9 @@ static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
 
     //for (i=0; i<wcslen(str); ++i) {
     for (i=0; i<len; ++i) {
-        //if (S52_TAB == str[i]) {
-        //if (('\\'==str[i]) && ('n'==str[i+1])) {
-        if ('\n' == str[i]) {
+        // experimental: smaller text size if second line
+        if (NL == str[i]) {
+        //if (TB == str[i]) {
             weight = (0<weight) ? weight-1 : weight;
             texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], 'A');
             pen_x =  0;
@@ -7299,17 +7301,11 @@ static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
 
         texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], str[i]);
         if (NULL != glyph) {
-
-            //*
-            //if (i > 0) {
+            // experimental: augmente kerning if second line
             if (pen_x > 0) {
-                //float kerning = texture_glyph_get_kerning(glyph, str[i-1]);
-                //pen_x += kerning;
                 pen_x += texture_glyph_get_kerning(glyph, str[i-1]);
                 pen_x += (TRUE==space) ? 1 : 0;
-                //pen_x += (TRUE==space) ? 1.0 : 0.0;
             }
-            //*/
 
             GLfloat x0 = pen_x + glyph->offset_x;
             GLfloat y0 = pen_y + glyph->offset_y;
@@ -7426,17 +7422,16 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
     //PRINTF("x:%f, x:%f, str:%s\n", x, y, str);
-    for (guint i=0; i<S52_strlen(str); ++i) {
+    //for (guint i=0; i<S52_strlen(str); ++i) {
+    gint len = g_utf8_strlen(str, -1) - 1;
+    for (gint i=0; i<len; ++i) {
         glDrawArrays(GL_TRIANGLE_FAN, i*4, 4);
     }
 
     _popScaletoPixel();
 
-    //glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindTexture(GL_TEXTURE_2D,  0);
-
     glUniform1f(_uStipOn, 0.0);
-
 
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);

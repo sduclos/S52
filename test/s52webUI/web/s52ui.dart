@@ -2,7 +2,7 @@
 
 import 'dart:html';
 import 'dart:json';
-
+import 'dart:async';
 
 /////////////////////////////////////////////
 //
@@ -140,7 +140,7 @@ class S52 {
   Completer _completer;
   WebSocket _ws;
   //WebSocket _ws   = new WebSocket('ws://192.168.1.66:2950');
-  Map       _data = JSON.parse('{"id":0,"method":"???","params":["???"]}');
+  Map       _data = parse('{"id":0,"method":"???","params":["???"]}');
   int       _id   = 1;
 
   S52(WebSocket ws) {
@@ -162,7 +162,7 @@ class S52 {
   }
   _parseMsg(MessageEvent e) {
     //print('_parseMsg():${e.data}');
-    Map data = JSON.parse(e.data);
+    Map data = parse(e.data);
     if (_id != data["id"]) {
       print('_parseMsg(): failed on key: _id=$_id data_id=${data["id"]}');
       throw "ID mismatch";
@@ -181,7 +181,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getMarinerParam";
     _data["params"] = [param];
-    String jsonCmdstr = JSON.stringify(_data);
+    String jsonCmdstr = stringify(_data);
     _ws.send(jsonCmdstr);
 
     return _completer.future;
@@ -192,7 +192,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_setMarinerParam";
     _data["params"] = [param, value];
-    String jsonCmdstr = JSON.stringify(_data);
+    String jsonCmdstr = stringify(_data);
     _ws.send(jsonCmdstr);
 
     return _completer.future;
@@ -203,7 +203,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getPalettesNameList";
     _data["params"] = [];
-    String jsonCmdstr = JSON.stringify(_data);
+    String jsonCmdstr = stringify(_data);
     _ws.send(jsonCmdstr);
 
     return _completer.future;
@@ -214,7 +214,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getRGB";
     _data["params"] = [colorName];
-    String jsonCmdstr = JSON.stringify(_data);
+    String jsonCmdstr = stringify(_data);
     _ws.send(jsonCmdstr);
 
     return _completer.future;
@@ -225,7 +225,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_draw";
     _data["params"] = [];
-    String jsonCmdstr = JSON.stringify(_data);
+    String jsonCmdstr = stringify(_data);
     _ws.send(jsonCmdstr);
 
     return _completer.future;
@@ -236,7 +236,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_drawLast";
     _data["params"] = [];
-    String jsonCmdstr = JSON.stringify(_data);
+    String jsonCmdstr = stringify(_data);
     _ws.send(jsonCmdstr);
 
     return _completer.future;

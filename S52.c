@@ -279,7 +279,7 @@ static S52_RADAR_cb  _RADAR_cb = NULL;
 //static double _cursor_lat = 0.0;
 //static double _cursor_lon = 0.0;
 
-static char _version[] = "$Revision: 1.109 $\n"
+static char _version[] = "$Revision: 1.110 $\n"
       "libS52 0.82\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
@@ -6707,8 +6707,8 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
 
     double latA = 0.0;
     double lonA = 0.0;
-    double latB = pixels_x;
-    double lonB = pixels_y;
+    double latB = pixels_y;
+    double lonB = pixels_x;
     _win2prj(&lonB, &latB);
 
     guint    npt = 0;
@@ -6784,7 +6784,7 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
 
         _updateGeo(objH, xyz);
 
-        // in Nautical Mile if > 1852 m (1NM)
+        // in Nautical Mile if > 1852m (1NM)
         if (dist >  1852) {
             dist /= 1852;
             unit  = 'M';
@@ -8465,7 +8465,7 @@ static int                 _handle_method(const gchar *str)
     if (NULL == val) {
         _setErr("can't parse json str");
         _encode(_result, "[0]");
-        PRINTF("ERROR: json_parse_string() failed (%s)\n", str);
+        PRINTF("WARNING: json_parse_string() failed:%s", str);
         return 0;
     }
 

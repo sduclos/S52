@@ -254,7 +254,7 @@ static int      _s52_init(void)
         return FALSE;
 
     _s52_ownshp = NULL;
-    gchar *resp = _s52_encodeNsend("S52_newOWNSHP", "\"%s\"", "OWNSHP\nxxx.x deg / y.ykt");
+    gchar *resp = _s52_encodeNsend("S52_newOWNSHP", "\"%s\"", "OWNSHP\\n---.- deg / --.- kt");
     if (NULL != resp)
         sscanf(resp, "[ %lu", (long unsigned int *) &_s52_ownshp);
 
@@ -1416,10 +1416,11 @@ static int      _sl4a_sendS52cmd (gpointer user_data)
 {
     {
         int    vecstb  = 1;     // overground
-        double speed   = 60.0;
+        double speed   = 60.0;  // conspic
         double azimuth = _sl4a_getGyro();
         if (-1.0 != azimuth) {
-            _s52_encodeNsend("S52_setVector", "%lu,%i,%lf,%lf", (long unsigned int) _s52_ownshp, vecstb, azimuth, speed);
+            _s52_encodeNsend("S52_setVector",      "%lu,%i,%lf,%lf",     (long unsigned int) _s52_ownshp, vecstb, azimuth, speed);
+            _s52_encodeNsend("S52_setVESSELlabel", "%lu,\"OWNSHP\\n%05.1f deg / %4.1f kt\"", (long unsigned int) _s52_ownshp, azimuth, speed);
         }
 
         double lat = 0.0;

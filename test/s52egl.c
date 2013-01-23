@@ -190,10 +190,11 @@ typedef struct S52_extent {
 // debug - no real AIS, then fake target
 #ifdef S52_USE_FAKE_AIS
 static S52ObjectHandle _vessel_ais        = NULL;
-#define VESSELLABEL "~~MV Non Such~~"
+#define VESSELLABEL "~~MV Non Such~~\n"
 // test - ownshp
 static S52ObjectHandle _ownshp            = NULL;
 #define OWNSHPLABEL "OWNSHP\n220 deg / 6.0 kt"
+//#define OWNSHPLABEL "OWNSHP\t220 deg / 6.0 kt"
 
 
 #ifdef S52_USE_AFGLOW
@@ -949,12 +950,9 @@ static int      _s52_draw_cb    (gpointer user_data)
     if (TRUE == engine->do_S52drawLast) {
 
 #ifdef S52_USE_FAKE_AIS
-        //LOGI("s52egl:CALL _s52_updTimeTag()\n");
         _s52_updTimeTag(engine);
 #endif
-        //LOGI("s52egl:CALL drawlast() .. start\n");
         S52_drawLast();
-        //LOGI("s52egl:CALL drawlast() .. end\n");
     }
 
     if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
@@ -1189,12 +1187,6 @@ I/s52android( 2683): 9 - sensor name: Corrected Gyroscope Sensor
 
 static int      _android_display_init(s52engine *engine)
 {
-    // is that even possible
-    if (NULL == engine) {
-        LOGI("s52egl:_android_display_init(): engine is NULL !!!\n");
-        return FALSE;
-    }
-
     engine->do_S52draw     = FALSE;
     engine->do_S52drawLast = FALSE;
 
@@ -1617,7 +1609,11 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
 static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 // process the next main command.
 {
-    struct s52engine* engine = (struct s52engine*)app->userData;
+    s52engine* engine = (s52engine*)app->userData;
+    if (NULL == engine) {
+        LOGE("ERROR: _android_handle_cmd(): no 's52engine'\n");
+        return;
+    }
 
     switch (cmd) {
         case APP_CMD_START: {

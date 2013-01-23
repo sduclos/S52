@@ -3,6 +3,9 @@
 #
 
 
+2013JAN23
+    -fix ship's label, fix free moving VRMEBL
+
 2013JAV18
     -fix/refactor VRMEBL on GLES2, add TX to cursor in PLAUX.DAI
     

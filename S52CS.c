@@ -3231,9 +3231,6 @@ static GString *VESSEL01 (S57_geo *geo)
 
     // text label (experimental)
     if (NULL != vlabelstr) {
-        //g_string_append(vessel01, ";TE('%s','_vessel_label',3,3,3,'15110',3,1,ARPAT,23)" );
-        //g_string_append(vessel01, ";TX(_vessel_label,3,3,3,'15110',3,1,ARPAT,23)" );
-        //g_string_append(vessel01, ";TX(_vessel_label,3,3,3,'15110',1,1,ARPAT,23)" );
         g_string_append(vessel01, ";TX(_vessel_label,3,3,3,'15110',1,1,ARPAT,76)" );
     }
 
