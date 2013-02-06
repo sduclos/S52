@@ -1,4 +1,4 @@
-// s52ui.dart: html/websocket test driver for libS52.so
+// s52ui.dart: html/websocket (web) test driver for libS52.so
 
 import 'dart:html';
 import 'dart:json';
@@ -95,9 +95,9 @@ class s52obj {
 S52  s52;
 //s52obj _ownshp;
 
-//String S52_WS_SRVR = 'ws://127.0.0.1:2950';
-String S52_WS_SRVR = 'ws://192.168.1.67:2950'; // laptop
-//String S52_WS_SRVR = 'ws://192.168.1.66:2950'; // Xoom
+//String S52_WS_SRVR = 'ws://127.0.0.1:2950';    // localhost
+//String S52_WS_SRVR = 'ws://192.168.1.67:2950'; // laptop
+String S52_WS_SRVR = 'ws://192.168.1.66:2950'; // Xoom
 List _UIBCK;
 List _UINFF;
 List _UIBDR;
@@ -531,5 +531,3 @@ void main() {
   window.setTimeout(_init, 200);
   //window.setTimeout(_init, 500);
 }
-
-
