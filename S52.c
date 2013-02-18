@@ -200,23 +200,19 @@ static GPtrArray *_cellList    = NULL;    // list of loaded cells - sorted, big 
 static _cell     *_crntCell    = NULL;    // current cell (passed around when loading --FIXME:global (dumb)
 static _cell     *_marinerCell = NULL;    // palce holder MIO's, and other (fake) S57 object
 #define MARINER_CELL   "--6MARIN.000"
-#define WORLD_SHP      "--0WORLD.shp"     // '--' - agency (none), 0 - chart purpose (S52 is 1-6)
-// WARNING: must be in sync with WORLD_SHP
-#define WORLD_BASENM   "--0WORLD"
+#define WORLD_SHP_EXT  ".shp"             // shapefile ext
+#define WORLD_BASENM   "--0WORLD"         // '--' - agency (none), 0 - chart purpose (S52 is 1-6)
+#define WORLD_SHP      WORLD_BASENM WORLD_SHP_EXT
 
 static GString   *_plibNameList = NULL;    // string that gather plibName
 static GString   *_paltNameList = NULL;    // string that gather palette name
 static GString   *_objClassList = NULL;    // string that gather cell object name
 static GString   *_cellNameList = NULL;    // string that gather cell name
 
-//static GPtrArray *_textList     = NULL;  // hold ref to text object during rendering of a frame
-//static GPtrArray *_objList_supp = NULL;  // list of object on the "Supress by Radar" layer
-//static GPtrArray *_objList_over = NULL;  // list of object on the "Over Radar" layer  (ie on top)
-static GPtrArray *_objToDelList  = NULL;   // list of obj to delete in next APP cycle
+static GPtrArray *_objToDelList = NULL;    // list of obj to delete in next APP cycle
 
 
 static int        _doInit   = TRUE;    // init the lib
-//static int        _doPick   = FALSE;   // S52_USE_GV TRUE cursor pick 'mode'
 
 // FIXME: reparse CS of the affected MP only (ex: ship outline MP need only to reparse OWNSHP CS)
 static int        _doCS     = FALSE;   // TRUE will recreate *all* CS at next draw() or drawLast()
@@ -244,7 +240,9 @@ static _view_t _view = {0.0, 0.0, 0.0, 0.0};
 // Note that DBus run from the main loop.
 static  GStaticMutex _mp_mutex = G_STATIC_MUTEX_INIT;
 
-// ownship
+
+// CSYMB init scale bar, north arrow, unit, CHKSYM
+static int             _iniCSYMB = TRUE;
 #ifdef S52_USE_GOBJECT
 static S52ObjectHandle _OWNSHP   = 0;
 static S52ObjectHandle _SCALEB10 = 0;
@@ -263,24 +261,11 @@ static S52ObjectHandle _CHKSYM01 = NULL;
 static S52ObjectHandle _BLKADJ01 = NULL;
 #endif
 
-// CSYMB init scale bar, north arrow, unit, CHKSYM
-static int _iniCSYMB  = TRUE;
-//static S52ObjectHandle _SCALEB10 = NULL;
-//static S52ObjectHandle _SCALEB11 = NULL;
-//static S52ObjectHandle _NORTHAR1 = NULL;
-//static S52ObjectHandle _UNITMTR1 = NULL;
-//static S52ObjectHandle _CHKSYM01 = NULL;
-//static S52ObjectHandle _BLKADJ01 = NULL;
-
 static S52_RADAR_cb  _RADAR_cb = NULL;
 //static int          _doRADAR  = TRUE;
 
-// to write cursor lat/long on screen
-//static double _cursor_lat = 0.0;
-//static double _cursor_lon = 0.0;
-
-static char _version[] = "$Revision: 1.110 $\n"
-      "libS52 0.82\n"
+static char _version[] = "$Revision: 1.111 $\n"
+      "libS52 0.83\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1355,16 +1340,13 @@ static int        _pipeWatch(gpointer dummy)
 static int        _getCellsExt(_extent* ext);
 static int        _initPROJ(void)
 {
-    double clat = 0.0;
-
     _extent ext;
     if (FALSE == _getCellsExt(&ext)) {
         PRINTF("WARNING: failed, no cell loaded!\n");
         return FALSE;
     }
 
-    clat = (ext.N + ext.S) / 2.0;
-
+    double clat = (ext.N + ext.S) / 2.0;
     S57_setMercPrj(clat);
     //_mercPrjSet = TRUE;
 
@@ -1388,6 +1370,7 @@ static int        _projectCells(void)
     for (guint k=0; k<_cellList->len; ++k) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
         if (FALSE == c->projDone) {
+        //if (FALSE == c->projDone && (0!=strcmp(c->filename->str, "--0WORLD.shp"))) {
             for (guint i=0; i<S52_PRIO_NUM; ++i) {
                 for (guint j=0; j<N_OBJ_T; ++j) {
                     GPtrArray *rbin = c->renderBin[i][j];
@@ -1877,15 +1860,14 @@ static GArray    *_parseIntList(GString *intstr)
 static int        _suppLineOverlap()
 // no SUPP in case manual chart correction (LC(CHCRIDnn) and LC(CHCRDELn))
 {
-    int prio;
-    int obj_t;
+    // FIXME: some edge valid are removed!
 
     return_if_null(_crntCell->Edges);
     return_if_null(_crntCell->ConnectedNodes);
 
     // assume that there is nothing on layer S52_PRIO_NODATA
-    for (prio=S52_PRIO_MARINR; prio>S52_PRIO_NODATA; --prio) {
-        for (obj_t=S52_LINES; obj_t>S52__META; --obj_t) {
+    for (int prio=S52_PRIO_MARINR; prio>S52_PRIO_NODATA; --prio) {
+        for (int obj_t=S52_LINES; obj_t>S52__META; --obj_t) {
             //GPtrArray *rbin = _crntCell->renderBin[prio][S52_AREAS_T];
             GPtrArray *rbin = _crntCell->renderBin[prio][obj_t];
             //unsigned int idx;
@@ -1902,8 +1884,10 @@ static int        _suppLineOverlap()
                 if ((NULL==name_rcnmstr) || (NULL==name_rcidstr))
                     break;
 
-                {   // check for substring ",...)" if ti can be found at the end
+                {   // check for substring ",...)" if found at the end
                     // this mean that TEMP_BUFFER_SIZE in OGR is not large anought.
+                    // see ogr/ogrfeature.cpp:994
+                    // #define TEMP_BUFFER_SIZE 1024
                     const gchar *substr = ",...)";
                     gchar       *found1 = g_strrstr(name_rcnmstr->str, substr);
                     gchar       *found2 = g_strrstr(name_rcidstr->str, substr);
@@ -1914,54 +1898,56 @@ static int        _suppLineOverlap()
                 }
 
 
-                // FIXME: warn if a line need masking
-                // FIXME: add info to find out what this mask mask
                 //MASK (IntegerList) = (7:255,255,255,255,255,255,255)
-                //GString *maskstr = S57_getAttVal(geo, "MASK");
-                //if (NULL != maskstr) {
-                //    PRINTF("INFO: MASK found [%s]\n", maskstr->str);
-                //}
+                GString *maskstr = S57_getAttVal(geo, "MASK");
+                if (NULL != maskstr) {
+                    //PRINTF("INFO: MASK found [%s]\n", maskstr->str);
+                    gchar **splitMASK  = g_strsplit_set(maskstr->str+1, "():,", 0);
+                    gchar **topMASK    = splitMASK;
 
-
+                    // the first integer is the lenght (ie the number of mask value)
+                    // 1 - mask, 2 - show, 255 - null (exterior boundary truncated by the data limit)
+                    guint n = atoi(*splitMASK++);
+                    for (guint i=0; i<n; ++splitMASK, ++i) {
+                        //if (NULL != *splitMASK && 0==strcmp("255", *splitMASK)) {
+                        //    PRINTF("NULL MASK FOUND (255): %s\n", maskstr->str);
+                        //}
+                        if (NULL != *splitMASK && 0==strcmp("1", *splitMASK)) {
+                            PRINTF("FIXME: MASKING FOUND (1): %s\n", maskstr->str);
+                        }
+                    }
+                }
 
                 // take only Edge (ie rcnm == 130 (Edge type))
-                //GArray *intLrcnm = _parseIntList(name_rcnmstr);
-                //GArray *intLrcid = _parseIntList(name_rcidstr);
                 gchar **splitrcnm  = g_strsplit_set(name_rcnmstr->str+1, "():,", 0);
                 gchar **splitrcid  = g_strsplit_set(name_rcidstr->str+1, "():,", 0);
                 gchar **toprcnm    = splitrcnm;
                 gchar **toprcid    = splitrcid;
 
-
-                // the first string is the lenght
-                guint n = atoi(*splitrcnm);
-                guint i = 0;
-                for (i=0; i<n; ++splitrcnm, ++i) {
-                    if (NULL == *splitrcnm) {
-                        PRINTF("ERROR: *splitrcnm\n");
-                        g_assert(0);
+                {
+                    // check if splitrcnm / splitrcid are valid
+                    // the first integer is the lenght
+                    guint n = atoi(*splitrcnm);
+                    for (guint i=0; i<n; ++splitrcnm, ++i) {
+                        if (NULL == *splitrcnm) {
+                            PRINTF("ERROR: *splitrcnm\n");
+                            g_assert(0);
+                        }
+                    }
+                    n = atoi(*splitrcid);
+                    for (guint i=0; i<n; ++splitrcid, ++i) {
+                        if (NULL == *splitrcid) {
+                            PRINTF("ERROR: *splitrcid\n");
+                            g_assert(0);
+                        }
                     }
                 }
-                n = atoi(*splitrcid);
-                for (i=0; i<n; ++splitrcid, ++i) {
-                    if (NULL == *splitrcid) {
-                        PRINTF("ERROR: *splitrcid\n");
-                        g_assert(0);
-                    }
-                }
 
+                // reset list
                 splitrcnm = toprcnm;
                 splitrcid = toprcid;
                 splitrcnm++;
                 splitrcid++;
-
-                // FIXME: because some name_rcidstr are imcomplet (ending with ",...)" when OGR
-                // temp buffer is not large anough)
-                // see ogr/ogrfeature.cpp:994
-                // #define TEMP_BUFFER_SIZE 1024
-                // some intLrcid are shorter than intLrcnm
-                //if (intLrcnm->len != intLrcid->len)
-                //    g_assert(0);
 
                 //NAME_RCNM (IntegerList) = (1:130)
                 //NAME_RCID (IntegerList) = (1:72)
@@ -1972,20 +1958,13 @@ static int        _suppLineOverlap()
                 //   make Edge to point to geo if null
                 //   else make geo coord z==-1 for all vertex in Egde that are found in geo
 
-                //gint *rcnm;
-                //unsigned int i;
-                //for (i=0; i<intLrcnm->len; ++i) {
-                for (i=0; NULL!=*splitrcnm; splitrcnm++) {
-                    //for (i=0; i<intLrcid->len; ++i) {
-                    //rcnm = &g_array_index(intLrcnm, gint, i);
+                for (guint i=0; NULL!=*splitrcnm; splitrcnm++) {
 
                     // the S57 name for Edge (130)
                     //if (0 == g_strcmp0(*splitrcnm, "130")) {
                     if (0 == S52_strncmp(*splitrcnm, "130", 3)) {
-                        //guint j    = 0;
-                        //gint *rcid = &g_array_index(intLrcid, gint, i);
                         for (guint j=0; j<_crntCell->Edges->len; ++j) {
-                            S57_geo *geoEdge     = (S57_geo *)g_ptr_array_index(_crntCell->Edges, j);
+                            S57_geo *geoEdge = (S57_geo *)g_ptr_array_index(_crntCell->Edges, j);
 
                             // FIXME: optimisation: save in rcid in geoEdge
                             //GString *rcidEdgestr = S57_getAttVal(geoEdge, "RCID");
@@ -2015,8 +1994,6 @@ static int        _suppLineOverlap()
                     }
                     splitrcid++;
                 }
-                //g_array_free(intLrcnm, TRUE);
-                //g_array_free(intLrcid, TRUE);
                 g_strfreev(toprcnm);
                 g_strfreev(toprcid);
 
@@ -2027,15 +2004,12 @@ static int        _suppLineOverlap()
     {
         int quiet = TRUE;
         // flush OGR primitive geo
-        //g_ptr_array_foreach(_crntCell->Edges,          (GFunc)S57_doneData, NULL);
-        //g_ptr_array_foreach(_crntCell->ConnectedNodes, (GFunc)S57_doneData, NULL);
         g_ptr_array_foreach(_crntCell->Edges,          (GFunc)S57_doneData, &quiet);
         g_ptr_array_foreach(_crntCell->ConnectedNodes, (GFunc)S57_doneData, &quiet);
     }
 
     g_ptr_array_free(_crntCell->Edges,          TRUE);
     g_ptr_array_free(_crntCell->ConnectedNodes, TRUE);
-    //g_array_free(_crntCell->ConnectedNodes, TRUE);
 
     _crntCell->Edges          = NULL;
     _crntCell->ConnectedNodes = NULL;
@@ -2336,10 +2310,6 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     {
         _mercPrjSet = _initPROJ();
         _projectCells();
-
-        //g_static_mutex_unlock(&_mp_mutex);
-        //S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
-        //S52_CHECK_MUTX;   // can't load 2 sets of charte at once
     }
 #endif
 
@@ -3266,11 +3236,6 @@ static int        _cullObj(_cell *c)
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                 S57_geo *geo = S52_PL_getGeo(obj);
 
-
-                // make certain that the display is no suppressed
-                // it is redondant since all object are initialy not suppressed
-                //S57_setSupp(geo, FALSE);
-
                 ++_nTotal;
 
                 // SCAMIN & PLib (disp cat)
@@ -3296,7 +3261,7 @@ static int        _cullObj(_cell *c)
                     continue;
                 }
 
-                // sort object according to radar flags
+                // store object according to radar flags
                 // note: default to 'over' if something else than 'supp'
                 if (S52_RAD_SUPP == S52_PL_getRPRI(obj)) {
                     g_ptr_array_add(c->objList_supp, obj);
@@ -3312,10 +3277,11 @@ static int        _cullObj(_cell *c)
                 }
             }
 
-            // traverse and draw all mariner object for each layer (of each chart)
+            // traverse all mariner object for each layer (of each chart)
             // that are bellow S52_PRIO_MARINR
             // BUG: this over draw mariner object (ex: all pastck is drawn on each chart)
             // FIX: use chart extent to clip
+            // BUG: the overdraw mixup cursor pick!!
             {
                 GPtrArray *rbin = _marinerCell->renderBin[j][k];
                 for (guint idx=0; idx<rbin->len; ++idx) {
@@ -3332,11 +3298,10 @@ static int        _cullObj(_cell *c)
                         if (TRUE == S52_PL_hasText(obj))
                             g_ptr_array_add(c->textList, obj);
                     }
-                }
-            }
-
-        }
-    }
+                }  // objects
+            }  // object type
+        } // layer
+    }  // cell
 
     return TRUE;
 }
@@ -3361,27 +3326,6 @@ static int        _cull(_extent ext)
     return TRUE;
 }
 
-DLL    int STD S52_drawText()
-// deprecated
-{
-    /*
-    //unsigned int i = 0;
-    for (guint i=0; i<_textList->len; ++i) {
-        S52_obj *obj = (S52_obj *)g_ptr_array_index(_textList, i);
-        // FIXME: view group for Text (Important/Other)
-        S52_GL_drawText(obj);
-    }
-    */
-
-
-    //g_ptr_array_foreach(_textList, (GFunc)S52_GL_drawText, NULL);
-
-    // empty array but keep mem alloc'ed
-    //g_ptr_array_set_size(_textList, 0);
-
-    return TRUE;
-}
-
 static int        _drawRADAR()
 {
     if (NULL != _RADAR_cb) {
@@ -3396,11 +3340,10 @@ static int        _drawRADAR()
 //static int        _draw(S52_extent ext)
 static int        _draw()
 // draw object inside view
-// also collect object that have text
+// then draw object's text
 {
-    unsigned int i = 0;
     unsigned int n = _cellList->len-1;
-    for (i=n; i>0; --i) {
+    for (guint i=n; i>0; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         g_atomic_int_get(&_atomicAbort);
@@ -3413,61 +3356,17 @@ static int        _draw()
         g_ptr_array_foreach (c->objList_supp, (GFunc)S52_GL_draw, NULL);
         g_ptr_array_set_size(c->objList_supp, 0);
 
+        // draw radar
         _drawRADAR();
 
         // draw over radar
         g_ptr_array_foreach (c->objList_over, (GFunc)S52_GL_draw, NULL);
         g_ptr_array_set_size(c->objList_over, 0);
 
-        // draw arc (experimental)
-        // FIXME: bug this draw on top of everything
-        /*
-        if (2.0 == S52_MP_get(S52_MAR_DISP_WHOLIN) || 3.0 == S52_MP_get(S52_MAR_DISP_WHOLIN)) {
-            //unsigned int i = 0;
-            for (guint i=1; i<_route->len; ++i) {
-                S52_obj *objA = (S52_obj *)g_ptr_array_index(_route, i-1);
-                S52_obj *objB = (S52_obj *)g_ptr_array_index(_route, i+0);
-
-                S52_GL_drawArc(objA, objB);
-            }
-        }
-        */
-
         // draw text
         g_ptr_array_foreach (c->textList,     (GFunc)S52_GL_drawText, NULL);
         g_ptr_array_set_size(c->textList,     0);
     }
-
-
-
-    /*
-    // draw under radar
-    g_ptr_array_foreach (_objList_supp, (GFunc)S52_GL_draw, NULL);
-    g_ptr_array_set_size(_objList_supp, 0);
-
-    _drawRADAR();
-
-    // draw over radar
-    g_ptr_array_foreach (_objList_over, (GFunc)S52_GL_draw, NULL);
-    g_ptr_array_set_size(_objList_over, 0);
-
-    // draw arc (experimental)
-    if (2.0 == S52_MP_get(S52_MAR_DISP_WHOLIN) || 3.0 == S52_MP_get(S52_MAR_DISP_WHOLIN)) {
-        //unsigned int i = 0;
-        for (guint i=1; i<_route->len; ++i) {
-            S52_obj *objA = (S52_obj *)g_ptr_array_index(_route, i-1);
-            S52_obj *objB = (S52_obj *)g_ptr_array_index(_route, i+0);
-
-            S52_GL_drawArc(objA, objB);
-        }
-    }
-
-    // draw text
-    g_ptr_array_foreach (_textList,     (GFunc)S52_GL_drawText, NULL);
-    g_ptr_array_set_size(_textList,     0);
-    //*/
-
-
 
     return TRUE;
 }
@@ -4010,9 +3909,6 @@ DLL int    STD S52_draw(void)
         // NOTE: no culling of object of overlapping region of cell of SAME nav pourpose
         // display priority 8
 
-        // for when using COGL - need to be outside begin/end
-        //S52_drawText();
-
         //PRINTF("S52_draw() .. -2-\n");
 
     }
@@ -4351,130 +4247,6 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
     g_static_mutex_unlock(&_mp_mutex);
 
     return TRUE;
-}
-
-DLL const char* STD S52_pickAt(double pixels_x, double pixels_y)
-{
-    // viewport
-    int x;
-    int y;
-    int width;
-    int height;
-
-    _extent ext;         // pick extent
-    double s,w,n,e;         // used to save old view
-    char   *name = NULL;  // object's name at XY
-    double oldAA = 0.0;
-
-    S52_CHECK_INIT;
-    S52_CHECK_MUTX;
-
-    if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
-        PRINTF("WARNING: no cell loaded\n");
-        g_static_mutex_unlock(&_mp_mutex);
-        g_assert(0);
-        return FALSE;
-    }
-
-    // check bound
-    if (FALSE == _validate_screenPos(&pixels_x, &pixels_y)) {
-        PRINTF("WARNING: coord out of scteen\n");
-        g_static_mutex_unlock(&_mp_mutex);
-        g_assert(0);
-        return FALSE;
-    }
-
-    // if blending is ON the cursor pick will not work
-    oldAA = S52_MP_get(S52_MAR_ANTIALIAS);
-    S52_MP_set(S52_MAR_ANTIALIAS, FALSE);
-
-    {   // compute pick view parameter
-
-        // mouse has 'Y' down, opengl is up
-        //y = _viewPort.y + _viewPort.height - y + 1;
-        //pixels_y = _viewPort.y + _viewPort.height - pixels_y;
-        {
-            S52_GL_getViewPort(&x, &y, &width, &height);
-            pixels_y = y + height - pixels_y;
-
-            // debug
-            PRINTF("pixels_x:%f, pixels_y:%f gl_pixels_y:%f\n", pixels_x, pixels_y, (y + height - pixels_y));
-        }
-
-        // FIXME: check bound
-        ext.N = pixels_y + 4;
-        ext.S = pixels_y - 4;
-        ext.E = pixels_x + 4;
-        ext.W = pixels_x - 4;
-        S52_GL_win2prj(&ext.W, &ext.S);
-        S52_GL_win2prj(&ext.E, &ext.N);
-
-        // save current view
-        S52_GL_getPRJView(&s, &w, &n, &e);
-
-        // set view of the pick (PRJ)
-        // FIXME: setPRJview is snapped to the current ViewPort aspect ratio
-        // so ViewPort value as to be set before PRJView
-        S52_GL_setViewPort(pixels_x-4, pixels_y-4, 9, 9);
-        S52_GL_setPRJView(ext.S, ext.W, ext.N, ext.E);
-        //PRINTF("PICK PRJ EXTENT (swne): %f, %f  %f, %f \n", ext.s, ext.w, ext.n, ext.e);
-
-
-#ifdef S52_USE_PROJ
-        {   // extent prj --> geo
-            // compute geographic filter extent
-            projUV uv;
-            uv.u = ext.W;
-            uv.v = ext.S;
-            uv = S57_prj2geo(uv);
-            ext.W = uv.u;
-            ext.S = uv.v;
-
-            uv.u  = ext.E;
-            uv.v  = ext.N;
-            uv = S57_prj2geo(uv);
-            ext.E = uv.u;
-            ext.N = uv.v;
-
-            //PRINTF("PICK LL EXTENT (swne): %f, %f  %f, %f \n", ext.s, ext.w, ext.n, ext.e);
-        }
-#endif
-
-    }
-
-    if (TRUE == S52_GL_begin(TRUE, FALSE)) {
-        _nTotal = 0;
-        _nCull  = 0;
-
-        // filter out objects that don't intersec the pick view
-        _cull(ext);
-        //PRINTF("nbr of object culled: %i (%i)\n", _nCull, _nTotal);
-
-        // render object that fall in the pick view
-        _draw();
-
-        // FIXME: move this to _drawLast() someday
-        // FIX: need to refactor S52_drawLast()
-        // FIXME: something wrong with coords of VESSEL
-
-        S52_GL_end(FALSE);
-    }
-
-    // restore view
-    // FIXME: setPRJview is snapped to the current ViewPort aspect ratio
-    // so ViewPort value as to be set before PRJView
-    S52_GL_setViewPort(x, y, width, height);
-    S52_GL_setPRJView(s, w, n, e);
-
-    name = S52_GL_getNameObjPick();
-    PRINTF("OBJECT PICKED: %s\n", name);
-
-    // replace original blending state
-    S52_MP_set(S52_MAR_ANTIALIAS, oldAA);
-
-    g_static_mutex_unlock(&_mp_mutex);
-
-    return name;
 }
 
 static int        _win2prj(double *pixels_x, double *pixels_y)
@@ -4919,7 +4691,6 @@ DLL int    STD S52_loadPLib(const char *plibName)
             return FALSE;
         } else {
             if (TRUE == S52_PL_load(PLibPath)) {
-                //g_string_append(_plibNameList, PLibPath);
                 g_string_append_printf(_plibNameList, ",%s", PLibPath);
             } else {
                 g_static_mutex_unlock(&_mp_mutex);
@@ -4928,7 +4699,6 @@ DLL int    STD S52_loadPLib(const char *plibName)
         }
     } else {
         if (TRUE == S52_PL_load(plibName)) {
-            //g_string_append(_plibNameList, plibName);
             g_string_append_printf(_plibNameList, ",%s", plibName);
         } else {
             g_static_mutex_unlock(&_mp_mutex);
@@ -4992,7 +4762,7 @@ DLL int    STD S52_loadPLib(const char *plibName)
             n->valacmstr	= c->valacmstr;
 
             n->textList     = c->textList;
-            g_ptr_array_set_size(n->textList, 0);
+            g_ptr_array_set_size(n->textList,     0);
             n->objList_supp = c->objList_supp;
             g_ptr_array_set_size(n->objList_supp, 0);
             n->objList_over = c->objList_over;
@@ -5000,13 +4770,11 @@ DLL int    STD S52_loadPLib(const char *plibName)
 
             n->objClassList = c->objClassList;
             n->projDone     = c->projDone;
-            //n->pjdst        = c->pjdst;
 
 
             {   // init render bin
-                int i,j;
-                for (i=0; i<S52_PRIO_NUM; ++i) {
-                    for (j=0; j<N_OBJ_T; ++j)
+                for (int i=0; i<S52_PRIO_NUM; ++i) {
+                    for (int j=0; j<N_OBJ_T; ++j)
                         n->renderBin[i][j] = g_ptr_array_new();
                 }
             }
@@ -5014,12 +4782,10 @@ DLL int    STD S52_loadPLib(const char *plibName)
 
             // move geo from old cell to cloned cell
             // and relink S52 to S57 via new local PLib (oldPLib+newPLib)
-            int i,j;
-            for (i=0; i<S52_PRIO_NUM; ++i) {
-                for (j=0; j<N_OBJ_T; ++j) {
+            for (int i=0; i<S52_PRIO_NUM; ++i) {
+                for (int j=0; j<N_OBJ_T; ++j) {
                     GPtrArray *rbin = c->renderBin[i][j];
-                    unsigned int idx;
-                    for (idx=0; idx<rbin->len; ++idx) {
+                    for (guint idx=0; idx<rbin->len; ++idx) {
                         S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                         S57_geo *geo = S52_PL_getGeo(obj);
 
@@ -5073,10 +4839,136 @@ DLL int    STD S52_loadPLib(const char *plibName)
     return TRUE;
 }
 
+
 //-------------------------------------------------------
 //
 // FEEDBACK TO HIGHER UP MODULE OF INTERNAL STATE
 //
+
+DLL const char * STD S52_pickAt(double pixels_x, double pixels_y)
+{
+    // viewport
+    int x;
+    int y;
+    int width;
+    int height;
+
+    _extent ext;         // pick extent
+    double s,w,n,e;         // used to save old view
+    char   *name = NULL;  // object's name at XY
+    double oldAA = 0.0;
+
+    S52_CHECK_INIT;
+    S52_CHECK_MUTX;
+
+    if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
+        PRINTF("WARNING: no cell loaded\n");
+        g_static_mutex_unlock(&_mp_mutex);
+        g_assert(0);
+        return FALSE;
+    }
+
+    // check bound
+    if (FALSE == _validate_screenPos(&pixels_x, &pixels_y)) {
+        PRINTF("WARNING: coord out of scteen\n");
+        g_static_mutex_unlock(&_mp_mutex);
+        g_assert(0);
+        return FALSE;
+    }
+
+    // if blending is ON the cursor pick will not work
+    oldAA = S52_MP_get(S52_MAR_ANTIALIAS);
+    S52_MP_set(S52_MAR_ANTIALIAS, FALSE);
+
+    {   // compute pick view parameter
+
+        // mouse has 'Y' down, opengl is up
+        //y = _viewPort.y + _viewPort.height - y + 1;
+        //pixels_y = _viewPort.y + _viewPort.height - pixels_y;
+        {
+            S52_GL_getViewPort(&x, &y, &width, &height);
+            pixels_y = y + height - pixels_y;
+
+            // debug
+            PRINTF("pixels_x:%f, pixels_y:%f gl_pixels_y:%f\n", pixels_x, pixels_y, (y + height - pixels_y));
+        }
+
+        // FIXME: check bound
+        ext.N = pixels_y + 4;
+        ext.S = pixels_y - 4;
+        ext.E = pixels_x + 4;
+        ext.W = pixels_x - 4;
+        S52_GL_win2prj(&ext.W, &ext.S);
+        S52_GL_win2prj(&ext.E, &ext.N);
+
+        // save current view
+        S52_GL_getPRJView(&s, &w, &n, &e);
+
+        // set view of the pick (PRJ)
+        // FIXME: setPRJview is snapped to the current ViewPort aspect ratio
+        // so ViewPort value as to be set before PRJView
+        S52_GL_setViewPort(pixels_x-4, pixels_y-4, 9, 9);
+        S52_GL_setPRJView(ext.S, ext.W, ext.N, ext.E);
+        //PRINTF("PICK PRJ EXTENT (swne): %f, %f  %f, %f \n", ext.s, ext.w, ext.n, ext.e);
+
+
+#ifdef S52_USE_PROJ
+        {   // extent prj --> geo
+            // compute geographic filter extent
+            projUV uv;
+            uv.u = ext.W;
+            uv.v = ext.S;
+            uv = S57_prj2geo(uv);
+            ext.W = uv.u;
+            ext.S = uv.v;
+
+            uv.u  = ext.E;
+            uv.v  = ext.N;
+            uv = S57_prj2geo(uv);
+            ext.E = uv.u;
+            ext.N = uv.v;
+
+            //PRINTF("PICK LL EXTENT (swne): %f, %f  %f, %f \n", ext.s, ext.w, ext.n, ext.e);
+        }
+#endif
+
+    }
+
+    if (TRUE == S52_GL_begin(TRUE, FALSE)) {
+        _nTotal = 0;
+        _nCull  = 0;
+
+        // filter out objects that don't intersec the pick view
+        _cull(ext);
+        //PRINTF("nbr of object culled: %i (%i)\n", _nCull, _nTotal);
+
+        // render object that fall in the pick view
+        _draw();
+
+        // FIXME: move this to _drawLast() someday
+        // FIX: need to refactor S52_drawLast()
+        // FIXME: something wrong with coords of VESSEL
+
+        S52_GL_end(FALSE);
+    }
+
+    // restore view
+    // FIXME: setPRJview is snapped to the current ViewPort aspect ratio
+    // so ViewPort value as to be set before PRJView
+    S52_GL_setViewPort(x, y, width, height);
+    S52_GL_setPRJView(s, w, n, e);
+
+    name = S52_GL_getNameObjPick();
+    PRINTF("OBJECT PICKED: %s\n", name);
+
+    // replace original blending state
+    S52_MP_set(S52_MAR_ANTIALIAS, oldAA);
+
+    g_static_mutex_unlock(&_mp_mutex);
+
+    return name;
+}
+
 DLL const char * STD S52_getPLibsIDList(void)
 {
     S52_CHECK_INIT;
@@ -8410,14 +8302,14 @@ static int                 _initDBus()
 #include "parson.h"
 
 #define BLOCK 2048
-static char  _err[BLOCK]      = {'\0'};
-static char  _result[BLOCK]   = {'\0'};
-static char  _response[BLOCK] = {'\0'};
+//static char  _err[BLOCK]      = {'\0'};
+//static char  _result[BLOCK]   = {'\0'};
+//static char  _response[BLOCK] = {'\0'};
 
-static gchar               _setErr(gchar *errmsg)
+static gchar               _setErr(char *err, gchar *errmsg)
 {
     //_err[0] = '\0';
-    g_snprintf(_err, BLOCK, "%s", errmsg);
+    g_snprintf(err, BLOCK, "libS52.so:%s", errmsg);
 
     return TRUE;
 }
@@ -8443,7 +8335,7 @@ static int                 _encode(char *buffer, const char *frmt, ...)
 
 }
 
-static int                 _handle_method(const gchar *str)
+static int                 _handle_method(const gchar *str, char *result, char *err)
 // call the correponding S52_* function named 'method' in JSON object
 // here 'method' meen function name (or command name)
 // SL4A call it 'method' since JAVA is OOP
@@ -8458,13 +8350,14 @@ static int                 _handle_method(const gchar *str)
     // debug
     //PRINTF("------------------\n");
     //PRINTF("instr->str:%s", instr->str);
-    _err[0] = '\0';
+    err[0] = '\0';
 
     // JSON parser
     JSON_Value *val       = json_parse_string(str);
     if (NULL == val) {
-        _setErr("can't parse json str");
-        _encode(_result, "[0]");
+        _setErr(err, "can't parse json str");
+
+        _encode(result, "[0]");
         PRINTF("WARNING: json_parse_string() failed:%s", str);
         return 0;
     }
@@ -8500,12 +8393,12 @@ static int                 _handle_method(const gchar *str)
     if (0 == S52_strncmp(cmdName, "S52_newOWNSHP", strlen("S52_newOWNSHP"))) {
         const char *label = json_array_get_string (paramsArr, 0);
         if ((NULL==label) || (1!=count)) {
-            _setErr("params 'label' not found");
+            _setErr(err, "params 'label' not found");
             goto exit;
         }
 
         S52ObjectHandle objH = S52_newOWNSHP(label);
-        _encode(_result, "[%lu]", (long unsigned int *) objH);
+        _encode(result, "[%lu]", (long unsigned int *) objH);
 
         goto exit;
     }
@@ -8513,19 +8406,19 @@ static int                 _handle_method(const gchar *str)
     //S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
     if (0 == S52_strncmp(cmdName, "S52_newVESSEL", strlen("S52_newVESSEL"))) {
         if (2 != count) {
-            _setErr("params 'vesrce'/'label' not found");
+            _setErr(err, "params 'vesrce'/'label' not found");
             goto exit;
         }
 
         double      vesrce = json_array_get_number(paramsArr, 0);
         const char *label  = json_array_get_string(paramsArr, 1);
         if (NULL == label) {
-            _setErr("params 'label' not found");
+            _setErr(err, "params 'label' not found");
             goto exit;
         }
 
         S52ObjectHandle objH = S52_newVESSEL(vesrce, label);
-        _encode(_result, "[%lu]", (long unsigned int *) objH);
+        _encode(result, "[%lu]", (long unsigned int *) objH);
         //PRINTF("objH: %lu\n", objH);
 
         goto exit;
@@ -8534,20 +8427,20 @@ static int                 _handle_method(const gchar *str)
     //S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel);
     if (0 == S52_strncmp(cmdName, "S52_setVESSELlabel", strlen("S52_setVESSELlabel"))) {
         if (2 != count) {
-            _setErr("params 'objH'/'newLabel' not found");
+            _setErr(err, "params 'objH'/'newLabel' not found");
             goto exit;
         }
 
         const char *label = json_array_get_string (paramsArr, 1);
         if (NULL == label) {
-            _setErr("params 'label' not found");
+            _setErr(err, "params 'label' not found");
             goto exit;
         }
 
         long unsigned int lui = (long unsigned int) json_array_get_number(paramsArr, 0);
         S52ObjectHandle objH  = (S52ObjectHandle) lui;
         objH = S52_setVESSELlabel(objH, label);
-        _encode(_result, "[%lu]", (long unsigned int *) objH);
+        _encode(result, "[%lu]", (long unsigned int *) objH);
 
         goto exit;
     }
@@ -8555,7 +8448,7 @@ static int                 _handle_method(const gchar *str)
     //S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data);
     if (0 == S52_strncmp(cmdName, "S52_pushPosition", strlen("S52_pushPosition"))) {
         if (4 != count) {
-            _setErr("params 'objH'/'latitude'/'longitude'/'data' not found");
+            _setErr(err, "params 'objH'/'latitude'/'longitude'/'data' not found");
             goto exit;
         }
 
@@ -8567,7 +8460,7 @@ static int                 _handle_method(const gchar *str)
 
         objH  = S52_pushPosition(objH, latitude, longitude, data);
 
-        _encode(_result, "[%lu]", (long unsigned int *) objH);
+        _encode(result, "[%lu]", (long unsigned int *) objH);
 
         goto exit;
     }
@@ -8575,7 +8468,7 @@ static int                 _handle_method(const gchar *str)
     //S52ObjectHandle STD S52_setVector   (S52ObjectHandle objH, int vecstb, double course, double speed);
     if (0 == S52_strncmp(cmdName, "S52_setVector", strlen("S52_setVector"))) {
         if (4 != count) {
-            _setErr("params 'objH'/'vecstb'/'course'/'speed' not found");
+            _setErr(err, "params 'objH'/'vecstb'/'course'/'speed' not found");
             goto exit;
         }
 
@@ -8587,7 +8480,7 @@ static int                 _handle_method(const gchar *str)
 
         objH  = S52_setVector(objH, vecstb, course, speed);
 
-        _encode(_result, "[%lu]", (long unsigned int *) objH);
+        _encode(result, "[%lu]", (long unsigned int *) objH);
 
         goto exit;
     }
@@ -8595,7 +8488,7 @@ static int                 _handle_method(const gchar *str)
     //S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d);
     if (0 == S52_strncmp(cmdName, "S52_setDimension", strlen("S52_setDimension"))) {
         if (5 != count) {
-            _setErr("params 'objH'/'a'/'b'/'c'/'d' not found");
+            _setErr(err, "params 'objH'/'a'/'b'/'c'/'d' not found");
             goto exit;
         }
 
@@ -8608,7 +8501,7 @@ static int                 _handle_method(const gchar *str)
 
         objH  = S52_setDimension(objH, a, b, c, d);
 
-        _encode(_result, "[%lu]", (long unsigned int *) objH);
+        _encode(result, "[%lu]", (long unsigned int *) objH);
 
         goto exit;
 
@@ -8617,7 +8510,7 @@ static int                 _handle_method(const gchar *str)
     //S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn);
     if (0 == S52_strncmp(cmdName, "S52_setVESSELstate", strlen("S52_setVESSELstate"))) {
         if (4 != count) {
-            _setErr("params 'objH'/'vesselSelect'/'vestat'/'vesselTurn' not found");
+            _setErr(err, "params 'objH'/'vesselSelect'/'vestat'/'vesselTurn' not found");
             goto exit;
         }
 
@@ -8629,7 +8522,7 @@ static int                 _handle_method(const gchar *str)
 
         objH  = S52_setVESSELstate(objH, vesselSelect, vestat, vesselTurn);
 
-        _encode(_result, "[%lu]", (long unsigned int *) objH);
+        _encode(result, "[%lu]", (long unsigned int *) objH);
 
         goto exit;
     }
@@ -8638,7 +8531,7 @@ static int                 _handle_method(const gchar *str)
     //S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
     if (0 == S52_strncmp(cmdName, "S52_delMarObj", strlen("S52_delMarObj"))) {
         if (1 != count) {
-            _setErr("params 'objH' not found");
+            _setErr(err, "params 'objH' not found");
             goto exit;
         }
 
@@ -8646,7 +8539,7 @@ static int                 _handle_method(const gchar *str)
         S52ObjectHandle   objH = (S52ObjectHandle) lui;
         objH = S52_delMarObj(objH);
 
-        _encode(_result, "[%lu]", (long unsigned int *) objH);
+        _encode(result, "[%lu]", (long unsigned int *) objH);
 
         goto exit;
     }
@@ -8656,7 +8549,7 @@ static int                 _handle_method(const gchar *str)
     //                                     unsigned int xyznbrmax, double *xyz, const char *listAttVal);
     if (0 == S52_strncmp(cmdName, "S52_newMarObj", strlen("S52_newMarObj"))) {
         if (3 != count) {
-            _setErr("params 'plibObjName'/'objType'/'xyznbrmax' not found");
+            _setErr(err, "params 'plibObjName'/'objType'/'xyznbrmax' not found");
             goto exit;
         }
 
@@ -8672,7 +8565,7 @@ static int                 _handle_method(const gchar *str)
         // debug
         //PRINTF("S52_newMarObj -> objH: %lu\n", (long unsigned int *) objH);
 
-        _encode(_result, "[%lu]", (long unsigned int *) objH);
+        _encode(result, "[%lu]", (long unsigned int *) objH);
 
         goto exit;
     }
@@ -8681,9 +8574,9 @@ static int                 _handle_method(const gchar *str)
     if (0 == S52_strncmp(cmdName, "S52_getPalettesNameList", strlen("S52_getPalettesNameList"))) {
         const gchar *palListstr = S52_getPalettesNameList();
 
-        _encode(_result, "%s", palListstr);
+        _encode(result, "%s", palListstr);
 
-        //PRINTF("%s", _result);
+        //PRINTF("%s", result);
 
         goto exit;
     }
@@ -8692,9 +8585,9 @@ static int                 _handle_method(const gchar *str)
     if (0 == S52_strncmp(cmdName, "S52_getCellNameList", strlen("S52_getCellNameList"))) {
         const gchar *cellNmListstr = S52_getCellNameList();
 
-        _encode(_result, "%s", cellNmListstr);
+        _encode(result, "%s", cellNmListstr);
 
-        //PRINTF("%s", _result);
+        //PRINTF("%s", result);
 
         goto exit;
     }
@@ -8702,7 +8595,7 @@ static int                 _handle_method(const gchar *str)
     //double STD S52_getMarinerParam(S52MarinerParameter paramID);
     if (0 == S52_strncmp(cmdName, "S52_getMarinerParam", strlen("S52_getMarinerParam"))) {
         if (1 != count) {
-            _setErr("params 'paramID' not found");
+            _setErr(err, "params 'paramID' not found");
             goto exit;
         }
 
@@ -8710,9 +8603,9 @@ static int                 _handle_method(const gchar *str)
 
         double d = S52_getMarinerParam(paramID);
 
-        _encode(_result, "[%f]", d);
+        _encode(result, "[%f]", d);
 
-        //PRINTF("%s", _result);
+        //PRINTF("%s", result);
 
         goto exit;
     }
@@ -8720,7 +8613,7 @@ static int                 _handle_method(const gchar *str)
     //int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
     if (0 == S52_strncmp(cmdName, "S52_setMarinerParam", strlen("S52_setMarinerParam"))) {
         if (2 != count) {
-            _setErr("params 'paramID'/'val' not found");
+            _setErr(err, "params 'paramID'/'val' not found");
             goto exit;
         }
 
@@ -8729,9 +8622,9 @@ static int                 _handle_method(const gchar *str)
 
         double d = S52_setMarinerParam(paramID, val);
 
-        _encode(_result, "[%f]", d);
+        _encode(result, "[%f]", d);
 
-        //PRINTF("%s", _result);
+        //PRINTF("%s", result);
 
         goto exit;
     }
@@ -8740,9 +8633,9 @@ static int                 _handle_method(const gchar *str)
     if (0 == S52_strncmp(cmdName, "S52_drawLast", strlen("S52_drawLast"))) {
         int i = S52_drawLast();
 
-        _encode(_result, "[%i]", i);
+        _encode(result, "[%i]", i);
 
-        //PRINTF("%s", _result);
+        //PRINTF("%s", result);
 
         goto exit;
     }
@@ -8751,9 +8644,9 @@ static int                 _handle_method(const gchar *str)
     if (0 == S52_strncmp(cmdName, "S52_draw", strlen("S52_draw"))) {
         int i = S52_draw();
 
-        _encode(_result, "[%i]", i);
+        _encode(result, "[%i]", i);
 
-        //PRINTF("%s", _result);
+        //PRINTF("%s", result);
 
         goto exit;
     }
@@ -8761,7 +8654,7 @@ static int                 _handle_method(const gchar *str)
     //int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
     if (0 == S52_strncmp(cmdName, "S52_getRGB", strlen("S52_getRGB"))) {
         if (1 != count) {
-            _setErr("params 'colorName' not found");
+            _setErr(err, "params 'colorName' not found");
             goto exit;
         }
 
@@ -8775,11 +8668,11 @@ static int                 _handle_method(const gchar *str)
         PRINTF("%i, %i, %i\n", R,G,B);
 
         if (TRUE == ret)
-            _encode(_result, "[%i,%i,%i]", R, G, B);
+            _encode(result, "[%i,%i,%i]", R, G, B);
         else
-            _encode(_result, "[0]");
+            _encode(result, "[0]");
 
-        //PRINTF("%s\n", _result);
+        //PRINTF("%s\n", result);
 
         goto exit;
     }
@@ -8787,7 +8680,7 @@ static int                 _handle_method(const gchar *str)
     //int    STD S52_setTextDisp(int dispPrioIdx, int count, int state);
     if (0 == S52_strncmp(cmdName, "S52_setTextDisp", strlen("S52_setTextDisp"))) {
         if (3 != count) {
-            _setErr("params '&dispPrioIdx' / 'count' / 'state' not found");
+            _setErr(err, "params '&dispPrioIdx' / 'count' / 'state' not found");
             goto exit;
         }
 
@@ -8798,11 +8691,11 @@ static int                 _handle_method(const gchar *str)
         int ret = S52_setTextDisp(dispPrioIdx, count, state);
 
         if (TRUE == ret)
-            _encode(_result, "[1]");
+            _encode(result, "[1]");
         else
-            _encode(_result, "[0]");
+            _encode(result, "[0]");
 
-        //PRINTF("%s\n", _result);
+        //PRINTF("%s\n", result);
 
         goto exit;
     }
@@ -8810,7 +8703,7 @@ static int                 _handle_method(const gchar *str)
     //int    STD S52_getTextDisp(int dispPrioIdx);
     if (0 == S52_strncmp(cmdName, "S52_getTextDisp", strlen("S52_getTextDisp"))) {
         if (1 != count) {
-            _setErr("params 'dispPrioIdx' not found");
+            _setErr(err, "params 'dispPrioIdx' not found");
             goto exit;
         }
 
@@ -8819,15 +8712,15 @@ static int                 _handle_method(const gchar *str)
         int ret = S52_getTextDisp(dispPrioIdx);
 
         if (TRUE == ret)
-            _encode(_result, "[1]");
+            _encode(result, "[1]");
         else {
             if (-1 == ret)
-                _encode(_result, "[-1]");
+                _encode(result, "[-1]");
             else // FALSE
-                _encode(_result, "[0]");
+                _encode(result, "[0]");
         }
 
-        //PRINTF("%s\n", _result);
+        //PRINTF("%s\n", result);
 
         goto exit;
     }
@@ -8835,7 +8728,7 @@ static int                 _handle_method(const gchar *str)
     //int    STD S52_loadCell        (const char *encPath,  S52_loadObject_cb loadObject_cb);
     if (0 == S52_strncmp(cmdName, "S52_loadCell", strlen("S52_loadCell"))) {
         if (1 != count) {
-            _setErr("params 'encPath' not found");
+            _setErr(err, "params 'encPath' not found");
             goto exit;
         }
 
@@ -8844,12 +8737,12 @@ static int                 _handle_method(const gchar *str)
         int ret = S52_loadCell(encPath, NULL);
 
         if (TRUE == ret)
-            _encode(_result, "[1]");
+            _encode(result, "[1]");
         else {
-            _encode(_result, "[0]");
+            _encode(result, "[0]");
         }
 
-        //PRINTF("%s\n", _result);
+        //PRINTF("%s\n", result);
 
         goto exit;
     }
@@ -8857,7 +8750,7 @@ static int                 _handle_method(const gchar *str)
     //int    STD S52_doneCell        (const char *encPath);
     if (0 == S52_strncmp(cmdName, "S52_doneCell", strlen("S52_doneCell"))) {
         if (1 != count) {
-            _setErr("params 'encPath' not found");
+            _setErr(err, "params 'encPath' not found");
             goto exit;
         }
 
@@ -8866,12 +8759,12 @@ static int                 _handle_method(const gchar *str)
         int ret = S52_doneCell(encPath);
 
         if (TRUE == ret)
-            _encode(_result, "[1]");
+            _encode(result, "[1]");
         else {
-            _encode(_result, "[0]");
+            _encode(result, "[0]");
         }
 
-        PRINTF("SOCK:S52_doneCell(): %s\n", _result);
+        PRINTF("SOCK:S52_doneCell(): %s\n", result);
 
         goto exit;
     }
@@ -8883,53 +8776,79 @@ exit:
 }
 
 static gboolean            _socket_read_write(GIOChannel *source, GIOCondition cond, gpointer user_data)
-// WARNING: multi-thread here so PRINTF is a bit clunky
+// FIXME: refactor this mess
 {
-    GError  *error = NULL;
-    gchar     str_return[1024] = {'\0'};
-    //gchar   *str_return = NULL;
+    GError *error          = NULL;
 
-    static int inFrame = FALSE;
+    gchar  str_send[BLOCK] = {'\0'};
+    gchar  str_read[BLOCK] = {'\0'};
+    gchar  response[BLOCK] = {'\0'};
+    gchar  result[BLOCK]   = {'\0'};
+    gchar  err[BLOCK]      = {'\0'};
+
+    //static int inFrame = FALSE;
 
     switch(cond) {
     	case G_IO_IN: {
 
             //PRINTF("G_IO_IN\n");
 
-            gint  socket = g_io_channel_unix_get_fd(source);
-            //gsize length =
-                recv(socket, str_return, 1024, 0);
-            //GIOStatus stat = g_io_channel_read_to_end(source, &str_return, &length, &error);
+            gsize length = 0;
+            gsize terminator_pos = 0;
+            GIOStatus stat = g_io_channel_read_chars(source, str_read, 1024, &length, &error);
+
+            //G_IO_STATUS_ERROR  An error occurred.
+            //G_IO_STATUS_NORMAL Success.
+            //G_IO_STATUS_EOF    End of file.
+            //G_IO_STATUS_AGAIN  Resource temporarily unavailable.
 
             // debug
-            //if (0 != length) {
-            //    PRINTF("received (%i byte):%s\n", length, str_return);
-            //}
-
-            if (0 == str_return[0]) {
-            //if ((NULL==str_return) || (0==str_return[0])) {
-                PRINTF("connection close, text lenght = 0\n");
-
-                g_object_unref((GSocketConnection*)user_data);
-
-                inFrame = FALSE;
-
-                //break;
-                return FALSE;
+            //PRINTF("GIOStatus:%i, length:%i terminator_pos:%i str_read:%s \n", stat, length, terminator_pos, str_read);
+            if (NULL != error) {
+                PRINTF("g_io_channel_read_chars(): failed [ret:%i err:%s]\n", stat, error->message);
+                return FALSE; //TRUE;
+            }
+            if (G_IO_STATUS_ERROR == stat) {
+                GIOStatus stat = g_io_channel_flush(source, NULL);
+                PRINTF("flush GIOStatus:%i\n", stat);
+                return FALSE; //TRUE;
             }
 
-            if ((TRUE==inFrame) && (0!=str_return[0])) {
-                guint len = 0;
-                PRINTF("in Frame .. first byte: 0x%hhX\n", str_return[0]);
-                if ('\x81' == str_return[0]) {
-                    len = str_return[1] & 0x7F;
-                    PRINTF("Frame: text lenght = %i, (0x%hhX)\n", len, str_return[1]);
-                } else {
-                    break;
+
+            // Not a WebSocket connection - normal JSON handling
+            if ('{' == str_read[0]) {
+                // FIXME: _encode() & g_snprintf() do basically the same thing and the resulting
+                // string is the same .. but only g_snprintf() string pass io channel !!!
+                int   id = _handle_method(str_read, result, err);
+                guint n  = g_snprintf(response, BLOCK, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}",
+                                      id, (err[0] == '\0') ? "no error" : err, result);
+                response[n] = '\0';
+                //PRINTF("n:%i\n", n);
+
+                gsize bytes_written = 0;
+                g_io_channel_write_chars(source, response, n, &bytes_written, &error);
+                if (NULL != error) {
+                    PRINTF("g_io_channel_write_chars(): failed sending msg [err:%s]\n", error->message);
+                    return FALSE;
                 }
 
+                // debug
+                //PRINTF("sended:%s", _response);
+                break;
+            }
+
+
+            // in a WebSocket frame
+            //if ((TRUE==inFrame) && (0!=str_return[0])) {
+            //if ((TRUE==inFrame) && (0!=str_read[0])) {
+            if ('\x81' == str_read[0]) {
+                guint len = str_read[1] & 0x7F;
+                //PRINTF("in Frame .. first byte: 0x%hhX\n", str_read[0]);
+                PRINTF("Frame: text lenght = %i, (0x%hhX)\n", len, str_read[1]);
+
                 {
-                    char *key = str_return+2;
+                    //char *key = str_return+2;
+                    char *key = str_read+2;
                     char *data = key + 4;
 
                     for (guint i = 0; i<len; ++i) {
@@ -8937,17 +8856,17 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
                     }
                     PRINTF("msg:%s\n", data);
 
-                    int id = _handle_method(data);
-                    guint n = g_snprintf(_response, BLOCK, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}",
-                                         id, (_err[0] == '\0') ? "no error" : _err, _result);
-                    _response[n] = '\0';
+                    int id = _handle_method(data, result, err);
+                    guint n = g_snprintf(response, BLOCK, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}",
+                                         id, (err[0] == '\0') ? "no error" : err, result);
+                    response[n] = '\0';
                 }
 
                 guint n = 0;
-                unsigned int dataLen = strlen(_response);
+                unsigned int dataLen = strlen(response);
                 if (dataLen <= 125) {
                     // lenght coded with 7 bits <= 125
-                    n = g_snprintf(str_return, 1024, "\x81%c%s", (char)(dataLen & 0x7F), _response);
+                    n = g_snprintf(str_send, 1024, "\x81%c%s", (char)(dataLen & 0x7F), response);
                 } else {
                     if (dataLen < 65536) {
                         // lenght coded with 16 bits (code 126)
@@ -8955,7 +8874,7 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
                         // bytesFormatted[2] = ( bytesRaw.length >> 8 )
                         // bytesFormatted[3] = ( bytesRaw.length      )
 
-                        n = g_snprintf(str_return, 1024, "\x81%c%c%c%s", 126, (char)(dataLen>>8), (char)dataLen, _response);
+                        n = g_snprintf(str_send, 1024, "\x81%c%c%c%s", 126, (char)(dataLen>>8), (char)dataLen, response);
                     } else {
                         // if need more then 65536 bytes to transfer (code 127)
                         /* dataLen max = 2^64
@@ -8973,24 +8892,28 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
                     }
                 }
 
-                PRINTF("send bytes:%i, msg:%s\n", n, str_return);
+                PRINTF("send bytes:%i, msg:%s\n", n, str_send);
 
-                send(socket, str_return, n, 0);
+                gsize bytes_written = 0;
+                GIOStatus stat = g_io_channel_write_chars(source, str_send, n, &bytes_written, &error);
 
-                g_io_channel_flush(source, NULL);
+                //g_io_channel_flush(source, NULL);
 
                 return TRUE;
             }
 
 
 
-            if (FALSE == inFrame) {
-                // FIXME: find an better way to detect a websocket handshake
+            {
+                // FIXME: find an better way to detect a websocket handshake - sec-websocket-key:
                 int   n   = strlen("Sec-WebSocket-Key:");
-                char *str = strstr(str_return, "Sec-WebSocket-Key:");
+                char *str = strstr(str_read, "Sec-WebSocket-Key:");
+                if (NULL == str) {
+                    str = strstr(str_read, "sec-websocket-key:");
+                }
+
                 if (NULL != str) {
                     GString *secWebSocketKey = g_string_new(str + n + 1); // FIXME: +1 is for skipping the space
-                    //secWebSocketKey = g_string_new(str + n);
                     secWebSocketKey = g_string_truncate(secWebSocketKey, 24); // shop
                     //PRINTF("secWebSocketKey: %s\n", secWebSocketKey->str);
                     secWebSocketKey = g_string_append(secWebSocketKey, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
@@ -9029,50 +8952,24 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
                     g_string_free(respstr, TRUE);
 
                     if (NULL != error) {
-                        g_object_unref((GSocketConnection*)user_data);
+                        //g_object_unref((GSocketConnection*)user_data);
                         PRINTF("g_io_channel_write_chars(): failed [ret:%i err:%s]\n", stat, error->message);
                         return FALSE;
                     }
 
                     g_io_channel_flush(source, NULL);
 
-                    inFrame = TRUE;
+                    //inFrame = TRUE;
 
                     g_free(acceptstr);
                     g_checksum_free(checksum);
 
                     break;
                 }
-
             }
 
-            // Not a WebSocket - normal JSON handling
-            {
-                //*
-                // FIXME: _encode() & g_snprintf() do basically the same thing and the resulting
-                // string is the same .. but only g_snprintf() string pass io channel !!!
-                int   id = _handle_method(str_return);
-                //guint n  = g_snprintf(_response, BLOCK, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}\n",
-                guint n  = g_snprintf(_response, BLOCK, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}",
-                                      id, (_err[0] == '\0') ? "no error" : _err, _result);
-                _response[n] = '\0';
-                //PRINTF("n:%i\n", n);
-
-                gsize bytes_written = 0;
-                g_io_channel_write_chars(source, _response, n, &bytes_written, &error);
-                if (NULL != error) {
-                    g_object_unref((GSocketConnection*)user_data);
-                    PRINTF("g_io_channel_write_chars(): failed sending msg [err:%s]\n", error->message);
-                    return FALSE;
-                }
-                g_io_channel_flush(source, NULL);
-
-                // debug
-                //PRINTF("sended:%s", _response);
-                //*/
-            }
-
-            break;
+            PRINTF("WARNING: msg not handled (type unknown)\n");
+            return FALSE;
         }
 
 

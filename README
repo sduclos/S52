@@ -14,10 +14,10 @@ Electronic Navigational Chart (ENC).
 This release implement basic rendering of IHO' S-52
 (IHO, ECDIS PRESENTATION LIBRARY, USERS' MANUAL, Edition / revision 3.2,
 March 2000, Special Publication No. 52 ANNEX A of APPENDIX 2,
-published by the International Hydrographic Bureau, MONACO)
-via the plugin libS52.so for OpenEV. Note that the current Edition of
-the S-52 specification is 4.2 and is not available for free download as
-was Ed. 3.2 (pslb03_2.pdf) from IHO web site.
+published by the International Hydrographic Bureau, MONACO.)
+Note that the current Edition of the S-52 specification is 4.2 
+and is not available for free download as was Ed. 3.2 
+(S52/doc/pslb03_2.pdf) from IHO web site.
 
 This software is not intended for general public but to
 interested party in the GIS/marine field.
@@ -203,9 +203,9 @@ In openev/contrib/S52 are the following files:
    lib/tesselator/  -tesselator from Mesa3D
 
    doc/
-   C1.dispCatSwitch.txt -list of objects that can switch layers (IHO)
+   C1.dispCatSwitch.txt -list of objects that switch IHO layers depending on attributes
    obj.txt              -S57 objects
-   att.txt              -S57 attibutes
+   att.txt              -S57 attributes
 
    doc/symbol/
    boylat24.dia    -BOYLAT24 object construct (Dia)
@@ -215,7 +215,7 @@ In openev/contrib/S52 are the following files:
                     https://github.com/GNOME/introspection-doc-generator
 
    test/
-   Makefile        -build test harness for traget
+   Makefile        -build test harness for target
    REAME           -notes for test
    s52glx.c        -harness for X
    s52gv.c         -harness for GV
@@ -223,7 +223,7 @@ In openev/contrib/S52 are the following files:
    s52gtk2.rb      -same thing but in Ruby
    s52.cfg         -local configuration (debug)
    s52egl.c        -EGL harness for X and Android
-   s52ais.c        -feed data from AIS via GPSD
+   s52ais.c        -GPSD client that feed AIS data to libS52.so
    sl4agps.c       -UI/GPS/Gyro from Android via SL4A (RPC Bridge to Android)
 
 
@@ -270,4 +270,4 @@ LGPL3
 Comment / inquiry are welcome,
 
 Sylvain Duclos
-sduclos@users.sourceforgue.net
+sduclos@users.sf.net

@@ -2342,9 +2342,7 @@ static int       _win2prj(double *x, double *y)
     float u       = *x;
     float v       = *y;
     float dummy_z = 0.0;
-    float coord[] = {u,v,0.0};
     if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, &u, &v, &dummy_z)) {
-    //if (GL_FALSE == glhUnProjectf(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, coord)) {
         PRINTF("WARNING: UnProjection faild\n");
 
         g_assert(0);
@@ -4200,8 +4198,7 @@ static int       _renderSY_vessel(S52_obj *obj)
     if ((0 == S52_PL_cmpCmdParam(obj, "AISSEL01")) &&
         (NULL!=vestatstr                           &&
         ('1'==*vestatstr->str || '2'==*vestatstr->str ))
-       )
-    {
+       ) {
         GString *_vessel_selectstr = S57_getAttVal(geo, "_vessel_select");
         if ((NULL!=_vessel_selectstr) && ('Y'== *_vessel_selectstr->str)) {
             _renderSY_POINT_T(obj, ppt[0], ppt[1], 0.0);
@@ -4218,12 +4215,10 @@ static int       _renderSY_vessel(S52_obj *obj)
     // draw vector stabilization
     if (0 == S52_PL_cmpCmdParam(obj, "VECGND21") ||
         0 == S52_PL_cmpCmdParam(obj, "VECWTR21") ) {
-        //GString *vecperstr = S57_getAttVal(geo, "vecper");
-        //gint     vecper    = (NULL == vecperstr) ? 0 : S52_atoi(vecperstr->str);
-        //double period = S52_MP_get(S52_MAR_VECPER);
         gint     vecper    = (int) S52_MP_get(S52_MAR_VECPER);
 
-        //if (0.0 != period) {
+        // FIXME: NO VECT STAB if target sleeping
+
         if (0 != vecper) {
             // compute symbol offset due to course and speed
             //double course, speed, period;
@@ -4231,7 +4226,6 @@ static int       _renderSY_vessel(S52_obj *obj)
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
 
                 double courseRAD = (90.0 - course)*DEG_TO_RAD;
-                //double veclenNM  = period   * (speed /60.0);
                 double veclenNM  = vecper   * (speed /60.0);
                 double veclenM   = veclenNM * NM_METER;
                 double veclenMX  = veclenM  * cos(courseRAD);
@@ -4257,12 +4251,8 @@ static int       _renderSY_vessel(S52_obj *obj)
     // time marks on vector - 6 min
     if ((0 == S52_PL_cmpCmdParam(obj, "ARPSIX01")) ||
         (0 == S52_PL_cmpCmdParam(obj, "AISSIX01")) ){
-        //double period = S52_MP_get(S52_MAR_VECPER);
-        //GString *vecperstr = S57_getAttVal(geo, "vecper");
-        //gint     vecper    = (NULL == vecperstr) ? 0 : S52_atoi(vecperstr->str);
         gint     vecper    = S52_MP_get(S52_MAR_VECPER);
 
-        //if (0.0 != period) {
         if (0 != vecper) {
             // compute symbol offset of each 6 min mark
             //double course, speed, period;
@@ -4273,7 +4263,6 @@ static int       _renderSY_vessel(S52_obj *obj)
                 double veclenM6min  = veclenNM6min * NM_METER;
                 double veclenM6minX = veclenM6min  * cos(orientRAD);
                 double veclenM6minY = veclenM6min  * sin(orientRAD);
-                //int    nmrk         = (int) period / 6.0;
                 int    nmrk         = (int) (vecper/6);
                 int    i            = 0;
 
@@ -4291,12 +4280,8 @@ static int       _renderSY_vessel(S52_obj *obj)
     // time marks on vector - 1 min
     if ((0 == S52_PL_cmpCmdParam(obj, "ARPONE01")) ||
         (0 == S52_PL_cmpCmdParam(obj, "AISONE01"))  ) {
-        //double period = S52_MP_get(S52_MAR_VECPER);
-        //GString *vecperstr = S57_getAttVal(geo, "vecper");
-        //gint     vecper    = (NULL == vecperstr) ? 0 : S52_atoi(vecperstr->str);
         gint     vecper = S52_MP_get(S52_MAR_VECPER);
 
-        //if (0.0 != period) {
         if (0 != vecper) {
             // compute symbol offset of each 1 min mark
             double course, speed;
@@ -4306,7 +4291,6 @@ static int       _renderSY_vessel(S52_obj *obj)
                 double veclenM1min  = veclenNM1min * NM_METER;
                 double veclenM1minX = veclenM1min  * cos(orientRAD);
                 double veclenM1minY = veclenM1min  * sin(orientRAD);
-                //int    nmrk         = (int) period;
                 int    nmrk         = vecper;
                 int    i            = 0;
 
@@ -4500,10 +4484,9 @@ static int       _renderSY_leglin(S52_obj *obj)
 static int       _renderSY(S52_obj *obj)
 // SYmbol
 {
-    // FIXME: PLib doesn't specifie where is the pivot point of sounding!
-    // FIXED: PLib DOES imply sounding offset
-    // since same sounding drawn in raster and vector land on
-    // different screen pixel
+    // FIXME: second draw of the same Mariners' Object misplace centroid!
+    // and fail to be cursor picked
+
 
 #ifdef S52_USE_GV
     PRINTF("FIXME: point symbol not drawn\n");
@@ -4538,12 +4521,6 @@ static int       _renderSY(S52_obj *obj)
         return FALSE;
     }
 
-    //_setBlend(TRUE);
-
-    //_glMatrixMode(GL_MODELVIEW);
-    //_glLoadIdentity();
-    //_glPushMatrix();
-
     if (POINT_T == S57_getObjtype(geoData)) {
 
         // SOUNDG
@@ -4560,30 +4537,16 @@ static int       _renderSY(S52_obj *obj)
                     return FALSE;
                 }
 
-                S52_DListData *DListData = S52_PL_getDListData(obj);
-                if ((NULL==DListData) || (FALSE==_VBOvalidate(DListData)))
-                    return FALSE;
-/*
-                S52_DListData *DListData = S52_PL_getDListData(obj);
-                if (NULL == DListData) {
-                    return FALSE;
-                }
-                if (FALSE == glIsBuffer(DListData->vboIds[0])) {
-                    guint i = 0;
-                    for (i=0; i<DListData->nbr; ++i) {
-                        DListData->vboIds[i] = _VBOCreate(DListData->prim[i]);
-                    }
-                    // return to normal mode
-                    glBindBuffer(GL_ARRAY_BUFFER, 0);
-                }
-*/
-
                 soundg = ppt[2] + datum;
 
                 if (30.0 > soundg)
                     g_snprintf(str, 5, "%4.1f", soundg);
                 else
                     g_snprintf(str, 5, "%4.f", soundg);
+
+                S52_DListData *DListData = S52_PL_getDListData(obj);
+                if ((NULL==DListData) || (FALSE==_VBOvalidate(DListData)))
+                    return FALSE;
 
                 S52_Color *col = DListData->colors;
                 _glColor4ub(col);
@@ -4642,8 +4605,6 @@ static int       _renderSY(S52_obj *obj)
 
         // all other point sym
         _renderSY_POINT_T(obj, ppt[0], ppt[1], orient+_north);
-
-        //_setBlend(FALSE);
 
         return TRUE;
     }
@@ -4736,10 +4697,6 @@ static int       _renderSY(S52_obj *obj)
             return FALSE;
         }
 
-        // when in pick mode, fill the area
-        //if (TRUE == _doPick)
-        //    _fillarea(geoData);
-
         // debug
         //if (0 ==  g_strcmp0("MAGVAR", S57_getName(geoData), 6)) {
         //    PRINTF("MAGVAR found\n");
@@ -4760,11 +4717,25 @@ static int       _renderSY(S52_obj *obj)
         if ((0==S52_PL_cmpCmdParam(obj, "LOWACC01")) && (0.0==S52_MP_get(S52_MAR_QUAPNT01)))
             return TRUE;
 
-        // the previous draw fill centroid
         if (TRUE == _doPick) {
             double x;
             double y;
 
+            // fill area, because other draw might not fill area
+            // case of SY();LS(); (ie no AC() fill)
+            {
+                S52_DListData *DListData = S52_PL_getDListData(obj);
+                if ((NULL==DListData) || (FALSE==_VBOvalidate(DListData)))
+                    return FALSE;
+
+                S52_Color *col = DListData->colors;
+                _glColor4ub(col);
+
+                // when in pick mode, fill the area
+                _fillarea(geoData);
+            }
+
+            // centroid offset might put the symb outside the area
             while (TRUE == S57_getNextCentroid(geoData, &x, &y))
                 _renderSY_POINT_T(obj, x, y, orient+_north);
 
@@ -4773,7 +4744,8 @@ static int       _renderSY(S52_obj *obj)
 
 
         {   // normal draw, also fill centroid
-            double offset_x, offset_y;
+            double offset_x;
+            double offset_y;
             _computeCentroid(geoData);
 
             // compute offset
@@ -4799,8 +4771,6 @@ static int       _renderSY(S52_obj *obj)
             }
 
             for (guint i=0; i<_centroids->len; ++i) {
-                // move screen coord origine at symbol geo position
-
                 pt3 *pt = &g_array_index(_centroids, pt3, i);
                 //PRINTF("drawing centered at: %f/%f\n", pt->x, pt->y);
 
@@ -5548,12 +5518,14 @@ static int       _renderLS(S52_obj *obj)
                         _renderLS_vessel(obj);
                 }
             }
-        } else
-
+        }
+        else
         //*/
-
         {
             // LINES_T, AREAS_T
+
+            // FIXME: case of pick AREA where the only commandword is LS()
+            // FIX: one more call to fillarea()
             GLdouble *ppt     = NULL;
             guint     npt     = 0;
             S57_getGeoData(geoData, 0, &npt, &ppt);
@@ -7422,8 +7394,13 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
     //PRINTF("x:%f, x:%f, str:%s\n", x, y, str);
+
+    // FIXME: check for '\n' and shorten line
+    // BETTER: at a second TX() for second text row
+
     //for (guint i=0; i<S52_strlen(str); ++i) {
-    gint len = g_utf8_strlen(str, -1) - 1;
+    //gint len = g_utf8_strlen(str, -1) - 1;
+    gint len = g_utf8_strlen(str, -1);
     for (gint i=0; i<len; ++i) {
         glDrawArrays(GL_TRIANGLE_FAN, i*4, 4);
     }
@@ -8511,9 +8488,7 @@ int        S52_GL_drawText(S52_obj *obj, gpointer user_data)
     while (S52_CMD_NONE != cmdWrd) {
         switch (cmdWrd) {
             case S52_CMD_TXT_TX:
-            case S52_CMD_TXT_TE:
-                _drawText(obj);
-                break;
+            case S52_CMD_TXT_TE: _ncmd++; _drawText(obj); break;
 
             default: break;
         }
@@ -8531,15 +8506,13 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
 // later redraw only dirty region
 // later redraw only Group 2 object
 // later ...
-
-//static void      _draw(S52_obj *obj)
 {
     // quiet compiler
     (void)user_data;
 
+    //------------------------------------------------------
     // debug
     //return TRUE;
-
     //if (0 == strcmp("HRBFAC", S52_PL_getOBCL(obj))) {
     //    PRINTF("HRBFAC found\n");
     //    //return;
@@ -8552,15 +8525,13 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //    PRINTF("UNSARE found\n");
     //    //return;
     //}
-    /*
-    if (TRUE == _doPick) {
-        S57_geo *geo = S52_PL_getGeo(obj);
-        GString *FIDNstr = S57_getAttVal(geo, "FIDN");
-        if (0==strcmp("2135161787", FIDNstr->str)) {
-            PRINTF("%s\n", FIDNstr->str);
-        }
-    }
-    */
+    //if (TRUE == _doPick) {
+    //    S57_geo *geo = S52_PL_getGeo(obj);
+    //    GString *FIDNstr = S57_getAttVal(geo, "FIDN");
+    //    if (0==strcmp("2135161787", FIDNstr->str)) {
+    //        PRINTF("%s\n", FIDNstr->str);
+    //    }
+    //}
     //S57_geo *geo = S52_PL_getGeo(obj);
     //PRINTF("drawing geo ID: %i\n", S57_getGeoID(geo));
     //if (2184==S57_getGeoID(geo)) {
@@ -8568,9 +8539,16 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //    PRINTF("found %i\n", S57_getGeoID(geo));
     //    return TRUE;
     //}
+    if (TRUE == _doPick) {
+        if (0 == strcmp("PRDARE", S52_PL_getOBCL(obj))) {
+            PRINTF("PRDARE found\n");
+        }
+    }
+    //------------------------------------------------------
+
+
 
     if (TRUE == _doPick) {
-        //++_cIdx.idx;
         ++_cIdx.color.r;
     }
 
@@ -8582,8 +8560,8 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
 
         switch (cmdWrd) {
             /// text is parsed/rendered separetly now
-            ///case S52_CMD_TXT_TX:
-            ///case S52_CMD_TXT_TE: _parseTEX(obj); _ncmd++; break;   // TE&TX
+            case S52_CMD_TXT_TX:
+            case S52_CMD_TXT_TE: break;   // TE&TX
 
             case S52_CMD_SYM_PT: _renderSY(obj); _ncmd++; break;   // SY
             case S52_CMD_SIM_LN: _renderLS(obj); _ncmd++; break;   // LS
@@ -8598,29 +8576,29 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
             case S52_CMD_NONE: break;
 
             default:
-                //PRINTF("ERROR: unknown command word: %i\n", cmdWrd);
-                //g_assert(0);
+                PRINTF("ERROR: unknown command word: %i\n", cmdWrd);
+                g_assert(0);
                 break;
         }
 
         cmdWrd = S52_PL_getCmdNext(obj);
     }
 
-    // FIXME: can cursor pick now use the journal in S52.c instead of the GPU?
+    // Can cursor pick now use the journal in S52.c instead of the GPU?
+    // NO, if extent is use then concave AREA and LINES can trigger false positive
     if (TRUE == _doPick) {
-        int i;
-        //glReadPixels(_vp[0]+1, _vp[1]+1, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_read);
-        //glReadPixels(_vp[0], _vp[1], 3, 3, GL_RGBA, GL_UNSIGNED_BYTE, &_read);
+
+        // WARNING: some graphic card preffer RGB / BYTE .. YMMV
         glReadPixels(_vp[0], _vp[1], 9, 9, GL_RGBA, GL_UNSIGNED_BYTE, &_read);
         //glReadPixels(_vp[0], _vp[1], 9, 9, GL_RGBA, GL_BYTE, &_read);
         //glReadPixels(_vp[0], _vp[1], 9, 9, GL_RGB, GL_UNSIGNED_BYTE, &_read);
-        for (i=0; i<81; ++i) {
+
+        for (int i=0; i<81; ++i) {
             if (_read[i].color.r == _cIdx.color.r) {
-            //if (_read[i].idx == _cIdx.idx) {
                 g_ptr_array_add(_objPick, obj);
 
                 // debug
-                //PRINTF("pixel found (%i, %i): i=%i color=%X\n", _vp[0], _vp[1], i, _cIdx.idx);
+                PRINTF("pixel found (%i, %i): i=%i color=%X\n", _vp[0], _vp[1], i, _cIdx.color.r);
                 break;
             }
         }
@@ -8628,16 +8606,16 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
         _checkError("S52_GL_draw():glReadPixels()");
 
 
-        // debug
-        //for (i=8; i>=0; --i) {
-        //    int j = i*9;
-        //    printf("%i |%X %X %X %X %X %X %X %X %X|\n", i,
-        //           _read[j+0].color.r, _read[j+1].color.r, _read[j+2].color.r,
-        //           _read[j+3].color.r, _read[j+4].color.r, _read[j+5].color.r,
-        //           _read[j+6].color.r, _read[j+7].color.r, _read[j+8].color.r);
-        //}
-        //printf("finish with object: cIdx: %X\n", _cIdx.idx);
-        //printf("----------------------------\n");
+        // debug - dump pixel
+        for (int i=8; i>=0; --i) {
+            int j = i*9;
+            printf("%i |%X %X %X %X %X %X %X %X %X|\n", i,
+                   _read[j+0].color.r, _read[j+1].color.r, _read[j+2].color.r,
+                   _read[j+3].color.r, _read[j+4].color.r, _read[j+5].color.r,
+                   _read[j+6].color.r, _read[j+7].color.r, _read[j+8].color.r);
+        }
+        printf("finish with object: cIdx: %X\n", _cIdx.idx);
+        printf("----------------------------\n");
     }
 
 
@@ -9848,8 +9826,9 @@ char      *S52_GL_getNameObjPick(void)
             name  = S57_getName(geo);
             S57ID = S57_getGeoID(geo);
 
-            PRINTF("%i: %s\n", i, name);
-            PRINTF("LAST LUP: %s\n", S52_PL_getCMD(obj));
+            PRINTF("%i  : %s\n", i, name);
+            PRINTF("LUP : %s\n", S52_PL_getCMD(obj));
+            PRINTF("DPRI: %i\n", (int)S52_PL_getDPRI(obj));
             S57_dumpData(geo, FALSE);
             PRINTF("-----------\n");
         }

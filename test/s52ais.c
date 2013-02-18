@@ -484,17 +484,22 @@ static char         *_s52_send_cmd(const char *command, const char *params)
     //g_print("s52ais.c:_s52_send_cmd(): sended:%s", _response);
 
     // wait response - blocking socket
-    gssize szrcv = g_socket_receive_with_blocking(socket, _response, BUFSZ, TRUE, NULL, &error);
-    if ((NULL!=error) || (0==szrcv) || (-1==szrcv)) {
-        //  0 - connection was closed by the peer
-        // -1 - on error
-        if (NULL == error)
-            g_print("s52ais:_s52_send_cmd():ERROR:g_socket_receive_with_blocking(): connection close [%s]\n", _response);
-        else
-            g_print("s52ais:_s52_send_cmd():ERROR:g_socket_receive_with_blocking(): %s [%i:%s]\n", error->message, error->code, _response);
+    int szrcv = g_socket_receive_with_blocking(socket, _response, BUFSZ, TRUE, NULL, &error);
+    //gssize szrcv = g_socket_receive_with_blocking(socket, _response, BUFSZ, FALSE, NULL, &error);
+    //if ((NULL!=error) || (0==szrcv) || (-1==szrcv)) {
+    if (NULL != error) {
+        g_print("s52ais:_s52_send_cmd():ERROR:g_socket_receive_with_blocking(): %s [%i:%s]\n", error->message, error->code, _response);
 
         _s52_connection = NULL; // reset connection
 
+        return NULL;
+    }
+    if ((0==szrcv) || (-1==szrcv)) {
+        //  0 - connection was closed by the peer
+        // -1 - on error
+
+        g_print("s52ais:_s52_send_cmd():ERROR:g_socket_receive_with_blocking(): szrcv:%i\n", szrcv);
+        _s52_connection = NULL; // reset connection
         return NULL;
     }
     _response[szrcv] = '\0';
@@ -1437,6 +1442,7 @@ static int           _flushAIS(int all)
 }
 
 int            s52ais_doneAIS()
+// this call flush AIS, so this signal _gpsdClientRead() to exit
 {
     _flushAIS(TRUE);
 
@@ -1451,6 +1457,10 @@ int            s52ais_doneAIS()
     WSACleanup();
 #endif
 
+#ifdef S52_USE_ANDROID
+    unlink(AIS PID);
+#endif
+
     return TRUE;
 }
 
@@ -1461,29 +1471,33 @@ static void          _trapSIG(int sig, siginfo_t *info, void *secret)
         // 2
     case SIGINT:
         g_print("s52ais:_trapSIG(): Signal 'Interrupt' cought - SIGINT(%i)\n", sig);
-
-        // this call flush AIS, so this signal _gpsdClientRead() to exit
         s52ais_doneAIS();
+
+        // continue with normal sig handling
+        if (NULL != _old_signal_handler_SIGINT.sa_sigaction)
+            _old_signal_handler_SIGINT.sa_sigaction(sig, info, secret);
+
         break;
 
         // 11
     case SIGSEGV:
         g_print("s52ais:_trapSIG(): Signal 'Segmentation violation' cought - SIGSEGV(%i)\n", sig);
-#ifdef S52_USE_ANDROID
-        unlink(AIS PID);
-#endif
+        s52ais_doneAIS();
+
         // continue with normal sig handling
-        _old_signal_handler_SIGSEGV.sa_sigaction(sig, info, secret);
+        if (NULL != _old_signal_handler_SIGSEGV.sa_sigaction)
+            _old_signal_handler_SIGSEGV.sa_sigaction(sig, info, secret);
+
         break;
 
         // 15
     case SIGTERM:
         g_print("s52ais:_trapSIG(): Signal 'Termination (ANSI)' cought - SIGTERM(%i)\n", sig);
-#ifdef S52_USE_ANDROID
-        unlink(AIS PID);
-#endif
-        // CRASH continue with normal sig handling
-        //_old_signal_handler_SIGTERM.sa_sigaction(sig, info, secret);
+        s52ais_doneAIS();
+
+        // continue with normal sig handling
+        if (NULL != _old_signal_handler_SIGTERM.sa_sigaction)
+            _old_signal_handler_SIGTERM.sa_sigaction(sig, info, secret);
 
         break;
 

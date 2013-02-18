@@ -722,7 +722,11 @@ static int      _s52_init       (s52engine *engine)
     S52_loadCell(NULL, NULL);
 
     // World data
-    S52_loadCell("/home/sduclos/dev/gis/data/--0WORLD.shp", NULL);
+    S52_loadCell("/home/sduclos/dev/gis/data/0WORLD/--0WORLD.shp", NULL);
+
+    // Ice - experimental
+    //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
+
     // show world
     S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);
 #endif
@@ -1019,7 +1023,8 @@ static int      _android_init_external_gps(void)
     // tel GPS to re-connect to libS52 if GPS is allready UP
     if (TRUE == g_file_test(GPS PID, (GFileTest) (G_FILE_TEST_EXISTS))) {
         LOGI("s52egl:GPS prog is allready running (%s)\n", GPS);
-        const char connS52[] = "/system/bin/sh -c 'kill -SIGUSR2 `cat " GPS PID "`'";
+        const char connS52[] = "/system/bin/sh -c 'kill -SIGUSR1 `cat " GPS PID "`'";
+        //const char connS52[] = "/system/bin/sh -c 'kill -SIGUSR2 `cat " GPS PID "`'";
         if (TRUE != g_spawn_command_line_async(connS52, &error)) {
             LOGI("s52egl:g_spawn_command_line_async() failed [%s]\n", error->message);
             return FALSE;
@@ -1066,6 +1071,26 @@ static int      _android_init_external_ais(void)
 
     return TRUE;
 }
+
+static int      _android_init_HTML_UI(void)
+// start UI - get GPS & Gyro from Android
+{
+    const gchar cmd[] =
+        "sh /system/bin/am start       "
+        "-a android.intent.action.MAIN "
+        "-n nav.ecs.s52android/.s52ui  ";
+
+    int ret = g_spawn_command_line_async(cmd, NULL);
+    if (FALSE == ret) {
+        g_print("_android_init_HTML_UI(): fail to start UI\n");
+        return FALSE;
+    } else {
+        g_print("_android_init_HTML_UI(): UI started ..\n");
+    }
+
+    return TRUE;
+}
+
 
 #if 0
 static int      _android_sensors_gyro(gpointer user_data)
@@ -1573,7 +1598,11 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
             int32_t action = AKeyEvent_getAction(key_event);
             LOGI("s52egl:AInputEvent - eType:%i devID:%i source:%i action:%i flags:%X code:%i\n",
                                        eType,   devID,   source,   action,   flags,   code);
+
             if (AKEYCODE_MENU==code && 0==action) {
+                _android_init_HTML_UI();
+
+                /*
                 if (TRUE != g_file_test(GPS PID, (GFileTest) (G_FILE_TEST_EXISTS))) {
                     LOGI("s52egl:GPS prog not running (%s)\n", GPS);
                     return FALSE;
@@ -1585,6 +1614,7 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
                     LOGI("s52egl:_android_handle_input(): MENU EVENT: g_spawn_command_line_async() failed [%s]\n", error->message);
                     //_androidUIon = !_androidUIon;
                 }
+                */
             }
 
             //*
@@ -1659,8 +1689,8 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 
             if (NULL != engine->app->window) {
                 if (EGL_TRUE == _android_display_init(engine)) {
-                    _android_init_external_gps();
                     _android_init_external_ais();
+                    //_android_init_external_gps();
                 }
             }
             break;
@@ -1900,8 +1930,6 @@ void android_main(struct android_app *app)
         int events;
         struct android_poll_source* source;
 
-        //LOGI("s52egl:android_main(): IN while loop ..\n");
-
         // read all pending events (0 --> no wait).
         //while ((ident = ALooper_pollAll(-1, NULL, &events, (void**) &source)) >= 0) {
         while ((ident = ALooper_pollAll(0, NULL, &events, (void**) &source)) >= 0) {
@@ -1913,12 +1941,11 @@ void android_main(struct android_app *app)
             if (0 != engine.app->destroyRequested) {
                 LOGI("s52egl:android_main(): IN while loop .. destroyRecquested\n");
                 //engine_term_display(&engine);
-                //return;
                 goto exit;
             }
         }
 
-        // read glib events
+        // process all glib pending events
         while(g_main_context_iteration(NULL, FALSE))
             ;
 

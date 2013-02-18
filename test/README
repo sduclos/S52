@@ -33,7 +33,7 @@ Makefile Target:
 - s52ais
   gpsd cleint to feed AIS to s52eglx and s52android
 
-- sl4agps
+- sl4agps (s52ui will replace this eventually)
   feed android's GPS/GYRO to s52android
   also some libS52.so test via android UI
 
@@ -67,3 +67,15 @@ s52gtk2.rb is a translation of s52gtk2.c to ruby.
 On Linux do:
 
 $ ln -s ../libS52.so libS52.so (to make a symbolic link)
+
+
+------------------------------------------------------------
+
+Other Folder:
+
+- s52ui: HTML5 S52 test UI (Dart)
+
+- android: run libS52 on android, use s52ui
+
+- ref_dump: reference .PNG to check for regression (TODO)
+

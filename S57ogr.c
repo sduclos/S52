@@ -215,7 +215,6 @@ int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadO
 static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometryH hGeomNext)
 {
     S57_geo           *geoData = NULL;
-    //OGRGeometryH       hGeom   = OGR_F_GetGeometryRef((OGRFeatureH)feature);
     OGRGeometryH       hGeom   = NULL;
     OGRwkbGeometryType eType   = wkbNone;
 
@@ -407,9 +406,6 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 //    Note that manufacturers' areas, whether non-chart or chart areas, should not use area colour fill.
                 //S57_setName(geoData, "mnufea");
             }
-
-            // Att not set nothing for now
-            //_setAtt(geoData, feature);
 
             break;
         }

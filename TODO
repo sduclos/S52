@@ -14,6 +14,7 @@ SEP2010
 2012SEP
 2012OCT
 2012NOV
+2013JAN - add link to Pavel Kalian RleEditor, add Testing section
 
 
 Curent focus (top priority *):
@@ -25,8 +26,6 @@ Curent focus (top priority *):
     -fading chart boudary, calib symb, ..
     -implement patern scale spacing (PASP field)
     -handle GLU_TESS_MAX_COORD
-    -dump gl* call in clear text to diff with reference dump (debug)
-    -write to file raw GL call --for self test
 
     PL:
 *   -view group or somme equivalent functionality
@@ -40,7 +39,7 @@ Curent focus (top priority *):
     -isobath tag
 
     Coding:
-    -compare to test/ref_dump/, for self testing, regression, ..
+    -use masked lines field (OGR/S57 MASK/FSPT) to split line in multi-line
     -check handling anti-meridian (need a chart that overlap the meridian)
     -chart manager / show world contour / chart extent / CATALOG.031
     -read text referenced by CATLOG.031
@@ -49,11 +48,14 @@ Curent focus (top priority *):
     -use the glib "Key-value file parser" to load/save .cfg
     -use "freedesktop.org" specs for .cfg (ie XDG_*)
 
+    Testing:
+    -compare to S52/test/ref_dump/, for self testing, regression, ..
+    -dump gl* call in clear text to diff with reference dump (debug)
+    -write to file raw GL call --for self test
+    
 In a day:
-    -code: many S52_drawStr() params could be drawn from inside S52_drawLast()
     -code: static global variable should all be inside a context struct .. of course!
-    -GL: save display list / VBO(somehow!)
-    -S52: use masked lines field (S57 MASK/FSPT)
+    -GL: SENC save display list / VBO (somehow!) 
     -BUG: S-52 specs 3.2 for TOPMAR01 (init 'floating' inside loop)
     -WARN: chart no 1 PLib put $LINE in layer 0
     -OGR: validate CRC (the source code is at IHO)
@@ -62,7 +64,6 @@ In a day:
     -GL: bearing snap to light
     -PL: implement vector instruction command: symbol call (SC), arc (AA)
     -PL: implement raster instruction for pattern and symbol (PBTM, SBTM)
-    -PL: editor
     -connect to postGIS/SQLite
     -SVG!
     -WWW!
@@ -72,6 +73,8 @@ DONE
 ====
 (put here TODO's that has been done)
 
+    -code: many S52_drawStr() params could be drawn from inside S52_drawLast()
+	-PL: editor (see Pavel Kalian https://github.com/nohal/RleEditor)
     -load Chart No 1 for testing C1-PLib 3.1 (the default PLib)
     -handling GDAL (world) shapefile to fit S52 framework
     -test for proper configure of openev when loading libS52.so

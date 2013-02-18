@@ -70,9 +70,9 @@ s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --l
 s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_USE_DOTPITCH
 
 # Note: the -DS52_USE_AFGLOW need symbole in PLAUX_00.DAI
-# -DS52_USE_GPSD -DS52_USE_AFGLOW -DS52_USE_FAKE_AIS
+# -DS52_USE_AFGLOW -DS52_USE_FAKE_AIS
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps` \
-                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_FAKE_AIS 
+                      -DS52_USE_DOTPITCH -DS52_USE_SOCK
 
 #                      -I$(S52ANDROIDINC)
 #                      -I$(S52ANDROIDINC)/glib-2.0
@@ -157,6 +157,9 @@ s52eglx: s52egl.c s52ais.c
 	$(CC) $(CFLAGS) s52egl.c $(LIBS) -o $@
 	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
 
+
+############### build: Android ##############################
+
 #s52eglarm: libs52gps.so s52egl.c ../S52.h -Wl,-allow-shlib-undefin
 # -Wl,--entry=_start -Wl,-rpath=/system/lib -nostdlib
 # -Wl,-rpath=$(ARMLIBS) -nostdlib
@@ -206,9 +209,9 @@ android/dist/sdcard/s52android/UI.xml: android/dist/sdcard/s52android/UI.tmpl.xm
 sl4agps.cfg:
 	-rm android/dist/sdcard/s52android/UI.xml
 
-#$(STRIP)  sl4agps
 sl4agps: sl4agps.c sl4agps.cfg android/dist/sdcard/s52android/UI.xml
 	$(CC)  $(CFLAGS)    sl4agps.c $(LIBS) -o sl4agps
+	$(STRIP)  sl4agps
 	cp        sl4agps   android/dist/sdcard/s52android/bin
 	adb push  sl4agps   /sdcard/s52android/bin
 	adb shell chmod 755 /data/media/s52android/bin/sl4agps
@@ -221,6 +224,11 @@ s52ais: s52ais.c
 	adb shell chmod 755 /data/media/s52android/bin/s52ais
 
 s52eglarm: s52ais sl4agps
+
+# Note: to start s52ui (the HTML UI that replace sl4agps) in android by hand
+# adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52android/.s52ui
+
+############### build: Android ##############################
 
 
 

@@ -175,6 +175,7 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0`\
 # -DS52_USE_SYM_AISSEL01         (experimental - symbol in plib-test-priv.rle)
 # -DS52_USE_SOCK
 # -DS52_USE_WORLD - rename shapefile to WORLD_SHP in S52.c:201 ("--0WORLD.shp")
+#                  -DS52_USE_SUPP_LINE_OVERLAP    
 s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \

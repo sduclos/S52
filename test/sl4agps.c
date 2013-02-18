@@ -38,15 +38,15 @@
 
 #define RAD_TO_DEG         57.29577951308232
 
-#define PATH "/data/media" // android 4.1
+#define PATH "/data/media"     // android 4.1
 //#define PATH "/data/media/0" // android 4.2
 #define GPS   PATH "/s52android/bin/sl4agps"  
 #define PID  ".pid"
 
 static char _localhost[] = "127.0.0.1";
 
-#define SL4A_PORT           45001
-#define SL4A_HEART_BEAT_SEC    10
+#define SL4A_PORT          45001
+#define SL4A_HEART_BEAT_SEC   10
 static int                 _sl4a_show_dialog = FALSE;
 static GSocketConnection  *_sl4a_connectionA = NULL;
 
@@ -78,10 +78,10 @@ static GString *_params   = NULL; //[BUFSZ]; // param part that will later be in
 #include <signal.h>
 //#include <execinfo.h>
 static struct sigaction _old_signal_handler_SIGINT;
-static struct sigaction _old_signal_handler_SIGUSR1;
-static struct sigaction _old_signal_handler_SIGUSR2;
 static struct sigaction _old_signal_handler_SIGSEGV;
 static struct sigaction _old_signal_handler_SIGTERM;
+static struct sigaction _old_signal_handler_SIGUSR1;
+static struct sigaction _old_signal_handler_SIGUSR2;
 
 static GMainLoop *_main_loop = NULL;
 
@@ -1526,6 +1526,24 @@ static void     _trapSIG(int sig, siginfo_t *info, void *secret)
             _s52_init();
             g_print("sl4agps:_trapSIG(): re-connect to libS52\n");
         }
+
+        /*
+        const gchar cmd[] =
+            "sh   /system/bin/am start       "
+            "-a   android.intent.action.MAIN "
+            "-n   nav.ecs.s52android/.s52ui  ";
+
+        // Android quirk: g_spawn() return the return value of the cmd (here 0)
+        // check this: return FALSE to meen SUCCESS!!
+        int ret = g_spawn_command_line_async(cmd, NULL);
+        if (FALSE == ret) {
+            g_print("sl4agps: fail to start s52ui activity\n");
+            return FALSE;
+        } else {
+            g_print("sl4agps: s52ui started\n");
+        }
+        */
+
 
         // continue with normal sig handling
         if (NULL != _old_signal_handler_SIGUSR2.sa_sigaction)

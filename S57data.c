@@ -77,7 +77,6 @@ typedef struct _S57_prim {
 
 // S57 object geo data
 typedef struct _S57_geo {
-//struct _S57_geo {
     guint        id;          // record id (debug)
 
     GString     *name;        // object name 6/8 + '\0'; used for S52 LUP
@@ -95,12 +94,12 @@ typedef struct _S57_geo {
     geocoord    *linexyz;
 
     //guint        crntIdx;     // length of geo data (POINT, LINE, AREA)
-    //guint        dataLen;        // length of geo data (POINT, LINE, AREA) currently in buffer
+    //guint        dataLen;       // length of geo data (POINT, LINE, AREA) currently in buffer
     guint        dataSize;        // length of geo data (POINT, LINE, AREA) currently in buffer
-                                // max is 1, linexyznbr, ringxyznbr[0]
+                                  // max is 1, linexyznbr, ringxyznbr[0]
     /*
-    guint        linenbr;       // multi-line
-    guint       *linexyznbr;
+    guint        linenbr;        // FIXME: multi-line: break a line, at position in MASK (attVal), into multi-line
+    guint       *linexyznbr;     // sound good in theorie
     geocoord   **linexyz;
     */
 
@@ -108,16 +107,13 @@ typedef struct _S57_geo {
     guint       *ringxyznbr;
     geocoord   **ringxyz;
 
-    // hold projected coordinate for point and line
-    //guint        xyznr;
-    //geocoord    *xyz;
-
     // hold tessalated geographic and projected coordinate of area
+    // in a format suitable for OpenGL
     S57_prim    *prim;
 
     GData       *attribs;
 
-    //S57_geo     *touch;       // for CS --object "touched" by this object
+    // for CS --object "touched" by this object
     union {
         S57_geo *TOPMAR; // break out objet class "touched" --easier to understand but cost more mem
         S57_geo *LIGHTS; // break out objet class "touched" --easier to understand but cost more mem
@@ -132,11 +128,8 @@ typedef struct _S57_geo {
     S57_geo     *link;        // experimetal, link to auxiliary
 #endif
 
-    // centroid - save current centroid of this object
-    // FIXME: what if more than one
-    // FIX: use g_array()!
-    //double x;
-    //double y;
+    // centroid - save current centroids of this object
+    // optimisation mostly for layer 9 AREA
     guint   centroidIdx;
     GArray *centroid;
 
@@ -157,9 +150,6 @@ static void   _string_free(gpointer data)
 static int    _doneGeoData(_S57_geo *geoData)
 // delete the geo data it self
 {
-    //geoData->linexyznbr = 0;
-    //geoData->ringnbr = 0;
-
     // POINT
     if (NULL != geoData->pointxyz) {
         g_free((geocoord*)geoData->pointxyz);
@@ -275,9 +265,9 @@ int        S57_donePROJ()
 
 int        S57_setMercPrj(double lat)
 {
-    const char  *templ = "+proj=merc +lat_ts=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
+    //const char  *templ = "+proj=merc +lat_ts=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
     //const char  *templ = "+proj=merc +lat_ts=-50.0 +ellps=WGS84 +datum=WGS84 +unit=m";
-    //const char  *templ = "+proj=merc +lat_ts=0.0 +ellps=WGS84 +datum=WGS84 +unit=m";
+    const char  *templ = "+proj=merc +lat_ts=0.0 +ellps=WGS84 +datum=WGS84 +unit=m";
     gchar *pjstr = g_strdup_printf(templ, lat);
 
     if (NULL != _pjdst) pj_free(_pjdst);
