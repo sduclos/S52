@@ -161,7 +161,7 @@
         <dia:point val="-15,1"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="-15,0.399438;-8.43694,8.37613"/>
+        <dia:rectangle val="-15,0.4175;-8.455,8.34"/>
       </dia:attribute>
       <dia:attribute name="text">
         <dia:composite type="text">
@@ -257,7 +257,7 @@ bbox_y  = 1055#</dia:string>
         <dia:point val="1,-1"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="0.981313,-1.61369;1.4075,-0.810125"/>
+        <dia:rectangle val="1,-1.595;1.4075,-0.8475"/>
       </dia:attribute>
       <dia:attribute name="text">
         <dia:composite type="text">
@@ -506,7 +506,7 @@ bbox_y  = 1055#</dia:string>
         <dia:point val="-5,25"/>
       </dia:attribute>
       <dia:attribute name="obj_bb">
-        <dia:rectangle val="-5,24.3863;4.10369,33.1899"/>
+        <dia:rectangle val="-5,24.405;4.085,33.1525"/>
       </dia:attribute>
       <dia:attribute name="text">
         <dia:composite type="text">
