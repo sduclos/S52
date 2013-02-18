@@ -3,26 +3,44 @@
 <manifest xmlns:android       = "http://schemas.android.com/apk/res/android"
           package             = "nav.ecs.s52android"
           android:versionCode = "1"
-          android:versionName = "1.0">
-          <!--
-          android:sharedUserId  ???????
-          -->
+          android:versionName = "1.0"
+          android:windowSoftInputMode = "adjustPan"
+          android:hardwareAccelerated = "true"
+          >
+    <supports-screens
+        android:largeScreens  = "true"
+        android:normalScreens = "true"
+        android:smallScreens  = "true"
+        android:xlargeScreens = "true"
+        android:resizeable    = "true"
+        android:anyDensity    = "true"
+        />
 
 
-    <!-- Allows applications to open network sockets to get AIS from radar.imar.ca 8000 -->
+
+    <!-- Allows applications to open network sockets to get AIS from radar.imar.ca
     <uses-permission android:name = "android.permission.INTERNET"               />
-    <!-- Allows applications to write gpsd.sock, gpsd.pid, sl4agps.pid, s52ais.pid to sdcard -->
+     -->
+    <!-- Allows applications to write gpsd.sock, gpsd.pid, sl4agps.pid, s52ais.pid to sdcard
     <uses-permission android:name = "android.permission.WRITE_EXTERNAL_STORAGE" />
+     -->
 
-    <uses-permission android:name = "android.permission.RECEIVE_BOOT_COMPLETED" />
-
-    <uses-permission android:name = "android.permission.KILL_BACKGROUND_PROCESSES" />
-
-    <uses-permission android:name = "android.permission.FORCE_STOP_PACKAGES" />
-
-    <!-- Android 4.2
-    <uses-permission android:name = "android.permission.INTERACT_ACROSS_USERS_FULL" />
-    -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.RECORD_VIDEO"/>
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+    <uses-permission android:name="android.permission.BROADCAST_STICKY" />
 
 
     <!-- This is the platform API where NativeActivity was introduced. -->
@@ -35,13 +53,12 @@
     <uses-sdk android:minSdkVersion    = "9"
               android:targetSdkVersion = "10" />
 
-
-    <!-- This .apk has no Java code itself, so set hasCode to false. -->
     <application android:label               = "@string/app_name"
-                 android:hasCode             = "false"
+                 android:hasCode             = "true"
                  android:debuggable          = "true"
                  android:hardwareAccelerated = "true"
-                 android:theme               = "@android:style/Theme.Holo">
+                 android:theme               = "@android:style/Theme.Holo"
+                 >
 
                  <!--
                  android:hardwareAccelerated = "true"
@@ -50,8 +67,6 @@
 
         <!-- Our activity is the built-in NativeActivity framework class.
              This will take care of integrating with our NDK code.
-
-             "reverseLandscape"
         -->
         <activity android:name                  = "android.app.NativeActivity"
                   android:label                 = "@string/app_name"
@@ -59,19 +74,12 @@
                   android:alwaysRetainTaskState = "true"
                   android:configChanges         = "orientation|screenSize"
                   android:launchMode            = "singleInstance"
+                  android:theme                 = "@android:style/Theme.Holo"
                   >
 
                   <!--
-                  android:alwaysRetainTaskState = "true"
                   android:clearTaskOnLaunch     = "true"
-                  android:screenOrientation     = "nosensor"
                   -->
-
-            <!--  android:configChanges         = "orientation|keyboardHidden" -->
-            <!-- "screenLayout", "uiMode",                                     -->
-            <!-- "screenSize" in minSdkVersion/targetSdkVersion >= 13          -->
-            <!-- android:screenOrientation   = "landscape"                     -->
-
 
             <!-- Tell NativeActivity the name of or .so -->
             <meta-data android:name  = "android.app.lib_name"
@@ -89,7 +97,18 @@
 
         </activity>
 
+        <activity android:name          = ".s52ui"
+                  android:theme         = "@android:style/Theme.Translucent.NoTitleBar"
+                  android:configChanges = "orientation|keyboardHidden|keyboard|screenSize|locale">
+            <intent-filter>
+                <action   android:name  = "android.intent.action.MAIN" />
+                <category android:name  = "android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+
         <!--      android:name       = ".BootUpReceiver" -->
+        <!--      android:label="@string/app_name"       -->
         <!--
         <receiver android:enabled    = "true"
                   android:name       = "android.app.NativeActivity"

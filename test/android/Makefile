@@ -4,7 +4,7 @@
 
 
 # $adb shell bugreport
-# $ndk-build -B NDK_DEBUG=1 NDK_LOG=1 APP_ABI=armeabi-v7a
+# $ndk-build -B APP_ABI=armeabi-v7a
 # NDK_LOG=1 APP_ABI=armeabi
 
 APKNAME = s52android-debug.apk
@@ -15,18 +15,16 @@ build.xml: AndroidManifest.xml
 	android update project -p . -t "android-14" -n s52android
 
 bin/$(APKNAME):
-	ndk-build -B V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1
-	ant debug
-	adb install -r bin/$(APKNAME)
+	ndk-build V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1
+	ant debug install
 
 clean:
 	-rm -f bin/$(APKNAME) 
 
 distclean: clean
-	-rm -rf build.xml bin libs obj proguard-project.txt project.properties local.properties
+	-rm -rf build.xml bin libs/armeabi-v7a obj gen proguard-project.txt project.properties local.properties
 
-
-.PHONY: all clean
+.PHONY: all clean distclean
 
 
 # add route to connect to xoom telnetd

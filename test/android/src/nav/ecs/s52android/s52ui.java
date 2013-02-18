@@ -17,10 +17,9 @@
        under the License.
  */
 
-//package my.test.cordova;
 package nav.ecs.s52android;
 
-import android.app.Activity;
+//import android.app.Activity;
 import android.os.Bundle;
 import android.graphics.Color;
 
@@ -29,7 +28,6 @@ import org.apache.cordova.*;
 import com.Method.WebSocket.WebSocketFactory;
 
 
-//public class testcordova extends DroidGap
 public class s52ui extends DroidGap
 {
     @Override
@@ -37,7 +35,8 @@ public class s52ui extends DroidGap
     {
         super.onCreate(savedInstanceState);
         super.setIntegerProperty("backgroundColor", Color.TRANSPARENT);
-        super.loadUrl("file:///android_asset/www/index.html");
+        //super.loadUrl("file:///android_asset/www/index.html");
+        super.loadUrl("file:///android_asset/www/s52ui.html");
 
         appView.setBackgroundColor(0);
         appView.addJavascriptInterface(new WebSocketFactory(appView), "WebSocketFactory");
