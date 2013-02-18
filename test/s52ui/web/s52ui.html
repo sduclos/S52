@@ -4,32 +4,61 @@
   <head>
     <meta charset="utf-8">
     <title>S52ui</title>
-
+    <link rel="search"     href="/storage/sdcard0/dart/s52ui/web"/>
     <link rel="stylesheet" href="s52ui.css">
 
-    <script type="text/javascript" src="../js/tinyjet-0.1.js">  </script>
-    <script type="text/javascript" src="s52ui.js">            </script>
+    <!-- initial UI layout -->
+    <script type="text/javascript" src="js/tinyjet-0.1.js">  </script>
+    <script type="text/javascript" src="s52ui.js">           </script>
 
+    <!-- WebSocket Implementation (via Cordave plugin) -->
+    <script type="text/javascript" src="js/cordova-2.2.0.js"></script>
+    <script type="text/javascript" src="js/websocket.js">    </script>
+
+    <!-- dart code -->
     <script type="application/dart" src="s52ui.dart"> </script>
-    <script type="text/javascript"  src="../js/dart.js">    </script>
+    <script type="text/javascript"  src="packages/browser/dart.js"> </script>
 
   </head>
 
   <body>
 
-    <!-- tinyjet.js need this      -->
+    <script type="text/javascript">
+      // WebSocket <--> libS52
+      // Dart can't handle websocket on Android
+      
+      //var wsUri = 'ws://192.168.1.66:2950'; // laptop
+      //var wsUri = 'ws://192.168.1.67:2950';  // xoom
+      var wsUri = 'ws://127.0.0.1:2950';
+      var websocket;
+
+      window.onload = function() {
+      //function initWebSocket() {
+        console.log("initWebSocket() - start");
+        websocket = new WebSocket(wsUri);
+        websocket.onopen    = function(evt) { onOpen(evt)    };
+        websocket.onclose   = function(evt) { onClose(evt)   };
+        websocket.onerror   = function(evt) { onError(evt)   };
+        websocket.onmessage = function(evt) { onMessage(evt) };
+      }
+
+      function onOpen(evt)    { console.log("onOpen(): "); }
+      function onClose(evt)   { console.log("onClose():"); }
+      function onError(evt)   { console.log("onError():"); }
+      function onMessage(evt) { rcvS52Msg(evt.data);       }
+      // called from s52ui.dart
+      function sndS52Msg(str) {
+        if ('undefine' != websocket.send)
+          websocket.send(str);
+          
+        return;
+      }
+
+    </script>
+
     <p id="__beg_mainWindowComponent" hidden="true">id_beg</p>
     <p id="__end_mainWindowComponent" hidden="true">id_end</p>
 
   </body>
 
 </html>
-
-<!--
-
-<!DOCTYPE html>
-
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML Basic 1.1//EN"
-  "http://www.w3.org/TR/xhtml-basic/xhtml-basic11.dtd">
- -->
