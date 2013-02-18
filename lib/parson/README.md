@@ -15,7 +15,7 @@ git clone https://github.com/kgabis/parson.git
 ```
 and copy parson.h and parson.c to you source code tree.
 
-Run tests.sh to compile and run tests.
+Run ```make test``` to compile and run tests.
 
 ##Example
 Here is a function, which prints basic commit info (date, sha and author) from a github repository.  It's also included in tests.c file, you can just uncomment and run it.
@@ -24,21 +24,22 @@ void print_commits_info(const char *username, const char *repo) {
     JSON_Value *root_value;
     JSON_Array *commits;
     JSON_Object *commit;
-    int i;
+    size_t i;
     
     char curl_command[512];
     char cleanup_command[256];
     char output_filename[] = "commits.json";
     
     /* it ain't pretty, but it's not a libcurl tutorial */
-    sprintf(curl_command, "curl -s \"https://api.github.com/repos/%s/%s/commits\"\
-            > %s", username, repo, output_filename);
+    sprintf(curl_command, 
+        "curl -s \"https://api.github.com/repos/%s/%s/commits\" > %s",
+        username, repo, output_filename);
     sprintf(cleanup_command, "rm -f %s", output_filename);
     system(curl_command);
     
     /* parsing json and validating output */
     root_value = json_parse_file(output_filename);
-    if (root_value == NULL || json_value_get_type(root_value) != JSONArray) {
+    if (json_value_get_type(root_value) != JSONArray) {
         system(cleanup_command);
         return;
     }
