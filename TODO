@@ -64,15 +64,13 @@ In a day:
     -GL: bearing snap to light
     -PL: implement vector instruction command: symbol call (SC), arc (AA)
     -PL: implement raster instruction for pattern and symbol (PBTM, SBTM)
-    -connect to postGIS/SQLite
-    -SVG!
-    -WWW!
 
 
 DONE
 ====
 (put here TODO's that has been done)
 
+    -HTML5/SVG: s52ui (Dart & PhoneGap) handle web stuff (WebSocket)
     -code: many S52_drawStr() params could be drawn from inside S52_drawLast()
 	-PL: editor (see Pavel Kalian https://github.com/nohal/RleEditor)
     -load Chart No 1 for testing C1-PLib 3.1 (the default PLib)

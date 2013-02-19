@@ -18,8 +18,13 @@ bin/$(APKNAME):
 	ndk-build V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1
 	ant debug install
 
+# make sure there is no loop in Dart packages
 clean:
-	-rm -f bin/$(APKNAME) 
+	-rm -f bin/$(APKNAME)               \
+	../s52ui/packages/browser/packages  \
+	../s52ui/packages/js/packages       \
+	../s52ui/packages/meta/packages     \
+	../s52ui/packages/unittest/src/packages
 
 distclean: clean
 	-rm -rf build.xml bin libs/armeabi-v7a obj gen proguard-project.txt project.properties local.properties

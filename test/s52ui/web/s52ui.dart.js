@@ -1169,11 +1169,14 @@ $$.Object = {"": ";",
   set$disabled: function($0) {
     return this.noSuchMethod$1($.createInvocationMirror("disabled=", "set$disabled", 2, [$0], []));
   },
-  set$activeTimerCount: function($0) {
-    return this.noSuchMethod$1($.createInvocationMirror("activeTimerCount=", "set$activeTimerCount", 2, [$0], []));
+  set$wsReady: function($0) {
+    return this.noSuchMethod$1($.createInvocationMirror("wsReady=", "set$wsReady", 2, [$0], []));
   },
   set$_previous: function($0) {
     return this.noSuchMethod$1($.createInvocationMirror("_previous=", "set$_previous", 2, [$0], []));
+  },
+  set$activeTimerCount: function($0) {
+    return this.noSuchMethod$1($.createInvocationMirror("activeTimerCount=", "set$activeTimerCount", 2, [$0], []));
   },
   set$textFillColor: function($0) {
     return this.noSuchMethod$1($.createInvocationMirror("textFillColor=", "set$textFillColor", 2, [$0], []));
@@ -4262,6 +4265,7 @@ $$.S52 = {"": "Object;_completer,_data,_liblib4$_id",
     return new $.BoundClosure$1(this, "rcvMsg$1");
   },
   _sendMsg$1: function(str) {
+    $.Primitives_printString("_sendMsg(): " + $.S(str));
     $.scoped(new $.S52__sendMsg_anon(str));
   },
   getMarinerParam$1: function(param) {
@@ -6716,6 +6720,8 @@ $$.main_anon = {"": "Closure;",
   call$0: function() {
     var t1 = $.Callback$once($.s52.get$rcvMsg());
     $.context().set$rcvS52Msg(t1);
+    t1 = $.Callback$once($._initUI);
+    $.context().set$wsReady(t1);
   }
 };
 
@@ -7592,9 +7598,9 @@ $$._FutureImpl__scheduleUnhandledError_anon = {"": "Closure;this_0",
 
 $$.S52__sendMsg_anon = {"": "Closure;str_0",
   call$0: function() {
-    $.context().sndS52Msg$1(this.str_0);
     var t1 = $.Callback$once($.s52.get$rcvMsg());
     $.context().set$rcvS52Msg(t1);
+    $.context().sndS52Msg$1(this.str_0);
   }
 };
 
@@ -8086,12 +8092,12 @@ $._initCheckBox = function(lst, idx, prefix) {
 };
 
 $._initUI = function() {
+  $.Primitives_printString("_initUI(): start");
   $._setUIcolor().then$1(new $._initUI_anon());
 };
 
 $.main = function() {
   $.s52 = $.S52$();
-  window.setTimeout$2($._initUI, 500);
   $.scoped(new $.main_anon());
 };
 
@@ -13755,9 +13761,6 @@ $.$defineNativeClass("DOMWindow", {"": "navigator>",
   },
   $$dom_removeEventListener$3: function(type, listener, useCapture) {
     return this.removeEventListener(type,$.convertDartClosureToJS(listener, 1),useCapture);
-  },
-  setTimeout$2: function(handler, timeout) {
-    return this.setTimeout($.convertDartClosureToJS(handler, 0),timeout);
   },
   get$onClick: function() {
     return $.CONSTANT6.forTarget$1(this);

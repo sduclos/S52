@@ -4,6 +4,8 @@
   <head>
     <meta charset="utf-8">
     <title>S52ui</title>
+    <!--
+    -->
     <link rel="search"     href="/storage/sdcard0/dart/s52ui/web"/>
     <link rel="stylesheet" href="s52ui.css">
 
@@ -25,7 +27,7 @@
 
     <script type="text/javascript">
       // WebSocket <--> libS52
-      // Dart can't handle websocket on Android
+      // can Dart handle websocket on Android ?
       
       //var wsUri = 'ws://192.168.1.66:2950'; // laptop
       //var wsUri = 'ws://192.168.1.67:2950';  // xoom
@@ -33,13 +35,13 @@
       var websocket;
 
       window.onload = function() {
-      //function initWebSocket() {
         console.log("initWebSocket() - start");
         websocket = new WebSocket(wsUri);
         websocket.onopen    = function(evt) { onOpen(evt)    };
         websocket.onclose   = function(evt) { onClose(evt)   };
         websocket.onerror   = function(evt) { onError(evt)   };
         websocket.onmessage = function(evt) { onMessage(evt) };
+        wsReady();
       }
 
       function onOpen(evt)    { console.log("onOpen(): "); }
@@ -47,13 +49,12 @@
       function onError(evt)   { console.log("onError():"); }
       function onMessage(evt) { rcvS52Msg(evt.data);       }
       // called from s52ui.dart
-      function sndS52Msg(str) {
-        if ('undefine' != websocket.send)
-          websocket.send(str);
-          
-        return;
-      }
-
+      function sndS52Msg(str) { websocket.send(str);       }
+      
+      //window.onpagehide = function() {
+      //  console.log("event onpagehide - start");
+      //}
+ 
     </script>
 
     <p id="__beg_mainWindowComponent" hidden="true">id_beg</p>

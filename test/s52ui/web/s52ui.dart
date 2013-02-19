@@ -78,6 +78,13 @@ class S52 {
       return;
     }
 
+    // handle cursor pick here!
+    //if (null != data["method"]) {
+      // display curcor pick
+      //return;
+    //}
+    
+    
     if (_id != data["id"]) {
       print('rcvMsg(): failed on key: _id=$_id data_id=${data["id"]}');
       throw "ID mismatch";
@@ -86,14 +93,20 @@ class S52 {
     ++_id;
     _completer.complete(data['result']);
   }
-  // send JSON str to libS52
   _sendMsg(String str) {
-    //print('_sendMsg(): $str');
+    // send JSON str to libS52
+    print('_sendMsg(): $str');
     js.scoped(() {
-      js.context.sndS52Msg(str);
+      //js.context.sndS52Msg(str);
+
+      
+      // first hookup callbaqck
       // FIXME: use many (no new .. so could be more efficient!)
       // but need to be deleted on onClose
       js.context.rcvS52Msg = new js.Callback.once(s52.rcvMsg);
+
+      // then send
+      js.context.sndS52Msg(str);
     });
   }
     
@@ -342,7 +355,6 @@ class S52 {
                        S52.MAR_DISP_AFTERGLOW,S52.MAR_DISP_CENTROIDS,S52.MAR_DISP_WORLD
                        ];
 
-//*
 void _initCheckBox(List lst, int idx, String prefix) {
   if (idx < _checkButton.length) {
     int el = _checkButton[idx];
@@ -361,7 +373,7 @@ void _initCheckBox(List lst, int idx, String prefix) {
 
 void _initUI() {
   //_setUIcolor();
-
+  print('_initUI(): start');
   //*
   _setUIcolor().then((ret) {
   // S52_MAR_CMD_WRD_FILTER(33)
@@ -441,20 +453,21 @@ void main() {
   //_ownshp = new s52obj("OWNSHP"); // GPS & Gyro
   s52 = new S52();
   
-  // FIXME: should not be needed
-  // wait for loading .js to settle
-  //window.setTimeout(_initUI, 100);
-  //window.setTimeout(_initUI, 200);
-  window.setTimeout(_initUI, 500);
-
+  //print('s5ui.dart:main(): start');
+  //window.$dom_addEventListener('onload', _initUI, false);
+  
   // WebSocket reply something (meaningless!) when making initial connection
   // read it! (and maybe do something)
   js.scoped(() {
     js.context.rcvS52Msg = new js.Callback.once(s52.rcvMsg);
+    js.context.wsReady   = new js.Callback.once(_initUI);
   });
 }
 
 
+
+
+//////////////////// TODO /////////////////////////////////////////
 /*
 s52obj _ownshp;
 

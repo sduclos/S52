@@ -113,7 +113,7 @@ Main.prototype.table = function(html)
 Main.prototype.render = function(html) 
 {
 
-    //*
+    /*
     var SVG = html.SVG();
     SVG.svg({width: '120px', height: '120px', version: "1.1"},
             SVG.circle({r: 50, cx: 60, cy: 60, style: 'stroke: red; fill: none; stroke-width: 20'},
