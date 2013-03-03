@@ -132,9 +132,11 @@ typedef struct _extent {
 // FIXME: this is error prone!!
 // WARNING: S52_loadPLib must be in sync with struct _cell
 typedef struct _cell {
-    //S52_extent ext;
     _extent    ext;
-    GString   *filename;
+
+    GString   *filename;  //encName;
+    //GString   *encPath;
+
     GPtrArray *renderBin[S52_PRIO_NUM][N_OBJ_T];//[RAD_NUM];
 
     GPtrArray *lights_sector;   // see _doCullLights
@@ -187,7 +189,7 @@ typedef struct _cell {
     GPtrArray *objList_over;   // list of object on the "Over Radar" layer  (ie on top)
     GPtrArray *textList;       // hold ref to text object during rendering of a frame
 
-    GString   *objClassList;   // hold the name of S57 object of this cell
+    GString   *S57ClassList;   // hold the name of S57 class of this cell
 
 #ifdef S52_USE_PROJ
     int        projDone;       // TRUE this cell has been projected
@@ -206,7 +208,8 @@ static _cell     *_marinerCell = NULL;    // palce holder MIO's, and other (fake
 
 static GString   *_plibNameList = NULL;    // string that gather plibName
 static GString   *_paltNameList = NULL;    // string that gather palette name
-static GString   *_objClassList = NULL;    // string that gather cell object name
+static GString   *_S57ClassList = NULL;    // string that gather cell S57 class name
+//static GString   *_S52ObjList   = NULL;    // string that gather cell S52 obj (FIXME: not used)
 static GString   *_cellNameList = NULL;    // string that gather cell name
 
 static GPtrArray *_objToDelList = NULL;    // list of obj to delete in next APP cycle
@@ -233,11 +236,11 @@ typedef struct {
 //static _view_t _view = {INFINITY, INFINITY, INFINITY, INFINITY};
 static _view_t _view = {0.0, 0.0, 0.0, 0.0};
 
-// Note: prenvent two threads from writing into the 'scene graph' at once
+// Note: thread awarness to prenvent two threads from writing into the 'scene graph' at once
 // (ex data comming from gpsd,) so this is mostly Mariners' Object.
-// Could be extended to all calls but since the main_loop already serialize
-// event there is no point in doing that ATM.
-// Note that DBus run from the main loop.
+// Since the main_loop already serialize the mutex never have to do work.
+// Note that DBus and socket are running from the main loop.
+// FIXME: make socket multi-thread to test mutex to kick in.
 static  GStaticMutex _mp_mutex = G_STATIC_MUTEX_INIT;
 
 
@@ -264,8 +267,8 @@ static S52ObjectHandle _BLKADJ01 = NULL;
 static S52_RADAR_cb  _RADAR_cb = NULL;
 //static int          _doRADAR  = TRUE;
 
-static char _version[] = "$Revision: 1.111 $\n"
-      "libS52 0.83\n"
+static char _version[] = "$Revision: 1.112 $\n"
+      "libS52 0.84\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -354,7 +357,7 @@ static char _version[] = "$Revision: 1.111 $\n"
                         }
 
 
-static double     _validate_bool(double val)
+static double     _validate_bool(double val) /*fold00*/
 {
     val = (val==0.0)? 0.0 : 1.0;
 
@@ -363,14 +366,14 @@ static double     _validate_bool(double val)
     return val;
 }
 
-static double     _validate_meter(double val)
+static double     _validate_meter(double val) /*fold00*/
 {
     PRINTF("Meter: %f\n", val);
 
     return val;
 }
 
-static double     _validate_nm(double val)
+static double     _validate_nm(double val) /*fold00*/
 {
     if (val < 0.0) val = -val;
 
@@ -379,7 +382,7 @@ static double     _validate_nm(double val)
     return val;
 }
 
-static double     _validate_min(double val)
+static double     _validate_min(double val) /*fold00*/
 {
 
     if (val < 0.0) {
@@ -392,14 +395,14 @@ static double     _validate_min(double val)
     return val;
 }
 
-static double     _validate_int(double val)
+static double     _validate_int(double val) /*fold00*/
 {
     int val_int = (int) val;
 
     return (double)val_int;
 }
 
-static double     _validate_disp(double val)
+static double     _validate_disp(double val) /*fold00*/
 {
     int crntMask = (int) S52_getMarinerParam(S52_MAR_DISP_CATEGORY);
     int newMask  = (int) val;
@@ -451,7 +454,7 @@ static double     _validate_disp(double val)
     //*/
 }
 
-static double     _validate_mar(double val)
+static double     _validate_mar(double val) /*fold00*/
 // S52_MAR_DISP_LAYER_LAST  - MARINERS' CATEGORY (drawn on top - last)
 {
     int crntMask = (int) S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST);
@@ -486,7 +489,7 @@ static double     _validate_mar(double val)
     return (double)crntMask;
 }
 
-static double     _validate_pal(double val)
+static double     _validate_pal(double val) /*fold00*/
 {
     int palTblsz = S52_PL_getPalTableSz();
 
@@ -498,7 +501,7 @@ static double     _validate_pal(double val)
     return val;
 }
 
-static double     _validate_deg(double val)
+static double     _validate_deg(double val) /*fold00*/
 {
     // AIS a value of 360 mean heading course unknown
     //if (val < 0.0 || 360.0 <= val) {
@@ -512,7 +515,7 @@ static double     _validate_deg(double val)
     return val;
 }
 
-static double     _validate_lat(double lat)
+static double     _validate_lat(double lat) /*fold00*/
 {
     //double latMin = _mercLat - 90.0;
     //double latMax = _mercLat + 90.0;
@@ -529,7 +532,7 @@ static double     _validate_lat(double lat)
     return lat;
 }
 
-static double     _validate_lon(double val)
+static double     _validate_lon(double val) /*fold00*/
 {
     if (val < -180.0 || 180.0 < val) {
         PRINTF("WARNING: longitude out of bound [-180.0 .. +180.0], reset to 0.0: %f\n", val);
@@ -541,7 +544,7 @@ static double     _validate_lon(double val)
     return val;
 }
 
-static int        _validate_screenPos(double *xx, double *yy)
+static int        _validate_screenPos(double *xx, double *yy) /*fold00*/
 {
     /*
     // failsafe, init viewPort
@@ -574,7 +577,7 @@ static int        _validate_screenPos(double *xx, double *yy)
     return TRUE;
 }
 
-static double     _validate_filter(double mask)
+static double     _validate_filter(double mask) /*fold00*/
 {
     int crntMask = (int) S52_getMarinerParam(S52_CMD_WRD_FILTER);
     int newMask  = (int) mask;
@@ -607,13 +610,13 @@ static double     _validate_filter(double mask)
     return (double)crntMask;
 }
 
-static double     _validate_floatPositive(double val)
+static double     _validate_floatPositive(double val) /*fold00*/
 {
     //return fabs(val);
     return ABS(val);
 }
 
-static int        _fixme(S52MarinerParameter paramName)
+static int        _fixme(S52MarinerParameter paramName) /*fold00*/
 {
     PRINTF("FIXME: S52MarinerParameter %i not implemented\n", paramName);
 
@@ -621,7 +624,7 @@ static int        _fixme(S52MarinerParameter paramName)
 }
 
 //DLL double STD S52_getMarinerParam(const char *paramName)
-DLL double STD S52_getMarinerParam(S52MarinerParameter paramID)
+DLL double STD S52_getMarinerParam(S52MarinerParameter paramID) /*fold00*/
 // return Mariner parameter or S52_MAR_NONE if fail
 // FIXME: check mariner param against groups selection
 {
@@ -637,7 +640,7 @@ DLL double STD S52_getMarinerParam(S52MarinerParameter paramID)
     return val;
 }
 
-DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
+DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val) /*fold00*/
 // validate and set Mariner Parameter
 {
     S52_CHECK_INIT;
@@ -738,7 +741,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
     return ret;
 }
 
-DLL int    STD S52_setTextDisp(int prioIdx, int count, int state)
+DLL int    STD S52_setTextDisp(int prioIdx, int count, int state) /*fold00*/
 {
 
     if (prioIdx<0 || 99<prioIdx) {
@@ -763,7 +766,7 @@ DLL int    STD S52_setTextDisp(int prioIdx, int count, int state)
     return TRUE;
 }
 
-DLL int    STD S52_getTextDisp(int prioIdx)
+DLL int    STD S52_getTextDisp(int prioIdx) /*fold00*/
 {
     if (prioIdx<0 || 99<prioIdx) {
         PRINTF("WARNING: prioIdx out of bound (%i)\n", prioIdx);
@@ -775,7 +778,7 @@ DLL int    STD S52_getTextDisp(int prioIdx)
 
 
 #if 0
-static gint       _cmpLine(gconstpointer pointA, gconstpointer pointB, gpointer user_data)
+static gint       _cmpLine(gconstpointer pointA, gconstpointer pointB, gpointer user_data) /*fold00*/
 // compare line
 {
     guint   nptA;
@@ -807,7 +810,7 @@ static gint       _cmpLine(gconstpointer pointA, gconstpointer pointB, gpointer 
 }
 #endif
 
-static gint       _cmpCell(gconstpointer a, gconstpointer b)
+static gint       _cmpCell(gconstpointer a, gconstpointer b) /*fold00*/
 {
     //gconstpointer A = *a;
     //_cell *B = (_cell*) b;
@@ -823,7 +826,7 @@ static gint       _cmpCell(gconstpointer a, gconstpointer b)
         return  1;
 }
 
-static _cell*     _addCell(const char *filename)
+static _cell*     _addCell(const char *filename) /*fold00*/
 // add this cell else NULL (if allready loaded)
 // assume filename is not NULL
 {
@@ -839,15 +842,6 @@ static _cell*     _addCell(const char *filename)
     if (NULL == _cellList)
         _cellList = g_ptr_array_new();
 
-    //if (NULL == _textList)
-    //    _textList = g_ptr_array_new();
-
-    //if (NULL == _objList_supp)
-    //    _objList_supp = g_ptr_array_new();
-
-    //if (NULL == _objList_over)
-    //    _objList_over = g_ptr_array_new();
-
     for (guint idx=0; idx<_cellList->len; ++idx) {
         _cell *c = (_cell*)g_ptr_array_index(_cellList, idx);
 
@@ -858,10 +852,6 @@ static _cell*     _addCell(const char *filename)
 
             return NULL;
         }
-
-        // sort: bigger region last (eg 553311)
-        //if (fname[2] > c->filename->str[2])
-        //    break;
     }
 
     {   // init cell
@@ -891,7 +881,7 @@ static _cell*     _addCell(const char *filename)
         cell->objList_supp = g_ptr_array_new();
         cell->objList_over = g_ptr_array_new();
 
-        cell->objClassList = g_string_new("");
+        cell->S57ClassList = g_string_new("");
 
 
         cell->projDone = FALSE;
@@ -917,7 +907,7 @@ static _cell*     _addCell(const char *filename)
 }
 
 #if 0
-static _cell*     _removeCell(_cell *ch)
+static _cell*     _removeCell(_cell *ch) /*fold00*/
 // remove a cell from the set, else NULL
 {
     for (guint i=0; i<_cellList->len; ++i) {
@@ -982,7 +972,7 @@ struct callStackSaver {
 };
 
 
-void              _dump_crash_report(unsigned pid)
+void              _dump_crash_report(unsigned pid) /*fold00*/
 // shortened code from android's debuggerd
 // to get a backtrace on ARM
 {
@@ -1017,7 +1007,7 @@ void              _dump_crash_report(unsigned pid)
     _UPT_destroy (ui);
 }
 
-static            _Unwind_Reason_Code trace_func(struct _Unwind_Context *ctx, void *user_data)
+static            _Unwind_Reason_Code trace_func(struct _Unwind_Context *ctx, void *user_data) /*fold00*/
 {
     //unsigned int rawAddr = __gnu_Unwind_Find_exidx(ctx); //  _Unwind_GetIP(ctx);
     unsigned int rawAddr = _Unwind_GetIP(ctx);
@@ -1035,10 +1025,10 @@ static            _Unwind_Reason_Code trace_func(struct _Unwind_Context *ctx, vo
     //return _URC_OK;
 }
 //*/
-
+ /*fold00*/
 #if 0
 /*
-static unsigned int _GetLibraryAddress(const char* libraryName)
+static unsigned int _GetLibraryAddress(const char* libraryName) /*fold00*/
 {
     FILE* file = fopen("/proc/self/maps", "rt");
     if (file==NULL) {
@@ -1077,10 +1067,10 @@ static unsigned int _GetLibraryAddress(const char* libraryName)
 }
 */
 #endif
-
+ /*fold00*/
 #if 0
 /*
-static int        _get_backtrace (void** buffer, int n)
+static int        _get_backtrace (void** buffer, int n) /*fold00*/
 {
     unw_cursor_t  cursor;
     unw_context_t uc;
@@ -1104,7 +1094,7 @@ static int        _get_backtrace (void** buffer, int n)
 //*/
 #endif
 
-static int        _unwind(void)
+static int        _unwind(void) /*fold00*/
 {
 // ============ test using Unwind ====================================
 /*
@@ -1134,7 +1124,7 @@ _URC_FAILURE                  = 9   // unspecified failure of some kind
 
 #endif // S52_USE_ANDROID
 
-static int        _backtrace(void)
+static int        _backtrace(void) /*fold00*/
 {
     void  *buffer[128];
     char **strings;
@@ -1162,7 +1152,7 @@ static int        _backtrace(void)
 
 
 // signal
-static void       _trapSIG(int sig, siginfo_t *info, void *secret)
+static void       _trapSIG(int sig, siginfo_t *info, void *secret) /*fold00*/
 {
     // 2 -
     if (SIGINT == sig) {
@@ -1271,7 +1261,7 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 }
 
 #ifdef S52_USE_PIPE
-static gboolean   _pipeReadWrite(GIOChannel *source, GIOCondition condition, gpointer user_data)
+static gboolean   _pipeReadWrite(GIOChannel *source, GIOCondition condition, gpointer user_data) /*fold00*/
 {
     GError    *error = NULL;
     GString   *str  = g_string_new("");
@@ -1313,7 +1303,7 @@ static gboolean   _pipeReadWrite(GIOChannel *source, GIOCondition condition, gpo
     return TRUE;
 }
 
-static int        _pipeWatch(gpointer dummy)
+static int        _pipeWatch(gpointer dummy) /*fold00*/
 // add watch to pipe
 {
     // use FIFO pipe instead of DBug
@@ -1338,7 +1328,7 @@ static int        _pipeWatch(gpointer dummy)
 #endif
 
 static int        _getCellsExt(_extent* ext);
-static int        _initPROJ(void)
+static int        _initPROJ(void) /*fold00*/
 {
     _extent ext;
     if (FALSE == _getCellsExt(&ext)) {
@@ -1365,7 +1355,7 @@ static int        _initPROJ(void)
     return TRUE;
 }
 
-static int        _projectCells(void)
+static int        _projectCells(void) /*fold00*/
 {
     for (guint k=0; k<_cellList->len; ++k) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
@@ -1405,14 +1395,14 @@ static _cell*     _loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 static int        _initDBus(void);
 #endif
 static int        _initSock(void); // froward
-
+ /*fold00*/
 #ifdef S52_USE_DOTPITCH
 //DLL int    STD S52_init(int pixels_w, int pixels_h, int pixels_wmm, int pixels_hmm)
 //DLL int    STD S52_init(unsigned int screen_pixels_w, unsigned int screen_pixels_h, unsigned int screen_mm_w, unsigned int screen_mm_h, S52_error_cb err_cb)
 //DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h)
-DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb)
+DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb) /*fold00*/
 #else
-DLL int    STD S52_init(void)
+DLL int    STD S52_init(void) /*fold00*/
 #endif
 // init basic stuff (outside of the main loop)
 {
@@ -1497,8 +1487,8 @@ DLL int    STD S52_init(void)
         _paltNameList = g_string_new("");
     if (NULL == _cellNameList)
         _cellNameList = g_string_new("");
-    if (NULL == _objClassList)
-        _objClassList = g_string_new("");
+    if (NULL == _S57ClassList)
+        _S57ClassList = g_string_new("");
     if (NULL == _objToDelList)
         _objToDelList = g_ptr_array_new();
 
@@ -1637,7 +1627,7 @@ DLL int    STD S52_init(void)
 }
 
 DLL
-const char* STD S52_version(void)
+const char* STD S52_version(void) /*fold00*/
 {
     PRINTF("%s", _version);
 
@@ -1645,7 +1635,7 @@ const char* STD S52_version(void)
 }
 
 static S52_obj   *_delObj(S52_obj *obj); // foward ref
-DLL int    STD    _freeCell(_cell *c)
+DLL int    STD    _freeCell(_cell *c) /*fold00*/
 {
     unsigned int j,k;
 
@@ -1712,8 +1702,8 @@ DLL int    STD    _freeCell(_cell *c)
         c->objList_over = NULL;
     }
 
-    if (NULL != c->objClassList)
-        g_string_free(c->objClassList, TRUE);
+    if (NULL != c->S57ClassList)
+        g_string_free(c->S57ClassList, TRUE);
 
     g_free(c);
 
@@ -1723,7 +1713,7 @@ DLL int    STD    _freeCell(_cell *c)
     return TRUE;
 }
 
-DLL int    STD S52_done(void)
+DLL int    STD S52_done(void) /*fold00*/
 // clear all --shutingdown libS52
 {
     //unsigned int i;
@@ -1800,7 +1790,7 @@ DLL int    STD S52_done(void)
     g_string_free(_plibNameList, TRUE); _plibNameList = NULL;
     g_string_free(_paltNameList, TRUE); _paltNameList = NULL;
     g_string_free(_cellNameList, TRUE); _cellNameList = NULL;
-    g_string_free(_objClassList, TRUE); _objClassList = NULL;
+    g_string_free(_S57ClassList, TRUE); _S57ClassList = NULL;
 
     g_ptr_array_free(_objToDelList, TRUE); _objToDelList = NULL;
 
@@ -1810,10 +1800,10 @@ DLL int    STD S52_done(void)
 
     return TRUE;
 }
-
+ /*fold00*/
 #if 0
 /*  DEPRECATED
-DLL int    STD S52_setFont(int font)
+DLL int    STD S52_setFont(int font) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -1829,7 +1819,7 @@ DLL int    STD S52_setFont(int font)
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 
 #if 0
-static GArray    *_parseIntList(GString *intstr)
+static GArray    *_parseIntList(GString *intstr) /*fold00*/
 {
     GArray *garray = g_array_new(FALSE, FALSE, sizeof(gint));
     gchar **split  = g_strsplit_set(intstr->str+1, "():,", 0);
@@ -1857,7 +1847,7 @@ static GArray    *_parseIntList(GString *intstr)
 }
 #endif
 
-static int        _suppLineOverlap()
+static int        _suppLineOverlap() /*fold00*/
 // no SUPP in case manual chart correction (LC(CHCRIDnn) and LC(CHCRDELn))
 {
     // FIXME: some edge valid are removed!
@@ -1916,6 +1906,7 @@ static int        _suppLineOverlap()
                             PRINTF("FIXME: MASKING FOUND (1): %s\n", maskstr->str);
                         }
                     }
+                    g_strfreev(topMASK);
                 }
 
                 // take only Edge (ie rcnm == 130 (Edge type))
@@ -1958,7 +1949,8 @@ static int        _suppLineOverlap()
                 //   make Edge to point to geo if null
                 //   else make geo coord z==-1 for all vertex in Egde that are found in geo
 
-                for (guint i=0; NULL!=*splitrcnm; splitrcnm++) {
+                //for (guint i=0; NULL!=*splitrcnm; splitrcnm++) {
+                for ( ; NULL!=*splitrcnm; splitrcnm++) {
 
                     // the S57 name for Edge (130)
                     //if (0 == g_strcmp0(*splitrcnm, "130")) {
@@ -2022,7 +2014,7 @@ static int        _suppLineOverlap()
 #endif
 
 
-static _cell*     _loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
+static _cell*     _loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb) /*fold00*/
 // FIXME: MUTEX
 {
     _cell   *ch = NULL;
@@ -2101,7 +2093,7 @@ char **S57FileCollector( const char *pszDataset );
 
 //#include "iso8211.h"
 
-static int        _loadCATALOG(char *filename)
+static int        _loadCATALOG(char *filename) /*fold00*/
 {
     FILE *fd = NULL;
     filename = g_strstrip(filename);
@@ -2166,7 +2158,7 @@ static int        _loadCATALOG(char *filename)
 DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
 
 //DLL int    STD S52_loadCell(const char *encPath, S52_loadLayer_cb layer_cb)
-DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb)
+DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb) /*fold00*/
 // FIXME: handle each type of cell separatly
 // OGR:
 // - S57:
@@ -2380,7 +2372,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     return TRUE;
 }
 
-DLL int    STD S52_doneCell(const char *encPath)
+DLL int    STD S52_doneCell(const char *encPath) /*fold00*/
 // FIXME: the (futur) chart manager (CM) should to this by itself
 // so loadCell would load a CATALOG then CM would load individual cell
 // to fill the view (and unload cell outside the view)
@@ -2428,7 +2420,7 @@ DLL int    STD S52_doneCell(const char *encPath)
 }
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
-static int        _loadEdge(const char *name, void *Edge)
+static int        _loadEdge(const char *name, void *Edge) /*fold00*/
 {
     if ( (NULL==name) || (NULL==Edge)) {
         PRINTF("ERROR: objname / shape  --> NULL\n");
@@ -2554,7 +2546,7 @@ static int        _loadEdge(const char *name, void *Edge)
     return TRUE;
 }
 
-static int        _loadConnectedNode(const char *name, void *ConnectedNode)
+static int        _loadConnectedNode(const char *name, void *ConnectedNode) /*fold00*/
 {
     if ( (NULL==name) || (NULL==ConnectedNode)) {
         PRINTF("ERROR: objname / shape  --> NULL\n");
@@ -2613,7 +2605,7 @@ static int        _loadConnectedNode(const char *name, void *ConnectedNode)
 }
 #endif
 
-DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb)
+DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -2683,10 +2675,10 @@ DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_
     }
 
     // save S57 object name
-    if (0 != _crntCell->objClassList->len)
-        g_string_append(_crntCell->objClassList, ",");
+    if (0 != _crntCell->S57ClassList->len)
+        g_string_append(_crntCell->S57ClassList, ",");
 
-    g_string_append(_crntCell->objClassList, layername);
+    g_string_append(_crntCell->S57ClassList, layername);
 
 
 #ifdef S52_USE_GV
@@ -2700,7 +2692,7 @@ DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_
     return TRUE;
 }
 
-static int        _insertLightSec(_cell *c, S52_obj *obj)
+static int        _insertLightSec(_cell *c, S52_obj *obj) /*fold00*/
 // return TRUE if this obj is a light sector
 // as this object need special prossesing
 {
@@ -2729,7 +2721,7 @@ static int        _insertLightSec(_cell *c, S52_obj *obj)
     return FALSE;
 }
 
-static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
+static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData) /*fold00*/
 // insert a S52_obj in a cell from a S57_obj
 // return the new S52_obj
 {
@@ -2784,7 +2776,7 @@ static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
     return obj;
 }
 
-static S52_obj   *_insertS52Obj(_cell *c, S52_obj *obj)
+static S52_obj   *_insertS52Obj(_cell *c, S52_obj *obj) /*fold00*/
 // inster 'obj' in cell 'c'
 {
     S57_geo    *geo        = S52_PL_getGeo(obj);
@@ -2813,7 +2805,7 @@ static S52_obj   *_insertS52Obj(_cell *c, S52_obj *obj)
     return obj;
 }
 
-static S52_obj   *_removeObj(_cell *c, S52_obj *obj)
+static S52_obj   *_removeObj(_cell *c, S52_obj *obj) /*fold00*/
 // remove the S52 object from the cell (not the object itself)
 // return the oject removed, else return NULL if object not found
 {
@@ -2848,7 +2840,7 @@ static S52_obj   *_removeObj(_cell *c, S52_obj *obj)
 }
 
 
-DLL int    STD S52_loadObject(const char *objname, void *shape)
+DLL int    STD S52_loadObject(const char *objname, void *shape) /*fold00*/
 {
     S57_geo *geoData = NULL;
 
@@ -2976,7 +2968,7 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
 //---------------------------------------------------
 
 #if 0
-static S52_extent _clip(S52_extent A, S52_extent B)
+static S52_extent _clip(S52_extent A, S52_extent B) /*fold00*/
 // assume A, B intersect or inside
 {
     S52_extent clip;
@@ -2991,7 +2983,7 @@ static S52_extent _clip(S52_extent A, S52_extent B)
 }
 #endif
 
-static int        _intersec(_extent A, _extent B)
+static int        _intersec(_extent A, _extent B) /*fold00*/
 // TRUE if intersec, FALSE if outside
 {
     if (B.N < A.S) return FALSE;
@@ -3002,7 +2994,7 @@ static int        _intersec(_extent A, _extent B)
     return TRUE;
 }
 
-static int        _moveObj(_cell *cell, GPtrArray *oldBin, unsigned int idx, int oldPrio, int obj_t)
+static int        _moveObj(_cell *cell, GPtrArray *oldBin, unsigned int idx, int oldPrio, int obj_t) /*fold00*/
 // TRUE if an 'obj' switched layer (priority), else FALSE
 // this is to solve the problem of moving an object from one 'set' to an other
 // it shuffle the array that act as a 'set'
@@ -3036,7 +3028,7 @@ static int        _moveObj(_cell *cell, GPtrArray *oldBin, unsigned int idx, int
     return FALSE;
 }
 
-static S52_obj   *_delObj(S52_obj *obj)
+static S52_obj   *_delObj(S52_obj *obj) /*fold00*/
 {
         S57_geo *geo = S52_PL_getGeo(obj);
 
@@ -3054,19 +3046,19 @@ static S52_obj   *_delObj(S52_obj *obj)
     return obj; // NULL
 }
 
-static int        _app()
+static int        _app() /*fold00*/
 // WARNING: not reentrant
 {
     //PRINTF("_app(): -.0-\n");
 
     // first delete pending mariner
-    //unsigned int i;
     for (guint i=0; i<_objToDelList->len; ++i) {
         S52_obj *obj = (S52_obj *)g_ptr_array_index(_objToDelList, i);
 
         // delete ref to _OWNSHP
-        S57_geo *geo = S52_PL_getGeo(obj);
-        if (0==g_strcmp0(S57_getName(geo), "ownshp") && obj==_OWNSHP) {
+        //S57_geo *geo = S52_PL_getGeo(obj);
+        //if (0==g_strcmp0(S57_getName(geo), "ownshp") && obj==_OWNSHP) {
+        if (obj == _OWNSHP) {
             _OWNSHP = FALSE;  // NULL but S52ObjectHandle can be an gint in some config
         }
 
@@ -3219,7 +3211,7 @@ static int        _app()
     //return;
 }
 
-static int        _cullObj(_cell *c)
+static int        _cullObj(_cell *c) /*fold00*/
 // one cell; cull object out side the view and object supressed
 // object culled are not inserted in the list of object to draw
 {
@@ -3306,7 +3298,7 @@ static int        _cullObj(_cell *c)
     return TRUE;
 }
 
-static int        _cull(_extent ext)
+static int        _cull(_extent ext) /*fold00*/
 // - viewport
 // - small cell region on top
 {
@@ -3326,7 +3318,7 @@ static int        _cull(_extent ext)
     return TRUE;
 }
 
-static int        _drawRADAR()
+static int        _drawRADAR() /*fold00*/
 {
     if (NULL != _RADAR_cb) {
         _RADAR_cb();
@@ -3335,10 +3327,10 @@ static int        _drawRADAR()
 
     return TRUE;
 }
-
+ /*fold00*/
 //static int        _draw(S52_extent ext, S52_RadPrio radPrio)
 //static int        _draw(S52_extent ext)
-static int        _draw()
+static int        _draw() /*fold00*/
 // draw object inside view
 // then draw object's text
 {
@@ -3371,7 +3363,7 @@ static int        _draw()
     return TRUE;
 }
 
-static int        _drawLayer(_extent ext, int layer)
+static int        _drawLayer(_extent ext, int layer) /*fold00*/
 {
     //unsigned int i = 0;
 
@@ -3420,7 +3412,7 @@ static int        _drawLayer(_extent ext, int layer)
 }
 
 #if 0
-static int        _appLights(void)
+static int        _appLights(void) /*fold00*/
 // mark all cells sector lights of the need to be re-culled
 {
     //unsigned int i = 0;
@@ -3436,7 +3428,7 @@ static int        _appLights(void)
 }
 #endif
 
-static int        _cullLights(void)
+static int        _cullLights(void) /*fold00*/
 // CULL (first draw() after APP, on all cells)
 {
     //unsigned int i = 0;
@@ -3487,7 +3479,7 @@ static int        _cullLights(void)
 }
 
 
-static int        _drawLights(void)
+static int        _drawLights(void) /*fold00*/
 // draw all lights of all cells outside view extend
 // so that sector and legs show up on screen event if
 // the light itself is outside
@@ -3602,7 +3594,7 @@ static int        _drawLights(void)
     return TRUE;
 }
 
-static int        _drawLegend()
+static int        _drawLegend() /*fold00*/
 // draw legend of each cell
 // Starting at page I-50.
 {
@@ -3806,7 +3798,7 @@ static int        _drawLegend()
     return TRUE;
 }
 
-DLL int    STD S52_draw(void)
+DLL int    STD S52_draw(void) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -3924,7 +3916,7 @@ DLL int    STD S52_draw(void)
     return TRUE;
 }
 
-static void       _delOldVessel(gpointer data, gpointer user_data)
+static void       _delOldVessel(gpointer data, gpointer user_data) /*fold00*/
 // FIXME: should this go to the
 {
     S52_obj *obj = (S52_obj *)data;
@@ -3946,7 +3938,7 @@ static void       _delOldVessel(gpointer data, gpointer user_data)
     }
 }
 
-DLL int    STD S52_drawLast(void)
+DLL int    STD S52_drawLast(void) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4069,7 +4061,7 @@ DLL int    STD S52_drawLast(void)
 }
 
 #ifdef S52_USE_GV
-static int        _drawObj(const char *name)
+static int        _drawObj(const char *name) /*fold00*/
 {
     //unsigned int i = 0;
     //unsigned int n = _cellList->len;
@@ -4113,7 +4105,7 @@ static int        _drawObj(const char *name)
     return TRUE;
 }
 
-DLL int    STD S52_drawLayer(const char *name)
+DLL int    STD S52_drawLayer(const char *name) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -4195,7 +4187,7 @@ return TRUE;
 
 #endif
 
-DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
+DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4214,7 +4206,7 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
     return TRUE;
 }
 
-DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north)
+DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -4249,7 +4241,7 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
     return TRUE;
 }
 
-static int        _win2prj(double *pixels_x, double *pixels_y)
+static int        _win2prj(double *pixels_x, double *pixels_y) /*fold00*/
 {
     // check bound
     //if (FALSE == _validate_screenPos(x, y))
@@ -4278,7 +4270,7 @@ static int        _win2prj(double *pixels_x, double *pixels_y)
     return TRUE;
 }
 
-DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
+DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -4306,7 +4298,7 @@ DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
     return TRUE;
 }
 
-DLL int    STD S52_LL2xy(double *longitude, double *latitude)
+DLL int    STD S52_LL2xy(double *longitude, double *latitude) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -4327,7 +4319,7 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude)
     return TRUE;
 }
 
-DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
+DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -4395,7 +4387,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     return TRUE;
 }
 
-DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height)
+DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -4417,7 +4409,7 @@ DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int
     return TRUE;
 }
 
-static int        _getCellsExt(_extent* ext)
+static int        _getCellsExt(_extent* ext) /*fold00*/
 {
     int ret = FALSE;
 
@@ -4464,10 +4456,10 @@ static int        _getCellsExt(_extent* ext)
 
     return ret;
 }
-
+ /*fold00*/
 //DLL int    STD S52_getCellExtent(_cell *c, S52_extent *ext)
 //DLL int    STD S52_getCellExtent(const char *filename, S52_extent *ext)
-DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, double *N, double *E)
+DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, double *N, double *E) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -4522,7 +4514,7 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
 
     return TRUE;
 }
-
+ /*fold00*/
 
 
 // -----------------------------------------------------
@@ -4531,7 +4523,7 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
 // Selecte object (other then DISPLAYBASE) to display
 // when in User Selected mode
 //
-DLL int    STD S52_toggleObjClass(const char *className)
+DLL int    STD S52_toggleObjClass(const char *className) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4559,7 +4551,7 @@ DLL int    STD S52_toggleObjClass(const char *className)
     return TRUE;
 }
 
-DLL int    STD S52_toggleObjClassON (const char *className)
+DLL int    STD S52_toggleObjClassON (const char *className) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4589,7 +4581,7 @@ DLL int    STD S52_toggleObjClassON (const char *className)
     return TRUE;
 }
 
-DLL int    STD S52_toggleObjClassOFF(const char *className)
+DLL int    STD S52_toggleObjClassOFF(const char *className) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4619,7 +4611,7 @@ DLL int    STD S52_toggleObjClassOFF(const char *className)
     return TRUE;
 }
 
-DLL int    STD S52_getS57ObjClassSupp(const char *className)
+DLL int    STD S52_getS57ObjClassSupp(const char *className) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4641,7 +4633,7 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className)
         return FALSE;
 }
 
-DLL int    STD S52_setS57ObjClassSupp(const char *className, int value)
+DLL int    STD S52_setS57ObjClassSupp(const char *className, int value) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4675,7 +4667,7 @@ DLL int    STD S52_setS57ObjClassSupp(const char *className, int value)
 
 
 //static GPtrArray *_cloneCellList(const char *plibName)
-DLL int    STD S52_loadPLib(const char *plibName)
+DLL int    STD S52_loadPLib(const char *plibName) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4768,7 +4760,7 @@ DLL int    STD S52_loadPLib(const char *plibName)
             n->objList_over = c->objList_over;
             g_ptr_array_set_size(n->objList_over, 0);
 
-            n->objClassList = c->objClassList;
+            n->S57ClassList = c->S57ClassList;
             n->projDone     = c->projDone;
 
 
@@ -4845,7 +4837,7 @@ DLL int    STD S52_loadPLib(const char *plibName)
 // FEEDBACK TO HIGHER UP MODULE OF INTERNAL STATE
 //
 
-DLL const char * STD S52_pickAt(double pixels_x, double pixels_y)
+DLL const char * STD S52_pickAt(double pixels_x, double pixels_y) /*fold00*/
 {
     // viewport
     int x;
@@ -4969,7 +4961,7 @@ DLL const char * STD S52_pickAt(double pixels_x, double pixels_y)
     return name;
 }
 
-DLL const char * STD S52_getPLibsIDList(void)
+DLL const char * STD S52_getPLibsIDList(void) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -4981,7 +4973,7 @@ DLL const char * STD S52_getPLibsIDList(void)
     return str;
 }
 
-DLL const char * STD S52_getPalettesNameList(void)
+DLL const char * STD S52_getPalettesNameList(void) /*fold00*/
 // return a JSON array
 {
     S52_CHECK_INIT;
@@ -5011,7 +5003,7 @@ DLL const char * STD S52_getPalettesNameList(void)
     return str;
 }
 
-static GString *        _getMARINClassList()
+static GString *        _getMARINClassList() /*fold00*/
 {
     GString *classList = g_string_new(MARINER_CELL);
 
@@ -5023,7 +5015,7 @@ static GString *        _getMARINClassList()
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj    *obj   = (S52_obj *)g_ptr_array_index(rbin, idx);
                 const char *oname = S52_PL_getOBCL(obj);
-                //if (NULL == S52_strstr(_marinerCell->objClassList->str, oname)) {
+                //if (NULL == S52_strstr(_marinerCell->S57ClassList->str, oname)) {
                 if (NULL == S52_strstr(classList->str, oname)) {
                     g_string_append_printf(classList, ",%s", oname);
                 }
@@ -5034,7 +5026,8 @@ static GString *        _getMARINClassList()
     return classList;
 }
 
-DLL const char * STD S52_getS57ObjClassList(const char *cellName)
+//DLL const char * STD S52_getS57ObjClassList(const char *cellName)
+DLL const char * STD S52_getS57ClassList(const char *cellName) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -5042,16 +5035,16 @@ DLL const char * STD S52_getS57ObjClassList(const char *cellName)
     const char * str = NULL;
     //unsigned int idx;
 
-    g_string_set_size(_objClassList, 0);
+    g_string_set_size(_S57ClassList, 0);
 
     for (guint idx=0; idx<_cellList->len; ++idx) {
         _cell *c = (_cell*)g_ptr_array_index(_cellList, idx);
 
         if (NULL == cellName) {
-            if (0 == _objClassList->len)
-                g_string_append_printf(_objClassList, "%s",  c->objClassList->str);
+            if (0 == _S57ClassList->len)
+                g_string_append_printf(_S57ClassList, "%s",  c->S57ClassList->str);
             else
-                g_string_append_printf(_objClassList, ",%s", c->objClassList->str);
+                g_string_append_printf(_S57ClassList, ",%s", c->S57ClassList->str);
         } else {
             // check if filename is loaded
             if (0 == S52_strncmp(cellName, c->filename->str, S57_CELL_NAME_MAX_LEN)) {
@@ -5059,36 +5052,36 @@ DLL const char * STD S52_getS57ObjClassList(const char *cellName)
                 if (0 == S52_strncmp(MARINER_CELL, c->filename->str, S57_CELL_NAME_MAX_LEN)) {
                     GString *classList = _getMARINClassList();
 
-                    g_string_printf(_objClassList, "%s", classList->str);
+                    g_string_printf(_S57ClassList, "%s", classList->str);
 
                     g_string_free(classList, TRUE);
 
                     g_static_mutex_unlock(&_mp_mutex);
 
-                    return _objClassList->str;
+                    return _S57ClassList->str;
                 }
-                //if ((NULL!=c->objClassList) && (0!=c->objClassList->len)) {
-                if (NULL != c->objClassList) {
-                    g_string_printf(_objClassList, "%s,%s", c->filename->str, c->objClassList->str);
+                //if ((NULL!=c->S57ClassList) && (0!=c->S57ClassList->len)) {
+                if (NULL != c->S57ClassList) {
+                    g_string_printf(_S57ClassList, "%s,%s", c->filename->str, c->S57ClassList->str);
 
                     g_static_mutex_unlock(&_mp_mutex);
 
-                    //return c->objClassList->str;
-                    return _objClassList->str;
+                    //return c->S57ClassList->str;
+                    return _S57ClassList->str;
                 }
             }
         }
     }
 
-    if (0 != _objClassList->len)
-        str = _objClassList->str;
+    if (0 != _S57ClassList->len)
+        str = _S57ClassList->str;
 
     g_static_mutex_unlock(&_mp_mutex);
 
     return str;
 }
 
-DLL const char * STD S52_getObjList(const char *cellName, const char *className)
+DLL const char * STD S52_getObjList(const char *cellName, const char *className) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -5098,31 +5091,31 @@ DLL const char * STD S52_getObjList(const char *cellName, const char *className)
     S52_CHECK_MUTX;
 
     const char * str  = NULL;
-    //unsigned int cidx = 0;     // cell index
     int header        = TRUE;
 
-    g_string_set_size(_objClassList, 0);
+    PRINTF("cellName: %s, className: %s\n", cellName, className);
+
+    // a _S52ObjList in fact
+    g_string_set_size(_S57ClassList, 0);
 
     for (guint cidx=0; cidx<_cellList->len; ++cidx) {
         _cell *c = (_cell*)g_ptr_array_index(_cellList, cidx);
 
         if (0 == S52_strncmp(cellName, c->filename->str, S57_CELL_NAME_MAX_LEN)) {
-            unsigned i,j;
-            for (i=0; i<S52_PRIO_NUM; ++i) {
-                for (j=0; j<N_OBJ_T; ++j) {
+            for (guint i=0; i<S52_PRIO_NUM; ++i) {
+                for (guint j=0; j<N_OBJ_T; ++j) {
                     GPtrArray *rbin = c->renderBin[i][j];
-                    //unsigned int idx;
                     for (guint idx=0; idx<rbin->len; ++idx) {
                         S52_obj    *obj   = (S52_obj *)g_ptr_array_index(rbin, idx);
                         const char *oname = S52_PL_getOBCL(obj);
                         if (0 == S52_strncmp(className, oname, S52_PL_NMLN)) {
                             if (header) {
-                                g_string_printf(_objClassList, "%s,%s", cellName, className);
+                                g_string_printf(_S57ClassList, "%s,%s", cellName, className);
                                 header = FALSE;
                             }
                             S57_geo *geo = S52_PL_getGeo(obj);
                             //  S57ID / geo / disp cat / disp prio
-                            g_string_append_printf(_objClassList, ",%i:%c:%c:%i",
+                            g_string_append_printf(_S57ClassList, ",%i:%c:%c:%i",
                                                    S57_getGeoID(geo),
                                                    S52_PL_getFTYP(obj),    // same as 'j', but in text equivalent
                                                    S52_PL_getDISC(obj),    //
@@ -5131,8 +5124,8 @@ DLL const char * STD S52_getObjList(const char *cellName, const char *className)
                     }
                 }
             }
-            PRINTF("%s\n", _objClassList->str);
-            str = _objClassList->str;
+            PRINTF("%s\n", _S57ClassList->str);
+            str = _S57ClassList->str;
             g_static_mutex_unlock(&_mp_mutex);
 
             return str;
@@ -5144,7 +5137,7 @@ DLL const char * STD S52_getObjList(const char *cellName, const char *className)
     return NULL;
 }
 
-DLL const char * STD S52_getAttList(unsigned int S57ID)
+DLL const char * STD S52_getAttList(unsigned int S57ID) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -5152,38 +5145,36 @@ DLL const char * STD S52_getAttList(unsigned int S57ID)
     // FIXME: put in array of s57id  (what to do if ENC is unloaded)
     // FIXME: find a more elegant way to traverse all object
     //        may be something like _travers(f())
-    const char * str  = NULL;
-    //unsigned int cidx = 0;     // cell index
-
-    //g_string_set_size(_objClassList, 0);
+    PRINTF("S57ID: %i\n", S57ID);
+    const char *str = NULL;
 
     for (guint cidx=0; cidx<_cellList->len; ++cidx) {
         _cell *c = (_cell*)g_ptr_array_index(_cellList, cidx);
 
-        unsigned i,j;
-        for (i=0; i<S52_PRIO_NUM; ++i) {
-            for (j=0; j<N_OBJ_T; ++j) {
+        for (guint i=0; i<S52_PRIO_NUM; ++i) {
+            for (guint j=0; j<N_OBJ_T; ++j) {
                 GPtrArray *rbin = c->renderBin[i][j];
-                //unsigned int idx;
                 for (guint idx=0; idx<rbin->len; ++idx) {
                     S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                     S57_geo *geo = S52_PL_getGeo(obj);
                     if (S57ID == S57_getGeoID(geo)) {
-                        g_static_mutex_unlock(&_mp_mutex);
-                        //str = S57_getAtt(geo);
-                        return S57_getAtt(geo);
+                        str = S57_getAtt(geo);
+                        //g_static_mutex_unlock(&_mp_mutex);
+                        //return S57_getAtt(geo);
+                        goto exit;
                     }
                 }
             }
         }
     }
 
+exit:
     g_static_mutex_unlock(&_mp_mutex);
 
     return str;
 }
 
-DLL const char * STD S52_getCellNameList(void)
+DLL const char * STD S52_getCellNameList(void) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -5220,7 +5211,7 @@ DLL const char * STD S52_getCellNameList(void)
 //-------------------------------------------------------
 //
 
-DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B)
+DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -5238,7 +5229,7 @@ DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char
     return TRUE;
 }
 
-DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B)
+DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -5259,7 +5250,7 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
     return TRUE;
 }
 
-DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb)
+DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb) /*fold00*/
 {
     // debug
     PRINTF("cb%#lX\n", (long unsigned int)cb);
@@ -5269,7 +5260,7 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb)
     return TRUE;
 }
 
-static int        _setAtt(S57_geo *geo, const char *listAttVal)
+static int        _setAtt(S57_geo *geo, const char *listAttVal) /*fold00*/
 // must be in name/value pair,
 // FIXME: is this OK .. use '---' for a NULL value for any attribute name
 {
@@ -5375,7 +5366,7 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
     return TRUE;
 }
 
-static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
+static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz) /*fold00*/
 {
     //S52_extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
     _extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
@@ -5409,7 +5400,7 @@ static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
     return TRUE;
 }
 
-static S52_obj   *_isObjValid(_cell *c, S52_obj *obj)
+static S52_obj   *_isObjValid(_cell *c, S52_obj *obj) /*fold00*/
 // return  obj if the oject is in cell else NULL
 // Used to validate User Mariners' Object
 {
@@ -5434,7 +5425,7 @@ static S52_obj   *_isObjValid(_cell *c, S52_obj *obj)
     return NULL;
 }
 
-static int        _isObjNameValid(S52ObjectHandle obj, const char *objName)
+static int        _isObjNameValid(S52ObjectHandle obj, const char *objName) /*fold00*/
 // return TRUE if obj is objName else FALSE
 {
     S57_geo *geo = S52_PL_getGeo(obj);
@@ -5451,7 +5442,7 @@ struct _user_data {
 };
 struct _user_data udata;
 
-static void       _compS57ID(gpointer data, gpointer user_data)
+static void       _compS57ID(gpointer data, gpointer user_data) /*fold00*/
 {
     struct _user_data *udata  = (struct _user_data*) user_data;
 
@@ -5467,7 +5458,7 @@ static void       _compS57ID(gpointer data, gpointer user_data)
 }
 
 
-static S52_obj   *_getS52obj(unsigned int S57ID)
+static S52_obj   *_getS52obj(unsigned int S57ID) /*fold00*/
 // traverse all object (again .. FIXME: find a unified way to do that at
 // a single place in the code)
 {
@@ -5535,7 +5526,7 @@ static S52_obj   *_getS52obj(unsigned int S57ID)
     return udata.obj;
 }
 
-DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height)
+DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height) /*fold00*/
 // FIXME: handle S57ID == 0 (viewport dump)
 {
     S52_CHECK_INIT;
@@ -5557,7 +5548,7 @@ DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, u
     return ret;
 }
 
-DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
+DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType, /*fold00*/
                                     unsigned int xyznbr, double *xyz, const char *listAttVal)
 {
 
@@ -5739,10 +5730,10 @@ exit:
 //    PRINTF("not implemented!\n");
 //    return (S52ObjectHandle *)obj;
 //}
-
+ /*fold00*/
 #if 0
 /*
-DLL S52ObjectHandle STD S52_updMarObjGeo(S52ObjectHandle  objH, unsigned int xyznbr, double *xyz)
+DLL S52ObjectHandle STD S52_updMarObjGeo(S52ObjectHandle  objH, unsigned int xyznbr, double *xyz) /*fold00*/
 
     S52_CHECK_INIT;
     S52_CHECK_MERC;
@@ -5805,7 +5796,7 @@ unlock:
 */
 #endif
 
-DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
+DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -5816,7 +5807,6 @@ DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
         return NULL;
     }
 
-    //unsigned i,j;
     for (int i=0; i<S52_PRIO_NUM; ++i) {
         for (int j=0; j<N_OBJ_T; ++j) {
             GPtrArray *rbin = _marinerCell->renderBin[i][j];
@@ -5868,10 +5858,9 @@ static
     return objH;
 }
 
-DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
+DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH) /*fold00*/
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
 
     return_if_null((void*)objH);
 
@@ -5896,7 +5885,7 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
     return (S52ObjectHandle)NULL;
 }
 
-DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH)
+DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -5935,7 +5924,7 @@ DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH)
     return objH;
 }
 
-DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBegin, double latEnd, double lonEnd)
+DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBegin, double latEnd, double lonEnd) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -5966,10 +5955,10 @@ DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBeg
         return clrlin;
     }
 }
-
+ /*fold00*/
 //DLL S52ObjectHandle STD S52_iniLEGLIN(int select, double plnspd, double latBegin, double lonBegin, double latEnd, double lonEnd)
 //DLL S52ObjectHandle STD S52_iniLEGLIN(int select, double plnspd, double wholinDist, double latBegin, double lonBegin, double latEnd, double lonEnd)
-DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDist,
+DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDist, /*fold00*/
                                       double latBegin, double lonBegin, double latEnd, double lonEnd,
                                       S52ObjectHandle previousLEGLIN)
 {
@@ -6036,11 +6025,11 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         return leglin;
     }
 }
-
+ /*fold00*/
 //DLL S52ObjectHandle* STD S52_iniOWNSHP(double length, double beam)
 //DLL S52ObjectHandle STD S52_iniOWNSHP(double a, double b, double c, double d)
 //DLL S52ObjectHandle STD S52_iniOWNSHP(const char *label)
-DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
+DLL S52ObjectHandle STD S52_newOWNSHP(const char *label) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
@@ -6052,12 +6041,13 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
 
     SPRINTF(attval, "_vessel_label:%s", label);
 
-    _OWNSHP = S52_newMarObj("ownshp", S52_POINT, 1, xyz, attval);
+    if (NULL == _OWNSHP)
+        _OWNSHP = S52_newMarObj("ownshp", S52_POINT, 1, xyz, attval);
 
     return _OWNSHP;
 }
 
-DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d)
+DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -6108,10 +6098,10 @@ exit:
 
     return objH;
 }
-
+ /*fold00*/
 //DLL S52ObjectHandle STD S52_setPosition(S52ObjectHandle objH, double latitude, double longitude, double heading)
 //DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH, double course, double speed, int overGround)
-DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH,  int vecstb, double course, double speed)
+DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH,  int vecstb, double course, double speed) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -6158,10 +6148,10 @@ exit:
 
     return objH;
 }
-
+ /*fold00*/
 //DLL S52ObjectHandle STD S52_iniPASTRK(int catpst,)
 //DLL S52ObjectHandle STD S52_iniPASTRK(int catpst, unsigned int maxpts)
-DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int maxpts)
+DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int maxpts) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -6214,11 +6204,11 @@ static
 
     return objH;
 }
-
+ /*fold00*/
 
 //DLL S52ObjectHandle STD S52_addPASTRKPosition(S52ObjectHandle objH, double latitude, double longitude, double time)
 //DLL S52ObjectHandle STD S52_addPosition(S52ObjectHandle objH, double latitude, double longitude, double user_data)
-DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data)
+DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -6327,14 +6317,14 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
 
     return objH;
 }
-
+ /*fold00*/
 //DLL S52ObjectHandle STD S52_iniVESSEL(int vescre, int vestat, const char *label)
 //DLL S52ObjectHandle STD S52_iniVESSEL(int vescre, int vestat, int vecper, int vecmrk, int vecstb, const char *label)
 //DLL S52ObjectHandle STD S52_iniVESSEL(int vescre, int vestat, int vecmrk, int vecstb, const char *label)
 //DLL S52ObjectHandle STD S52_iniVESSEL(int vescre, int vestat, const char *label)
 //DLL S52ObjectHandle STD S52_newVESSEL(int vescre, int vestat, const char *label)
 //DLL S52ObjectHandle STD S52_newVESSEL(int vescre, const char *label)
-DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
+DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -6373,7 +6363,7 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
     return vessel;
 }
 
-DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel)
+DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -6415,7 +6405,7 @@ exit:
 
 }
 
-DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn)
+DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -6475,7 +6465,7 @@ exit:
 
 
 //DLL int           STD S52_iniCSYMB(void)
-DLL int             STD S52_newCSYMB(void)
+DLL int             STD S52_newCSYMB(void) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -6523,13 +6513,13 @@ DLL int             STD S52_newCSYMB(void)
 
     return TRUE;
 }
-
+ /*fold00*/
 
 //DLL int           STD S52_win2prj(double *x, double *y)
 //DLL S52ObjectHandle STD S52_iniVRMEBL(int vrm, int ebl, int normalLineStyle, int ownshpCentered)
 //DLL S52ObjectHandle STD S52_iniVRMEBL(int vrm, int ebl, int normalLineStyle)
 //DLL S52ObjectHandle STD S52_iniVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin)
-DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin)
+DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
@@ -6575,12 +6565,12 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
 
     return vrmebl;
 }
-
+ /*fold00*/
 //DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double longitudeBprj, double latitudeBprj)
 //DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double x, double y)
 //DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, int origin)
 //DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y)
-DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, double *brg, double *rge)
+DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, double *brg, double *rge) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -6698,11 +6688,11 @@ exit:
 
     return objH;
 }
-
+ /*fold00*/
 
 #if 0
 //DLL S52ObjectHandle STD S52_setRoute(unsigned int nLeg, S52ObjectHandle *pobjH)
-DLL S52ObjectHandle STD S52_setRoute(unsigned int nLeg, S52ObjectHandle *pobjH)
+DLL S52ObjectHandle STD S52_setRoute(unsigned int nLeg, S52ObjectHandle *pobjH) /*fold00*/
 {
 
     PRINTF("WARNING: DEPRECATED DO NOT USE (will return NULL in any case)\n");
@@ -6905,7 +6895,7 @@ DLL S52ObjectHandle STD S52_setRoute(unsigned int nLeg, S52ObjectHandle *pobjH)
 #endif
 
 #if 0
-DLL int             STD S52_setCurveLeg(S52ObjectHandle fromLeglin, S52ObjectHandle toLeglin)
+DLL int             STD S52_setCurveLeg(S52ObjectHandle fromLeglin, S52ObjectHandle toLeglin) /*fold00*/
 {
     //unsigned int i = 0;
     //S52ObjectHandle *pobjHtmp = NULL;
@@ -7098,7 +7088,7 @@ exit:
 
 // FIXME: use GDBus (in Gio) instead (thread prob with low-level DBus API)
 
-static DBusHandlerResult   _sendDBusMessage         (DBusConnection *dbus, DBusMessage *reply)
+static DBusHandlerResult   _sendDBusMessage         (DBusConnection *dbus, DBusMessage *reply) /*fold00*/
 // send the reply && flush the connection
 {
     dbus_uint32_t serial = 0;
@@ -7115,7 +7105,7 @@ static DBusHandlerResult   _sendDBusMessage         (DBusConnection *dbus, DBusM
     return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult   _dbus_draw               (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_draw               (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7163,7 +7153,7 @@ static DBusHandlerResult   _dbus_draw               (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_drawLast           (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_drawLast           (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7211,7 +7201,7 @@ static DBusHandlerResult   _dbus_drawLast           (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getMarinerParam    (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getMarinerParam    (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7258,7 +7248,7 @@ static DBusHandlerResult   _dbus_getMarinerParam    (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_setMarinerParam    (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_setMarinerParam    (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7308,7 +7298,7 @@ static DBusHandlerResult   _dbus_setMarinerParam    (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getRGB             (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getRGB             (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7375,7 +7365,7 @@ static DBusHandlerResult   _dbus_getRGB             (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_newMarObj          (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_newMarObj          (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     (void)user_data;
 
@@ -7458,7 +7448,7 @@ static DBusHandlerResult   _dbus_newMarObj          (DBusConnection *dbus, DBusM
 }
 
 #if 0
-static DBusHandlerResult   _dbus_signal_draw        (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_signal_draw        (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7500,7 +7490,7 @@ static DBusHandlerResult   _dbus_signal_draw        (DBusConnection *dbus, DBusM
 }
 
 
-static DBusHandlerResult   _dbus_signal_drawLast    (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_signal_drawLast    (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     //DBusMessage*    reply;
     //DBusMessageIter args;
@@ -7546,7 +7536,7 @@ static DBusHandlerResult   _dbus_signal_drawLast    (DBusConnection *dbus, DBusM
 }
 #endif
 
-static DBusHandlerResult   _dbus_setVESSELstate     (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_setVESSELstate     (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7600,7 +7590,7 @@ static DBusHandlerResult   _dbus_setVESSELstate     (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getPLibsIDList     (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getPLibsIDList     (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7643,7 +7633,7 @@ static DBusHandlerResult   _dbus_getPLibsIDList     (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getPalettesNameList(DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getPalettesNameList(DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7687,7 +7677,7 @@ static DBusHandlerResult   _dbus_getPalettesNameList(DBusConnection *dbus, DBusM
 }
 
 
-static DBusHandlerResult   _dbus_getCellNameList    (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getCellNameList    (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7730,7 +7720,7 @@ static DBusHandlerResult   _dbus_getCellNameList    (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getS57ObjClassList (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getS57ClassList (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7752,9 +7742,9 @@ static DBusHandlerResult   _dbus_getS57ObjClassList (DBusConnection *dbus, DBusM
     }
 
     // make the S52 call
-    const char * str = S52_getS57ObjClassList(cellName);
+    const char * str = S52_getS57ClassList(cellName);
     if (NULL == str) {
-        g_print("FIXME: S52_getS57ObjClassList() failed .. send a dbus error!\n");
+        g_print("FIXME: S52_getS57ClassList() failed .. send a dbus error!\n");
         g_assert(0);
     }
 
@@ -7774,7 +7764,7 @@ static DBusHandlerResult   _dbus_getS57ObjClassList (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getObjList         (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getObjList         (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7825,7 +7815,7 @@ static DBusHandlerResult   _dbus_getObjList         (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getAttList         (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getAttList         (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7872,7 +7862,7 @@ static DBusHandlerResult   _dbus_getAttList         (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getS57ObjClassSupp (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getS57ObjClassSupp (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7921,7 +7911,7 @@ static DBusHandlerResult   _dbus_getS57ObjClassSupp (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_setS57ObjClassSupp (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_setS57ObjClassSupp (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7970,7 +7960,7 @@ static DBusHandlerResult   _dbus_setS57ObjClassSupp (DBusConnection *dbus, DBusM
 }
 
 
-static DBusHandlerResult   _dbus_loadCell           (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_loadCell           (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -8017,7 +8007,7 @@ static DBusHandlerResult   _dbus_loadCell           (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_loadPLib           (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_loadPLib           (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -8065,7 +8055,7 @@ static DBusHandlerResult   _dbus_loadPLib           (DBusConnection *dbus, DBusM
 }
 
 
-static DBusHandlerResult   _dbus_dumpS57IDPixels    (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_dumpS57IDPixels    (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -8118,7 +8108,7 @@ static DBusHandlerResult   _dbus_dumpS57IDPixels    (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_selectCall         (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_selectCall         (DBusConnection *dbus, DBusMessage *message, void *user_data) /*FOLD00*/
 {
     if (dbus_message_is_method_call(message, S52_DBUS_OBJ_NAME, "S52_draw")) {
         return _dbus_draw(dbus, message, user_data);
@@ -8147,8 +8137,8 @@ static DBusHandlerResult   _dbus_selectCall         (DBusConnection *dbus, DBusM
     if (dbus_message_is_method_call(message, S52_DBUS_OBJ_NAME, "S52_getCellNameList")) {
         return _dbus_getCellNameList(dbus, message, user_data);
     }
-    if (dbus_message_is_method_call(message, S52_DBUS_OBJ_NAME, "S52_getS57ObjClassList")) {
-        return _dbus_getS57ObjClassList(dbus, message, user_data);
+    if (dbus_message_is_method_call(message, S52_DBUS_OBJ_NAME, "S52_getS57ClassList")) {
+        return _dbus_getS57ClassList(dbus, message, user_data);
     }
     if (dbus_message_is_method_call(message, S52_DBUS_OBJ_NAME, "S52_getObjList")) {
         return _dbus_getObjList(dbus, message, user_data);
@@ -8211,7 +8201,7 @@ static DBusHandlerResult   _dbus_selectCall         (DBusConnection *dbus, DBusM
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static int                 _initDBus()
+static int                 _initDBus() /*FOLD00*/
 {
     int ret;
 
@@ -8252,7 +8242,7 @@ static int                 _initDBus()
     // do not exit on disconnect
     dbus_connection_set_exit_on_disconnect(_dbus, FALSE);
 
-    // listening to messages from all objects as no path is specified
+    // listening to messages from all objects, as no path is specified
     dbus_bus_add_match(_dbus, "type='method_call',interface='nav.ecs.dbus',member='S52_draw'",                &_dbusError);
     dbus_bus_add_match(_dbus, "type='method_call',interface='nav.ecs.dbus',member='S52_drawLast'",            &_dbusError);
     dbus_bus_add_match(_dbus, "type='method_call',interface='nav.ecs.dbus',member='S52_setMarinerParam'",     &_dbusError);
@@ -8263,7 +8253,7 @@ static int                 _initDBus()
     dbus_bus_add_match(_dbus, "type='method_call',interface='nav.ecs.dbus',member='S52_getPLibsIDList'",      &_dbusError);
     dbus_bus_add_match(_dbus, "type='method_call',interface='nav.ecs.dbus',member='S52_getPalettesNameList'", &_dbusError);
     dbus_bus_add_match(_dbus, "type='method_call',interface='nav.ecs.dbus',member='S52_getCellNameList'",     &_dbusError);
-    dbus_bus_add_match(_dbus, "type='method_call',interface='nav.ecs.dbus',member='S52_getS57ObjClassList'",  &_dbusError);
+    dbus_bus_add_match(_dbus, "type='method_call',interface='nav.ecs.dbus',member='S52_getS57ClassList'",     &_dbusError);
     dbus_bus_add_match(_dbus, "type='method_call',interface='nav.ecs.dbus',member='S52_getObjList'",          &_dbusError);
     dbus_bus_add_match(_dbus, "type='method_call',interface='nav.ecs.dbus',member='S52_getAttList'",          &_dbusError);
     dbus_bus_add_match(_dbus, "type='method_call',interface='nav.ecs.dbus',member='S52_getS57ObjClassSupp'",  &_dbusError);
@@ -8280,14 +8270,10 @@ static int                 _initDBus()
 
     PRINTF("%s:%s\n", _dbusError.name, _dbusError.message);
 
-    //if (FALSE == dbus_connection_add_filter(bus, _DBusSignal, loop, NULL)) {
-    //if (FALSE == dbus_connection_add_filter(_dbus, _setMarinerParam, NULL, NULL)) {
     if (FALSE == dbus_connection_add_filter(_dbus, _dbus_selectCall, NULL, NULL)) {
         PRINTF("fail .. \n");
         exit(0);
     }
-
-    //g_main_loop_run (_loop);
 
     return TRUE;
 }
@@ -8302,11 +8288,8 @@ static int                 _initDBus()
 #include "parson.h"
 
 #define BLOCK 2048
-//static char  _err[BLOCK]      = {'\0'};
-//static char  _result[BLOCK]   = {'\0'};
-//static char  _response[BLOCK] = {'\0'};
 
-static gchar               _setErr(char *err, gchar *errmsg)
+static gchar               _setErr(char *err, gchar *errmsg) /*fold00*/
 {
     //_err[0] = '\0';
     g_snprintf(err, BLOCK, "libS52.so:%s", errmsg);
@@ -8314,7 +8297,7 @@ static gchar               _setErr(char *err, gchar *errmsg)
     return TRUE;
 }
 
-static int                 _encode(char *buffer, const char *frmt, ...)
+static int                 _encode(char *buffer, const char *frmt, ...) /*fold00*/
 {
     va_list argptr;
     va_start(argptr, frmt);
@@ -8335,12 +8318,12 @@ static int                 _encode(char *buffer, const char *frmt, ...)
 
 }
 
-static int                 _handle_method(const gchar *str, char *result, char *err)
+static int                 _handle_method(const gchar *str, char *result, char *err) /*FOLD00*/
 // call the correponding S52_* function named 'method' in JSON object
 // here 'method' meen function name (or command name)
 // SL4A call it 'method' since JAVA is OOP
 // expect:{"id":1,"method":"S52_*","params":["???"]}
-// return: id, JSON array in _result and error msg in _err
+// return: id, error msg in 'error' and a JSON array in 'result'
 {
     // FIXME: use btree for name/function lookup
     // -OR-
@@ -8353,7 +8336,7 @@ static int                 _handle_method(const gchar *str, char *result, char *
     err[0] = '\0';
 
     // JSON parser
-    JSON_Value *val       = json_parse_string(str);
+    JSON_Value *val = json_parse_string(str);
     if (NULL == val) {
         _setErr(err, "can't parse json str");
 
@@ -8381,7 +8364,6 @@ static int                 _handle_method(const gchar *str, char *result, char *
     size_t      count     = json_array_get_count (paramsArr);
 
     // FIXME: check param type
-    // ...
 
 
     // ---------------------------------------------------------------------
@@ -8458,7 +8440,7 @@ static int                 _handle_method(const gchar *str, char *result, char *
         double          longitude = json_array_get_number(paramsArr, 2);
         double          data      = json_array_get_number(paramsArr, 3);
 
-        objH  = S52_pushPosition(objH, latitude, longitude, data);
+        objH = S52_pushPosition(objH, latitude, longitude, data);
 
         _encode(result, "[%lu]", (long unsigned int *) objH);
 
@@ -8478,7 +8460,7 @@ static int                 _handle_method(const gchar *str, char *result, char *
         double          course = json_array_get_number(paramsArr, 2);
         double          speed  = json_array_get_number(paramsArr, 3);
 
-        objH  = S52_setVector(objH, vecstb, course, speed);
+        objH = S52_setVector(objH, vecstb, course, speed);
 
         _encode(result, "[%lu]", (long unsigned int *) objH);
 
@@ -8499,7 +8481,7 @@ static int                 _handle_method(const gchar *str, char *result, char *
         double          c     = json_array_get_number(paramsArr, 3);
         double          d     = json_array_get_number(paramsArr, 4);
 
-        objH  = S52_setDimension(objH, a, b, c, d);
+        objH = S52_setDimension(objH, a, b, c, d);
 
         _encode(result, "[%lu]", (long unsigned int *) objH);
 
@@ -8520,13 +8502,12 @@ static int                 _handle_method(const gchar *str, char *result, char *
         double          vestat       = json_array_get_number(paramsArr, 2);
         double          vesselTurn   = json_array_get_number(paramsArr, 3);
 
-        objH  = S52_setVESSELstate(objH, vesselSelect, vestat, vesselTurn);
+        objH = S52_setVESSELstate(objH, vesselSelect, vestat, vesselTurn);
 
         _encode(result, "[%lu]", (long unsigned int *) objH);
 
         goto exit;
     }
-
 
     //S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
     if (0 == S52_strncmp(cmdName, "S52_delMarObj", strlen("S52_delMarObj"))) {
@@ -8680,7 +8661,7 @@ static int                 _handle_method(const gchar *str, char *result, char *
     //int    STD S52_setTextDisp(int dispPrioIdx, int count, int state);
     if (0 == S52_strncmp(cmdName, "S52_setTextDisp", strlen("S52_setTextDisp"))) {
         if (3 != count) {
-            _setErr(err, "params '&dispPrioIdx' / 'count' / 'state' not found");
+            _setErr(err, "params 'dispPrioIdx' / 'count' / 'state' not found");
             goto exit;
         }
 
@@ -8688,13 +8669,15 @@ static int                 _handle_method(const gchar *str, char *result, char *
         double count       = json_array_get_number(paramsArr, 1);
         double state       = json_array_get_number(paramsArr, 2);
 
-        int ret = S52_setTextDisp(dispPrioIdx, count, state);
+        //int ret = S52_setTextDisp(dispPrioIdx, count, state);
+        _encode(result, "[%i]", S52_setTextDisp(dispPrioIdx, count, state));
 
+        /*
         if (TRUE == ret)
             _encode(result, "[1]");
         else
             _encode(result, "[0]");
-
+        */
         //PRINTF("%s\n", result);
 
         goto exit;
@@ -8709,8 +8692,10 @@ static int                 _handle_method(const gchar *str, char *result, char *
 
         double dispPrioIdx = json_array_get_number(paramsArr, 0);
 
-        int ret = S52_getTextDisp(dispPrioIdx);
+        //int ret = S52_getTextDisp(dispPrioIdx);
+        _encode(result, "[%i]", S52_getTextDisp(dispPrioIdx));
 
+        /*
         if (TRUE == ret)
             _encode(result, "[1]");
         else {
@@ -8719,6 +8704,7 @@ static int                 _handle_method(const gchar *str, char *result, char *
             else // FALSE
                 _encode(result, "[0]");
         }
+        */
 
         //PRINTF("%s\n", result);
 
@@ -8769,13 +8755,97 @@ static int                 _handle_method(const gchar *str, char *result, char *
         goto exit;
     }
 
+    //const char * STD S52_pickAt(double pixels_x, double pixels_y)
+    if (0 == S52_strncmp(cmdName, "S52_pickAt", strlen("S52_pickAt"))) {
+        if (2 != count) {
+            _setErr(err, "params 'pixels_x' or 'pixels_y' not found");
+            goto exit;
+        }
+
+        double pixels_x = json_array_get_number(paramsArr, 0);
+        double pixels_y = json_array_get_number(paramsArr, 1);
+
+        const char *ret = S52_pickAt(pixels_x, pixels_y);
+
+        if (NULL == ret)
+            _encode(result, "[0]");
+        else {
+            _encode(result, "[%s]", ret);
+        }
+
+        goto exit;
+    }
+
+    // const char * STD S52_getObjList(const char *cellName, const char *className);
+    if (0 == S52_strncmp(cmdName, "S52_getObjList", strlen("S52_getObjList"))) {
+        if (2 != count) {
+            _setErr(err, "params 'cellName'/'className' not found");
+            goto exit;
+        }
+
+        const char *cellName = json_array_get_string (paramsArr, 0);
+        if (NULL == cellName) {
+            _setErr(err, "params 'cellName' not found");
+            goto exit;
+        }
+        const char *className = json_array_get_string (paramsArr, 1);
+        if (NULL == className) {
+            _setErr(err, "params 'className' not found");
+            goto exit;
+        }
+
+        const char *str = S52_getObjList(cellName, className);
+        if (NULL == str)
+            _encode(result, "[0]");
+        else
+            _encode(result, "[\"%s\"]", str);
+
+        goto exit;
+    }
+
+    // S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID);
+    if (0 == S52_strncmp(cmdName, "S52_getMarObjH", strlen("S52_getMarObjH"))) {
+        if (1 != count) {
+            _setErr(err, "params 'S57ID' not found");
+            goto exit;
+        }
+
+        long unsigned int S57ID = (long unsigned int) json_array_get_number(paramsArr, 0);
+        S52ObjectHandle   objH  = S52_getMarObjH(S57ID);
+
+        _encode(result, "[%lu]", (long unsigned int *) objH);
+
+        goto exit;
+    }
+
+    //const char * STD S52_getAttList(unsigned int S57ID);
+    if (0 == S52_strncmp(cmdName, "S52_getAttList", strlen("S52_getAttList"))) {
+        if (1 != count) {
+            _setErr(err, "params 'S57ID' not found");
+            goto exit;
+        }
+
+        long unsigned int S57ID = (long unsigned int) json_array_get_number(paramsArr, 0);
+        const char       *str   = S52_getAttList(S57ID);
+
+        if (NULL == str)
+            _encode(result, "[0]");
+        else
+            _encode(result, "[\"%s\"]", str);
+
+        goto exit;
+    }
+
+    // S52 call not found
+    _encode(result, "[0]");
+
 
 exit:
     json_value_free(val);
     return (int)id;
 }
 
-static gboolean            _socket_read_write(GIOChannel *source, GIOCondition cond, gpointer user_data)
+static gboolean            _socket_read_write(GIOChannel *source, GIOCondition cond, gpointer user_data) /*FOLD00*/
 // FIXME: refactor this mess
 {
     GError *error          = NULL;
@@ -8794,7 +8864,7 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
             //PRINTF("G_IO_IN\n");
 
             gsize length = 0;
-            gsize terminator_pos = 0;
+            //gsize terminator_pos = 0;
             GIOStatus stat = g_io_channel_read_chars(source, str_read, 1024, &length, &error);
 
             //G_IO_STATUS_ERROR  An error occurred.
@@ -8896,6 +8966,11 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
 
                 gsize bytes_written = 0;
                 GIOStatus stat = g_io_channel_write_chars(source, str_send, n, &bytes_written, &error);
+                if (G_IO_STATUS_ERROR == stat) {
+                    GIOStatus stat = g_io_channel_flush(source, NULL);
+                    PRINTF("flush GIOStatus:%i\n", stat);
+                    return FALSE; //TRUE;
+                }
 
                 //g_io_channel_flush(source, NULL);
 
@@ -8945,6 +9020,11 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
 
                     gsize bytes_written = 0;
                     GIOStatus stat = g_io_channel_write_chars(source, respstr->str, respstr->len, &bytes_written, &error);
+                    if (G_IO_STATUS_ERROR == stat) {
+                        GIOStatus stat = g_io_channel_flush(source, NULL);
+                        PRINTF("flush GIOStatus:%i\n", stat);
+                        return FALSE; //TRUE;
+                    }
 
                     // WARNING: multi-thread here so PRINTF is a bit clunky
                     PRINTF("stat=%i, send(%i,%i):\n%s\n", stat, respstr->len, bytes_written, respstr->str);
@@ -8987,7 +9067,7 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
 }
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
-static gboolean            _new_connection(GSocketService    *service,
+static gboolean            _new_connection(GSocketService    *service, /*fold00*/
                                            GSocketConnection *connection,
                                            GObject           *source_object,
                                            gpointer           user_data)
@@ -9024,11 +9104,12 @@ static gboolean            _new_connection(GSocketService    *service,
     return FALSE;
 }
 
-static int                 _initSock(void)
+static int                 _initSock(void) /*fold00*/
 {
     GError *error = NULL;
 
     PRINTF("start to listen to socket ..\n");
+    PRINTF("FIXME: check that the glib loop is UP .. or start one\n");
 
     g_type_init();
 

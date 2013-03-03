@@ -193,6 +193,7 @@ s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   -DS52_USE_SUPP_LINE_OVERLAP    \
                   -DS52_USE_SOCK                 \
 				  -DS52_USE_WORLD                \
+				  -DS52_USE_SYM_AISSEL01         \
                   -DS52_DEBUG $(DBG)
 
 

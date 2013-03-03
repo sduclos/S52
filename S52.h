@@ -397,22 +397,6 @@ DLL int    STD S52_loadCell        (const char *encPath,  S52_loadObject_cb load
 DLL int    STD S52_doneCell        (const char *encPath);
 
 /**
- * S52_newMercPrj:
- * @latitude: (in): latitude to project Mercator to
- *
- * DEBUG - set Mercator Projection by hand --done automaticaly via S52_loadCell()
- *
- *
- * Return: TRUE on success, else FALSE
- */
-//DLL int    STD S52_newMercPrj(double latitude);
-
-
-//typedef struct S52_view {
-//    double cLat, cLon, rNM, north;
-//} S52_view;
-
-/**
  * S52_setView:
  * @cLat:  (in): latitude of the center of the view (deg)
  * @cLon:  (in): longitude of the center of the view (deg)
@@ -429,10 +413,10 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north);
 /**
  * S52_getCellExtent:
  * @filename: (in)  (allow-none)   :
- * @S:        (out) (transfer full): latitude in deg
- * @W:        (out) (transfer full): longitude in deg
- * @N:        (out) (transfer full): latitude in deg
- * @E:        (out) (transfer full): longitude in deg
+ * @S:        (out) (transfer full): latitude  (deg)
+ * @W:        (out) (transfer full): longitude (deg)
+ * @N:        (out) (transfer full): latitude  (deg)
+ * @E:        (out) (transfer full): longitude (deg)
  *
  * Cell extent; South, West, North, East
  * if @filename is NULL then return the extent of all cells loaded
@@ -608,24 +592,24 @@ DLL const char * STD S52_getPalettesNameList(void);
 DLL const char * STD S52_getCellNameList(void);
 
 /**
- * S52_getS57ObjClassList: get object class in this cell
+ * S52_getS57ClassList: get list of all S57 class in this cell
  * @cellName: (in) (allow-none): cell name
  *
- * if @filename is not NULL then return a list of all S57 object class
+ * if @cellName is not NULL then return a list of all S57 class
  * in the cell @cellName. The first element of the list is the cell's name.
- * If @cellName is NULL then all S57 object class is return.
+ * If @cellName is NULL then all S57 class is return.
  * WARNING: the return str can be dandling, so raw C call must save
  * the string before calling libS52 again
  *
  *
- * Return: (transfer none): string of all object separeted by ',', NULL if call fail
+ * Return: (transfer none): string of all class name separeted by ',', NULL if call fail
  */
-DLL const char * STD S52_getS57ObjClassList(const char *cellName);
+DLL const char * STD S52_getS57ClassList(const char *cellName);
 
 /**
- * S52_getObjList: get S52 objets of className in this cell
- * @cellName:  (in): cell name
- * @className: (in): class name
+ * S52_getObjList: get list of S52 objets of @className in @cellName
+ * @cellName:  (in): cell name   (not NULL)
+ * @className: (in): class name  (not NULL)
  *
  * Return a string list of element separated by ','
  * Where the first elementy is the cell name, the second element is the class name
@@ -877,9 +861,11 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
  *
  * new S52_obj "Own Ship"
  * 'ownshp': CS(OWNSHP--)
+ * Note: if OWNSHP has allready been created then an other call will
+ * return the handle of the first OWNSHIP call.
  *
  *
- * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
+ * Return: (transfer none): an handle to S52_obj or NULL if call fail
  */
 DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
 
@@ -971,7 +957,7 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
 /**
  * S52_setVESSELstate:
  * @objH:         (in) (transfer none): addressed S52ObjectHandle
- * @vesselSelect: (in): 0 - undefined, 1 - selected (ON), 2 - not seltected (OFF),  (ie bracket symbol on vessel),
+ * @vesselSelect: (in): 0 - undefined, 1 - selected (ON), 2 - de-seltected (OFF), (ie bracket symbol on vessel),
  * @vestat:       (in): 0 - undefined, 1 - AIS active,    2 - AIS sleeping
  * @vesselTurn:   (in): Turn rate is encoded as follows: [from gpsd doc]
  *         0       - not turning
@@ -980,7 +966,7 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
  *         127     - turning right at more than 5deg/30s (No TI available)
  *        -127     - turning left at more than 5deg/30s (No TI available)
  *         128     - (80 hex) indicates no turn information available (default)
- *         129     - don't care keep original value (ie undefined)
+ *         129     - undefined
  *
  * "undefined" mean that the current value of the variable of this objH is unafected
  *
