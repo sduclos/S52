@@ -1213,23 +1213,13 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
 {
 
     const gchar *attName  = g_quark_to_string(key_id);
-    GString     *attValue = (GString*)  data;
-    GString     *attList  = (GString *) user_data;
-
-    /*
-    // save S57 attrib only - assuming that OGR att are not 6 char in lenght!!
-    if (6 == S52_strlen(attName)) {
-        g_string_append(attList, ",");
-        g_string_append(attList, attName);
-        g_string_append(attList, ":");
-        g_string_append(attList, attValue->str);
-    }
-    */
+    GString     *attValue = (GString*) data;
+    GString     *attList  = (GString*) user_data;
 
     // filter out OGR internal S57 info
-    if (0 == g_strcmp0("MASK", attName)) return;
-    if (0 == g_strcmp0("USAG", attName)) return;
-    if (0 == g_strcmp0("ORNT", attName)) return;
+    if (0 == g_strcmp0("MASK",      attName)) return;
+    if (0 == g_strcmp0("USAG",      attName)) return;
+    if (0 == g_strcmp0("ORNT",      attName)) return;
     if (0 == g_strcmp0("NAME_RCNM", attName)) return;
     if (0 == g_strcmp0("NAME_RCID", attName)) return;
 
@@ -1238,9 +1228,19 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
         g_string_append(attList, ",");
 
     g_string_append(attList, attName);
-    g_string_append(attList, ":");
+    g_string_append_c(attList, ':');
     g_string_append(attList, attValue->str);
 
+    // replace '\t' to ' ',
+    if (0 == g_strcmp0("_vessel_label", attName)) {
+        for (guint i=0; i<attList->len; ++i) {
+            if ('\n' == attList->str[i]) {
+                attList->str[i] = ' ';
+                //g_string_insert_c(attList, i, SLASH);
+                return;
+            }
+        }
+    }
     //PRINTF("\t%s : %s\n", attName, (char*)attValue->str);
 
     return;

@@ -23,15 +23,15 @@ Main.prototype.checkCell = function(html, arg)
            )
 }
 
-Main.prototype.buttonCell = function(html, txt) 
+Main.prototype.buttonCell = function(html, arg)
 {
 	html.tr({},
-    	html.td({id:'td_buttonCell'},
+    	html.td({id:arg[0]},
         	html.span({id:'buttonCell', class:'buttonCell'}, 
-        	          txt,
+        	          arg[1],
                		  html.hr()
-                      )
-                )
+                     )
+               )
            )
 }
 
@@ -55,7 +55,8 @@ Main.prototype.table = function(html)
 //=========== 'MARINERS OPTIONS' ==========================================  
                           html.insert(this.sectionTitle, 'MARINERS OPTIONS'),
 
-                          html.insert(this.buttonCell, 'Color Palettes'),
+                          html.insert(this.buttonCell, ['td_buttonCell1', 'Color Palettes']),
+                          html.insert(this.buttonCell, ['td_buttonCell2', 'AIS']),
              
                           // i - Input checkbox                                  
                           html.insert(this.checkCell, ['i1','Show Text']),
@@ -101,30 +102,25 @@ Main.prototype.table = function(html)
               ); // table
               
     html.table({id:'tableR', class:"scrollTableR", border:"0", cellpadding:"0", cellspacing:"0", width:"50%"},
-               html.tbody({id:"tbody1", class:"scrollContent"}
-
-                          // i - Input checkbox                                  
-                          //html.insert(this.checkCell, ['i1','Show Text'])
-
-                        ) // tbody
+               html.tbody({id:"tbody2", class:"scrollContent"})
               ); // table
 }
 
 Main.prototype.render = function(html) 
 {
-
-    /*
+    //*
     var SVG = html.SVG();
-    SVG.svg({width: '120px', height: '120px', version: "1.1"},
-            SVG.circle({r: 50, cx: 60, cy: 60, style: 'stroke: red; fill: none; stroke-width: 20'},
-                       SVG.animate({attributeName:'cx', to:200, dur:'10s'})
+    SVG.svg({id:'svg1', width:'120px', height:'120px', version:'1.1'},
+            SVG.circle({r:'50', cx:'60', cy:'60', style:"stroke:red;fill:none;stroke-width:20"},
+                       SVG.animate({attributeName:'cx', from:'60', to:'200', dur:'10s'})
                        ),
-            SVG.line  ({x1: 33, y1: 93, x2: 93, y2: 23, style: 'stroke: red; stroke-width: 20'})
-            //onmouseover: onOver, onmouseout: onOut })
+            SVG.line  ({x1:'33', y1:'93', x2:'93', y2:'23', style:"stroke:blue;stroke-width:20"})
+            //SVG.line  ({x1:'33', y1:'93', x2:'93', y2:'23', stroke:'red', stroke-width:'20'})
+            //onmouseover:onOver, onmouseout:onOut })
            );
     
-    html.textarea({id:'output1', rows:10, cols:40});
-    html.hr();
+    //html.textarea({id:'output1', rows:10, cols:40});
+    //html.hr();
     //*/
 
     html.insert(this.table);

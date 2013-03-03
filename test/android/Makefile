@@ -11,8 +11,9 @@ APKNAME = s52android-debug.apk
 
 all: build.xml bin/$(APKNAME)
 
+# Based on Android 4.1.2 (API level 16)
 build.xml: AndroidManifest.xml
-	android update project -p . -t "android-14" -n s52android
+	android update project -p . -t "android-16" -n s52android
 
 bin/$(APKNAME):
 	ndk-build V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1
@@ -24,7 +25,7 @@ clean:
 	../s52ui/packages/browser/packages  \
 	../s52ui/packages/js/packages       \
 	../s52ui/packages/meta/packages     \
-	../s52ui/packages/unittest/src/packages
+	../s52ui/packages/unittest
 
 distclean: clean
 	-rm -rf build.xml bin libs/armeabi-v7a obj gen proguard-project.txt project.properties local.properties

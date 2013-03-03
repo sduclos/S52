@@ -74,6 +74,8 @@ typedef struct pt2 {
 #define ZOOM_FAC   2.0
 #define ZOOM_INI   1.0
 
+#define VESSELTURN_UNDEFINED 129
+
 static S52ObjectHandle _vrmeblA     = NULL;
 static S52ObjectHandle _vrmeblB     = NULL;
 static int             _originIsSet = FALSE;
@@ -1298,7 +1300,7 @@ static int      _setVESSEL()
 
     // (re) set label
     //S52_setVESSELlabel(_vessel_ais, "~~MV Non Such~~");
-    S52_setVESSELstate(_vessel_ais, 1, 1, 0);
+    S52_setVESSELstate(_vessel_ais, 1, 1, VESSELTURN_UNDEFINED);
 
     // AIS sleeping
     //_vessel_ais = S52_newVESSEL(2, 2, "MV Non Such - sleeping"););
@@ -1828,7 +1830,7 @@ static int      _setupS52()
     g_print("PLibList    : %s\n", S52_getPLibsIDList());
     g_print("PalettesList: %s\n", S52_getPalettesNameList());
     g_print("CellNameList: %s\n", S52_getCellNameList());
-    g_print("ObjClassList: %s\n", S52_getS57ObjClassList("CA579016.000"));
+    g_print("ObjClassList: %s\n", S52_getS57ClassList("CA579016.000"));
     g_print("ObjList: %s\n",      S52_getObjList("CA579016.000", "ACHARE"));
     g_print("attList: %s\n",      S52_getAttList(410));
 

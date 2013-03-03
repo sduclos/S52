@@ -15,7 +15,7 @@
        KIND, either express or implied.  See the License for the
        specific language governing permissions and limitations
        under the License.
- */
+*/
 
 package nav.ecs.s52android;
 
@@ -36,9 +36,16 @@ public class s52ui extends DroidGap
         super.onCreate(savedInstanceState);
         super.setIntegerProperty("backgroundColor", Color.TRANSPARENT);
         //super.loadUrl("file:///android_asset/www/index.html");
-        super.loadUrl("file:///android_asset/www/s52ui.html");
+        //super.loadUrl("file:///android_asset/www/s52ui.html");
+
+        // work OK for dev (faster)
+        super.loadUrl("file:///data/media/dart/s52ui/web/s52ui.html");
 
         appView.setBackgroundColor(0);
+
+        // debug - page loading always from file (a bit slower)
+        appView.clearCache(false);
+
         appView.addJavascriptInterface(new WebSocketFactory(appView), "WebSocketFactory");
     }
 }

@@ -58,6 +58,8 @@ static int                 _request_id      = 0;
 
 static GStaticMutex        _mp_mutex = G_STATIC_MUTEX_INIT;
 
+#define TB "\\t"  // Tabulation
+#define NL "\\n"  // New Line
 
 //#define STRSZ  256
 #define STRSZ  512
@@ -254,7 +256,7 @@ static int      _s52_init(void)
         return FALSE;
 
     _s52_ownshp = NULL;
-    gchar *resp = _s52_encodeNsend("S52_newOWNSHP", "\"%s\"", "OWNSHP\\n---.- deg / --.- kt");
+    gchar *resp = _s52_encodeNsend("S52_newOWNSHP", "\"%s\"", "OWNSHP" NL "---.- deg / --.- kt");
     if (NULL != resp)
         sscanf(resp, "[ %lu", (long unsigned int *) &_s52_ownshp);
 
@@ -1420,7 +1422,8 @@ static int      _sl4a_sendS52cmd (gpointer user_data)
         double azimuth = _sl4a_getGyro();
         if (-1.0 != azimuth) {
             _s52_encodeNsend("S52_setVector",      "%lu,%i,%lf,%lf",     (long unsigned int) _s52_ownshp, vecstb, azimuth, speed);
-            _s52_encodeNsend("S52_setVESSELlabel", "%lu,\"OWNSHP\\n%05.1f deg / %4.1f kt\"", (long unsigned int) _s52_ownshp, azimuth, speed);
+            //_s52_encodeNsend("S52_setVESSELlabel", "%lu,\"OWNSHP%s%05.1f deg / %4.1f kt\"", (long unsigned int) _s52_ownshp, TB, azimuth, speed);
+            _s52_encodeNsend("S52_setVESSELlabel", "%lu,\"OWNSHP%s%05.1f deg / %4.1f kt\"", (long unsigned int) _s52_ownshp, NL, azimuth, speed);
         }
 
         double lat = 0.0;

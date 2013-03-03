@@ -2,59 +2,83 @@
 
 <html>
   <head>
-    <meta charset="utf-8">
     <title>S52ui</title>
-    <!--
-    -->
-    <link rel="search"     href="/storage/sdcard0/dart/s52ui/web"/>
-    <link rel="stylesheet" href="s52ui.css">
+
+    <meta charset="utf-8">
+
+    <noscript>Your browser does not support JavaScript</noscript>
+    
+    <link rel="stylesheet" type="text/css" href="s52ui.css" />
 
     <!-- initial UI layout -->
     <script type="text/javascript" src="js/tinyjet-0.1.js">  </script>
     <script type="text/javascript" src="s52ui.js">           </script>
 
-    <!-- WebSocket Implementation (via Cordave plugin) -->
+    <!-- WebSocket Implementation for Android Browser (via Cordave plugin) --> 
+    <!-- BUG: Chrome choke here when run on laptop (dart2js OK - firefox)  
+    <script type="text/javascript" src="js/cordova-2.2.0.js"></script>
+    <script type="text/javascript" src="js/cordova.js">      </script>
+    --> 
     <script type="text/javascript" src="js/cordova-2.2.0.js"></script>
     <script type="text/javascript" src="js/websocket.js">    </script>
 
     <!-- dart code -->
-    <script type="application/dart" src="s52ui.dart"> </script>
+    <script type="application/dart" src="s52ui.dart">               </script>
     <script type="text/javascript"  src="packages/browser/dart.js"> </script>
 
   </head>
 
-  <body>
+  <body id="mainBody">
 
     <script type="text/javascript">
       // WebSocket <--> libS52
-      // can Dart handle websocket on Android ?
+      // FIXME: can Dart handle directly Cordova websocket on Android ?
       
       //var wsUri = 'ws://192.168.1.66:2950'; // laptop
-      //var wsUri = 'ws://192.168.1.67:2950';  // xoom
+      //var wsUri = 'ws://192.168.1.67:2950'; // xoom
       var wsUri = 'ws://127.0.0.1:2950';
       var websocket;
 
-      window.onload = function() {
+      window.onload = function initWebSocket() {
         console.log("initWebSocket() - start");
         websocket = new WebSocket(wsUri);
         websocket.onopen    = function(evt) { onOpen(evt)    };
         websocket.onclose   = function(evt) { onClose(evt)   };
         websocket.onerror   = function(evt) { onError(evt)   };
         websocket.onmessage = function(evt) { onMessage(evt) };
-        wsReady();
+
+        document.addEventListener("menubutton", menukeyEvent, false);
       }
 
-      function onOpen(evt)    { console.log("onOpen(): "); }
+      function onOpen(evt)    { console.log("onOpen(): "); wsReady();}
       function onClose(evt)   { console.log("onClose():"); }
       function onError(evt)   { console.log("onError():"); }
       function onMessage(evt) { rcvS52Msg(evt.data);       }
       // called from s52ui.dart
       function sndS52Msg(str) { websocket.send(str);       }
       
-      //window.onpagehide = function() {
-      //  console.log("event onpagehide - start");
-      //}
- 
+      function menukeyEvent(event) {
+          //document.getElementById('tableL').style.display = 'none';
+          //document.getElementById('tableR').style.display = 'none';
+          //document.getElementById('svg1'  ).style.display = 'block';
+
+        //*
+        if ('none' == document.getElementById('tableL').style.display) {
+          document.getElementById('tableL').style.display = 'block';
+          document.getElementById('tableR').style.display = 'block';
+          document.getElementById('svg1'  ).style.display = 'none';
+        } else {
+          document.getElementById('tableL').style.display = 'none';
+          document.getElementById('tableR').style.display = 'none';
+          document.getElementById('svg1'  ).style.display = 'block';
+        }
+        //*/
+        
+        // debug
+        //for (prop in event)
+        //  console.log(prop + ": " + event[prop]);
+      }
+
     </script>
 
     <p id="__beg_mainWindowComponent" hidden="true">id_beg</p>

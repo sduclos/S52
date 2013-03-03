@@ -201,6 +201,9 @@ static int   _request_id = 0;
 static GTimeVal _timeTick;
 #endif
 
+#define TB "\\t"  // Tabulation
+#define NL "\\n"  // New Line
+
 #ifdef S52_USE_DBUS
 // DBUS messaging
 #include <dbus/dbus.h>
@@ -286,7 +289,7 @@ static int           _signal_setVESSELlabel(DBusConnection *bus, S52ObjectHandle
 }
 
 static int           _signal_setVESSELstate(DBusConnection *bus, S52ObjectHandle objH,
-                                              int vesselSelect, int status, int turn)
+                                              int vesselSelect, int status, int vesselTurn)
 {
     g_return_val_if_fail(_dbus, FALSE);
 
@@ -296,7 +299,7 @@ static int           _signal_setVESSELstate(DBusConnection *bus, S52ObjectHandle
                              DBUS_TYPE_DOUBLE, &objH,
                              DBUS_TYPE_INT32,  &vesselSelect,
                              DBUS_TYPE_INT32,  &status,
-                             DBUS_TYPE_INT32,  &turn,
+                             DBUS_TYPE_INT32,  &vesselTurn,
                              DBUS_TYPE_INVALID);
 
     dbus_connection_send(bus, message, NULL);
@@ -779,19 +782,19 @@ static int           _setAISSta (unsigned int mmsi, int status, int turn)
     if (NULL == ais)
         return FALSE;
 
-    if ((status!=ais->status) || (turn==ais->turn)) {
+    if ((status!=ais->status) || (turn!=ais->turn)) {
     // debug
     //if ((status!=ais->status) || (abs(turn) > ais->turn)) {
 
         if (1==status || 5==status || 6==status) {
 #ifdef S52_USE_SOCK
-            _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, 2, turn );
+            _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, 2, turn);
 #else
             S52_setVESSELstate(ais->vesselH, 0, 2, turn);   // AIS sleeping
 #endif
         } else {
 #ifdef S52_USE_SOCK
-            _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, 1, turn );
+            _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, 1, turn);
 
 #else
             S52_setVESSELstate(ais->vesselH, 0, 1, turn);   // AIS active
@@ -932,7 +935,9 @@ static int           _updateTimeTag(void)
         g_get_current_time(&now);
 
         if (-1.0 != ais->course) {
-            g_snprintf(str, 127, "%s %lis\\n%03.f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
+            //g_snprintf(str, 127, "%s %lis\\n%03.f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
+            //g_snprintf(str, 127, "%s %lis%s%03.f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), TB, ais->course, ais->speed);
+            g_snprintf(str, 127, "%s %lis%s%03.f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), NL, ais->course, ais->speed);
         } else {
             g_snprintf(str, 127, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
         }
@@ -984,7 +989,8 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
         double course  = gpsdata->ais.type1.course / 10.0;
         double speed   = gpsdata->ais.type1.speed  / 10.0;
         double heading = gpsdata->ais.type1.heading;
-        //int turn    = gpsdata->ais.type1.turn;	/* signed (int): rate of turn */
+        int    turn    = gpsdata->ais.type1.turn;	          // signed (int): rate of turn
+        int    status  = gpsdata->ais.type1.status;
 
         //printf("mmsi:%i, lat:%f, lon:%f\n", gpsdata->ais.mmsi, lat, lon);
 
@@ -995,14 +1001,12 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
         //    if (gpsdata->ais.mmsi != firstmmsi)
         //        return;
 
-
         // heading not available
         if (511.0 == heading)
             heading = course;
         // speed not available
         if (102.3 == speed)
             speed = 0.0;
-
 
         //Turn rate is encoded as follows:
         //  0       - not turning
@@ -1011,9 +1015,7 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
         //  127     - turning right at more than 5deg/30s (No TI available)
         // -127     - turning left at more than 5deg/30s (No TI available)
         //  128     - (80 hex) indicates no turn information available (default)
-
-
-        _setAISSta(gpsdata->ais.mmsi, gpsdata->ais.type1.status, gpsdata->ais.type1.turn);
+        _setAISSta(gpsdata->ais.mmsi, status, turn);
         _setAISPos(gpsdata->ais.mmsi, lat, lon, heading);
         _setAISVec(gpsdata->ais.mmsi, course, speed);
 
@@ -1116,7 +1118,6 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
 
     // Type 8 - Broadcast Binary Message
     if (8 == gpsdata->ais.type) {
-        // FIXME: add a dummy entry to signal that GPSD is on-line
         /*
         unsigned int dac;       	// Designated Area Code
 	    unsigned int fid;       	// Functional ID
@@ -1134,16 +1135,17 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
         //g_print("AIS MSG TYPE 8: Broadcast Binary Message [mmsi:%i, dac:%i, fid:%i]\n",
         //        gpsdata->ais.mmsi, gpsdata->ais.type8.dac, gpsdata->ais.type8.fid);
 
-        _setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 8");
-
+        // add a dummy entry to signal that GPSD is on-line
+        _setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 8 - Broadcast Binary Message");
 
         return;
     }
 
 	// Type 20 - Data Link Management Message
     if (20 == gpsdata->ais.type) {
-        // FIXME: add a dummy entry to signal that GPSD is on-line
-        g_print("s52ais:DEBUG - SKIP AIS MSG TYPE:20 - Data Link Management Message\n");
+        // add a dummy entry to signal that GPSD is on-line
+        _setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 20 - Data Link Management Message");
+
         return;
     }
 
@@ -1314,7 +1316,7 @@ int            s52ais_updateTimeTag(void)
 
         //g_snprintf(str, 80, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
         //g_snprintf(str, 80, "%s %lis \\n %3f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
-        g_snprintf(str, 80, "%s %lis\\n%3f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
+        g_snprintf(str, 80, "%s %lis%c%3f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), TB, ais->course, ais->speed);
         S52_setVESSELlabel(ais->vesselH, str);
     }
 
