@@ -3,6 +3,12 @@
 #
 
 
+2013MAR03
+    -add AIS list to s52ui (hence to Android also)
+    
+2013FEB18
+    -fix WebSocket on Android
+    
 2013JAN23
     -fix ship's label, fix free moving VRMEBL
 
