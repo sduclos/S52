@@ -1,4 +1,4 @@
-// tinyjet.js: hack from original code XULjet, write HTML in JS
+// tinyjet.js: hack from original code XULjet, write HTML/SVG in JS
 //
 // SD 2012
 

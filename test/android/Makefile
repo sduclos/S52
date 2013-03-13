@@ -10,10 +10,11 @@
 APKNAME = s52android-debug.apk
 
 all: build.xml bin/$(APKNAME)
+#all: bin/$(APKNAME)
 
 # Based on Android 4.1.2 (API level 16)
 build.xml: AndroidManifest.xml
-	android update project -p . -t "android-16" -n s52android
+	android update project -p . -t "android-14" -n s52android
 
 bin/$(APKNAME):
 	ndk-build V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1

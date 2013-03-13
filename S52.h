@@ -575,7 +575,7 @@ DLL const char * STD S52_getPLibsIDList(void);
  * the string before calling libS52 again
  *
  *
- * Return: (transfer none): JSONArray, NULL if call fail
+ * Return: (transfer none): NULL if call fail
  */
 DLL const char * STD S52_getPalettesNameList(void);
 
@@ -587,7 +587,7 @@ DLL const char * STD S52_getPalettesNameList(void);
  * the string before calling libS52 again
  *
  *
- * Return: (transfer none): JSONArray, NULL if call fail
+ * Return: (transfer none): NULL if call fail
  */
 DLL const char * STD S52_getCellNameList(void);
 
@@ -957,7 +957,7 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
 /**
  * S52_setVESSELstate:
  * @objH:         (in) (transfer none): addressed S52ObjectHandle
- * @vesselSelect: (in): 0 - undefined, 1 - selected (ON), 2 - de-seltected (OFF), (ie bracket symbol on vessel),
+ * @vesselSelect: (in): 0 - undefined, 1 - selected (ON) and follow, 2 - de-seltected (OFF), (ie bracket symbol on vessel),
  * @vestat:       (in): 0 - undefined, 1 - AIS active,    2 - AIS sleeping
  * @vesselTurn:   (in): Turn rate is encoded as follows: [from gpsd doc]
  *         0       - not turning

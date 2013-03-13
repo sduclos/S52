@@ -78,14 +78,18 @@ typedef struct _S57_prim {
 // S57 object geo data
 typedef struct _S57_geo {
     guint        id;          // record id (debug)
+    //guint        s52objID;       // optimisation: numeric value of OBCL string
+
 
     GString     *name;        // object name 6/8 + '\0'; used for S52 LUP
     S52_Obj_t    obj_t;       // used in CS
     //S57_Obj_t    obj_t;       // used in CS also
-    //guint        objID;       // optimisation: numeric value of OBCL string
 
     _rect        rect;        // lat/lon extent of object
-    gboolean     sup;         // geo sup --TRUE if outside view
+    gboolean     sup;         // geo sup - TRUE if outside view
+
+    // length of geo data (POINT, LINE, AREA) currently in buffer
+    guint        dataSize;        // max is 1, linexyznbr, ringxyznbr[0]
 
     // hold coordinate before and after projection
     geocoord    *pointxyz;    // point
@@ -93,10 +97,6 @@ typedef struct _S57_geo {
     guint        linexyznbr;  // line
     geocoord    *linexyz;
 
-    //guint        crntIdx;     // length of geo data (POINT, LINE, AREA)
-    //guint        dataLen;       // length of geo data (POINT, LINE, AREA) currently in buffer
-    guint        dataSize;        // length of geo data (POINT, LINE, AREA) currently in buffer
-                                  // max is 1, linexyznbr, ringxyznbr[0]
     /*
     guint        linenbr;        // FIXME: multi-line: break a line, at position in MASK (attVal), into multi-line
     guint       *linexyznbr;     // sound good in theorie
@@ -113,12 +113,12 @@ typedef struct _S57_geo {
 
     GData       *attribs;
 
-    // for CS --object "touched" by this object
+    // for CS - object "touched" by this object
     union {
-        S57_geo *TOPMAR; // break out objet class "touched" --easier to understand but cost more mem
-        S57_geo *LIGHTS; // break out objet class "touched" --easier to understand but cost more mem
-        S57_geo *DEPARE; // break out objet class "touched" --easier to understand but cost more mem
-        S57_geo *DEPVAL; // break out objet class "touched" --easier to understand but cost more mem
+        S57_geo *TOPMAR; // break out objet class "touched"
+        S57_geo *LIGHTS; // break out objet class "touched"
+        S57_geo *DEPARE; // break out objet class "touched"
+        S57_geo *DEPVAL; // break out objet class "touched"
     } touch;
 
     double       scamin;
@@ -369,12 +369,9 @@ int        S57_geo2prj(_S57_geo *geoData)
 
 S57_geo   *S57_setPOINT(geocoord *xyz)
 {
-    //xyz = NULL;
     return_if_null(xyz);
 
-    //_S57_geo *geoData = NULL;
     _S57_geo *geoData = g_new0(_S57_geo, 1);
-    //_S57_geo *geoData = (_S57_geo *) g_malloc0(sizeof(_S57_geo));
     //_S57_geo *geoData = g_try_new0(_S57_geo, 1);
     if (NULL == geoData)
         g_assert(0);
@@ -383,12 +380,12 @@ S57_geo   *S57_setPOINT(geocoord *xyz)
     geoData->obj_t    = POINT_T;
     geoData->pointxyz = xyz;
 
-    geoData->rect.x1 =  INFINITY;
-    geoData->rect.y1 =  INFINITY;
-    geoData->rect.x2 = -INFINITY;
-    geoData->rect.y2 = -INFINITY;
+    geoData->rect.x1  =  INFINITY;
+    geoData->rect.y1  =  INFINITY;
+    geoData->rect.x2  = -INFINITY;
+    geoData->rect.y2  = -INFINITY;
 
-    geoData->scamin  =  INFINITY;
+    geoData->scamin   =  INFINITY;
 
 #ifdef S52_USE_WORLD
     geoData->nextPoly = NULL;
@@ -557,12 +554,10 @@ guint      S57_getRingNbr(_S57_geo *geoData)
 
 int        S57_getGeoData(_S57_geo *geoData, guint ringNo, guint *npt, double **ppt)
 // helper providing uniform access to geoData
-// WARNING: npt is the allocated mem
+// WARNING: npt is the allocated mem (capacity)
 {
     return_if_null(geoData);
 
-    //if (ringNo<0 ||
-        //(LINES_T==geoData->obj_t && 1 != ringNo)  ||
     if  (AREAS_T==geoData->obj_t && geoData->ringnbr<ringNo) {
         PRINTF("WARNING: invalid ring number requested! \n");
         *npt = 0;
@@ -633,7 +628,6 @@ int        S57_getGeoData(_S57_geo *geoData, guint ringNo, guint *npt, double **
             return FALSE;
     }
 
-    //if (*npt < geoData->dataLen) {
     if (*npt < geoData->dataSize) {
         PRINTF("ERROR: geo lenght greater then npt - internal error\n");
         g_assert(0);
@@ -1390,12 +1384,10 @@ int        S57_sameChainNode(_S57_geo *geoA, _S57_geo *geoB)
     //return TRUE;
 }
 
-//S57_geo   *S57_getGeoNext(S57_geo *geoData)
 S57_geo   *S57_getGeoLink(_S57_geo *geoData)
 {
     return_if_null(geoData);
 
-    //return geoData->next;
     return geoData->link;
 }
 
@@ -1403,7 +1395,6 @@ S57_geo   *S57_setGeoLink(_S57_geo *geoData, _S57_geo *link)
 {
     return_if_null(geoData);
 
-    //geoData->next = next;
     geoData->link = link;
 
     return geoData;
@@ -1444,7 +1435,6 @@ S57_geo   *S57_delNextPoly(_S57_geo *geoData)
 
     return NULL;
 }
-
 #endif
 
 unsigned int S57_getGeoID(S57_geo *geoData)
@@ -1491,8 +1481,7 @@ int        S57_isPtInside(int npt, double *xyz, double x, double y, int close)
 int        S57_touch(_S57_geo *geoA, _S57_geo *geoB)
 // TRUE if A touch B else FALSE
 {
-    unsigned int i;
-    //unsigned int  ringNo;
+    //unsigned int i;
     unsigned int  nptA;
     double       *pptA;
     unsigned int  nptB;
@@ -1514,7 +1503,7 @@ int        S57_touch(_S57_geo *geoA, _S57_geo *geoB)
         return FALSE;
     }
 
-    for (i=0; i<nptA; ++i, pptA+=3) {
+    for (guint i=0; i<nptA; ++i, pptA+=3) {
         if (TRUE == S57_isPtInside(nptB, pptB, pptA[0], pptA[1], TRUE))
             return TRUE;
     }
@@ -1522,13 +1511,10 @@ int        S57_touch(_S57_geo *geoA, _S57_geo *geoB)
     return FALSE;
 }
 
-//guint      S57_getCrntIdx(_S57_geo *geo)
 guint      S57_getGeoSize(_S57_geo *geo)
 {
     return_if_null(geo);
 
-    //return geo->crntIdx;
-    //return geo->dataLen;
     return geo->dataSize;
 }
 
@@ -1546,8 +1532,6 @@ guint      S57_setGeoSize(_S57_geo *geo, guint size)
         return FALSE;
     }
 
-    //return geo->crntIdx = index;
-    //return geo->dataLen = len;
     return geo->dataSize = size;
 }
 

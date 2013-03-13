@@ -134,8 +134,9 @@ typedef struct _extent {
 typedef struct _cell {
     _extent    ext;
 
-    GString   *filename;  //encName;
+    GString   *filename;  // encName;
     //GString   *encPath;
+    gchar     *encPath;  // original user path/name
 
     GPtrArray *renderBin[S52_PRIO_NUM][N_OBJ_T];//[RAD_NUM];
 
@@ -246,23 +247,26 @@ static  GStaticMutex _mp_mutex = G_STATIC_MUTEX_INIT;
 
 // CSYMB init scale bar, north arrow, unit, CHKSYM
 static int             _iniCSYMB = TRUE;
-#ifdef S52_USE_GOBJECT
-static S52ObjectHandle _OWNSHP   = 0;
-static S52ObjectHandle _SCALEB10 = 0;
-static S52ObjectHandle _SCALEB11 = 0;
-static S52ObjectHandle _NORTHAR1 = 0;
-static S52ObjectHandle _UNITMTR1 = 0;
-static S52ObjectHandle _CHKSYM01 = 0;
-static S52ObjectHandle _BLKADJ01 = 0;
-#else
-static S52ObjectHandle _OWNSHP   = NULL;
-static S52ObjectHandle _SCALEB10 = NULL;
-static S52ObjectHandle _SCALEB11 = NULL;
-static S52ObjectHandle _NORTHAR1 = NULL;
-static S52ObjectHandle _UNITMTR1 = NULL;
-static S52ObjectHandle _CHKSYM01 = NULL;
-static S52ObjectHandle _BLKADJ01 = NULL;
-#endif
+//#ifdef S52_USE_GOBJECT
+// when S52_USE_GOBJECT S52ObjectHandle is an int so FALSE resolve to zero
+// else its a pointer and FALSE resolve to NULL
+static S52ObjectHandle _OWNSHP   = FALSE;
+static S52ObjectHandle _SELECTED = FALSE;  // debug: used when an AIS target is selected
+static S52ObjectHandle _SCALEB10 = FALSE;
+static S52ObjectHandle _SCALEB11 = FALSE;
+static S52ObjectHandle _NORTHAR1 = FALSE;
+static S52ObjectHandle _UNITMTR1 = FALSE;
+static S52ObjectHandle _CHKSYM01 = FALSE;
+static S52ObjectHandle _BLKADJ01 = FALSE;
+//#else
+//static S52ObjectHandle _OWNSHP   = NULL;
+//static S52ObjectHandle _SCALEB10 = NULL;
+//static S52ObjectHandle _SCALEB11 = NULL;
+//static S52ObjectHandle _NORTHAR1 = NULL;
+//static S52ObjectHandle _UNITMTR1 = NULL;
+//static S52ObjectHandle _CHKSYM01 = NULL;
+//static S52ObjectHandle _BLKADJ01 = NULL;
+//#endif
 
 static S52_RADAR_cb  _RADAR_cb = NULL;
 //static int          _doRADAR  = TRUE;
@@ -786,8 +790,10 @@ static gint       _cmpLine(gconstpointer pointA, gconstpointer pointB, gpointer 
     guint   nptB;
     double *pptB = (double *)pointB;
 
-    S57_getGeoData((S57_geo *)lineA, 1, &nptA, &pptA);
-    S57_getGeoData((S57_geo *)lineB, 1, &nptB, &pptB);
+    //S57_getGeoData((S57_geo *)lineA, 1, &nptA, &pptA);
+    //S57_getGeoData((S57_geo *)lineB, 1, &nptB, &pptB);
+    S57_getGeoData((S57_geo *)lineA, 0, &nptA, &pptA);
+    S57_getGeoData((S57_geo *)lineB, 0, &nptB, &pptB);
 
     // check long
     if (*pptA > *pptB) return  1;
@@ -1655,6 +1661,9 @@ DLL int    STD    _freeCell(_cell *c)
     if (NULL != c->filename)
         g_string_free(c->filename, TRUE);
 
+    if (NULL != c->encPath)
+        g_free(c->encPath);
+
     for (j=0; j<S52_PRIO_NUM; ++j) {
         for (k=0; k<N_OBJ_T; ++k) {
             //unsigned int idx;
@@ -1825,17 +1834,16 @@ static GArray    *_parseIntList(GString *intstr)
     gchar **split  = g_strsplit_set(intstr->str+1, "():,", 0);
     gchar **head   = split;
 
+    // debug
     //printf("XXX %s\n", intstr->str);
 
-    int i = 0;
     int n = atoi(*split++);
-    for (i=0; i<n; ++i) {
+    for (int i=0; i<n; ++i) {
         const char *str = *split++;
         if (NULL != str) {
             gint        gi  =  atoi(str);
             g_array_append_val(garray, gi);
         } else {
-            // FIXME: for some reason some string end with ",...)" !!
             PRINTF("buffer overflow in GDAL increase TEMP_BUFFER_SIZE (currently 1024) in ogr/ogrfeature.cpp:994\n");
             g_assert(0);
             break;
@@ -2169,7 +2177,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 {
     valueBuf chartPath = {'\0'};
     char    *fname     = NULL;
-    _cell   *ch        = NULL;
+    _cell   *ch        = NULL;    // cell handle
     static int  silent = FALSE;
 
     S52_CHECK_INIT;
@@ -2199,15 +2207,18 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     loadObject_cb = S52_loadObject;
 #endif
 
+    // debug - if NULL check in file s52.cfg
     if (NULL == encPath) {
-        if (0 == S52_getConfig(CONF_CHART, &chartPath)) {
+        // FIXME: refactor to return "const char *"
+        if (FALSE == S52_getConfig(CONF_CHART, &chartPath)) {
             PRINTF("S57 file not found!\n");
             g_static_mutex_unlock(&_mp_mutex);
             return FALSE;
         }
         fname = g_strdup(chartPath);
-    } else
+    } else {
         fname = g_strdup(encPath);
+    }
 
     fname = g_strstrip(fname);
 
@@ -2218,20 +2229,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     }
 
 #ifdef S52_USE_WORLD
-    { // load world shapefile
-        //const char *base = g_basename(fname);
-        //if (0 == g_strcmp0(base, WORLD_SHP)) {
-        //    // cell extend - build cell index
-        //    _loadCATALOG(fname);
-        //}
-        //valueBuf chartPath = {'\0'};
-        //if (0 == S52_getConfig(CONF_WORLD, &chartPath)) {
-        //    PRINTF("WORLD file not found!\n");
-        //    return TRUE;
-        //}
-        //S52_loadLayer_cb  loadLayer_cb  = S52_loadLayer;
-        //S52_loadObject_cb loadObject_cb = S52_loadObject;
-        //_loadBaseCell((char *)chartPath, loadLayer_cb, loadObject_cb);
+    {   // experimental - load world shapefile
         const char *base = g_basename(fname);
         if (0 == g_strcmp0(base, WORLD_SHP))
             ch = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
@@ -2251,15 +2249,6 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         //char **encList = S57FileCollector("CATALOG.031");
 
 
-        //char **encList = S57FileCollector(fname);
-        //if (NULL == encList) {
-        //    PRINTF("WARNING: S57FileCollector(%s) return NULL\n", fname);
-        //    g_free(fname);
-        //    g_static_mutex_unlock(&_mp_mutex);
-        //    return FALSE;
-        //} else {
-            //guint i = 0;
-
         char **encList = S57FileCollector(fname);
         if (NULL != encList) {
             for (guint i=0; NULL!=encList[i]; ++i) {
@@ -2267,36 +2256,30 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 
                 // HACK: g_mem_profile() break the call to S57FileCollector()
                 // it return 0x1 instead of 0x0 at the end of encList
-                if (1 == GPOINTER_TO_INT(encName))
-                    break;
+                //if (1 == GPOINTER_TO_INT(encName))
+                //    break;
 
-                //ch = _loadBaseCell(encName, layer_cb);
                 ch = _loadBaseCell(encName, loadLayer_cb, loadObject_cb);
-                //_loadBaseCell(encName, loadLayer_cb, loadObject_cb);
                 g_free(encName);
             }
             g_free(encList);
+        } else {
+            PRINTF("WARNING: S57FileCollector(%s) return NULL\n", fname);
         }
-    }
-    g_free(fname);
-
-    if (NULL == ch) {
-        g_static_mutex_unlock(&_mp_mutex);
-        return FALSE;
     }
 
 #else
-    //ch = _loadBaseCell(fname, layer_cb);
     ch = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
-    //_loadBaseCell(fname, loadLayer_cb, loadObject_cb);
-    g_free(fname);
+#endif
+
+    //g_free(fname);
 
     if (NULL == ch) {
+        g_free(fname);
         g_static_mutex_unlock(&_mp_mutex);
         return FALSE;
     }
-#endif
-
+    ch->encPath = fname;
 
 #ifdef S52_USE_PROJ
     {
@@ -2306,9 +2289,8 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 #endif
 
 
-    // setup object used by CS
-    {
-        //unsigned int i,j,k;
+    {   // setup object used by CS
+
         for (guint k=0; k<_cellList->len; ++k) {
             //_cell *c = &g_array_index(_cellList, _cell, k);
             _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
@@ -2446,7 +2428,8 @@ static int        _loadEdge(const char *name, void *Edge)
 
         S57_getGeoData(geoData, 0, &npt, &ppt);
 
-        npt_new = 2 + npt;
+        //npt_new = npt + 2;  // why +2! (+1)
+        npt_new = npt + 1;  // why +2! (+1)
         ppt_tmp = ppt_new = g_new(double, npt_new*3);
 
         GString *name_rcid_0str = S57_getAttVal(geoData, "NAME_RCID_0");
@@ -2526,8 +2509,7 @@ static int        _loadEdge(const char *name, void *Edge)
 
         ppttmp = ppt;
         ppt_tmp += 3;
-        guint i = 0;
-        for (i=0; i<npt*3; ++i)
+        for (guint i=0; i<npt*3; ++i)
             *ppt_tmp++ = *ppttmp++;
 
         if (NULL != ppt)
@@ -3909,7 +3891,7 @@ DLL int    STD S52_draw(void)
     //PRINTF("%.0f msec (%i obj / %i cmd)\n", sec * 1000, _nobj, _ncmd);
     //g_print("%.0f msec (%i obj / %i cmd) renew = %i / %iB\n", sec * 1000, _nobj, _ncmd, _nrealloc, fobj.sz);
     //g_print("DRAW: %.0f msec\n", sec * 1000);
-    PRINTF("DRAW: %.0f msec\n", sec * 1000);
+    PRINTF("    DRAW: %.0f msec --------------------------------------\n", sec * 1000);
 
     g_static_mutex_unlock(&_mp_mutex);
 
@@ -4716,6 +4698,7 @@ DLL int    STD S52_loadPLib(const char *plibName)
             // clone this cell
             n->ext          = c->ext;
             n->filename     = c->filename;
+            n->encPath      = c->encPath;
 
             // no need to cull again
             //n->cullLightSec = c->cullLightSec;
@@ -4985,7 +4968,7 @@ DLL const char * STD S52_getPalettesNameList(void)
 
     g_string_set_size(_paltNameList, 0);
 
-    g_string_append_printf(_paltNameList, "[");
+    //g_string_append_printf(_paltNameList, "[");
 
     for (int i=0; i<palTblsz; ++i) {
         if (0 == i)
@@ -4994,7 +4977,7 @@ DLL const char * STD S52_getPalettesNameList(void)
             g_string_append_printf(_paltNameList, ",\"%s\"", (char*)S52_PL_getPalTableNm(i));
     }
 
-    g_string_append_c(_paltNameList, ']');
+    //g_string_append_c(_paltNameList, ']');
 
     str = _paltNameList->str;
 
@@ -5174,30 +5157,59 @@ exit:
     return str;
 }
 
+static int              _isCellLoaded(const char *cellName)
+{
+    for (guint i=0; i<_cellList->len; ++i) {
+        _cell *c = (_cell*)g_ptr_array_index(_cellList, i);
+        if (0 == g_strcmp0(c->filename->str, cellName)) {
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
 DLL const char * STD S52_getCellNameList(void)
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
 
-    const char * str = NULL;
-    //unsigned int idx;
-
+    const char *str = NULL;
+    GError *error;
     g_string_set_size(_cellNameList, 0);
 
-    g_string_append_printf(_cellNameList, "[");
+    for (guint i=0; i<_cellList->len; ++i) {
+        _cell *c = (_cell*)g_ptr_array_index(_cellList, i);
 
-    for (guint idx=0; idx<_cellList->len; ++idx) {
-        _cell *c = (_cell*)g_ptr_array_index(_cellList, idx);
-
-        //if (0 == _cellNameList->len)
-        //    g_string_append_printf(_cellNameList, "%s",  c->filename->str);
-        //else
-        //    g_string_append_printf(_cellNameList, ",%s", c->filename->str);
+        // MARINER_CELL has no encPath
+        if (NULL == c->encPath)
+            continue;
 
         if (0 == _cellNameList->len)
-            g_string_append_printf(_cellNameList, "'%s'",  c->filename->str);
+            g_string_append_printf(_cellNameList, "\"*%s\"",  c->encPath);
         else
-            g_string_append_printf(_cellNameList, ",'%s'", c->filename->str);
+            g_string_append_printf(_cellNameList, ",\"*%s\"", c->encPath);
+
+        gchar *path = g_path_get_dirname(c->encPath);
+        GDir  *dir  = g_dir_open(path, 0, &error);
+        if (NULL != dir) {
+            const gchar *file = NULL;
+            while (NULL != (file = g_dir_read_name(dir))) {
+                // S57 cell name in 8.3 format
+                if (12 != strlen(file))
+                    continue;
+
+                //PRINTF("%s\n", file);
+                // base cell NOT loaded
+                if ((0==g_strcmp0(file+8, ".000")) && (FALSE==_isCellLoaded(file))) {
+                    // check if allready included
+                    if (NULL == g_strrstr(_cellNameList->str, file))
+                        g_string_append_printf(_cellNameList, ",\"%s/%s\"", path, file);
+                }
+            }
+            g_dir_close(dir);
+        }
+        g_free(path);
     }
 
     if (0 != _cellNameList->len)
@@ -5549,7 +5561,7 @@ DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, u
 }
 
 DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
-                                    unsigned int xyznbr, double *xyz, const char *listAttVal)
+                                      unsigned int xyznbr, double *xyz, const char *listAttVal)
 {
 
     S57_geo     *geo     = NULL;
@@ -5622,14 +5634,19 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
 
 #ifdef S52_USE_PROJ
             if (FALSE == S57_geo2prj3dv(xyznbr, gxyz)) {
+                PRINTF("WARNING: projection failed\n");
                 g_assert(0);
-                //return NULL;
+                exit(0);
+
+                // FIXME: if we get here free mem
+                return NULL;
             }
 #endif
         }
         else {
             // create an empty xyz buffer
             gxyz = g_new0(double, xyznbr*3);
+
         }
     }
 
@@ -5682,6 +5699,8 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     if (NULL != xyz) {
         S57_setGeoSize(geo, xyznbr);
         _setExt(geo, xyznbr, xyz);
+    } else {
+        S57_setGeoSize(geo, 0);      // not really needed since geo struct is initialize to 0
     }
 
     if (NULL != listAttVal)
@@ -5690,7 +5709,7 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     // SCAMIN Mariners' object
     //S57_setScamin(geo, 0.0);
 
-    // debug - imidiatly destroy it
+    // debug - imediatly destroy it
     //S57_doneData(geo);
 
     S52_obj *obj = S52_PL_newObj(geo);
@@ -5712,89 +5731,6 @@ exit:
 
     return (S52ObjectHandle)obj;
 }
-
-
-
-// not implemented
-//DLL S52ObjectHandle STD S52_setObjGeo(S52ObjectHandle objH, double *xyznbr, double *xyz)
-//{
-//    if (NULL == obj) return obj;
-//    PRINTF("not implemented!\n");
-//    return obj;
-//}
-
-// not implemented
-//DLL S52ObjectHandle STD S52_addObjGeo(S52ObjectHandle objH, double *xyznbr, double *xyz)
-//{
-//    if (NULL == obj) return obj;
-//    PRINTF("not implemented!\n");
-//    return (S52ObjectHandle *)obj;
-//}
-
-#if 0
-/*
-DLL S52ObjectHandle STD S52_updMarObjGeo(S52ObjectHandle  objH, unsigned int xyznbr, double *xyz)
-
-    S52_CHECK_INIT;
-    S52_CHECK_MERC;
-
-    return_if_null(objH);
-
-    S52_CHECK_MUTX;
-
-    PRINTF("xyznbr:%i\n", xyznbr);
-
-    // synafter glow
-    if ((TRUE==_isObjValid(objH, "afgves")) ||
-        (TRUE==_isObjValid(objH, "afgshp")) ||
-        (TRUE==_isObjValid(objH, "waypnt"))
-       ) {
-
-        guint    i   = 0;
-        guint    npt = 0;
-        double  *ppt = NULL;
-        S57_geo *geo = S52_PL_getGeo((S52_obj *)objH);
-
-        if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
-            goto unlock;
-
-        if (xyznbr > npt) {
-            PRINTF("WARNING: object size too big (%i) cliped to %i\n", xyznbr, npt);
-            xyznbr = npt;
-
-            g_assert(0);
-        }
-
-        // FIXME: validate position
-        // FIX: PROJ will trap out of bound
-        double *tmpppt = ppt;
-        double *tmpxyz = xyz;
-        for (i=0; i<(xyznbr*3); ++i)
-            *tmpppt++ = *tmpxyz++;
-
-        _setExt(geo, xyznbr, xyz);
-
-        if (FALSE == S57_geo2prj3dv(xyznbr, ppt)) {
-            objH = NULL;
-
-            g_assert(0);
-        } else
-            S57_setCrntIdx(geo, xyznbr);
-
-    } else {
-        PRINTF("WARNING: only 'afglow' or 'agoshp' object can use this call \n");
-        objH = NULL;
-
-        g_assert(0);
-    }
-
-unlock:
-    g_static_mutex_unlock(&_mp_mutex);
-
-    return objH;
-}
-*/
-#endif
 
 DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
 {
@@ -6026,9 +5962,6 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
     }
 }
 
-//DLL S52ObjectHandle* STD S52_iniOWNSHP(double length, double beam)
-//DLL S52ObjectHandle STD S52_iniOWNSHP(double a, double b, double c, double d)
-//DLL S52ObjectHandle STD S52_iniOWNSHP(const char *label)
 DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
 {
     S52_CHECK_INIT;
@@ -6041,6 +5974,7 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
 
     SPRINTF(attval, "_vessel_label:%s", label);
 
+    // only one OWNSHP (bug if we want 2 GPS shown)
     if (NULL == _OWNSHP)
         _OWNSHP = S52_newMarObj("ownshp", S52_POINT, 1, xyz, attval);
 
@@ -6050,7 +5984,6 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
 DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
 
     return_if_null((void*)objH);
 
@@ -6090,7 +6023,6 @@ DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double 
     } else {
         PRINTF("WARNING: only OWNSHP and VESSEL can use this call \n");
         objH = FALSE;
-        //return NULL;
     }
 
 exit:
@@ -6099,12 +6031,9 @@ exit:
     return objH;
 }
 
-//DLL S52ObjectHandle STD S52_setPosition(S52ObjectHandle objH, double latitude, double longitude, double heading)
-//DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH, double course, double speed, int overGround)
 DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH,  int vecstb, double course, double speed)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
 
     return_if_null((void*)objH);
 
@@ -6149,12 +6078,9 @@ exit:
     return objH;
 }
 
-//DLL S52ObjectHandle STD S52_iniPASTRK(int catpst,)
-//DLL S52ObjectHandle STD S52_iniPASTRK(int catpst, unsigned int maxpts)
 DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int maxpts)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
 
     PRINTF("catpst:%i\n", catpst);
@@ -6205,9 +6131,6 @@ static
     return objH;
 }
 
-
-//DLL S52ObjectHandle STD S52_addPASTRKPosition(S52ObjectHandle objH, double latitude, double longitude, double time)
-//DLL S52ObjectHandle STD S52_addPosition(S52ObjectHandle objH, double latitude, double longitude, double user_data)
 DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data)
 {
     S52_CHECK_INIT;
@@ -6233,8 +6156,9 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
 
     S57_geo *geo = S52_PL_getGeo(obj);
 
-    //if (0 == g_strcmp0("vessel", S57_getName(geo), 6))
-    //    S52_PL_setTimeNow(obj);
+    // reset timer
+    if (0 == g_strcmp0("vessel", S57_getName(geo)))
+        S52_PL_setTimeNow(obj);
 
     /*
     // re-compute extent
@@ -6279,14 +6203,6 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
             //goto unlock;
         }
 
-        // debug
-        //PRINTF("len:%i, npt:%i\n", len, npt);
-        //if (len >= npt) {
-        //    PRINTF("WARNING: object full .. position not added\n");
-        //    g_static_mutex_unlock(&_mp_mutex);
-        //    return FALSE;
-        //}
-
 #ifdef S52_USE_PROJ
         if (FALSE == S57_geo2prj3dv(1, xyz)) {
             PRINTF("WARNING: S57_geo2prj3dv() fail\n");
@@ -6315,19 +6231,17 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
 
     //PRINTF("-1- objH:%#lX, latitude:%f, longitude:%f, data:%f\n", (long unsigned int)objH, latitude, longitude, data);
 
+    if (_SELECTED == objH) {
+        S52_setView(latitude, longitude, _view.rNM, _view.north);
+        S52_draw();
+    }
+
     return objH;
 }
 
-//DLL S52ObjectHandle STD S52_iniVESSEL(int vescre, int vestat, const char *label)
-//DLL S52ObjectHandle STD S52_iniVESSEL(int vescre, int vestat, int vecper, int vecmrk, int vecstb, const char *label)
-//DLL S52ObjectHandle STD S52_iniVESSEL(int vescre, int vestat, int vecmrk, int vecstb, const char *label)
-//DLL S52ObjectHandle STD S52_iniVESSEL(int vescre, int vestat, const char *label)
-//DLL S52ObjectHandle STD S52_newVESSEL(int vescre, int vestat, const char *label)
-//DLL S52ObjectHandle STD S52_newVESSEL(int vescre, const char *label)
 DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
 
     // debug
@@ -6347,7 +6261,7 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
         double xyz[3] = {0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
 
         if (NULL == label) {
-            SPRINTF(attval, "vesrce:%i,_vessel_label: ",vesrce);
+            SPRINTF(attval, "vesrce:%i,_vessel_label: ", vesrce);
         } else {
             SPRINTF(attval, "vesrce:%i,_vessel_label:%s", vesrce, label);
         }
@@ -6415,8 +6329,10 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
     S52_CHECK_MUTX;
 
     // debug
-    //PRINTF("vesselSelect:%i, vestat:%i, vesselTurn:%i\n", vesselSelect, vestat, vesselTurn);
+    PRINTF("vesselSelect:%i, vestat:%i, vesselTurn:%i\n", vesselSelect, vestat, vesselTurn);
 
+    //double lat;
+    //double lon;
     if (NULL == _isObjValid(_marinerCell, (S52_obj *)objH))
         goto exit;
 
@@ -6430,10 +6346,32 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
             PRINTF("WARNING: 'vesselSelect' must be 0, 1 or 2 .. reset to 1 (selected)\n");
             vesselSelect = 1;
         }
-        if (1 == vesselSelect)
+        if (1 == vesselSelect) {
             SPRINTF(attvaltmp, "_vessel_select:Y,");
-        if (2 == vesselSelect)
+            _SELECTED = objH;
+
+            /*
+            guint    npt    = 0;
+            double  *ppt    = NULL;
+
+            if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
+                g_static_mutex_unlock(&_mp_mutex);
+                return FALSE;
+                //goto unlock;
+            }
+            if (1 != npt) {
+                g_static_mutex_unlock(&_mp_mutex);
+                return FALSE;
+                //goto unlock;
+            }
+            */
+            // FIXME: setView()/draw() immediatly so that the user
+            // get feedback sooner than the next pushPos (witch could never come)
+        }
+        if (2 == vesselSelect) {
             SPRINTF(attvaltmp, "_vessel_select:N,");
+            _SELECTED = FALSE;  // NULL
+        }
 
         attvaltmp += S52_strlen(attvaltmp);
 
@@ -6460,19 +6398,23 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
 exit:
     g_static_mutex_unlock(&_mp_mutex);
 
+    /*
+    if (_SELECTED == objH) {
+
+        S52_setView(, , _view.rNM, _view.north);
+        S52_draw();
+    }
+    */
+
     return objH;
 }
 
-
-//DLL int           STD S52_iniCSYMB(void)
 DLL int             STD S52_newCSYMB(void)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
 
     const char   *attval = NULL;
-    //S52ObjectHandle csymb  = NULL;
     double        pos[3] = {0.0, 0.0, 0.0};
 
     if (FALSE == _iniCSYMB) {
@@ -6514,11 +6456,6 @@ DLL int             STD S52_newCSYMB(void)
     return TRUE;
 }
 
-
-//DLL int           STD S52_win2prj(double *x, double *y)
-//DLL S52ObjectHandle STD S52_iniVRMEBL(int vrm, int ebl, int normalLineStyle, int ownshpCentered)
-//DLL S52ObjectHandle STD S52_iniVRMEBL(int vrm, int ebl, int normalLineStyle)
-//DLL S52ObjectHandle STD S52_iniVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin)
 DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin)
 {
     S52_CHECK_INIT;
@@ -6566,10 +6503,6 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
     return vrmebl;
 }
 
-//DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double longitudeBprj, double latitudeBprj)
-//DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double x, double y)
-//DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, int origin)
-//DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y)
 DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, double *brg, double *rge)
 {
     S52_CHECK_INIT;
@@ -8555,7 +8488,7 @@ static int                 _handle_method(const gchar *str, char *result, char *
     if (0 == S52_strncmp(cmdName, "S52_getPalettesNameList", strlen("S52_getPalettesNameList"))) {
         const gchar *palListstr = S52_getPalettesNameList();
 
-        _encode(result, "%s", palListstr);
+        _encode(result, "[%s]", palListstr);
 
         //PRINTF("%s", result);
 
@@ -8566,7 +8499,7 @@ static int                 _handle_method(const gchar *str, char *result, char *
     if (0 == S52_strncmp(cmdName, "S52_getCellNameList", strlen("S52_getCellNameList"))) {
         const gchar *cellNmListstr = S52_getCellNameList();
 
-        _encode(result, "%s", cellNmListstr);
+        _encode(result, "[%s]", cellNmListstr);
 
         //PRINTF("%s", result);
 
@@ -8836,8 +8769,8 @@ static int                 _handle_method(const gchar *str, char *result, char *
         goto exit;
     }
 
-    // S52 call not found
-    _encode(result, "[0]");
+    // BUG!
+    _encode(result, "[0,\"%s: call not found\"]", cmdName);
 
 
 exit:
@@ -8848,6 +8781,9 @@ exit:
 static gboolean            _socket_read_write(GIOChannel *source, GIOCondition cond, gpointer user_data)
 // FIXME: refactor this mess
 {
+    // quiet - not used
+    (void)user_data;
+
     GError *error          = NULL;
 
     gchar  str_send[BLOCK] = {'\0'};
@@ -8855,8 +8791,6 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
     gchar  response[BLOCK] = {'\0'};
     gchar  result[BLOCK]   = {'\0'};
     gchar  err[BLOCK]      = {'\0'};
-
-    //static int inFrame = FALSE;
 
     switch(cond) {
     	case G_IO_IN: {
@@ -8909,16 +8843,13 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
 
 
             // in a WebSocket frame
-            //if ((TRUE==inFrame) && (0!=str_return[0])) {
-            //if ((TRUE==inFrame) && (0!=str_read[0])) {
             if ('\x81' == str_read[0]) {
                 guint len = str_read[1] & 0x7F;
                 //PRINTF("in Frame .. first byte: 0x%hhX\n", str_read[0]);
                 PRINTF("Frame: text lenght = %i, (0x%hhX)\n", len, str_read[1]);
 
                 {
-                    //char *key = str_return+2;
-                    char *key = str_read+2;
+                    char *key  = str_read + 2;
                     char *data = key + 4;
 
                     for (guint i = 0; i<len; ++i) {
@@ -8943,7 +8874,6 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
                         // bytesFormatted[1] = 126
                         // bytesFormatted[2] = ( bytesRaw.length >> 8 )
                         // bytesFormatted[3] = ( bytesRaw.length      )
-
                         n = g_snprintf(str_send, 1024, "\x81%c%c%c%s", 126, (char)(dataLen>>8), (char)dataLen, response);
                     } else {
                         // if need more then 65536 bytes to transfer (code 127)
@@ -8958,6 +8888,7 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
                         bytesFormatted[8] = ( bytesRaw.length >>  8 )
                         bytesFormatted[9] = ( bytesRaw.length       )
                         */
+                        PRINTF("FIXME: dataLen > 65535 not handled (%i)\n", dataLen);
                         g_assert(0);
                     }
                 }
@@ -9039,8 +8970,6 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
 
                     g_io_channel_flush(source, NULL);
 
-                    //inFrame = TRUE;
-
                     g_free(acceptstr);
                     g_checksum_free(checksum);
 
@@ -9048,7 +8977,7 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
                 }
             }
 
-            PRINTF("WARNING: msg not handled (type unknown)\n");
+            PRINTF("FIXME: msg not handled (type unknown)\n");
             return FALSE;
         }
 
@@ -9060,7 +8989,6 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
     	case G_IO_NVAL:PRINTF("G_IO_NVAL\n"); break;
     }
 
-    //g_free(str_return);
 
     return TRUE;
     //return FALSE;

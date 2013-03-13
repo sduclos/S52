@@ -218,11 +218,11 @@ s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 #s52eglarm : TIAMATLIBS = /home/sduclos/dev/prog/Android/xoom/tiamat-xoom-rom/Xoom.Zone-Tiamat.Rom.2.2.2/system/lib
 s52eglarm : S52ANDROIDINC = /home/sduclos/S52/test/android/dist/system/include
 s52eglarm : S52ANDROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
+
 # -DS52_USE_SYM_AISSEL01         (experimental - symbol in plib-test-priv.rle)
 # -DS52_USE_BACKTRACE
 # -DS52_DEBUG
 # -DS52_USE_SOCK
-#s52eglarm :
             DEFS   = -DS52_USE_GLIB2                       \
                      -DS52_USE_PROJ                        \
                      -DS52_USE_OPENGL_VBO                  \

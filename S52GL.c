@@ -76,7 +76,9 @@ typedef GLfloat GLdouble;
 #define glVertex3d          glVertex3f
 #define GL_COMPILE          0x1300
 #define GL_UNSIGNED_INT     0x1405  // byte size of a dispaly list
+#define GL_DBL_FLT          GL_FLOAT
 #endif
+#define GL_DBL_FLT          GL_DOUBLE
 
 // NOTE: rubber band in GL 1.x
 // glEnable(GL_COLOR_LOGIC_OP); glLogicOp(GL_XOR);
@@ -639,19 +641,10 @@ inline void      _checkError(const char *msg)
 
             //PRINTF("from %s: 0x%4x:%s (%s)\n", msg, err, gluErrorString(err), name);
             PRINTF("from %s: 0x%x (%s)\n", msg, err, name);
-            exit(0);
+            g_assert(0);
+            //exit(0);
     }
 #endif
-
-    // old and ugly code
-    //while (counter < 1000) {
-    //    GLenum err = glGetError();
-    //    if (GL_NO_ERROR == err) {
-    //        // debug
-    //        PRINTF("%s\n", msg);
-    //        return;
-    //    }
-
 }
 
 // FIXME: use GDestroyNotify() instead
@@ -823,7 +816,9 @@ static int       _getCentroidClose(guint npt, double *ppt)
         // use heuristique to find centroid
         if (1.0 == S52_MP_get(S52_MAR_DISP_CENTROIDS)) {
             _findCentInside(npt, (pt3*)ppt);
-            PRINTF("point is outside polygone, heuristique used to find an place inside\n");
+
+            // debug
+            //PRINTF("point is outside polygone, heuristique used to find an place inside\n");
 
             return TRUE;
         }
@@ -2503,24 +2498,9 @@ static GLvoid    _DrawArrays_QUADS(guint npt, vertex_t *ppt)
     if (npt != 4)
         return;
 
-#ifdef S52_USE_GLES2
-    // silence warning
-    (void)ppt;
-
-    PRINTF("FIXME: QUADS not in GLES2\n");
-    return;
-#else
-
-#ifdef S52_USE_OPENGL_SAFETY_CRITICAL
-    glVertexPointer(3, GL_FLOAT, 0, ppt);
-#else
-    glVertexPointer(3, GL_DOUBLE, 0, ppt);
-#endif
+    glVertexPointer(3, GL_DBL_FLT, 0, ppt);
 
     glDrawArrays(GL_QUADS, 0, npt);
-
-#endif // S52_USE_GLES2
-
 
     _checkError("_DrawArrays_QUADS() end");
 
@@ -2533,20 +2513,9 @@ static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
         return;
 
 
-#ifdef S52_USE_GLES2
-    glEnableVertexAttribArray(_aPosition);
-    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 0, ppt);
-#else
-
     //glEnableClientState(GL_VERTEX_ARRAY);
 
-#ifdef S52_USE_OPENGL_SAFETY_CRITICAL
-    glVertexPointer(3, GL_FLOAT, 0, ppt);
-#else
-    glVertexPointer(3, GL_DOUBLE, 0, ppt);
-#endif
-
-#endif // S52_USE_GLES2
+    glVertexPointer(3, GL_DBL_FLT, 0, ppt);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, npt);
     glDisableVertexAttribArray(_aPosition);
@@ -2555,7 +2524,7 @@ static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
 
     return;
 }
-#endif
+#endif  // !S52_USE_GLES2
 
 static GLvoid    _DrawArrays_LINE_STRIP(guint npt, vertex_t *ppt)
 {
@@ -2582,26 +2551,13 @@ static GLvoid    _DrawArrays_LINE_STRIP(guint npt, vertex_t *ppt)
     glEnableVertexAttribArray(_aPosition);
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 0, ppt);
 #else
-
     //glEnableClientState(GL_VERTEX_ARRAY);
-
-#ifdef S52_USE_OPENGL_SAFETY_CRITICAL
-    glVertexPointer(3, GL_FLOAT, 0, ppt);
-#else
-    glVertexPointer(3, GL_DOUBLE, 0, ppt);
+    glVertexPointer(3, GL_DBL_FLT, 0, ppt);
 #endif
-
-#endif // S52_USE_GLES2
 
     glDrawArrays(GL_LINE_STRIP, 0, npt);
     glDisableVertexAttribArray(_aPosition);
 
-/*
-#ifndef S52_USE_GLES2
-    // test
-    glVertexPointer(3, GL_DOUBLE, 0, 0);
-#endif
-*/
     _checkError("_DrawArrays_LINE_STRIP() .. end");
 
     return;
@@ -2618,15 +2574,8 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
     glEnableVertexAttribArray(_aPosition);
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 0, ppt);
 #else
-
     glEnableClientState(GL_VERTEX_ARRAY);
-
-#ifdef S52_USE_OPENGL_SAFETY_CRITICAL
-    glVertexPointer(3, GL_FLOAT, 0, ppt);
-#else
-    glVertexPointer(3, GL_DOUBLE, 0, ppt);
-#endif
-
+    glVertexPointer(3, GL_DBL_FLT, 0, ppt);
 #endif
 
     glDrawArrays(GL_LINES, 0, npt);
@@ -2644,18 +2593,7 @@ static GLvoid    _DrawArrays_POINTS(guint npt, vertex_t *ppt)
     if (npt == 0)
         return;
 
-#ifdef S52_USE_GLES2
-    glEnableVertexAttribArray(_aPosition);
-    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 0, ppt);
-#else
-
-#ifdef S52_USE_OPENGL_SAFETY_CRITICAL
-    glVertexPointer(3, GL_FLOAT, 0, ppt);
-#else
-    glVertexPointer(3, GL_DOUBLE, 0, ppt);
-#endif
-
-#endif
+    glVertexPointer(3, GL_DBL_FLT, 0, ppt);
 
     glDrawArrays(GL_POINTS, 0, npt);
     glDisableVertexAttribArray(_aPosition);
@@ -2674,25 +2612,14 @@ static int       _VBODrawArrays(S57_prim *prim)
     guint     vertNbr = 0;
     guint     vboID   = 0;
 
-    //S57_getPrimData(prim, &primNbr, &vertex);
     if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
         return FALSE;
 
-#ifdef S52_USE_GLES2
-#else
-
-
-#ifdef S52_USE_OPENGL_SAFETY_CRITICAL
-    glVertexPointer(3, GL_FLOAT,  0, 0);
-#else
-    //glVertexPointer(3, GL_DOUBLE, 0, vert);
-    glVertexPointer(3, GL_DOUBLE, 0, 0);
+#ifndef S52_USE_GLES2
+    glVertexPointer(3, GL_DBL_FLT,  0, 0);
 #endif
 
-#endif
-
-    guint i = 0;
-    for (i=0; i<primNbr; ++i) {
+    for (guint i=0; i<primNbr; ++i) {
         GLint mode  = 0;
         GLint first = 0;
         GLint count = 0;
@@ -2769,7 +2696,6 @@ static int       _VBODraw(S57_prim *prim)
     if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
         return FALSE;
 
-    //if ((0==vboID) || (GL_FALSE==glIsBuffer(vboID)))
     if (GL_FALSE == glIsBuffer(vboID)) {
         vboID = _VBOCreate(prim);
         S57_setPrimDList(prim, vboID);
@@ -2787,6 +2713,7 @@ static int       _VBODraw(S57_prim *prim)
 #endif
 
     _VBODrawArrays(prim);
+
     glDisableVertexAttribArray(_aPosition);
 
     // bind with 0 - switch back to normal pointer operation
@@ -2825,11 +2752,7 @@ static int       _DrawArrays(S57_prim *prim)
     if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
         return FALSE;
 
-#ifdef S52_USE_OPENGL_SAFETY_CRITICAL
-    glVertexPointer(3, GL_FLOAT,  0, vert);
-#else
-    glVertexPointer(3, GL_DOUBLE, 0, vert);
-#endif
+    glVertexPointer(3, GL_DBL_FLT,  0, vert);
 
     guint i = 0;
     for (i=0; i<primNbr; ++i) {
@@ -3040,16 +2963,11 @@ static GLubyte   _glColor4ub(S52_Color *c)
         }
     }
 
-        // check if PL init OK
-    if (0 == c->trans) {
-        PRINTF("ERROR: color trans not set!\n");
-        g_assert(0);
-    }
-
-    //if ('3' == c->trans) {
+    // check if PL init OK
+    //if (0 == c->trans) {
+    //    PRINTF("ERROR: color trans not set!\n");
     //    g_assert(0);
     //}
-
 
     _checkError("_glColor4ub() -last-");
 
@@ -4371,22 +4289,17 @@ static int       _renderSY_pastrk(S52_obj *obj)
     guint     npt = 0;
     GLdouble *ppt = NULL;
 
-    //if (0.0 == timetags)
-    //    return FALSE;
-
     if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
     if (npt < 2)
         return FALSE;
 
-    guint i = 0;
-    for (i=0; i<npt; ++i) {
-        //if (0.0 == mod(ppt[2]%timetags) {
-        double x1     = ppt[ i   *3 + 0];
-        double y1     = ppt[ i   *3 + 1];
-        double x2     = ppt[(i+1)*3 + 0];
-        double y2     = ppt[(i+1)*3 + 1];
+    for (guint i=0; i<npt; ++i) {
+        double x1 = ppt[ i   *3 + 0];
+        double y1 = ppt[ i   *3 + 1];
+        double x2 = ppt[(i+1)*3 + 0];
+        double y2 = ppt[(i+1)*3 + 1];
 
         if (i == npt-1) {
             x2 = ppt[(i-1)*3 + 0];
@@ -4401,8 +4314,6 @@ static int       _renderSY_pastrk(S52_obj *obj)
         _renderSY_POINT_T(obj, x1, y1, segang);
 
         //PRINTF("SEGANG: %f\n", segang);
-
-        //}
     }
 
     return TRUE;
@@ -5275,7 +5186,6 @@ static int       _renderLS_afterglow(S52_obj *obj)
     // fill color (alpha) array
     guint  i   = 0;
     guint  pti = S57_getGeoSize(geo);
-    //GLsizei pti = S57_getGeoSize(geo);
     if (0 == pti)
         return TRUE;
 
@@ -5755,9 +5665,9 @@ static int       _renderLC(S52_obj *obj)
         return TRUE;
 
     // draw arc if this is a leglin
-    if (0==g_strcmp0("leglin", S57_getName(geo))) {
+    if (0 == g_strcmp0("leglin", S57_getName(geo))) {
         // check if user want to display arc
-        if (2.0 == S52_MP_get(S52_MAR_DISP_WHOLIN) || 3.0 == S52_MP_get(S52_MAR_DISP_WHOLIN)) {
+        if ((2.0==S52_MP_get(S52_MAR_DISP_WHOLIN)) || (3.0==S52_MP_get(S52_MAR_DISP_WHOLIN))) {
             S52_obj *objNextLeg = S52_PL_getNextLeg(obj);
 
             if (NULL != objNextLeg)
@@ -5765,8 +5675,11 @@ static int       _renderLC(S52_obj *obj)
         }
     }
 
-    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
+
+    // debug - Mariner
+    //npt = S57_getGeoSize(geo);
 
     // set pen color & size here because values might not
     // be set via call list --short line

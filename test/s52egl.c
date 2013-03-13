@@ -180,22 +180,16 @@ static s52engine engine;
 // Common stuff
 //
 
-// helper - extent
-typedef struct S52_extent {
-    double S,W,N,E;
-} S52_extent;
+#define VESSELTURN_UNDEFINED 129
 
-
-//------  FAKE AIS - DEBUG ----
+//------ FAKE AIS - DEBUG ----
 // debug - no real AIS, then fake target
 #ifdef S52_USE_FAKE_AIS
 static S52ObjectHandle _vessel_ais        = NULL;
-#define VESSELLABEL "~~MV Non Such~~\n"
+#define VESSELLABEL "~~MV Non Such~~ "           // last char will be trimmed
 // test - ownshp
 static S52ObjectHandle _ownshp            = NULL;
-#define OWNSHPLABEL "OWNSHP\n220 deg / 6.0 kt"
-//#define OWNSHPLABEL "OWNSHP\t220 deg / 6.0 kt"
-#define VESSELTURN_UNDEFINED 129
+#define OWNSHPLABEL "OWNSHP\\n220 deg / 6.0 kt"
 
 
 #ifdef S52_USE_AFGLOW
@@ -454,14 +448,19 @@ static void     _egl_done       (s52engine *engine)
 
 static int      _s52_computeView(s52android_state_t *state)
 {
-     S52_extent ext;
+    //_extent ext;
+    double S,W,N,E;
 
-    if (FALSE == S52_getCellExtent(NULL, &ext.S, &ext.W, &ext.N, &ext.E))
+    //if (FALSE == S52_getCellExtent(NULL, &ext.S, &ext.W, &ext.N, &ext.E))
+    if (FALSE == S52_getCellExtent(NULL, &S, &W, &N, &E))
         return FALSE;
 
-    state->cLat  =  (ext.N + ext.S) / 2.0;
-    state->cLon  =  (ext.E + ext.W) / 2.0;
-    state->rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
+    //state->cLat  =  (ext.N + ext.S) / 2.0;
+    //state->cLon  =  (ext.E + ext.W) / 2.0;
+    //state->rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
+    state->cLat  =  (N + S) / 2.0;
+    state->cLon  =  (E + W) / 2.0;
+    state->rNM   = ((N - S) / 2.0) * 60.0;  // FIXME: pick dominan projected N-S or E-W
     state->north = 0.0;
 
     return TRUE;
@@ -728,11 +727,11 @@ static int      _s52_init       (s52engine *engine)
     // Ice - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
 
-    // load AIS select symb.
-    S52_loadPLib("plib-test-priv.rle");
-
     // show world
     S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);
+
+    // load AIS select symb.
+    S52_loadPLib("plib-test-priv.rle");
 #endif
 
     // debug - remove clutter from this symb in SELECT mode
@@ -818,7 +817,7 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
-    S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
+    //S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
 
     // debug - use for timing redering
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
@@ -2111,10 +2110,13 @@ static int      _X11_handleXevent(gpointer user_data)
                 engine->do_S52draw = TRUE;
                 return TRUE;
             }
-
-
+            // ENC list
+            if (XK_F6 == keysym) {
+                g_print("%s\n", S52_getCellNameList());
+                return TRUE;
+            }
             // debug
-            g_printf("s52egl.c:keysym: %i\n", keysym);
+            g_print("s52egl.c:keysym: %i\n", keysym);
 
 
             //
@@ -2205,7 +2207,7 @@ static int      _X11_handleXevent(gpointer user_data)
 
 int  main(int argc, char *argv[])
 {
-    g_printf("main():starting: argc=%i, argv[0]=%s\n", argc, argv[0]);
+    g_print("main():starting: argc=%i, argv[0]=%s\n", argc, argv[0]);
 
     XSetErrorHandler(_X11_error);
 

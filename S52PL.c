@@ -2760,8 +2760,11 @@ S52_Color  *S52_PL_getColor(const char *colorName)
         //c = &g_array_index(ct->colors, S52_Color, i-1);
         //return c;
 
-        int i = GPOINTER_TO_INT(idx);
-
+        // IHO color index start at 1
+        //int i = GPOINTER_TO_INT(idx);
+        guchar i = GPOINTER_TO_INT(idx);
+        g_assert(i>0);
+        // libS52 color index start at 0
         return S52_PL_getColorAt(i-1);
     }
 
@@ -4364,50 +4367,6 @@ const char *S52_PL_getEX(S52_obj *obj, S52_Color **col,
     *dis    = cmd->cmd.text->dis;
 
     return cmd->cmd.text->frmtd->str;
-
-    /*
-    if (S52_CMD_TXT_TX == cmd->cmdWord) {
-        if (NULL != cmd->cmd.text) {
-            //PRINTF("FIXME: check this .. should not reparse!!\n");
-            if (NULL != cmd->cmd.text->frmtd)
-                    g_string_free(cmd->cmd.text->frmtd, TRUE);
-            g_free(cmd->cmd.text);
-            //g_assert(0);
-        }
-        cmd->cmd.text = _parseTX(obj->geoData, cmd);
-    }
-
-    if (S52_CMD_TXT_TE == cmd->cmdWord) {
-        if (NULL != cmd->cmd.text) {
-            //PRINTF("FIXME: check this .. should not reparse!!\n");
-            if (NULL != cmd->cmd.text->frmtd)
-                    g_string_free(cmd->cmd.text->frmtd, TRUE);
-            g_free(cmd->cmd.text);
-            //g_assert(0);
-        }
-        cmd->cmd.text = _parseTE(obj->geoData, cmd);
-    }
-    */
-
-    //if (FALSE == obj->textParsed) {
-        //if (S52_CMD_TXT_TX == cmd->cmdWord)
-        //    obj->text = _parseTX(obj);
-        //if (S52_CMD_TXT_TE == cmd->cmdWord)
-        //    obj->text = _parseTE(obj);
-    //obj->textParsed = TRUE;
-
-    //if (NULL == cmd->cmd.text) {
-    //    obj->notext = TRUE;
-    //    return NULL;
-    //}
-    //}
-
-
-    //*col    = S52_PL_getColorAt(obj->text->col->idx);
-    //*xoffs  = obj->text->xoffs;
-    //*yoffs  = obj->text->yoffs;
-    //*bsize  = obj->text->bsize;
-    //*weight = obj->text->weight - '4';
 }
 
 int         S52_PL_resetParseText(_S52_obj *obj)

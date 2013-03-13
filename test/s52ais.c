@@ -644,6 +644,20 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
     return ais;
 }
 
+static int           _delAIS(unsigned int mmsi)
+{
+    for (guint i=0; i<_ais_list->len; ++i) {
+        _ais_t *ais = &g_array_index(_ais_list, _ais_t, i);
+        if (mmsi == ais->mmsi) {
+            g_array_remove_index(_ais_list, i);
+            return TRUE;
+        }
+    }
+
+    return FALSE;
+}
+
+
 static int           _setAISInfo(unsigned int mmsi, unsigned int imo, char *callsign,
                                  unsigned int shiptype,
                                  unsigned int month, unsigned int day, unsigned int hour, unsigned int minute,
@@ -679,7 +693,10 @@ static int           _setAISPos (unsigned int mmsi, double lat, double lon, doub
 
 #ifdef S52_USE_AFGLOW
 #ifdef S52_USE_SOCK
-    _encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int *)ais->afglowH, lat, lon, heading);
+    char *ret = _encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int *)ais->afglowH, lat, lon, heading);
+    if ('0' == ret[1])
+        _delAIS(mmsi);
+
 #else
     S52_pushPosition(ais->afglowH, lat, lon, 0.0);
 #endif
@@ -1045,8 +1062,8 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
 	    bool raim;			        // RAIM flag
 	    unsigned int radio;		    // radio status bits
         */
-        double lat     = gpsdata->ais.type4.lat    / 600000.0;
-        double lon     = gpsdata->ais.type4.lon    / 600000.0;
+        double lat = gpsdata->ais.type4.lat / 600000.0;
+        double lon = gpsdata->ais.type4.lon / 600000.0;
 
         // ERROR in ISO date format, can't use ':' because its a speparator in
         // attr pair list passed to label param
@@ -1132,11 +1149,12 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
         // AIS MSG TYPE 8: Broadcast Binary Message [mmsi:3160026, dac:316, fid:19]
         // DAC 316 - Canada
         // FID  19 - ???
-        //g_print("AIS MSG TYPE 8: Broadcast Binary Message [mmsi:%i, dac:%i, fid:%i]\n",
-        //        gpsdata->ais.mmsi, gpsdata->ais.type8.dac, gpsdata->ais.type8.fid);
+        g_print("AIS MSG TYPE 8 - Broadcast Binary Message [mmsi:%i, dac:%i, fid:%i]\n",
+                gpsdata->ais.mmsi, gpsdata->ais.type8.dac, gpsdata->ais.type8.fid);
+
 
         // add a dummy entry to signal that GPSD is on-line
-        _setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 8 - Broadcast Binary Message");
+        //_setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 8 - Broadcast Binary Message");
 
         return;
     }

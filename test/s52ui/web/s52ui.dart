@@ -1,16 +1,13 @@
 // s52ui.dart: html/websocket test driver for libS52.so
 
+library s52ui;
+
 import 'dart:html';
 import 'dart:json';
 import 'dart:async';
 import 'package:js/js.dart' as js;
 
-
-//////////////////////////////////////////////////////
-//
-// Base Class that mimic S52 interface (S52.h)
-// UI <--> WebSocket (s52ui.html)
-//
+part 'S52.dart';
 
 S52  s52;
 
@@ -19,243 +16,6 @@ List _UIBCK;  // background
 List _UINFF;  // text
 List _UIBDR;  // border
 
-
-class S52 {
-  Completer _completer;
-  Map       _data = parse('{"id":1,"method":"???","params":["???"]}');
-  int       _id   = 1;
-
-  static const int MAR_SHOW_TEXT            =  1;
-  static const int MAR_COLOR_PALETTE        = 15;
-  static const int MAR_SCAMIN               = 23;
-  static const int MAR_ANTIALIAS            = 24;
-  static const int MAR_QUAPNT01             = 25;
-  static const int MAR_DISP_LEGEND          = 32;
-  static const int MAR_DISP_CALIB           = 36;
-  static const int MAR_DISP_DRGARE_PATTERN  = 37;
-  static const int MAR_DISP_NODATA_LAYER    = 38;
-  static const int MAR_DISP_AFTERGLOW       = 40;
-  static const int MAR_DISP_CENTROIDS       = 41;
-  static const int MAR_DISP_WORLD           = 42;
-
-  static const int MAR_DISP_CATEGORY          = 14;
-  static const int MAR_DISP_CATEGORY_BASE     =        0;  //      0; 0000000
-  static const int MAR_DISP_CATEGORY_STD      =        1;  // 1 << 0; 0000001
-  static const int MAR_DISP_CATEGORY_OTHER    =        2;  // 1 << 1; 0000010
-  static const int MAR_DISP_CATEGORY_SELECT   =        4;  // 1 << 2; 0000100
-
-  static const int MAR_DISP_LAYER_LAST        = 27;
-  static const int MAR_DISP_LAYER_LAST_NONE   =        8;  // 1 << 3; 0001000
-  static const int MAR_DISP_LAYER_LAST_STD    =       16;  // 1 << 4; 0010000
-  static const int MAR_DISP_LAYER_LAST_OTHER  =       32;  // 1 << 5; 0100000
-  static const int MAR_DISP_LAYER_LAST_SELECT =       64;  // 1 << 5; 1000000
-
-  static const int CMD_WRD_FILTER             = 33;
-  static const int CMD_WRD_FILTER_SY          =        1;  // 1 << 0; 000001 - SY
-  static const int CMD_WRD_FILTER_LS          =        2;  // 1 << 1; 000010 - LS
-  static const int CMD_WRD_FILTER_LC          =        4;  // 1 << 2; 000100 - LC
-  static const int CMD_WRD_FILTER_AC          =        8;  // 1 << 3; 001000 - AC
-  static const int CMD_WRD_FILTER_AP          =       16;  // 1 << 4; 010000 - AP
-  static const int CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
-
-  rcvMsg(str) {
-    print('rcvMsg():receive JSON str from libS52: $str');
-    Map data;
-    try {
-      data = parse(str);
-    } catch(e) {
-      print('rcvMsg(): malformed JSON throw the parser: $str');
-      return;
-    }
-
-    if (null == data["error"]) {
-      print('rcvMsg(): failed NO key: "error" [${str}]');
-      return;
-    }
-    if ("no error" != data["error"]) {
-      print("rcvMsg(): S52 call failed");
-      return;
-    }
-
-    if (_id != data["id"]) {
-      print('rcvMsg(): failed on key: _id=$_id data_id=${data["id"]}');
-      throw "rcvMsg(): ID mismatch";
-    }
-
-    ++_id;
-    _completer.complete(data['result']);
-  }
-  _sendMsg(String str) {
-    // send JSON str to libS52
-    //print('_sendMsg(): $str');
-    js.scoped(() {
-      // first hookup callbaqck
-      // FIXME: use many (no new .. so could be more efficient!)
-      // but need to be deleted on onClose
-      js.context.rcvS52Msg = new js.Callback.once(s52.rcvMsg);
-
-      // then send
-      js.context.sndS52Msg(str);
-    });
-  }
-    
-  Future<List> getMarinerParam(int param) {
-    _completer = new Completer();
-
-    _data["id"    ] = _id;
-    _data["method"] = "S52_getMarinerParam";
-    _data["params"] = [param];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> setMarinerParam(int param, double value) {
-    _completer = new Completer();
-
-    _data["id"    ] = _id;
-    _data["method"] = "S52_setMarinerParam";
-    _data["params"] = [param, value];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> getPalettesNameList() {
-    _completer = new Completer();
-
-    _data["id"    ] = _id;
-    _data["method"] = "S52_getPalettesNameList";
-    _data["params"] = [];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> getRGB(String colorName) {
-    _completer = new Completer();
-
-    _data["id"    ] = _id;
-    _data["method"] = "S52_getRGB";
-    _data["params"] = [colorName];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> draw() {
-    _completer = new Completer();
-
-    _data["id"    ] = _id;
-    _data["method"] = "S52_draw";
-    _data["params"] = [];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> drawLast() {
-    _completer = new Completer();
-
-    _data["id"    ] = _id;
-    _data["method"] = "S52_drawLast";
-    _data["params"] = [];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> newOWNSHP(var label) {
-    _completer = new Completer();
-    
-    _data["id"    ] = _id;
-    _data["method"] = "S52_newOWNSHP";
-    _data["params"] = [label];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> setPosition(int objH, double latitude, double longitude, double z) {
-    _completer = new Completer();
-    
-    _data["id"    ] = _id;
-    _data["method"] = "S52_pushPosition";
-    _data["params"] = [objH,latitude,longitude,z];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> setVector(int objH, int vecstb, double course, double speed) {
-    _completer = new Completer();
-
-    _data["id"    ] = _id;
-    _data["method"] = "S52_setVector";
-    _data["params"] = [objH,vecstb,course,speed];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> pickAt(double pixels_x, double pixels_y) {
-    _completer = new Completer();
-
-    _data["id"    ] = _id;
-    _data["method"] = "S52_pickAt";
-    _data["params"] = [pixels_x,pixels_y];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> getObjList(var cellName, var className) {
-    _completer = new Completer();
-    
-    _data["id"    ] = _id;
-    _data["method"] = "S52_getObjList";
-    _data["params"] = [cellName,className];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> getAttList(int S57ID) {
-    _completer = new Completer();
-    
-    _data["id"    ] = _id;
-    _data["method"] = "S52_getAttList";
-    _data["params"] = [S57ID];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> getMarObjH(int S57ID) {
-    _completer = new Completer();
-    
-    _data["id"    ] = _id;
-    _data["method"] = "S52_getMarObjH";
-    _data["params"] = [S57ID];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-  Future<List> setVESSELstate(int objH, int vesselSelect, int vestat, int vesselTurn) {
-    _completer = new Completer();
-
-    _data["id"    ] = _id;
-    _data["method"] = "S52_setVESSELstate";
-    _data["params"] = [objH,vesselSelect,vestat,vesselTurn];
-    String jsonCmdstr = stringify(_data);
-    _sendMsg(jsonCmdstr);
-
-    return _completer.future;
-  }
-
-}
-////////////////////////////////////////////////////////
 
 
   void _handleInput(int param, double value) {
@@ -273,27 +33,29 @@ class S52 {
       case S52.MAR_DISP_CENTROIDS       : //= 41;
       case S52.MAR_DISP_WORLD           : //= 42;
 
-        //checked = query("#i$param").checked;
-
         InputElement i = query("#i$param");
         checked = i.checked;
         break;
 
+      case S52.MAR_ROT_BUOY_LIGHT       :  //=28
+        RangeInputElement r = query("#r$param");
+        var val = r.valueAsNumber;
+        s52.setMarinerParam(param, val).then((ret) {
+            s52.draw().then((ret) {});
+        });
+        return;
+      
       case S52.MAR_DISP_CATEGORY        :  //= 14;
         //S52_MAR_DISP_CATEGORY_BASE     =        0;  //      0; 0000000
         //S52_MAR_DISP_CATEGORY_STD      =        1;  // 1 << 0; 0000001
         //S52_MAR_DISP_CATEGORY_OTHER    =        2;  // 1 << 1; 0000010
         //S52_MAR_DISP_CATEGORY_SELECT   =        4;  // 1 << 2; 0000100
-        //checked = query("#c$subParam").checked;
-        //break;
 
       case S52.MAR_DISP_LAYER_LAST       : //= 27;
         //S52_MAR_DISP_LAYER_LAST_NONE   =        8;  // 1 << 3; 0001000
         //S52_MAR_DISP_LAYER_LAST_STD    =       16;  // 1 << 4; 0010000
         //S52_MAR_DISP_LAYER_LAST_OTHER  =       32;  // 1 << 5; 0100000
         //S52_MAR_DISP_LAYER_LAST_SELECT =       64;  // 1 << 5; 1000000
-        //checked = query("#l$subParam").checked;
-        //break;
 
       case S52.CMD_WRD_FILTER            : //= 33;
         //S52_CMD_WRD_FILTER_SY          =        1;  // 1 << 0; 000001 - SY
@@ -302,12 +64,9 @@ class S52 {
         //S52_CMD_WRD_FILTER_AC          =        8;  // 1 << 3; 001000 - AC
         //S52_CMD_WRD_FILTER_AP          =       16;  // 1 << 4; 010000 - AP
         //S52_CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
-        //checked = query("#f$subParam").checked;
+
         s52.setMarinerParam(param, value).then((ret) {
-          //if (1 == ret[0]) 
-          //  print("OK");
-            s52.draw().then((ret){});
-          //}
+            s52.draw().then((ret) {});
         });
         return;
 
@@ -317,10 +76,7 @@ class S52 {
 
     double val = (true == checked) ? 1.0 : 0.0;
     s52.setMarinerParam(param, val).then((ret) {
-      //if (1 == ret[0]) {
-      //  print("OK");
         s52.draw().then((ret){});
-      //}
     });
   }
 
@@ -348,12 +104,13 @@ class S52 {
     _getS52UIcolor().then((value) {
       // set S52 UI background color
       query(".scrollTableL").style.backgroundColor =
-           "rgba(${_UIBCK[0]},${_UIBCK[1]},${_UIBCK[2]}, 0.6)";
+          //"rgba(${_UIBCK[0]},${_UIBCK[1]},${_UIBCK[2]}, 0.6)";
+          "rgba(${_UIBCK[0]},${_UIBCK[1]},${_UIBCK[2]}, 0.7)";
       // set S52 UI Border Color
       queryAll("hr").forEach((s) => s.style.backgroundColor =
            "rgb(${_UIBDR[0]},${_UIBDR[1]},${_UIBDR[2]})");
       // set S52 UI Text Color
-      queryAll("span").forEach((s) => s.style.color =
+      queryAll("div").forEach((s) => s.style.color =
            "rgb(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]})");
 
       completer.complete(true);
@@ -361,7 +118,7 @@ class S52 {
     return completer.future;
   }
 
-  void _updateUIcol(int idx) {
+  void _updateUIcol(int idx, TableCellElement c) {
     s52.setMarinerParam(S52.MAR_COLOR_PALETTE, idx.toDouble()).then((ret) {
       s52.draw().then((ret) {
         s52.drawLast().then((ret){
@@ -369,24 +126,6 @@ class S52 {
         });
       });
    });
-  }
-
-  void _insertCellRTable(String txt, var cb, var idx) {
-    SpanElement      sp = new SpanElement();
-    UListElement     ul = new UListElement();
-    LIElement        li = new LIElement(); 
-    sp.text = txt;
-    li.text = txt;
-    ul.nodes.add(li);
-    TableCellElement c = new TableCellElement();
-    c.onClick.listen((ev) => cb(idx));
-    c.nodes.add(sp);
-    c.nodes.add(ul);
-    
-    // add at the end
-    TableElement    t = query("#tableR");
-    TableRowElement r = t.insertRow(-1);
-    r.nodes.add(c);
   }
   _appendUList(UListElement UList, var txt) {
     if (null == UList)
@@ -399,12 +138,12 @@ class S52 {
     return UList;
   }
   _appendCellRTable(String txt, var cb, var idx) {
-    SpanElement      sp = new SpanElement();
-    sp.text = txt;
+    ParagraphElement p = new ParagraphElement();
+    p.text = txt;
 
     TableCellElement c = new TableCellElement();
     c.onClick.listen((ev) => cb(idx, c));
-    c.nodes.add(sp);
+    c.nodes.add(p);
 
     TableElement    t = query("#tableR");
     TableRowElement r = t.insertRow(-1);  // add at the end
@@ -412,8 +151,8 @@ class S52 {
     
     return c;
   }
-  void _clearRTable() {
-    TableElement t = query("#tableR");
+  void _clearTable(id) {
+    TableElement t = query(id);
     bool nr = t.rows.isEmpty;
     while (!nr) {
       t.deleteRow(0);
@@ -426,17 +165,19 @@ class S52 {
     // start color highlight animation
     //query("#td_buttonCell").style.animationIterationCount = '1';
     
-    _clearRTable();
+    _clearTable("#tableR");
     
     s52.getPalettesNameList().then((palNmList) {
       for (int i=0; i<palNmList.length; ++i) {
-        _insertCellRTable(palNmList[i], _updateUIcol, i);
+        _appendCellRTable(palNmList[i], _updateUIcol, i);
       }
 
-      List l = queryAll("span");
+      /*
+      //List l = queryAll("span");
+      List l = queryAll("p");
       l.forEach((s) => s.style.textFillColor =
           "rgb(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]})");
-
+      */
       // stop (abruptly) color animation
       //query("#td_buttonCell").style.animationIterationCount = '0';
     });
@@ -444,13 +185,11 @@ class S52 {
   
   /////////////// AIS Button Handling //////////////////////////
   void _updateAIS(int idx, TableCellElement c){
-    //print('_updateAIS: $idx');
-    //print(c.children[1]);
-    //print(c.children[1].children[0]);
 
     c.children[1].style.display = ('block' == c.children[1].style.display) ? 'none' : 'block';
     
     int vesselSelect = ('block' == c.children[1].style.display) ? 1 : 2;
+    // S57ID allway the first
     int S57ID        = int.parse(c.children[1].children[0].text);
     s52.getMarObjH(S57ID).then((ret) {
       // vesselTurn:129 - undefined
@@ -466,7 +205,7 @@ class S52 {
       
       s52.getAttList(S57ID).then((ret) {
         TableCellElement cell;
-        UListElement UList;
+        UListElement UList = new UListElement();
         //print('ret: ${ret[0]}');
         var vesselAtt = ret[0].split(',');
         vesselAtt.forEach((att) {
@@ -488,7 +227,7 @@ class S52 {
     // start color highlight animation
     //query("#td_buttonCell").style.animationIterationCount = '1';
     
-    _clearRTable();
+    _clearTable("#tableR");
 
     s52.getObjList('--6MARIN.000', 'vessel').then((str) {
       var vesselList = str[0].split(',');
@@ -501,9 +240,32 @@ class S52 {
       //query("#td_buttonCell").style.animationIterationCount = '0';
     });
   }
+  /////////////// ENC Button Handling //////////////////////////
+  _loadENC(int idx, TableCellElement c) {
+    var encPath = c.children[0].text;
+    if ('*' == encPath[0]) {
+      s52.doneCell(encPath.substring(1)).then((ret) {
+        s52.draw().then((ret) {_listENC(null);});
+      });
+    } else {
+      s52.loadCell(encPath).then((ret) {
+        s52.draw().then((ret) {_listENC(null);});
+      });
+    }
+  }
+  void _listENC(e) {
+    _clearTable("#tableR");
+    
+    s52.getCellNameList().then((str) {
+      var idx = 0;
+      //print(str[0]);
+      str.forEach((enc) {
+        _appendCellRTable(enc, _loadENC, idx++);
+      });
+    });
+  }
 
-
-
+  
 ///////////////////////////////////////
 //
 // init  
@@ -522,10 +284,9 @@ void _initCheckBox(List lst, int idx, String prefix, Completer completer) {
     int el = _checkButton[idx];
     s52.getMarinerParam(el).then((ret) {
       InputElement i = query("#$prefix$el");
-      i
-        ..checked = (1.0 == ret[0]) ? true : false
-        ..onClick.listen((ev) => print("id:'$prefix$el'"))
-        ..onClick.listen((ev) => _handleInput(el, 0.0));
+      i.checked = (1.0 == ret[0]) ? true : false;
+      i.onClick.listen((ev) => print("id:'$prefix$el'"));
+      i.onClick.listen((ev) => _handleInput(el, 0.0));
 
       // recursion
       _initCheckBox(lst, idx+1, prefix, completer);
@@ -550,7 +311,7 @@ Future<bool> _initUI() {
         InputElement i = query("#f$el");
         i.checked = (0 == (filter & el)) ? false : true;
         i.onClick.listen((ev) => print("id:'f$el'"));
-        i.onClick.listen((ev) => _handleInput(S52.CMD_WRD_FILTER, el));
+        i.onClick.listen((ev) => _handleInput(S52.CMD_WRD_FILTER, el.toDouble()));
       });
 
       //S52_MAR_DISP_CATEGORY(14)
@@ -594,6 +355,14 @@ Future<bool> _initUI() {
           query("#td_buttonCell2")
           ..onClick.listen((ev) => print("id:'td_buttonCell2'"))
           ..onClick.listen((ev) => _listAIS(ev));
+
+          query("#td_buttonCell3")
+          ..onClick.listen((ev) => print("id:'td_buttonCell3'"))
+          ..onClick.listen((ev) => _listENC(ev));
+
+          query("#r28")
+          ..onClick.listen((ev) => print("id:'r28'"))
+          ..onClick.listen((ev) => _handleInput(S52.MAR_ROT_BUOY_LIGHT, 0.0));
 
           int startIdx = 0;
           _initCheckBox(_checkButton, startIdx, "i", completer);
@@ -651,32 +420,27 @@ void _initTouch() {
   });
 }
 
+void GPSpos(Geoposition position) {
+  print('GPS new pos');
+  s52.setPosition(_ownshp, position.coords.latitude, position.coords.longitude, 0.0).then((ret){});
+}
 int _ownshp = 0;
-var _watchID;
 void _watchPosition() {
   if (0 == _ownshp) { 
     print('s5ui.dart:_setPosition(): failed, no _ownshp handle');
     return;
   }
-  //print('s5ui.dart:_setPosition(): start');
+  print('s5ui.dart:_watchPosition(): start');
   
-  /*
-  _watchID = window.navigator.geolocation.watchPosition(
-      (Geoposition position) {
-        s52.setPosition(_ownshp, position.coords.latitude, position.coords.longitude, 0.0).then((ret){});
-      },
-      (PositionError error) {
-        print('getCurrentPosition(): ${error.message} (${error.code})');
-      },
-      {'enableHighAccuracy':true, 'maximumAge':30000, 'timeout':27000}
-  );  
-  */
-
   // {'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000}
-  // true, 27000, 30000 !?
-  //window.navigator.geolocation.watchPosition().then(
-
-  //* FF choke here
+  //window.navigator.geolocation.watchPosition().listen(onData, onError, onDone, unsubscribeOnError)
+  try {
+    window.navigator.geolocation.watchPosition().listen(GPSpos);
+  } catch (e,s) {
+    print(s);
+  }
+  //subscribe(onData: (List<int> data) { print(data.length); });
+  /* FF choke here
   window.navigator.geolocation.getCurrentPosition().then(
     (Geoposition position) {
       s52.setPosition(_ownshp, position.coords.latitude, position.coords.longitude, 0.0).then((ret){});
@@ -686,7 +450,7 @@ void _watchPosition() {
 }
 
 void _init() {
-  _initTouch();
+  //_initTouch();
   
   //*
   // FIXME: get ownshp
@@ -694,7 +458,9 @@ void _init() {
   s52.newOWNSHP('OWNSHP').then((ret) {
     //print('s5ui.dart:OWNSHP(): $ret');
     _ownshp = ret[0]; 
-    _watchPosition();
+    
+    // Dart BUG: can't read GPS
+    //_watchPosition();
 
     _initUI().then((ret) {});
     
@@ -711,21 +477,10 @@ void _init() {
 //void _onData(ProgressEvent e) {
 //}
 void main() {
+  //print('s5ui.dart:main(): start');
+  
   s52 = new S52();
   
-  // debug - read file
-  //File           f      = new File('file:///data/media/s52android/ENC_ROOT');
-  //File           f      = new File();
-  //Blob           b      = new Blob('file:///data/media/s52android/ENC_ROOT');
-  //FileReaderSync reader = new FileReaderSync();
-  //reader.onLoad.listen(onData, onError, onDone, unsubscribeOnError) 
-  //reader.onLoadEnd.listen(_onData);
-  //Blob
-  //reader.readAsText('file:///data/media/s52android/ENC_ROOT');
-  //reader.readAsDataUrl();
-  //reader.result;
-  //print('s5ui.dart:main(): start');
-
   js.scoped(() {
     js.context.wsReady   = new js.Callback.once(_init);
     // WebSocket reply something (meaningless!) when making initial connection read it! (and maybe do something)

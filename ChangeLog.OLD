@@ -3,6 +3,14 @@
 #
 
 
+2013MAR12
+    -move to S52.dart stuff that mimic S52.h
+    -add test to Rot. Buoy Light in s52ui
+    
+2013MAR10
+    -fix s52ui html table wrongly resized when redisplay
+    -add test to continously Draw() from s52ui via vesselSelect(1) by following AIS
+    
 2013MAR03
     -add AIS list to s52ui (hence to Android also)
     
