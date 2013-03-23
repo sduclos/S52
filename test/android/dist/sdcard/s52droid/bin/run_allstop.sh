@@ -4,11 +4,11 @@
 
 
 # signal s52ais for a clean exit
-kill -SIGINT `cat /data/media/s52android/bin/s52ais.pid 2> /dev/null` 2> /dev/null
+kill -SIGINT `cat /data/media/s52droid/bin/s52ais.pid 2> /dev/null` 2> /dev/null
 rm /sdcard/s52android/bin/s52ais.pid
 
 # signal sl4agps for a clean exit
-kill -SIGINT `cat /data/media/s52android/bin/sl4agps.pid 2> /dev/null` 2> /dev/null
+kill -SIGINT `cat /data/media/s52droid/bin/sl4agps.pid 2> /dev/null` 2> /dev/null
 # debug -
 rm /sdcard/s52android/bin/sl4agps.pid
 

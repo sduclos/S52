@@ -7,11 +7,11 @@
 # to write gpsd.sock and gpsd.pid to sdcard -->
 # <uses-permission android:name = "android.permission.WRITE_EXTERNAL_STORAGE" />
 
-# chmod 755 /data/media/s52android/bin/run_gpsd.sh
+# chmod 755 /data/media/s52droid/bin/run_gpsd.sh
 # not /sdcard/... (!)
 
 
-/sdcard/s52android/bin/gpsd              \
-    -F /sdcard/s52android/bin/gpsd.sock  \
-    -P /sdcard/s52android/bin/gpsd.pid   \
+/sdcard/s52droid/bin/gpsd              \
+    -F /sdcard/s52droid/bin/gpsd.sock  \
+    -P /sdcard/s52droid/bin/gpsd.pid   \
     tcp://example.com:8000 > /dev/null   &

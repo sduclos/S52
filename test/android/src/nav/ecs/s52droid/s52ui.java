@@ -17,7 +17,7 @@
        under the License.
 */
 
-package nav.ecs.s52android;
+package nav.ecs.s52droid;
 
 //import android.app.Activity;
 import android.os.Bundle;
