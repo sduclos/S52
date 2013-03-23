@@ -22,6 +22,7 @@
     <script type="text/javascript" src="js/cordova-2.2.0.js"> </script>
     <script type="text/javascript" src="js/cordova.js">       </script>
     -->     
+    <script type="text/javascript" src="js/cordova-2.2.0.js"> </script>
     <script type="text/javascript" src="js/websocket.js">    </script>
 
     <!-- dart code -->
@@ -68,8 +69,9 @@ window.document.getElementById("example").innerHTML=txt;
         websocket.onerror   = function(evt) { onError(evt)   };
         websocket.onmessage = function(evt) { onMessage(evt) };
 
-        // cordova define "menubutton"
+        // cordova define android "menubutton", "backbutton"
         document.addEventListener("menubutton", toggleUI, false);
+        //document.addEventListener("backbutton", _closeUI, false);
       }
 
       function onOpen(evt)    { console.log("onOpen(): "); wsReady();}
@@ -87,7 +89,7 @@ window.document.getElementById("example").innerHTML=txt;
         } else {
           document.getElementById('tbodyL').style.display = 'none';
           document.getElementById('tbodyR').style.display = 'none';
-          document.getElementById('svg1'  ).style.display = 'inline';
+          document.getElementById('svg1'  ).style.display = 'inline-block';
         }
       }
       

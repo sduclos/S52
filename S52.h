@@ -162,13 +162,29 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
 
 
 // FIXME: use GDBus instead
+// or socket as DBus supposly slow
 #ifdef  S52_USE_DBUS
 #define S52_DBUS_OBJ_NAME  "nav.ecs.dbus"
 #define S52_DBUS_OBJ_PATH  "/nav/ecs/dbus"
 #define S52_DBUS_OBJ_IFACE "nav.ecs.dbus"
 #endif
 
+
 //-----need a GL context (main loop) ------------------------
+
+#ifdef S52_USE_EGL
+/**
+ * S52_setEGLcb: register callback use by draw(), drawLast(), drawStr() and drawBlit()
+ * @eglBeg: (in): callback to EGL begin (makecurrent)
+ * @eglBeg: (in): callback to EGL end   (swap)
+ * @EGLctx: (in): EGL context           (user_data)
+ *
+ *
+ * Return: TRUE on success, else FALSE
+ */
+typedef DLL int STD (*EGL_cb)(void *EGLctx);
+DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx);
+#endif
 
 /**
  * S52_draw:
@@ -204,12 +220,13 @@ DLL int    STD S52_drawLayer(const char *name);
  * @bsize:     (in): body size (1..)
  * @str:       (in):
  *
- * S52 UI color name: "UINFD", "UINFF", "UIBCK", "UIAFD",
- *                    "UINFR", "UINFG", "UINFO", "UINFB",
- *                    "UINFM", "UIBDR", "UIAFF"
+ * For reference S52 UI color name:
+ * "UINFD", "UINFF", "UIBCK", "UIAFD",
+ * "UINFR", "UINFG", "UINFO", "UINFB",
+ * "UINFM", "UIBDR", "UIAFF"
  *
- * Note: client must handle the framebuffer at this time:
- *    eglMakeCurrent();S52_drawStr();eglSwapBuffers();
+ * Note: client must register EGL callback via S52_setEGLcb()
+ * to handle the framebuffer (or handle FB by hand)
  *
  *
  * Return: TRUE on success, else FALSE
@@ -222,7 +239,7 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y,
  * @scale_x: (in): -1.0 .. 0.0 .. +1.0
  * @scale_y: (in): -1.0 .. 0.0 .. +1.0
  * @scale_z: (in): -1.0 .. 0.0 .. +1.0
- * @north:   (in): [0.0 .. 360.0[
+ * @north:   (in): [0.0 .. 360.0[      (<0 or >=360 unchage)
  *
  *
  * Return: TRUE on success, else FALSE
@@ -293,7 +310,6 @@ DLL int    STD S52_LL2xy (double *longitude, double *latitude);
 //----- NO GL context (can work outside main loop) ----------
 
 #ifdef S52_USE_DOTPITCH
-typedef     int   STD (*S52_error_cb) (const char *err);
 /**
  * S52_init:
  * @screen_pixels_w: (in):
@@ -309,9 +325,8 @@ typedef     int   STD (*S52_error_cb) (const char *err);
  *
  * Return: TRUE on success, else FALSE
  */
+typedef DLL int STD (*S52_error_cb)(const char *err);
 DLL int   STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb);
-//DLL int   STD S52_init(unsigned int screen_pixels_w, unsigned int screen_pixels_h, unsigned int screen_mm_w, unsigned int screen_mm_h, S52_error_cb err_cb);
-//DLL int   STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h);
 #else  // when using GTK1
 DLL int   STD S52_init(void);
 #endif
@@ -369,7 +384,7 @@ DLL int   STD S52_loadObject      (const char *objname, void *feature);
  *
  * Return: TRUE on success, else FALSE
  */
-typedef DLL int STD (*S52_loadObject_cb)  (const char *objname, void *feature);
+typedef DLL int STD (*S52_loadObject_cb)(const char *objname, void *feature);
 
 /**
  * S52_loadCell:
@@ -400,15 +415,16 @@ DLL int    STD S52_doneCell        (const char *encPath);
  * S52_setView:
  * @cLat:  (in): latitude of the center of the view (deg)
  * @cLon:  (in): longitude of the center of the view (deg)
- * @rNM:   (in): range (radius of view (NM)
- * @north: (in): angle from north (deg)
+ * @rNM:   (in): range (radius of view (NM), <0 unchange
+ * @north: (in): angle from north (deg),     <0 unchange
  *
  * Set center of view / where to place the camera on model
  *
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north);
+DLL int    STD S52_setView(double  cLat, double  cLon, double  rNM, double  north);
+DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *north);
 
 /**
  * S52_getCellExtent:
@@ -542,7 +558,7 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className);
  *
  * Return: TRUE if call successfull else FALSE, error -1 (DISPLAYBASE or invalid className)
  */
-DLL int    STD S52_setS57ObjClassSupp(const char *className, int value);
+DLL int          STD S52_setS57ObjClassSupp(const char *className, int value);
 
 /**
  * S52_loadPLib:
@@ -553,7 +569,7 @@ DLL int    STD S52_setS57ObjClassSupp(const char *className, int value);
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int    STD S52_loadPLib(const char *plibName);
+DLL int          STD S52_loadPLib(const char *plibName);
 
 /**
  * S52_getPLibsIDList:
@@ -667,9 +683,6 @@ DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char
  */
 DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
 
-// RADAR
-typedef DLL int   STD (*S52_RADAR_cb)(void);
-
 /**
  * S52_setRADARCallBack:
  * @cb: (scope call) (allow-none):
@@ -679,6 +692,7 @@ typedef DLL int   STD (*S52_RADAR_cb)(void);
  *
  * Return: TRUE on success, else FALSE
  */
+typedef DLL int STD (*S52_RADAR_cb)(void);
 DLL int   STD S52_setRADARCallBack(S52_RADAR_cb cb);
 
 /**

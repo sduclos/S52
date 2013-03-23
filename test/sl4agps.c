@@ -40,7 +40,7 @@
 
 #define PATH "/data/media"     // android 4.1
 //#define PATH "/data/media/0" // android 4.2
-#define GPS   PATH "/s52android/bin/sl4agps"  
+#define GPS   PATH "/s52droid/bin/sl4agps"
 #define PID  ".pid"
 
 static char _localhost[] = "127.0.0.1";

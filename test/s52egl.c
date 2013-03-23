@@ -58,7 +58,7 @@
 //ANDROID_LOG_ERROR,
 //ANDROID_LOG_FATAL,
 
-#define  LOG_TAG    "s52android"
+#define  LOG_TAG    "s52droid"
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 #define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -71,12 +71,12 @@
 
 #define PATH     "/data/media"         // android 4.1
 //#define PATH     "/data/media/0"     // android 4.2
-#define PLIB     PATH "/s52android/PLAUX_00.DAI"
-#define COLS     PATH "/s52android/plib_COLS-3.4.1.rle"
-#define GPS      PATH "/s52android/bin/sl4agps"
-#define AIS      PATH "/s52android/bin/s52ais"
+#define PLIB     PATH "/s52droid/PLAUX_00.DAI"
+#define COLS     PATH "/s52droid/plib_COLS-3.4.1.rle"
+#define GPS      PATH "/s52droid/bin/sl4agps"
+#define AIS      PATH "/s52droid/bin/s52ais"
 #define PID      ".pid"
-#define ALLSTOP  PATH "/s52android/bin/run_allstop.sh"
+#define ALLSTOP  PATH "/s52droid/bin/run_allstop.sh"
 
 #include <glibconfig.h>
 #include <gio/gio.h>
@@ -116,7 +116,7 @@ static S52ObjectHandle _prdare = NULL;
 
 
 // FIXME: mutex this share data
-typedef struct s52android_state_t {
+typedef struct s52droid_state_t {
     // GLib stuff
     GMainLoop *main_loop;
     guint      s52_draw_sigID;
@@ -125,8 +125,9 @@ typedef struct s52android_state_t {
 
     int        do_S52init;
 
+    // initial view
     double     cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
-} s52android_state_t;
+} s52droid_state_t;
 
 //
 typedef struct s52engine {
@@ -149,8 +150,8 @@ typedef struct s52engine {
            Display            *dpy;
 #endif
 
-    // EGL
-    EGLNativeWindowType eglWindow;        // android or X11 window
+    // EGL - android or X11 window
+    EGLNativeWindowType eglWindow;        
     EGLDisplay          eglDisplay;
     EGLSurface          eglSurface;
     EGLContext          eglContext;
@@ -165,12 +166,12 @@ typedef struct s52engine {
 
     int32_t             width;
     int32_t             height;
-    //Xoom - dpi = 160 (density)
+    // Xoom - dpi = 160 (density)
     int32_t             dpi;            // = AConfiguration_getDensity(engine->app->config);
 
     GTimeVal            timeLastDraw;
 
-    s52android_state_t  state;
+    s52droid_state_t  state;
 } s52engine;
 
 static s52engine engine;
@@ -193,7 +194,7 @@ static S52ObjectHandle _ownshp            = NULL;
 
 
 #ifdef S52_USE_AFGLOW
-#define MAX_AFGLOW_PT (12 * 20)   // 12 min @ 1 pos per 5 sec
+#define MAX_AFGLOW_PT (12 * 20)   // 12 min @ 1 vessel pos per 5 sec
 //#define MAX_AFGLOW_PT 10        // debug
 static S52ObjectHandle _vessel_ais_afglow = NULL;
 
@@ -201,7 +202,6 @@ static S52ObjectHandle _vessel_ais_afglow = NULL;
 
 #endif
 //-----------------------------
-
 
 
 static int      _egl_init       (s52engine *engine)
@@ -444,20 +444,38 @@ static void     _egl_done       (s52engine *engine)
     return;
 }
 
-
-
-static int      _s52_computeView(s52android_state_t *state)
+static void     _egl_beg        (s52engine *engine)
 {
-    //_extent ext;
+    // On Android, Blit x10 slower whitout
+    if (EGL_FALSE == eglWaitGL()) {
+        LOGE("_egl_beg(): eglWaitGL() failed. [0x%x]\n", eglGetError());
+        return;
+    }
+
+    if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
+        LOGE("_egl_beg_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
+    }
+
+    return;
+}
+
+static void     _egl_end        (s52engine *engine)
+{
+    if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
+        LOGE("_egl_end(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
+        //return FALSE;
+    }
+
+    return;
+}
+
+static int      _s52_computeView(s52droid_state_t *state)
+{
     double S,W,N,E;
 
-    //if (FALSE == S52_getCellExtent(NULL, &ext.S, &ext.W, &ext.N, &ext.E))
     if (FALSE == S52_getCellExtent(NULL, &S, &W, &N, &E))
         return FALSE;
 
-    //state->cLat  =  (ext.N + ext.S) / 2.0;
-    //state->cLon  =  (ext.E + ext.W) / 2.0;
-    //state->rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
     state->cLat  =  (N + S) / 2.0;
     state->cLon  =  (E + W) / 2.0;
     state->rNM   = ((N - S) / 2.0) * 60.0;  // FIXME: pick dominan projected N-S or E-W
@@ -467,7 +485,7 @@ static int      _s52_computeView(s52android_state_t *state)
 }
 
 #ifdef S52_USE_FAKE_AIS
-static int      _s52_setupVESSEL(s52android_state_t *state)
+static int      _s52_setupVESSEL(s52droid_state_t *state)
 {
     // ARPA
     //_vessel_arpa = S52_newVESSEL(1, dummy, "ARPA label");
@@ -502,7 +520,7 @@ static int      _s52_setupVESSEL(s52android_state_t *state)
     return TRUE;
 }
 
-static int      _s52_setupOWNSHP(s52android_state_t *state)
+static int      _s52_setupOWNSHP(s52droid_state_t *state)
 {
     _ownshp = S52_newOWNSHP(OWNSHPLABEL);
     //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 0.0, 30.0);
@@ -604,7 +622,7 @@ route normale de navigation.
     return TRUE;
 }
 
-static int      _s52_setupVRMEBL(s52android_state_t *state)
+static int      _s52_setupVRMEBL(s52droid_state_t *state)
 {
     //char *attVal   = NULL;      // ordinary cursor
     char  attVal[] = "cursty:2,_cursor_label:0.0N 0.0W";  // open cursor
@@ -632,7 +650,7 @@ static int      _s52_setupVRMEBL(s52android_state_t *state)
     return TRUE;
 }
 
-static int      _s52_setupPRDARE(s52android_state_t *state)
+static int      _s52_setupPRDARE(s52droid_state_t *state)
 // test - centroid (PRDARE: wind farm)
 {
     // AREA (CW: to center the text)
@@ -688,7 +706,7 @@ static int      _s52_init       (s52engine *engine)
         //hmm = 301; // wrong
         hmm = 307;
 #endif
-
+        // Xoom: screen_pixels_w: 1280, screen_pixels_h: 752, screen_mm_w: 203, screen_mm_h: 101
         // could fail (and android loop in init()) with unstable code
         if (FALSE == S52_init(w, h, wmm, hmm, NULL)) {
             engine->state.do_S52init = FALSE;
@@ -702,19 +720,21 @@ static int      _s52_init       (s52engine *engine)
     // can be called any time
     S52_version();
 
-
+#ifdef S52_USE_EGL
+    S52_setEGLcb((EGL_cb)_egl_beg, (EGL_cb)_egl_end, engine);
+#endif
 
 #ifdef S52_USE_ANDROID
     // Estuaire du St-Laurent
     //S52_loadCell(NULL, NULL);
-    //S52_loadCell("/data/media/s52android/ENC_ROOT/CA279037.000", NULL);
+    //S52_loadCell("/data/media/s52droid/ENC_ROOT/CA279037.000", NULL);
     // Rimouski
-    S52_loadCell("/sdcard/s52android/ENC_ROOT/CA579041.000", NULL);
+    S52_loadCell("/sdcard/s52droid/ENC_ROOT/CA579041.000", NULL);
     // load all 3 S57 charts
-    //S52_loadCell("/data/media/s52android/ENC_ROOT", NULL);
+    //S52_loadCell("/data/media/s52droid/ENC_ROOT", NULL);
 
     // World data
-    S52_loadCell("/sdcard/s52android/gdal_data/--0WORLD.shp", NULL);
+    S52_loadCell("/sdcard/s52droid/gdal_data/--0WORLD.shp", NULL);
     // show world
     S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);
 #else
@@ -900,7 +920,6 @@ static int      _s52_updTimeTag (s52engine *engine)
 
 static int      _s52_draw_cb    (gpointer user_data)
 // return TRUE for the signal to be called again
-// TODO: see if EGL can be sqeezed inside libS52!
 {
     struct s52engine *engine = (struct s52engine*)user_data;
 
@@ -923,7 +942,7 @@ static int      _s52_draw_cb    (gpointer user_data)
         goto exit;
     }
 
-    // wait for libS52 to init
+    // wait for libS52 to init - no use to go further - bailout
     if (TRUE == engine->state.do_S52init) {
         LOGI("s52egl:_s52_draw_cb(): re-starting .. waiting for S52_init() to finish\n");
         goto exit;
@@ -931,21 +950,13 @@ static int      _s52_draw_cb    (gpointer user_data)
 
     // no draw at all, the window is not visible
     if ((FALSE==engine->do_S52draw) && (FALSE==engine->do_S52drawLast)) {
-        LOGI("s52egl:_s52_draw_cb(): nothing to draw (do_S52draw & do_S52drawLast FALSE)\n");
+        //LOGI("s52egl:_s52_draw_cb(): nothing to draw (do_S52draw & do_S52drawLast FALSE)\n");
         goto exit;
     }
 
-    // not sure if this is OK
-    //if (EGL_FALSE == eglWaitGL()) {
-    //    LOGE("_s52_draw_cb(): eglWaitGL() failed. [0x%x]\n", eglGetError());
-    //    goto exit;
-    //}
-
-    // is allready current
-    //if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
-    //    LOGE("_s52_draw_cb(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
-    //    goto exit;
-    //}
+#ifndef S52_USE_EGL
+    _egl_beg(engine);
+#endif
 
     // draw background
     if (TRUE == engine->do_S52draw) {
@@ -962,14 +973,9 @@ static int      _s52_draw_cb    (gpointer user_data)
         S52_drawLast();
     }
 
-    if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
-        LOGE("_s52_draw_cb(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
-        goto exit;
-    }
-
+    _egl_end(engine);
 
 exit:
-    //g_signal_handler_unblock(engine->state.gobject, engine->state.handler);
 
     // debug
     //LOGI("s52egl:_s52_draw_cb(): end .. \n");
@@ -1075,20 +1081,22 @@ static int      _android_init_external_ais(void)
     return TRUE;
 }
 
-static int      _android_init_HTML_UI(void)
+static int      _android_init_external_UI (s52engine *engine)
 // start UI - get GPS & Gyro from Android
 {
     const gchar cmd[] =
         "sh /system/bin/am start       "
         "-a android.intent.action.MAIN "
-        "-n nav.ecs.s52android/.s52ui  ";
+        "-n nav.ecs.s52droid/.s52ui  ";
 
     int ret = g_spawn_command_line_async(cmd, NULL);
     if (FALSE == ret) {
-        g_print("_android_init_HTML_UI(): fail to start UI\n");
+        g_print("_android_init_external_UI(): fail to start UI\n");
         return FALSE;
     } else {
-        g_print("_android_init_HTML_UI(): UI started ..\n");
+        g_print("_android_init_external_UI(): UI started ..\n");
+        engine->do_S52draw     = FALSE;
+        engine->do_S52drawLast = FALSE;
     }
 
     return TRUE;
@@ -1188,16 +1196,16 @@ static int      _android_sensors_gyro(gpointer user_data)
 static int      _android_sensorsList_dump(ASensorManager *sensorManager)
 {
 /*
-I/s52android( 2683): 0 - sensor name: KXTF9 3-axis Accelerometer
-I/s52android( 2683): 1 - sensor name: Ambient Light sensor
-I/s52android( 2683): 2 - sensor name: AK8975 3-axis Magnetic field sensor
-I/s52android( 2683): 3 - sensor name: BMP085 Pressure sensor
-I/s52android( 2683): 4 - sensor name: L3G4200D Gyroscope sensor
-I/s52android( 2683): 5 - sensor name: Rotation Vector Sensor
-I/s52android( 2683): 6 - sensor name: Gravity Sensor
-I/s52android( 2683): 7 - sensor name: Linear Acceleration Sensor
-I/s52android( 2683): 8 - sensor name: Orientation Sensor
-I/s52android( 2683): 9 - sensor name: Corrected Gyroscope Sensor
+I/s52droid( 2683): 0 - sensor name: KXTF9 3-axis Accelerometer
+I/s52droid( 2683): 1 - sensor name: Ambient Light sensor
+I/s52droid( 2683): 2 - sensor name: AK8975 3-axis Magnetic field sensor
+I/s52droid( 2683): 3 - sensor name: BMP085 Pressure sensor
+I/s52droid( 2683): 4 - sensor name: L3G4200D Gyroscope sensor
+I/s52droid( 2683): 5 - sensor name: Rotation Vector Sensor
+I/s52droid( 2683): 6 - sensor name: Gravity Sensor
+I/s52droid( 2683): 7 - sensor name: Linear Acceleration Sensor
+I/s52droid( 2683): 8 - sensor name: Orientation Sensor
+I/s52droid( 2683): 9 - sensor name: Corrected Gyroscope Sensor
 */
     int i = 0;
     ASensorList list;
@@ -1246,18 +1254,14 @@ static int      _android_render      (s52engine *engine, double new_y, double ne
         engine->state.rNM   = new_z;
         engine->state.north = new_r;
 
-        if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
-            LOGE("_android_motion_event(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
-            return FALSE;
-        }
+#ifndef S52_USE_EGL
+        _egl_beg(engine);
+#endif
 
         S52_draw();
         S52_drawLast();
 
-        if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
-            LOGE("_android_motion_event(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
-            return FALSE;
-        }
+        _egl_end(engine);
     }
 
     return TRUE;
@@ -1265,7 +1269,7 @@ static int      _android_render      (s52engine *engine, double new_y, double ne
 
 static int      _android_motion_event(s52engine *engine, AInputEvent *event)
 {
-    static int    ticks;
+    static int    ticks           = 0;
 
     // FIXME: use enum for mode
     //static int    mode        = MODE_NONE;
@@ -1275,9 +1279,9 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
     static int    mode_vrmebl     = FALSE;
     static int    mode_vrmebl_set = FALSE;
 
-    static double start_x     = 0.0;
-    static double start_y     = 0.0;
-    static double zoom_fac    = 0.0;
+    static double start_x         = 0.0;
+    static double start_y         = 0.0;
+    static double zoom_fac        = 0.0;
 
 #define TICKS_PER_TAP  6
 #define EDGE_X0       50   // 0 at left
@@ -1324,7 +1328,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             double new_y = AMotionEvent_getY(event, 0);
 
             // no motion
-            if ((abs(start_x - new_x) < 5) && (abs(start_y - new_y) < 5)) {
+            if ((ABS(start_x - new_x) < 5) && (ABS(start_y - new_y) < 5)) {
                 // ensure that a minimum number of call to libS52
                 // to turn vrmebl ON/OFF
                 if (FALSE == mode_vrmebl_set) {
@@ -1345,10 +1349,9 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             }
 
             // blit start
-            if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
-                LOGE("_android_motion_event(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
-                return FALSE;
-            }
+#ifndef S52_USE_EGL
+            _egl_beg(engine);
+#endif
 
             if (TRUE == mode_rot) {
                 double north = engine->state.north + (90.0 * ((start_x - new_x) / engine->width));
@@ -1390,11 +1393,9 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             }
 
             // blit end
-            if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
-                LOGE("_android_motion_event(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
-                return FALSE;
-            }
-
+#ifndef S52_USE_EGL
+            _egl_end(engine);
+#endif
             return TRUE;
         }
         break;
@@ -1404,6 +1405,8 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
         double new_y  = AMotionEvent_getY(event, 0);
         double new_z  = 0.0;
         double new_r  = 0.0;
+
+        S52_getView(&engine->state.cLat, &engine->state.cLon, &engine->state.rNM, &engine->state.north);
 
         // cursor pick
         if (ticks < TICKS_PER_TAP) {
@@ -1434,7 +1437,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             double new_y = AMotionEvent_getY(event, 0);
 
             // no motion
-            if ((abs(start_x - new_x) < 5) && (abs(start_y - new_y) < 5)) {
+            if ((ABS(start_x - new_x) < 5) && (ABS(start_y - new_y) < 5)) {
                 // ensure that a minimum number of call to libS52
                 // to turn vrmebl ON/OFF
                 if (TRUE == mode_vrmebl_set) {
@@ -1459,6 +1462,11 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             new_r = 0.0;
 
         } else {
+            // screen Center
+            //double cw = engine->width  / 2.0;
+            //double ch = engine->height / 2.0;
+            //if (FALSE == S52_xy2LL(&cw, &ch))
+            //    return FALSE;
 
             if (TRUE == mode_rot) {
                 double north = engine->state.north + (90.0 * ((start_x - new_x) / engine->width));
@@ -1469,13 +1477,17 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
                 new_y = engine->state.cLat;
                 new_z = engine->state.rNM;
                 new_r = north;
+                //new_x = cw;
+                //new_y = ch;
+                //new_z = -1.0;  // don't care
+                //new_r = north;
                 //LOGI("s52egl:_android_motion_event():AMOTION_EVENT_ACTION_UP: north=%f\n", north);
             }
 
             if (TRUE == mode_zoom) {
                 new_x = engine->state.cLon;
                 new_y = engine->state.cLat;
-                new_z = engine->state.rNM   - (zoom_fac * engine->state.rNM * 2);
+                new_z = engine->state.rNM - (zoom_fac * engine->state.rNM * 2); // FIXME: where is the 2 comming from?
                 new_r = engine->state.north;
             }
 
@@ -1487,15 +1499,20 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
                 if (FALSE == S52_xy2LL(&start_x, &start_y))
                     return FALSE;
 
+
                 new_x = engine->state.cLon + (start_x - new_x);
                 new_y = engine->state.cLat + (start_y - new_y);
                 new_z = engine->state.rNM;
                 new_r = engine->state.north;
+                //new_x = cw + (start_x - new_x);
+                //new_y = ch + (start_y - new_y);
+                //new_z = -1.0;  // don't care
+                //new_r = -1.0;  // don't care
             }
 
         }
 
-        _android_render(engine, new_y, new_x, new_z, new_r);
+        _android_render(engine, new_y, new_x, ABS(new_z), new_r);
         //LOGI("s52egl:_android_motion_event():AMOTION_EVENT_ACTION_UP: north=%f\n", new_r);
     }
     break;
@@ -1506,53 +1523,6 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
     engine->do_S52draw     = FALSE;
     engine->do_S52drawLast = TRUE;
 
-
-
-    /*
-    float off_x  = AMotionEvent_getXOffset(event);
-    float off_y  = AMotionEvent_getYOffset(event);
-    float mNight = AConfiguration_getUiModeNight(engine->app->config);
-
-    LOGI("s52egl:off_x:%f off_y:%f nightMode:%f configBits:%i\n", off_x, off_y, mNight, engine->configBits);
-    //_engine_flinger(engine, off_x, off_y);
-    */
-
-    //size_t  hSz    = AMotionEvent_getHistorySize(event);
-    //int64_t dTime  = AMotionEvent_getDownTime(event);
-    //LOGI("s52egl:hSz:%i dTime:%i action:0x%X actmsk:0x%X\n", hSz, dTime, acteve, action);
-
-    /*
-    size_t  ptrCnt = AMotionEvent_getPointerCount(event);
-    if (1 < ptrCnt)
-        return FALSE;
-
-    if (1 == ptrCnt) {
-        double pixels_x = AMotionEvent_getX(event, 0);
-        double pixels_y = AMotionEvent_getY(event, 0);
-
-        LOGI("s52egl:x:%f y:%f ptrCnt:%i\n", pixels_x, pixels_y, ptrCnt);
-
-        if (FALSE == S52_xy2LL(&pixels_x,  &pixels_y))
-            return FALSE;
-
-        LOGI("s52egl:x:%f y:%f ptrCnt:%i\n", pixels_x, pixels_y, ptrCnt);
-
-        _view.cLat = pixels_y;
-        _view.cLon = pixels_x;
-        S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
-
-        return TRUE;
-    }
-
-    for (size_t i=0; i<ptrCnt; ++i) {
-        float x = AMotionEvent_getX(event, i);
-        float y = AMotionEvent_getY(event, i);
-
-        LOGI("s52egl:x:%f y:%f ptrCnt:%i\n", x, y, ptrCnt);
-    }
-    */
-
-
     return TRUE;
 }
 
@@ -1560,7 +1530,7 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
 // Process the next input event.
 // Return 1 the event was handled, 0 for any default dispatching.
 {
-    struct s52engine* engine = (struct s52engine*)app->userData;
+    struct s52engine *engine = (struct s52engine*)app->userData;
 
     int32_t eType = AInputEvent_getType(event);
 
@@ -1603,23 +1573,8 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
             LOGI("s52egl:AInputEvent - eType:%i devID:%i source:%i action:%i flags:%X code:%i\n",
                                        eType,   devID,   source,   action,   flags,   code);
 
-            if (AKEYCODE_MENU==code && 0==action) {
-                _android_init_HTML_UI();
-
-                /*
-                if (TRUE != g_file_test(GPS PID, (GFileTest) (G_FILE_TEST_EXISTS))) {
-                    LOGI("s52egl:GPS prog not running (%s)\n", GPS);
-                    return FALSE;
-                }
-
-                GError    *error    = NULL;
-                const char showUI[] = "/system/bin/sh -c 'kill -SIGUSR1 `cat " GPS PID "`'";
-                if (TRUE != g_spawn_command_line_async(showUI, &error)) {
-                    LOGI("s52egl:_android_handle_input(): MENU EVENT: g_spawn_command_line_async() failed [%s]\n", error->message);
-                    //_androidUIon = !_androidUIon;
-                }
-                */
-            }
+            if (AKEYCODE_MENU==code && 0==action)
+                _android_init_external_UI(engine);
 
             //*
             if (AKEYCODE_BACK == code) {
@@ -1675,15 +1630,15 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             // NOTE: the docs say that at this point 'savedState' has already been freed
             // so this meen that NativeActivity use alloc()/free()
             if (NULL == engine->app->savedState) {
-                engine->app->savedState     = malloc(sizeof(s52android_state_t));
-                engine->app->savedStateSize =        sizeof(s52android_state_t);
+                engine->app->savedState     = malloc(sizeof(s52droid_state_t));
+                engine->app->savedStateSize =        sizeof(s52droid_state_t);
             } else {
                 // just checking: this should not happend
                 LOGE("ERROR: APP_CMD_SAVE_STATE: savedState not NULL\n");
                 g_main_loop_quit(engine->state.main_loop);
             }
 
-            *((s52android_state_t*)engine->app->savedState) = engine->state;
+            *((s52droid_state_t*)engine->app->savedState) = engine->state;
 
             break;
         }
@@ -1727,6 +1682,9 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
                 LOGI("s52egl:APP_CMD_GAINED_FOCUS: ANativeWindow is NOT NULL\n");
                 //ANativeWindow_acquire(engine->app->window);
             }
+
+            engine->do_S52draw     = TRUE;
+            engine->do_S52drawLast = TRUE;
 
             break;
         }
@@ -1846,7 +1804,7 @@ void android_main(struct android_app *app)
 
         AAsset_close(asset);
 
-        ret = g_file_set_contents("/data/data/nav.ecs.s52android/text-1.txt", buf, strlen(buf), NULL);
+        ret = g_file_set_contents("/data/data/nav.ecs.s52droid/text-1.txt", buf, strlen(buf), NULL);
         if (FALSE == ret)
             LOGI("s52egl:g_file_set_contents() fail \n");
 
@@ -1899,7 +1857,7 @@ void android_main(struct android_app *app)
 
     } else {
         // if re-starting - the process is already up
-        engine.state = *(s52android_state_t*)app->savedState;
+        engine.state = *(s52droid_state_t*)app->savedState;
 
         LOGI("s52egl:DEBUG: bypassing _init_S52(), reset state .. \n");
         LOGI("s52egl:       cLat =%f\n", engine.state.cLat           );
@@ -2157,18 +2115,13 @@ static int      _X11_handleXevent(gpointer user_data)
             }
             // rot -10.0 deg
             if (XK_Home      == keysym) {
-                if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
-                    g_print("_X11_handleXevent((): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
-                    return FALSE;
-                }
-
+#ifdef S52_USE_EGL
                 S52_drawBlit(0.0, 0.0, 0.0, -10.0);
-
-                if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
-                    g_print("_X11_handleXevent((): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
-                    return FALSE;
-                }
-
+#else
+                _egl_beg(engine);
+                S52_drawBlit(0.0, 0.0, 0.0, -10.0);
+                _egl_end(engine);
+#endif
                 engine->state.north -= 10.0;
                 if (0.0 > engine->state.north)
                     engine->state.north += 360.0;
@@ -2176,17 +2129,14 @@ static int      _X11_handleXevent(gpointer user_data)
             }
             // rot +10.0 deg
             if (XK_End       == keysym) {
-                if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
-                    g_print("_X11_handleXevent((): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
-                    return FALSE;
-                }
+#ifdef S52_USE_EGL
+                S52_drawBlit(0.0, 0.0, 0.0, +10.0);
+#else
+                _egl_beg(engine);
+                S52_drawBlit(0.0, 0.0, 0.0, +10.0);
+                _egl_end(engine);
+#endif
 
-                S52_drawBlit(0.0, 0.0, 0.0, 10.0);
-
-                if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
-                    g_print("_X11_handleXevent((): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
-                    return FALSE;
-                }
 
                 engine->state.north += 10.0;  // +10.0 deg
                 if (360.0 <= engine->state.north)

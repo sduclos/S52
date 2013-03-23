@@ -72,9 +72,10 @@ s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_US
 # Note: the -DS52_USE_AFGLOW need symbole in PLAUX_00.DAI
 # -DS52_USE_AFGLOW -DS52_USE_FAKE_AIS
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps` \
-                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW
+                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL
 
 s52eglarm:  CFLAGS =  -DS52_USE_DOTPITCH                 \
+                      -DS52_USE_EGL                      \
                       -DS52_USE_ANDROID                  \
                       -DS52_USE_TEGRA2                   \
                       -DS52_USE_AFGLOW                   \
@@ -150,7 +151,10 @@ s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a                 \
 s52glx: s52glx.c
 	$(CC) $(CFLAGS) s52glx.c $(S52_LIBS) -o $@
 
-s52eglx: s52egl.c s52ais.c
+#s52ais: s52ais.c
+#	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
+
+s52eglx: s52egl.c
 	$(CC) $(CFLAGS) s52egl.c $(LIBS) -o $@
 	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
 
@@ -166,13 +170,9 @@ s52eglx: s52egl.c s52ais.c
 #	$(CXX) $(CFLAGS) -shared s52egl.c $(LIBS)          \
 #	-Wl,-rpath=/system/lib -Wl,-rpath-link=/system/lib \
 #	-o $@
-# $(CC) $(CFLAGS) $(S52DROIDLIBS)/libS52.a $(LIBS) s52egl.c  -o s52android
+# $(CC) $(CFLAGS) $(S52DROIDLIBS)/libS52.a $(LIBS) s52egl.c  -o s52droid
 
-#android/dist/sdcard/s52android/UI.xml: android/dist/sdcard/s52android/UI.tmpl.xml
-#	awk -f sl4agps.awk android/dist/sdcard/s52android/UI.tmpl.xml > android/dist/sdcard/s52android/UI.xml
-#	adb push  android/dist/sdcard/s52android/UI.xml /sdcard/s52android/UI.xml
-
-android/dist/sdcard/s52android/UI.xml: android/dist/sdcard/s52android/UI.tmpl.xml
+android/dist/sdcard/s52droid/UI.xml: android/dist/sdcard/s52droid/UI.tmpl.xml
 	awk 'BEGIN { count_text    = 0;                                             \
                  count_border  = 0;                                             \
                  start_comment = 0;                                             \
@@ -200,30 +200,30 @@ android/dist/sdcard/s52android/UI.xml: android/dist/sdcard/s52android/UI.tmpl.xm
     END { print("#define NBR_TEXT   ", count_text,   "// grep s52_text_   UI.xml" ) >  "sl4agps.cfg";   \
           print("#define NBR_BORDER ", count_border, "// grep s52_border_ UI.xml" ) >> "sl4agps.cfg";   \
         }'                                                                                              \
-    android/dist/sdcard/s52android/UI.tmpl.xml > android/dist/sdcard/s52android/UI.xml                  
-	adb push  android/dist/sdcard/s52android/UI.xml /sdcard/s52android/UI.xml                           
+    android/dist/sdcard/s52droid/UI.tmpl.xml > android/dist/sdcard/s52droid/UI.xml                  
+	adb push  android/dist/sdcard/s52droid/UI.xml /sdcard/s52droid/UI.xml                           
 
 sl4agps.cfg:
-	-rm android/dist/sdcard/s52android/UI.xml
+	-rm android/dist/sdcard/s52droid/UI.xml
 
-sl4agps: sl4agps.c sl4agps.cfg android/dist/sdcard/s52android/UI.xml
+sl4agps: sl4agps.c sl4agps.cfg android/dist/sdcard/s52droid/UI.xml
 	$(CC)  $(CFLAGS)    sl4agps.c $(LIBS) -o sl4agps
 	$(STRIP)  sl4agps
-	cp        sl4agps   android/dist/sdcard/s52android/bin
-	adb push  sl4agps   /sdcard/s52android/bin
-	adb shell chmod 755 /data/media/s52android/bin/sl4agps
+	cp        sl4agps   android/dist/sdcard/s52droid/bin
+	adb push  sl4agps   /sdcard/s52droid/bin
+	adb shell chmod 755 /data/media/s52droid/bin/sl4agps
 
 #$(STRIP)  s52ais
 s52ais: s52ais.c
 	$(CXX) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c  $(LIBS) -o s52ais
-	cp        s52ais    android/dist/sdcard/s52android/bin
-	adb push  s52ais    /sdcard/s52android/bin
-	adb shell chmod 755 /data/media/s52android/bin/s52ais
+	cp        s52ais    android/dist/sdcard/s52droid/bin
+	adb push  s52ais    /sdcard/s52droid/bin
+	adb shell chmod 755 /data/media/s52droid/bin/s52ais
 
 s52eglarm: s52ais sl4agps
 
 # Note: to start s52ui (the HTML UI that replace sl4agps) in android by hand
-# adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52android/.s52ui
+# adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/.s52ui
 
 ############### build: Android ##############################
 
@@ -382,6 +382,6 @@ clean:
     s52gtk2gps S52-1.0.* s52eglx s52ais sl4agps
 
 distclean: clean
-	rm -f sl4agps.cfg android/dist/sdcard/s52android/bin/s52ais android/dist/sdcard/s52android/bin/sl4agps
+	rm -f sl4agps.cfg android/dist/sdcard/s52droid/bin/s52ais android/dist/sdcard/s52droid/bin/sl4agps
 	(cd android; make distclean)
 

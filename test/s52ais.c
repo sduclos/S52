@@ -45,9 +45,8 @@
 #include <android/log.h>
 #define  LOG_TAG    "s52ais"
 
-#define PATH "/data/media"
-//#define PATH "/data/media/0"
-#define AIS  PATH "/s52android/bin/s52ais"
+#define PATH "/data/media/s52droid/bin"
+#define AIS  PATH "/s52ais"
 #define PID  ".pid"
 //#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 //#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
@@ -800,9 +799,6 @@ static int           _setAISSta (unsigned int mmsi, int status, int turn)
         return FALSE;
 
     if ((status!=ais->status) || (turn!=ais->turn)) {
-    // debug
-    //if ((status!=ais->status) || (abs(turn) > ais->turn)) {
-
         if (1==status || 5==status || 6==status) {
 #ifdef S52_USE_SOCK
             _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, 2, turn);
@@ -1354,8 +1350,8 @@ static int           _startGPSD(void)
 
 
     GError    *error           = NULL;
-    const char run_gpsd_sh[]   = "/system/bin/sh -c " PATH "/s52android/bin/run_gpsd.sh";
-    const char path_gpsd_pid[] = PATH "/s52android/bin/gpsd.pid";
+    const char run_gpsd_sh[]   = "/system/bin/sh -c " PATH "/run_gpsd.sh";
+    const char path_gpsd_pid[] = PATH "/gpsd" PID;
     GStatBuf buf;
 
     //g_print("_startGPSD(): check if GPSD on-line ..\n");

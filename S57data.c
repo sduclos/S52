@@ -698,9 +698,6 @@ S57_geo   *S57_donePrimGeo(_S57_geo *geoData)
 
     if (NULL != geoData->prim) {
         S57_donePrim(geoData->prim);
-
-        //g_free(geoData->prim);
-
         geoData->prim = NULL;
     }
 
@@ -757,17 +754,13 @@ S57_prim  *S57_getPrimGeo(_S57_geo *geoData)
 guint      S57_getPrimData(_S57_prim *prim, guint *primNbr, vertex_t **vert, guint *vertNbr, guint *vboID)
 {
     return_if_null(prim);
-
     //return_if_null(prim->list);
 
     *primNbr =            prim->list->len;
-    //*vert    = (double*)prim->vertex->data;
     *vert    = (vertex_t*)prim->vertex->data;
-    //*vertNbr = (int)      prim->vertex->len;
     *vertNbr =            prim->vertex->len;
     *vboID   =            prim->DList;
 
-    //return prim->DList;
     return TRUE;
 }
 
@@ -1481,7 +1474,6 @@ int        S57_isPtInside(int npt, double *xyz, double x, double y, int close)
 int        S57_touch(_S57_geo *geoA, _S57_geo *geoB)
 // TRUE if A touch B else FALSE
 {
-    //unsigned int i;
     unsigned int  nptA;
     double       *pptA;
     unsigned int  nptB;
@@ -1554,11 +1546,7 @@ int        S57_addCentroid(_S57_geo *geo, double  x, double  y)
 {
     return_if_null(geo);
 
-    //geo->x = x;
-    //geo->y = y;
-
     pt2 pt = {x, y};
-
     g_array_append_val(geo->centroid, pt);
 
     return TRUE;
@@ -1568,9 +1556,6 @@ int        S57_getNextCentroid(_S57_geo *geo, double *x, double *y)
 {
     return_if_null(geo);
     return_if_null(geo->centroid);
-
-    //*x = geo->x;
-    //*y = geo->y;
 
     if (geo->centroidIdx < geo->centroid->len) {
         pt2 pt = g_array_index(geo->centroid, pt2, geo->centroidIdx);
@@ -1584,15 +1569,12 @@ int        S57_getNextCentroid(_S57_geo *geo, double *x, double *y)
 
 
     return FALSE;
-    //return TRUE;
 }
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
 // mark coordinates in geo that match the chaine-node in geoEdge
 {
-    int     next = 0;
-    guint   i,j;
 
     return_if_null(geo);
     return_if_null(geoEdge);
@@ -1618,6 +1600,8 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
     //}
 
     // search ppt for first pptEdge
+    int   next = 0;
+    guint i    = 0;
     for(i=0; i<npt; ++i) {
         //if (ppt[i*3] == pptEdge[i*3] && ppt[i*3+1] == pptEdge[i*3+1]) {
         if (ppt[i*3] == pptEdge[0] && ppt[i*3+1] == pptEdge[1]) {
@@ -1699,13 +1683,13 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
             g_assert(0);
     }
 
-    //* debug - test if this -10.0 confuse the tesselator
+    // FIXME: push Z one to many edge
     // move vertex to clip plane
-    for (j=0; j<nptEdge; ++j) {
+    for (guint j=0; j<nptEdge; ++j) {
+    //for (guint j=0; j<(nptEdge-1); ++j) {  // this seem to have no effect
         ppt[i*3 + 2] = -10.0;
         i += next;
     }
-    //*/
 
     return TRUE;
 }

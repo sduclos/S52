@@ -246,7 +246,7 @@ static PangoLayout          *_PangoLayout    = NULL;
 #include "a3d/a3d_log.h"
 #include "a3d/a3d_texfont.h"
 #include "a3d/a3d_texstring.h"
-static const char      *_a3d_font_file = "/data/data/nav.ecs.s52android/files/whitrabt.tex.gz";
+static const char      *_a3d_font_file = "/data/data/nav.ecs.s52droid/files/whitrabt.tex.gz";
 static a3d_texfont_t   *_a3d_font      = NULL;
 static a3d_texstring_t *_a3d_str       = NULL;
 #endif  // S52_USE_A3D
@@ -6757,7 +6757,7 @@ static int       _renderAP(S52_obj *obj)
     // convert tile in pixel to world
     GLdouble w = tileWidthPix  * ((_pmax.u - _pmin.u) / (GLdouble)_vp[2]);
     GLdouble h = tileHeightPix * ((_pmax.v - _pmin.v) / (GLdouble)_vp[3]);
-    GLdouble d = stagOffsetPix * ((_pmax.u - _pmin.u) / (GLdouble)_vp[2]);
+    //GLdouble d = stagOffsetPix * ((_pmax.u - _pmin.u) / (GLdouble)_vp[2]);
 
     // grid alignment
     //S57_getExtPRJ(geoData, &x1, &y1, &x2, &y2);

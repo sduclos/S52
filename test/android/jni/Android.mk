@@ -2,7 +2,7 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE     := s52android
+LOCAL_MODULE     := s52droid
 #LOCAL_SRC_FILES  := ../../s52egl.c ../../s52gps.c
 LOCAL_SRC_FILES  := ../../s52egl.c
 
@@ -11,13 +11,13 @@ LOCAL_SRC_FILES  := ../../s52egl.c
 # -DS52_USE_SL4A     - SL4A is a RPC bridge to the Android framework
 # -DS52_USE_AIS      - not use
 S52ANDRIODINC    := /home/sduclos/S52/test/android/dist/system/include
-LOCAL_CFLAGS     := -Wall -g -DG_LOG_DOMAIN=\"s52android\"                                          \
-                    -DS52_USE_DOTPITCH -DS52_USE_ANDROID -DS52_USE_TEGRA2 -DS52_USE_AFGLOW          \
-                    -I../..                                                                         \
-                    -I$(S52ANDRIODINC)                                                              \
-					-I$(S52ANDRIODINC)/glib-2.0                                                     \
-                    -I$(S52ANDRIODINC)/glib-android-1.0                                             \
-                    -I/home/sduclos/dev/prog/Android/dev/android-9-toolchain/sysroot/usr/include    \
+LOCAL_CFLAGS     := -Wall -g -DG_LOG_DOMAIN=\"s52droid\"                                                 \
+                    -DS52_USE_DOTPITCH -DS52_USE_ANDROID -DS52_USE_TEGRA2 -DS52_USE_AFGLOW -DS52_USE_EGL \
+                    -I../..                                                                              \
+                    -I$(S52ANDRIODINC)                                                                   \
+					-I$(S52ANDRIODINC)/glib-2.0                                                          \
+                    -I$(S52ANDRIODINC)/glib-android-1.0                                                  \
+                    -I/home/sduclos/dev/prog/Android/dev/android-9-toolchain/sysroot/usr/include         \
                     $(NULL)
 
 #LOCAL_LDFLAGS    := -Wl,-Map,xxx.map -rdynamic -fexception

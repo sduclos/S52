@@ -9,9 +9,11 @@ part of s52ui;
 //
 
 class S52 {
-  Completer _completer;
-  Map       _data = parse('{"id":1,"method":"???","params":["???"]}');
-  int       _id   = 1;
+  Completer _completer = null;
+  Map       _data      = parse('{"id":1,"method":"???","params":["???"]}');
+  int       _id        = 1;
+  Stopwatch _stopwatch = new Stopwatch();
+  Timer     _timer     = null;
 
   static const int MAR_SHOW_TEXT              =  1;
   static const int MAR_COLOR_PALETTE          = 15;
@@ -46,10 +48,10 @@ class S52 {
   static const int CMD_WRD_FILTER_AC          =        8;  // 1 << 3; 001000 - AC
   static const int CMD_WRD_FILTER_AP          =       16;  // 1 << 4; 010000 - AP
   static const int CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
-
-  // receive S52/JSON msg from WebSocket (Cordova) in s52ui.html
+  
   rcvMsg(str) {
-    print('rcvMsg():receive JSON str from libS52: $str');
+    // receive S52/JSON msg from WebSocket (Cordova) in s52ui.html
+
     Map data;
     try {
       data = parse(str);
@@ -72,16 +74,24 @@ class S52 {
       throw "rcvMsg(): ID mismatch";
     }
 
+    _stopwatch.stop();
+    print("roundtrip: ${_stopwatch.elapsedMilliseconds}msec"); 
+    print('rcvMsg():receive JSON str from libS52: $str');
+
     ++_id;
     _completer.complete(data['result']);
   }
-  // send S52/JSON msg to WebSocket (Cordova) in s52ui.html
   Future<List> _sendMsg(String str) {
+    // send S52/JSON msg to WebSocket (Cordova) in s52ui.html
+    //print('_sendMsg(): --START--> $str');
+
+    _stopwatch.reset();
+    _stopwatch.start();
+
     _completer = new Completer();
-    // send JSON str to libS52
-    //print('_sendMsg(): $str');
+
     js.scoped(() {
-      // first hookup callbaqck
+      // first hookup callback
       // FIXME: use many (no new .. so could be more efficient!)
       // but need to be deleted on onClose
       js.context.rcvS52Msg = new js.Callback.once(s52.rcvMsg);
@@ -92,7 +102,22 @@ class S52 {
     
     return _completer.future;
   }
-    
+  
+  // alternate way of calling libS52 - on call for all
+  // less OO
+  Future<List> send(var cmdName, var params) {
+    _data["id"    ] = _id;
+    _data["method"] = cmdName;
+    _data["params"] = params;
+    String jsonCmdstr = stringify(_data);
+
+    return _sendMsg(jsonCmdstr);
+  }
+
+  
+  ////////////////////// FIXME: REFACTOR use send() ////////////////////////////////
+  // pro: less code
+  // con: lost of info 
   Future<List> getMarinerParam(int param) {
     _data["id"    ] = _id;
     _data["method"] = "S52_getMarinerParam";
@@ -125,6 +150,8 @@ class S52 {
 
     return _sendMsg(jsonCmdstr);
   }
+  // FIXME: mistery .. no call to EGL and this call still work it seem
+  // Now call to EGL is done trough callback from libS52 
   Future<List> draw() {
     _data["id"    ] = _id;
     _data["method"] = "S52_draw";
@@ -134,6 +161,16 @@ class S52 {
     return _sendMsg(jsonCmdstr);
   }
   Future<List> drawLast() {
+    if (false == _completer.isCompleted) {
+      //throw "S52: _completer NOT completed XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX";
+      print("S52: _completer NOT completed XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+      
+      throw "drawLast(): completer is busy";
+      
+      //return null;
+      //return _completer.future;
+    }
+    
     _data["id"    ] = _id;
     _data["method"] = "S52_drawLast";
     _data["params"] = [];
@@ -229,7 +266,38 @@ class S52 {
 
     return _sendMsg(jsonCmdstr);
   }
+  Future<List> drawBlit(double scale_x, double scale_y, double scale_z, double north) {
+    _data["id"    ] = _id;
+    _data["method"] = "S52_drawBlit";
+    _data["params"] = [scale_x,scale_y,scale_z,north];
+    String jsonCmdstr = stringify(_data);
 
+    return _sendMsg(jsonCmdstr);
+  }
+  Future<List> xy2LL(double pixels_x, double pixels_y) {
+    _data["id"    ] = _id;
+    _data["method"] = "S52_xy2LL";
+    _data["params"] = [pixels_x,pixels_y];
+    String jsonCmdstr = stringify(_data);
+
+    return _sendMsg(jsonCmdstr);
+  }
+  Future<List> setView(double cLat, double cLon, double rNM, double north) {
+    _data["id"    ] = _id;
+    _data["method"] = "S52_setView";
+    _data["params"] = [cLat,cLon,rNM,north];
+    String jsonCmdstr = stringify(_data);
+
+    return _sendMsg(jsonCmdstr);
+  }
+  Future<List> getView() {
+    _data["id"    ] = _id;
+    _data["method"] = "S52_getView";
+    _data["params"] = [];
+    String jsonCmdstr = stringify(_data);
+
+    return _sendMsg(jsonCmdstr);
+  }
 }
 ////////////////////////////////////////////////////////
 

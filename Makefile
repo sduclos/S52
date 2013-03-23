@@ -187,6 +187,7 @@ s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   -DS52_USE_DOTPITCH             \
                   -DS52_USE_BACKTRACE            \
                   -DS52_USE_OPENGL_VBO           \
+                  -DS52_USE_EGL                  \
                   -DS52_USE_GLES2                \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_OGR_FILECOLLECTOR    \
@@ -228,6 +229,7 @@ s52eglarm : S52ANDROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_DOTPITCH                    \
                      -DS52_USE_FREETYPE_GL                 \
+                     -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
                      -DS52_USE_ANDROID                     \
                      -DS52_USE_TEGRA2                      \

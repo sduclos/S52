@@ -14,13 +14,11 @@ Main.prototype.checkCell = function(html, arg)
 {
 	html.tr({},
     	html.td({},
-        	html.article({},
-        				 html.div({}, 
-            	         		  html.input({id:arg[0], type:"checkbox"}),
-        				 		  arg[1],
-                  		          html.hr()
-                  		         )
-                        )
+        		html.div({}, 
+        				 arg[1],
+            	         html.input({id:arg[0], type:"checkbox"}),
+                  		 html.hr()
+                  		)
                )
            )
 }
@@ -29,13 +27,11 @@ Main.prototype.rangeCell = function(html, arg)
 {
 	html.tr({},
     	html.td({},
-        	html.article({},
-        				 html.div({}, 
-            	         		  html.input({id:arg[0], type:"range", min:"0", max:"360", step:"10"}),
-        				 		  arg[1],
-                  		          html.hr()
-                  		         )
-                        )
+        		html.div({}, 
+            	         html.input({id:arg[0], type:"range", min:"0", max:"360", step:"10"}),
+        				 arg[1],
+                  		 html.hr()
+                  		)
                )
            )
 }
@@ -135,11 +131,15 @@ Main.prototype.render = function(html)
     //*
     var SVG = html.SVG();
     //SVG.svg({id:'svg1', width:'120px', height:'120px', version:'1.1'},
-    SVG.svg({id:'svg1', width:'100%', height:'100%', version:'1.1'},
-            SVG.circle({r:'50', cx:'60', cy:'60', style:"stroke:red;fill:none;stroke-width:20"},
-                       SVG.animate({attributeName:'cx', from:'60', to:'200', dur:'10s'})
-                       ),
-            SVG.line  ({x1:'33', y1:'93', x2:'93', y2:'23', style:"stroke:blue;stroke-width:20"})
+    //SVG.svg({id:'svg1', width:'100%', height:'100%', version:'1.1'},
+    SVG.svg({id:'svg1'},
+            SVG.text({x:'50%', y:'15%', fill:'red'},
+                     'NAV'
+                     ),
+            SVG.circle({id:'svg1circle', r:'50%', cx:'50%', cy:'50%', style:"stroke:red;fill:none;stroke-width:1"},
+                       SVG.animate({attributeName:'cx', from:'60', to:'200', dur:'30s'})
+                      )
+            //SVG.line  ({x1:'33', y1:'93', x2:'93', y2:'23', style:"stroke:blue;stroke-width:20"})
             //SVG.line  ({x1:'33', y1:'93', x2:'93', y2:'23', stroke:'red', stroke-width:'20'})
             //onmouseover:onOver, onmouseout:onOut })
            );

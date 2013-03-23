@@ -2,7 +2,23 @@
 #                The 'real' ChangeLog is generated with the Perl script cvs2cl.pl
 #
 
+2013MAR22
+    -add timer to afterglow
+    -mod rename project S52android to s52droid
 
+2013MAR19
+    -add S52_getView() to make s52ui Dart code simpler
+    -add S52_setEGLcd() to drive EGL makecurrent/swap
+    -add S52_USE_EGL in S52.c
+    -add touch handling in s52ui
+    -mod S52.dart refactor
+    -add stopWatch in S52.dart
+    -mod s52android to s52droid
+    
+2013MAR13
+    -fix CSS layout (s52ui)
+    -fix line supression regression
+    
 2013MAR12
     -move to S52.dart stuff that mimic S52.h
     -add test to Rot. Buoy Light in s52ui

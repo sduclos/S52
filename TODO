@@ -1,26 +1,13 @@
 TODO: jot pad for libS52.so missing stuff, bug, snag, ... , brain dump
 
 Last update:
-OCT2004
-FEB2009
-MAY2009
-JUN2009
-JUL2009
-NOV2009
-JAN2010
-SEP2010
-2011APR
-2012JUN
-2012SEP
-2012OCT
-2012NOV
 2013JAN - add link to Pavel Kalian RleEditor, add Testing section
 
 
 Curent focus (top priority *):
 
     GL:
-**  -load raster (RADAR Layer, high densit bathy)
+**  -load raster (RADAR Layer, high densit bathy, ice)
 **  -alarm (safety perimeter, x-track!), try the GL cursor pick trick
 *   -handle overlaping symbol at the center of the window
     -fading chart boudary, calib symb, ..
@@ -28,9 +15,10 @@ Curent focus (top priority *):
     -handle GLU_TESS_MAX_COORD
 
     PL:
+**  -display text description of symbol in PLib in cursor pick
 *   -view group or somme equivalent functionality
     -overscale (DATCVR01)
-    -experimental:supression of overlapping lines of same disp prio but diff categorie
+    -experimental: supression of overlapping lines of same disp prio but diff categorie
     -fix breaker color problem in CA49995A.000
     -signal object that land in layer 0 (ex TOPMAR/CA49995A.000/geo.id:123)
     -check/validate QUAPOS of spatial (not attribute) object
@@ -39,7 +27,7 @@ Curent focus (top priority *):
     -isobath tag
 
     Coding:
-    -use masked lines field (OGR/S57 MASK/FSPT) to split line in multi-line
+*   -use masked lines field (OGR/S57 MASK/FSPT) to split line in multi-line
     -check handling anti-meridian (need a chart that overlap the meridian)
     -chart manager / show world contour / chart extent / CATALOG.031
     -read text referenced by CATLOG.031
@@ -90,7 +78,7 @@ DONE
     -GPSD/AIS
     -GL: curves (in LEGLIN)
     -(partial) supression of overlapping lines (HARD -need to tweak GDAL)
-    -thread-safe
+    -thread awaire
     -handle multiple cells
     -Mariner's object
     -chart rotation (ship head up)

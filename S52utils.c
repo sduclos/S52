@@ -42,7 +42,7 @@
 
 // configuration file
 #ifdef S52_USE_ANDROID
-#define CONF_NAME   "/sdcard/s52android/s52.cfg"
+#define CONF_NAME   "/sdcard/s52droid/s52.cfg"
 #else
 #define CONF_NAME   "s52.cfg"
 #endif

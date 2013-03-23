@@ -7,17 +7,17 @@
 # $ndk-build -B APP_ABI=armeabi-v7a
 # NDK_LOG=1 APP_ABI=armeabi
 
-APKNAME = s52android-debug.apk
+APKNAME = s52droid-debug.apk
 
 all: build.xml bin/$(APKNAME)
 #all: bin/$(APKNAME)
 
 # Based on Android 4.1.2 (API level 16)
 build.xml: AndroidManifest.xml
-	android update project -p . -t "android-14" -n s52android
+	android update project -p . -t "android-14" -n s52droid
 
 bin/$(APKNAME):
-	ndk-build V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1
+	ndk-build -B V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1
 	ant debug install
 
 # make sure there is no loop in Dart packages
