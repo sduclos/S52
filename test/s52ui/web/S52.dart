@@ -103,7 +103,7 @@ class S52 {
     return _completer.future;
   }
   
-  // alternate way of calling libS52 - on call for all
+  // alternate way of calling libS52 - one call for all S52.h calls
   // less OO
   Future<List> send(var cmdName, var params) {
     _data["id"    ] = _id;
@@ -117,7 +117,8 @@ class S52 {
   
   ////////////////////// FIXME: REFACTOR use send() ////////////////////////////////
   // pro: less code
-  // con: lost of info 
+  // con: lost of info .. doesn't mirror S52.h well since all call info would be 
+  // littered across s52ui.dart
   Future<List> getMarinerParam(int param) {
     _data["id"    ] = _id;
     _data["method"] = "S52_getMarinerParam";
@@ -294,6 +295,14 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getView";
     _data["params"] = [];
+    String jsonCmdstr = stringify(_data);
+
+    return _sendMsg(jsonCmdstr);
+  }
+  Future<List> setViewPort(int x, int y, int w, int h) {
+    _data["id"    ] = _id;
+    _data["method"] = "S52_setViewPort";
+    _data["params"] = [x,y,w,h];
     String jsonCmdstr = stringify(_data);
 
     return _sendMsg(jsonCmdstr);

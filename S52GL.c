@@ -9689,8 +9689,10 @@ int        S52_GL_setViewPort(int x, int y, int width, int height)
     // NOTE: width & height are in fact GLsizei, a pseudo unsigned int
     // it is a 'int' that can't be negative
 
+    // debug
     //glViewport(x, y, width, height);
     //glGetIntegerv(GL_VIEWPORT, _vp);
+    //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
     //_checkError("S52_GL_setViewPort()");
 
     _vp[0] = x;
@@ -9699,14 +9701,19 @@ int        S52_GL_setViewPort(int x, int y, int width, int height)
     _vp[3] = height;
 
     if (_fb_pixels_size < (_vp[2] * _vp[3] * 4) ) {
-        PRINTF("ERROR: pixels buffer overflow: fb_pixels_size=%i, VP=%i \n", _fb_pixels_size, (_vp[2] * _vp[3] * 4));
+        //PRINTF("ERROR: pixels buffer overflow: fb_pixels_size=%i, VP=%i \n", _fb_pixels_size, (_vp[2] * _vp[3] * 4));
         // NOTE: since the assert() is removed in the release, draw last can
         // still be called (but does notting) if _fb_pixels is NULL
-        g_free(_fb_pixels);
-        _fb_pixels = NULL;
+        //g_free(_fb_pixels);
+        //_fb_pixels = NULL;
+        //g_assert(0);
+        //exit(0);
 
-        g_assert(0);
-        exit(0);
+        //#define             g_renew(struct_type, mem, n_structs)
+        //_fb_pixels      = g_new0(unsigned char, _fb_pixels_size);
+        _fb_pixels_size = _vp[2] * _vp[3] * 4;
+        _fb_pixels      = g_renew(unsigned char, _fb_pixels, _fb_pixels_size);
+        PRINTF("pixels buffer resized (%i)\n", _fb_pixels_size);
     }
 
     return TRUE;

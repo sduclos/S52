@@ -20,6 +20,9 @@ List _UIBDR;  // border
 Timer _timer        = null;
 bool  _restartTimer = true;
 
+var _width;
+var _height;
+
   void _handleInput(int param, double value) {
     bool checked = false;
     switch (param) {
@@ -384,7 +387,32 @@ Future<bool> _initUI() {
 }
 //*/
 
-void _initTouch() {
+void _orientationChg(var orientation, var width, var height)
+{
+  // debug
+  print("++++++++++++++++++++++++++++++++++++++orientation: $orientation $width x $height");
+  
+  _width  = width;
+  _height = height;
+  
+  s52.setViewPort(0, 0, width, height).then((ret) {
+    s52.draw().then((ret) {});
+  });
+
+  // rehook callback for next rotation
+  js.scoped(() {
+    js.context.orientationChg = new js.Callback.once(_orientationChg);
+  });
+
+  // restart drawLast loop if stopped by device rotation event
+  _startDrawLastTimer();
+
+}
+
+void _initTouch(var w, var h) {
+  // debug
+  print("+++++++++++++++++++++++++++_initTouch(): orientation: $w x $h");
+
   // Handle touch events.
   Element target = query('#svg1');
 
@@ -412,10 +440,13 @@ void _initTouch() {
   double north = -1.0;
   
   // FIXME: get w/h on orientation change msg
-  //var width   = window.innerWidth;
+  // Dart broken on android WebView
+  //var width   = window.innerWidth;   
   //var height  = window.innerHeight;
-  var width   = 1208;
-  var height  =  752;
+  //var width   = 1208;
+  //var height  =  752;
+  _width  = w;
+  _height = h;
   
   target.onTouchStart.listen((TouchEvent event) {
     event.preventDefault();
@@ -480,8 +511,8 @@ void _initTouch() {
     
       //print('onTouchMove 1: new_x1:$new_x1, new_x1:$new_y1');
     
-      double dx_pc =  (start_x1 - new_x1) / width;  // %
-      double dy_pc = -(start_y1 - new_y1) / height; // % - Y down
+      double dx_pc =  (start_x1 - new_x1) / _width;  // %
+      double dy_pc = -(start_y1 - new_y1) / _height; // % - Y down
 
       if (true == doBlit1) {
         doBlit1 = false;
@@ -516,7 +547,7 @@ void _initTouch() {
       
       //dx_pc = (dx1 + dx2) / width;  // %
       //dy_pc = (dy1 + dy2) / height; // %
-      dx_pc = dx1 / width;  // %
+      dx_pc = dx1 / _width;  // %
       //if (true == doBlit2) {
         doBlit2 = false;
         s52.drawBlit(0.0, 0.0, dx_pc, 0.0).then((ret) {doBlit2 = true;});
@@ -608,7 +639,6 @@ void _initTouch() {
     _startDrawLastTimer();
   
   });     // touchEnd
-
 }
 
 //void GPSpos(Geoposition position) {
@@ -656,7 +686,7 @@ void _startDrawLastTimer() {
     try {
       s52.drawLast().then((ret) {});
     } catch (e,s) {
-      print("catch: $e");
+      print("catch: $s");
       _timer.cancel();
       _restartTimer = true;
     }
@@ -665,9 +695,6 @@ void _startDrawLastTimer() {
 
 void _init() {
   
-  _initTouch();
-  
-  //*
   // FIXME: get ownshp
   // use the Future of ownshp to signal to start loading the UI (_initUI)
   s52.newOWNSHP('OWNSHP').then((ret) {
@@ -677,12 +704,10 @@ void _init() {
     // Dart BUG: can't read GPS
     //_watchPosition();
 
-    _initUI().then((ret) { _startDrawLastTimer(); });
-    
-    //initDeviceOrientationEvent(String type, bool bubbles, bool cancelable, num alpha, num beta, num gamma, bool absolute)
-    //window.onDeviceOrientation.listen((e) {s52.setVector(_ownshp, 1, e.gamma, 0.0).then((ret){});});
+    _initUI().then((ret) { 
+      _startDrawLastTimer();
+    });
   });
-  //*/
 }
 
 ///////////////////////////////////////
@@ -697,10 +722,12 @@ void main() {
   //try {
   
   js.scoped(() {
-    js.context.wsReady   = new js.Callback.once(_init);
+    js.context.wsReady        = new js.Callback.once(_init);
 
     // WebSocket reply something (meaningless!) when making initial connection read it! (and maybe do something)
-    js.context.rcvS52Msg = new js.Callback.once(s52.rcvMsg);
+    js.context.rcvS52Msg      = new js.Callback.once(s52.rcvMsg);
+    js.context.setTouchScrnSz = new js.Callback.once(_initTouch);
+    js.context.orientationChg = new js.Callback.once(_orientationChg);
   });
   
   //} catch(e,s) {

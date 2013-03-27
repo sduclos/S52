@@ -72,6 +72,15 @@ window.document.getElementById("example").innerHTML=txt;
         // cordova define android "menubutton", "backbutton"
         document.addEventListener("menubutton", toggleUI, false);
         //document.addEventListener("backbutton", _closeUI, false);
+        
+        // device orientation change
+        window.addEventListener("resize", orientation, false);
+        //window.addEventListener("orientationchange", checkOrientation, false);
+        // (optional) Android doesn't always fire orientationChange on 180 degree turns
+        //setInterval(checkOrientation, 2000); 
+        
+        // will trigger touch initialisation W x H
+        screenSize();     
       }
 
       function onOpen(evt)    { console.log("onOpen(): "); wsReady();}
@@ -92,6 +101,9 @@ window.document.getElementById("example").innerHTML=txt;
           document.getElementById('svg1'  ).style.display = 'inline-block';
         }
       }
+      
+      function orientation() { orientationChg(window.orientation, window.innerWidth, window.innerHeight); }
+      function screenSize()  { setTouchScrnSz(window.innerWidth, window.innerHeight); }
       
 /*      
 if (navigator.geolocation)

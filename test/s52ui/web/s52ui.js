@@ -134,7 +134,7 @@ Main.prototype.render = function(html)
     //SVG.svg({id:'svg1', width:'100%', height:'100%', version:'1.1'},
     SVG.svg({id:'svg1'},
             SVG.text({x:'50%', y:'15%', fill:'red'},
-                     'NAV'
+                     'SVG'
                      ),
             SVG.circle({id:'svg1circle', r:'50%', cx:'50%', cy:'50%', style:"stroke:red;fill:none;stroke-width:1"},
                        SVG.animate({attributeName:'cx', from:'60', to:'200', dur:'30s'})

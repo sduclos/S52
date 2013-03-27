@@ -81,6 +81,7 @@
 #include <glibconfig.h>
 #include <gio/gio.h>
 
+static GStaticMutex _engine_mutex = G_STATIC_MUTEX_INIT;  // protect engine
 
 #else   // S52_USE_ANDROID
 
@@ -144,6 +145,8 @@ typedef struct s52engine {
 
            int32_t             configBits;
 
+    struct ANativeActivityCallbacks* callbacks;
+
            GSocketConnection  *connection;
 
 #else  // EGL/X11
@@ -161,8 +164,9 @@ typedef struct s52engine {
 
 
     // local
-    int                 do_S52draw;     // TRUE to call S52_draw()
-    int                 do_S52drawLast; // TRUE to call S52_drawLast() - S52_draw() was called at least once
+    int                 do_S52draw;        // TRUE to call S52_draw()
+    int                 do_S52drawLast;    // TRUE to call S52_drawLast() - S52_draw() was called at least once
+    int                 do_S52setViewPort; // set in Android callback
 
     int32_t             width;
     int32_t             height;
@@ -171,10 +175,10 @@ typedef struct s52engine {
 
     GTimeVal            timeLastDraw;
 
-    s52droid_state_t  state;
+    s52droid_state_t    state;
 } s52engine;
 
-static s52engine engine;
+static s52engine _engine;
 
 //----------------------------------------------
 //
@@ -677,11 +681,8 @@ static int      _s52_init       (s52engine *engine)
         return FALSE;
     }
 
-    //if (NULL != engine->app->window) {
-        // FIXME: check Android axys first --> w/h
-        eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
-        eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
-    //}
+    eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
+    eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
 
     {
         int w   = 0;
@@ -870,8 +871,8 @@ static int      _s52_init       (s52engine *engine)
 #endif
 
 
-    engine->do_S52draw      = TRUE;
-    engine->do_S52drawLast  = TRUE;
+    engine->do_S52draw       = TRUE;
+    engine->do_S52drawLast   = TRUE;
 
     engine->state.do_S52init = FALSE;
 
@@ -960,6 +961,19 @@ static int      _s52_draw_cb    (gpointer user_data)
 
     // draw background
     if (TRUE == engine->do_S52draw) {
+        if (TRUE == engine->do_S52setViewPort) {
+
+            //_egl_beg(engine);
+            eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
+            eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
+
+            S52_setViewPort(0, 0, engine->width, engine->height);
+
+            //_egl_end(engine);
+
+            engine->do_S52setViewPort = FALSE;
+        }
+
         S52_draw();
         engine->do_S52draw = FALSE;
     }
@@ -973,7 +987,10 @@ static int      _s52_draw_cb    (gpointer user_data)
         S52_drawLast();
     }
 
+#ifndef S52_USE_EGL
     _egl_end(engine);
+#endif
+
 
 exit:
 
@@ -1003,7 +1020,7 @@ exit:
 // android specific code
 //
 
-static int _androidUIon = FALSE;
+//static int _androidUIon = FALSE;
 
 static int      _android_done_external_sensors(void)
 {
@@ -1254,17 +1271,47 @@ static int      _android_render      (s52engine *engine, double new_y, double ne
         engine->state.rNM   = new_z;
         engine->state.north = new_r;
 
-#ifndef S52_USE_EGL
-        _egl_beg(engine);
-#endif
-
+#ifdef S52_USE_EGL
         S52_draw();
         S52_drawLast();
-
+#else
+        _egl_beg(engine);
+        S52_draw();
+        S52_drawLast();
         _egl_end(engine);
+#endif
     }
 
     return TRUE;
+}
+
+static void     _android_config_dump(AConfiguration *config)
+// android-git-master/development/ndk/sources/android/native_app_glue/android_native_app_glue.c:63
+// the code is in android_native_app_glue.c:55
+// static void print_cur_config(struct android_app* android_app)
+{
+    char lang[2], country[2];
+    AConfiguration_getLanguage(config, lang);
+    AConfiguration_getCountry (config, country);
+
+    LOGI("Config: mcc=%d mnc=%d lang=%c%c cnt=%c%c orien=%d touch=%d dens=%d "
+            "keys=%d nav=%d keysHid=%d navHid=%d sdk=%d screenSize=%d screenLong=%d "
+            "modeType=%d modeNight=%d",
+            AConfiguration_getMcc        (config),
+            AConfiguration_getMnc        (config),
+            lang[0], lang[1], country[0], country[1],
+            AConfiguration_getOrientation(config),
+            AConfiguration_getTouchscreen(config),
+            AConfiguration_getDensity    (config),
+            AConfiguration_getKeyboard   (config),
+            AConfiguration_getNavigation (config),
+            AConfiguration_getKeysHidden (config),
+            AConfiguration_getNavHidden  (config),
+            AConfiguration_getSdkVersion (config),
+            AConfiguration_getScreenSize (config),
+            AConfiguration_getScreenLong (config),
+            AConfiguration_getUiModeType (config),
+            AConfiguration_getUiModeNight(config));
 }
 
 static int      _android_motion_event(s52engine *engine, AInputEvent *event)
@@ -1617,7 +1664,6 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
         case APP_CMD_RESUME: {
             LOGI("s52egl:--> APP_CMD_RESUME\n");
 
-            //engine->do_S52draw     = FALSE;
             engine->do_S52draw     = TRUE;
             engine->do_S52drawLast = TRUE;
 
@@ -1658,8 +1704,8 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             LOGI("s52egl:--> APP_CMD_TERM_WINDOW\n");
 
             // UI on top, so keep rendering
-            if (TRUE == _androidUIon)
-                break;
+            //if (TRUE == _androidUIon)
+            //    break;
 
             // window hidden or closed
             // check this,
@@ -1692,9 +1738,6 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             // app loses focus, stop monitoring sensor
             // to avoid consuming battery while not being used.
             LOGI("s52egl:--> APP_CMD_LOST_FOCUS\n");
-            // commented - keep updating because still visible (alpha 0.5)
-            //engine->do_S52draw     = FALSE;
-            //engine->do_S52drawLast = FALSE;
 
             break;
         }
@@ -1702,12 +1745,21 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             // device rotated
             LOGI("s52egl:--> APP_CMD_CONFIG_CHANGED\n");
             int32_t confDiff = AConfiguration_diff(engine->config, engine->app->config);
-            LOGI("s52egl:XXXXXXXXXXXXXX cmd config change 0x%04x\n", confDiff);
-            // the code is in android_native_app_glue.c:55
-            // static void print_cur_config(struct android_app* android_app)
-            // no need to call it here as the glue call it when config change
-            //_android_config_dump(engine->config);
-            //_android_config_dump(engine->app->config);
+            LOGI("s52egl: config diff: 0x%04x\n", confDiff);
+            _android_config_dump(engine->app->config);
+            AConfiguration_copy(engine->config, engine->app->config);
+
+            // no AIS update with drawLast() meen that
+            // s52ui handle device orientation
+            if (FALSE == engine->do_S52drawLast)
+                break;
+
+            // ACONFIGURATION_ORIENTATION     = 0x0080,
+            // ACONFIGURATION_SCREEN_SIZE     = 0x0200,
+            if ((ACONFIGURATION_ORIENTATION|ACONFIGURATION_SCREEN_SIZE) & confDiff) {
+                engine->do_S52setViewPort = TRUE;
+                engine->do_S52draw        = TRUE;
+            }
 
             break;
         }
@@ -1751,6 +1803,32 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
     }
 }
 
+static void     _onConfigurationChanged(ANativeActivity *activity)
+// FIXME: not sure if this come from the main thread
+// so in case the glib main loop is still running at this point
+// the mutex prevent a collision
+{
+    LOGI("s52egl:_onConfigurationChanged(): starting ..\n");
+
+    g_static_mutex_lock(&_engine_mutex);
+
+    //print_cur_config(_engine.app);
+    _engine.do_S52setViewPort = TRUE;
+    _engine.do_S52draw        = TRUE;
+    _engine.do_S52drawLast    = TRUE;
+
+    g_static_mutex_unlock(&_engine_mutex);
+
+    return;
+}
+
+static void     _onNativeWindowResized(ANativeActivity* activity, ANativeWindow* window)
+{
+    LOGI("s52egl:_onNativeWindowResized(): starting ..\n");
+
+    return;
+}
+
 void android_main(struct android_app *app)
 // This is the main entry point of a native application that is using
 // android_native_app_glue.  It runs in its own thread, with its own
@@ -1765,21 +1843,21 @@ void android_main(struct android_app *app)
     // Make sure glue isn't stripped.
     app_dummy();
 
-    //_android_done_external_sensors();
-
-    memset(&engine, 0, sizeof(engine));
-    app->userData     = &engine;
+    memset(&_engine, 0, sizeof(_engine));
+    app->userData     = &_engine;
     app->onAppCmd     = _android_handle_cmd;
     app->onInputEvent = _android_handle_input;
 
-    engine.app        = app;
-    engine.dpi        = AConfiguration_getDensity(app->config);
-    engine.config     = AConfiguration_new();
-    engine.configBits = AConfiguration_diff(app->config, engine.config);
-    AConfiguration_copy(engine.config, app->config);
+    _engine.app        = app;
+    _engine.dpi        = AConfiguration_getDensity(app->config);
+    _engine.config     = AConfiguration_new();
+    _engine.configBits = AConfiguration_diff(app->config, _engine.config);
+    AConfiguration_copy(_engine.config, app->config);
 
-    // prepare to read file
-    //engine.assetManager     = engine.app->activity->assetManager;
+    // setup callbacks to detect android rotation
+    //_engine.callbacks  = _engine.app->activity->callbacks;
+    //_engine.callbacks->onConfigurationChanged = _onConfigurationChanged;
+    //_engine.callbacks->onNativeWindowResized  = _onNativeWindowResized;
 
     // prepare to monitor sensor
     //engine.sensorManager    = ASensorManager_getInstance();
@@ -1788,11 +1866,13 @@ void android_main(struct android_app *app)
     //engine.sensorEventQueue = ASensorManager_createEventQueue(engine.sensorManager, app->looper, LOOPER_ID_USER, NULL, NULL);
     //_android_sensorsList_dump(engine.sensorManager);
 
-    ANativeActivity_setWindowFlags(engine.app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0x0);
+    ANativeActivity_setWindowFlags(_engine.app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0x0);
 
     //ActivityManager.MemoryInfo
 
     /*
+    // prepare to read file
+    //engine.assetManager     = engine.app->activity->assetManager;
     //AAsset *test =  AAssetManager_open(engine.assetManager, "test.txt", AASSET_MODE_BUFFER);
     AAsset *asset =  AAssetManager_open(engine.assetManager, "text.txt", AASSET_MODE_UNKNOWN);
     if (NULL != asset) {
@@ -1821,10 +1901,10 @@ void android_main(struct android_app *app)
     g_type_init();
 
     //*
-    if (NULL == engine.app->savedState) {
+    if (NULL == _engine.app->savedState) {
 
         // first time startup
-        engine.state.do_S52init = TRUE;
+        _engine.state.do_S52init = TRUE;
 
         //------------------------------------------
         // FIXME: check this, start after the main loop
@@ -1835,43 +1915,43 @@ void android_main(struct android_app *app)
         //_android_spawn_ais();
         //------------------------------------------
 
-        engine.state.main_loop       = g_main_loop_new(NULL, FALSE);
-        engine.state.gobject         = g_object_new(G_TYPE_OBJECT, NULL);
-        engine.state.s52_draw_sigID  = g_signal_new("s52-draw",
-                                                    G_TYPE_FROM_INSTANCE(engine.state.gobject),
-                                                    G_SIGNAL_RUN_LAST,
-                                                    //G_SIGNAL_ACTION,
-                                                    //G_SIGNAL_RUN_FIRST,
-                                                    0,                      // offset
-                                                    NULL, NULL,             // accumulator / data
-                                                    NULL,                   // marshaller
-                                                    G_TYPE_NONE,            // signal without a return value.
-                                                    0);                     // the number of parameter types to follow
+        _engine.state.main_loop       = g_main_loop_new(NULL, FALSE);
+        _engine.state.gobject         = g_object_new(G_TYPE_OBJECT, NULL);
+        _engine.state.s52_draw_sigID  = g_signal_new("s52-draw",
+                                                     G_TYPE_FROM_INSTANCE(_engine.state.gobject),
+                                                     G_SIGNAL_RUN_LAST,
+                                                     //G_SIGNAL_ACTION,
+                                                     //G_SIGNAL_RUN_FIRST,
+                                                     0,                      // offset
+                                                     NULL, NULL,             // accumulator / data
+                                                     NULL,                   // marshaller
+                                                     G_TYPE_NONE,            // signal without a return value.
+                                                     0);                     // the number of parameter types to follow
 
 
-        engine.state.handler = g_signal_connect(G_OBJECT(engine.state.gobject), "s52-draw",
-                                                G_CALLBACK(_s52_draw_cb), (gpointer)&engine);
+        _engine.state.handler = g_signal_connect(G_OBJECT(_engine.state.gobject), "s52-draw",
+                                                G_CALLBACK(_s52_draw_cb), (gpointer)&_engine);
 
-        g_timeout_add(500, _s52_draw_cb, (void*)&engine);     // 0.5 sec (500msec)
+        g_timeout_add(500, _s52_draw_cb, (void*)&_engine);     // 0.5 sec (500msec)
 
 
     } else {
         // if re-starting - the process is already up
-        engine.state = *(s52droid_state_t*)app->savedState;
+        _engine.state = *(s52droid_state_t*)app->savedState;
 
         LOGI("s52egl:DEBUG: bypassing _init_S52(), reset state .. \n");
-        LOGI("s52egl:       cLat =%f\n", engine.state.cLat           );
-        LOGI("s52egl:       cLon =%f\n", engine.state.cLon           );
-        LOGI("s52egl:       rNM  =%f\n", engine.state.rNM            );
-        LOGI("s52egl:       north=%f",   engine.state.north          );
+        LOGI("s52egl:       cLat =%f\n", _engine.state.cLat           );
+        LOGI("s52egl:       cLon =%f\n", _engine.state.cLon           );
+        LOGI("s52egl:       rNM  =%f\n", _engine.state.rNM            );
+        LOGI("s52egl:       north=%f",   _engine.state.north          );
 
         // don't re-init S52
         //engine.state.do_S52init = FALSE;
 
         // check if main loop up (seem useless)
-        if (FALSE == g_main_loop_is_running(engine.state.main_loop)) {
+        if (FALSE == g_main_loop_is_running(_engine.state.main_loop)) {
             LOGI("s52egl:engine.view.main_loop is running .. reconnecting ..\n");
-            g_main_loop_run(engine.state.main_loop);
+            g_main_loop_run(_engine.state.main_loop);
         }
     }
 
@@ -1900,7 +1980,7 @@ void android_main(struct android_app *app)
                 source->process(app, source);
 
             // Check if we are exiting.
-            if (0 != engine.app->destroyRequested) {
+            if (0 != _engine.app->destroyRequested) {
                 LOGI("s52egl:android_main(): IN while loop .. destroyRecquested\n");
                 //engine_term_display(&engine);
                 goto exit;
@@ -1921,11 +2001,11 @@ exit:
 
     _android_done_external_sensors();
 
-    _s52_done(&engine);
+    _s52_done(&_engine);
 
-    _egl_done(&engine);
+    _egl_done(&_engine);
 
-    AConfiguration_delete(engine.config);
+    AConfiguration_delete(_engine.config);
 
     return;
 }
@@ -2161,7 +2241,7 @@ int  main(int argc, char *argv[])
 
     XSetErrorHandler(_X11_error);
 
-    _egl_init(&engine);
+    _egl_init(&_engine);
 
     // init thread first before any call to glib
     // event if NULL mean that glib call are more relaxe
@@ -2169,34 +2249,34 @@ int  main(int argc, char *argv[])
     g_type_init();
 
 
-    engine.state.main_loop       = g_main_loop_new(NULL, FALSE);
-    engine.state.gobject         = g_object_new(G_TYPE_OBJECT, NULL);
-    engine.state.s52_draw_sigID  = g_signal_new("s52-draw",
-                                                 G_TYPE_FROM_INSTANCE(engine.state.gobject),
+    _engine.state.main_loop       = g_main_loop_new(NULL, FALSE);
+    _engine.state.gobject         = g_object_new(G_TYPE_OBJECT, NULL);
+    _engine.state.s52_draw_sigID  = g_signal_new("s52-draw",
+                                                 G_TYPE_FROM_INSTANCE(_engine.state.gobject),
                                                  G_SIGNAL_RUN_LAST,
                                                  0,
                                                  NULL, NULL,
                                                  NULL,
                                                  G_TYPE_NONE, 0);
 
-    engine.state.handler = g_signal_connect_data(engine.state.gobject, "s52-draw",
-                                                 G_CALLBACK(_s52_draw_cb), (gpointer)&engine,
+    _engine.state.handler = g_signal_connect_data(_engine.state.gobject, "s52-draw",
+                                                 G_CALLBACK(_s52_draw_cb), (gpointer)&_engine,
                                                  NULL, G_CONNECT_SWAPPED);
 
-    g_timeout_add(500, _X11_handleXevent, (void*)&engine);  // 0.5 sec
-    g_timeout_add(500, _s52_draw_cb,      (void*)&engine);  // 0.5 sec
+    g_timeout_add(500, _X11_handleXevent, (void*)&_engine);  // 0.5 sec
+    g_timeout_add(500, _s52_draw_cb,      (void*)&_engine);  // 0.5 sec
 
 
-    _s52_init(&engine);
+    _s52_init(&_engine);
 
 
     //g_mem_set_vtable(glib_mem_profiler_table);
 
-    g_main_loop_run(engine.state.main_loop);
+    g_main_loop_run(_engine.state.main_loop);
 
-    _s52_done(&engine);
+    _s52_done(&_engine);
 
-    _egl_done(&engine);
+    _egl_done(&_engine);
 
     //g_mem_profile();
 

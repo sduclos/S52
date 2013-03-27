@@ -247,7 +247,7 @@ static  GStaticMutex _mp_mutex = G_STATIC_MUTEX_INIT;
 
 // CSYMB init scale bar, north arrow, unit, CHKSYM
 static int             _iniCSYMB = TRUE;
-//#ifdef S52_USE_GOBJECT
+
 // when S52_USE_GOBJECT S52ObjectHandle is an int so FALSE resolve to zero
 // else its a pointer and FALSE resolve to NULL
 static S52ObjectHandle _OWNSHP   = FALSE;
@@ -258,21 +258,12 @@ static S52ObjectHandle _NORTHAR1 = FALSE;
 static S52ObjectHandle _UNITMTR1 = FALSE;
 static S52ObjectHandle _CHKSYM01 = FALSE;
 static S52ObjectHandle _BLKADJ01 = FALSE;
-//#else
-//static S52ObjectHandle _OWNSHP   = NULL;
-//static S52ObjectHandle _SCALEB10 = NULL;
-//static S52ObjectHandle _SCALEB11 = NULL;
-//static S52ObjectHandle _NORTHAR1 = NULL;
-//static S52ObjectHandle _UNITMTR1 = NULL;
-//static S52ObjectHandle _CHKSYM01 = NULL;
-//static S52ObjectHandle _BLKADJ01 = NULL;
-//#endif
 
 static S52_RADAR_cb  _RADAR_cb = NULL;
 //static int          _doRADAR  = TRUE;
 
-static char _version[] = "$Revision: 1.115 $\n"
-      "libS52 0.85\n"
+static char _version[] = "$Revision: 1.116 $\n"
+      "libS52 0.86\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -361,6 +352,8 @@ static void  *_EGLctx = NULL;
 #define EGL_BEGIN
 #define EGL_END
 #endif
+
+#define cchar const char
 
 // check basic init
 #define S52_CHECK_INIT  if (TRUE == _doInit) {                                                 \
@@ -1421,9 +1414,6 @@ static int        _initDBus(void);
 static int        _initSock(void); // froward
 
 #ifdef S52_USE_DOTPITCH
-//DLL int    STD S52_init(int pixels_w, int pixels_h, int pixels_wmm, int pixels_hmm)
-//DLL int    STD S52_init(unsigned int screen_pixels_w, unsigned int screen_pixels_h, unsigned int screen_mm_w, unsigned int screen_mm_h, S52_error_cb err_cb)
-//DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h)
 DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb)
 #else
 DLL int    STD S52_init(void)
@@ -1743,8 +1733,6 @@ DLL int    STD    _freeCell(_cell *c)
 DLL int    STD S52_done(void)
 // clear all --shutingdown libS52
 {
-    //unsigned int i;
-
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
 
@@ -1759,33 +1747,6 @@ DLL int    STD S52_done(void)
     }
     _marinerCell = NULL;
 
-    /*
-    if (NULL != _textList) {
-        g_ptr_array_free(_textList, TRUE);
-        //g_ptr_array_unref(_textList);
-        _textList = NULL;
-    }
-
-    if (NULL != _objList_supp) {
-        g_ptr_array_free(_objList_supp, TRUE);
-        //g_ptr_array_unref(_objList_supp);
-        _objList_supp = NULL;
-    }
-
-    if (NULL != _objList_over) {
-        g_ptr_array_free(_objList_over, TRUE);
-        //g_ptr_array_unref(_objList_over);
-        _objList_over = NULL;
-    }
-    */
-
-//#ifdef S52_USE_SUPP_LINE_OVERLAP
-//    if (NULL != _lines) {
-//        //g_ptr_array_free(_lines, TRUE);
-//        g_ptr_array_unref(_lines);
-//        _lines = NULL;
-//    }
-//#endif
 
     S52_GL_done();
     S52_PL_done();
@@ -1802,11 +1763,6 @@ DLL int    STD S52_done(void)
     g_timer_destroy(_timer);
     _timer = NULL;
 
-    //g_ptr_array_free(_route,  FALSE);
-    //_route  = NULL;
-    //g_ptr_array_free(_wholin, FALSE);
-    //_wholin = NULL;
-
     _doInit = FALSE;
 
 #ifdef S52_USE_DBUS
@@ -1820,6 +1776,12 @@ DLL int    STD S52_done(void)
     g_string_free(_S57ClassList, TRUE); _S57ClassList = NULL;
 
     g_ptr_array_free(_objToDelList, TRUE); _objToDelList = NULL;
+
+#ifdef S52_USE_EGL
+    _eglBeg = NULL;
+    _eglEnd = NULL;
+    _EGLctx = NULL;
+#endif
 
     g_static_mutex_unlock(&_mp_mutex);
 
@@ -1842,7 +1804,6 @@ DLL int    STD S52_setFont(int font)
 #endif
 
 
-//DLL int    STD S52_newMercPrj(double latitude)
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 
 #if 0
@@ -4943,7 +4904,7 @@ DLL int    STD S52_loadPLib(const char *plibName)
 // FEEDBACK TO HIGHER UP MODULE OF INTERNAL STATE
 //
 
-DLL const char * STD S52_pickAt(double pixels_x, double pixels_y)
+DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 {
     // viewport
     int x;
@@ -5067,7 +5028,7 @@ DLL const char * STD S52_pickAt(double pixels_x, double pixels_y)
     return name;
 }
 
-DLL const char * STD S52_getPLibsIDList(void)
+DLL cchar *STD S52_getPLibsIDList(void)
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -5079,7 +5040,7 @@ DLL const char * STD S52_getPLibsIDList(void)
     return str;
 }
 
-DLL const char * STD S52_getPalettesNameList(void)
+DLL cchar *STD S52_getPalettesNameList(void)
 // return a JSON array
 {
     S52_CHECK_INIT;
@@ -5109,7 +5070,7 @@ DLL const char * STD S52_getPalettesNameList(void)
     return str;
 }
 
-static GString *        _getMARINClassList()
+static GString   *_getMARINClassList()
 {
     GString *classList = g_string_new(MARINER_CELL);
 
@@ -5133,7 +5094,7 @@ static GString *        _getMARINClassList()
 }
 
 //DLL const char * STD S52_getS57ObjClassList(const char *cellName)
-DLL const char * STD S52_getS57ClassList(const char *cellName)
+DLL cchar *STD S52_getS57ClassList(const char *cellName)
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -5187,7 +5148,7 @@ DLL const char * STD S52_getS57ClassList(const char *cellName)
     return str;
 }
 
-DLL const char * STD S52_getObjList(const char *cellName, const char *className)
+DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
 {
     S52_CHECK_INIT;
 
@@ -5243,7 +5204,7 @@ DLL const char * STD S52_getObjList(const char *cellName, const char *className)
     return NULL;
 }
 
-DLL const char * STD S52_getAttList(unsigned int S57ID)
+DLL cchar *STD S52_getAttList(unsigned int S57ID)
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -5280,7 +5241,7 @@ exit:
     return str;
 }
 
-static int              _isCellLoaded(const char *cellName)
+static int        _isCellLoaded(const char *cellName)
 {
     for (guint i=0; i<_cellList->len; ++i) {
         _cell *c = (_cell*)g_ptr_array_index(_cellList, i);
@@ -5292,7 +5253,7 @@ static int              _isCellLoaded(const char *cellName)
     return FALSE;
 }
 
-DLL const char * STD S52_getCellNameList(void)
+DLL cchar *STD S52_getCellNameList(void)
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -8522,6 +8483,31 @@ static int                 _handle_method(const gchar *str, char *result, char *
         goto exit;
     }
 
+    //DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height)
+    if (0 == g_strcmp0(cmdName, "S52_setViewPort")) {
+        if (4 != count) {
+            _setErr(err, "params 'pixels_x'/'pixels_y'/'pixels_width'/'pixels_height' not found");
+            goto exit;
+        }
+
+        double pixels_x      = json_array_get_number(paramsArr, 0);
+        double pixels_y      = json_array_get_number(paramsArr, 1);
+        double pixels_width  = json_array_get_number(paramsArr, 2);
+        double pixels_height = json_array_get_number(paramsArr, 3);
+
+        int ret = S52_setViewPort((int)pixels_x, (int)pixels_y, (int)pixels_width, (int)pixels_height);
+        if (TRUE == ret)
+            _encode(result, "[1]");
+        else {
+            _encode(result, "[0]");
+        }
+
+        //PRINTF("SOCK:S52_setViewPort(): %s\n", result);
+
+        goto exit;
+    }
+
+
 
     //
     _encode(result, "[0,\"WARNING:%s(): call not found\"]", cmdName);
@@ -8600,7 +8586,7 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
             if ('\x81' == str_read[0]) {
                 guint len = str_read[1] & 0x7F;
                 //PRINTF("in Frame .. first byte: 0x%hhX\n", str_read[0]);
-                PRINTF("Frame: text lenght = %i, (0x%hhX)\n", len, str_read[1]);
+                //PRINTF("Frame: text lenght = %i, (0x%hhX)\n", len, str_read[1]);
 
                 {
                     char *key  = str_read + 2;

@@ -230,6 +230,15 @@ $$.S52 = {"": "Object;_completer,_data,_liblib4$_id,_stopwatch,_timer",
     t2.$indexSet(t1, "method", "S52_getView");
     t2.$indexSet(t1, "params", []);
     return this._sendMsg$1($._JsonStringifier_stringify(t1));
+  },
+  setViewPort$4: function(x, y, w, h) {
+    var t1, t2;
+    t1 = this._data;
+    t2 = $.getInterceptor$ax(t1);
+    t2.$indexSet(t1, "id", this._liblib4$_id);
+    t2.$indexSet(t1, "method", "S52_setViewPort");
+    t2.$indexSet(t1, "params", [x, y, w, h]);
+    return this._sendMsg$1($._JsonStringifier_stringify(t1));
   }
 };
 
@@ -680,6 +689,24 @@ $$._initUI_anon0 = {"": "Closure;",
   }
 };
 
+$$._orientationChg_anon = {"": "Closure;",
+  call$1: function(ret) {
+    $.s52.draw$0().then$1(new $._orientationChg__anon());
+  }
+};
+
+$$._orientationChg__anon = {"": "Closure;",
+  call$1: function(ret) {
+  }
+};
+
+$$._orientationChg_anon0 = {"": "Closure;",
+  call$0: function() {
+    var t1 = $.Callback$once($._orientationChg);
+    $.context().set$orientationChg(t1);
+  }
+};
+
 $$._initTouch_anon = {"": "Closure;box_1",
   call$1: function($event) {
     var t1, t2;
@@ -728,9 +755,9 @@ $$._initTouch__anon2 = {"": "Closure;box_1",
   }
 };
 
-$$._initTouch_anon0 = {"": "Closure;box_1,width_2,height_3",
+$$._initTouch_anon0 = {"": "Closure;box_1",
   call$1: function($event) {
-    var t1, new_x1, t2, dx_pc, dx1, t3, t4;
+    var t1, new_x1, t2, dx_pc, t3, t4, dx1;
     t1 = $.getInterceptor$x($event);
     t1.preventDefault$0($event);
     if (1 === $.get$length$asx(t1.get$touches($event)) && !this.box_1.modeZoom_3) {
@@ -738,13 +765,17 @@ $$._initTouch_anon0 = {"": "Closure;box_1,width_2,height_3",
       t2 = this.box_1;
       t2.new_x1_9 = new_x1;
       t2.new_y1_10 = $.get$y$x($.get$page$x($.$index$asx(t1.get$touches($event), 0)));
-      dx_pc = $.$div$n($.$sub$n(t2.start_x1_5, t2.new_x1_9), this.width_2);
+      dx_pc = $.$div$n($.$sub$n(t2.start_x1_5, t2.new_x1_9), $._width);
+      t3 = $.$negate$n($.$sub$n(t2.start_y1_6, t2.new_y1_10));
+      t4 = $._height;
+      if (typeof t4 !== "number")
+        throw $.iae(t4);
       if (t2.doBlit1_1) {
         t2.doBlit1_1 = false;
-        $.s52.drawBlit$4(dx_pc, $.$negate$n($.$sub$n(t2.start_y1_6, t2.new_y1_10)) / this.height_3, 0, 0).then$1(new $._initTouch__anon0(t2));
+        $.s52.drawBlit$4(dx_pc, t3 / t4, 0, 0).then$1(new $._initTouch__anon0(t2));
       }
     }
-    if (2 === $.get$length$asx(t1.get$touches($event))) {
+    if (2 === $.get$length$asx(t1.get$touches($event)) && this.box_1.doBlit2_2) {
       new_x1 = $.get$x$x($.get$page$x($.$index$asx(t1.get$touches($event), 0)));
       t2 = this.box_1;
       t2.new_x1_9 = new_x1;
@@ -762,11 +793,12 @@ $$._initTouch_anon0 = {"": "Closure;box_1,width_2,height_3",
         $.$sub$n($.$sub$n(t3, t4), $.$sub$n(t2.start_x2_7, t2.start_x1_5));
       else
         $.$sub$n($.$sub$n(t4, t3), $.$sub$n(t2.start_x1_5, t2.start_x2_7));
-      t2.dx_pc_14 = dx1 / this.width_2;
-      if (t2.doBlit2_2) {
-        t2.doBlit2_2 = false;
-        $.s52.drawBlit$4(0, 0, t2.dx_pc_14, 0).then$1(new $._initTouch__anon1(t2));
-      }
+      t1 = $._width;
+      if (typeof t1 !== "number")
+        throw $.iae(t1);
+      t2.dx_pc_14 = dx1 / t1;
+      t2.doBlit2_2 = false;
+      $.s52.drawBlit$4(0, 0, t2.dx_pc_14, 0).then$1(new $._initTouch__anon1(t2));
     }
   }
 };
@@ -783,7 +815,7 @@ $$._initTouch__anon1 = {"": "Closure;box_1",
   }
 };
 
-$$._initTouch_anon1 = {"": "Closure;box_1,dy_pc_4",
+$$._initTouch_anon1 = {"": "Closure;box_1,dy_pc_2",
   call$1: function($event) {
     var t1 = $.getInterceptor$x($event);
     t1.preventDefault$0($event);
@@ -795,12 +827,12 @@ $$._initTouch_anon1 = {"": "Closure;box_1,dy_pc_4",
     t1.newTouch_4 = false;
     if (-1 === t1.new_x1_9)
       return;
-    $.Timer_Timer($.Duration$(0, 0, 0, 300, 0, 0), new $._initTouch__anon(t1, this.dy_pc_4));
+    $.Timer_Timer($.Duration$(0, 0, 0, 300, 0, 0), new $._initTouch__anon(t1, this.dy_pc_2));
     $._startDrawLastTimer();
   }
 };
 
-$$._initTouch__anon = {"": "Closure;box_1,dy_pc_5",
+$$._initTouch__anon = {"": "Closure;box_1,dy_pc_3",
   call$0: function() {
     var t1, t2, t3, t4, rNMnew;
     t1 = {};
@@ -814,10 +846,10 @@ $$._initTouch__anon = {"": "Closure;box_1,dy_pc_5",
       t3 = $.JSInt_methods.$lt(0, t1.rNMnew_0);
       rNMnew = t1.rNMnew_0;
       t1.rNMnew_0 = t3 ? rNMnew : $.$negate$n(rNMnew);
-      $.Primitives_printString("dx_pc:" + $.S(t2.dx_pc_14) + ", dy_pc:" + $.S(this.dy_pc_5) + ", rNM:" + $.S(t2.rNM_17) + ", rNMnew:" + $.S(t1.rNMnew_0) + ", (rNM * dx_pc):" + $.S($.$mul$n(t2.rNM_17, t2.dx_pc_14)));
+      $.Primitives_printString("dx_pc:" + $.S(t2.dx_pc_14) + ", dy_pc:" + $.S(this.dy_pc_3) + ", rNM:" + $.S(t2.rNM_17) + ", rNMnew:" + $.S(t1.rNMnew_0) + ", (rNM * dx_pc):" + $.S($.$mul$n(t2.rNM_17, t2.dx_pc_14)));
       $.s52.getView$0().then$1(new $._initTouch___anon(t1, t2));
     } else
-      $.send$2$x($.s52, "S52_xy2LL", [t2.new_x1_9, t2.new_y1_10]).then$1(new $._initTouch___anon0(t2));
+      $.s52.getView$0().then$1(new $._initTouch___anon0(t2));
   }
 };
 
@@ -849,6 +881,21 @@ $$._initTouch_____anon0 = {"": "Closure;",
 
 $$._initTouch___anon0 = {"": "Closure;box_1",
   call$1: function(ret) {
+    var t1, cLat, t2;
+    t1 = $.getInterceptor$asx(ret);
+    cLat = t1.$index(ret, 0);
+    t2 = this.box_1;
+    t2.cLat_15 = cLat;
+    t2.cLon_16 = t1.$index(ret, 1);
+    t2.rNM_17 = t1.$index(ret, 2);
+    t2.north_18 = t1.$index(ret, 3);
+    $.Primitives_printString("getView(): cLat:" + $.S(t2.cLat_15) + ", cLon:" + $.S(t2.cLon_16) + ", rNM:" + $.S(t2.rNM_17) + ", north:" + $.S(t2.north_18));
+    $.send$2$x($.s52, "S52_xy2LL", [t2.new_x1_9, t2.new_y1_10]).then$1(new $._initTouch____anon(t2));
+  }
+};
+
+$$._initTouch____anon = {"": "Closure;box_1",
+  call$1: function(ret) {
     var t1, x1, y1;
     t1 = $.getInterceptor$asx(ret);
     x1 = t1.$index(ret, 0);
@@ -856,45 +903,44 @@ $$._initTouch___anon0 = {"": "Closure;box_1",
     t1 = this.box_1;
     t1.new_x1_9 = -1;
     t1.new_y1_10 = -1;
-    $.s52.xy2LL$2($.toDouble$0$n(t1.start_x1_5), $.toDouble$0$n(t1.start_y1_6)).then$1(new $._initTouch____anon(t1, x1, y1));
+    $.s52.xy2LL$2($.toDouble$0$n(t1.start_x1_5), $.toDouble$0$n(t1.start_y1_6)).then$1(new $._initTouch_____anon(t1, x1, y1));
   }
 };
 
-$$._initTouch____anon = {"": "Closure;box_1,x1_6,y1_7",
+$$._initTouch_____anon = {"": "Closure;box_1,x1_4,y1_5",
   call$1: function(ret) {
     var t1, x2, y2, dx, dy, t2;
     t1 = $.getInterceptor$asx(ret);
     x2 = t1.$index(ret, 0);
     y2 = t1.$index(ret, 1);
-    dx = $.$sub$n(this.x1_6, x2);
-    dy = $.$sub$n(this.y1_7, y2);
+    dx = $.$sub$n(this.x1_4, x2);
+    dy = $.$sub$n(this.y1_5, y2);
     t1 = $.s52;
     t2 = this.box_1;
-    t1.setView$4($.$sub$n(t2.cLat_15, dy), $.$sub$n(t2.cLon_16, dx), -1, -1).then$1(new $._initTouch_____anon());
-  }
-};
-
-$$._initTouch_____anon = {"": "Closure;",
-  call$1: function(ret) {
-    $.s52.draw$0().then$1(new $._initTouch______anon());
+    t1.setView$4($.$sub$n(t2.cLat_15, dy), $.$sub$n(t2.cLon_16, dx), -1, -1).then$1(new $._initTouch______anon());
   }
 };
 
 $$._initTouch______anon = {"": "Closure;",
+  call$1: function(ret) {
+    $.s52.draw$0().then$1(new $._initTouch_______anon());
+  }
+};
+
+$$._initTouch_______anon = {"": "Closure;",
   call$1: function(ret) {
   }
 };
 
 $$._startDrawLastTimer_anon = {"": "Closure;",
   call$1: function(timer) {
-    var e, exception, t1;
+    var s, exception;
     try {
       $.s52.drawLast$0().then$1(new $._startDrawLastTimer__anon());
     } catch (exception) {
-      t1 = $.unwrapException(exception);
-      e = t1;
-      $.getTraceFromException(exception);
-      $.Primitives_printString("catch: " + $.S(e));
+      $.unwrapException(exception);
+      s = $.getTraceFromException(exception);
+      $.Primitives_printString("catch: " + $.S(s));
       $.cancel$0$x($._timer);
       $._restartTimer = true;
     }
@@ -926,6 +972,10 @@ $$.main_anon = {"": "Closure;",
     $.context().set$wsReady(t1);
     t1 = $.Callback$once($.s52.get$rcvMsg());
     $.context().set$rcvS52Msg(t1);
+    t1 = $.Callback$once($._initTouch);
+    $.context().set$setTouchScrnSz(t1);
+    t1 = $.Callback$once($._orientationChg);
+    $.context().set$orientationChg(t1);
   }
 };
 
@@ -1921,7 +1971,7 @@ $$.TimerImpl = {"": "Object;_once,_inEventLoop,_handle?",
     if ($.hasTimer()) {
       t1 = $._globalState().get$topEventLoop();
       t1.activeTimerCount = $.$add$ns(t1.activeTimerCount, 1);
-      this._handle = $.get$globalThis().setInterval($.convertDartClosureToJS(new $.anon1(this, callback), 0), milliseconds);
+      this._handle = $.get$globalThis().setInterval($.convertDartClosureToJS(new $.anon0(this, callback), 0), milliseconds);
     } else
       throw $.$$throw($.UnsupportedError$("Periodic timer."));
   },
@@ -1953,7 +2003,7 @@ $$.internalCallback = {"": "Closure;this_0,callback_1",
   }
 };
 
-$$.anon1 = {"": "Closure;this_0,callback_1",
+$$.anon0 = {"": "Closure;this_0,callback_1",
   call$0: function() {
     this.callback_1.call$1(this.this_0);
   }
@@ -2327,6 +2377,8 @@ $$.JSNumber = {"": "Object;",
     return receiver - other;
   },
   $div: function(receiver, other) {
+    if (!(typeof other === "number"))
+      throw $.$$throw($.ArgumentError$(other));
     return receiver / other;
   },
   $mul: function(receiver, other) {
@@ -5274,6 +5326,9 @@ $$.Object = {"": ";",
   setView$4: function($0, $1, $2, $3) {
     return this.noSuchMethod$1(this, $.createInvocationMirror("setView", "setView$4", 0, [$0, $1, $2, $3], []));
   },
+  setViewPort$4: function($0, $1, $2, $3) {
+    return this.noSuchMethod$1(this, $.createInvocationMirror("setViewPort", "setViewPort$4", 0, [$0, $1, $2, $3], []));
+  },
   sndS52Msg$1: function($0) {
     return this.noSuchMethod$1(this, $.createInvocationMirror("sndS52Msg", "sndS52Msg$1", 0, [$0], []));
   },
@@ -5355,16 +5410,7 @@ $$.Stopwatch = {"": "Object;_start,_stop",
     if (t1 == null)
       return 0;
     t2 = this._stop;
-    if (t2 == null) {
-      t1 = $.Stopwatch__now();
-      t2 = this._start;
-      if (typeof t2 !== "number")
-        throw $.iae(t2);
-      t2 = t1 - t2;
-      t1 = t2;
-    } else
-      t1 = $.$sub$n(t2, t1);
-    return t1;
+    return t2 == null ? $.$sub$n($.Stopwatch__now(), this._start) : $.$sub$n(t2, t1);
   },
   get$elapsedMilliseconds: function() {
     return $.$tdiv$n($.$mul$n(this.get$elapsedTicks(), 1000), this.get$frequency(this));
@@ -7417,13 +7463,13 @@ $$.Callback = {"": "Object;_manualDispose,_liblib2$_id<,_liblib2$_callback",
     $.get$_proxiedObjectTable().globalize$1(this._liblib2$_id);
   },
   Callback$once$1: function(f) {
-    this._liblib2$_callback = new $.anon0(this, f);
+    this._liblib2$_callback = new $.anon1(this, f);
     this._initialize$1(false);
   },
   $isCallback: true
 };
 
-$$.anon0 = {"": "Closure;this_0,f_1",
+$$.anon1 = {"": "Closure;this_0,f_1",
   call$1: function(args) {
     var t1;
     try {
@@ -7821,9 +7867,19 @@ $._initUI = function() {
   return completer.future;
 };
 
-$._initTouch = function() {
+$._orientationChg = function(orientation, width, height) {
+  $.Primitives_printString("++++++++++++++++++++++++++++++++++++++orientation: " + $.S(orientation) + " " + $.S(width) + " x " + $.S(height));
+  $._width = width;
+  $._height = height;
+  $.s52.setViewPort$4(0, 0, width, height).then$1(new $._orientationChg_anon());
+  $.scoped(new $._orientationChg_anon0());
+  $._startDrawLastTimer();
+};
+
+$._initTouch = function(w, h) {
   var t1, target, t2;
   t1 = {};
+  $.Primitives_printString("+++++++++++++++++++++++++++_initTouch(): orientation: " + $.S(w) + " x " + $.S(h));
   target = $.query$1$x(document, "#svg1");
   t1.doBlit1_1 = true;
   t1.doBlit2_2 = true;
@@ -7843,9 +7899,11 @@ $._initTouch = function() {
   t1.cLon_16 = 0;
   t1.rNM_17 = -1;
   t1.north_18 = -1;
+  $._width = w;
+  $._height = h;
   t2 = $.getInterceptor$x(target);
   t2.get$onTouchStart(target).listen$1(new $._initTouch_anon(t1));
-  t2.get$onTouchMove(target).listen$1(new $._initTouch_anon0(t1, 1208, 752));
+  t2.get$onTouchMove(target).listen$1(new $._initTouch_anon0(t1));
   t2.get$onTouchEnd(target).listen$1(new $._initTouch_anon1(t1, 0));
 };
 
@@ -7857,7 +7915,6 @@ $._startDrawLastTimer = function() {
 };
 
 $._init = function() {
-  $._initTouch();
   $.s52.newOWNSHP$1("OWNSHP").then$1(new $._init_anon());
 };
 
@@ -9951,6 +10008,10 @@ $._updateAIS.call$2 = $._updateAIS;
 $._updateAIS.$name = "_updateAIS";
 $._loadENC.call$2 = $._loadENC;
 $._loadENC.$name = "_loadENC";
+$._orientationChg.call$3 = $._orientationChg;
+$._orientationChg.$name = "_orientationChg";
+$._initTouch.call$2 = $._initTouch;
+$._initTouch.$name = "_initTouch";
 $._init.call$0 = $._init;
 $._init.$name = "_init";
 $.IsolateNatives__processWorkerMessage.call$2 = $.IsolateNatives__processWorkerMessage;
@@ -9991,7 +10052,7 @@ $.Map = {builtin$cls: "Map"};
 $.num = {builtin$cls: "num"};
 $.TableRowElement = {builtin$cls: "TableRowElement"};
 $.EntrySync = {builtin$cls: "EntrySync"};
-$.List = {builtin$cls: "List"};
+$.Entry = {builtin$cls: "Entry"};
 $.ElementInstance = {builtin$cls: "ElementInstance"};
 $.TextTrackCue = {builtin$cls: "TextTrackCue"};
 $.String = {builtin$cls: "String"};
@@ -10003,6 +10064,7 @@ $.CssValue = {builtin$cls: "CssValue"};
 $.ReceivePort = {builtin$cls: "ReceivePort"};
 $.bool = {builtin$cls: "bool"};
 $.Gamepad = {builtin$cls: "Gamepad"};
+$.$double = {builtin$cls: "$double"};
 $.DomMimeType = {builtin$cls: "DomMimeType"};
 $.Length = {builtin$cls: "Length"};
 $.Transform = {builtin$cls: "Transform"};
@@ -10018,7 +10080,7 @@ $.Element = {builtin$cls: "Element"};
 $.PathSeg = {builtin$cls: "PathSeg"};
 $._ManagerStub = {builtin$cls: "_ManagerStub"};
 $.StyleSheet = {builtin$cls: "StyleSheet"};
-$.Entry = {builtin$cls: "Entry"};
+$.List = {builtin$cls: "List"};
 $.CONSTANT1 = new $._NullKey();
 Isolate.makeConstantList = function(list) {
   list.immutable$list = true;
@@ -10048,6 +10110,8 @@ $._UINFF = null;
 $._UIBDR = null;
 $._timer = null;
 $._restartTimer = true;
+$._width = null;
+$._height = null;
 $._ownshp = 0;
 $.lazyPort = null;
 $.ReceivePortImpl__nextFreeId = 1;
@@ -11463,13 +11527,13 @@ $.$defineNativeClass("Float32Array", {
     return true;
   },
   $asList: function() {
-    return function () { return [$.num]; };
+    return function () { return [$.$double]; };
   },
   $isCollection: function() {
     return true;
   },
   $asCollection: function() {
-    return function () { return [$.num]; };
+    return function () { return [$.$double]; };
   },
   $isJavaScriptIndexingBehavior: function() {
     return true;
@@ -11540,13 +11604,13 @@ $.$defineNativeClass("Float64Array", {
     return true;
   },
   $asList: function() {
-    return function () { return [$.num]; };
+    return function () { return [$.$double]; };
   },
   $isCollection: function() {
     return true;
   },
   $asCollection: function() {
-    return function () { return [$.num]; };
+    return function () { return [$.$double]; };
   },
   $isJavaScriptIndexingBehavior: function() {
     return true;
@@ -15091,7 +15155,7 @@ function init() {
         }
       }
     }
-    var objectClassObject = collectedClasses.Object, shortNames = "_key$1,_put$1,call$0,call$1,call$2,call$3,call$4,draw$0,eval$1,get$sb,then$1,_next$1,get$_id,xy2LL$2,get$_set,get$_tag,listen$1,lookup$1,toJson$0,_isFree$1,get$cause,process$0,_writeOn$1,callSync$1,doneCell$1,drawBlit$4,drawLast$0,get$_state,get$_table,get$rcvMsg,loadCell$1,moveNext$0,register$2,set$_state,_callback$2,_dispatch$1,_sendData$1,_sendDone$0,_setError$1,_setValue$2,exitScope$0,get$_portId,get$current,newOWNSHP$1,set$_handle,set$wsReady,_sendError$1,_sendValue$1,catchError$1,enterScope$0,get$isWorker,get$sendPort,invalidate$1,toSendPort$0,unregister$1,_setGlobals$0,get$_callback,get$_duration,get$_registry,get$_workerId,set$rcvS52Msg,get$_entrySize,get$_hashTable,get$_isolateId,get$stackTrace,runIteration$0,throwDelayed$0,_checkReplyTo$1,_checkCapacity$0,get$_receivePort,get$topEventLoop,get$_elementCount,get$_nextListener,get$_scopeIndices,get$nextIsolateId,set$_nextListener,set$nextIsolateId,get$currentContext,_checkModification$1,_liblib1$_setValue$1,_liblib3$_callback$1,get$_hasUnhandledError,get$_modificationCount,get$_resultOrListeners".split(","), longNames = "_key,_put,call,call,call,call,call,draw,eval,sb,then,_next,_id,xy2LL,_set,_tag,listen,lookup,toJson,_isFree,cause,process,_writeOn,callSync,doneCell,drawBlit,drawLast,_state,_table,rcvMsg,loadCell,moveNext,register,_state=,_callback,_dispatch,_sendData,_sendDone,_setError,_setValue,exitScope,_portId,current,newOWNSHP,_handle=,wsReady=,_sendError,_sendValue,catchError,enterScope,isWorker,sendPort,invalidate,toSendPort,unregister,_setGlobals,_callback,_duration,_registry,_workerId,rcvS52Msg=,_entrySize,_hashTable,_isolateId,stackTrace,runIteration,throwDelayed,_checkReplyTo,_checkCapacity,_receivePort,topEventLoop,_elementCount,_nextListener,_scopeIndices,nextIsolateId,_nextListener=,nextIsolateId=,currentContext,_checkModification,_setValue,_callback,_hasUnhandledError,_modificationCount,_resultOrListeners".split(",");
+    var objectClassObject = collectedClasses.Object, shortNames = "_key$1,_put$1,call$0,call$1,call$2,call$3,call$4,draw$0,eval$1,get$sb,then$1,_next$1,get$_id,xy2LL$2,get$_set,get$_tag,listen$1,lookup$1,toJson$0,_isFree$1,get$cause,process$0,_writeOn$1,callSync$1,doneCell$1,drawBlit$4,drawLast$0,get$_state,get$_table,get$rcvMsg,loadCell$1,moveNext$0,register$2,set$_state,_callback$2,_dispatch$1,_sendData$1,_sendDone$0,_setError$1,_setValue$2,exitScope$0,get$_portId,get$current,newOWNSHP$1,set$_handle,set$wsReady,_sendError$1,_sendValue$1,catchError$1,enterScope$0,get$isWorker,get$sendPort,invalidate$1,toSendPort$0,unregister$1,_setGlobals$0,get$_callback,get$_duration,get$_registry,get$_workerId,set$rcvS52Msg,get$_entrySize,get$_hashTable,get$_isolateId,get$stackTrace,runIteration$0,throwDelayed$0,_checkReplyTo$1,_checkCapacity$0,get$_receivePort,get$topEventLoop,get$_elementCount,get$_nextListener,get$_scopeIndices,get$nextIsolateId,set$_nextListener,set$nextIsolateId,get$currentContext,set$orientationChg,set$setTouchScrnSz,_checkModification$1,_liblib1$_setValue$1,_liblib3$_callback$1,get$_hasUnhandledError,get$_modificationCount,get$_resultOrListeners".split(","), longNames = "_key,_put,call,call,call,call,call,draw,eval,sb,then,_next,_id,xy2LL,_set,_tag,listen,lookup,toJson,_isFree,cause,process,_writeOn,callSync,doneCell,drawBlit,drawLast,_state,_table,rcvMsg,loadCell,moveNext,register,_state=,_callback,_dispatch,_sendData,_sendDone,_setError,_setValue,exitScope,_portId,current,newOWNSHP,_handle=,wsReady=,_sendError,_sendValue,catchError,enterScope,isWorker,sendPort,invalidate,toSendPort,unregister,_setGlobals,_callback,_duration,_registry,_workerId,rcvS52Msg=,_entrySize,_hashTable,_isolateId,stackTrace,runIteration,throwDelayed,_checkReplyTo,_checkCapacity,_receivePort,topEventLoop,_elementCount,_nextListener,_scopeIndices,nextIsolateId,_nextListener=,nextIsolateId=,currentContext,orientationChg=,setTouchScrnSz=,_checkModification,_setValue,_callback,_hasUnhandledError,_modificationCount,_resultOrListeners".split(",");
     for (var j = 0; j < shortNames.length; j++) {
       var type = 0;
       var short = shortNames[j];
