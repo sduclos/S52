@@ -17,6 +17,7 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/im
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/js_array.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/js_helper.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/js_number.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/js_rti.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/js_string.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/json_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/math_patch.dart
@@ -89,7 +90,6 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/indexed_db/dart2js/in
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/isolate/base.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/isolate/isolate.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/isolate/isolate_stream.dart
-file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/isolate/mangler.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/json/json.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/json/json_base.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/math/base.dart

@@ -87,6 +87,7 @@ int   S52_GL_setViewPort(int  x, int  y, int  width, int  height);
 int   S52_GL_getViewPort(int *x, int *y, int *width, int *height);
 
 // return the name of the top object
+const
 char *S52_GL_getNameObjPick(void);
 
 //int   S52_GL_setOWNSHP(double breadth, double length);

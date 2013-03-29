@@ -98,13 +98,9 @@ int       S57_addPrimVertex(S57_prim *prim, vertex_t *ptr);
 
 int       S57_endPrim      (S57_prim *prim);
 S57_prim *S57_getPrimGeo   (S57_geo  *geoData);
-//guint     S57_getPrimData  (S57_prim *prim, int *primNbr, double **vertex);
-//guint     S57_getPrimData  (S57_prim *prim, int *primNbr, double **vert, int *vertNbr);
-//guint     S57_getPrimData  (S57_prim *prim, int *primNbr, vertex_t **vert, int *vertNbr);
 guint     S57_getPrimData  (S57_prim *prim, guint *primNbr, vertex_t **vert, guint *vertNbr, guint *vboID);
 GArray   *S57_getPrimVertex(S57_prim *prim);
 int       S57_getPrimIdx   (S57_prim *prim, unsigned int i, int *mode, int *first, int *count);
-//int       S57_getPrimIdx   (S57_prim *prim, unsigned int i, int *mode, int *first, int *count, int *cIdx);
 S57_prim *S57_setPrimSize  (S57_prim *prim, int sz);
 int       S57_setPrimDList (S57_prim *prim, guint DList);
 

@@ -76,11 +76,21 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
 
             S57_setAtt(geoData, propName, propValue);
 
-            // debug - neg value on home made chart US500001.000
-            if ((0==strcmp("FIDN", propName)) && ('-'==propValue[0])) {
-                PRINTF("DEBUG: negative FIDN:%s\n", propValue);
-                g_assert(0);
+            if (0 == g_strcmp0(S57_getName(geoData), "M_NPUB")) {
+                PRINTF("DEBUG: M_NPUB-%i: %s --> %s\n", field_index, propName, propValue);
             }
+            if (0 == g_strcmp0(S57_getName(geoData), "C_AGGR")) {
+                PRINTF("DEBUG: C_AGGR-%i: %s --> %s\n", field_index, propName, propValue);
+            }
+            if (0 == g_strcmp0(S57_getName(geoData), "C_ASSO")) {
+                PRINTF("DEBUG: C_ASSO-%i: %s --> %s\n", field_index, propName, propValue);
+            }
+
+            // debug - neg value on home made chart US500001.000
+            //if ((0==strcmp("FIDN", propName)) && ('-'==propValue[0])) {
+            //    PRINTF("DEBUG: negative FIDN:%s\n", propValue);
+            //    g_assert(0);
+            //}
         }
     }
 

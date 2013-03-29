@@ -1306,9 +1306,6 @@ int         S52_PL_resloveCS(_S52_obj *obj)
     _resolveCS(obj, 0);
     _resolveCS(obj, 1);
 
-    // FIXME: get LXPO/PXPO/SXPO field from PLib
-    // and copy it to S57_obj ATT for cursor pick
-
     return TRUE;
 }
 
@@ -2813,7 +2810,6 @@ S52_Color  *S52_PL_getColorAt(guchar index)
 }
 
 static int        _linkLUP(_S52_obj *obj, int alt)
-
 // get the LUP that is approproate for this S57 object
 // if alt is 1 compute alternate rasterization rules
 {
@@ -3131,7 +3127,6 @@ int         S52_PL_getLUCM(_S52_obj *obj)
 S52_RadPrio S52_PL_getRPRI(_S52_obj *obj)
 {
     if (NULL==obj) {
-        //return S52_RAD_NPR;
         return S52_RAD_OVER;
     }
 
@@ -3265,6 +3260,24 @@ int         S52_PL_cmpCmdParam(_S52_obj *obj, const char *name)
 
     //return strncmp(obj->crntCmd->param, name, S52_SMB_NMLN);
     return strncmp(cmd->param, name, S52_SMB_NMLN);
+}
+
+const char *S52_PL_getCmdText(_S52_obj *obj)
+{
+    return_if_null(obj);
+
+    if (NULL == obj->crntA)
+        return NULL;
+
+    if (obj->crntAidx >= obj->crntA->len)
+        return NULL;
+
+    _S52_CmdL *cmd = &g_array_index(obj->crntA, _S52_CmdL, obj->crntAidx);
+
+    if ((NULL==cmd) || (NULL==cmd->cmd.def) || (NULL==cmd->cmd.def->exposition.LXPO))
+        return NULL;
+
+    return cmd->cmd.def->exposition.LXPO->str;
 }
 
 S52_DListData *S52_PL_getDLData(S52_cmdDef *def)
@@ -3434,6 +3447,7 @@ int         S52_PL_getSYspeed(_S52_obj *obj, double *speed)
 
 int         S52_PL_setLCdata(_S52_cmdDef *def, char pen_w)
 {
+    return_if_null(def);
     /*
     if (NULL == color) {
         // danger high light
@@ -4509,39 +4523,6 @@ static S52_objSup _toggleObjType(_S52_LUP *LUP)
     return LUP->sup;
 }
 
-/*
-S52_objSup  S52_PL_toggleObjSUP(S52_obj *obj)
-{
-    // some Mariners' Object (ex waypnt) are in this category
-    // Note that waypnt/select2 is on MARINERS STANDARD
-    //if (DISPLAYBASE == _getDISC(obj->LUP))
-    //    return S52_SUP_ERR;
-
-    if (S52_SUP_ERR == obj->LUP->sup)
-        return S52_SUP_ERR;
-
-    //if (S52_SUP_OFF == obj->objSUP)
-    //    obj->objSUP = S52_SUP_ON;
-    //else
-    //    obj->objSUP = S52_SUP_OFF;
-
-    //return obj->objSUP;
-
-    return S52_SUP_ERR;
-}
-*/
-
-/*
-S52_objSup  S52_PL_toggleObjType(_S52_obj *obj)
-// toggle an S57 object type, return state
-{
-    if (NULL == obj)
-        return S52_SUP_ERR;
-
-    return _toggleObjType(obj->LUP);
-}
-*/
-
 static S52_objSup _toggleLUPlist(_S52_LUP *LUPlist)
 // toggle all rules that are not in BASE
 {
@@ -4874,7 +4855,6 @@ S52_obj    *S52_PL_setWholin(S52_obj *obj)
 }
 
 S52_obj    *S52_PL_getWholin(S52_obj *obj)
-
 {
     return_if_null(obj);
 

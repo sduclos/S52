@@ -262,8 +262,8 @@ static S52ObjectHandle _BLKADJ01 = FALSE;
 static S52_RADAR_cb  _RADAR_cb = NULL;
 //static int          _doRADAR  = TRUE;
 
-static char _version[] = "$Revision: 1.116 $\n"
-      "libS52 0.86\n"
+static char _version[] = "$Revision: 1.117 $\n"
+      "libS52 0.87\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -3881,7 +3881,7 @@ exit:
 
     EGL_END;
 
-    return TRUE;
+    return ret;
 }
 
 static void       _delOldVessel(gpointer data, gpointer user_data)
@@ -4912,8 +4912,8 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     int width;
     int height;
 
-    _extent ext;         // pick extent
-    double s,w,n,e;         // used to save old view
+    _extent ext;          // pick extent
+    double s,w,n,e;       // used to save old view
     char   *name = NULL;  // object's name at XY
     double oldAA = 0.0;
 
@@ -8357,7 +8357,7 @@ static int                 _handle_method(const gchar *str, char *result, char *
         if (NULL == ret)
             _encode(result, "[0]");
         else {
-            _encode(result, "[%s]", ret);
+            _encode(result, "[\"%s\"]", ret);
         }
 
         goto exit;
@@ -8458,9 +8458,8 @@ static int                 _handle_method(const gchar *str, char *result, char *
         int ret = S52_setView(cLat, cLon, rNM, north);
         if (TRUE == ret)
             _encode(result, "[1]");
-        else {
+        else
             _encode(result, "[0]");
-        }
 
         //PRINTF("SOCK:S52_setView(): %s\n", result);
 
@@ -8476,7 +8475,10 @@ static int                 _handle_method(const gchar *str, char *result, char *
 
         int ret = S52_getView(&cLat, &cLon, &rNM, &north);
 
-        _encode(result, "[%f,%f,%f,%f]", cLat, cLon, rNM, north);
+        if (TRUE == ret)
+            _encode(result, "[%f,%f,%f,%f]", cLat, cLon, rNM, north);
+        else
+            _encode(result, "[0]");
 
         //PRINTF("SOCK:S52_getView(): %s\n", result);
 

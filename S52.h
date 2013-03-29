@@ -275,6 +275,8 @@ DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int
  * Cursor pick
  * (in the next frame, the object is drawn with the "DNGHL" color (experimental))
  *
+ * NOTE: using 'double' instead of 'unsigned int' because X11 handle mouse in 'double'.
+ *
  *
  * Return: (transfer none): the '<name>:<S57ID>' of the S57 object, else NULL
  */

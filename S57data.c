@@ -1153,8 +1153,8 @@ int        S57_dumpData(_S57_geo *geoData, int dumpCoords)
     return_if_null(geoData);
 
 
-    PRINTF("S57_ID : %i\n", geoData->id);
-    PRINTF("NAME   : %s\n", geoData->name->str);
+    PRINTF("S57ID : %i\n", geoData->id);
+    PRINTF("NAME  : %s\n", geoData->name->str);
 
     g_datalist_foreach(&geoData->attribs, _printAtt, NULL);
 
@@ -1239,8 +1239,8 @@ const char *S57_getAtt(_S57_geo *geoData)
     return_if_null(geoData);
 
 
-    PRINTF("S57_ID : %i\n", geoData->id);
-    PRINTF("NAME   : %s\n", geoData->name->str);
+    PRINTF("S57ID : %i\n", geoData->id);
+    PRINTF("NAME  : %s\n", geoData->name->str);
 
     g_string_set_size(_attList, 0);
     g_string_printf(_attList, "%i", geoData->id);

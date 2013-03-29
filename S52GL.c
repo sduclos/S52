@@ -8453,11 +8453,11 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //    PRINTF("found %i\n", S57_getGeoID(geo));
     //    return TRUE;
     //}
-    if (TRUE == _doPick) {
-        if (0 == strcmp("PRDARE", S52_PL_getOBCL(obj))) {
-            PRINTF("PRDARE found\n");
-        }
-    }
+    //if (TRUE == _doPick) {
+    //    if (0 == strcmp("PRDARE", S52_PL_getOBCL(obj))) {
+    //        PRINTF("PRDARE found\n");
+    //    }
+    //}
     //------------------------------------------------------
 
 
@@ -8521,6 +8521,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
 
 
         // debug - dump pixel
+        /*
         for (int i=8; i>=0; --i) {
             int j = i*9;
             printf("%i |%X %X %X %X %X %X %X %X %X|\n", i,
@@ -8530,6 +8531,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
         }
         printf("finish with object: cIdx: %X\n", _cIdx.idx);
         printf("----------------------------\n");
+        */
     }
 
 
@@ -9732,39 +9734,62 @@ int        S52_GL_getViewPort(int *x, int *y, int *width, int *height)
     return TRUE;
 }
 
+
+const
 char      *S52_GL_getNameObjPick(void)
 {
-    if (_objPick->len > 0) {
-        char        *name  = NULL;
-        unsigned int S57ID = 0;
-
-        PRINTF("----------- PICK(%i) ---------------\n", _objPick->len);
-
-        for (guint i=0; i<_objPick->len; ++i) {
-            S52_obj *obj = (S52_obj*)g_ptr_array_index(_objPick, i);
-            S57_geo *geo = S52_PL_getGeo(obj);
-
-            name  = S57_getName(geo);
-            S57ID = S57_getGeoID(geo);
-
-            PRINTF("%i  : %s\n", i, name);
-            PRINTF("LUP : %s\n", S52_PL_getCMD(obj));
-            PRINTF("DPRI: %i\n", (int)S52_PL_getDPRI(obj));
-            S57_dumpData(geo, FALSE);
-            PRINTF("-----------\n");
-        }
-
-        // hightlight object at the top
-        _objhighlight = (S52_obj*)g_ptr_array_index(_objPick, _objPick->len-1);
-        S52_PL_highlightON(_objhighlight);
-
-        SPRINTF(_strPick, "%s:%i", name, S57ID);
-
-    } else {
-        PRINTF("NOTE: no S57 object\n");
+    if (0 == _objPick->len) {
+        PRINTF("WARNING: no S57 object found\n");
+        return NULL;
     }
 
-    return _strPick;
+    const    char *name  = NULL;
+    unsigned int   S57ID = 0;
+
+    PRINTF("----------- PICK(%i) ---------------\n", _objPick->len);
+
+    for (guint i=0; i<_objPick->len; ++i) {
+        S52_obj *obj = (S52_obj*)g_ptr_array_index(_objPick, i);
+        S57_geo *geo = S52_PL_getGeo(obj);
+
+        name  = S57_getName(geo);
+        S57ID = S57_getGeoID(geo);
+
+        PRINTF("%i  : %s\n", i, name);
+        PRINTF("LUP : %s\n", S52_PL_getCMD(obj));
+        PRINTF("DPRI: %i\n", (int)S52_PL_getDPRI(obj));
+
+        { // pull PLib exposition field: LXPO/PXPO/SXPO
+            S52_CmdWrd cmdWrd = S52_PL_iniCmd(obj);
+            while (S52_CMD_NONE != cmdWrd) {
+                const char *cmdType = NULL;
+                switch (cmdWrd) {
+                    case S52_CMD_SYM_PT: cmdType = "SY"; break;   // SY
+                    case S52_CMD_COM_LN: cmdType = "LC"; break;   // LC
+                	case S52_CMD_ARE_PA: cmdType = "AP"; break;   // AP
+
+                	default: break;
+                }
+
+                if (NULL != cmdType)
+                    PRINTF("%s: %s\n", cmdType, S52_PL_getCmdText(obj));
+
+                cmdWrd = S52_PL_getCmdNext(obj);
+            }
+        }
+
+        S57_dumpData(geo, FALSE);
+        PRINTF("-----------\n");
+    }
+
+    // hightlight object at the top of the stack
+    _objhighlight = (S52_obj*)g_ptr_array_index(_objPick, _objPick->len-1);
+    S52_PL_highlightON(_objhighlight);
+
+    SPRINTF(_strPick, "%s:%i", name, S57ID);
+
+
+    return (const char *)_strPick;
 }
 
 #if 0

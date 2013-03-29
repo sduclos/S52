@@ -224,13 +224,13 @@ const char    *S52_PL_infoLUP(S52_obj *obj);
 const char    *S52_PL_getCMD(S52_obj *obj);
 
 // command word list handling
-// get next command word in the list
 S52_CmdWrd     S52_PL_iniCmd(S52_obj *obj);
+// get next command word in the list
 S52_CmdWrd     S52_PL_getCmdNext(S52_obj *obj);
-// get current command word
-//S52_Cmd      S52_PL_getCmdWord(S52_obj *obj);
 // compare name to parameter of current command word
 int            S52_PL_cmpCmdParam(S52_obj *obj, const char *name);
+// get str for the current command (PLib exposition field: LXPO/PXPO/SXPO)
+const char    *S52_PL_getCmdText(S52_obj *obj);
 
 S52_DListData *S52_PL_getDLData(S52_cmdDef *def);
 

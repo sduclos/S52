@@ -2071,12 +2071,10 @@ static int      _X11_handleXevent(gpointer user_data)
                     g_print("vessel found\n");
                     unsigned int S57ID = atoi(name+7);
 
-                    //g_print("OBJ: %i\n", S57ID);
-
                     S52ObjectHandle vessel = S52_getMarObjH(S57ID);
                     if (NULL != vessel) {
                         S52_setVESSELstate(vessel, 1, 0, VESSELTURN_UNDEFINED);
-                        g_print("ATT: %s\n", S52_getAttList(S57ID));
+                        //g_print("ATT: %s\n", S52_getAttList(S57ID));
                     }
                 }
             }

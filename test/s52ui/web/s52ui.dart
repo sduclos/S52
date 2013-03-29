@@ -3,6 +3,7 @@
 library s52ui;
 
 import 'dart:html';
+import 'dart:svg';
 import 'dart:json';
 import 'dart:async';
 import 'package:js/js.dart' as js;
@@ -429,7 +430,7 @@ void _initTouch(var w, var h) {
   int new_y1   = -1;
   int new_x2   =  0;
   int new_y2   =  0;
-  int tick     =  0;
+  int ticks    =  0;
   
   double dx_pc =  0.0; 
   double dy_pc =  0.0; 
@@ -455,7 +456,7 @@ void _initTouch(var w, var h) {
     if (false == newTouch) {
       newTouch = true;
       modeZoom = false;
-      tick     = 0;
+      ticks    = 0;
       
       // stop drawLast loop
       _timer.cancel();
@@ -501,8 +502,9 @@ void _initTouch(var w, var h) {
     event.preventDefault();
     
     // trim the number of touchMove event 
-    //if (0 != (++tick % 5))
+    //if (0 != (++ticks % 5))
     //  return;
+    ++ticks;    
     
     // scrool
     if ((1==event.touches.length) && (false==modeZoom)) {
@@ -557,6 +559,37 @@ void _initTouch(var w, var h) {
   
   target.onTouchEnd.listen((TouchEvent event) {
     event.preventDefault();
+    //#define TICKS_PER_TAP  6
+    //#define EDGE_X0       50   // 0 at left
+    //#define EDGE_Y0       50   // 0 at top
+    //#define DELTA          5
+    if (6 > ticks) {
+      s52.pickAt(start_x1.toDouble(), start_y1.toDouble()).then((ret) {
+        //if (0 != ret[0]) { 
+          TextElement svg1txt = query('#svg1text');
+          //TextContentElement svg1txt = query('#svg1text');
+          //SVGTextElement svg1txt = query('#svg1text');
+          svg1txt.text = "XY($start_x1, $start_y1): NAME:ID=${ret[0]}";
+          
+          // set S52 UI background color
+          //svg1txt.style.backgroundColor = "rgba(${_UIBCK[0]},${_UIBCK[1]},${_UIBCK[2]}, 0.7)";
+          // set S52 UI Border Color
+          //svg1txt.style.backgroundColor = "rgb(${_UIBDR[0]},${_UIBDR[1]},${_UIBDR[2]})");
+          // set S52 UI Text Color
+          //svg1txt.style.textFillColor = "rgb(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]})";
+          //svg1txt.style.textStrokeColor = "rgb(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]})";
+          //svg1txt.style.color = "rgba(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]}, 1.0)";
+          //svg1txt.style.color = "red";
+          
+          s52.draw().then((ret) { _startDrawLastTimer(); });
+          
+          //print(svg1txt);
+        //}
+      });
+
+      return;
+    }
+    
 
     // wait for last finger on the screen
     if (0 != event.touches.length) {
