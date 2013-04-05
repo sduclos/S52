@@ -122,8 +122,6 @@ GData    *S57_setAtt(S57_geo *geoData, const char *name, const char *val);
 // get str of the form ",KEY1:VAL1,KEY2:VAL2, ..." of S57 attribute only (not OGR)
 const char *S57_getAtt(S57_geo *geoData);
 
-//int       S57_setTouch(S57_geo *geo, S57_geo *touch);
-//S57_geo  *S57_getTouch(S57_geo *geo);
 int       S57_setTouchTOPMAR(S57_geo *geo, S57_geo *touch);
 S57_geo  *S57_getTouchTOPMAR(S57_geo *geo);
 int       S57_setTouchLIGHTS(S57_geo *geo, S57_geo *touch);
@@ -137,6 +135,8 @@ double    S57_setScamin(S57_geo *geo, double scamin);
 double    S57_getScamin(S57_geo *geo);
 double    S57_resetScamin(S57_geo *geo);
 
+int       S57_setLNAM(S57_geo *geo, GString *lnam);
+GString  *S57_getLNAM(S57_geo *geo);
 
 // suppression
 gboolean  S57_setSup(S57_geo *geoData, gboolean sup);
@@ -149,7 +149,7 @@ gboolean  S57_getSup(S57_geo *geoData);
 
 // debug
 int       S57_dumpData(S57_geo *geoData, int dumpCoords);
-unsigned int S57_getGeoID(S57_geo *geoData);
+guint     S57_getGeoID(S57_geo *geoData);
 
 #ifdef S52_USE_PROJ
 #include <proj_api.h>   // projXY, projUV, projPJ
@@ -160,12 +160,9 @@ int       S57_geo2prj3dv(guint npt, double *data);
 int       S57_geo2prj(S57_geo *geo);
 #endif
 
-//int       S57_isPtInside(int npt, pt3 *v, double x, double y, int close)
 int       S57_isPtInside(int npt, double *xyz, double x, double y, int close);
 int       S57_touch(S57_geo *geoA, S57_geo *geoB);
 
-//guint     S57_getCrntIdx(S57_geo *geo);
-//guint     S57_setCrntIdx(S57_geo *geo, guint index);
 guint     S57_getGeoSize(S57_geo *geo);
 guint     S57_setGeoSize(S57_geo *geo, guint size);
 

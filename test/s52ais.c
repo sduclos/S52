@@ -1603,7 +1603,7 @@ int main(int argc, char *argv[])
         pid_t pid = getpid();
         FILE *fd  = fopen(AIS PID, "w");
         if (NULL != fd) {
-            fprintf(fd, "%i", pid);
+            fprintf(fd, "%i\n", pid);
             fclose(fd);
         }
     }

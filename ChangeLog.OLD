@@ -2,6 +2,9 @@
 #                The 'real' ChangeLog is generated with the Perl script cvs2cl.pl
 #
 
+2013APR05
+    -add test for cursor pick in s52ui
+
 2013MAR26
     -add device rotation handling to s52droid (s52ui.dart)
 

@@ -23,7 +23,7 @@
     <script type="text/javascript" src="js/cordova.js">       </script>
     -->     
     <script type="text/javascript" src="js/cordova-2.2.0.js"> </script>
-    <script type="text/javascript" src="js/websocket.js">    </script>
+    <script type="text/javascript" src="js/websocket.js">     </script>
 
     <!-- dart code -->
     <script type="application/dart" src="s52ui.dart">               </script>
@@ -71,39 +71,31 @@ window.document.getElementById("example").innerHTML=txt;
 
         // cordova define android "menubutton", "backbutton"
         document.addEventListener("menubutton", toggleUI, false);
-        //document.addEventListener("backbutton", _closeUI, false);
+        // this override normal back action!
+        //document.addEventListener("backbutton",  closeUI, false);
         
         // device orientation change
         window.addEventListener("resize", orientation, false);
         //window.addEventListener("orientationchange", checkOrientation, false);
         // (optional) Android doesn't always fire orientationChange on 180 degree turns
-        //setInterval(checkOrientation, 2000); 
+        //setInterval(orientation, 2000); 
         
-        // will trigger touch initialisation W x H
+        // will trigger touch initialisation and also set W x H
         screenSize();     
       }
 
-      function onOpen(evt)    { console.log("onOpen(): "); wsReady();}
+      function onOpen(evt)    { console.log("onOpen(): "); wsReady(); }
       function onClose(evt)   { console.log("onClose():"); }
       function onError(evt)   { console.log("onError():"); }
       function onMessage(evt) { rcvS52Msg(evt.data);       }
       // called from s52ui.dart
       function sndS52Msg(str) { websocket.send(str);       }
       
-      function toggleUI() {
-        if ('none' == document.getElementById('tbodyL').style.display) {
-          document.getElementById('tbodyL').style.display = 'table';
-          document.getElementById('tbodyR').style.display = 'table';
-          document.getElementById('svg1'  ).style.display = 'none';
-        } else {
-          document.getElementById('tbodyL').style.display = 'none';
-          document.getElementById('tbodyR').style.display = 'none';
-          document.getElementById('svg1'  ).style.display = 'inline-block';
-        }
-      }
+      function toggleUI(evt)  { toggleUIEvent(evt);        }
+      //function  closeUI(evt)  {  closeUIEvent(evt);        }
       
-      function orientation() { orientationChg(window.orientation, window.innerWidth, window.innerHeight); }
-      function screenSize()  { setTouchScrnSz(window.innerWidth, window.innerHeight); }
+      function orientation()  { orientationChg(window.orientation, window.innerWidth, window.innerHeight); }
+      function screenSize()   { setTouchScrnSz(window.innerWidth, window.innerHeight); }
       
 /*      
 if (navigator.geolocation)

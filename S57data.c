@@ -83,7 +83,7 @@ typedef struct _S57_geo {
 
     GString     *name;        // object name 6/8 + '\0'; used for S52 LUP
     S52_Obj_t    obj_t;       // used in CS
-    //S57_Obj_t    obj_t;       // used in CS also
+    //S57_Obj_t    obj_t;       // used in CS
 
     _rect        rect;        // lat/lon extent of object
     gboolean     sup;         // geo sup - TRUE if outside view
@@ -112,6 +112,11 @@ typedef struct _S57_geo {
     S57_prim    *prim;
 
     GData       *attribs;
+    GString     *LNAM;       // Long NAMe: could be dandling when 'attribs' is freed
+
+    // C_AGGR / C_ASSO
+    GString     *LNAM_REFS;  // Long NAMe list of object in this relationship
+    GString     *FFPT_RIND;  // relationship: 2 - slave, 3 - peer
 
     // for CS - object "touched" by this object
     union {
@@ -958,35 +963,11 @@ GData     *S57_setAtt(_S57_geo *geoData, const char *name, const char *val)
     return_if_null(name);
     return_if_null(val);
 
-    // debug
-    //PRINTF("OBJ: %s, ATT_NAME: %s, ATT_VAL: %s\n", S57_getName(geoData), name, val);
-    //if (0==g_strcasecmp(S57_getName(geoData), "marfea")) {
-    //    PRINTF("XXX SKIP   OBJ: %s, ATT_NAME: %s, ATT_VAL: %s\n", S57_getName(geoData), name, val);
-    //    return NULL;
-    //}
-    /*
-    if (NULL == val) {
-        g_assert(0);
-        return NULL;
-    }
-    */
-
     GQuark   qname = g_quark_from_string(name);
     GString *value = g_string_new(val);
 
     if (NULL == geoData->attribs)
         g_datalist_init(&geoData->attribs);
-
-    // FIXME: maybe move up this SCAMIN test ?
-    //if (0==g_strcmp0(name, "SCAMIN") && NULL!=val) {
-    if (0==g_strcmp0(name, "SCAMIN")) {
-         S57_setScamin(geoData, S52_atof(val));
-         //geoData->scamin = S52_atof(val);
-
-         // debug
-         //if (0==g_strcmp0(S57_getName(geoData), "DEPCNT"))
-         //   PRINTF("scamin depcnt: %s\n", val);
-    }
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
     if ((0==S52_strncmp(S57_getName(geoData), "Edge", 4)) && (0==S52_strncmp(name, "RCID", 4))) {
@@ -998,24 +979,6 @@ GData     *S57_setAtt(_S57_geo *geoData, const char *name, const char *val)
 
     return geoData->attribs;
 }
-
-#if 0
-int        S57_setTouch(_S57_geo *geo, S57_geo *touch)
-{
-    return_if_null(geo);
-
-    geo->touch = touch;
-
-    return TRUE;
-}
-
-S57_geo   *S57_getTouch(_S57_geo *geo)
-{
-    return_if_null(geo);
-
-    return geo->touch;
-}
-#endif
 
 int        S57_setTouchTOPMAR(_S57_geo *geo, S57_geo *touch)
 {
@@ -1114,6 +1077,29 @@ double     S57_resetScamin(_S57_geo *geo)
     geo->scamin = val;
 
     return geo->scamin;
+}
+
+int       S57_setLNAM(S57_geo *geo, GString *lnam)
+{
+    return_if_null(geo);
+    return_if_null(lnam);
+
+    if (NULL == geo->LNAM) {
+        geo->LNAM = lnam;
+    } else {
+        PRINTF("WARNING: geo->LNAM allready in use .. ");
+        g_assert(0);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+GString  *S57_getLNAM(S57_geo *geo)
+{
+    return_if_null(geo);
+
+    return geo->LNAM;
 }
 
 static void   _printAtt(GQuark key_id, gpointer data, gpointer user_data)

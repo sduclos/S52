@@ -262,8 +262,8 @@ static S52ObjectHandle _BLKADJ01 = FALSE;
 static S52_RADAR_cb  _RADAR_cb = NULL;
 //static int          _doRADAR  = TRUE;
 
-static char _version[] = "$Revision: 1.117 $\n"
-      "libS52 0.87\n"
+static char _version[] = "$Revision: 1.118 $\n"
+      "libS52 0.88\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -843,7 +843,7 @@ static gint       _cmpCell(gconstpointer a, gconstpointer b)
         return  1;
 }
 
-static _cell*     _addCell(const char *filename)
+static _cell     *_addCell(const char *filename)
 // add this cell else NULL (if allready loaded)
 // assume filename is not NULL
 {
@@ -924,7 +924,7 @@ static _cell*     _addCell(const char *filename)
 }
 
 #if 0
-static _cell*     _removeCell(_cell *ch)
+static _cell     *_removeCell(_cell *ch)
 // remove a cell from the set, else NULL
 {
     for (guint i=0; i<_cellList->len; ++i) {
@@ -1640,8 +1640,7 @@ DLL int    STD S52_init(void)
     return TRUE;
 }
 
-DLL
-const char* STD S52_version(void)
+DLL cchar *STD S52_version(void)
 {
     PRINTF("%s", _version);
 
@@ -1845,9 +1844,7 @@ static int        _suppLineOverlap()
     // assume that there is nothing on layer S52_PRIO_NODATA
     for (int prio=S52_PRIO_MARINR; prio>S52_PRIO_NODATA; --prio) {
         for (int obj_t=S52_LINES; obj_t>S52__META; --obj_t) {
-            //GPtrArray *rbin = _crntCell->renderBin[prio][S52_AREAS_T];
             GPtrArray *rbin = _crntCell->renderBin[prio][obj_t];
-            //unsigned int idx;
             for (guint idx=0; idx<rbin->len; ++idx) {
                 // one object
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
@@ -1878,7 +1875,6 @@ static int        _suppLineOverlap()
                 //MASK (IntegerList) = (7:255,255,255,255,255,255,255)
                 GString *maskstr = S57_getAttVal(geo, "MASK");
                 if (NULL != maskstr) {
-                    //PRINTF("INFO: MASK found [%s]\n", maskstr->str);
                     gchar **splitMASK  = g_strsplit_set(maskstr->str+1, "():,", 0);
                     gchar **topMASK    = splitMASK;
 
@@ -1886,9 +1882,6 @@ static int        _suppLineOverlap()
                     // 1 - mask, 2 - show, 255 - null (exterior boundary truncated by the data limit)
                     guint n = atoi(*splitMASK++);
                     for (guint i=0; i<n; ++splitMASK, ++i) {
-                        //if (NULL != *splitMASK && 0==strcmp("255", *splitMASK)) {
-                        //    PRINTF("NULL MASK FOUND (255): %s\n", maskstr->str);
-                        //}
                         if (NULL != *splitMASK && 0==strcmp("1", *splitMASK)) {
                             PRINTF("FIXME: MASKING FOUND (1): %s\n", maskstr->str);
                         }
@@ -2001,7 +1994,7 @@ static int        _suppLineOverlap()
 #endif
 
 
-static _cell*     _loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
+static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
 // FIXME: MUTEX
 {
     _cell   *ch = NULL;
@@ -2067,6 +2060,26 @@ static _cell*     _loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 
     _suppLineOverlap();
 #endif
+
+
+    // FIXME: handle C_AGGR / C_ASSO object for att "LNAM_REFS" (add info to cursor pick)
+    // - traverse META_T for C_AGGR / C_ASSO to get "LNAM_REFS"
+    // - parse "LNAM_REFS" to get LNAM
+    // - find S57 object named LNAM
+    // - link it to this C_AGGR or C_ASSO object
+
+    //if (0 == g_strcmp0(name, "LNAM_REFS")) {
+    //    geoData->LNAM_REFS = value;
+    //}
+
+    // for now assume that there is a relationship
+    // but not weather it's slave or peer
+    //else
+    //{
+    //    if (0 == g_strcmp0(name, "FFPT_RIN")) {
+    //        geoData->FFPT_RIND = value;
+    //    }
+    //}
 
     S52_fclose(fd);
 
@@ -4914,7 +4927,7 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 
     _extent ext;          // pick extent
     double s,w,n,e;       // used to save old view
-    char   *name = NULL;  // object's name at XY
+    const char *name = NULL;  // object's name at XY
     double oldAA = 0.0;
 
     S52_CHECK_INIT;
@@ -5844,9 +5857,6 @@ DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
 static
     S52ObjectHandle        _updateGeo(S52ObjectHandle objH, double *xyz)
 {
-    //return_if_null((void*)objH);
-    //S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)objH);
-
     // debug
     /*
     {
@@ -5902,26 +5912,13 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
 DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
 
     return_if_null((void*)objH);
 
     S52_CHECK_MUTX;
-    /*
-    g_static_mutex_lock(&_mp_mutex);
-    //  check if we are shuting down
-    if (NULL == _marinerCell) {
-        g_static_mutex_unlock(&_mp_mutex);
-        g_assert(0);
-        return NULL;
-    }
-    */
 
     S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)objH);
     if (NULL != obj) {
-
-        //S52_objSup supState = S52_PL_toggleObjSUP(obj);
-
         S57_geo *geo = S52_PL_getGeo(obj);
 
         if (TRUE == S57_getSup(geo))
@@ -5931,9 +5928,6 @@ DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH)
     }
 
     g_static_mutex_unlock(&_mp_mutex);
-
-    //if (S52_SUP_ERR == supState)
-    //    return NULL;
 
     return objH;
 }
@@ -5977,8 +5971,6 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
                                       S52ObjectHandle previousLEGLIN)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
-
     //S52_CHECK_MUTX; // mutex in S52_newMarObj()
 
     // debug
@@ -6019,8 +6011,6 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
 
         S52ObjectHandle leglin = S52_newMarObj("leglin", S52_LINES, 2, xyz, attval);
 
-        // validate previous leg
-        //if (NULL != previousLEGLIN) {
         // NOTE: FALSE == (VOID*)NULL or FALSE == (int) 0
         if (FALSE != previousLEGLIN) {
             S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)previousLEGLIN);
@@ -6225,7 +6215,6 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
 
     S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)objH);
     if (NULL == obj) {
-        PRINTF("WARNING: not a valid S52ObjectHandle\n");
         objH = FALSE;
         g_static_mutex_unlock(&_mp_mutex);
         return objH;
@@ -7299,7 +7288,7 @@ static DBusHandlerResult   _dbus_getCellNameList    (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getS57ClassList (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getS57ClassList    (DBusConnection *dbus, DBusMessage *message, void *user_data)
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -8719,7 +8708,7 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
                 }
             }
 
-            PRINTF("FIXME: msg not handled (type unknown)\n");
+            PRINTF("FIXME: msg not handled (%s)\n", str_read);
 
             return FALSE;
         }

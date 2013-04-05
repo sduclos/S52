@@ -1104,7 +1104,7 @@ static int      _android_init_external_UI (s52engine *engine)
     const gchar cmd[] =
         "sh /system/bin/am start       "
         "-a android.intent.action.MAIN "
-        "-n nav.ecs.s52droid/.s52ui  ";
+        "-n nav.ecs.s52droid/.s52ui    ";
 
     int ret = g_spawn_command_line_async(cmd, NULL);
     if (FALSE == ret) {
@@ -1114,6 +1114,33 @@ static int      _android_init_external_UI (s52engine *engine)
         g_print("_android_init_external_UI(): UI started ..\n");
         engine->do_S52draw     = FALSE;
         engine->do_S52drawLast = FALSE;
+    }
+
+    return TRUE;
+}
+
+static int      _android_done_external_UI (s52engine *engine)
+// FIXME: stop UI broken
+{
+    // this start the UI
+    //const gchar cmd[] =
+    //    "/system/bin/sh /system/bin/am start "
+    //    "--activity-previous-is-top          "
+    //    "-a android.intent.action.MAIN       "
+    //    "-n nav.ecs.s52droid/.s52ui          ";
+
+    const gchar cmd[] =
+        "/system/bin/sh /system/bin/am broadcast "
+        "-a nav.ecs.s52droid.s52ui.SHUTDOWN      ";
+                            
+    int ret = g_spawn_command_line_async(cmd, NULL);
+    if (FALSE == ret) {
+        g_print("_android_done_external_UI(): fail to stop UI\n");
+        return FALSE;
+    } else {
+        g_print("_android_done_external_UI(): UI stopped ..\n");
+        engine->do_S52draw     = TRUE;
+        engine->do_S52drawLast = TRUE;
     }
 
     return TRUE;
@@ -1729,6 +1756,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
                 //ANativeWindow_acquire(engine->app->window);
             }
 
+            //_android_done_external_UI(engine);
             engine->do_S52draw     = TRUE;
             engine->do_S52drawLast = TRUE;
 

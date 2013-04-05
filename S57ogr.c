@@ -85,13 +85,17 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
             if (0 == g_strcmp0(S57_getName(geoData), "C_ASSO")) {
                 PRINTF("DEBUG: C_ASSO-%i: %s --> %s\n", field_index, propName, propValue);
             }
-
-            // debug - neg value on home made chart US500001.000
-            //if ((0==strcmp("FIDN", propName)) && ('-'==propValue[0])) {
-            //    PRINTF("DEBUG: negative FIDN:%s\n", propValue);
-            //    g_assert(0);
-            //}
         }
+    }
+
+    // optimisation: direct link to GString save the search in attList
+    GString  *scamin = S57_getAttVal(geoData, "SCAMIN");
+    if ((NULL!=scamin) && (NULL!=scamin->str)){
+        S57_setScamin(geoData, S52_atof(scamin->str));
+    }
+    GString  *lnam   = S57_getAttVal(geoData, "LNAM");
+    if ((NULL!=lnam) && (NULL!=lnam->str)){
+        S57_setLNAM(geoData, lnam);
     }
 
     return TRUE;

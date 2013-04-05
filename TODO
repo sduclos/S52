@@ -27,7 +27,7 @@ Curent focus (top priority *):
     -isobath tag
 
     Coding:
-*   -handle C_AGGR and C_ASSO to showup in crusor pick (2 - slave, 3 - peer, need to hack GDAL)
+*   -handle C_AGGR and C_ASSO to showup in crusor pick (2 - slave, 3 - peer, need to hack GDAL TEMP_BUFFER_SIZE)
 *   -use masked lines field (OGR/S57 MASK/FSPT) to split line in multi-line
     -check handling anti-meridian (need a chart that overlap the meridian)
     -chart manager / show world contour / chart extent / CATALOG.031

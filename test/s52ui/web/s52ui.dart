@@ -12,19 +12,10 @@ part 'S52.dart';
 
 S52  s52;
 
-// S52 color for UI element
-List _UIBCK;  // background
-List _UINFF;  // text
-List _UIBDR;  // border
-
-// call drawLast() at interval
-Timer _timer        = null;
-bool  _restartTimer = true;
-
 var _width;
 var _height;
 
-  void _handleInput(int param, double value) {
+  _handleInput(int param, double value) {
     bool checked = false;
     switch (param) {
       case S52.MAR_SHOW_TEXT            : //=  1;
@@ -91,13 +82,13 @@ var _height;
 
     // get S52 UI background color
     s52.getRGB("UIBCK").then((UIBCK) {
-      _UIBCK = UIBCK;
+      s52.UIBCK = UIBCK;
       // get S52 UI Text Color
       s52.getRGB("UINFF").then((UINFF) {
-        _UINFF = UINFF;
+        s52.UINFF = UINFF;
         // get S52 UI Border Color
         s52.getRGB("UIBDR").then((UIBDR) {
-          _UIBDR = UIBDR;
+          s52.UIBDR = UIBDR;
           completer.complete(true);
         });
       });
@@ -110,30 +101,30 @@ var _height;
     _getS52UIcolor().then((value) {
       // set S52 UI background color
       query(".scrollTableL").style.backgroundColor =
-          //"rgba(${_UIBCK[0]},${_UIBCK[1]},${_UIBCK[2]}, 0.6)";
-          "rgba(${_UIBCK[0]},${_UIBCK[1]},${_UIBCK[2]}, 0.7)";
+          "rgba(${s52.UIBCK[0]},${s52.UIBCK[1]},${s52.UIBCK[2]}, 0.7)";
       // set S52 UI Border Color
       queryAll("hr").forEach((s) => s.style.backgroundColor =
-           "rgb(${_UIBDR[0]},${_UIBDR[1]},${_UIBDR[2]})");
+           "rgb(${s52.UIBDR[0]},${s52.UIBDR[1]},${s52.UIBDR[2]})");
       // set S52 UI Text Color
       queryAll("div").forEach((s) => s.style.color =
-           "rgb(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]})");
+           "rgb(${s52.UINFF[0]},${s52.UINFF[1]},${s52.UINFF[2]})");
 
       completer.complete(true);
     });
+    
     return completer.future;
   }
 
-  void _updateUIcol(int idx, TableCellElement c) {
+  _updateUIcol(int idx, TableCellElement c) {
     s52.setMarinerParam(S52.MAR_COLOR_PALETTE, idx.toDouble()).then((ret) {
       s52.draw().then((ret) {
-        s52.drawLast().then((ret){
+        //s52.drawLast().then((ret){
           _setUIcolor().then((ret) {});
-        });
+        //});
       });
    });
   }
-  _appendUList(UListElement UList, var txt) {
+  UListElement _appendUList(UListElement UList, var txt) {
     if (null == UList)
       UList = new UListElement();
 
@@ -143,7 +134,7 @@ var _height;
 
     return UList;
   }
-  _appendCellRTable(String txt, var cb, var idx) {
+  TableCellElement _appendCellRTable(String txt, var cb, var idx) {
     ParagraphElement p = new ParagraphElement();
     p.text = txt;
 
@@ -157,7 +148,7 @@ var _height;
     
     return c;
   }
-  void _clearTable(id) {
+  _clearTable(id) {
     TableElement t = query(id);
     bool nr = t.rows.isEmpty;
     while (!nr) {
@@ -270,7 +261,19 @@ var _height;
       });
     });
   }
+  /////////////// S57ID Button Handling //////////////////////////
+  void _listS57IDatt(var S57ID) {
+    _clearTable("#tableR");
 
+    s52.getAttList(int.parse(S57ID)).then((ret) {
+      print('ret: ${ret[0]}');
+      
+      var Att = ret[0].split(',');
+      for (int i=0; i<Att.length; ++i) {
+        _appendCellRTable(Att[i], null, i);
+      }
+    });
+  }
   
 ///////////////////////////////////////
 //
@@ -395,6 +398,8 @@ void _orientationChg(var orientation, var width, var height)
   
   _width  = width;
   _height = height;
+  //s52.width  = width;
+  //s52.height = height;
   
   s52.setViewPort(0, 0, width, height).then((ret) {
     s52.draw().then((ret) {});
@@ -404,10 +409,6 @@ void _orientationChg(var orientation, var width, var height)
   js.scoped(() {
     js.context.orientationChg = new js.Callback.once(_orientationChg);
   });
-
-  // restart drawLast loop if stopped by device rotation event
-  _startDrawLastTimer();
-
 }
 
 void _initTouch(var w, var h) {
@@ -448,6 +449,9 @@ void _initTouch(var w, var h) {
   //var height  =  752;
   _width  = w;
   _height = h;
+  //s52.width  = w;
+  //s52.height = h;
+
   
   target.onTouchStart.listen((TouchEvent event) {
     event.preventDefault();
@@ -457,10 +461,6 @@ void _initTouch(var w, var h) {
       newTouch = true;
       modeZoom = false;
       ticks    = 0;
-      
-      // stop drawLast loop
-      _timer.cancel();
-      _restartTimer = true;
       
       //* FIXME: cLat/cLon doesn't propagate to touchEnd
       s52.getView().then((ret){
@@ -515,6 +515,8 @@ void _initTouch(var w, var h) {
     
       double dx_pc =  (start_x1 - new_x1) / _width;  // %
       double dy_pc = -(start_y1 - new_y1) / _height; // % - Y down
+      //double dx_pc =  (start_x1 - new_x1) / s52.width;  // %
+      //double dy_pc = -(start_y1 - new_y1) / s52.height; // % - Y down
 
       if (true == doBlit1) {
         doBlit1 = false;
@@ -550,6 +552,7 @@ void _initTouch(var w, var h) {
       //dx_pc = (dx1 + dx2) / width;  // %
       //dy_pc = (dy1 + dy2) / height; // %
       dx_pc = dx1 / _width;  // %
+      //dx_pc = dx1 / s52.width;  // %
       //if (true == doBlit2) {
         doBlit2 = false;
         s52.drawBlit(0.0, 0.0, dx_pc, 0.0).then((ret) {doBlit2 = true;});
@@ -564,27 +567,36 @@ void _initTouch(var w, var h) {
     //#define EDGE_Y0       50   // 0 at top
     //#define DELTA          5
     if (6 > ticks) {
+      if ('inline-block' == query('#svg1g').style.display)
+        return;
+      
       s52.pickAt(start_x1.toDouble(), start_y1.toDouble()).then((ret) {
-        //if (0 != ret[0]) { 
-          TextElement svg1txt = query('#svg1text');
-          //TextContentElement svg1txt = query('#svg1text');
-          //SVGTextElement svg1txt = query('#svg1text');
-          svg1txt.text = "XY($start_x1, $start_y1): NAME:ID=${ret[0]}";
-          
-          // set S52 UI background color
-          //svg1txt.style.backgroundColor = "rgba(${_UIBCK[0]},${_UIBCK[1]},${_UIBCK[2]}, 0.7)";
-          // set S52 UI Border Color
-          //svg1txt.style.backgroundColor = "rgb(${_UIBDR[0]},${_UIBDR[1]},${_UIBDR[2]})");
-          // set S52 UI Text Color
-          //svg1txt.style.textFillColor = "rgb(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]})";
-          //svg1txt.style.textStrokeColor = "rgb(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]})";
-          //svg1txt.style.color = "rgba(${_UINFF[0]},${_UINFF[1]},${_UINFF[2]}, 1.0)";
-          //svg1txt.style.color = "red";
-          
-          s52.draw().then((ret) { _startDrawLastTimer(); });
-          
-          //print(svg1txt);
-        //}
+        TextElement svg1txt = query('#svg1text');
+        // set S52 UI Text Color
+        svg1txt.$dom_setAttribute('style', 'fill:rgba(${s52.UINFF[0]},${s52.UINFF[1]},${s52.UINFF[2]}, 1.0);');
+        svg1txt.text = '${ret[0]}';
+
+        var x = start_x1 +  5;
+        var y = start_y1 + 55;
+        svg1txt.$dom_setAttribute('x', '$x');
+        svg1txt.$dom_setAttribute('y', '$y');
+
+        var rec = svg1txt.client;
+        var w   = rec.width  + 10;
+        var h   = rec.height + 10;
+
+        RectElement svg1rec = query('#svg1rect');
+        svg1rec.$dom_setAttribute('width',  '$w');
+        svg1rec.$dom_setAttribute('height', '$h');
+        svg1rec.$dom_setAttribute('x', '${start_x1}');
+        svg1rec.$dom_setAttribute('y', '${start_y1}');
+        // set S52 UI background & border color - test:display:inline-block;
+        svg1rec.$dom_setAttribute('style', 'fill:rgba(${s52.UIBCK[0]},${s52.UIBCK[1]},${s52.UIBCK[2]}, 0.7);stroke:rgb(${s52.UIBDR[0]},${s52.UIBDR[1]},${s52.UIBDR[2]});display:inline-block;'
+                                 );
+
+        query('#svg1g').style.display = 'inline-block';
+        
+        s52.draw().then((ret) {});
       });
 
       return;
@@ -667,10 +679,6 @@ void _initTouch(var w, var h) {
         });
       }   // if
      });  // timer
-    
-    // restart drawLast loop if stopped by touch event
-    _startDrawLastTimer();
-  
   });     // touchEnd
 }
 
@@ -706,40 +714,45 @@ void _watchPosition() {
   // */
 }
 
-void _startDrawLastTimer() {
+_toggleUIEvent(evt) {
   
-  // allready running
-  if (false == _restartTimer)
-    return;
-  
-  _restartTimer = false;
+  if ('none' == query('#tbodyL').style.display) {
+    query('#tbodyL').style.display = 'table';
+    query('#tbodyR').style.display = 'table';
+    query('#svg1'  ).style.display = 'none';
+  } else {
+    query('#tbodyL').style.display = 'none';
+    query('#tbodyR').style.display = 'none';
+    query('#svg1'  ).style.display = 'inline-block';
+    query('#svg1g' ).style.display = 'none';
+  }
 
-  // call drawLast every second (1000 msec)
-  _timer = new Timer.periodic(new Duration(milliseconds: 1000), (timer) {
-    try {
-      s52.drawLast().then((ret) {});
-    } catch (e,s) {
-      print("catch: $s");
-      _timer.cancel();
-      _restartTimer = true;
-    }
+  js.scoped(() {
+    js.context.toggleUIEvent = new js.Callback.once(_toggleUIEvent);
   });
 }
 
-void _init() {
+_fullList(ev) {
+  ev.preventDefault();
   
-  // FIXME: get ownshp
-  // use the Future of ownshp to signal to start loading the UI (_initUI)
+  
+  _toggleUIEvent(ev);
+  
+  var txtL = query('#svg1text').text.split(':');
+  _listS57IDatt(txtL[1]); 
+}
+
+void _init() {
   s52.newOWNSHP('OWNSHP').then((ret) {
     //print('s5ui.dart:OWNSHP(): $ret');
     _ownshp = ret[0]; 
     
     // Dart BUG: can't read GPS
     //_watchPosition();
+    
+    query('#svg1g').onTouchStart.listen((ev) { _fullList(ev); });
 
-    _initUI().then((ret) { 
-      _startDrawLastTimer();
-    });
+    _initUI().then((ret) {});
   });
 }
 
@@ -752,19 +765,15 @@ void main() {
   print('s5ui.dart:main(): start');
   
   s52 = new S52();
-  //try {
   
   js.scoped(() {
-    js.context.wsReady        = new js.Callback.once(_init);
-
-    // WebSocket reply something (meaningless!) when making initial connection read it! (and maybe do something)
-    js.context.rcvS52Msg      = new js.Callback.once(s52.rcvMsg);
     js.context.setTouchScrnSz = new js.Callback.once(_initTouch);
     js.context.orientationChg = new js.Callback.once(_orientationChg);
+    js.context.toggleUIEvent  = new js.Callback.once(_toggleUIEvent);
+
+    js.context.wsReady        = new js.Callback.once(_init);
+
+    // WebSocket reply something (meaningless!) when making initial connection, read it! (and maybe do something)
+    js.context.rcvS52Msg      = new js.Callback.once(s52.rcvMsg);
   });
-  
-  //} catch(e,s) {
-  //  print(s);
-  //}
-  
 }

@@ -70,18 +70,16 @@ ul {
   font-family      : 'Open Sans', sans-serif;
   font-size        : 40pt;
   font-weight      : bold;
-  //line-height      : 1.2em;
-  //margin           : 0px;
-  //background-color : transparent;
-  display         : none;
+  display          : none;
   //display         : inline-block;
-  width           : 100%;
-  height          : 100%;
-  //version         : 1.1;
+  //-webkit-transform : translate(200px,200px);        // OK
+  //-webkit-transform : translate3d(200px,200px,0px);  // OK
+}
+#svg1g {
+  //display         : none;
+}
+#svg1rect {
+  //display         : inline-block;
 }
 #svg1text {
-  //background-color : blue;
-  //stroke : blue;
-  //fill   : red;
 }
-

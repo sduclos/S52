@@ -136,20 +136,27 @@ Main.prototype.render = function(html)
     	radius = window.innerHeight / 2.0;
     	
     var SVG = html.SVG();
-    //SVG.svg({id:'svg1', width:'120px', height:'120px', version:'1.1'},
-    //SVG.svg({id:'svg1', width:'100%', height:'100%', version:'1.1'},
-    SVG.svg({id:'svg1'},
-            //SVG.text({id:'svg1text', x:'20%', y:'20%', fill:'red'},
-            SVG.text({id:'svg1text', x:'20%', y:'20%'},
-                     'SVG'
-                     ),
-            SVG.circle({id:'svg1circle', r:radius, cx:'50%', cy:'50%', style:"stroke:red;fill:none;stroke-width:1"},
-                       SVG.animate({attributeName:'cx', from:'60', to:'200', dur:'30s'})
-                      )
-            //SVG.line  ({x1:'33', y1:'93', x2:'93', y2:'23', style:"stroke:blue;stroke-width:20"})
-            //SVG.line  ({x1:'33', y1:'93', x2:'93', y2:'23', stroke:'red', stroke-width:'20'})
-            //onmouseover:onOver, onmouseout:onOut })
+    SVG.svg({id:'svg1', width:'100%', height:'100%', version:'1.1'},
+            SVG.g({id:'svg1g'},   
+            	  SVG.rect({id:'svg1rect', x:'100', y:'100', rx:'10', ry:'10', width:'300', height:'64', style:'fill:rgba(0,0,255, 0.5);stroke-width:1;'}),
+           		  SVG.text({id:'svg1text', x:'105', y:'155', style:'fill:rgb(0,255,255);'},'SVG')
+                 ),
+        	SVG.circle({id:'svg1circle', r:radius, cx:'50%', cy:'50%', style:'stroke:red;fill:none;stroke-width:1;'})
            );
+
+
+
+    //SVG.svg({id:'svg2', width:'100%', height:'100%', version:'1.1'},
+    //    	SVG.circle({id:'svg1circle', r:radius, cx:'50%', cy:'50%', style:'stroke:red;fill:none;stroke-width:1;'})
+    //    	);
+
+    //SVG.svg({id:'svg1'},
+            	//SVG.text({id:'svg1text', x:'20%', y:'20%', fill:'red'},
+            	//SVG.line  ({x1:'33', y1:'93', x2:'93', y2:'23', style:"stroke:blue;stroke-width:20"})
+            	//SVG.line  ({x1:'33', y1:'93', x2:'93', y2:'23', stroke:'red', stroke-width:'20'})
+               	//onmouseover:onOver, onmouseout:onOut })
+                	       //SVG.animate({attributeName:'cx', from:'60', to:'200', dur:'30s'})
+
 
     //html.textarea({id:'output1', rows:10, cols:40});
     //html.hr();

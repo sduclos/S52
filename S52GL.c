@@ -2644,7 +2644,7 @@ static int       _VBODrawArrays(S57_prim *prim)
         //}
     }
 
-    _checkError("_VBODrawArrays()");
+    //_checkError("_VBODrawArrays()");
 
     return TRUE;
 }
@@ -2719,7 +2719,7 @@ static int       _VBODraw(S57_prim *prim)
     // bind with 0 - switch back to normal pointer operation
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    _checkError("_VBODraw() -fini-");
+    //_checkError("_VBODraw() -fini-");
 
     return TRUE;
 }
@@ -9760,21 +9760,31 @@ char      *S52_GL_getNameObjPick(void)
         PRINTF("DPRI: %i\n", (int)S52_PL_getDPRI(obj));
 
         { // pull PLib exposition field: LXPO/PXPO/SXPO
+            int nCmd = 0;
             S52_CmdWrd cmdWrd = S52_PL_iniCmd(obj);
             while (S52_CMD_NONE != cmdWrd) {
                 const char *cmdType = NULL;
                 switch (cmdWrd) {
-                    case S52_CMD_SYM_PT: cmdType = "SY"; break;   // SY
-                    case S52_CMD_COM_LN: cmdType = "LC"; break;   // LC
-                	case S52_CMD_ARE_PA: cmdType = "AP"; break;   // AP
+                    case S52_CMD_SYM_PT: cmdType = "SXPO"; break;   // SY
+                    case S52_CMD_COM_LN: cmdType = "LXPO"; break;   // LC
+                	case S52_CMD_ARE_PA: cmdType = "PXPO"; break;   // AP
 
                 	default: break;
                 }
 
-                if (NULL != cmdType)
-                    PRINTF("%s: %s\n", cmdType, S52_PL_getCmdText(obj));
+                if (NULL != cmdType) {
+                    char  name[80];
+                    const char *value = S52_PL_getCmdText(obj);
 
+                    // debug
+                    PRINTF("%s%i: %s\n", cmdType, nCmd, value);
+
+                    // insert in Att
+                    SPRINTF(name, "%s%i", cmdType, nCmd);
+                    S57_setAtt(geo, name, value);
+                }
                 cmdWrd = S52_PL_getCmdNext(obj);
+                ++nCmd;
             }
         }
 

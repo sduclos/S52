@@ -19,7 +19,14 @@
 
 package nav.ecs.s52droid;
 
+import	android.util.Log;
+
 //import android.app.Activity;
+//import android.content.BroadcastReceiver;
+//import android.content.Context;
+//import android.content.Intent;
+//import android.content.IntentFilter;
+
 import android.os.Bundle;
 import android.graphics.Color;
 
@@ -30,6 +37,8 @@ import com.Method.WebSocket.WebSocketFactory;
 
 public class s52ui extends DroidGap
 {
+    private static final String TAG = "s52ui";
+
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
@@ -47,5 +56,21 @@ public class s52ui extends DroidGap
         appView.clearCache(false);
 
         appView.addJavascriptInterface(new WebSocketFactory(appView), "WebSocketFactory");
+
+        Log.i(TAG, "starting WebView ...");
+
+        /*
+        // shutdown activity
+        // $ adb shell "am broadcast -a foo.bar.intent.action.SHUTDOWN"
+        BroadcastReceiver receiver = new BroadcastReceiver() {
+            @Override
+                public void onReceive(Context ctx, Intent intent) {
+                    Log.i(TAG, "onReceive():");
+                    finish();
+                }
+        };
+
+        registerReceiver(receiver, new IntentFilter("nav.ecs.s52droid.s52ui.SHUTDOWN"));
+        */
     }
 }
