@@ -581,7 +581,7 @@ static GLuint   _vboIDaftglwColrID = 0;
 static GArray  *_aftglwColorArr    = NULL;
 
 // utils
-static int       _f2d(GArray *tessWorkBuf_d, unsigned int npt, vertex_t *ppt) /*fold00*/
+static int       _f2d(GArray *tessWorkBuf_d, unsigned int npt, vertex_t *ppt)
 // convert array of float (vertex_t with GLES2) to array of double
 // as the tesselator work on double
 {
@@ -595,7 +595,7 @@ static int       _f2d(GArray *tessWorkBuf_d, unsigned int npt, vertex_t *ppt) /*
     return TRUE;
 }
 
-static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt) /*fold00*/
+static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt)
 // convert array of double to array of float
 // geo to VBO
 {
@@ -618,7 +618,7 @@ static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt) /*fo
 //-----------------------------------
 
 static
-inline void      _checkError(const char *msg) /*fold00*/
+inline void      _checkError(const char *msg)
 {
 #ifdef S52_DEBUG
 
@@ -647,7 +647,7 @@ inline void      _checkError(const char *msg) /*fold00*/
 }
 
 // FIXME: use GDestroyNotify() instead
-static int       _g_ptr_array_clear(GPtrArray *arr) /*fold00*/
+static int       _g_ptr_array_clear(GPtrArray *arr)
 // free vertex malloc'd, keep array memory allocated
 {
     for (guint i=0; i<arr->len; ++i)
@@ -657,7 +657,7 @@ static int       _g_ptr_array_clear(GPtrArray *arr) /*fold00*/
     return TRUE;
 }
 
-static int       _findCentInside(unsigned int npt, pt3 *v) /*fold00*/
+static int       _findCentInside(unsigned int npt, pt3 *v)
 // return TRUE and centroid else FALSE
 {
     _dcin  = -1.0;
@@ -687,7 +687,7 @@ static int       _findCentInside(unsigned int npt, pt3 *v) /*fold00*/
     return FALSE;
 }
 
-static int       _getCentroidOpen(guint npt, pt3 *v) /*fold00*/
+static int       _getCentroidOpen(guint npt, pt3 *v)
 // Open Poly - return TRUE and centroid else FALSE
 {
     GLdouble ai   = 0.0;
@@ -760,7 +760,7 @@ static int       _getCentroidOpen(guint npt, pt3 *v) /*fold00*/
     return FALSE;
 }
 
-static int       _getCentroidClose(guint npt, double *ppt) /*fold00*/
+static int       _getCentroidClose(guint npt, double *ppt)
 // Close Poly - return TRUE and centroid else FALSE
 {
     GLdouble ai;
@@ -828,7 +828,7 @@ static int       _getCentroidClose(guint npt, double *ppt) /*fold00*/
 }
 
 
-static int       _getMaxEdge(pt3 *p) /*fold00*/
+static int       _getMaxEdge(pt3 *p)
 {
     double x = p[0].x - p[1].x;
     double y = p[0].y - p[1].y;
@@ -845,7 +845,7 @@ static int       _getMaxEdge(pt3 *p) /*fold00*/
     return TRUE;
 }
 
-static GLvoid CALLBACK   _tessError(GLenum err) /*fold00*/
+static GLvoid CALLBACK   _tessError(GLenum err)
 {
     //const GLubyte *str = gluErrorString(err);
     const char *str = "FIXME: no gluErrorString(err)";
@@ -855,7 +855,7 @@ static GLvoid CALLBACK   _tessError(GLenum err) /*fold00*/
     g_assert(0);
 }
 
-static GLvoid CALLBACK   _quadricError(GLenum err) /*fold00*/
+static GLvoid CALLBACK   _quadricError(GLenum err)
 {
 
     //const GLubyte *str = gluErrorString(err);
@@ -867,13 +867,13 @@ static GLvoid CALLBACK   _quadricError(GLenum err) /*fold00*/
     g_assert(0);
 }
 
-static GLvoid CALLBACK   _edgeCin(GLboolean flag) /*fold00*/
+static GLvoid CALLBACK   _edgeCin(GLboolean flag)
 {
     _startEdge = (GL_FALSE == flag)? GL_TRUE : GL_FALSE;
 }
 
 
-static GLvoid CALLBACK   _combineCallback(GLdouble   coords[3], /*fold00*/
+static GLvoid CALLBACK   _combineCallback(GLdouble   coords[3],
                                   GLdouble  *vertex_data[4],
                                   GLfloat    weight[4],
                                   GLdouble **dataOut )
@@ -898,16 +898,16 @@ static GLvoid CALLBACK   _combineCallback(GLdouble   coords[3], /*fold00*/
     //g_ptr_array_add(tmpV, (GLdouble*) p);
 
 }
- /*fold00*/
+
 #if 0
 // debug
-static GLvoid CALLBACK   _combineCallbackCen(void) /*fold00*/
+static GLvoid CALLBACK   _combineCallbackCen(void)
 {
     g_assert(0);
 }
 #endif
 
-static GLvoid CALLBACK   _glBegin(GLenum data, S57_prim *prim) /*fold00*/
+static GLvoid CALLBACK   _glBegin(GLenum data, S57_prim *prim)
 {
     /*
     // debug
@@ -922,7 +922,7 @@ static GLvoid CALLBACK   _glBegin(GLenum data, S57_prim *prim) /*fold00*/
     S57_begPrim(prim, data);
 }
 
-static GLvoid CALLBACK   _beginCen(GLenum data) /*fold00*/
+static GLvoid CALLBACK   _beginCen(GLenum data)
 {
     // avoid "warning: unused parameter"
     (void) data;
@@ -931,7 +931,7 @@ static GLvoid CALLBACK   _beginCen(GLenum data) /*fold00*/
     //PRINTF("%i\n", data);
 }
 
-static GLvoid CALLBACK   _beginCin(GLenum data) /*fold00*/
+static GLvoid CALLBACK   _beginCin(GLenum data)
 {
     // avoid "warning: unused parameter"
     (void) data;
@@ -940,7 +940,7 @@ static GLvoid CALLBACK   _beginCin(GLenum data) /*fold00*/
     //PRINTF("%i\n", data);
 }
 
-static GLvoid CALLBACK   _glEnd(S57_prim *prim) /*fold00*/
+static GLvoid CALLBACK   _glEnd(S57_prim *prim)
 {
     /*
     // debug
@@ -955,7 +955,7 @@ static GLvoid CALLBACK   _glEnd(S57_prim *prim) /*fold00*/
     S57_endPrim(prim);
 }
 
-static GLvoid CALLBACK   _endCen(void) /*fold00*/
+static GLvoid CALLBACK   _endCen(void)
 {
     // debug
     //PRINTF("finish a poly\n");
@@ -964,12 +964,12 @@ static GLvoid CALLBACK   _endCen(void) /*fold00*/
         g_array_append_val(_nvertex, _vertexs->len);
 }
 
-static GLvoid CALLBACK   _endCin(void) /*fold00*/
+static GLvoid CALLBACK   _endCin(void)
 {
     // debug
 }
 
-static GLvoid CALLBACK   _vertex3d(GLvoid *data, S57_prim *prim) /*fold00*/
+static GLvoid CALLBACK   _vertex3d(GLvoid *data, S57_prim *prim)
 // double
 {
     //S57_addPrimVertex(prim, (vertex_t*)data);
@@ -989,13 +989,13 @@ static GLvoid CALLBACK   _vertex3d(GLvoid *data, S57_prim *prim) /*fold00*/
 
 }
 
-static GLvoid CALLBACK   _vertex3f(GLvoid *data, S57_prim *prim) /*fold00*/
+static GLvoid CALLBACK   _vertex3f(GLvoid *data, S57_prim *prim)
 // float
 {
     S57_addPrimVertex(prim, (vertex_t*)data);
 }
 
-static GLvoid CALLBACK   _vertexCen(GLvoid *data) /*fold00*/
+static GLvoid CALLBACK   _vertexCen(GLvoid *data)
 {
     pt3 *p = (pt3*) data;
 
@@ -1004,7 +1004,7 @@ static GLvoid CALLBACK   _vertexCen(GLvoid *data) /*fold00*/
     g_array_append_val(_vertexs, *p);
 }
 
-static GLvoid CALLBACK   _vertexCin(GLvoid *data) /*fold00*/
+static GLvoid CALLBACK   _vertexCin(GLvoid *data)
 {
     pt3 *p = (pt3*) data;
     static pt3 pt[2];
@@ -1019,7 +1019,7 @@ static GLvoid CALLBACK   _vertexCin(GLvoid *data) /*fold00*/
     _inSeg = (_startEdge)? TRUE : FALSE;
 }
 
-static void      _dumpATImemInfo(GLenum glenum) /*fold00*/
+static void      _dumpATImemInfo(GLenum glenum)
 {
     GLint params[4] = {0,0,0,0};
     //glGetIntegerv(GL_ATI_meminfo, GLint *params);
@@ -1081,7 +1081,7 @@ static  GLUquadricObj *_qobj = NULL;
 static S57_prim       *_diskPrimTmp = NULL;
 
 #ifdef S52_USE_OPENGL_VBO
-static _GLUquadricObj *_gluNewQuadric(void) /*fold00*/
+static _GLUquadricObj *_gluNewQuadric(void)
 {
     static _GLUquadricObj qobj;
 
@@ -1090,7 +1090,7 @@ static _GLUquadricObj *_gluNewQuadric(void) /*fold00*/
     return &qobj;
 }
 
-static int       _gluQuadricCallback(_GLUquadricObj* qobj, GLenum which, f fn) /*fold00*/
+static int       _gluQuadricCallback(_GLUquadricObj* qobj, GLenum which, f fn)
 {
     switch (which) {
       case _QUADRIC_ERROR:
@@ -1116,7 +1116,7 @@ static int       _gluQuadricCallback(_GLUquadricObj* qobj, GLenum which, f fn) /
     return TRUE;
 }
 
-static int       _gluDeleteQuadric(_GLUquadricObj* qobj) /*fold00*/
+static int       _gluDeleteQuadric(_GLUquadricObj* qobj)
 {
     (void)qobj;
 
@@ -1125,7 +1125,7 @@ static int       _gluDeleteQuadric(_GLUquadricObj* qobj) /*fold00*/
     return TRUE;
 }
 
-static int       _gluPartialDisk(_GLUquadricObj* qobj, /*fold00*/
+static int       _gluPartialDisk(_GLUquadricObj* qobj,
                                  GLfloat innerRadius, GLfloat outerRadius,
                                  GLint slices, GLint loops, GLfloat startAngle, GLfloat sweepAngle)
 {
@@ -1206,7 +1206,7 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj, /*fold00*/
     return TRUE;
 }
 
-static int       _gluDisk(_GLUquadricObj* qobj, GLfloat innerRadius, /*fold00*/
+static int       _gluDisk(_GLUquadricObj* qobj, GLfloat innerRadius,
                             GLfloat outerRadius, GLint slices, GLint loops)
 {
     _gluPartialDisk(qobj, innerRadius, outerRadius, slices, loops, 0.0, 360.0);
@@ -1214,7 +1214,7 @@ static int       _gluDisk(_GLUquadricObj* qobj, GLfloat innerRadius, /*fold00*/
     return TRUE;
 }
 
-static int       _gluQuadricDrawStyle(_GLUquadricObj* qobj, GLint style) /*fold00*/
+static int       _gluQuadricDrawStyle(_GLUquadricObj* qobj, GLint style)
 {
     qobj->style = style;
 
@@ -1225,7 +1225,7 @@ static int       _gluQuadricDrawStyle(_GLUquadricObj* qobj, GLint style) /*fold0
 #endif //S52_USE_OPENGL_VBO
 
 
-static GLint     _initGLU(void) /*fold00*/
+static GLint     _initGLU(void)
 // initialize various GLU object
 //
 {
@@ -1369,7 +1369,7 @@ static GLint     _initGLU(void) /*fold00*/
     return TRUE;
 }
 
-static GLint     _freeGLU(void) /*fold00*/
+static GLint     _freeGLU(void)
 {
 
     //tess
@@ -1403,7 +1403,7 @@ static GLint     _freeGLU(void) /*fold00*/
 }
 
 #ifdef S52_USE_GLC
-static GLint     _initGLC(void) /*fold00*/
+static GLint     _initGLC(void)
 {
     GLint font;
     static int first = FALSE;
@@ -1482,7 +1482,7 @@ static GLint     _initGLC(void) /*fold00*/
 #endif
 
 #ifdef S52_USE_FTGL
-static GLint     _initFTGL(void) /*fold00*/
+static GLint     _initFTGL(void)
 {
     //const char *file = "arial.ttf";
     //const char *file = "DejaVuSans.ttf";
@@ -1529,7 +1529,7 @@ static GLint     _initFTGL(void) /*fold00*/
 #endif
 
 #ifdef S52_USE_COGL
-static int       _initCOGL(void) /*fold00*/
+static int       _initCOGL(void)
 {
     /* Setup a Pango font map and context */
     _PangoFontMap = cogl_pango_font_map_new();
@@ -1591,7 +1591,7 @@ static int       _initCOGL(void) /*fold00*/
 #endif
 
 #ifdef S52_USE_A3D
-static int       _initA3D(void) /*fold00*/
+static int       _initA3D(void)
 {
     PRINTF("_initA3D() .. -0-\n");
 	_a3d_font = a3d_texfont_new(_a3d_font_file);
@@ -1616,7 +1616,7 @@ static int       _initA3D(void) /*fold00*/
 #endif
 
 #ifdef S52_USE_FREETYPE_GL
-static int       _init_freetype_gl(void) /*fold00*/
+static int       _init_freetype_gl(void)
 {
     const wchar_t   *cache    = L" !\"#$%&'()*+,-./0123456789:;<=>?"
                                 L"@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
@@ -1674,7 +1674,7 @@ static int       _init_freetype_gl(void) /*fold00*/
 }
 #endif
 
-static GLint     _tessd(GLUtriangulatorObj *tobj, S57_geo *geoData) /*fold00*/
+static GLint     _tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
 // WARNING: not re-entrant (tmpV)
 {
     guint     nr   = S57_getRingNbr(geoData);
@@ -1725,7 +1725,7 @@ static GLint     _tessd(GLUtriangulatorObj *tobj, S57_geo *geoData) /*fold00*/
     return TRUE;
 }
 
-static double    _computeSCAMIN(void) /*fold00*/
+static double    _computeSCAMIN(void)
 // FIXME: this is a BUG get SCAMIN from charts
 {
     double scalex = (_pmax.u - _pmin.u) / (double)_vp[2] * 10000.0;
@@ -1748,7 +1748,7 @@ static double    _computeSCAMIN(void) /*fold00*/
 //static GLfloat _view_roty = 0.0;
 
 
-static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m) /*fold00*/
+static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m)
 {
    float c = cos(angle * M_PI / 180.0);
    float s = sin(angle * M_PI / 180.0);
@@ -1765,7 +1765,7 @@ static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m) /*fold00*/
    m[5] =  c;
 }
 
-static void      _make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat *m) /*fold00*/
+static void      _make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat *m)
 {
    // FIXME: bzero()
    for (int i = 0; i < 16; i++)
@@ -1778,7 +1778,7 @@ static void      _make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat 
 }
 
 #if 0
-static void      _mul_matrix(GLfloat *prod, const GLfloat *a, const GLfloat *b) /*fold00*/
+static void      _mul_matrix(GLfloat *prod, const GLfloat *a, const GLfloat *b)
 {
 #define A(row,col)  a[(col<<2)+row]
 #define B(row,col)  b[(col<<2)+row]
@@ -1798,7 +1798,7 @@ static void      _mul_matrix(GLfloat *prod, const GLfloat *a, const GLfloat *b) 
 }
 #endif
 
-static void      _multiply(GLfloat *m, GLfloat *n) /*fold00*/
+static void      _multiply(GLfloat *m, GLfloat *n)
 {
    GLfloat tmp[16];
    const GLfloat *row, *column;
@@ -1815,7 +1815,7 @@ static void      _multiply(GLfloat *m, GLfloat *n) /*fold00*/
    memcpy(m, &tmp, sizeof tmp);
 }
 
-static void      _glMatrixMode(GLenum  mode) /*fold00*/
+static void      _glMatrixMode(GLenum  mode)
 {
     _mode = mode;
     switch(mode) {
@@ -1827,7 +1827,7 @@ static void      _glMatrixMode(GLenum  mode) /*fold00*/
     return;
 }
 
-static void      _glPushMatrix(void) /*fold00*/
+static void      _glPushMatrix(void)
 {
     GLfloat *lastMat = (GL_MODELVIEW == _mode) ? _mvm[_mvmTop] : _pjm[_pjmTop];
 
@@ -1855,7 +1855,7 @@ static void      _glPushMatrix(void) /*fold00*/
     return;
 }
 
-static void      _glPopMatrix(void) /*fold00*/
+static void      _glPopMatrix(void)
 {
     switch(_mode) {
     	case GL_MODELVIEW:  _mvmTop -= 1; break;
@@ -1871,7 +1871,7 @@ static void      _glPopMatrix(void) /*fold00*/
     return;
 }
 
-static void      _glTranslated(double x, double y, double z) /*fold00*/
+static void      _glTranslated(double x, double y, double z)
 {
 
     GLfloat t[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  (GLfloat) x, (GLfloat) y, (GLfloat) z, 1 };
@@ -1882,7 +1882,7 @@ static void      _glTranslated(double x, double y, double z) /*fold00*/
     return;
 }
 
-static void      _glScaled(double x, double y, double z) /*fold00*/
+static void      _glScaled(double x, double y, double z)
 {
     // debug
     //return;
@@ -1896,7 +1896,7 @@ static void      _glScaled(double x, double y, double z) /*fold00*/
     return;
 }
 
-static void      _glRotated(double angle, double x, double y, double z) /*fold00*/
+static void      _glRotated(double angle, double x, double y, double z)
 // rotate on Z
 {
     GLfloat m[16];
@@ -1913,7 +1913,7 @@ static void      _glRotated(double angle, double x, double y, double z) /*fold00
     return;
 }
 
-static void      _glLoadIdentity(void) /*fold00*/
+static void      _glLoadIdentity(void)
 {
     // FIXME: bzero(_crntMat, sizeof(GLfloat) * 16);
     GLfloat *ptr = _crntMat;
@@ -1925,7 +1925,7 @@ static void      _glLoadIdentity(void) /*fold00*/
     return;
 }
 
-static void      _glOrtho(double left, double right, double bottom, double top, double zNear, double zFar) /*fold00*/
+static void      _glOrtho(double left, double right, double bottom, double top, double zNear, double zFar)
 {
     float dx = right - left;
     float dy = top   - bottom;
@@ -1957,7 +1957,7 @@ static void      _glOrtho(double left, double right, double bottom, double top, 
     return;
 }
 
-static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[4], GLfloat out[4]) /*fold00*/
+static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[4], GLfloat out[4])
 {
     for (int i=0; i<4; i++) {
         out[i] = in[0] * matrix[0*4+i] +
@@ -1967,7 +1967,7 @@ static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[
     }
 }
 
-static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16]) /*fold00*/
+static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16])
 {
     GLfloat inv[16], det;
 
@@ -2016,7 +2016,7 @@ static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16]) /*f
     return GL_TRUE;
 }
 
-static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GLfloat r[16]) /*fold00*/
+static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GLfloat r[16])
 {
     for (int i=0; i<4; ++i) {
         for (int j=0; j<4; ++j) {
@@ -2029,7 +2029,7 @@ static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GL
 }
 
 
-static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz, /*fold00*/
+static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz,
                              const GLfloat modelMatrix[16],
                              const GLfloat projMatrix[16],
                              const GLint   viewport[4],
@@ -2069,7 +2069,7 @@ static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz, /*fold00*
     return GL_TRUE;
 }
 
-static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz, /*fold00*/
+static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
                                const GLfloat modelMatrix[16],
                                const GLfloat projMatrix[16],
                                const GLint viewport[4],
@@ -2118,7 +2118,7 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz, /*fold0
 
 
 
-static GLint     _pushScaletoPixel(int scaleSym) /*fold00*/
+static GLint     _pushScaletoPixel(int scaleSym)
 {
 
     double scalex = (_pmax.u - _pmin.u) / (double)_vp[2];
@@ -2144,7 +2144,7 @@ static GLint     _pushScaletoPixel(int scaleSym) /*fold00*/
     return TRUE;
 }
 
-static GLint     _popScaletoPixel(void) /*fold00*/
+static GLint     _popScaletoPixel(void)
 {
 #ifdef S52_USE_GLES2
     _glMatrixMode(GL_MODELVIEW);
@@ -2163,7 +2163,7 @@ static GLint     _popScaletoPixel(void) /*fold00*/
 
 
 
-static GLint     _glMatrixSet(VP vpcoord) /*fold00*/
+static GLint     _glMatrixSet(VP vpcoord)
 // push & reset matrix GL_PROJECTION & GL_MODELVIEW
 {
     /* */
@@ -2255,7 +2255,7 @@ static GLint     _glMatrixSet(VP vpcoord) /*fold00*/
     return TRUE;
 }
 
-static GLint     _glMatrixDel(VP vpcoord) /*fold00*/
+static GLint     _glMatrixDel(VP vpcoord)
 // pop matrix GL_PROJECTION & GL_MODELVIEW
 {
     // vpcoord not used, just there so that it match _glMatrixSet()
@@ -2286,7 +2286,7 @@ static GLint     _glMatrixDel(VP vpcoord) /*fold00*/
 }
 
 #if 0
-static GLint     _glMatrixDump(GLenum matrix) /*fold00*/
+static GLint     _glMatrixDump(GLenum matrix)
 // debug
 {
     double m1[16];
@@ -2314,7 +2314,7 @@ static GLint     _glMatrixDump(GLenum matrix) /*fold00*/
 //
 //-----------------------------------
 
-static int       _win2prj(double *x, double *y) /*fold00*/
+static int       _win2prj(double *x, double *y)
 // convert coordinate: window --> projected
 {
 #ifdef S52_USE_GLES2
@@ -2344,7 +2344,7 @@ static int       _win2prj(double *x, double *y) /*fold00*/
 }
 
 
-static projXY    _prj2win(projXY p) /*fold00*/
+static projXY    _prj2win(projXY p)
 // convert coordinate: projected --> window (pixel)
 {
 /*
@@ -2399,7 +2399,7 @@ static projXY    _prj2win(projXY p) /*fold00*/
     return p;
 }
 
-int        S52_GL_win2prj(double *x, double *y) /*fold00*/
+int        S52_GL_win2prj(double *x, double *y)
 // convert coordinate: window --> projected
 {
     // FIXME: find a better way -
@@ -2418,7 +2418,7 @@ int        S52_GL_win2prj(double *x, double *y) /*fold00*/
 }
 
 //int        S52_GL_prj2win(double *x, double *y, double *z)
-int        S52_GL_prj2win(double *x, double *y) /*fold00*/
+int        S52_GL_prj2win(double *x, double *y)
 // convert coordinate: projected --> windows
 {
 
@@ -2433,7 +2433,7 @@ int        S52_GL_prj2win(double *x, double *y) /*fold00*/
     return TRUE;
 }
 
-static void      _glLineStipple(GLint  factor,  GLushort  pattern) /*fold00*/
+static void      _glLineStipple(GLint  factor,  GLushort  pattern)
 {
 #ifdef S52_USE_GLES2
     // silence warning
@@ -2462,7 +2462,7 @@ static void      _glLineStipple(GLint  factor,  GLushort  pattern) /*fold00*/
     return;
 }
 
-static void      _glPointSize(GLfloat size) /*fold00*/
+static void      _glPointSize(GLfloat size)
 {
 #ifdef S52_USE_GLES2
     //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
@@ -2476,7 +2476,7 @@ static void      _glPointSize(GLfloat size) /*fold00*/
 }
 
 #ifndef S52_USE_GLES2
-static GLvoid    _DrawArrays_QUADS(guint npt, vertex_t *ppt) /*fold00*/
+static GLvoid    _DrawArrays_QUADS(guint npt, vertex_t *ppt)
 {
     if (npt != 4)
         return;
@@ -2490,7 +2490,7 @@ static GLvoid    _DrawArrays_QUADS(guint npt, vertex_t *ppt) /*fold00*/
     return;
 }
 
-static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt) /*fold00*/
+static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
 {
     if (npt != 4)
         return;
@@ -2509,7 +2509,7 @@ static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt) /*fold00*/
 }
 #endif  // !S52_USE_GLES2
 
-static GLvoid    _DrawArrays_LINE_STRIP(guint npt, vertex_t *ppt) /*fold00*/
+static GLvoid    _DrawArrays_LINE_STRIP(guint npt, vertex_t *ppt)
 {
     /*
     // debug - test move S52 layer on Z
@@ -2546,7 +2546,7 @@ static GLvoid    _DrawArrays_LINE_STRIP(guint npt, vertex_t *ppt) /*fold00*/
     return;
 }
 
-static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt) /*fold00*/
+static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
 // this is used when VRM line style is aternate line style
 // ie _normallinestyle == 'N'
 {
@@ -2571,7 +2571,7 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt) /*fold00*/
 }
 
 #ifndef S52_USE_GLES2
-static GLvoid    _DrawArrays_POINTS(guint npt, vertex_t *ppt) /*fold00*/
+static GLvoid    _DrawArrays_POINTS(guint npt, vertex_t *ppt)
 {
     if (npt == 0)
         return;
@@ -2588,7 +2588,7 @@ static GLvoid    _DrawArrays_POINTS(guint npt, vertex_t *ppt) /*fold00*/
 #endif
 
 #ifdef S52_USE_OPENGL_VBO
-static int       _VBODrawArrays(S57_prim *prim) /*fold00*/
+static int       _VBODrawArrays(S57_prim *prim)
 {
     guint     primNbr = 0;
     vertex_t *vert    = NULL;
@@ -2632,7 +2632,7 @@ static int       _VBODrawArrays(S57_prim *prim) /*fold00*/
     return TRUE;
 }
 
-static int       _VBOCreate(S57_prim *prim) /*fold00*/
+static int       _VBOCreate(S57_prim *prim)
 // create a VBO, return vboID
 {
     guint     primNbr = 0;
@@ -2668,7 +2668,7 @@ static int       _VBOCreate(S57_prim *prim) /*fold00*/
     return vboID;
 }
 
-static int       _VBODraw(S57_prim *prim) /*fold00*/
+static int       _VBODraw(S57_prim *prim)
 // run a VBO
 {
     guint     primNbr = 0;
@@ -2707,7 +2707,7 @@ static int       _VBODraw(S57_prim *prim) /*fold00*/
     return TRUE;
 }
 
-static int       _VBOvalidate(S52_DListData *DListData) /*fold00*/
+static int       _VBOvalidate(S52_DListData *DListData)
 {
     if (FALSE == glIsBuffer(DListData->vboIds[0])) {
         for (guint i=0; i<DListData->nbr; ++i) {
@@ -2724,7 +2724,7 @@ static int       _VBOvalidate(S52_DListData *DListData) /*fold00*/
 
 #else // S52_USE_OPENGL_VBO
 
-static int       _DrawArrays(S57_prim *prim) /*fold00*/
+static int       _DrawArrays(S57_prim *prim)
 {
     guint     primNbr = 0;
     vertex_t *vert    = NULL;
@@ -2752,7 +2752,7 @@ static int       _DrawArrays(S57_prim *prim) /*fold00*/
     return TRUE;
 }
 
-static int       _createDList(S57_prim *prim) /*fold00*/
+static int       _createDList(S57_prim *prim)
 // create or run display list
 {
     guint     primNbr = 0;
@@ -2795,7 +2795,7 @@ static int       _createDList(S57_prim *prim) /*fold00*/
 }
 #endif // S52_USE_OPENGL_VBO
 
-static int       _fillarea(S57_geo *geoData) /*fold00*/
+static int       _fillarea(S57_geo *geoData)
 {
     // debug
     //return 1;
@@ -2853,7 +2853,7 @@ union cIdx {
 
 static union cIdx _cIdx, _read[81];
 
-static int       _setBlend(int blend) /*fold00*/
+static int       _setBlend(int blend)
 // TRUE turn on blending if AA
 {
     //static int blendstate = FALSE;
@@ -2882,7 +2882,7 @@ static int       _setBlend(int blend) /*fold00*/
     return TRUE;
 }
 
-static GLubyte   _glColor4ub(S52_Color *c) /*FOLD00*/
+static GLubyte   _glColor4ub(S52_Color *c)
 // return transparancy
 {
 
@@ -2955,7 +2955,7 @@ static GLubyte   _glColor4ub(S52_Color *c) /*FOLD00*/
     return c->trans;
 }
 
-static int       _glCallList(S52_DListData *DListData) /*fold00*/
+static int       _glCallList(S52_DListData *DListData)
 // get color of each Display List then run it
 {
     if (NULL == DListData)
@@ -3053,7 +3053,7 @@ static int       _glCallList(S52_DListData *DListData) /*fold00*/
 }
 
 #if 0
-static int       _parseTEX(S52_obj *obj) /*fold00*/
+static int       _parseTEX(S52_obj *obj)
 // parse TE or TX
 {
     /*
@@ -3099,7 +3099,7 @@ static int       _parseTEX(S52_obj *obj) /*fold00*/
 //}
 
 //static GArray   *_computeCentroid(S57_geo *geoData)
-static int       _computeCentroid(S57_geo *geoData) /*fold00*/
+static int       _computeCentroid(S57_geo *geoData)
 // return centroids
 // fill global array _centroid
 {
@@ -3239,7 +3239,7 @@ static int       _computeCentroid(S57_geo *geoData) /*fold00*/
 }
 
 //static int       _getOwnshpAtt(S52_obj *obj, double *course, double *speed, double *period)
-static int       _getVesselVector(S52_obj *obj, double *course, double *speed) /*fold00*/
+static int       _getVesselVector(S52_obj *obj, double *course, double *speed)
 // return TRUE and course, speed, else FALSE
 {
     //S57_geo *geo       = S52_PL_getGeo(obj);
@@ -3370,7 +3370,7 @@ static int       _getVesselVector(S52_obj *obj, double *course, double *speed) /
     //return FALSE;
 }
 
-static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rotation) /*fold00*/
+static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rotation)
 {
     S52_DListData *DListData = S52_PL_getDListData(obj);
     if ((NULL==DListData) || (FALSE==_VBOvalidate(DListData)))
@@ -3430,7 +3430,7 @@ static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rota
     return TRUE;
 }
 
-static int       _renderSY_silhoutte(S52_obj *obj) /*fold00*/
+static int       _renderSY_silhoutte(S52_obj *obj)
 // ownship & vessel (AIS)
 {
     S57_geo       *geo       = S52_PL_getGeo(obj);
@@ -3535,7 +3535,7 @@ static int       _renderSY_silhoutte(S52_obj *obj) /*fold00*/
 }
 
 
-static int       _renderSY_CSYMB(S52_obj *obj) /*fold00*/
+static int       _renderSY_CSYMB(S52_obj *obj)
 {
     S57_geo *geoData = S52_PL_getGeo(obj);
     char    *attname = "$SCODE";
@@ -3751,7 +3751,7 @@ static int       _renderSY_CSYMB(S52_obj *obj) /*fold00*/
     return FALSE;
 }
 
-static int       _renderSY_ownshp(S52_obj *obj) /*fold00*/
+static int       _renderSY_ownshp(S52_obj *obj)
 {
     S57_geo  *geoData = S52_PL_getGeo(obj);
     GLdouble  orient  = S52_PL_getSYorient(obj);
@@ -4048,7 +4048,7 @@ static int       _renderSY_ownshp(S52_obj *obj) /*fold00*/
     return FALSE;
 }
 
-static int       _renderSY_vessel(S52_obj *obj) /*fold00*/
+static int       _renderSY_vessel(S52_obj *obj)
 // AIS & ARPA
 {
     S57_geo  *geo       = S52_PL_getGeo(obj);
@@ -4233,7 +4233,7 @@ static int       _renderSY_vessel(S52_obj *obj) /*fold00*/
     return TRUE;
 }
 
-static int       _renderSY_pastrk(S52_obj *obj) /*fold00*/
+static int       _renderSY_pastrk(S52_obj *obj)
 {
     S57_geo  *geo = S52_PL_getGeo(obj);
     guint     npt = 0;
@@ -4270,7 +4270,7 @@ static int       _renderSY_pastrk(S52_obj *obj) /*fold00*/
 }
 
 static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str);
-static int       _renderSY_leglin(S52_obj *obj) /*fold00*/
+static int       _renderSY_leglin(S52_obj *obj)
 {
     S57_geo  *geo = S52_PL_getGeo(obj);
     guint     npt = 0;
@@ -4343,7 +4343,7 @@ static int       _renderSY_leglin(S52_obj *obj) /*fold00*/
     return TRUE;
 }
 
-static int       _renderSY(S52_obj *obj) /*fold00*/
+static int       _renderSY(S52_obj *obj)
 // SYmbol
 {
     // FIXME: second draw of the same Mariners' Object misplace centroid!
@@ -4661,7 +4661,7 @@ static int       _renderSY(S52_obj *obj) /*fold00*/
     return FALSE;
 }
 
-static int       _renderLS_LIGHTS05(S52_obj *obj) /*fold00*/
+static int       _renderLS_LIGHTS05(S52_obj *obj)
 {
     S57_geo *geoData   = S52_PL_getGeo(obj);
     GString *orientstr = S57_getAttVal(geoData, "ORIENT");
@@ -4843,7 +4843,7 @@ static int       _renderLS_LIGHTS05(S52_obj *obj) /*fold00*/
     return TRUE;
 }
 
-static int       _renderLS_ownshp(S52_obj *obj) /*fold00*/
+static int       _renderLS_ownshp(S52_obj *obj)
 {
     S57_geo *geo       = S52_PL_getGeo(obj);
     GString *headngstr = S57_getAttVal(geo, "headng");
@@ -4980,7 +4980,7 @@ static int       _renderLS_ownshp(S52_obj *obj) /*fold00*/
     return TRUE;
 }
 
-static int       _renderLS_vessel(S52_obj *obj) /*fold00*/
+static int       _renderLS_vessel(S52_obj *obj)
 {
     S57_geo *geo       = S52_PL_getGeo(obj);
     GString *headngstr = S57_getAttVal(geo, "headng");
@@ -5085,7 +5085,7 @@ static int       _renderLS_vessel(S52_obj *obj) /*fold00*/
 }
 
 //static int       _renderLS_afglow(S52_obj *obj)
-static int       _renderLS_afterglow(S52_obj *obj) /*fold00*/
+static int       _renderLS_afterglow(S52_obj *obj)
 {
     S57_geo   *geo = S52_PL_getGeo(obj);
     GLdouble  *ppt = NULL;
@@ -5285,7 +5285,7 @@ static int       _renderLS_afterglow(S52_obj *obj) /*fold00*/
     return TRUE;
 }
 
-static int       _renderLS(S52_obj *obj) /*fold00*/
+static int       _renderLS(S52_obj *obj)
 // Line Style
 // FIXME: do overlapping line supression (need to find a test case - S52_MAR_SYMBOLIZED_BND)
 // FIX: add clip plane in shader (GLES2)
@@ -5495,7 +5495,7 @@ static const int _LEFT   = 2;  // 0010
 static const int _BOTTOM = 1;  // 0001
 static const int _CENTER = 0;  // 0000
 
-static int       _computeOutCode(double x, double y) /*fold00*/
+static int       _computeOutCode(double x, double y)
 {
     int code = _CENTER;
 
@@ -5510,7 +5510,7 @@ static int       _computeOutCode(double x, double y) /*fold00*/
     return code;
 }
 
-static int       _clipToView(double *x1, double *y1, double *x2, double *y2) /*fold00*/
+static int       _clipToView(double *x1, double *y1, double *x2, double *y2)
 // TRUE if some part is inside of the view and the clipped line
 {
     //int accept   = TRUE;
@@ -5578,7 +5578,7 @@ static int       _clipToView(double *x1, double *y1, double *x2, double *y2) /*f
     return accept;
 }
 
-int        S52_GL_movePoint(double *x, double *y, double angle, double dist_m) /*fold00*/
+int        S52_GL_movePoint(double *x, double *y, double angle, double dist_m)
 // find new point fron X,Y at distance and angle
 {
     *x -= cos(angle) * dist_m;
@@ -5588,7 +5588,7 @@ int        S52_GL_movePoint(double *x, double *y, double angle, double dist_m) /
 }
 
 static int       _drawArc(S52_obj *objA, S52_obj *objB);
-static int       _renderLC(S52_obj *obj) /*FOLD00*/
+static int       _renderLC(S52_obj *obj)
 // Line Complex (AREA, LINE)
 {
     GLdouble       symlen      = 0.0;
@@ -5851,7 +5851,7 @@ static int       _renderLC(S52_obj *obj) /*FOLD00*/
     return TRUE;
 }
 
-static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask) /*fold00*/
+static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
 // make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
 {
     //bzero(rgba_mask, 4*32*8*4);
@@ -5877,7 +5877,7 @@ static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask) /
     return TRUE;
 }
 
-static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask) /*fold00*/
+static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
 //static int       _64bitMask2RGBAText(const GLubyte *mask, GLubyte *rgba_mask)
 // make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
 {
@@ -5906,7 +5906,7 @@ static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask) /*f
     return TRUE;
 }
 
-static int       _renderAC_NODATA_layer0(void) /*fold00*/
+static int       _renderAC_NODATA_layer0(void)
 // clear all buffer so that no artefact from S52_drawLast remain
 {
     // clear screen with color NODATA
@@ -5940,7 +5940,7 @@ static int       _renderAC_NODATA_layer0(void) /*fold00*/
     return TRUE;
 }
 
-static int       _renderAC_LIGHTS05(S52_obj *obj) /*fold00*/
+static int       _renderAC_LIGHTS05(S52_obj *obj)
 // this code is specific to CS LIGHTS05
 {
     S57_geo   *geoData   = S52_PL_getGeo(obj);
@@ -6068,7 +6068,7 @@ static int       _renderAC_LIGHTS05(S52_obj *obj) /*fold00*/
     return TRUE;
 }
 
-static int       _renderAC_VRMEBL01(S52_obj *obj) /*fold00*/
+static int       _renderAC_VRMEBL01(S52_obj *obj)
 // this code is specific to CS VRMEBL
 // CS create a fake command word and in making so
 // create room to add a cmdDef/DList variable use
@@ -6161,7 +6161,7 @@ static int       _renderAC_VRMEBL01(S52_obj *obj) /*fold00*/
     return TRUE;
 }
 
-static int       _renderAC(S52_obj *obj) /*fold00*/
+static int       _renderAC(S52_obj *obj)
 // Area Color (also filter light sector)
 {
     S52_Color *c   = S52_PL_getACdata(obj);
@@ -6216,7 +6216,7 @@ static int       _renderAC(S52_obj *obj) /*fold00*/
     return TRUE;
 }
 
-static int       _renderAP_NODATA(S52_obj *obj) /*fold00*/
+static int       _renderAP_NODATA(S52_obj *obj)
 {
     S57_geo       *geoData   = S52_PL_getGeo(obj);
     S52_DListData *DListData = S52_PL_getDListData(obj);
@@ -6246,7 +6246,7 @@ static int       _renderAP_NODATA(S52_obj *obj) /*fold00*/
     return FALSE;
 }
 
-static int       _renderAP_NODATA_layer0(void) /*fold00*/
+static int       _renderAP_NODATA_layer0(void)
 {
     //_pt2 pt0, pt1, pt2, pt3, pt4;
     _pt2 pt0, pt1, pt2, pt3;
@@ -6424,7 +6424,7 @@ static int       _renderAP_NODATA_layer0(void) /*fold00*/
     return FALSE;
 }
 
-static int       _renderAP_DRGARE(S52_obj *obj) /*fold00*/
+static int       _renderAP_DRGARE(S52_obj *obj)
 {
     if (TRUE != (int) S52_MP_get(S52_MAR_DISP_DRGARE_PATTERN))
         return TRUE;
@@ -6457,7 +6457,7 @@ static int       _renderAP_DRGARE(S52_obj *obj) /*fold00*/
 }
 
 
-static int       _renderAP(S52_obj *obj) /*fold00*/
+static int       _renderAP(S52_obj *obj)
 // Area Pattern
 {
     if (S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_CMD_WRD_FILTER))
@@ -7058,7 +7058,7 @@ static int       _renderAP(S52_obj *obj) /*fold00*/
     return TRUE;
 }
 
-static int       _traceCS(S52_obj *obj) /*fold00*/
+static int       _traceCS(S52_obj *obj)
 // failsafe trap --should not get here
 {
     if (0 == S52_PL_cmpCmdParam(obj, "DEPCNT02"))
@@ -7072,7 +7072,7 @@ static int       _traceCS(S52_obj *obj) /*fold00*/
     return TRUE;
 }
 
-static int       _traceOP(S52_obj *obj) /*fold00*/
+static int       _traceOP(S52_obj *obj)
 {
     // debug:
     //PRINTF("OVERRIDE PRIORITY: %s, TYPE: %s\n", S52_PL_getOBCL(obj), S52_PL_infoLUP(obj));
@@ -7084,10 +7084,10 @@ static int       _traceOP(S52_obj *obj) /*fold00*/
 
     return TRUE;
 }
- /*fold00*/
+
 #ifdef S52_USE_FREETYPE_GL
 //static GArray   *_fillFtglBuf(texture_font_t *font, GArray *buf, const char *str)
-static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight) /*fold00*/
+static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
 // experimental: smaller text size if second line
 // could translate into a TX command word to be added in the PLib
 {
@@ -7152,7 +7152,7 @@ static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
     return buf;
 }
 
-static int       _sendFtglBuf(GArray *buf) /*fold00*/
+static int       _sendFtglBuf(GArray *buf)
 // connect ftgl coord data to GPU
 {
         glEnableVertexAttribArray(_aPosition);
@@ -7169,7 +7169,7 @@ static int       _sendFtglBuf(GArray *buf) /*fold00*/
 }
 #endif
 
-static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str) /*fold00*/
+static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
 // render text in AA if Mar Param set
 // NOTE: obj is only used if S52_USE_FREETYPE_GL is defined
 // NOTE: PLib C1 CHARS for TE() & TX() alway '15110' - ie style = 1 (alway), weigth = '5' (medium), width = 1 (alway), bsize = 10
@@ -7477,7 +7477,7 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
     return TRUE;
 }
 
-static int       _drawText(S52_obj *obj) /*fold00*/
+static int       _drawText(S52_obj *obj)
 // render TE or TX
 {
     S52_Color   *c      = NULL;
@@ -7695,13 +7695,13 @@ static int       _drawText(S52_obj *obj) /*fold00*/
 // SYMBOL CREATION SECTION
 //
 //-----------------------------------
- /*fold00*/
+
 //static GLint     _renderHPGL(gpointer key_NOT_USED, gpointer value, gpointer data_NOT_USED)
 //static GLint     _renderHPGL(S52_cmdDef *cmdDef, S52_vec *vecObj)
 //static S52_vCmd  _renderHPGL(S52_cmdDef *cmdDef, S52_vec *vecObj)
 //static S52_vCmd  _renderHPGL(S52_vec *vecObj)
 //static S52_vCmd  _parseHPGL(S52_vec *vecObj)
-static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex) /*fold00*/
+static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 // Display List generator - use for VBO also
 {
     // Select pen Width unit = 0.32 mm.
@@ -7972,7 +7972,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex) /*fold00*/
     return vertex;
 }
 
-static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data) /*fold00*/
+static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
 {
     // 'key' not used
     (void) key;
@@ -8075,7 +8075,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data) /*
     return 0;
 }
 
-static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data) /*fold00*/
+static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
 {
     // 'key' not used
     (void) key;
@@ -8173,7 +8173,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data) /*fol
     return 0; // 0 continue traversing
 }
 
-static GLint     _createSymb(void) /*fold00*/
+static GLint     _createSymb(void)
 // WARNING: this must be done from inside the main loop!
 {
 
@@ -8207,7 +8207,7 @@ static GLint     _createSymb(void) /*fold00*/
     return TRUE;
 }
 
-int        S52_GL_isSupp(S52_obj *obj) /*fold00*/
+int        S52_GL_isSupp(S52_obj *obj)
 // TRUE if display of object is suppressed
 // also collect stat
 {
@@ -8230,7 +8230,7 @@ int        S52_GL_isSupp(S52_obj *obj) /*fold00*/
     return FALSE;
 }
 
-int        S52_GL_isOFFscreen(S52_obj *obj) /*fold00*/
+int        S52_GL_isOFFscreen(S52_obj *obj)
 // TRUE if object not in view
 {
     // debug
@@ -8295,7 +8295,7 @@ int        S52_GL_isOFFscreen(S52_obj *obj) /*fold00*/
     return FALSE;
 }
 
-int        S52_GL_drawLIGHTS(S52_obj *obj) /*fold00*/
+int        S52_GL_drawLIGHTS(S52_obj *obj)
 // draw lights
 {
     S52_CmdWrd cmdWrd = S52_PL_iniCmd(obj);
@@ -8314,7 +8314,7 @@ int        S52_GL_drawLIGHTS(S52_obj *obj) /*fold00*/
 }
 
 //int        S52_GL_drawText(S52_obj *obj)
-int        S52_GL_drawText(S52_obj *obj, gpointer user_data) /*fold00*/
+int        S52_GL_drawText(S52_obj *obj, gpointer user_data)
 // TE&TX
 {
     // quiet compiler
@@ -8348,7 +8348,7 @@ int        S52_GL_drawText(S52_obj *obj, gpointer user_data) /*fold00*/
     return TRUE;
 }
 
-int        S52_GL_draw(S52_obj *obj, gpointer user_data) /*fold00*/
+int        S52_GL_draw(S52_obj *obj, gpointer user_data)
 // draw all
 // later redraw only dirty region
 // later redraw only Group 2 object
@@ -8471,7 +8471,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data) /*fold00*/
     return TRUE;
 }
 
-static int       _contextValid(void) /*fold00*/
+static int       _contextValid(void)
 // return TRUE if current GL context support S52 rendering
 {
     if (TRUE == _ctxValidated)
@@ -8520,7 +8520,7 @@ static int       _contextValid(void) /*fold00*/
 }
 
 #if 0
-static int       _stopTimer(int damage) /*fold00*/
+static int       _stopTimer(int damage)
 // strop timer and print stat
 {
     //gdouble sec = g_timer_elapsed(_timer, NULL);
@@ -8536,7 +8536,7 @@ static int       _stopTimer(int damage) /*fold00*/
 }
 #endif
 
-static int       _doProjection(double centerLat, double centerLon, double rangeDeg) /*fold00*/
+static int       _doProjection(double centerLat, double centerLon, double rangeDeg)
 {
     //if (isnan(centerLat) || isnan(centerLon) || isnan(rangeDeg))
     //    return FALSE;
@@ -8596,7 +8596,7 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
 }
 
 
-int        S52_GL_begin(int cursorPick, int drawLast) /*fold00*/
+int        S52_GL_begin(int cursorPick, int drawLast)
 //int        S52_GL_begin(int cursorPick)
 {
     CHECK_GL_END;
@@ -8836,7 +8836,7 @@ int        S52_GL_begin(int cursorPick, int drawLast) /*fold00*/
     return TRUE;
 }
 
-int        S52_GL_end(int drawLast) /*FOLD00*/
+int        S52_GL_end(int drawLast)
 //
 {
     CHECK_GL_BEGIN;
@@ -8903,7 +8903,7 @@ int        S52_GL_end(int drawLast) /*FOLD00*/
     return TRUE;
 }
 
-int        S52_GL_del(S52_obj *obj) /*fold00*/
+int        S52_GL_del(S52_obj *obj)
 // delete geo Display List associate to an object
 {
     S57_geo  *geoData = S52_PL_getGeo(obj);
@@ -8951,7 +8951,7 @@ int        S52_GL_del(S52_obj *obj) /*fold00*/
 }
 
 #ifdef S52_USE_GLES2
-static GLuint    _loadShader(GLenum type, const char *shaderSrc) /*fold00*/
+static GLuint    _loadShader(GLenum type, const char *shaderSrc)
 {
     GLuint shader;
     GLint  compiled;
@@ -8990,12 +8990,12 @@ static GLuint    _loadShader(GLenum type, const char *shaderSrc) /*fold00*/
     return shader;
 }
 
-int        S52_GL_resetVBOID(void) /*fold00*/
+int        S52_GL_resetVBOID(void)
 {
     return _resetVBOID;
 }
 
-int        S52_GL_init_GLES2(void) /*fold00*/
+int        S52_GL_init_GLES2(void)
 {
     GLint  linked;
     const char* vShaderStr =
@@ -9337,7 +9337,7 @@ int        S52_GL_init_GLES2(void) /*fold00*/
 }
 #endif  // S52_USE_GLES2
 
-int        S52_GL_init(void) /*fold00*/
+int        S52_GL_init(void)
 // return TRUE on success
 {
     if (!_doInit) {
@@ -9412,7 +9412,7 @@ int        S52_GL_init(void) /*fold00*/
     return TRUE;;
 }
 
-int        S52_GL_setDotPitch(int w, int h, int wmm, int hmm) /*fold00*/
+int        S52_GL_setDotPitch(int w, int h, int wmm, int hmm)
 {
     _dotpitch_mm_x = (double)wmm / (double)w;
     _dotpitch_mm_y = (double)hmm / (double)h;
@@ -9489,7 +9489,7 @@ int        S52_GL_setDotPitch(int w, int h, int wmm, int hmm) /*fold00*/
 */
 #endif
 
-int        S52_GL_done(void) /*fold00*/
+int        S52_GL_done(void)
 {
     if (_doInit) return _doInit;
 
@@ -9592,7 +9592,7 @@ int        S52_GL_done(void) /*fold00*/
     return _doInit;
 }
 
-int        S52_GL_getPRJView(double *LLv, double *LLu, double *URv, double *URu) /*fold00*/
+int        S52_GL_getPRJView(double *LLv, double *LLu, double *URv, double *URu)
 {
     if (_doInit) {
         PRINTF("ERROR: S52 GL not initialize\n");
@@ -9607,7 +9607,7 @@ int        S52_GL_getPRJView(double *LLv, double *LLu, double *URv, double *URu)
     return TRUE;
 }
 
-int        S52_GL_setPRJView(double  s, double  w, double  n, double  e) /*fold00*/
+int        S52_GL_setPRJView(double  s, double  w, double  n, double  e)
 {
     _pmin.v = s;
     _pmin.u = w;
@@ -9617,7 +9617,7 @@ int        S52_GL_setPRJView(double  s, double  w, double  n, double  e) /*fold0
     return TRUE;
 }
 
-int        S52_GL_setView(double centerLat, double centerLon, double rangeNM, double north) /*fold00*/
+int        S52_GL_setView(double centerLat, double centerLon, double rangeNM, double north)
 {
     _centerLat = centerLat;
     _centerLon = centerLon;
@@ -9628,7 +9628,7 @@ int        S52_GL_setView(double centerLat, double centerLon, double rangeNM, do
 }
 
 
-int        S52_GL_setViewPort(int x, int y, int width, int height) /*fold00*/
+int        S52_GL_setViewPort(int x, int y, int width, int height)
 {
     // NOTE: width & height are in fact GLsizei, a pseudo unsigned int
     // it is a 'int' that can't be negative
@@ -9653,7 +9653,7 @@ int        S52_GL_setViewPort(int x, int y, int width, int height) /*fold00*/
     return TRUE;
 }
 
-int        S52_GL_getViewPort(int *x, int *y, int *width, int *height) /*fold00*/
+int        S52_GL_getViewPort(int *x, int *y, int *width, int *height)
 {
     //glGetIntegerv(GL_VIEWPORT, _vp);
     //_checkError("S52_GL_getViewPort()");
@@ -9668,7 +9668,7 @@ int        S52_GL_getViewPort(int *x, int *y, int *width, int *height) /*fold00*
 
 
 const
-char      *S52_GL_getNameObjPick(void) /*FOLD00*/
+char      *S52_GL_getNameObjPick(void)
 {
     if (0 == _objPick->len) {
         PRINTF("WARNING: no S57 object found\n");
@@ -9772,10 +9772,10 @@ char      *S52_GL_getNameObjPick(void) /*FOLD00*/
 
     return (const char *)_strPick;
 }
- /*fold00*/
+
 #if 0
 //int        S52_GL_setOWNSHP(double breadth, double length)
-int        S52_GL_setOWNSHP(S52_obj *obj, double heading) /*fold00*/
+int        S52_GL_setOWNSHP(S52_obj *obj, double heading)
 {
     _shpbrd = breadth;
     _shplen = length;
@@ -9787,7 +9787,7 @@ int        S52_GL_setOWNSHP(S52_obj *obj, double heading) /*fold00*/
 }
 #endif
 
-guchar    *S52_GL_readFBPixels(void) /*fold00*/
+guchar    *S52_GL_readFBPixels(void)
 {
     if (TRUE==_doPick || NULL==_fb_pixels)
         return FALSE;
@@ -9817,7 +9817,7 @@ guchar    *S52_GL_readFBPixels(void) /*fold00*/
 
 #include "gdal.h"  // GDAL stuff to write .PNG
 
-int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height) /*fold00*/
+int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height)
 // FIXME: width/height rounding error all over - fix: +0.5
 // to test 2 PNG using Python Imaging Library (PIL):
 {
@@ -9940,7 +9940,7 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     return TRUE;
 }
 
-int        S52_GL_drawFBPixels(void) /*fold00*/
+int        S52_GL_drawFBPixels(void)
 {
     if (TRUE==_doPick || NULL==_fb_pixels)
         return FALSE;
@@ -10011,7 +10011,7 @@ int        S52_GL_drawFBPixels(void) /*fold00*/
     return TRUE;
 }
 
-int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north) /*fold00*/
+int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north)
 {
     if (TRUE==_doPick || NULL==_fb_pixels)
         return FALSE;
@@ -10072,7 +10072,7 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     return TRUE;
 }
 
-int        S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, unsigned int weight) /*fold00*/
+int        S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, unsigned int weight)
 // draw string in world coords
 {
     // optimisation - shortcut all code
@@ -10091,7 +10091,7 @@ int        S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, uns
     return TRUE;
 }
 
-int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str) /*fold00*/
+int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
 // draw a string in window coords
 {
     // optimisation - shortcut all code
@@ -10134,7 +10134,7 @@ int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *color
     return TRUE;
 }
 
-int        S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str) /*fold00*/
+int        S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str)
 {
     // FIXME: str not used yet (get font metric from a particular font system)
     (void)str;
@@ -10152,7 +10152,7 @@ int        S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *s
     return TRUE;
 }
 
-int        S52_GL_drawGraticule(void) /*fold00*/
+int        S52_GL_drawGraticule(void)
 {
     // delta lat  / 1852 = height in NM
     // delta long / 1852 = witdh  in NM
@@ -10245,7 +10245,7 @@ int        S52_GL_drawGraticule(void) /*fold00*/
     return TRUE;
 }
 
-int              _drawArc(S52_obj *objA, S52_obj *objB) /*fold00*/
+int              _drawArc(S52_obj *objA, S52_obj *objB)
 {
     S57_geo  *geoA          = S52_PL_getGeo(objA);
     S57_geo  *geoB          = S52_PL_getGeo(objB);
@@ -10531,7 +10531,7 @@ int              _drawArc(S52_obj *objA, S52_obj *objB) /*fold00*/
     return TRUE;
 }
 
-int        S52_GL_drawArc(S52_obj *objA, S52_obj *objB) /*fold00*/
+int        S52_GL_drawArc(S52_obj *objA, S52_obj *objB)
 {
     return_if_null(objA);
     return_if_null(objB);
@@ -10561,7 +10561,7 @@ int        S52_GL_drawArc(S52_obj *objA, S52_obj *objB) /*fold00*/
 //
 //---------------------------
 
-int main(int argc, char** argv) /*fold00*/
+int main(int argc, char** argv)
 {
     return 1;
 }
@@ -10585,22 +10585,22 @@ S52_GL_init
         _loadShader(GLenum type, const char *shaderSrc)
     _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
     _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
- /*fold00*/
-S52_GL_getPRJView(double *LLv, double *LLu, double *URv, double *URu) /*fold00*/
-S52_GL_setPRJView(double  s, double  w, double  n, double  e) /*fold00*/
-S52_GL_setView(double centerLat, double centerLon, double rangeNM, double north) /*fold00*/
-S52_GL_setViewPort(int x, int y, int width, int height) /*fold00*/
-S52_GL_getViewPort(int *x, int *y, int *width, int *height) /*fold00*/
-S52_GL_setDotPitch(int w, int h, int wmm, int hmm) /*fold00*/
-S52_GL_setFontDL(int fontDL) /*fold00*/
- /*fold00*/
+
+S52_GL_getPRJView(double *LLv, double *LLu, double *URv, double *URu)
+S52_GL_setPRJView(double  s, double  w, double  n, double  e)
+S52_GL_setView(double centerLat, double centerLon, double rangeNM, double north)
+S52_GL_setViewPort(int x, int y, int width, int height)
+S52_GL_getViewPort(int *x, int *y, int *width, int *height)
+S52_GL_setDotPitch(int w, int h, int wmm, int hmm)
+S52_GL_setFontDL(int fontDL)
+
 // --- CULL ----
-S52_GL_isSupp(S52_obj *obj) /*fold00*/
-S52_GL_isOFFscreen(S52_obj *obj) /*fold00*/
+S52_GL_isSupp(S52_obj *obj)
+S52_GL_isOFFscreen(S52_obj *obj)
 
 
 // --- DRAW ----
-S52_GL_begin(int cursorPick, int drawLast) /*fold00*/
+S52_GL_begin(int cursorPick, int drawLast)
     _contextValid(void)
     _doProjection(double centerLat, double centerLon, double rangeDeg)
     _createSymb(void)
@@ -10625,7 +10625,7 @@ S52_GL_begin(int cursorPick, int drawLast) /*fold00*/
     S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north)
 
 
-S52_GL_draw(S52_obj *obj, gpointer user_data) /*fold00*/
+S52_GL_draw(S52_obj *obj, gpointer user_data)
     _renderSY(S52_obj *obj)
         _renderSY_POINT_T(S52_obj *obj, double x, double y, double rotation)
         _renderSY_silhoutte(S52_obj *obj)
@@ -10663,15 +10663,15 @@ S52_GL_draw(S52_obj *obj, gpointer user_data) /*fold00*/
     S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, unsigned int weight)
     S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
 
-S52_GL_drawText(S52_obj *obj, gpointer user_data) /*fold00*/
+S52_GL_drawText(S52_obj *obj, gpointer user_data)
     _drawText(S52_obj *obj)
         _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
             _fillFtglBuf(texture_font_t *font, GArray *buf, const char *str)
             _sendFtglBuf(GArray *buf)
 
-S52_GL_end(int drawLast) /*fold00*/
+S52_GL_end(int drawLast)
 
-S52_GL_done(void) /*fold00*/
+S52_GL_done(void)
     _freeGLU(void)
 
 
@@ -10712,11 +10712,11 @@ _gluQuadricDrawStyle(_GLUquadricObj* qobj, GLint style)
 // matrix stuff
 // FIXME: use OpenGL Mathematics (GLM)
 
-S52_GL_win2prj(double *x, double *y) /*fold00*/
+S52_GL_win2prj(double *x, double *y)
     _win2prj(double *x, double *y)
         _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
 
-S52_GL_prj2win(double *x, double *y) /*fold00*/
+S52_GL_prj2win(double *x, double *y)
     _prj2win(projXY p)
         _gluProject
 
@@ -10767,14 +10767,14 @@ _clipToView(double *x1, double *y1, double *x2, double *y2)
 
 
 _stopTimer(int damage)
- /*fold00*/
-S52_GL_movePoint(double *x, double *y, double angle, double dist_m) /*fold00*/
-S52_GL_del(S52_obj *obj) /*fold00*/
-S52_GL_resetVBOID(void) /*fold00*/
-S52_GL_getNameObjPick(void) /*fold00*/
-S52_GL_setOWNSHP(S52_obj *obj, double heading) /*fold00*/
-S52_GL_readFBPixels(void) /*fold00*/
-S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height) /*fold00*/
+
+S52_GL_movePoint(double *x, double *y, double angle, double dist_m)
+S52_GL_del(S52_obj *obj)
+S52_GL_resetVBOID(void)
+S52_GL_getNameObjPick(void)
+S52_GL_setOWNSHP(S52_obj *obj, double heading)
+S52_GL_readFBPixels(void)
+S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height)
 
 
 
