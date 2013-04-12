@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -180,9 +180,12 @@ typedef struct _cell {
     GString   *valacmstr;
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
+    // FIXME: this could be move out of '_cell' since its only used
+    // at load time by _loadBaseCell()
     guint      baseEdgeRCID;
     GPtrArray *ConnectedNodes;  // doesn't work without sort, ConnectedNodes rcid random in some case (CA4579016)
     GPtrArray *Edges;
+
 #endif
 
     // place holder for object to be drawn (after culling)
@@ -197,6 +200,12 @@ typedef struct _cell {
 #endif
 
 } _cell;
+
+// BBTree of key/value pair: LNAM --> geo (--> S57ID (for cursor pick))
+// BBTree of LANM 'key' with S57_geo as 'value'
+// FIXME: move this to _cell (WARNING: must not index S52_obj as it change when loading a new PLib)
+static GTree     *_lnamBBT = NULL;
+
 
 // FIXME: mutex this
 static GPtrArray *_cellList    = NULL;    // list of loaded cells - sorted, big to small scale (small to large region)
@@ -262,8 +271,8 @@ static S52ObjectHandle _BLKADJ01 = FALSE;
 static S52_RADAR_cb  _RADAR_cb = NULL;
 //static int          _doRADAR  = TRUE;
 
-static char _version[] = "$Revision: 1.118 $\n"
-      "libS52 0.88\n"
+static char _version[] = "$Revision: 1.119 $\n"
+      "libS52 0.89\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -353,7 +362,6 @@ static void  *_EGLctx = NULL;
 #define EGL_END
 #endif
 
-#define cchar const char
 
 // check basic init
 #define S52_CHECK_INIT  if (TRUE == _doInit) {                                                 \
@@ -372,7 +380,7 @@ static void  *_EGLctx = NULL;
                         }
 
 
-static double     _validate_bool(double val)
+static double     _validate_bool(double val) /*fold00*/
 {
     val = (val==0.0)? 0.0 : 1.0;
 
@@ -381,14 +389,14 @@ static double     _validate_bool(double val)
     return val;
 }
 
-static double     _validate_meter(double val)
+static double     _validate_meter(double val) /*fold00*/
 {
     PRINTF("Meter: %f\n", val);
 
     return val;
 }
 
-static double     _validate_nm(double val)
+static double     _validate_nm(double val) /*fold00*/
 {
     if (val < 0.0) val = -val;
 
@@ -397,7 +405,7 @@ static double     _validate_nm(double val)
     return val;
 }
 
-static double     _validate_min(double val)
+static double     _validate_min(double val) /*fold00*/
 {
 
     if (val < 0.0) {
@@ -410,14 +418,14 @@ static double     _validate_min(double val)
     return val;
 }
 
-static double     _validate_int(double val)
+static double     _validate_int(double val) /*fold00*/
 {
     int val_int = (int) val;
 
     return (double)val_int;
 }
 
-static double     _validate_disp(double val)
+static double     _validate_disp(double val) /*fold00*/
 {
     int crntMask = (int) S52_getMarinerParam(S52_MAR_DISP_CATEGORY);
     int newMask  = (int) val;
@@ -469,7 +477,7 @@ static double     _validate_disp(double val)
     //*/
 }
 
-static double     _validate_mar(double val)
+static double     _validate_mar(double val) /*fold00*/
 // S52_MAR_DISP_LAYER_LAST  - MARINERS' CATEGORY (drawn on top - last)
 {
     int crntMask = (int) S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST);
@@ -504,7 +512,7 @@ static double     _validate_mar(double val)
     return (double)crntMask;
 }
 
-static double     _validate_pal(double val)
+static double     _validate_pal(double val) /*fold00*/
 {
     int palTblsz = S52_PL_getPalTableSz();
 
@@ -516,7 +524,7 @@ static double     _validate_pal(double val)
     return val;
 }
 
-static double     _validate_deg(double val)
+static double     _validate_deg(double val) /*fold00*/
 {
     // AIS a value of 360 mean heading course unknown
     //if (val < 0.0 || 360.0 <= val) {
@@ -530,7 +538,7 @@ static double     _validate_deg(double val)
     return val;
 }
 
-static double     _validate_lat(double lat)
+static double     _validate_lat(double lat) /*fold00*/
 {
     //double latMin = _mercLat - 90.0;
     //double latMax = _mercLat + 90.0;
@@ -547,7 +555,7 @@ static double     _validate_lat(double lat)
     return lat;
 }
 
-static double     _validate_lon(double val)
+static double     _validate_lon(double val) /*fold00*/
 {
     if (val < -180.0 || 180.0 < val) {
         PRINTF("WARNING: longitude out of bound [-180.0 .. +180.0], reset to 0.0: %f\n", val);
@@ -559,7 +567,7 @@ static double     _validate_lon(double val)
     return val;
 }
 
-static int        _validate_screenPos(double *xx, double *yy)
+static int        _validate_screenPos(double *xx, double *yy) /*fold00*/
 {
     /*
     // failsafe, init viewPort
@@ -592,7 +600,7 @@ static int        _validate_screenPos(double *xx, double *yy)
     return TRUE;
 }
 
-static double     _validate_filter(double mask)
+static double     _validate_filter(double mask) /*fold00*/
 {
     int crntMask = (int) S52_getMarinerParam(S52_CMD_WRD_FILTER);
     int newMask  = (int) mask;
@@ -625,13 +633,13 @@ static double     _validate_filter(double mask)
     return (double)crntMask;
 }
 
-static double     _validate_floatPositive(double val)
+static double     _validate_floatPositive(double val) /*fold00*/
 {
     //return fabs(val);
     return ABS(val);
 }
 
-static int        _fixme(S52MarinerParameter paramName)
+static int        _fixme(S52MarinerParameter paramName) /*fold00*/
 {
     PRINTF("FIXME: S52MarinerParameter %i not implemented\n", paramName);
 
@@ -639,7 +647,7 @@ static int        _fixme(S52MarinerParameter paramName)
 }
 
 //DLL double STD S52_getMarinerParam(const char *paramName)
-DLL double STD S52_getMarinerParam(S52MarinerParameter paramID)
+DLL double STD S52_getMarinerParam(S52MarinerParameter paramID) /*fold00*/
 // return Mariner parameter or S52_MAR_NONE if fail
 // FIXME: check mariner param against groups selection
 {
@@ -655,7 +663,7 @@ DLL double STD S52_getMarinerParam(S52MarinerParameter paramID)
     return val;
 }
 
-DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
+DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val) /*fold00*/
 // validate and set Mariner Parameter
 {
     S52_CHECK_INIT;
@@ -756,7 +764,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
     return ret;
 }
 
-DLL int    STD S52_setTextDisp(int prioIdx, int count, int state)
+DLL int    STD S52_setTextDisp(int prioIdx, int count, int state) /*fold00*/
 {
 
     if (prioIdx<0 || 99<prioIdx) {
@@ -781,7 +789,7 @@ DLL int    STD S52_setTextDisp(int prioIdx, int count, int state)
     return TRUE;
 }
 
-DLL int    STD S52_getTextDisp(int prioIdx)
+DLL int    STD S52_getTextDisp(int prioIdx) /*fold00*/
 {
     if (prioIdx<0 || 99<prioIdx) {
         PRINTF("WARNING: prioIdx out of bound (%i)\n", prioIdx);
@@ -793,7 +801,7 @@ DLL int    STD S52_getTextDisp(int prioIdx)
 
 
 #if 0
-static gint       _cmpLine(gconstpointer pointA, gconstpointer pointB, gpointer user_data)
+static gint       _cmpLine(gconstpointer pointA, gconstpointer pointB, gpointer user_data) /*fold00*/
 // compare line
 {
     guint   nptA;
@@ -827,7 +835,7 @@ static gint       _cmpLine(gconstpointer pointA, gconstpointer pointB, gpointer 
 }
 #endif
 
-static gint       _cmpCell(gconstpointer a, gconstpointer b)
+static gint       _cmpCell(gconstpointer a, gconstpointer b) /*fold00*/
 {
     //gconstpointer A = *a;
     //_cell *B = (_cell*) b;
@@ -843,7 +851,7 @@ static gint       _cmpCell(gconstpointer a, gconstpointer b)
         return  1;
 }
 
-static _cell     *_addCell(const char *filename)
+static _cell     *_addCell(const char *filename) /*fold00*/
 // add this cell else NULL (if allready loaded)
 // assume filename is not NULL
 {
@@ -873,15 +881,13 @@ static _cell     *_addCell(const char *filename)
 
     {   // init cell
         _cell *cell = g_new0(_cell, 1);
-        int i,j;
-        for (i=0; i<S52_PRIO_NUM; ++i) {
-            for (j=0; j<S52_N_OBJ; ++j)
+        for (int i=0; i<S52_PRIO_NUM; ++i) {
+            for (int j=0; j<S52_N_OBJ; ++j)
                 cell->renderBin[i][j] = g_ptr_array_new();
         }
 
         cell->filename = g_string_new(fname);
         g_free(fname);
-
 
         cell->ext.S =  INFINITY;
         cell->ext.W =  INFINITY;
@@ -900,31 +906,20 @@ static _cell     *_addCell(const char *filename)
 
         cell->S57ClassList = g_string_new("");
 
-
         cell->projDone = FALSE;
 
-        //_cellList =  g_ptr_array_insert_val(_cellList, idx, cell);
         g_ptr_array_add(_cellList, cell);
         // sort cell: bigger region (small scale) last (eg 553311)
         g_ptr_array_sort(_cellList, _cmpCell);
 
-
-
-        //_crntCell = &g_array_index(_cellList, _cell, idx);
         _crntCell = cell;
     }
-
-
-//#ifdef S52_USE_SUPP_LINE_OVERLAP
-//    if (NULL == _lines)
-//        _lines = g_ptr_array_new();
-//#endif
 
     return _crntCell;
 }
 
 #if 0
-static _cell     *_removeCell(_cell *ch)
+static _cell     *_removeCell(_cell *ch) /*fold00*/
 // remove a cell from the set, else NULL
 {
     for (guint i=0; i<_cellList->len; ++i) {
@@ -989,7 +984,7 @@ struct callStackSaver {
 };
 
 
-void              _dump_crash_report(unsigned pid)
+void              _dump_crash_report(unsigned pid) /*fold00*/
 // shortened code from android's debuggerd
 // to get a backtrace on ARM
 {
@@ -1024,7 +1019,7 @@ void              _dump_crash_report(unsigned pid)
     _UPT_destroy (ui);
 }
 
-static            _Unwind_Reason_Code trace_func(struct _Unwind_Context *ctx, void *user_data)
+static            _Unwind_Reason_Code trace_func(struct _Unwind_Context *ctx, void *user_data) /*fold00*/
 {
     //unsigned int rawAddr = __gnu_Unwind_Find_exidx(ctx); //  _Unwind_GetIP(ctx);
     unsigned int rawAddr = _Unwind_GetIP(ctx);
@@ -1042,10 +1037,10 @@ static            _Unwind_Reason_Code trace_func(struct _Unwind_Context *ctx, vo
     //return _URC_OK;
 }
 //*/
-
+ /*fold00*/
 #if 0
 /*
-static unsigned int _GetLibraryAddress(const char* libraryName)
+static unsigned int _GetLibraryAddress(const char* libraryName) /*fold00*/
 {
     FILE* file = fopen("/proc/self/maps", "rt");
     if (file==NULL) {
@@ -1084,10 +1079,10 @@ static unsigned int _GetLibraryAddress(const char* libraryName)
 }
 */
 #endif
-
+ /*fold00*/
 #if 0
 /*
-static int        _get_backtrace (void** buffer, int n)
+static int        _get_backtrace (void** buffer, int n) /*fold00*/
 {
     unw_cursor_t  cursor;
     unw_context_t uc;
@@ -1111,7 +1106,7 @@ static int        _get_backtrace (void** buffer, int n)
 //*/
 #endif
 
-static int        _unwind(void)
+static int        _unwind(void) /*fold00*/
 {
 // ============ test using Unwind ====================================
 /*
@@ -1141,7 +1136,7 @@ _URC_FAILURE                  = 9   // unspecified failure of some kind
 
 #endif // S52_USE_ANDROID
 
-static int        _backtrace(void)
+static int        _backtrace(void) /*fold00*/
 {
     void  *buffer[128];
     char **strings;
@@ -1156,8 +1151,7 @@ static int        _backtrace(void)
         PRINTF("ERROR: backtrace_symbols() .. no symbols");
     }
 
-    int i;
-    for (i=0; i<nptrs; ++i)
+    for (int i=0; i<nptrs; ++i)
         PRINTF("==== %s\n", strings[i]);
 
     free(strings);
@@ -1169,7 +1163,7 @@ static int        _backtrace(void)
 
 
 // signal
-static void       _trapSIG(int sig, siginfo_t *info, void *secret)
+static void       _trapSIG(int sig, siginfo_t *info, void *secret) /*fold00*/
 {
     // 2 -
     if (SIGINT == sig) {
@@ -1277,75 +1271,8 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 
 }
 
-#ifdef S52_USE_PIPE
-static gboolean   _pipeReadWrite(GIOChannel *source, GIOCondition condition, gpointer user_data)
-{
-    GError    *error = NULL;
-    GString   *str  = g_string_new("");
-    GIOStatus  stat = g_io_channel_read_line_string(source, str, NULL, &error);
-    PRINTF("GIOStatus: %i\n", stat);
-
-    if (NULL != error) {
-        PRINTF("ERROR: %s\n", error->message);
-        g_error_free(error);
-    }
-
-    PRINTF("PIPE: |%s|\n", str->str);
-
-
-    gchar** palNmL = g_strsplit(str->str, ",", 0);
-    gchar** palNm  = palNmL;
-
-    //const char * STD S52_getPLibsIDList(void);
-    if (0 == ("S52_getPLibsIDList", *palNm)) {
-        GError   *error = NULL;
-        gsize     bout  = 0;
-        PRINTF("PIPE: %s\n", *palNm);
-        GIOStatus stat  = g_io_channel_write_chars(source, S52_getPLibsIDList(), -1, &bout, &error);
-
-        PRINTF("GIOStatus: %i\n", stat);
-    }
-
-
-    //while (NULL != *palNm) {
-    //    switch(type): {
-    //        case 's':
-    //    }
-    //    palNm++;
-    //}
-    g_strfreev(palNmL);
-
-    g_string_free(str, TRUE);
-
-    return TRUE;
-}
-
-static int        _pipeWatch(gpointer dummy)
-// add watch to pipe
-{
-    // use FIFO pipe instead of DBug
-    // less overhead - bad on ARM
-
-    unlink(PIPENAME);
-
-    int fdpipe = mkfifo(PIPENAME, S_IFIFO | S_IRUSR | S_IWUSR);
-
-    int fd     = open(PIPENAME, O_RDWR);
-
-    GIOChannel   *pipe      = g_io_channel_unix_new(fd);
-    guint         watchID   = g_io_add_watch(pipe, G_IO_IN, _pipeReadWrite, NULL);
-
-    // FIXME: case of no main loop
-    //GMainContext *_pipeCtx  = g_main_context_new();
-    //GMainLoop    *_pipeLoop = g_main_loop_new(_pipeCtx, TRUE);
-    //g_main_loop_run(_pipeLoop);
-
-    return TRUE;
-}
-#endif
-
 static int        _getCellsExt(_extent* ext);
-static int        _initPROJ(void)
+static int        _initPROJ(void) /*fold00*/
 {
     _extent ext;
     if (FALSE == _getCellsExt(&ext)) {
@@ -1372,14 +1299,14 @@ static int        _initPROJ(void)
     return TRUE;
 }
 
-static int        _projectCells(void)
+static int        _projectCells(void) /*fold00*/
 {
     for (guint k=0; k<_cellList->len; ++k) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
         if (FALSE == c->projDone) {
-        //if (FALSE == c->projDone && (0!=strcmp(c->filename->str, "--0WORLD.shp"))) {
             for (guint i=0; i<S52_PRIO_NUM; ++i) {
-                for (guint j=0; j<N_OBJ_T; ++j) {
+                for (guint j=S52_AREAS; j<N_OBJ_T; ++j) {
+                //for (guint j=0; j<N_OBJ_T; ++j) {
                     GPtrArray *rbin = c->renderBin[i][j];
                     for (guint idx=0; idx<rbin->len; ++idx) {
                         S52_obj *obj  = (S52_obj *)g_ptr_array_index(rbin, idx);
@@ -1404,19 +1331,57 @@ static int        _projectCells(void)
     return TRUE;
 }
 
-DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
-DLL int    STD S52_loadObject(const char *objname, void *shape);
+static int        _collect_CS_touch(_cell* c) /*fold00*/
+// setup object used by CS
+{
+    for (guint i=0; i<S52_PRIO_NUM; ++i) {
+        for (guint j=S52_AREAS; j<N_OBJ_T; ++j) {
+        //for (guint j=0; j<N_OBJ_T; ++j) {
+            GPtrArray *rbin = c->renderBin[i][j];
+            for (guint idx=0; idx<rbin->len; ++idx) {
+                S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+                S57_geo *geo = S52_PL_getGeo(obj);
+
+                // debug
+                //if (== S57_getGeoID(geo)) {
+                //    PRINTF("found\n");
+                //    S57_dumpData(geo);
+                //}
+
+                S52_CS_touch(c->local, geo);
+            }
+        }
+    }
+
+    // then process lights_sector
+    if (NULL != c->lights_sector) {
+        for (guint i=0; i<c->lights_sector->len; ++i) {
+            S52_obj *obj  = (S52_obj *)g_ptr_array_index(c->lights_sector, i);
+            S57_geo *geo  = S52_PL_getGeo(obj);
+
+            S52_CS_touch(c->local, geo);
+        }
+    }
+
+    // need to do a _resolveCS() at the next _app()
+    _doCS = TRUE;
+
+    return TRUE;
+}
+
+DLL int    STD S52_loadLayer (const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
+DLL int    STD S52_loadObject(const char *objname,   void *shape);
 static _cell*     _loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb);
 
 #ifdef S52_USE_DBUS
 static int        _initDBus(void);
 #endif
 static int        _initSock(void); // froward
-
+ /*fold00*/
 #ifdef S52_USE_DOTPITCH
-DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb)
+DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb) /*fold00*/
 #else
-DLL int    STD S52_init(void)
+DLL int    STD S52_init(void) /*fold00*/
 #endif
 // init basic stuff (outside of the main loop)
 {
@@ -1505,6 +1470,10 @@ DLL int    STD S52_init(void)
         _S57ClassList = g_string_new("");
     if (NULL == _objToDelList)
         _objToDelList = g_ptr_array_new();
+
+    //if (NULL == _geoList) {
+    //    _geoList = g_ptr_array_sized_new(1000);
+    //}
 
 
     ///////////////////////////////////////////////////////////
@@ -1640,7 +1609,7 @@ DLL int    STD S52_init(void)
     return TRUE;
 }
 
-DLL cchar *STD S52_version(void)
+DLL cchar *STD S52_version(void) /*fold00*/
 {
     PRINTF("%s", _version);
 
@@ -1648,9 +1617,9 @@ DLL cchar *STD S52_version(void)
 }
 
 static S52_obj   *_delObj(S52_obj *obj); // foward ref
-DLL int    STD    _freeCell(_cell *c)
+DLL int    STD    _freeCell(_cell *c) /*fold00*/
 {
-    unsigned int j,k;
+    //unsigned int j,k;
 
     S52_CHECK_INIT;
 
@@ -1671,11 +1640,9 @@ DLL int    STD    _freeCell(_cell *c)
     if (NULL != c->encPath)
         g_free(c->encPath);
 
-    for (j=0; j<S52_PRIO_NUM; ++j) {
-        for (k=0; k<N_OBJ_T; ++k) {
-            //unsigned int idx;
+    for (int j=0; j<S52_PRIO_NUM; ++j) {
+        for (int k=0; k<N_OBJ_T; ++k) {
             GPtrArray *rbin = c->renderBin[j][k];
-
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
 
@@ -1689,8 +1656,6 @@ DLL int    STD    _freeCell(_cell *c)
     S52_CS_done(c->local);
 
     if (NULL != c->lights_sector) {
-        //unsigned int idx;
-
         for (guint idx=0; idx<c->lights_sector->len; ++idx) {
             S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, idx);
 
@@ -1729,7 +1694,7 @@ DLL int    STD    _freeCell(_cell *c)
     return TRUE;
 }
 
-DLL int    STD S52_done(void)
+DLL int    STD S52_done(void) /*fold00*/
 // clear all --shutingdown libS52
 {
     S52_CHECK_INIT;
@@ -1775,6 +1740,7 @@ DLL int    STD S52_done(void)
     g_string_free(_S57ClassList, TRUE); _S57ClassList = NULL;
 
     g_ptr_array_free(_objToDelList, TRUE); _objToDelList = NULL;
+//    g_ptr_array_free(_geoList,      TRUE); _geoList      = NULL;
 
 #ifdef S52_USE_EGL
     _eglBeg = NULL;
@@ -1788,10 +1754,10 @@ DLL int    STD S52_done(void)
 
     return TRUE;
 }
-
+ /*fold00*/
 #if 0
 /*  DEPRECATED
-DLL int    STD S52_setFont(int font)
+DLL int    STD S52_setFont(int font) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -1802,41 +1768,126 @@ DLL int    STD S52_setFont(int font)
 */
 #endif
 
+/*
+static int        _linkLNAM_REFS(_cell* c)
+// FIXME: handle C_AGGR / C_ASSO object for att "LNAM_REFS" (add info to cursor pick)
+// - traverse META_T for C_AGGR / C_ASSO to get "LNAM_REFS"
+// - parse "LNAM_REFS" to get LNAM
+// - find S57 object named LNAM
+// - link it to this C_AGGR or C_ASSO object
 
-#ifdef S52_USE_SUPP_LINE_OVERLAP
+//if (0 == g_strcmp0(name, "LNAM_REFS")) {
+//    geoData->LNAM_REFS = value;
+//}
 
-#if 0
-static GArray    *_parseIntList(GString *intstr)
 {
-    GArray *garray = g_array_new(FALSE, FALSE, sizeof(gint));
-    gchar **split  = g_strsplit_set(intstr->str+1, "():,", 0);
-    gchar **head   = split;
+    for (guint i=0; i<S52_PRIO_NUM; ++i) {
+            GPtrArray *rbin = c->renderBin[i][_META_T];
+            for (guint idx=0; idx<rbin->len; ++idx) {
+                S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+                S57_geo *geo = S52_PL_getGeo(obj);
 
-    // debug
-    //printf("XXX %s\n", intstr->str);
+                GString *lnam_refsstr = S57_getAttVal(geo, "LNAM_REFS");
+                if (NULL != lnam_refsstr) {
+                    // found a relation
+                    GString *lnamS57ID = NULL;
+                    gchar  **splitLNAM = g_strsplit_set(lnam_refsstr->str+1, "():,", 0);
+                    gchar  **topLNAM   = splitLNAM;
 
-    int n = atoi(*split++);
-    for (int i=0; i<n; ++i) {
-        const char *str = *split++;
-        if (NULL != str) {
-            gint        gi  =  atoi(str);
-            g_array_append_val(garray, gi);
-        } else {
-            PRINTF("buffer overflow in GDAL increase TEMP_BUFFER_SIZE (currently 1024) in ogr/ogrfeature.cpp:994\n");
-            g_assert(0);
-            break;
+                    // first number correspond to the number of LNAM in this relation
+                    guint n = atoi(*splitLNAM++);
+                    for (guint j=0; j<n; ++splitLNAM, ++j) {
+                        for (guint k=0; k<_geoList->len; ++k) {
+                            S57_geo *geo  = (S57_geo *)g_ptr_array_index(_geoList, k);
+                            GString *lnam = S57_getLNAM(geo);
+
+                            // DSID, Edge, ConnNode, has no LNAM
+                            if (NULL == lnam)
+                                continue;
+
+                            if (0 == g_strcmp0(lnam->str, *splitLNAM)) {
+                                if (NULL == lnamS57ID) {
+                                    lnamS57ID = g_string_new("");
+                                    g_string_printf(lnamS57ID, "%i", _baseS57ID + k);
+                                } else {
+                                    g_string_append_printf(lnamS57ID, ",%i", _baseS57ID + k);
+                                }
+                            }
+                        }
+                    }
+                    if (NULL != lnamS57ID)
+                        S57_setAtt(geo, "_lnamS57ID", lnamS57ID->str);
+
+                    g_string_free(lnamS57ID, TRUE);
+
+                    g_strfreev(topLNAM);
+
+                }
+            }
+    }
+
+    return TRUE;
+}
+*/
+
+static int        _linkRel2LNAM(_cell* c) /*fold00*/
+{
+    for (guint i=0; i<S52_PRIO_NUM; ++i) {
+        GPtrArray *rbin = c->renderBin[i][_META_T];
+        for (guint idx=0; idx<rbin->len; ++idx) {
+            S52_obj *obj    = (S52_obj *)g_ptr_array_index(rbin, idx);
+            S57_geo *geoRel = S52_PL_getGeo(obj);
+
+            GString *lnam_refsstr = S57_getAttVal(geoRel, "LNAM_REFS");
+            if (NULL != lnam_refsstr) {
+                GString *refs_geo  = NULL;
+                gchar  **splitLNAM = g_strsplit_set(lnam_refsstr->str+1, "():,", 0);
+                gchar  **topLNAM   = splitLNAM;
+
+                splitLNAM++;  // skip number of item
+                while (NULL != *splitLNAM) {
+                    S57_geo *geo = (S57_geo *)g_tree_lookup(_lnamBBT, *splitLNAM);
+                    if (NULL == geo) {
+                        PRINTF("WARNING: LNAM (%s) not found", *splitLNAM);
+                        splitLNAM++;
+                        continue;
+                    }
+                    // link geo to C_AGGR / C_ASSO geo
+                    S57_setRelationship(geo, geoRel);
+
+                    if (NULL == refs_geo) {
+                        refs_geo = g_string_new("");
+                        g_string_printf(refs_geo, "%p", (void*)geo);
+                    } else {
+                        g_string_append_printf(refs_geo, ",%p", (void*)geo);
+                    }
+                    splitLNAM++;
+                }
+                // add geo to C_AGGR / C_ASSO LNAM_REFS_GEO
+                if (NULL != refs_geo)
+                    S57_setAtt(geoRel, "LNAM_REFS_GEO", refs_geo->str);
+
+                g_string_free(refs_geo, TRUE);
+
+                g_strfreev(topLNAM);
+            }
         }
     }
-    g_strfreev(head);
 
-    return garray;
+    g_tree_destroy(_lnamBBT);
+    _lnamBBT = NULL;
+
+    return TRUE;
 }
-#endif
 
-static int        _suppLineOverlap()
+#ifdef S52_USE_SUPP_LINE_OVERLAP
+static int        _suppLineOverlap() /*fold00*/
+
 // no SUPP in case manual chart correction (LC(CHCRIDnn) and LC(CHCRDELn))
+// Note: for now _suppLineOverlap() work for LC() only.
 {
-    // FIXME: some edge valid are removed!
+    // FIXME: some valid edge are supress,
+    // check if odd vertex supress on to many edge
 
     return_if_null(_crntCell->Edges);
     return_if_null(_crntCell->ConnectedNodes);
@@ -1973,9 +2024,9 @@ static int        _suppLineOverlap()
         }
     }
 
-    {
+    // free all overlaping line data
+    {   // flush OGR primitive geo
         int quiet = TRUE;
-        // flush OGR primitive geo
         g_ptr_array_foreach(_crntCell->Edges,          (GFunc)S57_doneData, &quiet);
         g_ptr_array_foreach(_crntCell->ConnectedNodes, (GFunc)S57_doneData, &quiet);
     }
@@ -1987,15 +2038,12 @@ static int        _suppLineOverlap()
     _crntCell->ConnectedNodes = NULL;
     _crntCell->baseEdgeRCID   = 0;
 
-    //PRINTF("done!\n");
-
     return TRUE;
 }
 #endif
 
 
-static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
-// FIXME: MUTEX
+static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb) /*fold00*/
 {
     _cell   *ch = NULL;
     FILE    *fd = NULL;
@@ -2043,11 +2091,9 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
     //}
 
 #ifdef S52_USE_GV
-    //S57_gvLoadCell (filename, (S52_loadLayer_cb) cb);
     S57_gvLoadCell (filename, layer_cb);
 #else
     S57_ogrLoadCell(filename, loadLayer_cb, loadObject_cb);
-    //S57_ogrLoadCell(filename, NULL);
 #endif
 
     // FIXME: resolve heightdatum correction here!
@@ -2061,25 +2107,9 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
     _suppLineOverlap();
 #endif
 
+    _linkRel2LNAM(ch);
 
-    // FIXME: handle C_AGGR / C_ASSO object for att "LNAM_REFS" (add info to cursor pick)
-    // - traverse META_T for C_AGGR / C_ASSO to get "LNAM_REFS"
-    // - parse "LNAM_REFS" to get LNAM
-    // - find S57 object named LNAM
-    // - link it to this C_AGGR or C_ASSO object
-
-    //if (0 == g_strcmp0(name, "LNAM_REFS")) {
-    //    geoData->LNAM_REFS = value;
-    //}
-
-    // for now assume that there is a relationship
-    // but not weather it's slave or peer
-    //else
-    //{
-    //    if (0 == g_strcmp0(name, "FFPT_RIN")) {
-    //        geoData->FFPT_RIND = value;
-    //    }
-    //}
+    _collect_CS_touch(ch);
 
     S52_fclose(fd);
 
@@ -2093,7 +2123,8 @@ char **S57FileCollector( const char *pszDataset );
 
 //#include "iso8211.h"
 
-static int        _loadCATALOG(char *filename)
+static int        _loadCATALOG(char *filename) /*fold00*/
+
 {
     FILE *fd = NULL;
     filename = g_strstrip(filename);
@@ -2154,11 +2185,10 @@ static int        _loadCATALOG(char *filename)
     return TRUE;
 }
 #endif
-
-DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
-
+ /*fold00*/
+//DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb); // foward
 //DLL int    STD S52_loadCell(const char *encPath, S52_loadLayer_cb layer_cb)
-DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb)
+DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb) /*fold00*/
 // FIXME: handle each type of cell separatly
 // OGR:
 // - S57:
@@ -2193,6 +2223,11 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         }
         loadObject_cb = S52_loadObject;
     }
+
+    // reset C_AGGR / C_ASSO helper
+    //_baseS57ID = 0;
+    //g_ptr_array_set_size(_geoList, 0);
+
 
 #ifdef _MINGW
     // on Windows 32 the callback is broken
@@ -2267,8 +2302,6 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     ch = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
 #endif
 
-    //g_free(fname);
-
     if (NULL == ch) {
         g_free(fname);
         g_static_mutex_unlock(&_mp_mutex);
@@ -2283,64 +2316,6 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     }
 #endif
 
-
-    {   // setup object used by CS
-
-        for (guint k=0; k<_cellList->len; ++k) {
-            //_cell *c = &g_array_index(_cellList, _cell, k);
-            _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
-            for (guint i=0; i<S52_PRIO_NUM; ++i) {
-                for (guint j=0; j<N_OBJ_T; ++j) {
-                    GPtrArray *rbin = c->renderBin[i][j];
-                    //unsigned int idx;
-                    for (guint idx=0; idx<rbin->len; ++idx) {
-                        S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                        S57_geo *geo = S52_PL_getGeo(obj);
-
-                        // debug
-                        //if (== S57_getGeoID(geo)) {
-                        //    PRINTF("found\n");
-                        //    //S57_dumpData(geo);
-                        //}
-
-                        S52_CS_touch(c->local, geo);
-
-                        // prepare DEPARE/DRGARE
-                        //if ( (0==S52_strncmp(name, "DEPARE", 6)) &&
-                        //    AREAS_T == S57_getObjtype(geo)) {
-                        //
-                        //    S52_GL_tess(geo);
-                        //}
-                        //if (2186==S57_getGeoID(geo)) {
-                        //    S57_dumpData(geo);
-                        //}
-
-                    }
-                }
-            }
-
-            // then process lights_sector
-            if (NULL != c->lights_sector) {
-                //unsigned int i = 0;
-                for (guint i=0; i<c->lights_sector->len; ++i) {
-                    S52_obj *obj  = (S52_obj *)g_ptr_array_index(c->lights_sector, i);
-                    S57_geo *geo  = S52_PL_getGeo(obj);
-
-                    // debug
-                    //if (1555 == S57_getGeoID(geo)) {
-                    //    PRINTF("lights found\n");
-                    //}
-
-                    S52_CS_touch(c->local, geo);
-                }
-            }
-        }
-    }
-
-
-    // need to do a _resolveCS() at the next _app()
-    _doCS = TRUE;
-
     // _app() specific to sector light
     _doCullLights = TRUE;
 
@@ -2349,7 +2324,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     return TRUE;
 }
 
-DLL int    STD S52_doneCell(const char *encPath)
+DLL int    STD S52_doneCell(const char *encPath) /*fold00*/
 // FIXME: the (futur) chart manager (CM) should to this by itself
 // so loadCell would load a CATALOG then CM would load individual cell
 // to fill the view (and unload cell outside the view)
@@ -2397,16 +2372,20 @@ DLL int    STD S52_doneCell(const char *encPath)
 }
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
-static int        _loadEdge(const char *name, void *Edge)
+static int        _loadEdge(const char *name, void *Edge) /*fold00*/
 {
     if ( (NULL==name) || (NULL==Edge)) {
         PRINTF("ERROR: objname / shape  --> NULL\n");
+        g_assert(0);
         return FALSE;
     }
 
     S57_geo *geoData = S57_ogrLoadObject(name, (void*)Edge);
-    if (NULL == geoData)
+    if (NULL == geoData) {
+        PRINTF("OGR fail to load object: %s\n", name);
+        g_assert(0);
         return FALSE;
+    }
 
     // add to this cell (crntCell)
     if (NULL == _crntCell->Edges)
@@ -2443,8 +2422,7 @@ static int        _loadEdge(const char *name, void *Edge)
         double *ppt_0 = NULL;
 
         if ((name_rcid_0 - _crntCell->baseEdgeRCID) > _crntCell->ConnectedNodes->len) {
-            PRINTF("ERROR: Edge end point 0 (%s) and ConnectedNodes array lenght mismatch\n",
-                   name_rcid_0str->str);
+            PRINTF("ERROR: Edge end point 0 (%s) and ConnectedNodes array lenght mismatch\n", name_rcid_0str->str);
             g_assert(0);
         }
 
@@ -2463,8 +2441,7 @@ static int        _loadEdge(const char *name, void *Edge)
 
         //if ((name_rcid_1-1)>_crntCell->ConnectedNodes->len) {
         if ((name_rcid_1 - _crntCell->baseEdgeRCID) > _crntCell->ConnectedNodes->len) {
-            PRINTF("ERROR: Edge end point 1 (%s) and ConnectedNodes array lenght mismatch\n",
-                   name_rcid_1str->str);
+            PRINTF("ERROR: Edge end point 1 (%s) and ConnectedNodes array lenght mismatch\n", name_rcid_1str->str);
             g_assert(0);
         }
 
@@ -2517,6 +2494,9 @@ static int        _loadEdge(const char *name, void *Edge)
 
     g_ptr_array_add(_crntCell->Edges, geoData);
 
+    // add geo/LNAM
+    //g_ptr_array_add(_geoList, geoData);
+
     // debug
     //PRINTF("%X len:%i\n", _crntCell->Edges->pdata, _crntCell->Edges->len);
     //PRINTF("XXX %s\n", S57_getName(geoData));
@@ -2524,10 +2504,13 @@ static int        _loadEdge(const char *name, void *Edge)
     return TRUE;
 }
 
-static int        _loadConnectedNode(const char *name, void *ConnectedNode)
+static int        _loadConnectedNode(const char *name, void *ConnectedNode) /*fold00*/
 {
+    //return_if_null(name);
+    //return_if_null(ConnectedNode);
     if ( (NULL==name) || (NULL==ConnectedNode)) {
         PRINTF("ERROR: objname / shape  --> NULL\n");
+        g_assert(0);
         return FALSE;
     }
 
@@ -2568,8 +2551,12 @@ static int        _loadConnectedNode(const char *name, void *ConnectedNode)
         _crntCell->ConnectedNodes->pdata[rcid - _crntCell->baseEdgeRCID] = geoData;
     }
 
-    //g_ptr_array_add(_crntCell->ConnectedNodes, geoData);
+    // add geo/LNAM
+    //g_ptr_array_add(_geoList, geoData);
 
+
+    //g_ptr_array_add(_crntCell->ConnectedNodes, geoData);
+    //
     // if this is the first connectednodes get is offset
     // the offset is 1, but in certain case (like update) it can move
     // assume connectednodes continuous
@@ -2583,7 +2570,7 @@ static int        _loadConnectedNode(const char *name, void *ConnectedNode)
 }
 #endif
 
-DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb)
+DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -2608,9 +2595,6 @@ DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_
     //if (0==g_strcmp0(layername, "IsolatedNode"))
     if (0==S52_strncmp(layername, "IsolatedNode", 12))
         return TRUE;
-
-    //if (0==g_strcmp0(layername, "ConnectedNode"))
-    //    return TRUE;
 
     //if (0==g_strcmp0(layername, "Face"))
     if (0==S52_strncmp(layername, "Face", 4))
@@ -2637,12 +2621,6 @@ DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_
     //if (0==g_strcmp0(layername, "UWTROC"))
     //    return 1;
 
-    // GDAL load a DSID layer
-    //if (0== g_strcmp0(layername, "DSID", 4)) {
-    //    PRINTF("skipping layer name: %s\n", layername);
-    //    return 1;
-    //}
-
     if (NULL == loadObject_cb) {
         if (FALSE == silent) {
             PRINTF("NOTE: using default S52_loadObject() callback\n");
@@ -2660,17 +2638,15 @@ DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_
 
 
 #ifdef S52_USE_GV
-    //S57_gvLoadLayer (layername, layer, S52_loadObject);
     S57_gvLoadLayer (layername, layer, loadObject_cb);
 #else
-    //S57_ogrLoadLayer(layername, layer, S52_loadObject);
     S57_ogrLoadLayer(layername, layer, loadObject_cb);
 #endif
 
     return TRUE;
 }
 
-static int        _insertLightSec(_cell *c, S52_obj *obj)
+static int        _insertLightSec(_cell *c, S52_obj *obj) /*fold00*/
 // return TRUE if this obj is a light sector
 // as this object need special prossesing
 {
@@ -2685,7 +2661,7 @@ static int        _insertLightSec(_cell *c, S52_obj *obj)
         GString *sectr2str = S57_getAttVal(geo, "SECTR2");
 
         if (NULL!=sectr1str || NULL!=sectr2str) {
-            // moved from _addCell() - create array, only if needed
+            // create array, only if needed
             if (NULL == c->lights_sector)
                 c->lights_sector = g_ptr_array_new();
 
@@ -2699,7 +2675,7 @@ static int        _insertLightSec(_cell *c, S52_obj *obj)
     return FALSE;
 }
 
-static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
+static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData) /*fold00*/
 // insert a S52_obj in a cell from a S57_obj
 // return the new S52_obj
 {
@@ -2735,9 +2711,9 @@ static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
 
         // test to insert Chart No 1 object on layer 9 (Mariners' Objects)
         // fail in GL at second drawLast!
-        if (S52_PRIO_MARINR == disPrioIdx)
-            g_ptr_array_add(_marinerCell->renderBin[disPrioIdx][obj_t], obj);
-        else
+        //if (S52_PRIO_MARINR == disPrioIdx)
+        //    g_ptr_array_add(_marinerCell->renderBin[disPrioIdx][obj_t], obj);
+        //else
             g_ptr_array_add(c->renderBin[disPrioIdx][obj_t], obj);
     }
 
@@ -2754,12 +2730,11 @@ static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
     return obj;
 }
 
-static S52_obj   *_insertS52Obj(_cell *c, S52_obj *obj)
-// inster 'obj' in cell 'c'
+static S52_obj   *_insertS52Obj(_cell *c, S52_obj *obj) /*fold00*/
+// inster 'obj' in cell 'c' (use to store Mariners' Object)
 {
     S57_geo    *geo        = S52_PL_getGeo(obj);
     S52_disPrio disPrioIdx = S52_PL_getDPRI(obj);
-    //S57_Obj_t   ot         = S57_getObjtype(geo);
     S52_Obj_t   ot         = S57_getObjtype(geo);
     int         obj_t      = N_OBJ_T;
 
@@ -2783,7 +2758,7 @@ static S52_obj   *_insertS52Obj(_cell *c, S52_obj *obj)
     return obj;
 }
 
-static S52_obj   *_removeObj(_cell *c, S52_obj *obj)
+static S52_obj   *_removeObj(_cell *c, S52_obj *obj) /*fold00*/
 // remove the S52 object from the cell (not the object itself)
 // return the oject removed, else return NULL if object not found
 {
@@ -2809,8 +2784,12 @@ static S52_obj   *_removeObj(_cell *c, S52_obj *obj)
     return NULL;
 }
 
+static int        _compLNAM(gconstpointer a, gconstpointer b) /*fold00*/
+{
+    return g_strcmp0(a,b);
+}
 
-DLL int    STD S52_loadObject(const char *objname, void *shape)
+DLL int    STD S52_loadObject(const char *objname, void *shape) /*fold00*/
 {
     S57_geo *geoData = NULL;
 
@@ -2821,14 +2800,9 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
         return FALSE;
     }
 
-    // debug
-    //PRINTF("XXXXX DEBUG: starting to load object (%s:%X)\n", objname, shape);
-
-
 #ifdef S52_USE_GV
     // debug: filter out GDAL/OGR metadata
-    //if (0==g_strcmp0("DSID", objname, 4))
-    if (0==g_strcmp0("DSID", objname, 4))
+    if (0 == g_strcmp0("DSID", objname))
         return FALSE;
 
     geoData = S57_gvLoadObject (objname, (void*)shape);
@@ -2836,21 +2810,22 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
     geoData = S57_ogrLoadObject(objname, (void*)shape);
 #endif
 
-    if (NULL == geoData)
+    if (NULL == geoData) {
+        PRINTF("OBJNAME:%s skipped .. no geo\n", objname);
         return FALSE;
+    }
 
     // set cell extent from each object
-    // NOTE:should be the same as CATALOG.03?
+    // NOTE: should be the same as CATALOG.03x
     if (_META_T != S57_getObjtype(geoData)) {
-    //if ((_META_T!=S57_getObjtype(geoData)) && )) {
         _extent ext;
 
         S57_getExt(geoData, &ext.W, &ext.S, &ext.E, &ext.N);
-        //PRINTF("%s :: MIN: %f %f  MAX: %f %f\n", objname,  ext.w, ext.s, ext.e, ext.n);
         if (_crntCell->ext.S > ext.S) _crntCell->ext.S = ext.S;
         if (_crntCell->ext.W > ext.W) _crntCell->ext.W = ext.W;
         if (_crntCell->ext.N < ext.N) _crntCell->ext.N = ext.N;
         if (_crntCell->ext.E < ext.E) _crntCell->ext.E = ext.E;
+        //PRINTF("%s :: MIN: %f %f  MAX: %f %f\n", objname,  ext.w, ext.s, ext.e, ext.n);
         //PRINTF("%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->ext.w, _crntCell->ext.s, _crntCell->ext.e, _crntCell->ext.n);
 
         // check M_QUAL:CATZOC
@@ -2886,6 +2861,7 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
         }
 
     } else {
+        PRINTF("_META_T:OBJNAME:%s ###################################################\n", objname);
         // check DSID  (GDAL metadata)
         if (0== g_strcmp0(objname, "DSID")) {
             GString *dsid_sdatstr = S57_getAttVal(geoData, "DSID_SDAT");
@@ -2910,13 +2886,12 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
             // debug
             //S57_dumpData(geoData, FALSE);
         }
-
-
     }
 
 #ifdef S52_USE_WORLD
     if (0 == strcmp(objname, WORLD_BASENM)) {
         _insertS57Obj(_crntCell, geoData);
+
         // unlink Poly chain - else will loop forever in S52_loadPLib()
         S57_delNextPoly(geoData);
 
@@ -2926,6 +2901,14 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
 
     _insertS57Obj(_crntCell, geoData);
 
+    // helper: save LNAM/geoData to lnamBBT
+    if (NULL == _lnamBBT)
+        _lnamBBT = g_tree_new(_compLNAM);
+
+    GString *key_lnam = S57_getAttVal(geoData, "LNAM");
+    if (NULL != key_lnam)
+        g_tree_insert(_lnamBBT, key_lnam->str, geoData);
+
     S52_CS_add(_crntCell->local, geoData);
 
     return TRUE;
@@ -2933,12 +2916,12 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
 
 //---------------------------------------------------
 //
-// CULL (work in progress)
+// CULL
 //
 //---------------------------------------------------
 
 #if 0
-static S52_extent _clip(S52_extent A, S52_extent B)
+static S52_extent _clip(S52_extent A, S52_extent B) /*fold00*/
 // assume A, B intersect or inside
 {
     S52_extent clip;
@@ -2953,7 +2936,7 @@ static S52_extent _clip(S52_extent A, S52_extent B)
 }
 #endif
 
-static int        _intersec(_extent A, _extent B)
+static int        _intersec(_extent A, _extent B) /*fold00*/
 // TRUE if intersec, FALSE if outside
 {
     if (B.N < A.S) return FALSE;
@@ -2964,7 +2947,7 @@ static int        _intersec(_extent A, _extent B)
     return TRUE;
 }
 
-static int        _moveObj(_cell *cell, GPtrArray *oldBin, unsigned int idx, int oldPrio, int obj_t)
+static int        _moveObj(_cell *cell, GPtrArray *oldBin, unsigned int idx, int oldPrio, int obj_t) /*fold00*/
 // TRUE if an 'obj' switched layer (priority), else FALSE
 // this is to solve the problem of moving an object from one 'set' to an other
 // it shuffle the array that act as a 'set'
@@ -2998,7 +2981,7 @@ static int        _moveObj(_cell *cell, GPtrArray *oldBin, unsigned int idx, int
     return FALSE;
 }
 
-static S52_obj   *_delObj(S52_obj *obj)
+static S52_obj   *_delObj(S52_obj *obj) /*fold00*/
 {
         S57_geo *geo = S52_PL_getGeo(obj);
 
@@ -3016,7 +2999,7 @@ static S52_obj   *_delObj(S52_obj *obj)
     return obj; // NULL
 }
 
-static int        _app()
+static int        _app() /*fold00*/
 // WARNING: not reentrant
 {
     //PRINTF("_app(): -.0-\n");
@@ -3076,22 +3059,18 @@ static int        _app()
 
     if (TRUE == _doCS) {
         // 1 - reparse CS
-        //unsigned int i = 0;
         for (guint i=0; i<_cellList->len; ++i) {
-            //_cell *ci = &g_array_index(_cellList, _cell, i);
             _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
             // one cell
 
-            int prio;
-            for (prio=S52_PRIO_NODATA; prio<S52_PRIO_NUM; ++prio) {
+            for (int prio=S52_PRIO_NODATA; prio<S52_PRIO_NUM; ++prio) {
                 // one layer
 
-                int obj_t;
-                for (obj_t=S52__META; obj_t<S52_N_OBJ; ++obj_t) {
+                for (int obj_t=S52_AREAS; obj_t<S52_N_OBJ; ++obj_t) {
+                //for (int obj_t=0; obj_t<S52_N_OBJ; ++obj_t) {
                     // one object type (render bin)
                     GPtrArray *rbin = ci->renderBin[prio][obj_t];
 
-                    //unsigned int idx;
                     for (guint idx=0; idx<rbin->len; ++idx) {
                         // one object
                         S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
@@ -3106,20 +3085,14 @@ static int        _app()
 
         // 2 - move obj
         for (guint i=0; i<_cellList->len; ++i) {
-            //_cell *ci = &g_array_index(_cellList, _cell, i);
             _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
             // one cell
-
-            int prio;
-            for (prio=S52_PRIO_NODATA; prio<S52_PRIO_NUM; ++prio) {
+            for (int prio=S52_PRIO_NODATA; prio<S52_PRIO_NUM; ++prio) {
                 // one layer
-
-                int obj_t;
-                for (obj_t=S52__META; obj_t<S52_N_OBJ; ++obj_t) {
+                for (int obj_t=S52__META; obj_t<S52_N_OBJ; ++obj_t) {
                     // one object type (render bin)
                     GPtrArray *rbin = ci->renderBin[prio][obj_t];
 
-                    //unsigned int idx;
                     for (guint idx=0; idx<rbin->len; ++idx) {
                         // one object
                         int check = TRUE;
@@ -3133,28 +3106,17 @@ static int        _app()
 
     //PRINTF("_app(): -1-\n");
 
-    // reset journal
-    for (guint i=0; i<_cellList->len; ++i) {
-        //_cell *ci = &g_array_index(_cellList, _cell, i);
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-        g_ptr_array_set_size(c->objList_supp, 0);
-        g_ptr_array_set_size(c->objList_over, 0);
-    }
-
     /*
-    {   // debug --check for object that land on the NODATA layer
+    {   // debug - check for object that land on the NODATA layer
         //unsigned int i = 0;
         for (guint i=0; i<_cellList->len; ++i) {
             _cell *ci = &g_array_index(_cellList, _cell, i);
             // one cell
 
-
-            int obj_t;
-            for (obj_t=S52__META_T; obj_t<S52_N_OBJ_T; ++obj_t) {
+            for (int obj_t=S52__META_T; obj_t<S52_N_OBJ_T; ++obj_t) {
                 // one object type (render bin)
                 GPtrArray *rbin = ci->renderBin[S52_PRIO_NODATA][obj_t];
 
-                //unsigned int idx;
                 for (guint idx=0; idx<rbin->len; ++idx) {
                     // one object
                     S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
@@ -3176,19 +3138,20 @@ static int        _app()
     //PRINTF("_app(): -2-\n");
 
     return TRUE;
-    //return;
 }
 
-static int        _cullObj(_cell *c)
-// one cell; cull object out side the view and object supressed
-// object culled are not inserted in the list of object to draw
+static int        _cullObj(_cell *c) /*fold00*/
+// one cell, cull object out side the view and object supressed
+// object culled are not inserted in the list of object to draw (journal)
+// Note: extent are taken from the obj itself
 {
     // Chart No 1 put object on layer 9 (Mariners' Objects)
     //for (int j=0; j<S52_PRIO_NUM; ++j) {
     for (int j=0; j<S52_PRIO_MARINR; ++j) {
 
         // one layer
-        for (int k=0; k<N_OBJ_T; ++k) {
+        for (int k=S52_AREAS; k<N_OBJ_T; ++k) {
+        //for (int k=0; k<N_OBJ_T; ++k) {
             GPtrArray *rbin = c->renderBin[j][k];
 
             // one object
@@ -3208,13 +3171,10 @@ static int        _cullObj(_cell *c)
                 // outside view
                 // NOTE: object can be inside 'ext' but outside the 'view' (cursor pick)
                 if (TRUE == S52_GL_isOFFscreen(obj)) {
-                    //S57_setSupp(geo, TRUE);
                     ++_nCull;
                     continue;
                 }
 
-                // ------------------------------------------
-                //*
                 // is this object supress by user
                 if (TRUE == S57_getSup(geo)) {
                     ++_nCull;
@@ -3228,8 +3188,6 @@ static int        _cullObj(_cell *c)
                 } else {
                     g_ptr_array_add(c->objList_over, obj);
                 }
-                //*/
-                // ------------------------------------------
 
                 // if this object has TX or TE, draw text last (on top)
                 if (TRUE == S52_PL_hasText(obj)) {
@@ -3239,9 +3197,9 @@ static int        _cullObj(_cell *c)
 
             // traverse all mariner object for each layer (of each chart)
             // that are bellow S52_PRIO_MARINR
-            // BUG: this over draw mariner object (ex: all pastck is drawn on each chart)
+            // BUG: this overdraw mariner object (ex: all pastck is drawn on each chart)
             // FIX: use chart extent to clip
-            // BUG: the overdraw mixup cursor pick!!
+            // BUG: the overdraw seem to mixup cursor pick!
             {
                 GPtrArray *rbin = _marinerCell->renderBin[j][k];
                 for (guint idx=0; idx<rbin->len; ++idx) {
@@ -3266,10 +3224,19 @@ static int        _cullObj(_cell *c)
     return TRUE;
 }
 
-static int        _cull(_extent ext)
+static int        _cull(_extent ext) /*fold00*/
+// cull chart not in view extent
 // - viewport
 // - small cell region on top
 {
+    // reset journal
+    for (guint i=0; i<_cellList->len; ++i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+        g_ptr_array_set_size(c->objList_supp, 0);
+        g_ptr_array_set_size(c->objList_over, 0);
+        g_ptr_array_set_size(c->textList,     0);
+    }
+
     // skip World if S52_MAR_DISP_WORLD off
     guint worldOff = (TRUE == S52_MP_get(S52_MAR_DISP_WORLD)) ? 0 : 1;
 
@@ -3279,6 +3246,7 @@ static int        _cull(_extent ext)
 
         // is this chart visible
         if (TRUE == _intersec(c->ext, ext)) {
+            // cull obj in cell not in view
             _cullObj(c);
         }
     }
@@ -3286,7 +3254,7 @@ static int        _cull(_extent ext)
     return TRUE;
 }
 
-static int        _drawRADAR()
+static int        _drawRADAR() /*fold00*/
 {
     if (NULL != _RADAR_cb) {
         _RADAR_cb();
@@ -3295,10 +3263,10 @@ static int        _drawRADAR()
 
     return TRUE;
 }
-
+ /*fold00*/
 //static int        _draw(S52_extent ext, S52_RadPrio radPrio)
 //static int        _draw(S52_extent ext)
-static int        _draw()
+static int        _draw() /*fold00*/
 // draw object inside view
 // then draw object's text
 {
@@ -3314,27 +3282,25 @@ static int        _draw()
 
         // draw under radar
         g_ptr_array_foreach (c->objList_supp, (GFunc)S52_GL_draw, NULL);
-        g_ptr_array_set_size(c->objList_supp, 0);
+        //g_ptr_array_set_size(c->objList_supp, 0);
 
         // draw radar
         _drawRADAR();
 
         // draw over radar
         g_ptr_array_foreach (c->objList_over, (GFunc)S52_GL_draw, NULL);
-        g_ptr_array_set_size(c->objList_over, 0);
+        //g_ptr_array_set_size(c->objList_over, 0);
 
         // draw text
         g_ptr_array_foreach (c->textList,     (GFunc)S52_GL_drawText, NULL);
-        g_ptr_array_set_size(c->textList,     0);
+        //g_ptr_array_set_size(c->textList,     0);
     }
 
     return TRUE;
 }
 
-static int        _drawLayer(_extent ext, int layer)
+static int        _drawLayer(_extent ext, int layer) /*fold00*/
 {
-    //unsigned int i = 0;
-
     // all cells --larger region first
     for (guint i=_cellList->len; i>0 ; --i) {
         //_cell *c = &g_array_index(_cellList, _cell, i-1);
@@ -3342,12 +3308,11 @@ static int        _drawLayer(_extent ext, int layer)
         if (TRUE == _intersec(c->ext, ext)) {
 
             // one layer
-            int k;
-            for (k=0; k<N_OBJ_T; ++k) {
+            for (int k=S52_AREAS; k<N_OBJ_T; ++k) {
+            //for (int k=0; k<N_OBJ_T; ++k) {
                 GPtrArray *rbin = c->renderBin[layer][k];
 
                 // one object
-                //unsigned int idx;
                 for (guint idx=0; idx<rbin->len; ++idx) {
                     S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                     S57_geo *geo = S52_PL_getGeo(obj);
@@ -3379,31 +3344,11 @@ static int        _drawLayer(_extent ext, int layer)
     return TRUE;
 }
 
-#if 0
-static int        _appLights(void)
-// mark all cells sector lights of the need to be re-culled
-{
-    //unsigned int i = 0;
-
-    // APP  (when a cell is added or deleted to the set, flags cull)
-    //for (guint i=0; i<_cellList->len; ++i) {
-    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-    //    c->cullLights = TRUE;
-    //}
-
-
-    return TRUE;
-}
-#endif
-
-static int        _cullLights(void)
+static int        _cullLights(void) /*fold00*/
 // CULL (first draw() after APP, on all cells)
 {
-    //unsigned int i = 0;
-
     for (guint i=_cellList->len-1; i>0 ; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-        //unsigned int j = 0;
 
         // a cell can have no lights sector
         if (NULL  == c->lights_sector) {
@@ -3424,9 +3369,8 @@ static int        _cullLights(void)
             // do CS wild traversing all lights sectors
             S52_PL_resloveCS(obj);
 
-            unsigned int k = 0;
             // traverse the cell 'above' to check if extent overlap this light
-            for (k=i-1; k>0 ; --k) {
+            for (guint k=i-1; k>0 ; --k) {
                 _cell *cellAbove = (_cell*) g_ptr_array_index(_cellList, k);
                 // skip if same scale
                 if (cellAbove->filename->str[2] > c->filename->str[2]) {
@@ -3447,67 +3391,12 @@ static int        _cullLights(void)
 }
 
 
-static int        _drawLights(void)
+static int        _drawLights(void) /*fold00*/
 // draw all lights of all cells outside view extend
 // so that sector and legs show up on screen event if
 // the light itself is outside
-// BUG: all are S52_RAD_OVER by default, check if UNDER RADAR make sens
+// FIXME: all are S52_RAD_OVER by default, check if UNDER RADAR make sens
 {
-    //unsigned int i = 0;
-    // FIXME: do not draw light that are under a cell
-
-    // APP  (when a cell is added or deleted to the set, flags cull)
-    //for (guint i=0; i<_cellList->len; ++i) {
-    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-    //    c->cullLightSec = TRUE;
-    //}
-    /*
-    // CULL (first draw() after APP, on all cells)
-    for (i=_cellList->len-1; i>0 ; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-        unsigned int j = 0;
-
-        // a cell can have no lights sector
-        if (NULL  == c->lights_sector) {
-            continue;
-        }
-
-        if (FALSE == c->cullLightSec)
-            continue;
-
-        // FIXME: use for_each()
-        //if (FALSE == _intersec(c->ext, ext)) {
-        for (guint j=0; j<c->lights_sector->len; ++j) {
-            S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
-            S57_geo *geo = S52_PL_getGeo(obj);
-            _extent oext;
-
-            S57_getExt(geo,  &oext.W, &oext.S, &oext.E, &oext.N);
-
-            // do CS wild traversing all lights sectors
-            S52_PL_resloveCS(obj);
-
-            unsigned int k = 0;
-            // traverse the cell 'above' to check if extent overlap this light
-            for (k=i-1; k>0 ; --k) {
-                _cell *cellAbove = (_cell*) g_ptr_array_index(_cellList, k);
-                // skip if same scale
-                if (cellAbove->filename->str[2] > c->filename->str[2]) {
-                    if (TRUE == _intersec(cellAbove->ext, oext)) {
-                        // check this: a chart above this light sector
-                        // does not have the same lights (this would be a bug in S57)
-                        //S57_setSup(geo, TRUE);
-                    }
-
-                }
-
-
-            }
-        }
-        c->cullLightSec = FALSE;
-    }
-    */
-
     if (TRUE == _doCullLights)
         _cullLights();
     _doCullLights = FALSE;
@@ -3520,49 +3409,29 @@ static int        _drawLights(void)
     // also light are drawn last (ie after all cells)
     // so a sector is not shoped by an other cell next to it
 
-    //unsigned int i = 0;
-
-    //for (guint i=0; i<_cellList->len-1; ++i) {
-    //for (guint i=0; i<_cellList->len; ++i) {
     for (guint i=_cellList->len-1; i>0 ; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-        //unsigned int j = 0;
 
         // a cell can have no lights sector
         if (NULL == c->lights_sector)
             continue;
 
         // FIXME: use for_each()
-        //if (FALSE == _intersec(c->ext, ext)) {
-            for (guint j=0; j<c->lights_sector->len; ++j) {
-                S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
-                //S57_geo *geo = S52_PL_getGeo(obj);
-                //_extent oext;
-
-                //S57_getExt(geo,  &oext.W, &oext.S, &oext.E, &oext.N);
-
-                // draw if light outside view
-                //if (TRUE != _intersec(ext, oext)) {
-                    // FIXME: do not draw light that are under a cell
-                    // if this light intersect a cell
-
-                //S52_GL_draw(obj, NULL);
-
-                    // SCAMIN & PLib (disp prio)
-                    if (TRUE != S52_GL_isSupp(obj)) {
-                        S57_geo *geo = S52_PL_getGeo(obj);
-                        if (TRUE != S57_getSup(geo))
-                            S52_GL_draw(obj, NULL);
-                    }
-                //}
+        for (guint j=0; j<c->lights_sector->len; ++j) {
+            S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
+            // SCAMIN & PLib (disp prio)
+            if (TRUE != S52_GL_isSupp(obj)) {
+                S57_geo *geo = S52_PL_getGeo(obj);
+                if (TRUE != S57_getSup(geo))
+                    S52_GL_draw(obj, NULL);
             }
-            //}
+        }
     }
 
     return TRUE;
 }
 
-static int        _drawLegend()
+static int        _drawLegend() /*fold00*/
 // draw legend of each cell
 // Starting at page I-50.
 {
@@ -3766,7 +3635,7 @@ static int        _drawLegend()
     return TRUE;
 }
 
-DLL int    STD S52_draw(void)
+DLL int    STD S52_draw(void) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -3820,7 +3689,7 @@ DLL int    STD S52_draw(void)
         projUV uv1, uv2;
         S52_GL_getPRJView(&uv1.v, &uv1.u, &uv2.v, &uv2.u);
 
-        // convert extent to deg
+        // convert view extent to deg
         uv1 = S57_prj2geo(uv1);
         uv2 = S57_prj2geo(uv2);
         ext.S = uv1.v;
@@ -3837,9 +3706,7 @@ DLL int    STD S52_draw(void)
         // DRAW: .. render
 
         if (TRUE == S52_MP_get(S52_MAR_DISP_OVERLAP)) {
-            int layer;
-
-            for (layer=0; layer<S52_PRIO_NUM; ++layer) {
+            for (int layer=0; layer<S52_PRIO_NUM; ++layer) {
                 _drawLayer(ext, layer);
 
                 // draw all lights (of all cells) outside ext
@@ -3884,9 +3751,6 @@ DLL int    STD S52_draw(void)
     }
 
     gdouble sec = g_timer_elapsed(_timer, NULL);
-    //PRINTF("%.0f msec (%i obj / %i cmd)\n", sec * 1000, _nobj, _ncmd);
-    //g_print("%.0f msec (%i obj / %i cmd) renew = %i / %iB\n", sec * 1000, _nobj, _ncmd, _nrealloc, fobj.sz);
-    //g_print("DRAW: %.0f msec\n", sec * 1000);
     PRINTF("    DRAW: %.0f msec --------------------------------------\n", sec * 1000);
 
 exit:
@@ -3897,7 +3761,7 @@ exit:
     return ret;
 }
 
-static void       _delOldVessel(gpointer data, gpointer user_data)
+static void       _delOldVessel(gpointer data, gpointer user_data) /*fold00*/
 {
     S52_obj *obj = (S52_obj *)data;
     S57_geo *geo = S52_PL_getGeo(obj);
@@ -3922,7 +3786,7 @@ static void       _delOldVessel(gpointer data, gpointer user_data)
     }
 }
 
-DLL int    STD S52_drawLast(void)
+DLL int    STD S52_drawLast(void) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -3944,18 +3808,12 @@ DLL int    STD S52_drawLast(void)
 
     if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
         PRINTF("WARNING: no cell loaded\n");
-        //g_static_mutex_unlock(&_mp_mutex);
-        //return FALSE;
-
         g_assert(0);
         goto exit;
     }
 
     //  check if we are shuting down
     if (NULL == _marinerCell) {
-        //g_static_mutex_unlock(&_mp_mutex);
-        //return FALSE;
-
         g_assert(0);
         goto exit;
     }
@@ -3991,10 +3849,9 @@ DLL int    STD S52_drawLast(void)
         //PRINTF("DRAWLAST: ..  -2-\n");
 
         // then draw the Mariners' Object on top of it
-        for (int i=0; i<N_OBJ_T; ++i) {
+        for (int i=S52_AREAS; i<N_OBJ_T; ++i) {
+        //for (int i=0; i<N_OBJ_T; ++i) {
             GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][i];
-
-            //unsigned int idx;
             // FIFO
             //for (guint idx=0; idx<rbin->len; ++idx) {
             // LIFO: so that 'cursor' is drawn last (on top)
@@ -4009,13 +3866,7 @@ DLL int    STD S52_drawLast(void)
 
                     ret = TRUE;
                     goto exit;
-
-                    //g_static_mutex_unlock(&_mp_mutex);
-                    //return TRUE;
                 }
-
-                // FIXME: debug if Mariner's Object outside 'view'
-                // are effectively culled via _cull()
 
                 // in some graphic driver this is expensive
                 if (FALSE == S52_GL_isSupp(obj)) {
@@ -4062,29 +3913,23 @@ exit:
 }
 
 #ifdef S52_USE_GV
-static int        _drawObj(const char *name)
+static int        _drawObj(const char *name) /*fold00*/
 {
-    //unsigned int i = 0;
-    //unsigned int n = _cellList->len;
     guint n = _cellList->len;
 
     // all cells --larger region first
     for (guint i=0; i<n; ++i) {
-        //_cell *c = &g_array_index(_cellList, _cell, n-i-1);
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         // one cell
-        int j;
-        for (j=0; j<S52_PRIO_NUM; ++j) {
-            //for (j=S52_PRIO_GROUP1; j<S52_PRIO_NUM; ++j) {
+        for (int j=0; j<S52_PRIO_NUM; ++j) {
 
             // one layer
-            int k;
-            for (k=0; k<N_OBJ_T; ++k) {
+            for (int k=S52_AREAS; k<N_OBJ_T; ++k) {
+            //for (int k=0; k<N_OBJ_T; ++k) {
                 GPtrArray *rbin = c->renderBin[j][k];
 
                 // one object
-                //unsigned int idx;
                 for (guint idx=0; idx<rbin->len; ++idx) {
                     S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                     S57_geo *geo = S52_PL_getGeo(obj);
@@ -4106,7 +3951,7 @@ static int        _drawObj(const char *name)
     return TRUE;
 }
 
-DLL int    STD S52_drawLayer(const char *name)
+DLL int    STD S52_drawLayer(const char *name) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -4136,9 +3981,7 @@ DLL int    STD S52_drawLayer(const char *name)
 
 
     _doPick = FALSE;
-    //if (TRUE == S52_GL_begin(_doPick, FALSE)) {
-        //g_timer_reset(_timer);
-
+    if (TRUE == S52_GL_begin(_doPick, FALSE)) {
 
         //////////////////////////////////////////////
         // APP  .. update object (eg moving AIS, ..)
@@ -4158,9 +4001,8 @@ DLL int    STD S52_drawLayer(const char *name)
         ext.w = uv1.u;
         ext.n = uv2.v;
         ext.e = uv2.u;
+        _cull(ext);
 #endif
-        //_cull(ext);
-
 
         //////////////////////////////////////////////
         // DRAW .. render
@@ -4168,27 +4010,20 @@ DLL int    STD S52_drawLayer(const char *name)
         _drawObj(name);
         _drawText();
 
-
         // done rebuilding CS
         _doCS = FALSE;
 
-        //S52_GL_end(_doPick, TRUE);
         S52_GL_end(TRUE);
-
-        //gdouble sec = g_timer_elapsed(_timer, NULL);
-        //PRINTF("%.0f msec (%i obj / %i cmd)\n", sec * 1000, _nobj, _ncmd);
-        //g_print("%.0f msec (%i obj / %i cmd) renew = %i / %iB\n", sec * 1000, _nobj, _ncmd, _nrealloc, fobj.sz);
-        //g_print("DRAW: %.0f msec\n", sec * 1000);
-
     }
 
-g_static_mutex_unlock(&_mp_mutex);
-return TRUE;
+    g_static_mutex_unlock(&_mp_mutex);
+
+    return TRUE;
 }
 
 #endif
 
-DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
+DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4212,7 +4047,7 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
 }
 
 #ifdef S52_USE_EGL
-DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx)
+DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx) /*fold00*/
 {
     _eglBeg = eglBeg;
     _eglEnd = eglEnd;
@@ -4222,7 +4057,7 @@ DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx)
 }
 #endif
 
-DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north)
+DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north) /*fold00*/
 {
     S52_CHECK_INIT;
     EGL_BEGIN;
@@ -4286,7 +4121,7 @@ exit:
     return ret;
 }
 
-static int        _win2prj(double *pixels_x, double *pixels_y)
+static int        _win2prj(double *pixels_x, double *pixels_y) /*fold00*/
 {
     // check bound
     //if (FALSE == _validate_screenPos(x, y))
@@ -4315,7 +4150,7 @@ static int        _win2prj(double *pixels_x, double *pixels_y)
     return TRUE;
 }
 
-DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
+DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -4343,7 +4178,7 @@ DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
     return TRUE;
 }
 
-DLL int    STD S52_LL2xy(double *longitude, double *latitude)
+DLL int    STD S52_LL2xy(double *longitude, double *latitude) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -4364,7 +4199,7 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude)
     return TRUE;
 }
 
-DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
+DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4390,6 +4225,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     if (180.0 < ABS(cLon))
         cLon = _view.cLon;
 
+    // FIXME: no warning if -1
     if ((rNM < MIN_RANGE) || (rNM > MAX_RANGE)) {
         PRINTF("WARNING:  rNM (%f), reset to %f\n", rNM, _view.rNM);
         rNM = _view.rNM;
@@ -4436,7 +4272,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     return TRUE;
 }
 
-DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *north)
+DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *north) /*fold00*/
 {
     S52_CHECK_INIT;
     return_if_null(cLat);
@@ -4466,7 +4302,7 @@ DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *nort
     return TRUE;
 }
 
-DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height)
+DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -4488,7 +4324,7 @@ DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int
     return TRUE;
 }
 
-static int        _getCellsExt(_extent* ext)
+static int        _getCellsExt(_extent* ext) /*fold00*/
 {
     int ret = FALSE;
 
@@ -4497,10 +4333,11 @@ static int        _getCellsExt(_extent* ext)
     ext->N = -INFINITY;
     ext->E = -INFINITY;
 
-    if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
-        PRINTF("WARNING: no cell loaded\n");
-        return FALSE;
-    }
+    // not usefull here
+    //if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
+    //    PRINTF("WARNING: no cell loaded\n");
+    //    return FALSE;
+    //}
 
     for (guint i=0; i<_cellList->len; ++i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
@@ -4535,13 +4372,12 @@ static int        _getCellsExt(_extent* ext)
 
     return ret;
 }
-
+ /*fold00*/
 //DLL int    STD S52_getCellExtent(_cell *c, S52_extent *ext)
 //DLL int    STD S52_getCellExtent(const char *filename, S52_extent *ext)
-DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, double *N, double *E)
+DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, double *N, double *E) /*fold00*/
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MERC;
 
     if (NULL==S || NULL==W || NULL==N || NULL==E) {
         PRINTF("WARNING: NULL extent S,W,N,E\n");
@@ -4593,7 +4429,7 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
 
     return TRUE;
 }
-
+ /*fold00*/
 
 
 // -----------------------------------------------------
@@ -4602,7 +4438,7 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
 // Selecte object (other then DISPLAYBASE) to display
 // when in User Selected mode
 //
-DLL int    STD S52_toggleObjClass(const char *className)
+DLL int    STD S52_toggleObjClass(const char *className) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4630,7 +4466,7 @@ DLL int    STD S52_toggleObjClass(const char *className)
     return TRUE;
 }
 
-DLL int    STD S52_toggleObjClassON (const char *className)
+DLL int    STD S52_toggleObjClassON (const char *className) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4660,7 +4496,7 @@ DLL int    STD S52_toggleObjClassON (const char *className)
     return TRUE;
 }
 
-DLL int    STD S52_toggleObjClassOFF(const char *className)
+DLL int    STD S52_toggleObjClassOFF(const char *className) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4690,7 +4526,7 @@ DLL int    STD S52_toggleObjClassOFF(const char *className)
     return TRUE;
 }
 
-DLL int    STD S52_getS57ObjClassSupp(const char *className)
+DLL int    STD S52_getS57ObjClassSupp(const char *className) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4712,7 +4548,7 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className)
         return FALSE;
 }
 
-DLL int    STD S52_setS57ObjClassSupp(const char *className, int value)
+DLL int    STD S52_setS57ObjClassSupp(const char *className, int value) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -4746,11 +4582,9 @@ DLL int    STD S52_setS57ObjClassSupp(const char *className, int value)
 
 
 //static GPtrArray *_cloneCellList(const char *plibName)
-DLL int    STD S52_loadPLib(const char *plibName)
+DLL int    STD S52_loadPLib(const char *plibName) /*fold00*/
 {
     S52_CHECK_INIT;
-
-    // can't draw while new PLib is loading
     S52_CHECK_MUTX;
 
     // 1 - load / parse new PLb
@@ -4917,7 +4751,8 @@ DLL int    STD S52_loadPLib(const char *plibName)
 // FEEDBACK TO HIGHER UP MODULE OF INTERNAL STATE
 //
 
-DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
+
+DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y) /*fold00*/
 {
     // viewport
     int x;
@@ -4927,7 +4762,6 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 
     _extent ext;          // pick extent
     double s,w,n,e;       // used to save old view
-    const char *name = NULL;  // object's name at XY
     double oldAA = 0.0;
 
     S52_CHECK_INIT;
@@ -4947,6 +4781,8 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         g_assert(0);
         return FALSE;
     }
+
+    g_timer_reset(_timer);
 
     // if blending is ON the cursor pick will not work
     oldAA = S52_MP_get(S52_MAR_ANTIALIAS);
@@ -4977,8 +4813,6 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         S52_GL_getPRJView(&s, &w, &n, &e);
 
         // set view of the pick (PRJ)
-        // FIXME: setPRJview is snapped to the current ViewPort aspect ratio
-        // so ViewPort value as to be set before PRJView
         S52_GL_setViewPort(pixels_x-4, pixels_y-4, 9, 9);
         S52_GL_setPRJView(ext.S, ext.W, ext.N, ext.E);
         //PRINTF("PICK PRJ EXTENT (swne): %f, %f  %f, %f \n", ext.s, ext.w, ext.n, ext.e);
@@ -5011,15 +4845,17 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         _nCull  = 0;
 
         // filter out objects that don't intersec the pick view
+        // FIXME: include mariner obj on last layer (9)
         _cull(ext);
+
+        // bebug
         //PRINTF("nbr of object culled: %i (%i)\n", _nCull, _nTotal);
 
         // render object that fall in the pick view
         _draw();
 
-        // FIXME: move this to _drawLast() someday
-        // FIX: need to refactor S52_drawLast()
-        // FIXME: something wrong with coords of VESSEL
+        // FIXME: or draw mariner on top
+        // ...
 
         S52_GL_end(FALSE);
     }
@@ -5030,18 +4866,26 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     S52_GL_setViewPort(x, y, width, height);
     S52_GL_setPRJView(s, w, n, e);
 
-    name = S52_GL_getNameObjPick();
+    const char *name = S52_GL_getNameObjPick();
     PRINTF("OBJECT PICKED: %s\n", name);
+
+    // FIXME: very slow 300msec on a small cell (Rimouski: 845 object) and 4 relation
+    //const char *rel = _searchRelationship(name);
+    //SPRINTF(_pickList, "%s%s", name, rel);
 
     // replace original blending state
     S52_MP_set(S52_MAR_ANTIALIAS, oldAA);
 
+    gdouble sec = g_timer_elapsed(_timer, NULL);
+    PRINTF("  PICKAT: %.0f msec\n", sec * 1000);
+
     g_static_mutex_unlock(&_mp_mutex);
 
+    //return _pickList;
     return name;
 }
 
-DLL cchar *STD S52_getPLibsIDList(void)
+DLL cchar *STD S52_getPLibsIDList(void) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -5053,7 +4897,7 @@ DLL cchar *STD S52_getPLibsIDList(void)
     return str;
 }
 
-DLL cchar *STD S52_getPalettesNameList(void)
+DLL cchar *STD S52_getPalettesNameList(void) /*fold00*/
 // return a JSON array
 {
     S52_CHECK_INIT;
@@ -5083,19 +4927,16 @@ DLL cchar *STD S52_getPalettesNameList(void)
     return str;
 }
 
-static GString   *_getMARINClassList()
+static GString   *_getMARINClassList() /*fold00*/
 {
     GString *classList = g_string_new(MARINER_CELL);
 
-    unsigned i,j;
-    for (i=0; i<S52_PRIO_NUM; ++i) {
-        for (j=0; j<N_OBJ_T; ++j) {
+    for (int i=0; i<S52_PRIO_NUM; ++i) {
+        for (int j=0; j<N_OBJ_T; ++j) {
             GPtrArray *rbin = _marinerCell->renderBin[i][j];
-            //unsigned int idx;
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj    *obj   = (S52_obj *)g_ptr_array_index(rbin, idx);
                 const char *oname = S52_PL_getOBCL(obj);
-                //if (NULL == S52_strstr(_marinerCell->S57ClassList->str, oname)) {
                 if (NULL == S52_strstr(classList->str, oname)) {
                     g_string_append_printf(classList, ",%s", oname);
                 }
@@ -5107,7 +4948,7 @@ static GString   *_getMARINClassList()
 }
 
 //DLL const char * STD S52_getS57ObjClassList(const char *cellName)
-DLL cchar *STD S52_getS57ClassList(const char *cellName)
+DLL cchar *STD S52_getS57ClassList(const char *cellName) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -5161,7 +5002,7 @@ DLL cchar *STD S52_getS57ClassList(const char *cellName)
     return str;
 }
 
-DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
+DLL cchar *STD S52_getObjList(const char *cellName, const char *className) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -5217,7 +5058,7 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
     return NULL;
 }
 
-DLL cchar *STD S52_getAttList(unsigned int S57ID)
+DLL cchar *STD S52_getAttList(unsigned int S57ID) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -5239,8 +5080,6 @@ DLL cchar *STD S52_getAttList(unsigned int S57ID)
                     S57_geo *geo = S52_PL_getGeo(obj);
                     if (S57ID == S57_getGeoID(geo)) {
                         str = S57_getAtt(geo);
-                        //g_static_mutex_unlock(&_mp_mutex);
-                        //return S57_getAtt(geo);
                         goto exit;
                     }
                 }
@@ -5254,7 +5093,7 @@ exit:
     return str;
 }
 
-static int        _isCellLoaded(const char *cellName)
+static int        _isCellLoaded(const char *cellName) /*fold00*/
 {
     for (guint i=0; i<_cellList->len; ++i) {
         _cell *c = (_cell*)g_ptr_array_index(_cellList, i);
@@ -5266,7 +5105,7 @@ static int        _isCellLoaded(const char *cellName)
     return FALSE;
 }
 
-DLL cchar *STD S52_getCellNameList(void)
+DLL cchar *STD S52_getCellNameList(void) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -5320,7 +5159,7 @@ DLL cchar *STD S52_getCellNameList(void)
 //-------------------------------------------------------
 //
 
-DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B)
+DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -5338,7 +5177,7 @@ DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char
     return TRUE;
 }
 
-DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B)
+DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -5359,7 +5198,7 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
     return TRUE;
 }
 
-DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb)
+DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb) /*fold00*/
 {
     // debug
     PRINTF("cb%#lX\n", (long unsigned int)cb);
@@ -5369,7 +5208,7 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb)
     return TRUE;
 }
 
-static int        _setAtt(S57_geo *geo, const char *listAttVal)
+static int        _setAtt(S57_geo *geo, const char *listAttVal) /*fold00*/
 // must be in name/value pair,
 // FIXME: is this OK .. use '---' for a NULL value for any attribute name
 {
@@ -5475,19 +5314,11 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
     return TRUE;
 }
 
-static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
+static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz) /*fold00*/
 {
-    //S52_extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
     _extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
 
-    guint   i   = 0;
-    //guint   npt = 0;
-    //double *ppt = NULL;
-
-    //if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
-    //    return FALSE;
-
-    for (i=0; i<xyznbr; ++i) {
+    for (guint i=0; i<xyznbr; ++i) {
         // longitude
         ext.W = (ext.W < *xyz) ? ext.W : *xyz;
         ext.E = (ext.E > *xyz) ? ext.E : *xyz;
@@ -5509,7 +5340,7 @@ static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
     return TRUE;
 }
 
-static S52_obj   *_isObjValid(_cell *c, S52_obj *obj)
+static S52_obj   *_isObjValid(_cell *c, S52_obj *obj) /*fold00*/
 // return  obj if the oject is in cell else NULL
 // Used to validate User Mariners' Object
 {
@@ -5530,7 +5361,7 @@ static S52_obj   *_isObjValid(_cell *c, S52_obj *obj)
     return NULL;
 }
 
-static int        _isObjNameValid(S52ObjectHandle obj, const char *objName)
+static int        _isObjNameValid(S52ObjectHandle obj, const char *objName) /*fold00*/
 // return TRUE if obj is objName else FALSE
 {
     S57_geo *geo = S52_PL_getGeo(obj);
@@ -5547,7 +5378,7 @@ struct _user_data {
 };
 struct _user_data udata;
 
-static void       _compS57ID(gpointer data, gpointer user_data)
+static void       _compS57ID(gpointer data, gpointer user_data) /*fold00*/
 {
     struct _user_data *udata  = (struct _user_data*) user_data;
 
@@ -5562,55 +5393,28 @@ static void       _compS57ID(gpointer data, gpointer user_data)
     }
 }
 
-
-static S52_obj   *_getS52obj(unsigned int S57ID)
-// traverse all object (again .. FIXME: find a unified way to do that at
-// a single place in the code)
+static S52_obj   *_getS52obj(unsigned int S57ID) /*fold00*/
+// traverse all visible object
 {
-    /*
-    //int cidx = 0;
-    for (guint cidx=0; cidx<_cellList->len; ++cidx) {
-        _cell *c = (_cell*)g_ptr_array_index(_cellList, cidx);
-
-        unsigned i,j;
-        for (i=0; i<S52_PRIO_NUM; ++i) {
-            for (j=0; j<N_OBJ_T; ++j) {
-                GPtrArray *rbin = c->renderBin[i][j];
-                //unsigned int idx;
-                for (guint idx=0; idx<rbin->len; ++idx) {
-                    S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                    S57_geo *geo = S52_PL_getGeo(obj);
-                    if (S57ID == S57_getGeoID(geo))
-                        return obj;
-                }
-            }
-        }
-    }
-    */
-
     struct _user_data  udata;
     udata.S57ID    = S57ID;
     udata.obj      = NULL;
-    unsigned int i = 0;
     unsigned int n = _cellList->len-1;
-    for (i=n; i>0; --i) {
+    for (guint i=n; i>0; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-        g_ptr_array_foreach (c->objList_supp, (GFunc)_compS57ID, &udata);
-        g_ptr_array_foreach (c->objList_over, (GFunc)_compS57ID, &udata);
+        g_ptr_array_foreach(c->objList_supp, (GFunc)_compS57ID, &udata);
+        g_ptr_array_foreach(c->objList_over, (GFunc)_compS57ID, &udata);
 
         // obj found - no need to go further
         if (NULL != udata.obj)
             return udata.obj;
     }
 
-    // obj not found - search Mariners' Object List (mostly on layer 9)
-    {
-        //int i = 0;
+    {   // obj not found - search Mariners' Object List (mostly on layer 9)
         for (int i=0; i<N_OBJ_T; ++i) {
             // FIXME: not all on layer 9 (S52_PRIO_MARINR) !!
             GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][i];
 
-            //unsigned int idx;
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
 
@@ -5631,7 +5435,7 @@ static S52_obj   *_getS52obj(unsigned int S57ID)
     return udata.obj;
 }
 
-DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height)
+DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height) /*fold00*/
 // FIXME: handle S57ID == 0 (viewport dump)
 {
     S52_CHECK_INIT;
@@ -5653,12 +5457,12 @@ DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, u
     return ret;
 }
 
-DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
+DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType, /*fold00*/
                                       unsigned int xyznbr, double *xyz, const char *listAttVal)
 {
 
     S57_geo     *geo     = NULL;
-    unsigned int npt     = 0;
+    //unsigned int npt     = 0;
     double      *gxyz    = NULL;
     double     **ggxyz   = NULL;
     guint       *gxyznbr = NULL;
@@ -5672,6 +5476,7 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
         goto exit;
     }
 
+    // FIXME: check that "plibObjName" is a valid name
     if (NULL == plibObjName) {
         PRINTF("WARNING: plibObjName NULL\n");
         goto exit;
@@ -5685,21 +5490,6 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     //if (NULL == xyz)
     //    return NULL;
 
-    /*
-    g_static_mutex_lock(&_mp_mutex);
-    //  check if we are shuting down
-    if (NULL == _marinerCell) {
-        g_static_mutex_unlock(&_mp_mutex);
-        g_assert(0);
-        return NULL;
-    }
-    */
-
-    //
-    //plibObjName
-    // FIXME: check that "plibObjName" is a valid name
-
-
     if (0 != xyznbr) {
 
         // transfer and project xyz
@@ -5708,7 +5498,7 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
             double *src  = xyz;
 
             dst = gxyz = g_new(double, xyznbr*3);
-            for (npt=0; npt<(xyznbr*3); ++npt) {
+            for (guint npt=0; npt<(xyznbr*3); ++npt) {
                 int remain = npt % 3;
 
                 // do basic check
@@ -5824,7 +5614,7 @@ exit:
     return (S52ObjectHandle)obj;
 }
 
-DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
+DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID) /*fold00*/
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -5882,7 +5672,7 @@ static
     return objH;
 }
 
-DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
+DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -5909,7 +5699,7 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
     return (S52ObjectHandle)NULL;
 }
 
-DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH)
+DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -5932,7 +5722,7 @@ DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH)
     return objH;
 }
 
-DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBegin, double latEnd, double lonEnd)
+DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBegin, double latEnd, double lonEnd) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -5963,10 +5753,10 @@ DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBeg
         return clrlin;
     }
 }
-
+ /*fold00*/
 //DLL S52ObjectHandle STD S52_iniLEGLIN(int select, double plnspd, double latBegin, double lonBegin, double latEnd, double lonEnd)
 //DLL S52ObjectHandle STD S52_iniLEGLIN(int select, double plnspd, double wholinDist, double latBegin, double lonBegin, double latEnd, double lonEnd)
-DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDist,
+DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDist, /*fold00*/
                                       double latBegin, double lonBegin, double latEnd, double lonEnd,
                                       S52ObjectHandle previousLEGLIN)
 {
@@ -6030,7 +5820,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
     }
 }
 
-DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
+DLL S52ObjectHandle STD S52_newOWNSHP(const char *label) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
@@ -6049,7 +5839,7 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
     return _OWNSHP;
 }
 
-DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d)
+DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d) /*FOLD00*/
 {
     S52_CHECK_INIT;
 
@@ -6099,7 +5889,7 @@ exit:
     return objH;
 }
 
-DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH,  int vecstb, double course, double speed)
+DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH,  int vecstb, double course, double speed) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -6146,7 +5936,7 @@ exit:
     return objH;
 }
 
-DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int maxpts)
+DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int maxpts) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
@@ -6199,7 +5989,7 @@ static
     return objH;
 }
 
-DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data)
+DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -6297,7 +6087,7 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
     return objH;
 }
 
-DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
+DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
@@ -6332,7 +6122,7 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
     return vessel;
 }
 
-DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel)
+DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -6374,7 +6164,7 @@ exit:
 
 }
 
-DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn)
+DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MERC;
@@ -6462,7 +6252,7 @@ exit:
     return objH;
 }
 
-DLL int             STD S52_newCSYMB(void)
+DLL int             STD S52_newCSYMB(void) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
@@ -6509,7 +6299,7 @@ DLL int             STD S52_newCSYMB(void)
     return TRUE;
 }
 
-DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin)
+DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin) /*fold00*/
 {
     S52_CHECK_INIT;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
@@ -6556,7 +6346,7 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
     return vrmebl;
 }
 
-DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, double *brg, double *rge)
+DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, double *brg, double *rge) /*fold00*/
 {
     S52_CHECK_INIT;
 
@@ -6656,7 +6446,7 @@ exit:
 
 // FIXME: use GDBus (in Gio) instead (thread prob with low-level DBus API)
 
-static DBusHandlerResult   _sendDBusMessage         (DBusConnection *dbus, DBusMessage *reply)
+static DBusHandlerResult   _sendDBusMessage         (DBusConnection *dbus, DBusMessage *reply) /*fold00*/
 // send the reply && flush the connection
 {
     dbus_uint32_t serial = 0;
@@ -6673,7 +6463,7 @@ static DBusHandlerResult   _sendDBusMessage         (DBusConnection *dbus, DBusM
     return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult   _dbus_draw               (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_draw               (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -6721,7 +6511,7 @@ static DBusHandlerResult   _dbus_draw               (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_drawLast           (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_drawLast           (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -6769,7 +6559,7 @@ static DBusHandlerResult   _dbus_drawLast           (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getMarinerParam    (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getMarinerParam    (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -6816,7 +6606,7 @@ static DBusHandlerResult   _dbus_getMarinerParam    (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_setMarinerParam    (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_setMarinerParam    (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -6866,7 +6656,7 @@ static DBusHandlerResult   _dbus_setMarinerParam    (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getRGB             (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getRGB             (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -6933,7 +6723,7 @@ static DBusHandlerResult   _dbus_getRGB             (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_newMarObj          (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_newMarObj          (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     (void)user_data;
 
@@ -6971,10 +6761,9 @@ static DBusHandlerResult   _dbus_newMarObj          (DBusConnection *dbus, DBusM
                               DBUS_TYPE_STRING, &listAttVal,
                               DBUS_TYPE_INVALID)) {
 
-        double    *xyz = g_new0(double, xyznbr*3);
-        unsigned int i = 0;
-        char      **tmp = str;
-        for (i=0; i<strnbr; i+=3) {
+        double *xyz = g_new0(double, xyznbr*3);
+        char  **tmp = str;
+        for (guint i=0; i<strnbr; i+=3) {
             xyz[i*3 + 0] = g_ascii_strtod(*str++, NULL);
             xyz[i*3 + 1] = g_ascii_strtod(*str++, NULL);
             xyz[i*3 + 2] = g_ascii_strtod(*str++, NULL);
@@ -7016,7 +6805,7 @@ static DBusHandlerResult   _dbus_newMarObj          (DBusConnection *dbus, DBusM
 }
 
 #if 0
-static DBusHandlerResult   _dbus_signal_draw        (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_signal_draw        (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7058,7 +6847,7 @@ static DBusHandlerResult   _dbus_signal_draw        (DBusConnection *dbus, DBusM
 }
 
 
-static DBusHandlerResult   _dbus_signal_drawLast    (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_signal_drawLast    (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     //DBusMessage*    reply;
     //DBusMessageIter args;
@@ -7104,7 +6893,7 @@ static DBusHandlerResult   _dbus_signal_drawLast    (DBusConnection *dbus, DBusM
 }
 #endif
 
-static DBusHandlerResult   _dbus_setVESSELstate     (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_setVESSELstate     (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7158,7 +6947,7 @@ static DBusHandlerResult   _dbus_setVESSELstate     (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getPLibsIDList     (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getPLibsIDList     (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7201,7 +6990,7 @@ static DBusHandlerResult   _dbus_getPLibsIDList     (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getPalettesNameList(DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getPalettesNameList(DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7245,7 +7034,7 @@ static DBusHandlerResult   _dbus_getPalettesNameList(DBusConnection *dbus, DBusM
 }
 
 
-static DBusHandlerResult   _dbus_getCellNameList    (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getCellNameList    (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7288,7 +7077,7 @@ static DBusHandlerResult   _dbus_getCellNameList    (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getS57ClassList    (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getS57ClassList    (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7332,7 +7121,7 @@ static DBusHandlerResult   _dbus_getS57ClassList    (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getObjList         (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getObjList         (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7383,7 +7172,7 @@ static DBusHandlerResult   _dbus_getObjList         (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getAttList         (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getAttList         (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7430,7 +7219,7 @@ static DBusHandlerResult   _dbus_getAttList         (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_getS57ObjClassSupp (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_getS57ObjClassSupp (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7479,7 +7268,7 @@ static DBusHandlerResult   _dbus_getS57ObjClassSupp (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_setS57ObjClassSupp (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_setS57ObjClassSupp (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7528,7 +7317,7 @@ static DBusHandlerResult   _dbus_setS57ObjClassSupp (DBusConnection *dbus, DBusM
 }
 
 
-static DBusHandlerResult   _dbus_loadCell           (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_loadCell           (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7575,7 +7364,7 @@ static DBusHandlerResult   _dbus_loadCell           (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_loadPLib           (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_loadPLib           (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7623,7 +7412,7 @@ static DBusHandlerResult   _dbus_loadPLib           (DBusConnection *dbus, DBusM
 }
 
 
-static DBusHandlerResult   _dbus_dumpS57IDPixels    (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_dumpS57IDPixels    (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     DBusMessage*    reply;
     DBusMessageIter args;
@@ -7676,7 +7465,7 @@ static DBusHandlerResult   _dbus_dumpS57IDPixels    (DBusConnection *dbus, DBusM
     return _sendDBusMessage(dbus, reply);
 }
 
-static DBusHandlerResult   _dbus_selectCall         (DBusConnection *dbus, DBusMessage *message, void *user_data)
+static DBusHandlerResult   _dbus_selectCall         (DBusConnection *dbus, DBusMessage *message, void *user_data) /*fold00*/
 {
     if (dbus_message_is_method_call(message, S52_DBUS_OBJ_NAME, "S52_draw")) {
         return _dbus_draw(dbus, message, user_data);
@@ -7769,7 +7558,7 @@ static DBusHandlerResult   _dbus_selectCall         (DBusConnection *dbus, DBusM
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static int                 _initDBus()
+static int                 _initDBus() /*fold00*/
 {
     int ret;
 
@@ -7845,7 +7634,74 @@ static int                 _initDBus()
 
     return TRUE;
 }
-#endif /* S52_USE_DBUS */
+#endif // S52_USE_DBUS
+
+#ifdef S52_USE_PIPE
+static gboolean            _pipeReadWrite(GIOChannel *source, GIOCondition condition, gpointer user_data) /*fold00*/
+{
+    GError    *error = NULL;
+    GString   *str  = g_string_new("");
+    GIOStatus  stat = g_io_channel_read_line_string(source, str, NULL, &error);
+    PRINTF("GIOStatus: %i\n", stat);
+
+    if (NULL != error) {
+        PRINTF("ERROR: %s\n", error->message);
+        g_error_free(error);
+    }
+
+    PRINTF("PIPE: |%s|\n", str->str);
+
+
+    gchar** palNmL = g_strsplit(str->str, ",", 0);
+    gchar** palNm  = palNmL;
+
+    //const char * STD S52_getPLibsIDList(void);
+    if (0 == ("S52_getPLibsIDList", *palNm)) {
+        GError   *error = NULL;
+        gsize     bout  = 0;
+        PRINTF("PIPE: %s\n", *palNm);
+        GIOStatus stat  = g_io_channel_write_chars(source, S52_getPLibsIDList(), -1, &bout, &error);
+
+        PRINTF("GIOStatus: %i\n", stat);
+    }
+
+
+    //while (NULL != *palNm) {
+    //    switch(type): {
+    //        case 's':
+    //    }
+    //    palNm++;
+    //}
+    g_strfreev(palNmL);
+
+    g_string_free(str, TRUE);
+
+    return TRUE;
+}
+
+static int                 _pipeWatch(gpointer dummy) /*fold00*/
+// add watch to pipe
+{
+    // use FIFO pipe instead of DBug
+    // less overhead - bad on ARM
+
+    unlink(PIPENAME);
+
+    int fdpipe = mkfifo(PIPENAME, S_IFIFO | S_IRUSR | S_IWUSR);
+
+    int fd     = open(PIPENAME, O_RDWR);
+
+    GIOChannel   *pipe      = g_io_channel_unix_new(fd);
+    guint         watchID   = g_io_add_watch(pipe, G_IO_IN, _pipeReadWrite, NULL);
+
+    // FIXME: case of no main loop
+    //GMainContext *_pipeCtx  = g_main_context_new();
+    //GMainLoop    *_pipeLoop = g_main_loop_new(_pipeCtx, TRUE);
+    //g_main_loop_run(_pipeLoop);
+
+    return TRUE;
+}
+#endif
 
 
 // -----------------------------------------------------------------
@@ -7857,7 +7713,7 @@ static int                 _initDBus()
 
 #define BLOCK 2048
 
-static gchar               _setErr(char *err, gchar *errmsg)
+static gchar               _setErr(char *err, gchar *errmsg) /*fold00*/
 {
     //_err[0] = '\0';
     g_snprintf(err, BLOCK, "libS52.so:%s", errmsg);
@@ -7865,7 +7721,7 @@ static gchar               _setErr(char *err, gchar *errmsg)
     return TRUE;
 }
 
-static int                 _encode(char *buffer, const char *frmt, ...)
+static int                 _encode(char *buffer, const char *frmt, ...) /*fold00*/
 {
     va_list argptr;
     va_start(argptr, frmt);
@@ -7886,7 +7742,7 @@ static int                 _encode(char *buffer, const char *frmt, ...)
 
 }
 
-static int                 _handle_method(const gchar *str, char *result, char *err)
+static int                 _handle_method(const gchar *str, char *result, char *err) /*fold00*/
 // call the correponding S52_* function named 'method' in JSON object
 // here 'method' meen function name (or command name)
 // SL4A call it 'method' since JAVA is OOP
@@ -8509,7 +8365,7 @@ exit:
     return (int)id;
 }
 
-static gboolean            _socket_read_write(GIOChannel *source, GIOCondition cond, gpointer user_data)
+static gboolean            _socket_read_write(GIOChannel *source, GIOCondition cond, gpointer user_data) /*fold00*/
 // FIXME: refactor this mess
 {
     // quiet - not used
@@ -8727,7 +8583,7 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
 }
 
 #define UNUSED(expr) do { (void)(expr); } while (0)
-static gboolean            _new_connection(GSocketService    *service,
+static gboolean            _new_connection(GSocketService    *service, /*fold00*/
                                            GSocketConnection *connection,
                                            GObject           *source_object,
                                            gpointer           user_data)
@@ -8764,7 +8620,7 @@ static gboolean            _new_connection(GSocketService    *service,
     return FALSE;
 }
 
-static int                 _initSock(void)
+static int                 _initSock(void) /*fold00*/
 {
     GError *error = NULL;
 

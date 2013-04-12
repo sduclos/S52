@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -60,9 +60,9 @@ typedef enum S52MarinerParameter {
     S52_MAR_SHIPS_OUTLINE       =  8,   // flag indicating selection of ship scale symbol (on/off) [IMO PS 8.4]
     S52_MAR_DISTANCE_TAGS       =  9,   // selected spacing of "distance to run" tags at a route (nm) [default 0.0 - OFF]
     S52_MAR_TIME_TAGS           = 10,   // selected spacing of time tags at the past track (min), [ref S52_addPASTRKPosition() bellow]
-    S52_MAR_FULL_SECTORS        = 11,   // show full length light sector lines (on/off0 [default ON]
-    S52_MAR_SYMBOLIZED_BND      = 12,   // symbolized area boundaries
-    S52_MAR_SYMPLIFIED_PNT      = 13,   // simplified point
+    S52_MAR_FULL_SECTORS        = 11,   // show full length light sector lines (on/off) [default ON]
+    S52_MAR_SYMBOLIZED_BND      = 12,   // symbolized area boundaries (on/off) [default ON]
+    S52_MAR_SYMPLIFIED_PNT      = 13,   // simplified point (on/off) [default ON]
     S52_MAR_DISP_CATEGORY       = 14,   // display category (see [1] bellow)
     S52_MAR_COLOR_PALETTE       = 15,   // color palette  (0 - DAY_BRIGHT, 1 - DAY_BLACKBACK, 2 - DAY_WHITEBACK, 3 - DUSK, 4 - NIGHT)
 
@@ -127,26 +127,26 @@ typedef enum S52MarinerParameter {
     S52_MAR_NUM                 = 45    // number of parameters
 } S52MarinerParameter;
 
-// command word filter for profiling
+// debug - command word filter for profiling
 typedef enum S52_CMD_WRD_FILTER_t {
-    S52_CMD_WRD_FILTER_SY = 1 << 0, // 000001 - SY
-    S52_CMD_WRD_FILTER_LS = 1 << 1, // 000010 - LS
-    S52_CMD_WRD_FILTER_LC = 1 << 2, // 000100 - LC
-    S52_CMD_WRD_FILTER_AC = 1 << 3, // 001000 - AC
-    S52_CMD_WRD_FILTER_AP = 1 << 4, // 010000 - AP
-    S52_CMD_WRD_FILTER_TX = 1 << 5  // 100000 - TE & TX
+    S52_CMD_WRD_FILTER_SY = 1 << 0,   // 000001 - SY
+    S52_CMD_WRD_FILTER_LS = 1 << 1,   // 000010 - LS
+    S52_CMD_WRD_FILTER_LC = 1 << 2,   // 000100 - LC
+    S52_CMD_WRD_FILTER_AC = 1 << 3,   // 001000 - AC
+    S52_CMD_WRD_FILTER_AP = 1 << 4,   // 010000 - AP
+    S52_CMD_WRD_FILTER_TX = 1 << 5    // 100000 - TE & TX
 } S52_CMD_WRD_FILTER_t;
 
 // [1] S52_MAR_DISP_CATEGORY / S52_MAR_DISP_LAYER_LAST
-// 0x0000000 - only objects of the DISPLAYBASE category are shown (always ON)
-// 0x0000001 - only objects of the categorys DISPLAYBASE and STANDARD are shown (default)
-// 0x0000010 - only objects of the categorys DISPLAYBASE and OTHER are shown
-// 0x0000100 - initialy all objects are show (DISPLAYBASE + STANDARD + OHTER.)
-//             the display of objects on STANDARD and/or OHTER is set via S52_toggleObjClass/ON/OFF()
-// 0x0001000 - MARINERS' NONE     - a call to S52_drawLast() output nothing)
-// 0x0010000 - MARINERS' STANDARD -
-// 0x0100000 - MARINERS' OTHER    -
-// 0x1000000 - MARINERS' SELECT   - set via S52_toggleObjClass/ON/OFF(), initialy ON
+// 0x0000000 - DISPLAYBASE: only objects of the DISPLAYBASE category are shown (always ON)
+// 0x0000001 - STANDARD:    only objects of the categorys DISPLAYBASE and STANDARD are shown (default)
+// 0x0000010 - OTHER:       only objects of the categorys DISPLAYBASE and OTHER are shown
+// 0x0000100 - SELECT:      initialy all objects are show (DISPLAYBASE + STANDARD + OHTER.) [2]
+// 0x0001000 - MARINERS' NONE:     - when set, a call to S52_drawLast() output nothing
+// 0x0010000 - MARINERS' STANDARD: - (default!)
+// 0x0100000 - MARINERS' OTHER:    -
+// 0x1000000 - MARINERS' SELECT:   - (see [2])
+// [2] the display/supression of objects on STANDARD and/or OHTER is set via S52_toggleObjClass/ON/OFF()
 typedef enum S52_MAR_DISP_CATEGORY_t {
     S52_MAR_DISP_CATEGORY_BASE     = 0,        // 0000000 - DISPLAY BASE
     S52_MAR_DISP_CATEGORY_STD      = 1 << 0,   // 0000001 - STANDARD
@@ -159,15 +159,6 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
     S52_MAR_DISP_LAYER_LAST_OTHER  = 1 << 5,   // 0100000 - MARINERS' OTHER
     S52_MAR_DISP_LAYER_LAST_SELECT = 1 << 6    // 1000000 - MARINERS' SELECT
 } S52_MAR_DISP_CATEGORY_t;
-
-
-// FIXME: use GDBus instead
-// or socket as DBus supposly slow
-#ifdef  S52_USE_DBUS
-#define S52_DBUS_OBJ_NAME  "nav.ecs.dbus"
-#define S52_DBUS_OBJ_PATH  "/nav/ecs/dbus"
-#define S52_DBUS_OBJ_IFACE "nav.ecs.dbus"
-#endif
 
 
 //-----need a GL context (main loop) ------------------------
@@ -278,7 +269,9 @@ DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int
  * NOTE: using 'double' instead of 'unsigned int' because X11 handle mouse in 'double'.
  *
  *
- * Return: (transfer none): the '<name>:<S57ID>' of the S57 object, else NULL
+ * Return: (transfer none): string '<name>:<S57ID>' or if relationship existe
+ * '<name>:<S57ID>:<relationS57IDa>,<S57IDa>,...:<relationS57IDb>,<S57IDb>,...'
+ * of the S57 object, else NULL
  */
 DLL const char * STD S52_pickAt(double pixels_x, double pixels_y);
 
@@ -568,6 +561,8 @@ DLL int          STD S52_setS57ObjClassSupp(const char *className, int value);
  *
  * If @plibName is NULL look for label 'PLIB' in s52.cfg
  *
+ * WARNING: after loadPLib() all S52ObjectHandle are invalid, so user must
+ * reload them to get new S52ObjectHandle.
  *
  * Return: TRUE on success, else FALSE
  */
@@ -1055,8 +1050,18 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
 DLL int            STD S52_newCSYMB(void);
 
 
+// FIXME: use GDBus instead
+// or socket as DBus as to handle system-wide msg that slow bus
+#ifdef  S52_USE_DBUS
+#define S52_DBUS_OBJ_NAME  "nav.ecs.dbus"
+#define S52_DBUS_OBJ_PATH  "/nav/ecs/dbus"
+#define S52_DBUS_OBJ_IFACE "nav.ecs.dbus"
+#endif
+
+
 #ifdef __cplusplus
 }
 #endif
+
 
 #endif //_S52_H_

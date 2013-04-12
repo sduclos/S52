@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -323,7 +323,7 @@ typedef struct _S52_obj {
     //int          drawHDG;      // draw heading if TRUE
     //S52_objSup   objSUP;       // use when supressing display peacemeal
 
-    int highlight;                // highlight this object (cursor pick - experimental)
+    //int highlight;                // highlight this object (cursor pick - experimental)
 
     struct _S52_obj    *nextLeg;  // link to next leglin (need to draw arc)
     struct _S52_obj    *prevLeg;  // link to previous leg so that we can clip the start of this leg
@@ -513,8 +513,7 @@ static int        _readS52Line(_PL *fp, char *buf)
 #else
    int reclen = strtoll(dst, NULL, 10);
 #endif
-   int i;
-   for (i=reclen+9; i<=linelen; ++i)
+   for (int i=reclen+9; i<=linelen; ++i)
        buf[i] = '\0';
 
    if (EOL == buf[reclen+8])
@@ -688,12 +687,10 @@ static gint       _delSMB(gpointer key, gpointer value, gpointer data)
 static gint       _loadCondSymb()
 // load Conditional Symbology in BBtree
 {
-    int i = 0;
-
     if (NULL == S52_CS_condTable)
         return FALSE;
 
-    for (i=0; NULL!=S52_CS_condTable[i].CScb; ++i)
+    for (int i=0; NULL!=S52_CS_condTable[i].CScb; ++i)
         //g_tree_insert(_selSMB(S52_SMB_COND),
         //              (gpointer)S52_CS_condTable[i].name,
         //              (gpointer)S52_CS_condTable[i].CScb);
@@ -2140,12 +2137,10 @@ static int        _initPL()
 
     _colTables = g_array_new(FALSE, FALSE, sizeof(_colTable));
 
-    unsigned int i = 0;
-
     _colref = g_tree_new(_cmpCOL);
     //_colref = g_tree_new_full(_cmpCOL, NULL, NULL, NULL);
 
-    for (i=1; i<=S52_COL_NUM; ++i) {
+    for (guint i=1; i<=S52_COL_NUM; ++i) {
         gpointer pint = GINT_TO_POINTER(i);
         g_tree_insert(_colref, (gpointer)_colorName[i-1], pint);
     }
@@ -2709,8 +2704,7 @@ int         S52_PL_done()
 //#endif
 
     {   // set table to NULL
-        int i;
-        for (i=0; i<TBL_NUM; ++i)
+        for (int i=0; i<TBL_NUM; ++i)
             _table[i] = NULL;
     }
 
@@ -2813,10 +2807,10 @@ static int        _linkLUP(_S52_obj *obj, int alt)
 // get the LUP that is approproate for this S57 object
 // if alt is 1 compute alternate rasterization rules
 {
-    _S52_LUP *LUPlist = NULL;
-    GTree    *tbl     = NULL;
-    _LUPtnm   tblNm   = _LUP_NUM;
-    char     *objName = S57_getName(obj->geoData);
+    _S52_LUP   *LUPlist = NULL;
+    GTree      *tbl     = NULL;
+    _LUPtnm     tblNm   = _LUP_NUM;
+    const char *objName = S57_getName(obj->geoData);
 
     //if (NULL == objName) {
     //    PRINTF("ERROR: S57 object with no name\n");
@@ -3016,7 +3010,8 @@ S52_obj    *S52_PL_delObj(_S52_obj *obj)
 
 S57_geo    *S52_PL_getGeo(_S52_obj *obj)
 {
-    // OPTIMISATION: seem this is called everywhere
+    // OPTIMISATION: seem this is called everywhere, so this test
+    // might slow down a bit (must mesure)
     return_if_null(obj);
 
     return obj->geoData;
@@ -3324,9 +3319,11 @@ int         S52_PL_getLSdata(_S52_obj *obj, char *pen_w, char *style, S52_Color 
     *style = cmd->param[2];
 
     // visual check for S52_USE_SUPP_LINE_OVERLAP
-    if (TRUE == obj->highlight)
+    //if (TRUE == obj->highlight)
+    if (TRUE == S57_getHighlight(obj->geoData)) {
         *color = S52_PL_getColor("DNGHL");
-    else
+        S57_highlightOFF(obj->geoData);
+    } else
         *color = S52_PL_getColor(cmd->param+7);
 
     // make sure that line have no transparency set by S52_PL_getACdata()
@@ -3538,9 +3535,11 @@ S52_Color  *S52_PL_getACdata(_S52_obj *obj)
 
     //S52_Color *color = S52_PL_getColor(cmd->param);
     S52_Color *color = NULL;
-    if (TRUE == obj->highlight)
+    //if (TRUE == obj->highlight)
+    if (TRUE == S57_getHighlight(obj->geoData)) {
         color = S52_PL_getColor("DNGHL");
-    else
+        S57_highlightOFF(obj->geoData);
+    } else
         color = S52_PL_getColor(cmd->param);
 
 
@@ -3901,8 +3900,7 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
     //if (_crntPaletteID != id) {
         //_crntPaletteID  = id;
 
-    guint i = 0;
-    for (i=0; i<nbr; ++i) {
+    for (guint i=0; i<nbr; ++i) {
             S52_Color *col = S52_PL_getColorAt(c[i].cidx);
 
             // ugly: pull transparency from symbol color not from PLib
@@ -3915,7 +3913,9 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
             //if (0 == trans)
             //    g_assert(0);
 
-            if (TRUE == obj->highlight) {
+            //if (TRUE == obj->highlight) {
+            if (TRUE == S57_getHighlight(obj->geoData)) {
+                S57_highlightOFF(obj->geoData);
                 S52_Color *colhigh = S52_PL_getColor("DNGHL");
                 c[i] = *colhigh;
             } else
@@ -3927,10 +3927,6 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
             c[i].trans = trans;  // overwrite 'trans' with the symbol trans
             c[i].pen_w = pen_w;
     }
-
-    //
-    //if (TRUE == obj->highlight)
-    //    obj->highlight = FALSE;
 
     if (S52_CMD_ARE_CO == cmd->cmdWord)
         return  cmd->cmd.DList;
@@ -4547,11 +4543,8 @@ S52_objSup  S52_PL_toggleObjClass(const char *className)
 {
     S52_objSup sup     = S52_SUP_ERR;
     _S52_LUP  *LUPlist = NULL;
-    //_table_t   tblType;
-    int        tblType;
 
-    for (tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
-    //for (tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; tblType += 1) {
+    for (int tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
         LUPlist = (_S52_LUP*)g_tree_lookup(_table[tblType], (gpointer*)className);
         if (NULL != LUPlist)
             sup = _toggleLUPlist(LUPlist);
@@ -4565,14 +4558,9 @@ S52_objSup  S52_PL_getObjClassState(const char *className)
 {
     S52_objSup sup     = S52_SUP_ERR;
     _S52_LUP  *LUPlist = NULL;
-    //_table_t   tblType;
-    int        tblType;
 
-    for (tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
-    //for (tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; tblType += 1) {
+    for (int tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
         LUPlist = (_S52_LUP*)g_tree_lookup(_table[tblType], (gpointer*)className);
-//        if (NULL != LUPlist)
-//            sup = LUPlist->sup;
         while (NULL != LUPlist) {
             if ('D' != LUPlist->DISC)
                 return LUPlist->sup;
@@ -4800,6 +4788,7 @@ const char* S52_PL_getPalTableNm(unsigned int idx)
     return NULL;
 }
 
+/* move to S57data.c
 int         S52_PL_highlightON (_S52_obj *obj)
 {
     return_if_null(obj);
@@ -4817,6 +4806,7 @@ int         S52_PL_highlightOFF(_S52_obj *obj)
 
     return TRUE;
 }
+*/
 
 int         S52_PL_setNextLeg(S52_obj *obj, S52_obj *objNextLeg)
 {

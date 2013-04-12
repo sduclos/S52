@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -46,10 +46,6 @@
 #include <string.h>
 #include <stdarg.h>
 
-//#define S52_LOG(s) {char str[265]; sprintf(str, __FILE__":%i: %s(): %s", __LINE__, __FUNCTION__, s); g_print("%s", str);}
-//#define PRINTF g_print(__FILE__":%i: %s(): ", __LINE__, __FUNCTION__),g_print
-//#define PRINTF g_message(__FILE__":%i: %s(): ", __LINE__, __FUNCTION__),g_message
-
 void _printf(const char *file, int line, const char *function, const char *frmt, ...);
 #define PRINTF(...) _printf(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__)
 
@@ -84,6 +80,9 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
                             }
 
 
+#define cchar const char
+
+
 // debug: valid label in .cfg file
 #define CONF_CATALOG  "CATALOG"
 #define CONF_PLIB     "PLIB"
@@ -98,7 +97,6 @@ int      S52_getConfig(const char *label, valueBuf *vbuf);
 double   S52_atof   (const char *str);
 int      S52_atoi   (const char *str);
 size_t   S52_strlen (const char *str);
-//gchar*   S52_strstr (const gchar *haystack, const gchar *needle);
 char*    S52_strstr (const char *haystack, const char *needle);
 gint     S52_strncmp(const char *s1, const char *s2, gsize n);
 FILE *   S52_fopen  (const char *filename, const char *mode);
@@ -107,13 +105,14 @@ gboolean S52_string_equal(const GString *v, const GString *v2);
 
 void     S52_tree_replace(GTree *tree, gpointer key, gpointer value);
 
-//int      S52_initLog();
-//typedef int     (*S52_error_cb) (const char *err);
 int      S52_initLog(S52_error_cb err_cb);
 int      S52_doneLog();
 
-// testing: xyL -> rgb done by hand
-//int    S52_xyL2rgb(double *xr, double *yg, double *Lb)
+
+
+
+
+
 
 
 /*

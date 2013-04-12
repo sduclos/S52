@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -348,8 +348,8 @@ int            S52_PL_getRGB(const char *colorName, unsigned char *R, unsigned c
 int            S52_PL_getPalTableSz();
 const char    *S52_PL_getPalTableNm(unsigned int idx);
 
-int            S52_PL_highlightON (S52_obj *obj);
-int            S52_PL_highlightOFF(S52_obj *obj);
+//int            S52_PL_highlightON (S52_obj *obj);
+//int            S52_PL_highlightOFF(S52_obj *obj);
 
 int            S52_PL_setNextLeg(S52_obj *obj, S52_obj *objNextLeg);
 S52_obj       *S52_PL_getNextLeg(S52_obj *obj);

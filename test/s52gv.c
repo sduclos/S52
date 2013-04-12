@@ -36,6 +36,7 @@ static GtkWidget  *VecView      = NULL;
 #define DRVNAME "S57"
 
 
+
 static void _key_press_cb( GtkObject * object, GdkEventKey * event )
 
 {

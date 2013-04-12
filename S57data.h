@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -69,7 +69,7 @@ S57_geo  *S57_delNextPoly(S57_geo *geoData);
 #endif
 
 int       S57_setName  (S57_geo *geoData, const char *name);
-char     *S57_getName  (S57_geo *geoData);
+cchar    *S57_getName  (S57_geo *geoData);
 
 // debug:
 //int       S57_setOGRGeo(S57_geo *geoData, void *hGeom);
@@ -120,7 +120,7 @@ GString  *S57_getAttVal(S57_geo *geoData, const char *name);
 // set attribute name and value
 GData    *S57_setAtt(S57_geo *geoData, const char *name, const char *val);
 // get str of the form ",KEY1:VAL1,KEY2:VAL2, ..." of S57 attribute only (not OGR)
-const char *S57_getAtt(S57_geo *geoData);
+cchar    *S57_getAtt(S57_geo *geoData);
 
 int       S57_setTouchTOPMAR(S57_geo *geo, S57_geo *touch);
 S57_geo  *S57_getTouchTOPMAR(S57_geo *geo);
@@ -135,8 +135,8 @@ double    S57_setScamin(S57_geo *geo, double scamin);
 double    S57_getScamin(S57_geo *geo);
 double    S57_resetScamin(S57_geo *geo);
 
-int       S57_setLNAM(S57_geo *geo, GString *lnam);
-GString  *S57_getLNAM(S57_geo *geo);
+int       S57_setRelationship(S57_geo *geo, S57_geo *geoRel);
+S57_geo  *S57_getRelationship(S57_geo *geo);
 
 // suppression
 gboolean  S57_setSup(S57_geo *geoData, gboolean sup);
@@ -176,6 +176,10 @@ GString  *S57_getRCIDstr(S57_geo *geo);
 // experimental (fail)
 //int       S57_sameChainNode(S57_geo *geoA, S57_geo *geoB);
 #endif
+
+int       S57_highlightON (S57_geo *geo);
+int       S57_highlightOFF(S57_geo *geo);
+int       S57_getHighlight(S57_geo *geo);
 
 //// returns the window boundary with the current projection. After  the geo2prj and initproj have been public, this function may be moved to application layer.
 //void S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax);

@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -66,10 +66,8 @@ static int        _getGeoPtCount(OGRGeometryH hGeom, int iGeo, OGRGeometryH *hGe
 
 static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
 {
-    int field_index = 0;
     int field_count = OGR_F_GetFieldCount(hFeature);
-
-    for (field_index=0; field_index<field_count; ++field_index) {
+    for (int field_index=0; field_index<field_count; ++field_index) {
         if (OGR_F_IsFieldSet(hFeature, field_index)) {
             const char *propName  = OGR_Fld_GetNameRef(OGR_F_GetFieldDefnRef(hFeature,field_index));
             const char *propValue = OGR_F_GetFieldAsString(hFeature, field_index);
@@ -93,10 +91,12 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
     if ((NULL!=scamin) && (NULL!=scamin->str)){
         S57_setScamin(geoData, S52_atof(scamin->str));
     }
-    GString  *lnam   = S57_getAttVal(geoData, "LNAM");
-    if ((NULL!=lnam) && (NULL!=lnam->str)){
-        S57_setLNAM(geoData, lnam);
-    }
+
+
+    //GString  *lnam   = S57_getAttVal(geoData, "LNAM");
+    //if ((NULL!=lnam) && (NULL!=lnam->str)){
+    //    S57_setLNAM(geoData, lnam);
+    //}
 
     return TRUE;
 }
@@ -118,8 +118,6 @@ DLL int   STD S52_loadLayer (const char *layername, void *layer, S52_loadObject_
 //static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb)
 static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
 {
-    int            iLayer      = 0;
-    int            nLayer      = 0;
     OGRDataSourceH hDS         = NULL;;
     OGRSFDriverH   hDriver     = NULL;
     //OGRLayerH      m_covrLayer = NULL;
@@ -152,8 +150,8 @@ static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_
     //   PRINTF("DEBUG: not drv name (!!) should be 'S57'\n", filename);
 
     //_loadAux(hDS);
-    nLayer = OGR_DS_GetLayerCount(hDS);
-    for (iLayer=0; iLayer<nLayer; ++iLayer) {
+    int nLayer = OGR_DS_GetLayerCount(hDS);
+    for (int iLayer=0; iLayer<nLayer; ++iLayer) {
         OGRLayerH       ogrlayer  = OGR_DS_GetLayer(hDS, iLayer);
         OGRFeatureDefnH defn      = OGR_L_GetLayerDefn(ogrlayer);
         const char     *layername = OGR_FD_GetName(defn);
@@ -216,7 +214,6 @@ int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadO
         S52_loadObject(layername, feature);
 #else
         loadObject_cb(layername, (void*)feature);
-        //loadObject_cb((double*)feature);
 #endif
 
         OGR_F_Destroy(feature);
@@ -237,12 +234,10 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
     else
         hGeom = hGeomNext;
 
-    if (NULL != hGeom) {
+    if (NULL != hGeom)
         eType = OGR_G_GetGeometryType(hGeom);
-    } else {
-        // DSIS
-        eType = wkbNone;
-    }
+    else
+        eType = wkbNone; // DSIS
 
     switch (eType) {
         // POINT
@@ -263,9 +258,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
         // LINE
         case wkbLineString25D:
         case wkbLineString: {
-            //int       idx     = 0;
-            int       node    = 0;
-            int       count   = OGR_G_GetPointCount(hGeom);
+            int count = OGR_G_GetPointCount(hGeom);
 
             // NOTE: Edge might have 0 node
             //if (count < 2) {
@@ -278,7 +271,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
             if (0 != count)
                 linexyz = g_new(geocoord, 3*count);
 
-            for (node=0; node<count; ++node) {
+            for (int node=0; node<count; ++node) {
             //for (idx=0, node=count-1; node>=0; --node) {
                 linexyz[node*3+0] = OGR_G_GetX(hGeom, node);
                 linexyz[node*3+1] = OGR_G_GetY(hGeom, node);
@@ -295,7 +288,6 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
         // AREA
         case wkbPolygon25D:
         case wkbPolygon: {
-            unsigned int iRing = 0;
             guint        nRingCount = OGR_G_GetGeometryCount(hGeom);
             guint       *ringxyznbr;
             geocoord   **ringxyz;
@@ -303,9 +295,8 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
             ringxyznbr = g_new(guint,      nRingCount);
             ringxyz    = g_new(geocoord *, nRingCount);
 
-            for (iRing=0; iRing<nRingCount; ++iRing) {
+            for (guint iRing=0; iRing<nRingCount; ++iRing) {
                 OGRGeometryH hRing;
-                guint node;
                 guint vert_count = _getGeoPtCount(hGeom, iRing, &hRing);
 
                 ringxyznbr[iRing] = vert_count;
@@ -330,10 +321,9 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 //     ai = x[i] * y[j] - x[j] * y[i];
                 //}
 
-                unsigned int i;
                 double area = 0;
                 //for (i=0; i<vert_count; i++) {
-                for (i=0; i<vert_count-1; i++) {
+                for (guint i=0; i<vert_count-1; i++) {
                     double x1 = OGR_G_GetX(hRing, i);
                     double y1 = OGR_G_GetY(hRing, i);
                     double x2 = OGR_G_GetX(hRing, i+1);
@@ -369,7 +359,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 if (area > 0.0) {
                     // if first ring put winding CCW
                     if (0==iRing) {
-                        for (node=0; node<vert_count; ++node) {
+                        for (guint node=0; node<vert_count; ++node) {
                             ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, vert_count-node-1);
                             ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, vert_count-node-1);
                             ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, vert_count-node-1);
@@ -378,7 +368,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
 
 
                     else {
-                        for (node=0; node<vert_count; ++node) {
+                        for (guint node=0; node<vert_count; ++node) {
                             ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, node);
                             ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, node);
                             ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, node);
@@ -390,7 +380,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
 
                     if (0==iRing) {
                     // if NOT first ring put winding CW
-                        for (node=0; node<vert_count; ++node) {
+                        for (guint node=0; node<vert_count; ++node) {
                             ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, node);
                             ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, node);
                             ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, node);
@@ -398,7 +388,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
 
 
                      } else {
-                        for (node=0; node<vert_count; ++node) {
+                        for (guint node=0; node<vert_count; ++node) {
                             ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, vert_count-node-1);
                             ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, vert_count-node-1);
                             ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, vert_count-node-1);
@@ -482,10 +472,8 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
 
 S57_geo       *S57_ogrLoadObject(const char *objname, void *feature)
 {
-    if ((NULL==objname) || (NULL==feature)) {
-        //g_assert(0);
-        return NULL;
-    }
+    return_if_null(objname);
+    return_if_null(feature);
 
     // debug
     //PRINTF("DEBUG: start loading object (%s:%X)\n", objname, feature);

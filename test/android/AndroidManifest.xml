@@ -18,7 +18,7 @@
 
 
 
-    <!-- Allows applications to open network sockets to get AIS from radar.imar.ca -->
+    <!-- Allows applications to open network sockets (ex: to get AIS from radar.imar.ca) -->
     <uses-permission android:name = "android.permission.INTERNET"               />
     <!-- Allows applications to write gpsd.sock, gpsd.pid, sl4agps.pid, s52ais.pid to sdcard -->
     <uses-permission android:name = "android.permission.WRITE_EXTERNAL_STORAGE" />

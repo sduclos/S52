@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -34,16 +34,15 @@ int   S52_GL_setFontDL(int fontDL);
 // -- framebuffer stuff --------------------------------
 // init frame, save OpenGL state (see S52_GL_end())
 int   S52_GL_begin(int cursorPick, int drawLast);
-// render an object to frame
+// render an object to framebuffer
 int   S52_GL_draw(S52_obj *obj, gpointer user_data);
 // draw lights
 int   S52_GL_drawLIGHTS(S52_obj *obj);
 // draw text
 int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
-// copy from frame buffer to memory, return pixels
-unsigned char *S52_GL_readFBPixels(void);
-// debug, caller must free mem
-//unsigned char *S52_GL_readPixels(int x, int y, int width, int height);
+// use to copy from framebuffer to memory, return pixels
+unsigned
+char *S52_GL_readFBPixels(void);
 // debug
 int   S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height);
 

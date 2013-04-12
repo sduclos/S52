@@ -15,10 +15,9 @@ Curent focus (top priority *):
     -handle GLU_TESS_MAX_COORD
 
     PL:
-**  -display text description of symbol in PLib in cursor pick
 *   -view group or somme equivalent functionality
     -overscale (DATCVR01)
-    -experimental: supression of overlapping lines of same disp prio but diff categorie
+    -experimental: supression of overlapping simple lines (LS()) (also of same disp prio AREAS/LINES)
     -fix breaker color problem in CA49995A.000
     -signal object that land in layer 0 (ex TOPMAR/CA49995A.000/geo.id:123)
     -check/validate QUAPOS of spatial (not attribute) object
@@ -27,11 +26,11 @@ Curent focus (top priority *):
     -isobath tag
 
     Coding:
-*   -handle C_AGGR and C_ASSO to showup in crusor pick (2 - slave, 3 - peer, need to hack GDAL TEMP_BUFFER_SIZE)
-*   -use masked lines field (OGR/S57 MASK/FSPT) to split line in multi-line
+*   -use masked lines field (OGR/S57 MASK/FSPT) to split line in multi-line or line overlap trick
     -check handling anti-meridian (need a chart that overlap the meridian)
+    -check CRC32 in S57
     -chart manager / show world contour / chart extent / CATALOG.031
-    -read text referenced by CATLOG.031
+    -read text referenced by CATLOG.031 (some text in M_NPUB also)
     -check user (root)
     -write back mariner's parameter to .cfg (client job!)
     -use the glib "Key-value file parser" to load/save .cfg
@@ -59,6 +58,8 @@ DONE
 ====
 (put here TODO's that has been done)
 
+    -handle C_AGGR and C_ASSO to showup in crusor pick (2 - slave, 3 - peer, need to hack GDAL TEMP_BUFFER_SIZE)
+    -display text description of symbol in PLib in cursor pick
     -HTML5/SVG: s52ui (Dart & PhoneGap) handle web stuff (WebSocket)
     -code: many S52_drawStr() params could be drawn from inside S52_drawLast()
 	-PL: editor (see Pavel Kalian https://github.com/nohal/RleEditor)

@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -250,12 +250,10 @@ static unsigned int _textDisp[TEXT_IDX_MAX]; // assume compiler init to 0 (C99!)
 
 int    S52_MP_setTextDisp(unsigned int prioIdx, unsigned int count, unsigned int state)
 {
-    unsigned int i = 0;
-
     if (prioIdx+count > TEXT_IDX_MAX)
         return FALSE;
 
-    for (i=0; i<count; ++i)
+    for (guint i=0; i<count; ++i)
         _textDisp[prioIdx + i] = state;
 
     return TRUE;

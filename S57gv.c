@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2012  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -44,9 +44,8 @@ static int    _loadAtt(S57_geo *geoData, GvShape *shape)
 {
     GvProperties *props = gv_shape_get_properties(shape);
     int           nProp = gv_properties_count(props);
-    int           i;
 
-    for (i=0; i<nProp; ++i) {
+    for (int i=0; i<nProp; ++i) {
         const char *propName  = gv_properties_get_name_by_index (props, i);
         const char *propValue = gv_properties_get_value_by_index(props, i);
 
@@ -80,12 +79,11 @@ int        S57_gvLoadLayer(const char *layername, void *layer, S52_loadObj_cb cb
 {
     GvShapesLayer *l = (GvShapesLayer*) layer;
     int nShapes = gv_shapes_num_shapes(l->data);
-    int i       = 0;
 
     // check that geometric data type are in sync with OpenGL
     g_assert(sizeof(geocoord) == sizeof(double));
 
-    for (i=0; i<nShapes; ++i) {
+    for (int i=0; i<nShapes; ++i) {
         GvShape *shape = gv_shapes_get_shape(GV_SHAPES_LAYER(layer)->data, i);
 
         cb(layername, shape);

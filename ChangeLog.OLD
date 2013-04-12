@@ -2,6 +2,16 @@
 #                The 'real' ChangeLog is generated with the Perl script cvs2cl.pl
 #
 
+
+2013APR11
+    -add resolve relationship (C_AGGR/C_ASSO) for cursor pick
+
+2013APR10
+    -fix line overlap that suppress one to may segment in a line
+
+2013APR07
+    - add PLib exposition field: LXPO/PXPO/SXPO to cursor pick
+
 2013APR05
     -add test for cursor pick in s52ui
 
@@ -10,7 +20,7 @@
 
 2013MAR24
     -add device rotation handling to s52droid (s52egl.c)
-    
+
 2013MAR22
     -add timer to afterglow
     -mod rename project S52android to s52droid
@@ -23,70 +33,70 @@
     -mod S52.dart refactor
     -add stopWatch in S52.dart
     -mod s52android to s52droid
-    
+
 2013MAR13
     -fix CSS layout (s52ui)
     -fix line supression regression
-    
+
 2013MAR12
     -move to S52.dart stuff that mimic S52.h
     -add test to Rot. Buoy Light in s52ui
-    
+
 2013MAR10
     -fix s52ui html table wrongly resized when redisplay
     -add test to continously Draw() from s52ui via vesselSelect(1) by following AIS
-    
+
 2013MAR03
     -add AIS list to s52ui (hence to Android also)
-    
+
 2013FEB18
     -fix WebSocket on Android
-    
+
 2013JAN23
     -fix ship's label, fix free moving VRMEBL
 
 2013JAV18
     -fix/refactor VRMEBL on GLES2, add TX to cursor in PLAUX.DAI
-    
+
 2013JAN09
     -fix rotation of buoy light (g_strcmp0())
-    
+
 2013JAN08
     -fix S52_doneCell() from socket (s52webUI)
-    
+
 2013JAN05
     -fix text rotation for GLES2
-    
+
 2012DEC12
     -add Websocket server - exprimental
     -add dep. 'lib/parson' to handle JSON from Websocket
-    
+
 2012NOV20
     -fix C1 ed3.1, mariners' objects are part of the ENCs
-    
+
 2012NOV19
     -fix C1 ed3.1 AA5C1ABO.000 $SCODE point symb on GLES2
 
 2012NOV18
     -mod logic to S52_MAR_DISP_CATEGORY, one call to set many OR'ed flags
-    
+
 2012NOV17
     -fix 'TAP/long TAP' logic on Android: 'cursor pick/vrmebl'
-    
+
 2012NOV14
     - from https://git.kernel.org/?p=linux/kernel/git/kay/libabc.git;a=blob_plain;f=README
            "Don't put "extern" in front of your function prototypes in headers
            - It has no effect, no effect at all."
     -remove 'extern', it has no effect, really
     -add world shapefile
-    
+
 2012NOV01
     -add lib parson, replace TAB with NL in JSON
 
 2012OCT20
-    -add source code to github 
-    
-2012OCT05 
+    -add source code to github
+
+2012OCT05
     -mod s52/doc, add graphic/ and wiki/
 
 2012OCT01
@@ -94,7 +104,7 @@
      to work propely
 
 2012SEP26
-    -add experiment increse text kerning and decrese text size 
+    -add experiment increse text kerning and decrese text size
      at new line char (TAB char, since '\n' break JSON/socket string)
 
 2012SEP25

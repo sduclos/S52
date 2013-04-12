@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013  Sylvain Duclos sduclos@users.sourceforgue.net
+    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -232,7 +232,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
     return_if_null(local);
     return_if_null(geo);
 
-    char *name = S57_getName(geo);
+    const char *name = S57_getName(geo);
 
     // lights reverse the link so this test is bad
     //if (NULL != S57_getTouch(geo)) {
@@ -245,7 +245,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
     //
     if (0==g_strcmp0(name, "TOPMAR")) {
         GString *lnam = S57_getAttVal(geo, "LNAM");
-        //unsigned int i = 0;
         for (guint i=0; i<local->topmar_list->len; ++i) {
             S57_geo *other = (S57_geo *) g_ptr_array_index(local->topmar_list, i);
             GString *olnam = S57_getAttVal(other, "LNAM");
@@ -276,7 +275,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
     // check if this buoy has a lights
     //
     if (0==g_strcmp0(name, "BOYLAT")) {
-        //unsigned int i = 0;
         for (guint i=0; i<local->lights_list->len; ++i) {
             S57_geo *light = (S57_geo *) g_ptr_array_index(local->lights_list, i);
 
@@ -532,7 +530,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         }
         */
 
-        //unsigned int i = 0;
         for (guint i=0; i<local->depare_list->len; ++i) {
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->depare_list, i);
 
@@ -583,8 +580,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         (0==g_strcmp0(name, "WRECKS"))
        )
     {
-        //unsigned int i = 0;
-
         // debug
         //if (582 == S57_getGeoID(geo))
         //    PRINTF("OBSTRN found\n");
@@ -1724,9 +1719,7 @@ static GString *_LITDSN01(S57_geo *geo)
         //if (1 < _parseList(colourstr->str, colour))
         //    PRINTF("WARNING: more then one 'colour' (COLOUR), other not displayed\n");
         int ncolor = _parseList(colourstr->str, colour);
-        int i = 0;
-
-        for (i=0; i<ncolor; ++i) {
+        for (int i=0; i<ncolor; ++i) {
             switch (colour[0]) {
                 //1: white   IP 11.1;    450.2-3;
                 case 1: tmp = "W"; break;
