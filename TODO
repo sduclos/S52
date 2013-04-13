@@ -9,7 +9,7 @@ Curent focus (top priority *):
     GL:
 **  -load raster (RADAR Layer, high densit bathy, ice)
 **  -alarm (safety perimeter, x-track!), try the GL cursor pick trick
-*   -handle overlaping symbol at the center of the window
+*   -handle overlaping symbol at the center of the screen (no test case to debug)
     -fading chart boudary, calib symb, ..
     -implement patern scale spacing (PASP field)
     -handle GLU_TESS_MAX_COORD
@@ -27,9 +27,9 @@ Curent focus (top priority *):
 
     Coding:
 *   -use masked lines field (OGR/S57 MASK/FSPT) to split line in multi-line or line overlap trick
-    -check handling anti-meridian (need a chart that overlap the meridian)
+*   -chart manager / show world contour / chart extent / CATALOG.031
+    -check handling anti-meridian (need a chart that overlap the meridian to debug)
     -check CRC32 in S57
-    -chart manager / show world contour / chart extent / CATALOG.031
     -read text referenced by CATLOG.031 (some text in M_NPUB also)
     -check user (root)
     -write back mariner's parameter to .cfg (client job!)

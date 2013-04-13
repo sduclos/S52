@@ -32,14 +32,12 @@
 // internal geo enum used to link S52 to S57 geo
 // S57 object type have a PLib enum: P,L,A
 typedef enum S52_Obj_t {
-//typedef enum S57_Obj_t {
     _META_T  =  0 ,       // meta geo stuff (ex: C_AGGR)
     POINT_T  = 'P',       // 80 (point)
     LINES_T  = 'L',       // 76 (line)
     AREAS_T  = 'A',       // 65 (area)
     N_OBJ_T  =  4         // number of object type
 } S52_Obj_t;
-//} S57_Obj_t;
 
 typedef double geocoord;
 typedef struct _S57_geo  S57_geo;

@@ -3,6 +3,9 @@
 #
 
 
+2013APR13
+    -fix defect in loadPLib() that mess up S52ObjectHandle
+
 2013APR11
     -add resolve relationship (C_AGGR/C_ASSO) for cursor pick
 

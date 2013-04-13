@@ -1075,7 +1075,6 @@ static _S52_CmdL *_parseINST(GString *inst)
 }
 
 
-//static _S52_CmdL *_initCmdList(_S52_obj *obj, int alt)
 static _S52_CmdL *_initCmdA(_S52_obj *obj, int alt)
 // return the CS command in cmd list, else NULL
 // start to fill the command array upto the fisrt CS
@@ -1098,7 +1097,6 @@ static _S52_CmdL *_initCmdA(_S52_obj *obj, int alt)
     return cmd;
 }
 
-//static int        _doneCmdList(_S52_CmdL *top)
 static int        _freeCmdList(_S52_CmdL *top)
 // free command list
 {
@@ -2901,7 +2899,6 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     if (NULL == obj)
         g_assert(0);
 
-    //obj->crntCmd = NULL; cmdA
     obj->cmdAfinal[0] = g_array_new(FALSE, FALSE, sizeof(_S52_CmdL));
     obj->cmdAfinal[1] = g_array_new(FALSE, FALSE, sizeof(_S52_CmdL));
     obj->crntA        = NULL; //obj->cmdAlt[0];  // for safety, point to something
@@ -2909,8 +2906,6 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
 
     obj->textParsed[0] = FALSE;
     obj->textParsed[1] = FALSE;
-    //obj->text       = NULL;
-    //obj->notext     = FALSE;     // could have text
 
     obj->orient     = (1.0/0.0);   // NaN
     obj->speed      = (1.0/0.0);   // NaN
@@ -2938,10 +2933,9 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     return obj;
 }
 
-S52_obj    *S52_PL_delObj(_S52_obj *obj)
-// free Command List of this object
-// free this obj
-// return NULL
+S52_obj    *S52_PL_delDta(_S52_obj *obj)
+// free data pertaining to _S52_obj (not geoData)
+// return obj
 {
     return_if_null(obj);
 
@@ -3003,9 +2997,16 @@ S52_obj    *S52_PL_delObj(_S52_obj *obj)
     obj->crntA        = NULL;
     obj->crntAidx     = 0;
 
-    g_free(obj);
+    //g_free(obj);
 
     return NULL;
+}
+
+S52_obj    *S52_PL_cpyObj(_S52_obj *objdst, _S52_obj *objsrc)
+{
+    *objdst = *objsrc;
+
+    return objdst;
 }
 
 S57_geo    *S52_PL_getGeo(_S52_obj *obj)
@@ -3037,7 +3038,7 @@ const char *S52_PL_getOBCL(_S52_obj *obj)
 
 S52_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
 {
-    //return_if_null(obj);
+    return_if_null(obj);
 
     if (NULL == obj->LUP)
         return _META_T;    // special case --noting to display
@@ -3047,17 +3048,13 @@ S52_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
 
 S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
 {
-    //return_if_null(obj);
+    return_if_null(obj);
 
     // DSID has no LUP --put on nodata layer
     if (NULL == obj->LUP)
         return S52_PRIO_NODATA;
 
     S52_disPrio dpri = (TRUE == obj->prioOveride) ? obj->DPRI : obj->LUP->DPRI;
-    //if (TRUE == obj->prioOveride)
-    //    return obj->DPRI;
-    //else
-    //    return obj->LUP->DPRI;
 
 #ifdef S52_DEBUG
     if ((0==dpri) && (0!=obj->LUP->INST->len)) {
@@ -3077,7 +3074,7 @@ static S52_DisCat _getDISC(_S52_LUP *LUP)
 S52_DisCat  S52_PL_getDISC(_S52_obj *obj)
 // get DISplay Category
 {
-    //return_if_null(obj);
+    return_if_null(obj);
 
     if (TRUE == obj->prioOveride)
         return obj->DISC;
@@ -3087,30 +3084,6 @@ S52_DisCat  S52_PL_getDISC(_S52_obj *obj)
     else
         return _getDISC(obj->LUP);
 }
-
-// not used anymore
-//S52_LUPtnm  S52_PL_getTNAM(_S52_obj *obj)
-/*
-{
-    //return_if_null(obj);
-
-    S52_LUPtnm ret = S52_LUP_NUM;
-
-    switch (obj->LUP->TNAM) {
-        //case _LUP_NONAM: ret = S52_LUP_NUM;   break;
-        case _LUP_SIMPL: ret = S52_LUP_SIMPL; break;
-        case _LUP_PAPER: ret = S52_LUP_PAPER; break;
-        case _LUP_LINES: ret = S52_LUP_LINES; break;
-        case _LUP_PLAIN: ret = S52_LUP_PLAIN; break;
-        case _LUP_SYMBO: ret = S52_LUP_SYMBO; break;
-
-        default:
-            PRINTF("ERROR: unkown LUP name (%c)\n", obj->LUP->TNAM);
-    }
-
-    return ret;
-}
-*/
 
 int         S52_PL_getLUCM(_S52_obj *obj)
 {
@@ -3158,15 +3131,11 @@ static int        _getAlt(_S52_obj *obj)
     int alt = 0;  
 
     // use alternate point symbol
-    if ((POINT_T==S52_PL_getFTYP(obj)) &&
-    //if ((POINT_T==_getFTYP(obj)) &&
-        (FALSE==S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
+    if ((POINT_T==S52_PL_getFTYP(obj)) && (FALSE==S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
         alt = 1;
 
     // use alternate area symbol
-    if ((AREAS_T==S52_PL_getFTYP(obj)) &&
-    //if ((AREAS_T==_getFTYP(obj)) &&
-        (FALSE==S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
+    if ((AREAS_T==S52_PL_getFTYP(obj)) && (FALSE==S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
         alt = 1;
 
     return alt;
@@ -3176,18 +3145,8 @@ const char *S52_PL_getCMD(_S52_obj *obj)
 {
     return_if_null(obj);
 
-    /*
-    _S52_CmdL *cmd;
-
-    obj->crnt = 0;
-    obj->cmdA = obj->cmdAlt[_getAlt(obj)];
-
-    if (obj->cmdA->len > obj->crnt) {
-        cmd = &g_array_index(obj->cmdA, _S52_CmdL, obj->crnt);
-        //return cmd->cmdWord;
-    } else
+    if ((NULL==obj->LUP) || (NULL==obj->LUP->INST))
         return NULL;
-    */
 
     return obj->LUP->INST->str;
 }
@@ -3196,7 +3155,7 @@ S52_CmdWrd  S52_PL_iniCmd(_S52_obj *obj)
 // init command list
 // return the first commad word of NONE if empty
 {
-    //return_if_null(obj);
+    return_if_null(obj);
 
     S52_CmdWrd comdW = S52_CMD_NONE;
 
@@ -3222,7 +3181,7 @@ S52_CmdWrd  S52_PL_iniCmd(_S52_obj *obj)
 S52_CmdWrd  S52_PL_getCmdNext(_S52_obj *obj)
 // FIX: use a single GArray filled with cmd (normal+CS)
 {
-    //return_if_null(obj);
+    return_if_null(obj);
 
     obj->crntAidx++;
     if (obj->crntAidx < obj->crntA->len) {
@@ -3253,7 +3212,6 @@ int         S52_PL_cmpCmdParam(_S52_obj *obj, const char *name)
     if (NULL == cmd)
         return FALSE;
 
-    //return strncmp(obj->crntCmd->param, name, S52_SMB_NMLN);
     return strncmp(cmd->param, name, S52_SMB_NMLN);
 }
 
@@ -3288,19 +3246,6 @@ int         S52_PL_getLSdata(_S52_obj *obj, char *pen_w, char *style, S52_Color 
 // get Line Style data, width in ASCII (pixel=0.32 mm) of current command word
 {
     return_if_null(obj);
-
-    /*
-    if (NULL == obj->crntCmd) {
-        // return something conspic.
-        *pen_w = '1';   //
-        *style = 'L';   // solid
-        *color = S52_PL_getColor("DNGHL");
-    } else {
-        *pen_w = obj->crntCmd->param[5];
-        *style = obj->crntCmd->param[2];
-        *color = S52_PL_getColor(obj->crntCmd->param+7);
-    }
-    */
 
     if (NULL == obj->crntA)
         return FALSE;
@@ -3480,20 +3425,15 @@ int         S52_PL_getLCdata(_S52_obj *obj, double *symlen, char *pen_w)
     if ((NULL==cmd) || (NULL==cmd->cmd.def))
         return FALSE;
 
-    //int bbx = obj->crntCmd->def->pos.symb.bbox_x.SBXC;
-    //int bbw = obj->crntCmd->def->pos.symb.bbox_w.SYHL;
-    //int ppx = obj->crntCmd->def->pos.symb.pivot_x.SYCL;
-    //int bbx = cmd->def->pos.symb.bbox_x.SBXC;
-    //int bbw = cmd->def->pos.symb.bbox_w.SYHL;
-    //int ppx = cmd->def->pos.symb.pivot_x.SYCL;
     int bbx = cmd->cmd.def->pos.symb.bbox_x.SBXC;
     int bbw = cmd->cmd.def->pos.symb.bbox_w.SYHL;
     int ppx = cmd->cmd.def->pos.symb.pivot_x.SYCL;
 
     // check for pivot inside symbol cover (ex: QUESMRK1)
-    if (ppx > bbx)
+    if (ppx > bbx) {
         //symlen = bbw / (dotpitch_x*100.0);
         *symlen = bbw;
+    }
     else
     {
         //symlen = fabs(bbx-ppx+bbw) / (dotpitch_x*100.0);
@@ -3506,8 +3446,6 @@ int         S52_PL_getLCdata(_S52_obj *obj, double *symlen, char *pen_w)
     //PRINTF("ppx:%i bbx:%i bbw:%i \n", ppx, bbx, bbw);
     //*color = S52_PL_getColorAt(cmd->def->col->i);
 
-    //*pen_w = obj->crntCmd->def->pen_w;
-    //*pen_w = cmd->def->pen_w;
     *pen_w = cmd->cmd.def->pen_w;
     if (*pen_w < '1' || *pen_w > '9' ) {
         PRINTF("WARNING: out of bound pen width for LC (%c)\n", *pen_w);
@@ -3989,7 +3927,7 @@ S52_vCmd    S52_PL_getVOCmd(S52_vec *vecObj)
     // FIXME: polygone mode 'outline' not implemented (not used)
 
     //int pm = 0;  // polygon mode
-    //return_if_null(vecObj);
+    return_if_null(vecObj);
 
     if (NULL==vecObj->str)
         return S52_VC_NONE;
@@ -4474,33 +4412,6 @@ int         S52_PL_hasLC(_S52_obj *obj)
     return FALSE;
 }
 
-#if 0
-int         S52_PL_cmpCSname(_S52_obj *obj, char *name)
-// compare symbology instruction againt name (0==match)
-{
-    if (NULL == obj)
-        return -1;
-
-    return strncmp(obj->_crntCmd->param, name, S52_SMB_NMLN);
-}
-#endif
-
-#if 0
-S52_disPrio S52_PL_getOPprio(_S52_obj *obj)
-// get new display priority
-{
-     
-    if (S52_PRIO_NOPRIO == *(obj->crntCmd->param))
-        return obj->LUP->DPRI;
-    else
-        return *(obj->crntCmd->param) - '0';
-    //if (S52_PRIO_NOPRIO == *(cmd->param))
-    //    return LUP->DPRI;
-    //else
-    //    return *(cmd->param) - '0';
-}
-#endif
-
 static S52_objSup _toggleObjType(_S52_LUP *LUP)
 // toggle an S57 object type, return state
 // rules on BASE can't be soppressed
@@ -4524,10 +4435,6 @@ static S52_objSup _toggleLUPlist(_S52_LUP *LUPlist)
 {
     S52_objSup sup = S52_SUP_ERR;
 
-    //while (NULL != LUPlist) {
-    //    sup     = _toggleObjType(LUPlist);
-    //    LUPlist = LUPlist->OBCLnext;
-    //}
     while (NULL != LUPlist) {
         S52_objSup ret = _toggleObjType(LUPlist);
         if (S52_SUP_ERR != ret)

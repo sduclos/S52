@@ -203,7 +203,6 @@ typedef struct _cell {
 
 // BBTree of key/value pair: LNAM --> geo (--> S57ID (for cursor pick))
 // BBTree of LANM 'key' with S57_geo as 'value'
-// FIXME: move this to _cell (WARNING: must not index S52_obj as it change when loading a new PLib)
 static GTree     *_lnamBBT = NULL;
 
 
@@ -271,8 +270,8 @@ static S52ObjectHandle _BLKADJ01 = FALSE;
 static S52_RADAR_cb  _RADAR_cb = NULL;
 //static int          _doRADAR  = TRUE;
 
-static char _version[] = "$Revision: 1.120 $\n"
-      "libS52 0.89\n"
+static char _version[] = "$Revision: 1.121 $\n"
+      "libS52 0.90\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1756,7 +1755,7 @@ DLL int    STD S52_done(void)
 }
 
 #if 0
-/*  DEPRECATED
+//  DEPRECATED
 DLL int    STD S52_setFont(int font)
 {
     S52_CHECK_INIT;
@@ -1765,70 +1764,7 @@ DLL int    STD S52_setFont(int font)
 
     return font;
 }
-*/
 #endif
-
-/*
-static int        _linkLNAM_REFS(_cell* c)
-// FIXME: handle C_AGGR / C_ASSO object for att "LNAM_REFS" (add info to cursor pick)
-// - traverse META_T for C_AGGR / C_ASSO to get "LNAM_REFS"
-// - parse "LNAM_REFS" to get LNAM
-// - find S57 object named LNAM
-// - link it to this C_AGGR or C_ASSO object
-
-//if (0 == g_strcmp0(name, "LNAM_REFS")) {
-//    geoData->LNAM_REFS = value;
-//}
-
-{
-    for (guint i=0; i<S52_PRIO_NUM; ++i) {
-            GPtrArray *rbin = c->renderBin[i][_META_T];
-            for (guint idx=0; idx<rbin->len; ++idx) {
-                S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                S57_geo *geo = S52_PL_getGeo(obj);
-
-                GString *lnam_refsstr = S57_getAttVal(geo, "LNAM_REFS");
-                if (NULL != lnam_refsstr) {
-                    // found a relation
-                    GString *lnamS57ID = NULL;
-                    gchar  **splitLNAM = g_strsplit_set(lnam_refsstr->str+1, "():,", 0);
-                    gchar  **topLNAM   = splitLNAM;
-
-                    // first number correspond to the number of LNAM in this relation
-                    guint n = atoi(*splitLNAM++);
-                    for (guint j=0; j<n; ++splitLNAM, ++j) {
-                        for (guint k=0; k<_geoList->len; ++k) {
-                            S57_geo *geo  = (S57_geo *)g_ptr_array_index(_geoList, k);
-                            GString *lnam = S57_getLNAM(geo);
-
-                            // DSID, Edge, ConnNode, has no LNAM
-                            if (NULL == lnam)
-                                continue;
-
-                            if (0 == g_strcmp0(lnam->str, *splitLNAM)) {
-                                if (NULL == lnamS57ID) {
-                                    lnamS57ID = g_string_new("");
-                                    g_string_printf(lnamS57ID, "%i", _baseS57ID + k);
-                                } else {
-                                    g_string_append_printf(lnamS57ID, ",%i", _baseS57ID + k);
-                                }
-                            }
-                        }
-                    }
-                    if (NULL != lnamS57ID)
-                        S57_setAtt(geo, "_lnamS57ID", lnamS57ID->str);
-
-                    g_string_free(lnamS57ID, TRUE);
-
-                    g_strfreev(topLNAM);
-
-                }
-            }
-    }
-
-    return TRUE;
-}
-*/
 
 static int        _linkRel2LNAM(_cell* c)
 {
@@ -1874,8 +1810,10 @@ static int        _linkRel2LNAM(_cell* c)
         }
     }
 
-    g_tree_destroy(_lnamBBT);
-    _lnamBBT = NULL;
+    if (NULL != _lnamBBT) {
+        g_tree_destroy(_lnamBBT);
+        _lnamBBT = NULL;
+    }
 
     return TRUE;
 }
@@ -2675,21 +2613,33 @@ static int        _insertLightSec(_cell *c, S52_obj *obj)
     return FALSE;
 }
 
-static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
+static S52_obj   *_insertS57Obj(_cell *c, S52_obj *objOld, S57_geo *geoData)
 // insert a S52_obj in a cell from a S57_obj
+// insert container objOld if not NULL
 // return the new S52_obj
 {
     int         obj_t;
+
     S52_Obj_t   ot         = S57_getObjtype(geoData);
     S52_obj    *obj        = S52_PL_newObj(geoData);
     S52_disPrio disPrioIdx = S52_PL_getDPRI(obj);
 
+    if (NULL != objOld) {
+        S52_PL_delDta(objOld);     // clean internal data
+        objOld = S52_PL_cpyObj(objOld, obj);
+        g_free(obj);
+        obj = objOld;
+    }
+
+
     if (NULL == obj) {
         PRINTF("WARNING: S52 object build failed\n");
+        g_assert(0);
         return FALSE;
     }
     if (NULL == c) {
         PRINTF("WARNING: no cell to add to\n");
+        g_assert(0);
         return FALSE;
     }
 
@@ -2709,6 +2659,7 @@ static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
     if (FALSE == _insertLightSec(c, obj)) {
         // insert normal object (ie not a light with sector)
 
+        // FIXME: this cause loadPlib() in infinite loop
         // test to insert Chart No 1 object on layer 9 (Mariners' Objects)
         // fail in GL at second drawLast!
         //if (S52_PRIO_MARINR == disPrioIdx)
@@ -2722,7 +2673,7 @@ static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
         S57_geo *geoDataNext = NULL;
         if (NULL != (geoDataNext = S57_getNextPoly(geoData))) {
             // recurssion
-            _insertS57Obj(c, geoDataNext);
+            _insertS57Obj(c, NULL, geoDataNext);
         }
     }
 #endif
@@ -2890,7 +2841,7 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
 
 #ifdef S52_USE_WORLD
     if (0 == strcmp(objname, WORLD_BASENM)) {
-        _insertS57Obj(_crntCell, geoData);
+        _insertS57Obj(_crntCell, NULL, geoData);
 
         // unlink Poly chain - else will loop forever in S52_loadPLib()
         S57_delNextPoly(geoData);
@@ -2899,7 +2850,7 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
     }
 #endif
 
-    _insertS57Obj(_crntCell, geoData);
+    _insertS57Obj(_crntCell, NULL, geoData);
 
     // helper: save LNAM/geoData to lnamBBT
     if (NULL == _lnamBBT)
@@ -2983,7 +2934,7 @@ static int        _moveObj(_cell *cell, GPtrArray *oldBin, unsigned int idx, int
 
 static S52_obj   *_delObj(S52_obj *obj)
 {
-        S57_geo *geo = S52_PL_getGeo(obj);
+    S57_geo *geo = S52_PL_getGeo(obj);
 
     // debug
     //PRINTF("objH:%#lX, ID:%i\n", (long unsigned int)obj, S57_getGeoID(geo));
@@ -2993,10 +2944,11 @@ static S52_obj   *_delObj(S52_obj *obj)
     S57_doneData(geo, NULL);
     S52_PL_setGeo(obj, NULL);
 
-    // NULL
-    obj = S52_PL_delObj(obj);
+    obj = S52_PL_delDta(obj);
+    g_free(obj);
 
-    return obj; // NULL
+    //return obj; // NULL
+    return NULL; // NULL
 }
 
 static int        _app()
@@ -4613,17 +4565,63 @@ DLL int    STD S52_loadPLib(const char *plibName)
 
     // FIXME: this is error prone!!
     // WARNING: must be in sync with struct _cell
+    // FIXME: BUG: mariners' object loaded before this PLib are lost (invalid S52ObjectHandle)
+    // FIX-1: skip MARINER_CELL (what if a mariner LUP change with new PLib)
+    // FIX-2: no cloning .. just reconstruct 'renderBin' !
     //
     // 2 - relink S57 objects to the new rendering rules (S52)
     // S52_linkS57(oldS52cellList) ==> newS52cellList
+
+
     {
-        //unsigned int i,j,k;
-        // clone cell: new rendering rule could place objects
-        // on a different layer
+        for (guint k=0; k<_cellList->len; ++k) {
+            _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
+
+            _cell n;  // new cell
+            bzero(&n, sizeof(_cell));
+
+            // init new render bin
+            for (int i=0; i<S52_PRIO_NUM; ++i) {
+                for (int j=0; j<N_OBJ_T; ++j)
+                    n.renderBin[i][j] = g_ptr_array_new();
+            }
+
+            for (int i=0; i<S52_PRIO_NUM; ++i) {
+                for (int j=0; j<N_OBJ_T; ++j) {
+                    GPtrArray *rbin = c->renderBin[i][j];
+                    for (guint idx=0; idx<rbin->len; ++idx) {
+                        S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+                        S57_geo *geo = S52_PL_getGeo(obj);
+
+                        ///S52_obj *objtmp =
+                        _insertS57Obj(&n, obj, geo);
+                    }
+                    g_ptr_array_free(rbin, TRUE);
+                }
+            }
+
+            for (int i=0; i<S52_PRIO_NUM; ++i) {
+                for (int j=0; j<N_OBJ_T; ++j) {
+                    c->renderBin[i][j] = n.renderBin[i][j];
+                }
+            }
+            if (NULL != c->lights_sector)
+                g_ptr_array_free(c->lights_sector, TRUE);
+
+            c->lights_sector = n.lights_sector;
+        }
+    }
+    // signal to rebuild all cmd
+    _doCS = TRUE;
+
+    /*
+    {
+        // clone cell: new rendering rule could place objects on a different layer
         GPtrArray *newCellList = g_ptr_array_new();
 
         for (guint k=0; k<_cellList->len; ++k) {
-            _cell *n = g_new0(_cell, 1);  // new
+            // new S52ObjectHandle is the cell is MARINER_CELL
+            _cell *n = g_new0(_cell, 1);  
             _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
 
             // clone this cell
@@ -4633,6 +4631,8 @@ DLL int    STD S52_loadPLib(const char *plibName)
 
             // no need to cull again
             //n->cullLightSec = c->cullLightSec;
+
+            // BUG: old light are duplicated by _insertS57Obj()/_insertLightSec()
             n->lights_sector= c->lights_sector;
 
             n->local        = c->local;
@@ -4686,7 +4686,7 @@ DLL int    STD S52_loadPLib(const char *plibName)
             }
 
 
-            // move geo from old cell to cloned cell
+            // move geo from old cell to the cloned cell
             // and relink S52 to S57 via new local PLib (oldPLib+newPLib)
             for (int i=0; i<S52_PRIO_NUM; ++i) {
                 for (int j=0; j<N_OBJ_T; ++j) {
@@ -4715,13 +4715,6 @@ DLL int    STD S52_loadPLib(const char *plibName)
 
             g_ptr_array_add(newCellList, n);
 
-            // not a ref holder now
-            // free old Array if this chart has light sector
-            //if (NULL != c->lights_sector) {
-            //    g_ptr_array_free(c->lights_sector, TRUE);
-            //    //g_ptr_array_unref(c->lights_sector);
-            //}
-
             g_free(c);
         }
 
@@ -4739,6 +4732,7 @@ DLL int    STD S52_loadPLib(const char *plibName)
 
     // stuff that point to old cell are no longer valid
     _crntCell = NULL;
+    */
 
     g_static_mutex_unlock(&_mp_mutex);
 

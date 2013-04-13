@@ -198,7 +198,8 @@ S52_Color     *S52_PL_getColorAt(guchar index);
 
 // get a rasterising rules for this S57 object
 S52_obj       *S52_PL_newObj(S57_geo *geoData);
-S52_obj       *S52_PL_delObj(S52_obj *obj);
+S52_obj       *S52_PL_delDta(S52_obj *obj);
+S52_obj       *S52_PL_cpyObj(S52_obj *objdst, S52_obj *objsrc);
 // get the geo part (S57) of this S52 object
 S57_geo       *S52_PL_getGeo(S52_obj *obj);
 S57_geo       *S52_PL_setGeo(S52_obj *obj, S57_geo *geoData);
