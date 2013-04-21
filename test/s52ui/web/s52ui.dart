@@ -381,10 +381,11 @@ Future<bool> _initUI() {
         });
       });
     });
-  },
-  onError: (AsyncError e) {
-    print('call failed');
   });
+  //onError: (AsyncError e) {
+  //  print('call failed');
+  //}
+  //);
 
   
   return completer.future;
@@ -394,7 +395,7 @@ Future<bool> _initUI() {
 void _orientationChg(var orientation, var width, var height)
 {
   // debug
-  print("++++++++++++++++++++++++++++++++++++++orientation: $orientation $width x $height");
+  print("++++++++++++++++++++++++++++++++++++++orientation:$orientation W:$width x H:$height");
   
   _width  = width;
   _height = height;
@@ -406,14 +407,14 @@ void _orientationChg(var orientation, var width, var height)
   });
 
   // rehook callback for next rotation
-  js.scoped(() {
-    js.context.orientationChg = new js.Callback.once(_orientationChg);
-  });
+  //js.scoped(() {
+  //  js.context.orientationChg = new js.Callback.once(_orientationChg);
+  //});
 }
 
-void _initTouch(var w, var h) {
+void _initTouch(var orient, var w, var h) {
   // debug
-  print("+++++++++++++++++++++++++++_initTouch(): orientation: $w x $h");
+  print("+++++++++++++++++++++++++++_initTouch(): O:$orient W:$w x H:$h");
 
   // Handle touch events.
   Element target = query('#svg1');
@@ -520,7 +521,7 @@ void _initTouch(var w, var h) {
 
       if (true == doBlit1) {
         doBlit1 = false;
-        s52.drawBlit(dx_pc, dy_pc, 0.0, 0.0).then((ret) {doBlit1 = true;});
+        s52.drawBlit(dx_pc/2.0, dy_pc, 0.0, 0.0).then((ret) {doBlit1 = true;});
       }
     }
     
@@ -566,11 +567,11 @@ void _initTouch(var w, var h) {
     //#define EDGE_X0       50   // 0 at left
     //#define EDGE_Y0       50   // 0 at top
     //#define DELTA          5
-    if (6 > ticks) {
+    if (ticks < 6) {
       if ('inline-block' == query('#svg1g').style.display)
         return;
       
-      s52.pickAt(start_x1.toDouble(), start_y1.toDouble()).then((ret) {
+      s52.pickAt(start_x1.toDouble(), _height - start_y1.toDouble()).then((ret) {
         TextElement svg1txt = query('#svg1text');
         // set S52 UI Text Color
         svg1txt.$dom_setAttribute('style', 'fill:rgba(${s52.UINFF[0]},${s52.UINFF[1]},${s52.UINFF[2]}, 1.0);');
@@ -657,13 +658,13 @@ void _initTouch(var w, var h) {
           rNM   = ret[2];
           north = ret[3];
           print("getView(): cLat:$cLat, cLon:$cLon, rNM:$rNM, north:$north");
-          //s52.xy2LL(new_x1.toDouble(), new_y1.toDouble()).then((ret) {
-          s52.send("S52_xy2LL", [new_x1, new_y1]).then((ret) {
+          s52.xy2LL(new_x1.toDouble(), _height - new_y1.toDouble()).then((ret) {
+          //s52.send("S52_xy2LL", [new_x1, new_y1]).then((ret) {
             double x1 = ret[0];  // lon
             double y1 = ret[1];  // lat
             new_x1 = -1;
             new_y1 = -1;
-            s52.xy2LL(start_x1.toDouble(), start_y1.toDouble()).then((ret) {
+            s52.xy2LL(start_x1.toDouble(), _height - start_y1.toDouble()).then((ret) {
               double x2 = ret[0]; // lon
               double y2 = ret[1]; // lat
               double dx = x1 - x2;
@@ -727,9 +728,9 @@ _toggleUIEvent(evt) {
     query('#svg1g' ).style.display = 'none';
   }
 
-  js.scoped(() {
-    js.context.toggleUIEvent = new js.Callback.once(_toggleUIEvent);
-  });
+  //js.scoped(() {
+  //  js.context.toggleUIEvent = new js.Callback.once(_toggleUIEvent);
+  //});
 }
 
 _fullList(ev) {
@@ -742,12 +743,20 @@ _fullList(ev) {
   _listS57IDatt(txtL[1]); 
 }
 
-void _init() {
+///////////////////////////////////////
+//
+// Main
+//
+
+void _initMain() {
+  //print('s52ui.dart:_init()');
+  s52 = new S52();
+
   s52.newOWNSHP('OWNSHP').then((ret) {
     //print('s5ui.dart:OWNSHP(): $ret');
     _ownshp = ret[0]; 
     
-    // Dart BUG: can't read GPS
+    // can't read GPS
     //_watchPosition();
     
     query('#svg1g').onTouchStart.listen((ev) { _fullList(ev); });
@@ -756,24 +765,11 @@ void _init() {
   });
 }
 
-///////////////////////////////////////
-//
-// Main
-//
-
 void main() {
   print('s5ui.dart:main(): start');
-  
-  s52 = new S52();
-  
-  js.scoped(() {
-    js.context.setTouchScrnSz = new js.Callback.once(_initTouch);
-    js.context.orientationChg = new js.Callback.once(_orientationChg);
-    js.context.toggleUIEvent  = new js.Callback.once(_toggleUIEvent);
 
-    js.context.wsReady        = new js.Callback.once(_init);
-
-    // WebSocket reply something (meaningless!) when making initial connection, read it! (and maybe do something)
-    js.context.rcvS52Msg      = new js.Callback.once(s52.rcvMsg);
-  });
+  js.context.wsReady        = new js.Callback.once(_initMain);
+  js.context.setTouchScrnSz = new js.Callback.once(_initTouch);
+  js.context.orientationChg = new js.Callback.many(_orientationChg);
+  js.context.toggleUIEvent  = new js.Callback.many(_toggleUIEvent);
 }

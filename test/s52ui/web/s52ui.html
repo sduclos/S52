@@ -14,8 +14,8 @@
     <script type="text/javascript" src="js/tinyjet-0.1.js">  </script>
     <script type="text/javascript" src="s52ui.js">           </script>
 
-    <!-- WebSocket Implementation for Android Browser   -->
-    <!-- via Cordova plugin infrastructure              --> 
+    <!-- WebSocket Implementation for Android Browser       -->
+    <!-- via Cordova plugin infrastructure                  --> 
     
     <!-- BUG CHROME: it choke here when run on laptop (dart2js OK - firefox)  
         // cordova define "menubutton"
@@ -37,12 +37,12 @@
     
 <div id="example"></div>
 <script>
-txt = "<p>Browser CodeName: "    + window.navigator.appCodeName    + "</p>";
-txt+= "<p>Browser Name: "        + window.navigator.appName        + "</p>";
-txt+= "<p>Browser Version: "     + window.navigator.appVersion     + "</p>";
-txt+= "<p>Cookies Enabled: "     + window.navigator.cookieEnabled  + "</p>";
-txt+= "<p>Platform: "            + window.navigator.platform       + "</p>";
-txt+= "<p>User-agent header: "   + window.navigator.userAgent      + "</p>";
+txt = "<p>Browser CodeName:    " + window.navigator.appCodeName    + "</p>";
+txt+= "<p>Browser Name:        " + window.navigator.appName        + "</p>";
+txt+= "<p>Browser Version:     " + window.navigator.appVersion     + "</p>";
+txt+= "<p>Cookies Enabled:     " + window.navigator.cookieEnabled  + "</p>";
+txt+= "<p>Platform:            " + window.navigator.platform       + "</p>";
+txt+= "<p>User-agent header:   " + window.navigator.userAgent      + "</p>";
 txt+= "<p>User-agent language: " + window.navigator.systemLanguage + "</p>";
 
 window.document.getElementById("example").innerHTML=txt;
@@ -59,7 +59,7 @@ window.document.getElementById("example").innerHTML=txt;
       //var wsUri = 'ws://192.168.1.66:2950'; // laptop
       //var wsUri = 'ws://192.168.1.67:2950'; // xoom
       var wsUri = 'ws://127.0.0.1:2950';
-      var websocket;
+      //var websocket;
 
       window.onload = function initWebSocket() {
         console.log("initWebSocket() - start");
@@ -75,29 +75,40 @@ window.document.getElementById("example").innerHTML=txt;
         //document.addEventListener("backbutton",  closeUI, false);
         
         // device orientation change
-        window.addEventListener("resize", orientation, false);
-        //window.addEventListener("orientationchange", checkOrientation, false);
+        //window.addEventListener("resize", orientation, false);
+        window.addEventListener("orientationchange", orientation, false);
         // (optional) Android doesn't always fire orientationChange on 180 degree turns
         //setInterval(orientation, 2000); 
         
         // will trigger touch initialisation and also set W x H
-        screenSize();     
+        document.addEventListener("deviceready", screenSize, false);
+        screenSize();
       }
 
+
       function onOpen(evt)    { console.log("onOpen(): "); wsReady(); }
+      //function onOpen(evt)    { console.log("onOpen(): "); }
       function onClose(evt)   { console.log("onClose():"); }
       function onError(evt)   { console.log("onError():"); }
-      function onMessage(evt) { rcvS52Msg(evt.data);       }
+      function onMessage(evt) {}
+
       // called from s52ui.dart
       function sndS52Msg(str) { websocket.send(str);       }
       
       function toggleUI(evt)  { toggleUIEvent(evt);        }
       //function  closeUI(evt)  {  closeUIEvent(evt);        }
       
-      function orientation()  { orientationChg(window.orientation, window.innerWidth, window.innerHeight); }
-      function screenSize()   { setTouchScrnSz(window.innerWidth, window.innerHeight); }
+      function orientation()  { orientationChg(window.orientation, window.innerWidth, window.innerHeight);}
+      function screenSize()   { setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight);}
+      //function screenSize()   { setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight); wsReady();}
+      // function screenSize()   { console.log("window.orientation: " + window.orientation);setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight);}
       
 /*      
+ var supportsOrientation = ( typeof window.orientation == 'number' && typeof window.onorientationchange == 'object' );
+ 
+// Do nothing if we don't need to shim
+if ( supportsOrientation ) return;
+ 
 if (navigator.geolocation)
 {
   navigator.geolocation.getCurrentPosition(showPosition);

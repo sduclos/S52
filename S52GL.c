@@ -221,22 +221,11 @@ static GLint _GLCctx;
 
 
 #ifdef S52_USE_COGL
-//#include "cogl/cogl.h"
-//#include "cogl/cogl-pango.h"
 #include "cogl-pango/cogl-pango.h"
-//#include "pango/pango.h"
 static PangoFontDescription *_PangoFontDesc  = NULL;
 static PangoFontMap         *_PangoFontMap   = NULL;
 static PangoContext         *_PangoCtx       = NULL;
 static PangoLayout          *_PangoLayout    = NULL;
-
-//#include "clutter/clutter.h"
-//static ClutterActor         *_text           = NULL;
-//static ClutterActor         *_stage          = NULL;
-
-//#include "clutter-gtk/clutter-gtk.h"
-//static GtkClutterEmbed      *_stage          = NULL;
-//static GtkWidget            *_stage          = NULL;
 #endif  // S52_USE_COGL
 
 
@@ -270,7 +259,7 @@ static int        _doPick        = FALSE;   // TRUE inside curcor picking cycle
 static GPtrArray *_objPick       = NULL;    // list of object picked
 static char       _strPick[80]   = {'\0'};  // hold temps val
 static int        _doHighlight   = FALSE;   // TRUE then _objhighlight point to the object to hightlight
-static S52_obj   *_objhighlight  = NULL;
+//static S52_obj   *_objhighlight  = NULL;
 
 
 //////////////////////////////////////////////////////
@@ -340,9 +329,9 @@ typedef struct { double u, v; } projUV;
 // projected view
 static projUV _pmin = { INFINITY,  INFINITY};
 static projUV _pmax = {-INFINITY, -INFINITY};
-// _pmin, _pmax convert to deg
-static projUV _dmin = { INFINITY,  INFINITY};
-static projUV _dmax = {-INFINITY, -INFINITY};
+// _pmin, _pmax convert to GEO
+static projUV _gmin = { INFINITY,  INFINITY};
+static projUV _gmax = {-INFINITY, -INFINITY};
 
 // viewport of current openev gldraw signal
 static GLuint _vp[4]; // x,y,width,height
@@ -1553,39 +1542,6 @@ static int       _initCOGL(void)
     int hello_label_width  = PANGO_PIXELS (hello_label_size.width);
     int hello_label_height = PANGO_PIXELS (hello_label_size.height);
 
-
-    /*
-    //_PangoFontDescr = pango_font_description_new();
-    //_PangoFontDescr = pango_font_description_from_string("Helvetica 14");
-    //pango_font_description_set_family(_PangoFontDescr, "Sans");
-    //pango_font_description_set_size(_PangoFontDescr, 10 * PANGO_SCALE);
-
-    _PangoFontMap = cogl_pango_font_map_new();
-    //cogl_pango_font_map_set_resolution(COGL_PANGO_FONT_MAP(_PangoFontMap), 96.0);
-    cogl_pango_font_map_set_resolution(COGL_PANGO_FONT_MAP(_PangoFontMap), 160.0);   // xoom
-
-    _PangoCtx     = cogl_pango_font_map_create_context(COGL_PANGO_FONT_MAP(_PangoFontMap));
-    //_PangoCtx     = pango_font_map_create_context(_PangoFontMap);
-
-    //_text = clutter_text_new();
-
-    //clutter_text_set_text (CLUTTER_TEXT (_text), "Hello, World!");
-    //clutter_text_set_font_name (CLUTTER_TEXT (_text), "Sans 64px");
-
-    //_PangoLayout  = clutter_actor_create_pango_layout(_text, "test123");
-    _PangoLayout  = pango_layout_new(_PangoCtx);
-    //_PangoCtx = clutter_actor_create_pango_context(_text);
-
-    //pango_layout_set_font_description(_PangoLayout, _PangoFontDescr);
-
-    cogl_pango_ensure_glyph_cache_for_layout(_PangoLayout);
-
-    //clutter_container_add (CLUTTER_CONTAINER (_stage), _text, NULL);
-
-    //clutter_actor_show(_stage);
-    */
-
-
     return TRUE;
 }
 #endif
@@ -1843,13 +1799,10 @@ static void      _glPushMatrix(void)
 
     _crntMat = (GL_MODELVIEW == _mode) ? _mvm[_mvmTop] : _pjm[_pjmTop];
 
-    {   // duplicate mat
+    {   // FIXME: memcpy(prod, p, sizeof(p));
         GLfloat *ptr = _crntMat;
         for (int i=0; i<16; ++i)
             *ptr++ = *lastMat++;
-
-        // FIXME:
-        //memcpy(prod, p, sizeof(p));
     }
 
     return;
@@ -2417,14 +2370,17 @@ int        S52_GL_win2prj(double *x, double *y)
     return ret;
 }
 
-//int        S52_GL_prj2win(double *x, double *y, double *z)
 int        S52_GL_prj2win(double *x, double *y)
 // convert coordinate: projected --> windows
 {
 
     projXY uv = {*x, *y};
 
+    _glMatrixSet(VP_PRJ);
+
     uv = _prj2win(uv);
+
+    _glMatrixDel(VP_PRJ);
 
     *x = uv.u;
     *y = uv.v;
@@ -8270,7 +8226,7 @@ int        S52_GL_isOFFscreen(S52_obj *obj)
         double x1,y1,x2,y2;
         S57_geo *geo = S52_PL_getGeo(obj);
         S57_getExt(geo, &x1, &y1, &x2, &y2);
-        if ((x2 < _dmin.u) || (y2 < _dmin.v) || (x1 > _dmax.u) || (y1 > _dmax.v)) {
+        if ((x2 < _gmin.u) || (y2 < _gmin.v) || (x1 > _gmax.u) || (y1 > _gmax.v)) {
             ++_oclip;
             return TRUE;
         }
@@ -8434,7 +8390,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     // Can cursor pick now use the journal in S52.c instead of the GPU?
     // NO, if extent is use then concave AREA and LINES can trigger false positive
     if (TRUE == _doPick) {
-
+        // FIXME: optimisation - read only once all draw to get the top obj
         // WARNING: some graphic card preffer RGB / BYTE .. YMMV
         glReadPixels(_vp[0], _vp[1], 9, 9, GL_RGBA, GL_UNSIGNED_BYTE, &_read);
         //glReadPixels(_vp[0], _vp[1], 9, 9, GL_RGBA, GL_BYTE, &_read);
@@ -8583,13 +8539,13 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
     //PRINTF("PROJ MIN: %f %f  MAX: %f %f\n", _pmin.u, _pmin.v, _pmax.u, _pmax.v);
 
 
-    _dmin.u = SW.x;
-    _dmin.v = SW.y;
-    _dmin   = S57_prj2geo(_dmin);
+    _gmin.u = SW.x;
+    _gmin.v = SW.y;
+    _gmin   = S57_prj2geo(_gmin);
 
-    _dmax.u = NE.x;
-    _dmax.v = NE.y;
-    _dmax   = S57_prj2geo(_dmax);
+    _gmax.u = NE.x;
+    _gmax.v = NE.y;
+    _gmax   = S57_prj2geo(_gmax);
 
 
     return TRUE;
@@ -8751,8 +8707,8 @@ int        S52_GL_begin(int cursorPick, int drawLast)
     //    return FALSE;
     //}
 
-    // FIXME: hack
-    if (TRUE != cursorPick) {
+    // skip projection if picking since the view is the same
+    if (FALSE == cursorPick) {
         // this will setup _pmin/_pmax, need a valide _vp
         _doProjection(_centerLat, _centerLon, _rangeNM/60.0);
     }
@@ -8823,7 +8779,6 @@ int        S52_GL_begin(int cursorPick, int drawLast)
 
         // load FB that was filled with the previous draw() call
         S52_GL_drawFBPixels();
-        //S52_GL_drawBlit(0.0, 0.0, 0.0, 0.0);
         _update_fb = FALSE;
     }
     //---------------------------------------------------------------
@@ -8884,15 +8839,6 @@ int        S52_GL_end(int drawLast)
 
     //CHECK_GL_BEGIN;
     _GL_BEGIN = FALSE;
-
-    /*
-    if (NULL != _objhighlight) {
-        //S52_PL_highlightOFF(_objhighlight);
-        S57_geo *geo = S52_PL_getGeo(_objhighlight);
-        S57_highlightOFF(geo);
-        _objhighlight = NULL;
-    }
-    */
 
     // hang xoom if no drawFB!
     //if (TRUE == drawLast) {
@@ -9592,6 +9538,16 @@ int        S52_GL_done(void)
     return _doInit;
 }
 
+int        S52_GL_setPRJView(double  s, double  w, double  n, double  e)
+{
+    _pmin.v = s;
+    _pmin.u = w;
+    _pmax.v = n;
+    _pmax.u = e;
+
+    return TRUE;
+}
+
 int        S52_GL_getPRJView(double *LLv, double *LLu, double *URv, double *URu)
 {
     if (_doInit) {
@@ -9607,12 +9563,27 @@ int        S52_GL_getPRJView(double *LLv, double *LLu, double *URv, double *URu)
     return TRUE;
 }
 
-int        S52_GL_setPRJView(double  s, double  w, double  n, double  e)
+int        S52_GL_setGEOView(double  s, double  w, double  n, double  e)
 {
-    _pmin.v = s;
-    _pmin.u = w;
-    _pmax.v = n;
-    _pmax.u = e;
+    _gmin.v = s;
+    _gmin.u = w;
+    _gmax.v = n;
+    _gmax.u = e;
+
+    return TRUE;
+}
+
+int        S52_GL_getGEOView(double *LLv, double *LLu, double *URv, double *URu)
+{
+    if (_doInit) {
+        PRINTF("ERROR: S52 GL not initialize\n");
+        return FALSE;
+    }
+
+    *LLu = _gmin.u;
+    *LLv = _gmin.v;
+    *URu = _gmax.u;
+    *URv = _gmax.v;
 
     return TRUE;
 }
@@ -9626,7 +9597,6 @@ int        S52_GL_setView(double centerLat, double centerLon, double rangeNM, do
 
     return TRUE;
 }
-
 
 int        S52_GL_setViewPort(int x, int y, int width, int height)
 {
@@ -9704,6 +9674,7 @@ char      *S52_GL_getNameObjPick(void)
                 	default: break;
                 }
 
+                //*
                 if (NULL != cmdType) {
                     char  name[80];
                     const char *value = S52_PL_getCmdText(obj);
@@ -9716,6 +9687,8 @@ char      *S52_GL_getNameObjPick(void)
                     S57_setAtt(geo, name, value);
                     cmdType = NULL;
                 }
+                //*/
+
                 cmdWrd = S52_PL_getCmdNext(obj);
                 ++nCmd;
             }
@@ -9727,48 +9700,56 @@ char      *S52_GL_getNameObjPick(void)
 
     SPRINTF(_strPick, "%s:%i", name, S57ID);
 
+    //*
     // hightlight object at the top of the stack
-    _objhighlight = (S52_obj*)g_ptr_array_index(_objPick, _objPick->len-1);
-    //S52_PL_highlightON(_objhighlight);
+    S52_obj *objhighlight = (S52_obj *)g_ptr_array_index(_objPick, _objPick->len-1);
 
-    S57_geo *geo  = S52_PL_getGeo(_objhighlight);
+    S57_geo *geo  = S52_PL_getGeo(objhighlight);
     S57_highlightON(geo);
+
+    // debug
+    GString *geo_refs = S57_getAttVal(geo, "_LNAM_REFS_GEO");
+    if (NULL != geo_refs)
+        PRINTF("DEBUG:geo:_LNAM_REFS_GEO = %s\n", geo_refs->str);
 
     // get relationship obj
     S57_geo *geoRel = S57_getRelationship(geo);
     if (NULL != geoRel) {
-        GString *geoIDs   = NULL;
-        GString *geo_refs = S57_getAttVal(geoRel, "LNAM_REFS_GEO");
-        //PRINTF("DEBUG: geo_refs = %s\n", geo_refs->str);
+        GString *geoRelIDs   = NULL;
+        GString *geoRel_refs = S57_getAttVal(geoRel, "_LNAM_REFS_GEO");
+        if (NULL != geoRel_refs)
+            PRINTF("DEBUG:geoRel:_LNAM_REFS_GEO = %s\n", geoRel_refs->str);
 
-        gchar  **splitRefs = g_strsplit_set(geo_refs->str, ",", 0);
+        // parse Refs
+        gchar  **splitRefs = g_strsplit_set(geoRel_refs->str, ",", 0);
         gchar  **topRefs   = splitRefs;
 
         while (NULL != *splitRefs) {
-            S57_geo *geoAssoc = NULL;
+            S57_geo *geoRelAssoc = NULL;
 
-            sscanf(*splitRefs, "%p", (void**)&geoAssoc);
-            S57_highlightON(geoAssoc);
+            sscanf(*splitRefs, "%p", (void**)&geoRelAssoc);
+            S57_highlightON(geoRelAssoc);
 
-            guint idAssoc = S57_getGeoID(geoAssoc);
+            guint idAssoc = S57_getGeoID(geoRelAssoc);
 
-            if (NULL == geoIDs) {
-                geoIDs = g_string_new("");
-                g_string_printf(geoIDs, ":%i,%i", S57_getGeoID(geoRel), idAssoc);
+            if (NULL == geoRelIDs) {
+                geoRelIDs = g_string_new("");
+                g_string_printf(geoRelIDs, ":%i,%i", S57_getGeoID(geoRel), idAssoc);
             } else {
-                g_string_append_printf(geoIDs, ",%i", idAssoc);
+                g_string_append_printf(geoRelIDs, ",%i", idAssoc);
             }
 
             splitRefs++;
         }
 
         // if in a relation then append it to pick string
-        SPRINTF(_strPick, "%s:%i%s", name, S57ID, geoIDs->str);
+        SPRINTF(_strPick, "%s:%i%s", name, S57ID, geoRelIDs->str);
 
-        g_string_free(geoIDs, TRUE);
+        g_string_free(geoRelIDs, TRUE);
 
         g_strfreev(topRefs);
     }
+    //*/
 
     return (const char *)_strPick;
 }

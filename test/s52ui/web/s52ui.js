@@ -152,8 +152,8 @@ Main.prototype.render = function(html)
 
     //SVG.svg({id:'svg1'},
             	//SVG.text({id:'svg1text', x:'20%', y:'20%', fill:'red'},
-            	//SVG.line  ({x1:'33', y1:'93', x2:'93', y2:'23', style:"stroke:blue;stroke-width:20"})
-            	//SVG.line  ({x1:'33', y1:'93', x2:'93', y2:'23', stroke:'red', stroke-width:'20'})
+             	//SVG.line  ({x1:'0', y1:'0', x2:'100', y2:'200', style:"stroke:blue;stroke-width:20"})
+            	//SVG.line  ({x1:'30', y1:'90', x2:'90', y2:'30', stroke:'red', stroke-width:'20'})
                	//onmouseover:onOver, onmouseout:onOut })
                 	       //SVG.animate({attributeName:'cx', from:'60', to:'200', dur:'30s'})
 

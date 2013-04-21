@@ -154,7 +154,7 @@ typedef struct s52engine {
 #endif
 
     // EGL - android or X11 window
-    EGLNativeWindowType eglWindow;        
+    EGLNativeWindowType eglWindow;
     EGLDisplay          eglDisplay;
     EGLSurface          eglSurface;
     EGLContext          eglContext;
@@ -704,8 +704,10 @@ static int      _s52_init       (s52engine *engine)
         //int hmm = XDisplayHeightMM(dpy, 0);
         //int w   = XDisplayWidth   (dpy, 0);
         //int wmm = XDisplayWidthMM (dpy, 0);
-        w   = 1280;
-        h   = 1024;
+        //w   = 1280;
+        //h   = 1024;
+        w   = engine->width;
+        h   = engine->height;
         wmm = 376;
         //hmm = 301; // wrong
         hmm = 307;
@@ -874,10 +876,12 @@ static int      _s52_init       (s52engine *engine)
 #endif
 
 
-    engine->do_S52draw       = TRUE;
-    engine->do_S52drawLast   = TRUE;
+    engine->do_S52draw        = TRUE;
+    engine->do_S52drawLast    = TRUE;
 
-    engine->state.do_S52init = FALSE;
+    engine->do_S52setViewPort = FALSE;
+
+    engine->state.do_S52init  = FALSE;
 
     return EGL_TRUE;
 }
@@ -965,14 +969,10 @@ static int      _s52_draw_cb    (gpointer user_data)
     // draw background
     if (TRUE == engine->do_S52draw) {
         if (TRUE == engine->do_S52setViewPort) {
-
-            //_egl_beg(engine);
             eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
             eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
 
             S52_setViewPort(0, 0, engine->width, engine->height);
-
-            //_egl_end(engine);
 
             engine->do_S52setViewPort = FALSE;
         }
@@ -1135,7 +1135,7 @@ static int      _android_done_external_UI (s52engine *engine)
     const gchar cmd[] =
         "/system/bin/sh /system/bin/am broadcast "
         "-a nav.ecs.s52droid.s52ui.SHUTDOWN      ";
-                            
+
     int ret = g_spawn_command_line_async(cmd, NULL);
     if (FALSE == ret) {
         g_print("_android_done_external_UI(): fail to stop UI\n");
@@ -1316,8 +1316,7 @@ static int      _android_render      (s52engine *engine, double new_y, double ne
 }
 
 static void     _android_config_dump(AConfiguration *config)
-// android-git-master/development/ndk/sources/android/native_app_glue/android_native_app_glue.c:63
-// the code is in android_native_app_glue.c:55
+// the code is in android-git-master/development/ndk/sources/android/native_app_glue/android_native_app_glue.c:63
 // static void print_cur_config(struct android_app* android_app)
 {
     char lang[2], country[2];
@@ -1449,15 +1448,16 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             if (TRUE == mode_vrmebl) {
                 double brg = 0.0;
                 double rge = 0.0;
-                S52_setVRMEBL(_vrmeblA, new_x, new_y, &brg, &rge);
+                double pixels_y = engine->height - new_y;
+                S52_setVRMEBL(_vrmeblA, new_x, pixels_y, &brg, &rge);
 
                 // update cursor position (lon/lat)
-                if (TRUE == S52_xy2LL(&new_x, &new_y)) {
-                    S52_pushPosition(_cursor2, new_y, new_x, 0.0);
+                if (TRUE == S52_xy2LL(&new_x, &pixels_y)) {
+                    S52_pushPosition(_cursor2, pixels_y, new_x, 0.0);
                     S52_drawLast();
 
                     //char str[80] = {'\0'};
-                    //sprintf(str, "%05.1f° / %.1f m", brg, rge);
+                    //sprintf(str, "%05.1f° / %.1f m", brg, rge)
                     //S52_drawStr(new_x + 5, engine->height - new_y - 15, "CURSR", 1, str);
                 }
             }
@@ -1489,11 +1489,11 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
         if (ticks < TICKS_PER_TAP) {
             new_x = (new_x < 10.0) ? 10.0 : new_x;
             new_y = (new_y < 10.0) ? 10.0 : new_y;
-            const char *nameid = S52_pickAt(new_x, new_y);
+            const char *nameid = S52_pickAt(new_x, engine->height - new_y);
             if (NULL != nameid) {
                 unsigned int S57ID = atoi(nameid+7);
                 LOGI("s52egl:_android_motion_event(): XY(%f, %f): NAME:ID=%s ATT(%s)\n",
-                     new_x, new_y, nameid, S52_getAttList(S57ID));
+                     new_x, engine->height - new_y, nameid, S52_getAttList(S57ID));
 
                 new_x = engine->state.cLon;
                 new_y = engine->state.cLat;
@@ -1570,9 +1570,10 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
 
             // mode_scroll
             if (TRUE==mode_scroll && FALSE==mode_zoom && FALSE==mode_rot && FALSE==mode_vrmebl) {
+                new_y = engine->height - new_y;
                 if (FALSE == S52_xy2LL(&new_x, &new_y))
                     return FALSE;
-
+                start_y = engine->height - start_y;
                 if (FALSE == S52_xy2LL(&start_x, &start_y))
                     return FALSE;
 
@@ -1785,8 +1786,8 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             if (FALSE == engine->do_S52drawLast)
                 break;
 
-            // ACONFIGURATION_ORIENTATION     = 0x0080,
-            // ACONFIGURATION_SCREEN_SIZE     = 0x0200,
+            // ACONFIGURATION_ORIENTATION == 0x0080,
+            // ACONFIGURATION_SCREEN_SIZE == 0x0200,
             if ((ACONFIGURATION_ORIENTATION|ACONFIGURATION_SCREEN_SIZE) & confDiff) {
                 engine->do_S52setViewPort = TRUE;
                 engine->do_S52draw        = TRUE;
@@ -1797,8 +1798,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
         case APP_CMD_DESTROY: {
             LOGI("s52egl:--> APP_CMD_DESTROY\n");
             if (TRUE == engine->app->destroyRequested) {
-                // check this
-                LOGI("s52egl:DEBUG: --> APP_CMD_DESTROY: destroyRequested flags set\n");
+                LOGI("s52egl:DEBUG (check this): --> APP_CMD_DESTROY: destroyRequested flags set\n");
                 //g_main_loop_quit(engine->state.main_loop);
             }
 
@@ -1843,7 +1843,6 @@ static void     _onConfigurationChanged(ANativeActivity *activity)
 
     g_static_mutex_lock(&_engine_mutex);
 
-    //print_cur_config(_engine.app);
     _engine.do_S52setViewPort = TRUE;
     _engine.do_S52draw        = TRUE;
     _engine.do_S52drawLast    = TRUE;
@@ -1886,8 +1885,8 @@ void android_main(struct android_app *app)
     AConfiguration_copy(_engine.config, app->config);
 
     // setup callbacks to detect android rotation
-    //_engine.callbacks  = _engine.app->activity->callbacks;
-    //_engine.callbacks->onConfigurationChanged = _onConfigurationChanged;
+    _engine.callbacks  = _engine.app->activity->callbacks;
+    _engine.callbacks->onConfigurationChanged = _onConfigurationChanged;
     //_engine.callbacks->onNativeWindowResized  = _onNativeWindowResized;
 
     // prepare to monitor sensor
@@ -2078,7 +2077,10 @@ static int      _X11_handleXevent(gpointer user_data)
 
         switch (event.type) {
         case ConfigureNotify:
+            engine->width  = event.xconfigure.width;
+            engine->height = event.xconfigure.height;
             S52_setViewPort(0, 0, event.xconfigure.width, event.xconfigure.height);
+
             break;
 
         case Expose:
@@ -2086,34 +2088,44 @@ static int      _X11_handleXevent(gpointer user_data)
             engine->do_S52drawLast = TRUE;
             g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0);
             break;
-        //*
+
         case ButtonRelease:
             {
                 XButtonReleasedEvent *mouseEvent = (XButtonReleasedEvent *)&event;
 
-                const char *name = S52_pickAt(mouseEvent->x, mouseEvent->y);
+                const char *name = S52_pickAt(mouseEvent->x, engine->height - mouseEvent->y);
                 if (NULL != name) {
                     unsigned int S57ID = atoi(name+7);
-                    g_print("OBJ(%i, %i): %s\n", mouseEvent->x, mouseEvent->y, name);
-                    g_print("ATT:%s\n", S52_getAttList(S57ID));
-                }
+                    g_print("OBJ(%i, %i): %s\n", mouseEvent->x, engine->height - mouseEvent->y, name);
+                    g_print("AttList=%s\n", S52_getAttList(S57ID));
 
-                if (0 == g_ascii_strncasecmp("vessel", name, 6)) {
-                    g_print("vessel found\n");
-                    unsigned int S57ID = atoi(name+7);
+                    {   // debug:  S52_xy2LL() --> S52_LL2xy() should be the same
+                        // NOTE:  LL (0,0) is the OpenGL origine (not GTK origine)
+                        double Xlon = 0.0;
+                        double Ylat = 0.0;
+                        S52_xy2LL(&Xlon, &Ylat);
+                        S52_LL2xy(&Xlon, &Ylat);
+                        g_print("DEBUG: xy2LL(0,0) --> LL2xy ==> Xlon: %f, Ylat: %f\n", Xlon, Ylat);
+                    }
 
-                    S52ObjectHandle vessel = S52_getMarObjH(S57ID);
-                    if (NULL != vessel) {
-                        S52_setVESSELstate(vessel, 1, 0, VESSELTURN_UNDEFINED);
-                        //g_print("ATT: %s\n", S52_getAttList(S57ID));
+                    if (0 == g_strcmp0("vessel", name)) {
+                        g_print("vessel found\n");
+                        unsigned int S57ID = atoi(name+7);
+
+                        S52ObjectHandle vessel = S52_getMarObjH(S57ID);
+                        if (NULL != vessel) {
+                            S52_setVESSELstate(vessel, 1, 0, VESSELTURN_UNDEFINED);
+                            //g_print("AttList: %s\n", S52_getAttList(S57ID));
+                        }
                     }
                 }
+
             }
             engine->do_S52draw     = TRUE;
             engine->do_S52drawLast = TRUE;
             g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0);
             break;
-        //*/
+
         case KeyPress:
         case KeyRelease: {
             // /usr/include/X11/keysymdef.h
@@ -2260,9 +2272,8 @@ static int      _X11_handleXevent(gpointer user_data)
 
             engine->do_S52draw     = TRUE;
             engine->do_S52drawLast = TRUE;
-            //g_signal_emit(G_OBJECT(_gobject), _s52_draw_signal, 0);
-            }
-            break;
+        }
+        break;
         }
     }
 

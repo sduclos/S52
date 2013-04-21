@@ -1193,7 +1193,7 @@ static gint       _freeAllTXT(GArray *cmdArray)
 }
 
 
-static int        _resolveCS(_S52_obj *obj, int alt)
+static int        _resolveSMB(_S52_obj *obj, int alt)
 // return TRUE if there is a CS in the INST file for this LUP (alt)
 // also fill the command Array
 {
@@ -1289,7 +1289,7 @@ static int        _resolveCS(_S52_obj *obj, int alt)
     return TRUE;
 }
 
-int         S52_PL_resloveCS(_S52_obj *obj)
+int         S52_PL_resloveSMB(_S52_obj *obj)
 {
     return_if_null(obj);
 
@@ -1298,8 +1298,8 @@ int         S52_PL_resloveCS(_S52_obj *obj)
     S52_PL_resetParseText(obj);
 
     // Then: pull new command word from CS (wich could have diffent text)
-    _resolveCS(obj, 0);
-    _resolveCS(obj, 1);
+    _resolveSMB(obj, 0);
+    _resolveSMB(obj, 1);
 
     return TRUE;
 }
@@ -1656,23 +1656,6 @@ static int        _flushColors()
 
     return TRUE;
 }
-
-#if 0
-/*
-static int        _flushColors(_colTable *pct)
-{
-    if (NULL != pct->colors)    g_array_free(ct->colors, TRUE);
-    //if (NULL != pct->tableName) g_string_free(ct->tableName, TRUE);
-
-    ct->colors    = NULL;
-    ct->tableName = NULL;
-
-    //_flush_Colors = FALSE;
-
-    return TRUE;
-}
-*/
-#endif
 
 static int        _parseCOLS(_PL *fp)
 {
@@ -2934,7 +2917,7 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
 }
 
 S52_obj    *S52_PL_delDta(_S52_obj *obj)
-// free data pertaining to _S52_obj (not geoData)
+// clear data in S52 obj (not S57 obj geoData)
 // return obj
 {
     return_if_null(obj);
@@ -2965,10 +2948,6 @@ S52_obj    *S52_PL_delDta(_S52_obj *obj)
     */
 
 
-
-
-    //_freeAllTXT(obj, 0);
-    //_freeAllTXT(obj, 1);
     _freeAllTXT(obj->cmdAfinal[0]);
     _freeAllTXT(obj->cmdAfinal[1]);
 
@@ -2997,6 +2976,7 @@ S52_obj    *S52_PL_delDta(_S52_obj *obj)
     obj->crntA        = NULL;
     obj->crntAidx     = 0;
 
+    // free S52 container
     //g_free(obj);
 
     return NULL;
@@ -3093,6 +3073,7 @@ int         S52_PL_getLUCM(_S52_obj *obj)
 }
 
 S52_RadPrio S52_PL_getRPRI(_S52_obj *obj)
+
 {
     if (NULL==obj) {
         return S52_RAD_OVER;
@@ -4694,26 +4675,6 @@ const char* S52_PL_getPalTableNm(unsigned int idx)
 
     return NULL;
 }
-
-/* move to S57data.c
-int         S52_PL_highlightON (_S52_obj *obj)
-{
-    return_if_null(obj);
-
-    obj->highlight = TRUE;
-
-    return TRUE;
-}
-
-int         S52_PL_highlightOFF(_S52_obj *obj)
-{
-    return_if_null(obj);
-
-    obj->highlight = FALSE;
-
-    return TRUE;
-}
-*/
 
 int         S52_PL_setNextLeg(S52_obj *obj, S52_obj *objNextLeg)
 {

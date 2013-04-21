@@ -643,12 +643,12 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
     return ais;
 }
 
-static int           _delAIS(unsigned int mmsi)
+static int           _delAIS    (unsigned int mmsi)
 {
     for (guint i=0; i<_ais_list->len; ++i) {
         _ais_t *ais = &g_array_index(_ais_list, _ais_t, i);
         if (mmsi == ais->mmsi) {
-            g_array_remove_index(_ais_list, i);
+            g_array_remove_index_fast(_ais_list, i);
             return TRUE;
         }
     }
@@ -685,17 +685,26 @@ static int           _setAISPos (unsigned int mmsi, double lat, double lon, doub
 
 
 #ifdef S52_USE_SOCK
-    _encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int *)ais->vesselH, lat, lon, heading);
+    {
+        char *ret = _encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int *)ais->vesselH, lat, lon, heading);
+        if ('0' == ret[1]) {
+            _delAIS(mmsi);
+            return FALSE;
+        }
+    }
 #else
     S52_pushPosition(ais->vesselH, lat, lon, heading);
 #endif
 
 #ifdef S52_USE_AFGLOW
 #ifdef S52_USE_SOCK
-    char *ret = _encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int *)ais->afglowH, lat, lon, heading);
-    if ('0' == ret[1])
-        _delAIS(mmsi);
-
+    {
+        char *ret = _encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int *)ais->afglowH, lat, lon, heading);
+        if ('0' == ret[1]) {
+            _delAIS(mmsi);
+            return FALSE;
+        }
+    }
 #else
     S52_pushPosition(ais->afglowH, lat, lon, 0.0);
 #endif

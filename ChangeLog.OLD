@@ -3,6 +3,12 @@
 #
 
 
+2013APR21
+    -fix cursorPick GEO filter
+
+2013APR20
+    -fix align pixels origin to OpenGL Lower Left Corner
+
 2013APR13
     -fix defect in loadPLib() that mess up S52ObjectHandle
 
@@ -13,7 +19,7 @@
     -fix line overlap that suppress one to may segment in a line
 
 2013APR07
-    - add PLib exposition field: LXPO/PXPO/SXPO to cursor pick
+    -add PLib exposition field: LXPO/PXPO/SXPO to cursor pick
 
 2013APR05
     -add test for cursor pick in s52ui

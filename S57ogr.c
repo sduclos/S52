@@ -92,25 +92,8 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
         S57_setScamin(geoData, S52_atof(scamin->str));
     }
 
-
-    //GString  *lnam   = S57_getAttVal(geoData, "LNAM");
-    //if ((NULL!=lnam) && (NULL!=lnam->str)){
-    //    S57_setLNAM(geoData, lnam);
-    //}
-
     return TRUE;
 }
-
-/*
-#ifdef _MINGW
-#include <windows.h>
-#define DLL __declspec (dllexport)
-#define STD __stdcall
-#else
-#define DLL
-#define STD
-#endif
-*/
 
 DLL int   STD S52_loadLayer (const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
 //DLL int   STD S52_loadObject(const char *objname,   void *shape);

@@ -6,8 +6,11 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_collection_dev/colle
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_collection_dev/iterable.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_collection_dev/list.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_collection_dev/sort.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_collection_dev/symbol.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_collection_dev/to_string.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/async_patch.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/collection_dev_patch.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/collection_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/constant_map.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/core_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/foreign_helper.dart
@@ -26,7 +29,6 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/im
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/string_helper.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/async/async.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/async/async_error.dart
-file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/async/collection_sink.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/async/deferred_load.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/async/event_loop.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/async/future.dart
@@ -40,16 +42,15 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/collection
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/collections.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/hash_map.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/hash_set.dart
-file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/hash_table.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/iterable.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/iterator.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/linked_hash_map.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/linked_hash_set.dart
-file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/linked_hash_table.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/list.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/maps.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/queue.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/collection/splay_tree.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/bool.dart
-file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/collection.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/comparable.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/core.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/date_time.dart
@@ -58,11 +59,10 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/duration.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/errors.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/exceptions.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/expando.dart
-file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/expect.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/function.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/identical.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/int.dart
-file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/invocation_mirror.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/invocation.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/iterable.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/iterator.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/list.dart
@@ -78,6 +78,7 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/stopwatch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/string.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/string_buffer.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/string_sink.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/symbol.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/core/type.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/html/dart2js/html_dart2js.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/html/html_common/conversions.dart
@@ -94,4 +95,5 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/math/math.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/math/random.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/svg/dart2js/svg_dart2js.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/web_audio/dart2js/web_audio_dart2js.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/web_gl/dart2js/web_gl_dart2js.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/web_sql/dart2js/web_sql_dart2js.dart

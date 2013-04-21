@@ -766,7 +766,7 @@ static gboolean expose_event(GtkWidget      *widget,
     S52_draw();
 
     /*
-    {
+    {   // Example of small viewport overlay
         // draw you stuff on top (draw() above) the base chart
         // ...
 
@@ -1138,7 +1138,6 @@ static gboolean button_release_event(GtkWidget      *widget,
     switch(event->button) {
         case 3: // right click
             {
-                //S52_centerAt(event->x, event->y);
                 double x = event->x;
                 double y = event->y;
                 S52_xy2LL(&x, &y);
@@ -1194,7 +1193,7 @@ static gboolean motion_notify_event(GtkWidget      *widget,
     _x = event->x;
     _y = event->y;
 
-    /* debug, for fun: S52_xy2LL() --> S52_LL2xy() should be the same
+    /* debug:  S52_xy2LL() --> S52_LL2xy() should be the same
     {
     // NOTE:  (0,0) the OpenGL origine (not GTK origine)
         double Xlon = 0.0;

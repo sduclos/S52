@@ -1110,6 +1110,7 @@ gboolean   S57_setSup(_S57_geo *geoData, gboolean sup)
     return geoData->sup;
 }
 
+// FIXME: bellow is an accesor - 'inline' it somehow
 gboolean   S57_getSup(_S57_geo *geoData)
 {
     return_if_null(geoData);

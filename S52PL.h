@@ -312,13 +312,6 @@ int            S52_PL_hasText(S52_obj *obj);
 int            S52_PL_hasLC(S52_obj *obj);
 
 
-
-// parse/compute/expand cond. symb.
-//GString   *S52_PL_parseCS(S52_obj *obj);
-// compare symbology instruction againt name (0==match)
-//int        S52_PL_cmpCSname(S52_obj *obj, char *name);
-
-
 // get new display priority
 //S52_disPrio S52_PL_getOPprio(S52_obj *obj);
 
@@ -334,7 +327,7 @@ S52_objSup     S52_PL_toggleObjClass(const char *className);
 S52_objSup     S52_PL_getToggleState(S52_obj *obj);
 S52_objSup     S52_PL_getObjClassState(const char *className);
 
-int            S52_PL_resloveCS(S52_obj *obj);
+int            S52_PL_resloveSMB(S52_obj *obj);
 
 int            S52_PL_getOffset(S52_obj *obj, double *offset_x, double *offset_y);
 
@@ -348,9 +341,6 @@ int            S52_PL_getRGB(const char *colorName, unsigned char *R, unsigned c
 
 int            S52_PL_getPalTableSz();
 const char    *S52_PL_getPalTableNm(unsigned int idx);
-
-//int            S52_PL_highlightON (S52_obj *obj);
-//int            S52_PL_highlightOFF(S52_obj *obj);
 
 int            S52_PL_setNextLeg(S52_obj *obj, S52_obj *objNextLeg);
 S52_obj       *S52_PL_getNextLeg(S52_obj *obj);

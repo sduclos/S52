@@ -205,8 +205,8 @@ DLL int    STD S52_drawLayer(const char *name);
 
 /**
  * S52_drawStr:
- * @pixels_x:  (in):
- * @pixels_y:  (in):
+ * @pixels_x:  (in): origin LL corner
+ * @pixels_y:  (in): origin LL corner
  * @colorName: (in): S52 UI color name
  * @bsize:     (in): body size (1..)
  * @str:       (in):
@@ -259,14 +259,15 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
 DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height);
 
 /**
- * S52_pickAt:
- * @pixels_x: (in):
- * @pixels_y: (in):
+ * S52_pickAt: Cursor pick
+ * @pixels_x: (in): origin LL corner
+ * @pixels_y: (in): origin LL corner
  *
- * Cursor pick
- * (in the next frame, the object is drawn with the "DNGHL" color (experimental))
  *
- * NOTE: using 'double' instead of 'unsigned int' because X11 handle mouse in 'double'.
+ * NOTE:
+ *  - X is Right and Y is Down to match X11 origin
+ *  - in the next frame, the object is drawn with the "DNGHL" color (experimental))
+ *  - using 'double' instead of 'unsigned int' because X11 handle mouse in 'double'.
  *
  *
  * Return: (transfer none): string '<name>:<S57ID>' or if relationship existe
@@ -280,10 +281,10 @@ DLL const char * STD S52_pickAt(double pixels_x, double pixels_y);
 
 /**
  * S52_xy2LL:
- * @pixels_x: (inout): degree
- * @pixels_y: (inout): degree
+ * @pixels_x: (inout):  origin LL corner (return longitude)
+ * @pixels_y: (inout):  origin LL corner (return latitude)
  *
- * Convert pixel X/Y to longitude/latitude
+ * Convert pixel X/Y to longitude/latitude (deg)
  *
  *
  * Return: TRUE on success, else FALSE
@@ -292,10 +293,10 @@ DLL int    STD S52_xy2LL (double *pixels_x,  double *pixels_y);
 
 /**
  * S52_LL2xy:
- * @longitude: (inout): degree
- * @latitude:  (inout): degree
+ * @longitude: (inout): degree (return X)
+ * @latitude:  (inout): degree (return Y)
  *
- * Convert longitude/latitude to X/Y (pixel)
+ * Convert longitude/latitude to X/Y (pixel - origin LL corner)
  *
  * Return: TRUE on success, else FALSE
  */
@@ -1016,8 +1017,8 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
 /**
  * S52_setVRMEBL:
  * @objH:     (in) (transfer none): addressed S52ObjectHandle
- * @pixels_x: (in):
- * @pixels_y: (in):
+ * @pixels_x: (in): origin LL corner
+ * @pixels_y: (in): origin LL corner
  * @brg:      (in): bearing from origine (FIXME: no offset from S52_setDimension())
  * @rge:      (in): range   from origine (FIXME: no offset from S52_setDimension())
  *

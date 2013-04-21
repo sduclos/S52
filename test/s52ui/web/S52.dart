@@ -13,6 +13,7 @@ class S52 {
   Completer _completer = null;
   Map       _data      = parse('{"id":1,"method":"???","params":["???"]}');
   int       _id        = 1;
+  //WebSocket _ws;
   
   Stopwatch _stopwatch = new Stopwatch();
   
@@ -65,13 +66,16 @@ class S52 {
   
   S52() {
     _drawLastTimer();
+    
+    //js.context.rcvS52Msg = new js.Callback.many(rcvMsg);
+    js.context.onMessage = new js.Callback.many(rcvMsg);
   }
   _drawLastTimer() {
     if (null != _timer)
       return;
     
     // call drawLast every second (1000 msec)
-    _timer = new Timer.periodic(new Duration(milliseconds: 1000), (timer) {
+    _timer = new Timer.periodic(new Duration(milliseconds: 2000), (timer) {
       drawLast().then((ret) {});
 
       // FIXME: can't make onError / catchError work
@@ -80,29 +84,12 @@ class S52 {
       //          .catchError(     (e)           {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');});
     });
   }
-  /*
-  _startDrawLast() {
-    // allready running
-    //if (false == _restartTimer)
-    //  return;
-    
-    _cancelTimer = false;
-
-    print("_startDrawLastTimer: -- STARTING --");
-    
-    try {
-      _drawLastTimer();
-    } catch (e,s) {
-      print("_startDrawLast:catch: $s");
-      //_timer.cancel();
-      //_cancelTimer = true;
-      //_drawLastTimer();
-    }
-  }
-  */
   
-  rcvMsg(str) {
+  //rcvMsg(str) {
+  rcvMsg(var evt) {
     // receive S52/JSON msg from WebSocket (Cordova) in s52ui.html
+    //print('............................str:$str');
+    var str = evt.data;
     Map data;
     try {
       data = parse(str);
@@ -142,15 +129,19 @@ class S52 {
 
     _completer = new Completer();
 
-    js.scoped(() {
+    //*
+    //js.scoped(() {
       // first hookup callback
       // FIXME: use many (no new .. so could be more efficient!)
       // but need to be deleted on onClose
-      js.context.rcvS52Msg = new js.Callback.once(s52.rcvMsg);
+      //js.context.rcvS52Msg = new js.Callback.once(s52.rcvMsg);
 
       // then send
       js.context.sndS52Msg(str);
-    });
+    //});
+    //*/
+    
+    //_ws.send(str);
     
     return _completer.future;
   }

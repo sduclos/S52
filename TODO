@@ -8,7 +8,7 @@ Curent focus (top priority *):
 
     GL:
 **  -load raster (RADAR Layer, high densit bathy, ice)
-**  -alarm (safety perimeter, x-track!), try the GL cursor pick trick
+**  -alarm (safety perimeter, x-track!), try the GL cursor pick trick and GL diamond rule for 9x9 pixels
 *   -handle overlaping symbol at the center of the screen (no test case to debug)
     -fading chart boudary, calib symb, ..
     -implement patern scale spacing (PASP field)
@@ -31,7 +31,7 @@ Curent focus (top priority *):
     -check handling anti-meridian (need a chart that overlap the meridian to debug)
     -check CRC32 in S57
     -read text referenced by CATLOG.031 (some text in M_NPUB also)
-    -check user (root)
+    -check user (if root warn & exit)
     -write back mariner's parameter to .cfg (client job!)
     -use the glib "Key-value file parser" to load/save .cfg
     -use "freedesktop.org" specs for .cfg (ie XDG_*)
@@ -42,6 +42,7 @@ Curent focus (top priority *):
     -write to file raw GL call --for self test
     
 In a day:
+    -libgdal.a: full build is heavy, build only with the final driver set (S57, PNG, shapefile)
     -code: static global variable should all be inside a context struct .. of course!
     -GL: SENC save display list / VBO (somehow!) 
     -BUG: S-52 specs 3.2 for TOPMAR01 (init 'floating' inside loop)

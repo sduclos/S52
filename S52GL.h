@@ -65,20 +65,17 @@ int   S52_GL_isOFFscreen(S52_obj *obj);
 // delete GL data of object (DL of geo)
 int   S52_GL_del(S52_obj *obj);
 
-// next S52_GL_draw call will do cursor pick instead of rendering
-//S57_geo* S52_GL_doPick(double x, double y);
-
 // flush GL objects, clean up mem
 int   S52_GL_done(void);
 
 int   S52_GL_setView(double centerLat, double centerLon, double rangeNM, double north);
 //int  S52_GL_getView(double *s, double *w, double *n, double *e);
 
-int   S52_GL_getPRJView(double *s, double *w, double *n, double *e);
 int   S52_GL_setPRJView(double  s, double  w, double  n, double  e);
+int   S52_GL_getPRJView(double *s, double *w, double *n, double *e);
+int   S52_GL_setGEOView(double  s, double  w, double  n, double  e);
+int   S52_GL_getGEOView(double *s, double *w, double *n, double *e);
 
-//int   S52_GL_win2prj(double *x, double *y, double *z);
-//int   S52_GL_prj2win(double *x, double *y, double *z);
 int   S52_GL_win2prj(double *x, double *y);
 int   S52_GL_prj2win(double *x, double *y);
 
@@ -92,14 +89,11 @@ char *S52_GL_getNameObjPick(void);
 //int   S52_GL_setOWNSHP(double breadth, double length);
 //int   S52_GL_setOWNSHP(S52_obj *obj);
 
-//int   S52_GL_tess(S57_geo *geoData);
 int   S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, unsigned int weight);
 int   S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);
 int   S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str);
 
 int   S52_GL_drawGraticule(void);
-// draw an arc from A to B
-//int   S52_GL_drawArc(S52_obj *objA, S52_obj *objB);
 int   S52_GL_movePoint(double *x, double *y, double angle, double dist_m);
 
 
