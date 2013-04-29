@@ -65,10 +65,10 @@ class S52 {
   static const int CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
   
   S52() {
-    _drawLastTimer();
-    
     //js.context.rcvS52Msg = new js.Callback.many(rcvMsg);
     js.context.onMessage = new js.Callback.many(rcvMsg);
+
+    _drawLastTimer();
   }
   _drawLastTimer() {
     if (null != _timer)
@@ -76,7 +76,11 @@ class S52 {
     
     // call drawLast every second (1000 msec)
     _timer = new Timer.periodic(new Duration(milliseconds: 2000), (timer) {
-      drawLast().then((ret) {});
+      //drawLast().then((ret) {});
+      
+      drawLast().then(      (ret) {})
+                .catchError((err) {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');} );
+                
 
       // FIXME: can't make onError / catchError work
       //drawLast().then      (    (ret)          {print('_drawLastTimer(): then       ... &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&');},
@@ -116,9 +120,10 @@ class S52 {
     print("roundtrip: ${_stopwatch.elapsedMilliseconds}msec"); 
     print('rcvMsg():receive JSON str from libS52: $str');
 
+
     ++_id;
     _completer.complete(data['result']);
-    
+
     // restart timer if need be
     _drawLastTimer(); 
   }
@@ -129,25 +134,12 @@ class S52 {
 
     _completer = new Completer();
 
-    //*
-    //js.scoped(() {
-      // first hookup callback
-      // FIXME: use many (no new .. so could be more efficient!)
-      // but need to be deleted on onClose
-      //js.context.rcvS52Msg = new js.Callback.once(s52.rcvMsg);
-
-      // then send
-      js.context.sndS52Msg(str);
-    //});
-    //*/
-    
-    //_ws.send(str);
+    js.context.sndS52Msg(str);
     
     return _completer.future;
   }
   
   // alternate way of calling libS52 - one call for all S52.h calls
-  // less OO
   Future<List> send(var cmdName, var params) {
     _data["id"    ] = _id;
     _data["method"] = cmdName;
@@ -167,10 +159,10 @@ class S52 {
       print("drawLast(): _completer NOT completed XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
       _timer.cancel();
       _timer = null;
-      //throw "drawLast(): _completer is busy";
+      throw "drawLast(): _completer is busy";
       //throw new Exception('drawLast(): _completer is busy');
       //throw new AsyncError('error');
-      return _completer.future;
+      //return _completer.future;
     }
     
     _data["id"    ] = _id;

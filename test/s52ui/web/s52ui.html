@@ -19,8 +19,8 @@
     
     <!-- BUG CHROME: it choke here when run on laptop (dart2js OK - firefox)  
         // cordova define "menubutton"
-    <script type="text/javascript" src="js/cordova-2.2.0.js"> </script>
     <script type="text/javascript" src="js/cordova.js">       </script>
+    <script type="text/javascript" src="js/cordova-2.2.0.js"> </script>
     -->     
     <script type="text/javascript" src="js/cordova-2.2.0.js"> </script>
     <script type="text/javascript" src="js/websocket.js">     </script>
@@ -64,13 +64,16 @@ window.document.getElementById("example").innerHTML=txt;
       window.onload = function initWebSocket() {
         console.log("initWebSocket() - start");
         websocket = new WebSocket(wsUri);
+        //console.log("initWebSocket(): bufferedAmount = " + websocket.bufferedAmount);
         websocket.onopen    = function(evt) { onOpen(evt)    };
         websocket.onclose   = function(evt) { onClose(evt)   };
         websocket.onerror   = function(evt) { onError(evt)   };
         websocket.onmessage = function(evt) { onMessage(evt) };
 
         // cordova define android "menubutton", "backbutton"
+        // FIXME: use a button or TAB menu to toggle touch
         document.addEventListener("menubutton", toggleUI, false);
+        
         // this override normal back action!
         //document.addEventListener("backbutton",  closeUI, false);
         
@@ -82,14 +85,18 @@ window.document.getElementById("example").innerHTML=txt;
         
         // will trigger touch initialisation and also set W x H
         document.addEventListener("deviceready", screenSize, false);
-        screenSize();
+        //screenSize();
       }
 
 
-      function onOpen(evt)    { console.log("onOpen(): "); wsReady(); }
-      //function onOpen(evt)    { console.log("onOpen(): "); }
-      function onClose(evt)   { console.log("onClose():"); }
-      function onError(evt)   { console.log("onError():"); }
+      //function onOpen(evt)    { console.log("s52ui.html:Websock:onOpen(): "); wsReady();  }
+      function onOpen(evt)    { wsReady(); }
+      //function onOpen(evt)    {}
+      function onClose(evt)   { console.log("s52ui.html:Websock:onClose():" + evt + "<<<");}
+      function onError(evt)   { console.log("s52ui.html:Websock:onError():" + evt + "<<<");
+                                //for (prop in evt)
+                                //  console.log("s52ui.html:Websock:onError():evt." + prop + ": " + evt[prop] + "<<<");
+                              }
       function onMessage(evt) {}
 
       // called from s52ui.dart
@@ -101,7 +108,7 @@ window.document.getElementById("example").innerHTML=txt;
       function orientation()  { orientationChg(window.orientation, window.innerWidth, window.innerHeight);}
       function screenSize()   { setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight);}
       //function screenSize()   { setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight); wsReady();}
-      // function screenSize()   { console.log("window.orientation: " + window.orientation);setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight);}
+      //function screenSize()   { console.log("window.orientation: " + window.orientation);setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight);}
       
 /*      
  var supportsOrientation = ( typeof window.orientation == 'number' && typeof window.onorientationchange == 'object' );

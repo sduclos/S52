@@ -59,7 +59,6 @@ s52eglarm : S52DROIDLIBS       = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/and
 #
 #
 # GTK2 / WIN32
-#         -DLOOP_ON_GTK
 CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
          -I..                                        \
          -DS52_USE_GTK2                              \
@@ -70,7 +69,7 @@ s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --l
 s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_USE_DOTPITCH
 
 # Note: the -DS52_USE_AFGLOW need symbole in PLAUX_00.DAI
-# -DS52_USE_AFGLOW -DS52_USE_FAKE_AIS
+# -DS52_USE_AFGLOW -DS52_USE_FAKE_AIS -DS52_USE_WORLD
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps` \
                       -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL
 
@@ -80,6 +79,7 @@ s52eglarm:  CFLAGS =  -DS52_USE_DOTPITCH                 \
                       -DS52_USE_TEGRA2                   \
                       -DS52_USE_AFGLOW                   \
                       -DS52_USE_SOCK                     \
+					  -DS52_USE_WORLD                    \
                       -I..                               \
                       -I$(DROIDINCLUDE)                  \
                       -I$(S52DROIDINC)                   \
@@ -98,12 +98,10 @@ s52gv2:      CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0`      \
 #
 # search for libS52.so (-rpath)
 S52_LIBS  = -Wl,-rpath .. -L.. -lS52
-#S52_LIBS  = -L.. -lS52
 
 # NOTE: need full path in order to find libgv.so at run-time (-rpath)
 OPENEV_HOME = `pwd -P`/../../../openev-cvs
 OPENEV2HOME = `pwd -P`/../../../../openev2/trunk/src/lib/gv
-#OPENEV2LIBS = /usr/local/lib/python2.6/dist-packages/openev/_gv.so
 
 GV_LIBS     = -Wl,-rpath $(OPENEV_HOME) -L$(OPENEV_HOME) -lgv
 GV2LIBS     = -Wl,-rpath $(OPENEV2LIBS) $(OPENEV2LIBS) -lpython2.6

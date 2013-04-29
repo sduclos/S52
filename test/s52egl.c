@@ -75,7 +75,7 @@
 #define COLS     PATH "/s52droid/plib_COLS-3.4.1.rle"
 #define GPS      PATH "/s52droid/bin/sl4agps"
 #define AIS      PATH "/s52droid/bin/s52ais"
-#define PID      ".pid"
+#define PID           ".pid"
 #define ALLSTOP  PATH "/s52droid/bin/run_allstop.sh"
 
 #include <glibconfig.h>
@@ -739,22 +739,26 @@ static int      _s52_init       (s52engine *engine)
     // load all 3 S57 charts
     //S52_loadCell("/data/media/s52droid/ENC_ROOT", NULL);
 
+#ifdef S52_USE_WORLD
     // World data
     S52_loadCell("/sdcard/s52droid/gdal_data/--0WORLD.shp", NULL);
     // show world
     S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);
-#else
+#endif // WORLD
+
+#else  // ANDROID
     // read cell location fron s52.cfg
     S52_loadCell(NULL, NULL);
 
+#ifdef S52_USE_WORLD
     // World data
     S52_loadCell("/home/sduclos/dev/gis/data/0WORLD/--0WORLD.shp", NULL);
+    // show world
+    S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);
+#endif // WORLD
 
     // Ice - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
-
-    // show world
-    S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);
 
     // load AIS select symb.
     //S52_loadPLib("plib-test-priv.rle");
@@ -1492,7 +1496,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             const char *nameid = S52_pickAt(new_x, engine->height - new_y);
             if (NULL != nameid) {
                 unsigned int S57ID = atoi(nameid+7);
-                LOGI("s52egl:_android_motion_event(): XY(%f, %f): NAME:ID=%s ATT(%s)\n",
+                LOGI("s52egl:_android_motion_event(): XY(%f, %f): NAME:ID=%s attList(%s)\n",
                      new_x, engine->height - new_y, nameid, S52_getAttList(S57ID));
 
                 new_x = engine->state.cLon;
@@ -1651,8 +1655,13 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
             LOGI("s52egl:AInputEvent - eType:%i devID:%i source:%i action:%i flags:%X code:%i\n",
                                        eType,   devID,   source,   action,   flags,   code);
 
-            if (AKEYCODE_MENU==code && 0==action)
+            if (AKEYCODE_MENU==code && 0==action) {
                 _android_init_external_UI(engine);
+
+                // remove VRMEBL (no use in s52ui)
+                S52_toggleObjClassOFF("cursor");
+                S52_toggleObjClassOFF("ebline");
+            }
 
             //*
             if (AKEYCODE_BACK == code) {
@@ -2199,6 +2208,15 @@ static int      _X11_handleXevent(gpointer user_data)
                 S52_loadPLib("plib-test-priv.rle");
                 return TRUE;
             }
+            // debug - unicode (S57ID:552 on CA579041.000 - Rimouski)
+            if (XK_F8 == keysym) {
+                const char *str = S52_getAttList(552);
+                g_print("s52eglx:F8:%s\n", str);
+
+                return TRUE;
+            }
+
+
             // debug
             g_print("s52egl.c:keysym: %i\n", keysym);
 

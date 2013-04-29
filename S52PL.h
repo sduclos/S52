@@ -138,13 +138,10 @@ typedef struct S52_Color {
 //#define MAX_SUBLIST 21  // ex: SCALEB10 need to switch color 9 times (2 colors)
 typedef struct S52_DListData {
     int       create;                // TRUE create new DL
-    //guint     len;                 // number of Display List
     guint     nbr;                   // number of Display List / VBO
-    //guint     start;               // starting index of Display List
     guint     vboIds[MAX_SUBLIST];   // array of starting index of Display List / VBO ids
     S52_Color colors[MAX_SUBLIST];   // color of each Display List / VBO
     S57_prim *prim  [MAX_SUBLIST];   // hold PLib sym prim info for VBO
-
 } S52_DListData;
 
 // Vector Command (a la HPGL)

@@ -24,6 +24,7 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/im
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/js_string.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/json_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/math_patch.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/mirrors_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/native_helper.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/regexp_helper.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/compiler/implementation/lib/string_helper.dart
@@ -93,6 +94,7 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/isolate/isolate_strea
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/json/json.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/math/math.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/math/random.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/mirrors/mirrors.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/svg/dart2js/svg_dart2js.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/web_audio/dart2js/web_audio_dart2js.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/web_gl/dart2js/web_gl_dart2js.dart

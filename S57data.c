@@ -956,7 +956,8 @@ GData     *S57_setAtt(_S57_geo *geoData, const char *name, const char *val)
         g_datalist_init(&geoData->attribs);
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
-    if ((0==S52_strncmp(S57_getName(geoData), "Edge", 4)) && (0==S52_strncmp(name, "RCID", 4))) {
+    //if ((0==S52_strncmp(S57_getName(geoData), "Edge", 4)) && (0==S52_strncmp(name, "RCID", 4))) {
+    if ((0==g_strcmp0(S57_getName(geoData), "Edge")) && (0==g_strcmp0(name, "RCID"))) {
          geoData->rcidstr = value;
      }
 #endif
@@ -1182,6 +1183,9 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     if (0 == g_strcmp0("NAME_RCNM", attName)) return;
     if (0 == g_strcmp0("NAME_RCID", attName)) return;
 
+    // FIXME: convert accent to UTF-8 for JSON, skipped for now
+    if (0 == g_strcmp0("NINFOM",    attName)) return;
+
     // save S57 attribute + system attribute (ex vessel name - AIS)
     if (0 != attList->len)
         g_string_append(attList, ",");
@@ -1190,7 +1194,7 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     g_string_append_c(attList, ':');
     g_string_append(attList, attValue->str);
 
-    // replace '\t' to ' ',
+    // FIXME: do not replace '\n' by ' ', for JSON
     if (0 == g_strcmp0("_vessel_label", attName)) {
         for (guint i=0; i<attList->len; ++i) {
             if ('\n' == attList->str[i]) {

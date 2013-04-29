@@ -4111,32 +4111,27 @@ const char *S52_PL_getVOname(S52_vec *vecObj)
 
 static _S52_Text *_parseTX(S57_geo *geoData, _S52_CmdL *cmd)
 {
-    _S52_Text *text = NULL;
-    char *str      = NULL;
+    return_if_null(cmd);
+    //if (NULL == cmd)
+    //    return NULL;
+
     char buf[MAXL] = {'\0'};   // output string
-
-    if (NULL == cmd)
-        return NULL;
-
-    str  = _getParamVal(geoData, cmd->param, buf, MAXL);   // STRING
+    char *str = _getParamVal(geoData, cmd->param, buf, MAXL);   // STRING
     if (NULL == str) {
         return NULL;
     }
 
-    text = _parseTEXT(geoData, str);
-
-    // FIXME: g_convert() fail on android
-#ifdef S52_USE_ANDROID
+    _S52_Text *text = _parseTEXT(geoData, str);
     if (NULL != text)
         text->frmtd = g_string_new(buf);
-#else
+
+    /*
     if (NULL != text) {
         gchar *gstr = g_convert(buf, -1, "UTF-8", "ISO-8859-1", NULL, NULL, NULL);
-        //text->frmtd = g_string_new(buf);
         text->frmtd = g_string_new(gstr);
         g_free(gstr);
     }
-#endif
+    */
 
     return text;
 }

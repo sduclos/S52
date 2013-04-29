@@ -50,8 +50,6 @@ int   S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int 
 int   S52_GL_drawFBPixels(void);
 int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north);
 
-int   S52_GL_resetVBOID(void);
-
 // done frame, restore OpenGL state
 // drawLast: FALSE then the next S52_drawLast() will pull the chart background from memory
 int   S52_GL_end(int drawLast);

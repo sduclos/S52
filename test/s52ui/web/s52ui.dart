@@ -165,9 +165,14 @@ var _height;
     _clearTable("#tableR");
     
     s52.getPalettesNameList().then((palNmList) {
-      for (int i=0; i<palNmList.length; ++i) {
-        _appendCellRTable(palNmList[i], _updateUIcol, i);
-      }
+      var i = 0;
+      var nmList = palNmList[0].split(',');
+      nmList.forEach((nm) {
+        _appendCellRTable(nm, _updateUIcol, i++);
+      });
+      //for (int i=0; i<palNmList.length; ++i) {
+      //  _appendCellRTable(palNmList[i], _updateUIcol, i);
+      //}
 
       /*
       //List l = queryAll("span");
@@ -226,12 +231,14 @@ var _height;
     
     _clearTable("#tableR");
 
-    s52.getObjList('--6MARIN.000', 'vessel').then((str) {
-      var vesselList = str[0].split(',');
-      vesselList.removeAt(0); // list[0]: is cellName: '--6MARIN.000'
-      vesselList.removeAt(0); // list[1]: is objName: 'vessel'
+    s52.getObjList('--6MARIN.000', 'vessel').then((ret) {
+      List<String> vesselList = ret[0].split(',');
+      if (1 < vesselList.length) {
+        vesselList.removeAt(0); // list[0]: is cellName: '--6MARIN.000'
+        vesselList.removeAt(0); // list[1]: is objName: 'vessel'
 
-      _setAISatt(vesselList, 0);
+        _setAISatt(vesselList, 0);
+      }
 
       // stop (abruptly) color animation
       //query("#td_buttonCell").style.animationIterationCount = '0';
@@ -253,10 +260,10 @@ var _height;
   void _listENC(e) {
     _clearTable("#tableR");
     
-    s52.getCellNameList().then((str) {
+    s52.getCellNameList().then((cellList) {
       var idx = 0;
-      //print(str[0]);
-      str.forEach((enc) {
+      var encList = cellList[0].split(',');
+      encList.forEach((enc) {
         _appendCellRTable(enc, _loadENC, idx++);
       });
     });
@@ -475,7 +482,7 @@ void _initTouch(var orient, var w, var h) {
     }
 
     if (1 == event.touches.length) {
-      start_x1 = event.touches[0].page.x;  //pageX;
+      start_x1 = event.touches[0].page.x;
       start_y1 = event.touches[0].page.y;
       
       print("onTouchStart start_x1:$start_x1, start_y1:$start_y1");
@@ -727,10 +734,6 @@ _toggleUIEvent(evt) {
     query('#svg1'  ).style.display = 'inline-block';
     query('#svg1g' ).style.display = 'none';
   }
-
-  //js.scoped(() {
-  //  js.context.toggleUIEvent = new js.Callback.once(_toggleUIEvent);
-  //});
 }
 
 _fullList(ev) {
@@ -749,7 +752,7 @@ _fullList(ev) {
 //
 
 void _initMain() {
-  //print('s52ui.dart:_init()');
+  print('s52ui.dart:_initMain()');
   s52 = new S52();
 
   s52.newOWNSHP('OWNSHP').then((ret) {
@@ -767,9 +770,18 @@ void _initMain() {
 
 void main() {
   print('s5ui.dart:main(): start');
+  
+  // wait for Websocket to initialyze
+  //new Timer(new Duration(milliseconds: 10), () {
+    print('s5ui.dart:main():in Timer START --');
 
-  js.context.wsReady        = new js.Callback.once(_initMain);
-  js.context.setTouchScrnSz = new js.Callback.once(_initTouch);
-  js.context.orientationChg = new js.Callback.many(_orientationChg);
-  js.context.toggleUIEvent  = new js.Callback.many(_toggleUIEvent);
+    js.context.wsReady        = new js.Callback.once(_initMain);
+    //js.context.onOpen         = new js.Callback.once(_initMain);
+    print('s5ui.dart:main():in Timer END -0--');
+    js.context.setTouchScrnSz = new js.Callback.once(_initTouch);
+    
+    js.context.orientationChg = new js.Callback.many(_orientationChg);
+    js.context.toggleUIEvent  = new js.Callback.many(_toggleUIEvent);
+    print('s5ui.dart:main():in Timer END -1--');
+  //});
 }

@@ -43,6 +43,7 @@
 
 #include <dlfcn.h>
 
+#include <wchar.h>        // testing wide char
 
 #ifndef S52_USE_GLES2
 #define GL_GLEXT_PROTOTYPES
@@ -131,9 +132,6 @@ static GLint _aAlpha       = 0;
 static GLuint _framebufferID       = 0;
 static GLuint _colorRenderbufferID = 0;
 
-static int    _resetVBOID  = FALSE;
-
-
 #endif // S52_USE_GLES2
 
 
@@ -158,7 +156,8 @@ static const char      *_freetype_gl_fontfilename       =
     //"/system/fonts/Roboto-Regular.ttf";   // not official, could change place
     "/system/fonts/DroidSans.ttf";
 #else
-    "./Roboto-Regular.ttf";
+"./Roboto-Regular.ttf";
+//"./Waree.ttf";
 #endif
 
 typedef struct {
@@ -257,7 +256,8 @@ static int        _doInit        = TRUE;    // initialize (but GL context --need
 static int        _ctxValidated  = FALSE;   // validate GL context
 static int        _doPick        = FALSE;   // TRUE inside curcor picking cycle
 static GPtrArray *_objPick       = NULL;    // list of object picked
-static char       _strPick[80]   = {'\0'};  // hold temps val
+//static char       _strPick[80]   = {'\0'};  // hold temps val
+static GString   *_strPick       = NULL;  // hold temps val
 static int        _doHighlight   = FALSE;   // TRUE then _objhighlight point to the object to hightlight
 //static S52_obj   *_objhighlight  = NULL;
 
@@ -1576,7 +1576,8 @@ static int       _init_freetype_gl(void)
 {
     const wchar_t   *cache    = L" !\"#$%&'()*+,-./0123456789:;<=>?"
                                 L"@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
-                                L"`abcdefghijklmnopqrstuvwxyz{|}~";
+                                L"`abcdefghijklmnopqrstuvwxyz{|}~"
+                                L"Ã¨Ã Ã©";
 
     //_freetype_gl_atlas = texture_atlas_new(512, 512, 3);  // RGB
     if (NULL == _freetype_gl_atlas) {
@@ -5703,7 +5704,7 @@ static int       _renderLC(S52_obj *obj)
         if (z1<0.0 && z2<0.0) {
             //PRINTF("NOTE: this line segment (%s) overlap a line segment with higher prioritity (Z=%f)\n", S57_getName(geo), z1);
 
-            // debu
+            //\A0debu
             //_doHighlight = TRUE;
 
             continue;
@@ -7051,14 +7052,15 @@ static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
     int pen_y = 0;
     int space = FALSE;
 
-    int len = S52_strlen(str);
+    int len = strlen(str);
 
     g_array_set_size(buf, 0);
 
-    //for (i=0; i<wcslen(str); ++i) {
     for (int i=0; i<len; ++i) {
+    //for (int i=1; i<len; i+=2) {
         // experimental: smaller text size if second line
         if (NL == str[i]) {
+        //if (NL == wstr[i]) {
         //if (TB == str[i]) {
             weight = (0<weight) ? weight-1 : weight;
             texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], 'A');
@@ -7068,12 +7070,12 @@ static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
             ++i;
         }
 
-
-        texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], str[i]);
+        unsigned char uc = str[i];
+        texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], uc);
         if (NULL != glyph) {
             // experimental: augmente kerning if second line
             if (pen_x > 0) {
-                pen_x += texture_glyph_get_kerning(glyph, str[i-1]);
+                pen_x += texture_glyph_get_kerning(glyph, uc);
                 pen_x += (TRUE==space) ? 1 : 0;
             }
 
@@ -7088,6 +7090,7 @@ static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
             GLfloat s1 = glyph->s1;
             GLfloat t1 = glyph->t1;
 
+            // debug
             //PRINTF("CHAR: x0,y0,x1,y1: %lc: %f %f %f %f\n", str[i],x0,y0,x1,y1);
             //PRINTF("CHAR: s0,t0,s1,t1: %lc: %f %f %f %f\n", str[i],s0,t0,s1,t1);
 
@@ -7169,9 +7172,10 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
     // OPTIMISATION: not all need to be refilled as only VESSEL name
     // change over time (time tag). To re-fill each time is the worst case
     // so the FIX should speed up things a bit
-    //_fillFtglBuf(_buf, str);
-    //_fillFtglBuf(_freetype_gl_font[weight], _buf, str);
     _fillFtglBuf(_buf, str, weight);
+    if (0 == _buf->len)
+        return TRUE;
+
     _sendFtglBuf(_buf);
 
     // turn ON 'sampler2d'
@@ -7194,11 +7198,8 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
     //PRINTF("x:%f, x:%f, str:%s\n", x, y, str);
 
     // FIXME: check for '\n' and shorten line
-    // BETTER: at a second TX() for second text row (2x sock traffic!)
-
-    //for (guint i=0; i<S52_strlen(str); ++i) {
-    //gint len = g_utf8_strlen(str, -1) - 1;
-    gint len = g_utf8_strlen(str, -1);
+    // BETTER: at a second TX() for second text row (but 2x sock TX traffic!)
+    int len = strlen(str);
     for (int i=0; i<len; ++i) {
         glDrawArrays(GL_TRIANGLE_FAN, i*4, 4);
     }
@@ -7252,39 +7253,6 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
         _checkError("_drawTextAA() / POINT_T");
 
         return TRUE;
-
-
-        // glcResolution
-
-
-        /*
-        // PRJ coord.
-        // debug: redondant --just to be certain
-        _setBlend(FALSE);
-
-        glEnable(GL_TEXTURE_2D);
-
-        _glTranslated(x, y, 1000.0);
-        //_glTranslated((int)x, (int)y, 1.0);
-        //_glTranslated(x, y, 1.0);
-        _pushScaletoPixel();
-
-        //_glScaled(70.0, 70.0, 1.0);
-        //_glScaled(12.0, 12.0, 1.0);
-        _glScaled(11.0, 11.0, 1.0);
-        //_glScaled(10.0, 10.0, 1.0);
-        //_glScaled(100.0, 100.0, 1.0);
-        //_glRotated(90.0 - 168.0, 0.0, 0.0, 1.0);
-        glcRenderString(str);
-
-        _popScaletoPixel();
-
-        glDisable(GL_TEXTURE_2D);
-
-        _checkError("_drawTextAA() / POINT_T");
-
-        return TRUE;
-        */
     }
     _checkError("_drawTextAA() / POINT_T");
 
@@ -8797,10 +8765,6 @@ int        S52_GL_end(int drawLast)
     CHECK_GL_BEGIN;
 
 #ifdef S52_USE_GLES2
-    // at this point all object VBO's have been reset to 0
-    // so signal the next _app() cycle to skip VBO re-ini
-    _resetVBOID = FALSE;
-
     //* test - use GLES2 FBO instead of PBuffer
     //if (FALSE == drawLast) {
     //    // return to normal FBO
@@ -8934,11 +8898,6 @@ static GLuint    _loadShader(GLenum type, const char *shaderSrc)
     }
 
     return shader;
-}
-
-int        S52_GL_resetVBOID(void)
-{
-    return _resetVBOID;
 }
 
 int        S52_GL_init_GLES2(void)
@@ -9131,7 +9090,6 @@ int        S52_GL_init_GLES2(void)
     if (FALSE == glIsProgram(_programObject)) {
 
         PRINTF("DEBUG: re-building '_programObject'\n");
-        _resetVBOID = TRUE;
 
         _programObject  = glCreateProgram();
         PRINTF("GL_VERTEX_SHADER\n");
@@ -9533,6 +9491,11 @@ int        S52_GL_done(void)
 
     _diskPrimTmp = S57_donePrim(_diskPrimTmp);
 
+    if (NULL != _strPick) {
+        g_string_free(_strPick, TRUE);
+        _strPick = NULL;
+    }
+
     _doInit = TRUE;
 
     return _doInit;
@@ -9645,6 +9608,9 @@ char      *S52_GL_getNameObjPick(void)
         return NULL;
     }
 
+    if (NULL == _strPick)
+        _strPick = g_string_new("");
+
     const    char *name  = NULL;
     unsigned int   S57ID = 0;
 
@@ -9698,7 +9664,8 @@ char      *S52_GL_getNameObjPick(void)
         PRINTF("-----------\n");
     }
 
-    SPRINTF(_strPick, "%s:%i", name, S57ID);
+    //SPRINTF(_strPick, "%s:%i", name, S57ID);
+    g_string_printf(_strPick, "%s:%i", name, S57ID);
 
     //*
     // hightlight object at the top of the stack
@@ -9743,7 +9710,8 @@ char      *S52_GL_getNameObjPick(void)
         }
 
         // if in a relation then append it to pick string
-        SPRINTF(_strPick, "%s:%i%s", name, S57ID, geoRelIDs->str);
+        //SPRINTF(_strPick, "%s:%i%s", name, S57ID, geoRelIDs->str);
+        g_string_printf(_strPick, "%s:%i%s", name, S57ID, geoRelIDs->str);
 
         g_string_free(geoRelIDs, TRUE);
 
@@ -9751,7 +9719,7 @@ char      *S52_GL_getNameObjPick(void)
     }
     //*/
 
-    return (const char *)_strPick;
+    return (const char *)_strPick->str;
 }
 
 #if 0
@@ -10171,7 +10139,7 @@ int        S52_GL_drawGraticule(void)
         projXY uv   = {lon, lat};
 
         uv = S57_prj2geo(uv);
-        SPRINTF(str, "%07.4f° %c", fabs(uv.v), (0.0<lat)?'N':'S');
+        SPRINTF(str, "%07.4f deg %c", fabs(uv.v), (0.0<lat)?'N':'S');
         //_drawTextAA(lon, lat, 1, 1, str);
 
         _DrawArrays_LINE_STRIP(2, (vertex_t *)ppt);
@@ -10184,7 +10152,7 @@ int        S52_GL_drawGraticule(void)
         pt3v ppt[2] = {{lon, lat, 0.0}, {_pmax.u, lat, 0.0}};
         projXY uv   = {lon, lat};
         uv = S57_prj2geo(uv);
-        SPRINTF(str, "%07.4f° %c", fabs(uv.v), (0.0<lat)?'N':'S');
+        SPRINTF(str, "%07.4f deg %c", fabs(uv.v), (0.0<lat)?'N':'S');
 
         _DrawArrays_LINE_STRIP(2, (vertex_t *)ppt);
         //_drawTextAA(lon, lat, 1, 1, str);
@@ -10198,7 +10166,7 @@ int        S52_GL_drawGraticule(void)
         pt3v ppt[2] = {{lon, lat, 0.0}, {lon, _pmax.v, 0.0}};
         projXY uv   = {lon, lat};
         uv = S57_prj2geo(uv);
-        SPRINTF(str, "%07.4f° %c", fabs(uv.u), (0.0<lon)?'E':'W');
+        SPRINTF(str, "%07.4f deg %c", fabs(uv.u), (0.0<lon)?'E':'W');
 
         _DrawArrays_LINE_STRIP(2, (vertex_t *)ppt);
         //_drawTextAA(lon, lat, 1, 1, str);
@@ -10211,7 +10179,7 @@ int        S52_GL_drawGraticule(void)
         pt3v ppt[2] = {{lon, lat, 0.0}, {lon, _pmax.v, 0.0}};
         projXY uv   = {lon, lat};
         uv = S57_prj2geo(uv);
-        SPRINTF(str, "%07.4f° %c", fabs(uv.u), (0.0<lon)?'E':'W');
+        SPRINTF(str, "%07.4f deg %c", fabs(uv.u), (0.0<lon)?'E':'W');
 
         _DrawArrays_LINE_STRIP(2, (vertex_t *)ppt);
         //_drawTextAA(lon, lat, 1, 1, str);
@@ -10552,7 +10520,7 @@ int main(int argc, char** argv)
 #if 0
 // Summary of functions calls to try isolated dependecys
 
-/*
+//*
 S52_GL_init
     _initGLU(void)
     _initGLC(void)
@@ -10759,5 +10727,5 @@ S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width,
 
 
 
-*/
+//*/
 #endif

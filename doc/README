@@ -14,6 +14,7 @@ doc/
 - c1-cs.txt
 - c1-cs_mp.txt
 - C1.dispPrioSwitch.txt
+- ogrfeature.cpp.diff   (gdal/ogr diff for -DS52_USE_SUPP_LINE_OVERLAP)
 
 doc/wiki/
 - libS52wiki.html       (root doc)

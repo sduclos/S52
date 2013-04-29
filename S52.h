@@ -584,7 +584,7 @@ DLL const char * STD S52_getPLibsIDList(void);
 /**
  * S52_getPalettesNameList:
  *
- * List of palette name loaded
+ * List of palettes name loaded separated by ','.
  * WARNING: *BUG*, str can be dandling, so raw C call must save
  * the string before calling libS52 again
  *
@@ -606,7 +606,7 @@ DLL const char * STD S52_getPalettesNameList(void);
 DLL const char * STD S52_getCellNameList(void);
 
 /**
- * S52_getS57ClassList: get list of all S57 class in this cell
+ * S52_getS57ClassList: get list of all S57 class in a cell
  * @cellName: (in) (allow-none): cell name
  *
  * if @cellName is not NULL then return a list of all S57 class
@@ -616,7 +616,7 @@ DLL const char * STD S52_getCellNameList(void);
  * the string before calling libS52 again
  *
  *
- * Return: (transfer none): string of all class name separeted by ',', NULL if call fail
+ * Return: (transfer none): List of all class name separeted by ',', NULL if call fail
  */
 DLL const char * STD S52_getS57ClassList(const char *cellName);
 

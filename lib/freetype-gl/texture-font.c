@@ -321,8 +321,8 @@ texture_font_delete( texture_font_t *self )
 
     if( self->filename )
     {
-        free( self->filename );
-        //g_free( self->filename );
+        //free( self->filename );
+        g_free( self->filename );
     }
 
     size_t i;
@@ -335,8 +335,8 @@ texture_font_delete( texture_font_t *self )
 
     vector_delete( self->glyphs );
 
-    free( self );
-    //g_free( self );
+    //free( self );
+    g_free( self );
 }
 
 
@@ -583,7 +583,7 @@ texture_font_get_glyph( texture_font_t * self, wchar_t charcode )
         }
     }
     // SD 2012MAY04
-    return NULL;
+    //return NULL;
 
 
     /* charcode -1 is special : it is used for line drawing (overline,
@@ -617,8 +617,8 @@ texture_font_get_glyph( texture_font_t * self, wchar_t charcode )
     /* Glyph has not been already loaded */
     if( !buffer)
     {
-        buffer = (wchar_t *) calloc( 2, sizeof(wchar_t) );
-        //buffer = (wchar_t *) g_malloc0( 2 * sizeof(wchar_t) );
+        //buffer = (wchar_t *) calloc( 2, sizeof(wchar_t) );
+        buffer = (wchar_t *) g_malloc0( 2 * sizeof(wchar_t) );
     }
     buffer[0] = charcode;
 
