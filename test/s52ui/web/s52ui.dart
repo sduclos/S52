@@ -723,6 +723,7 @@ void _watchPosition() {
 }
 
 _toggleUIEvent(evt) {
+  evt.preventDefault();
   
   if ('none' == query('#tbodyL').style.display) {
     query('#tbodyL').style.display = 'table';
@@ -736,22 +737,22 @@ _toggleUIEvent(evt) {
   }
 }
 
-_fullList(ev) {
-  ev.preventDefault();
+_fullList(evt) {
+  evt.preventDefault();
   
-  
-  _toggleUIEvent(ev);
+  _toggleUIEvent(evt);
   
   var txtL = query('#svg1text').text.split(':');
   _listS57IDatt(txtL[1]); 
 }
+
 
 ///////////////////////////////////////
 //
 // Main
 //
 
-void _initMain() {
+void _initMain(evt) {
   print('s52ui.dart:_initMain()');
   s52 = new S52();
 
@@ -773,15 +774,15 @@ void main() {
   
   // wait for Websocket to initialyze
   //new Timer(new Duration(milliseconds: 10), () {
-    print('s5ui.dart:main():in Timer START --');
+    //print('s5ui.dart:main():in Timer START --');
 
-    js.context.wsReady        = new js.Callback.once(_initMain);
-    //js.context.onOpen         = new js.Callback.once(_initMain);
-    print('s5ui.dart:main():in Timer END -0--');
+    //js.context.wsReady        = new js.Callback.once(_initMain);
+    js.context.onOpen         = new js.Callback.once(_initMain);
     js.context.setTouchScrnSz = new js.Callback.once(_initTouch);
     
     js.context.orientationChg = new js.Callback.many(_orientationChg);
     js.context.toggleUIEvent  = new js.Callback.many(_toggleUIEvent);
+
     print('s5ui.dart:main():in Timer END -1--');
   //});
 }

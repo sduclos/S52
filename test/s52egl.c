@@ -841,10 +841,12 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
     //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
 
-    // trick to force symbole size (smaller on xoom so that
-    // proportion look the same as a 'normal' screen)
+#ifdef S52_USE_ANDROID
+    // trick to force symbole size (smaller on xoom so that proportion look the same
+    // as a 'normal' screen - since the eye is closer to the 10" screen of the Xoom)
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
+#endif
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
     //S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);

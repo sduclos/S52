@@ -74,7 +74,7 @@ s52win32 : LIBWIN32PATH = ../../mingw
 
 TAGS     = ctags
 
-SRCS_S52 = S52GL.c S52PL.c S52CS.c S57ogr.c S57data.c S52MP.c S52utils.c S52.c 
+SRCS_S52 = S52GL.c S52PL.c S52CS.c S57ogr.c S57data.c S52MP.c S52utils.c S52.c
 #OBJS_S52 = S52GL.o S52PL.o S52CS.o S57ogr.o S57data.o S52MP.o S52utils.o S52raz-3.2.rle.o S52.o
 OBJS_S52 = $(SRCS_S52:.c=.o) S52raz-3.2.rle.o
 
@@ -173,7 +173,7 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0`\
 # -DS52_USE_SYM_AISSEL01         (experimental - symbol in plib-test-priv.rle)
 # -DS52_USE_SOCK
 # -DS52_USE_WORLD - rename shapefile to WORLD_SHP in S52.c:201 ("--0WORLD.shp")
-#                  -DS52_USE_SUPP_LINE_OVERLAP    
+#                  -DS52_USE_SUPP_LINE_OVERLAP
 s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
@@ -192,6 +192,7 @@ s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
 				  -DS52_USE_OGR_FILECOLLECTOR    \
                   -DS52_USE_SOCK                 \
 				  -DS52_USE_SYM_AISSEL01         \
+				  -DS52_USE_WORLD                \
                   -DS52_DEBUG $(DBG)
 
 
@@ -213,7 +214,6 @@ s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -g -fPIC 
 s52eglarm : AR     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ar
 s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 
-#s52eglarm : TIAMATLIBS = /home/sduclos/dev/prog/Android/xoom/tiamat-xoom-rom/Xoom.Zone-Tiamat.Rom.2.2.2/system/lib
 s52eglarm : S52ANDROIDINC = /home/sduclos/S52/test/android/dist/system/include
 s52eglarm : S52ANDROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
 
@@ -221,7 +221,7 @@ s52eglarm : S52ANDROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
 # -DS52_USE_BACKTRACE
 # -DS52_DEBUG
 # -DS52_USE_SOCK
-#				     -DS52_USE_WORLD                       
+# -DS52_USE_WORLD
 
             DEFS   = -DS52_USE_GLIB2                       \
                      -DS52_USE_PROJ                        \
@@ -235,6 +235,7 @@ s52eglarm : S52ANDROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
+				     -DS52_USE_WORLD                       \
                      -DS52_DEBUG                           \
                      -DG_DISABLE_ASSERT
 
@@ -497,7 +498,7 @@ err.txt: *.c *.h
 
 # 1 - sync .git with official git
 # Fetches any new changes from the original repo
-# Pulls in changes not present in your local repository, 
+# Pulls in changes not present in your local repository,
 # without modifying your files
 # SD this will sync LOCAL .git with official Rikulo
 # $ git fetch upstream

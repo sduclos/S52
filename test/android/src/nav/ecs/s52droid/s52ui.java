@@ -47,13 +47,12 @@ public class s52ui extends DroidGap
         //super.loadUrl("file:///android_asset/www/index.html");
         //super.loadUrl("file:///android_asset/www/s52ui.html");
 
-        // work OK for dev (faster)
+        // debug - work OK for dev (faster)
         super.loadUrl("file:///data/media/dart/s52ui/web/s52ui.html");
-
-        appView.setBackgroundColor(0);
-
         // debug - page loading always from file (a bit slower)
         appView.clearCache(false);
+
+        appView.setBackgroundColor(0);
 
         appView.addJavascriptInterface(new WebSocketFactory(appView), "WebSocketFactory");
 

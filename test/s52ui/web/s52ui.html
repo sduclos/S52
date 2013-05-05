@@ -59,8 +59,8 @@ window.document.getElementById("example").innerHTML=txt;
       //var wsUri = 'ws://192.168.1.66:2950'; // laptop
       //var wsUri = 'ws://192.168.1.67:2950'; // xoom
       var wsUri = 'ws://127.0.0.1:2950';
-      //var websocket;
-
+      
+      var websocket;
       window.onload = function initWebSocket() {
         console.log("initWebSocket() - start");
         websocket = new WebSocket(wsUri);
@@ -90,8 +90,8 @@ window.document.getElementById("example").innerHTML=txt;
 
 
       //function onOpen(evt)    { console.log("s52ui.html:Websock:onOpen(): "); wsReady();  }
-      function onOpen(evt)    { wsReady(); }
-      //function onOpen(evt)    {}
+      //function onOpen(evt)    { wsReady(); }
+      function onOpen(evt)    {}
       function onClose(evt)   { console.log("s52ui.html:Websock:onClose():" + evt + "<<<");}
       function onError(evt)   { console.log("s52ui.html:Websock:onError():" + evt + "<<<");
                                 //for (prop in evt)

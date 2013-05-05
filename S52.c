@@ -263,8 +263,8 @@ static S52ObjectHandle _BLKADJ01 = FALSE;
 static S52_RADAR_cb  _RADAR_cb = NULL;
 //static int          _doRADAR  = TRUE;
 
-static char _version[] = "$Revision: 1.123 $\n"
-      "libS52 0.92\n"
+static char _version[] = "$Revision: 1.124 $\n"
+      "libS52 0.93\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1289,9 +1289,7 @@ static int        _collect_CS_touch(_cell* c)
     return TRUE;
 }
 
-DLL int    STD S52_loadLayer (const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
-DLL int    STD S52_loadObject(const char *objname,   void *shape);
-static _cell*     _loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb);
+DLL int    STD S52_loadLayer (const char *layername, void *layer, S52_loadObject_cb loadObject_cb);  // forward decl
 
 #ifdef S52_USE_DBUS
 static int        _initDBus(void);
@@ -1692,7 +1690,6 @@ static int        _linkRel2LNAM(_cell* c)
     for (guint i=0; i<S52_PRIO_NUM; ++i) {
         for (int j=0; j<N_OBJ_T; ++j) {
 
-            //GPtrArray *rbin = c->renderBin[i][_META_T];
             GPtrArray *rbin = c->renderBin[i][j];
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj *obj    = (S52_obj *)g_ptr_array_index(rbin, idx);
@@ -1706,14 +1703,19 @@ static int        _linkRel2LNAM(_cell* c)
 
                     splitLNAM++;  // skip number of item
                     while (NULL != *splitLNAM) {
+                        if ('\000' == **splitLNAM) {
+                            splitLNAM++;
+                            continue;
+                        }
+
                         S57_geo *geo = (S57_geo *)g_tree_lookup(_lnamBBT, *splitLNAM);
                         if (NULL == geo) {
                             PRINTF("WARNING: LNAM (%s) not found\n", *splitLNAM);
                             splitLNAM++;
                             continue;
                         }
+
                         // link geo to C_AGGR / C_ASSO geo
-                        // link all
                         S57_setRelationship(geo, geoRel);
 
                         if (NULL == refs_geo) {
@@ -1776,7 +1778,8 @@ static int        _suppLineOverlap()
                 {   // check for substring ",...)" if found at the end
                     // this mean that TEMP_BUFFER_SIZE in OGR is not large anought.
                     // see ogr/ogrfeature.cpp:994
-                    // #define TEMP_BUFFER_SIZE 1024
+                    // #define TEMP_BUFFER_SIZE 80
+                    // apply patch in S52/doc/ogrfeature.cpp.diff to OGR source code
                     const gchar *substr = ",...)";
                     gchar       *found1 = g_strrstr(name_rcnmstr->str, substr);
                     gchar       *found2 = g_strrstr(name_rcidstr->str, substr);
@@ -1790,15 +1793,18 @@ static int        _suppLineOverlap()
                 //MASK (IntegerList) = (7:255,255,255,255,255,255,255)
                 GString *maskstr = S57_getAttVal(geo, "MASK");
                 if (NULL != maskstr) {
-                    gchar **splitMASK  = g_strsplit_set(maskstr->str+1, "():,", 0);
-                    gchar **topMASK    = splitMASK;
+                    gchar **splitMASK = g_strsplit_set(maskstr->str+1, "():,", 0);
+                    gchar **topMASK   = splitMASK;
 
                     // the first integer is the lenght (ie the number of mask value)
-                    // 1 - mask, 2 - show, 255 - null (exterior boundary truncated by the data limit)
                     guint n = atoi(*splitMASK++);
+                    // 1 - mask, 2 - show, 255 - null (exterior boundary truncated by the data limit)
                     for (guint i=0; i<n; ++splitMASK, ++i) {
-                        if (NULL != *splitMASK && 0==strcmp("1", *splitMASK)) {
-                            PRINTF("FIXME: MASKING FOUND (1): %s\n", maskstr->str);
+                        if (('1'==*splitMASK[0]) || ('5'==*splitMASK[1])) {
+                            PRINTF("FIXME: 'MASK' FOUND ---> %s : %s\n", S57_getName(geo), maskstr->str);
+
+                            // debug
+                            g_assert(0);
                         }
                     }
                     g_strfreev(topMASK);
@@ -1923,7 +1929,6 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
     //if (0 != S52_strncmp(base+8, ".000", 4)) {
     if (0 != g_strcmp0(base+8, ".000")) {
         PRINTF("WARNING: filename (%s) not a S-57 base ENC [.000 terminated]\n", filename);
-        //return NULL;
     }
 
 
@@ -1979,6 +1984,35 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 
     S52_fclose(fd);
 
+    {   // failsafe - check if a PLib put an object on the NODATA layer
+        PRINTF("DEBUG: NODATA Layer check -START- ==============================================\n");
+        for (guint i=0; i<_cellList->len; ++i) {
+            // one cell
+            _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
+            for (int obj_t=S52__META; obj_t<S52_N_OBJ; ++obj_t) {
+                // one object type
+                GPtrArray *rbin = ci->renderBin[S52_PRIO_NODATA][obj_t];
+                for (guint idx=0; idx<rbin->len; ++idx) {
+                    // one object
+                    S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+                    S57_geo *geo = S52_PL_getGeo(obj);
+
+                    //
+                    if (0 == g_strcmp0(S57_getName(geo), "DSID"  )) continue;
+                    if (0 == g_strcmp0(S57_getName(geo), "C_AGGR")) continue;
+                    if (0 == g_strcmp0(S57_getName(geo), "C_ASSO")) continue;
+                    if (0 == g_strcmp0(S57_getName(geo), "M_NPUB")) continue;
+
+                    PRINTF("WARNING: object:'%s' type:'%i' is on NODATA layer\n", S57_getName(geo), obj_t);
+
+                    // debug
+                    //S57_dumpData(geo, FALSE);
+                }
+            }
+        }
+        PRINTF("DEBUG: NODATA Layer check -END- ==============================================\n");
+    }
+
     return ch;
 }
 
@@ -1988,15 +2022,13 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 char **S57FileCollector( const char *pszDataset );
 
 //#include "iso8211.h"
-
 static int        _loadCATALOG(char *filename)
-
 {
     FILE *fd = NULL;
     filename = g_strstrip(filename);
 
     if (NULL == (fd = S52_fopen(filename, "r"))) {
-        PRINTF("ERROR: CATALOG not found (%s)\n", filename);
+        PRINTF("WARNING: CATALOG not found (%s)\n", filename);
 
         return FALSE;
     }
@@ -2052,8 +2084,6 @@ static int        _loadCATALOG(char *filename)
 }
 #endif
 
-//DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb); // foward
-//DLL int    STD S52_loadCell(const char *encPath, S52_loadLayer_cb layer_cb)
 DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb)
 // FIXME: handle each type of cell separatly
 // OGR:
@@ -2063,13 +2093,13 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 //    - ENC_ROOT/
 // - shapefile
 {
+    S52_CHECK_INIT;
+    S52_CHECK_MUTX;   // can't load 2 sets of charte at once
+
     valueBuf chartPath = {'\0'};
     char    *fname     = NULL;
     _cell   *ch        = NULL;    // cell handle
     static int  silent = FALSE;
-
-    S52_CHECK_INIT;
-    S52_CHECK_MUTX;   // can't load 2 sets of charte at once
 
     S52_loadLayer_cb loadLayer_cb = S52_loadLayer;
     //if (NULL == layer_cb) {
@@ -2799,27 +2829,12 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
     return TRUE;
 }
 
+
 //---------------------------------------------------
 //
 // CULL
 //
 //---------------------------------------------------
-
-#if 0
-static S52_extent _clip(S52_extent A, S52_extent B)
-// assume A, B intersect or inside
-{
-    S52_extent clip;
-
-    // experimantal
-    clip.s = (A.s > B.s)? A.s : B.s;
-    clip.w = (A.w > B.w)? A.w : B.w;
-    clip.n = (A.n > B.n)? B.n : A.n;
-    clip.e = (A.e > B.e)? B.e : A.e;
-
-    return clip;
-}
-#endif
 
 static int        _intersec(_extent A, _extent B)
 // TRUE if intersec, FALSE if outside
@@ -2950,36 +2965,8 @@ static int        _app()
 
     //PRINTF("_app(): -1-\n");
 
-    /*
-    {   // debug - check for object that land on the NODATA layer
-        //unsigned int i = 0;
-        for (guint i=0; i<_cellList->len; ++i) {
-            _cell *ci = &g_array_index(_cellList, _cell, i);
-            // one cell
-
-            for (int obj_t=S52__META_T; obj_t<S52_N_OBJ_T; ++obj_t) {
-                // one object type (render bin)
-                GPtrArray *rbin = ci->renderBin[S52_PRIO_NODATA][obj_t];
-
-                for (guint idx=0; idx<rbin->len; ++idx) {
-                    // one object
-                    S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                    S57_geo *geo = S52_PL_getGeo(obj);
-
-                    PRINTF("WARNING: object (%s:%i) is on NODATA layer\n", S57_getName(geo), obj_t);
-                    S57_dumpData(geo, FALSE);
-
-                }
-            }
-        }
-    }
-    */
-
-
     // done rebuilding CS
     _doCS = FALSE;
-
-    //PRINTF("_app(): -2-\n");
 
     return TRUE;
 }
@@ -3092,7 +3079,7 @@ static int        _cull(_extent ext)
     // all cells - larger region first (small scale)
     // Note: skip MARINERS' Object (those layer 9)
     for (guint i=cellIdx; i>0 ; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
 
         // is this chart visible
         if (TRUE == _intersec(c->ext, ext)) {
@@ -6004,10 +5991,10 @@ DLL int             STD S52_newCSYMB(void)
     }
 
     // FIXME: should it be global ?
-    attval = "$SCODE:SCALEB10";
+    attval = "$SCODE:SCALEB10";     // 1NM
     _SCALEB10 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
 
-    attval = "$SCODE:SCALEB11";
+    attval = "$SCODE:SCALEB11";     // 10NM
     _SCALEB11 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
 
     attval = "$SCODE:NORTHAR1";
@@ -6019,7 +6006,6 @@ DLL int             STD S52_newCSYMB(void)
     // all depth in S57 sould be in meter so this is not used
     //attval = "$SCODEUNITFTH1";
     //csymb  = S52_newObj("$CSYMB", S52_POINT_T, 1, pos, attval);
-
 
 
     //--- those symb are used for calibration ---

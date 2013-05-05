@@ -71,7 +71,7 @@ s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_US
 # Note: the -DS52_USE_AFGLOW need symbole in PLAUX_00.DAI
 # -DS52_USE_AFGLOW -DS52_USE_FAKE_AIS -DS52_USE_WORLD
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps` \
-                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL
+                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_WORLD
 
 s52eglarm:  CFLAGS =  -DS52_USE_DOTPITCH                 \
                       -DS52_USE_EGL                      \
@@ -117,22 +117,6 @@ GL__LIBS    = -lGL
 OGR_LIBS  = `gdal-config --libs`
 
 s52eglx   : LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS)
-
-#s52eglarm : TIAMATLIBS = /home/sduclos/dev/prog/Android/xoom/tiamat-xoom-rom/Xoom.Zone-Tiamat.Rom.2.2.2/system/lib
-#s52eglarm : TIAMATLIBS = /home/sduclos/dev/prog/Android/xoom/tiamat-xoom-rom/Eos-wingray/system/lib
-#s52eglarm : LIBS    = -L$(TIAMATLIBS) -lc -lm -ldl -lEGL -lGLESv2 -llog -lcutils -lz -lutils   \
-#                      -lbinder -lpixelflinger -lhardware -lhardware_legacy -lskia -lui -lgui   \
-#                      -lsurfaceflinger_client -landroid -lexpat -lnativehelper -lnetutils      \
-#                      -lcamera_client -lsqlite -ldvm -lGLESv1_CM -lETC1 -lsonivox -lcrypto     \
-#                      -lssl -licuuc -licui18n -lmedia -lwpa_client -ljpeg -lnfc_ndef -lusbhost \
-#                      -lhwui -lbluedroid -ldbus -lemoji -lstlport -lstagefright_foundation     \
-#                      -landroid_runtime -lpcre -lglib-2.0 -lgps                                \
-#                           $(TIAMATLIBS)/libS52.a                     \
-#                           $(TIAMATLIBS)/libandroid_native_app_glue.a \
-#                           $(ARMLIBS)/libproj.a                       \
-#                           $(ARMLIBS)/libgdal.a                       \
-#                           $(ARMLIBS)/liblcms.a                       \
-#                           $(ARMTOOLCHAINROOT)/arm-linux-androideabi/lib/armv7-a/thumb/libstdc++.a
 
 s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a                 \
                       $(S52DROIDLIBS)/libgobject-2.0.a             \

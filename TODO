@@ -19,7 +19,6 @@ Curent focus (top priority *):
     -overscale (DATCVR01)
     -experimental: supression of overlapping simple lines (LS()) (also of same disp prio AREAS/LINES)
     -fix breaker color problem in CA49995A.000
-    -signal object that land in layer 0 (ex TOPMAR/CA49995A.000/geo.id:123)
     -check/validate QUAPOS of spatial (not attribute) object
     -dump vector (same as saving display list / VBO!)
     -upgrade to WRECK03 (C_s_md2.pdf: Item No. PL03.0.d02.cl.035)
@@ -59,6 +58,7 @@ DONE
 ====
 (put here TODO's that has been done)
 
+    -signal object that land in layer 0 (ex TOPMAR/CA49995A.000/geo.id:123)
     -handle C_AGGR and C_ASSO to showup in crusor pick (2 - slave, 3 - peer, need to hack GDAL TEMP_BUFFER_SIZE)
     -display text description of symbol in PLib in cursor pick
     -HTML5/SVG: s52ui (Dart & PhoneGap) handle web stuff (WebSocket)

@@ -28,20 +28,8 @@
 #include "S57data.h"     // S57_geo, S52_Obj_t
 #include <glib.h>        // GString, GData, GArray
 
-#define S52_PL_NMLN   6 // lookup name lenght
-#define S52_PL_COLN   5 // color name lenght
-
-/* not used anymore
-// S52 lookup table name (fifth letter)
-typedef enum S52_LUPtnm {
-    S52_LUP_PLAIN = 0,  //'N', // areas  --PLAIN_BOUNDARIES
-    S52_LUP_SYMBO = 1,  //'O', // areas  --SYMBOLIZED_BOUNDARIES
-    S52_LUP_LINES = 2,  //'S', // lines  --LINES
-    S52_LUP_SIMPL = 3,  //'L', // points --SIMPLIFIED
-    S52_LUP_PAPER = 4,  //'R', // points --PAPER_CHART
-    S52_LUP_NUM   = 5   // number of lookup name
-} S52_LUPtnm;
-*/
+#define S52_PL_NMLN   6  // lookup name lenght
+#define S52_PL_COLN   5  // color name lenght
 
 // S52 symbology table name
 typedef enum S52_SMBtblName {

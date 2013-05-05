@@ -3517,6 +3517,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         S52_PL_getSYbbox(obj, &width, &height);
 
         // 1 - compute symbol size in pixel
+        // FIXME: use scaling from real dotbitch
         //double scaleSymWPixel = width  / (100.0 * _dotpitch_mm_x);
         //double scaleSymHPixel = height / (100.0 * _dotpitch_mm_y);
         double scaleSymWPixel = width  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
@@ -3531,8 +3532,6 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         double scale1NMWinHPixel =  1852.0 / pixel_size_y;
 
         // 3 - compute stretch of symbol (ratio)
-        //double HRatio = scaleSymHPixel / pixel_size_x;
-        //double WRatio = scaleSymWPixel / pixel_size_y;
         double HRatio = scale1NMWinHPixel / scaleSymHPixel;
         double WRatio = scale1NMWinWPixel / scaleSymWPixel;
 
