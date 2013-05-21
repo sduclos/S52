@@ -7,7 +7,7 @@
     <meta charset="utf-8">
 
     <noscript>s52ui need JavaScript</noscript>
-    
+
     <link rel="stylesheet" type="text/css" href="s52ui.css" />
 
     <!-- initial UI layout -->
@@ -15,14 +15,14 @@
     <script type="text/javascript" src="s52ui.js">           </script>
 
     <!-- WebSocket Implementation for Android Browser       -->
-    <!-- via Cordova plugin infrastructure                  --> 
-    
-    <!-- BUG CHROME: it choke here when run on laptop (dart2js OK - firefox)  
+    <!-- via Cordova plugin infrastructure                  -->
+
+    <!-- BUG CHROME: it choke here when run on laptop (dart2js OK - firefox)
         // cordova define "menubutton"
     <script type="text/javascript" src="js/cordova.js">       </script>
     <script type="text/javascript" src="js/cordova-2.2.0.js"> </script>
-    -->     
-    <script type="text/javascript" src="js/cordova-2.2.0.js"> </script>
+    -->
+    <script type="text/javascript" src="js/cordova.js">       </script>
     <script type="text/javascript" src="js/websocket.js">     </script>
 
     <!-- dart code -->
@@ -31,91 +31,65 @@
 
   </head>
 
-  <body id="mainBody" onkeypress="toggleUI()">
-
-<!--  
-    
-<div id="example"></div>
-<script>
-txt = "<p>Browser CodeName:    " + window.navigator.appCodeName    + "</p>";
-txt+= "<p>Browser Name:        " + window.navigator.appName        + "</p>";
-txt+= "<p>Browser Version:     " + window.navigator.appVersion     + "</p>";
-txt+= "<p>Cookies Enabled:     " + window.navigator.cookieEnabled  + "</p>";
-txt+= "<p>Platform:            " + window.navigator.platform       + "</p>";
-txt+= "<p>User-agent header:   " + window.navigator.userAgent      + "</p>";
-txt+= "<p>User-agent language: " + window.navigator.systemLanguage + "</p>";
-
-window.document.getElementById("example").innerHTML=txt;
-</script>    
-
--->
-
+  <body id="mainBody" onkeypress="toggleUI();">
 
 
     <script type="text/javascript">
       // WebSocket <--> libS52
       // FIXME: can Dart handle directly Cordova websocket on Android ?
-      
+
       //var wsUri = 'ws://192.168.1.66:2950'; // laptop
       //var wsUri = 'ws://192.168.1.67:2950'; // xoom
       var wsUri = 'ws://127.0.0.1:2950';
-      
+
+      // FIXME: optimisize WebSocket (sometime tround trip is 50ms)
       var websocket;
       window.onload = function initWebSocket() {
         console.log("initWebSocket() - start");
         websocket = new WebSocket(wsUri);
-        //console.log("initWebSocket(): bufferedAmount = " + websocket.bufferedAmount);
         websocket.onopen    = function(evt) { onOpen(evt)    };
         websocket.onclose   = function(evt) { onClose(evt)   };
         websocket.onerror   = function(evt) { onError(evt)   };
-        websocket.onmessage = function(evt) { onMessage(evt) };
+        //websocket.onmessage = function(evt) { onMessage(evt) };
 
         // cordova define android "menubutton", "backbutton"
         // FIXME: use a button or TAB menu to toggle touch
         document.addEventListener("menubutton", toggleUI, false);
-        
+        //document.addEventListener("menubutton", toggleUI, true);
+
         // this override normal back action!
         //document.addEventListener("backbutton",  closeUI, false);
-        
+
         // device orientation change
         //window.addEventListener("resize", orientation, false);
         window.addEventListener("orientationchange", orientation, false);
         // (optional) Android doesn't always fire orientationChange on 180 degree turns
-        //setInterval(orientation, 2000); 
-        
+        //setInterval(orientation, 2000);
+
         // will trigger touch initialisation and also set W x H
         document.addEventListener("deviceready", screenSize, false);
-        //screenSize();
+
+        screenSize();
       }
 
-
-      //function onOpen(evt)    { console.log("s52ui.html:Websock:onOpen(): "); wsReady();  }
-      //function onOpen(evt)    { wsReady(); }
       function onOpen(evt)    {}
-      function onClose(evt)   { console.log("s52ui.html:Websock:onClose():" + evt + "<<<");}
-      function onError(evt)   { console.log("s52ui.html:Websock:onError():" + evt + "<<<");
-                                //for (prop in evt)
-                                //  console.log("s52ui.html:Websock:onError():evt." + prop + ": " + evt[prop] + "<<<");
-                              }
-      function onMessage(evt) {}
-
-      // called from s52ui.dart
-      function sndS52Msg(str) { websocket.send(str);       }
-      
-      function toggleUI(evt)  { toggleUIEvent(evt);        }
+      function onClose(evt)   { console.log("s52ui.html:Websock:onClose():" + evt + "<<<"); }
+      function onError(evt)   { console.log("s52ui.html:Websock:onError():" + evt + "<<<"); }
+      //function toggleUI(evt)  { toggleUIEvent(evt);        }
+      function toggleUI()  {}
       //function  closeUI(evt)  {  closeUIEvent(evt);        }
-      
+
       function orientation()  { orientationChg(window.orientation, window.innerWidth, window.innerHeight);}
       function screenSize()   { setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight);}
       //function screenSize()   { setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight); wsReady();}
       //function screenSize()   { console.log("window.orientation: " + window.orientation);setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight);}
-      
-/*      
+
+/*
  var supportsOrientation = ( typeof window.orientation == 'number' && typeof window.onorientationchange == 'object' );
- 
+
 // Do nothing if we don't need to shim
 if ( supportsOrientation ) return;
- 
+
 if (navigator.geolocation)
 {
   navigator.geolocation.getCurrentPosition(showPosition);
@@ -129,11 +103,31 @@ function showPosition(position)
   alert(latlon);
 }
 */
-    </script>
 
+    </script>
     <p id="__beg_mainWindowComponent" hidden="true">id_beg</p>
     <p id="__end_mainWindowComponent" hidden="true">id_end</p>
 
   </body>
 
 </html>
+
+
+<!--
+
+<div id="example"></div>
+<script>
+txt = "<p>Browser CodeName:    " + window.navigator.appCodeName    + "</p>";
+txt+= "<p>Browser Name:        " + window.navigator.appName        + "</p>";
+txt+= "<p>Browser Version:     " + window.navigator.appVersion     + "</p>";
+txt+= "<p>Cookies Enabled:     " + window.navigator.cookieEnabled  + "</p>";
+txt+= "<p>Platform:            " + window.navigator.platform       + "</p>";
+txt+= "<p>User-agent header:   " + window.navigator.userAgent      + "</p>";
+txt+= "<p>User-agent language: " + window.navigator.systemLanguage + "</p>";
+
+window.document.getElementById("example").innerHTML=txt;
+</script>
+
+-->
+
+

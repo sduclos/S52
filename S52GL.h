@@ -27,6 +27,27 @@
 
 #include "S52PL.h"	// S52_obj
 
+// Raster (RADAR,Bathy,...)
+typedef struct S52_ras {
+    GString *fname;
+
+    // src
+    int w;
+    int h;
+    int nbyte_gdt;            // gdt: GDALDataType
+    unsigned char *data;      // size =  w * h * nbyte_gdt
+    float min;                // exclusing nodata
+    float max;                // exclusing nodata
+    double gt[6];             // GeoTransform
+    double S,W,N,E;           // extent
+
+    // dst
+    guint potX;
+    guint potY;
+    unsigned char *texAlpha;  // size = potX * potY
+    unsigned int   texID;
+} S52_ras;
+
 int   S52_GL_init(void);
 int   S52_GL_setDotPitch(int w, int h, int wmm, int hmm);
 int   S52_GL_setFontDL(int fontDL);
@@ -40,6 +61,9 @@ int   S52_GL_draw(S52_obj *obj, gpointer user_data);
 int   S52_GL_drawLIGHTS(S52_obj *obj);
 // draw text
 int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
+// draw RADAR,Bathy,...
+int   S52_GL_drawRaster(S52_ras *raster);
+
 // use to copy from framebuffer to memory, return pixels
 unsigned
 char *S52_GL_readFBPixels(void);
@@ -62,6 +86,8 @@ int   S52_GL_isOFFscreen(S52_obj *obj);
 
 // delete GL data of object (DL of geo)
 int   S52_GL_del(S52_obj *obj);
+// delete raster
+int   S52_GL_delRaster(S52_ras *raster, int texOnly);
 
 // flush GL objects, clean up mem
 int   S52_GL_done(void);
@@ -93,6 +119,5 @@ int   S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str);
 
 int   S52_GL_drawGraticule(void);
 int   S52_GL_movePoint(double *x, double *y, double angle, double dist_m);
-
 
 #endif // _S52GL_H_

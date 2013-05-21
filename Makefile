@@ -189,10 +189,10 @@ s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   -DS52_USE_GLES2                \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_SUPP_LINE_OVERLAP    \
-				  -DS52_USE_OGR_FILECOLLECTOR    \
+                  -DS52_USE_OGR_FILECOLLECTOR    \
                   -DS52_USE_SOCK                 \
-				  -DS52_USE_SYM_AISSEL01         \
-				  -DS52_USE_WORLD                \
+                  -DS52_USE_SYM_AISSEL01         \
+                  -DS52_USE_WORLD                \
                   -DS52_DEBUG $(DBG)
 
 
@@ -235,7 +235,7 @@ s52eglarm : S52ANDROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
-				     -DS52_USE_WORLD                       \
+                     -DS52_USE_WORLD                       \
                      -DS52_DEBUG                           \
                      -DG_DISABLE_ASSERT
 

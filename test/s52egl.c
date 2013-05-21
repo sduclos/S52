@@ -747,6 +747,7 @@ static int      _s52_init       (s52engine *engine)
 #endif // WORLD
 
 #else  // ANDROID
+
     // read cell location fron s52.cfg
     S52_loadCell(NULL, NULL);
 
@@ -754,11 +755,17 @@ static int      _s52_init       (s52engine *engine)
     // World data
     S52_loadCell("/home/sduclos/dev/gis/data/0WORLD/--0WORLD.shp", NULL);
     // show world
+    //S52_setMarinerParam(S52_MAR_DISP_WORLD, 0.0);   // default
     S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);
 #endif // WORLD
 
     // Ice - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
+
+    // Bathy - experimental
+    //S52_loadCell("/home/sduclos/dev/gis/data/bathy/2009_HD_BATHY_TRIALS/46307260_LOD2.merc.tif", NULL);
+    //S52_loadCell("/home/sduclos/dev/gis/data/bathy/2009_HD_BATHY_TRIALS/46307250_LOD2.merc.tif", NULL);
+    //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
 
     // load AIS select symb.
     //S52_loadPLib("plib-test-priv.rle");
@@ -776,21 +783,22 @@ static int      _s52_init       (s52engine *engine)
 
     // -- DEPTH COLOR ------------------------------------
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
+    //S52_setMarinerParam(S52_MAR_TWO_SHADES,      1.0);   // 1.0 --> 2 shades
 
     // sounding color
     //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    10.0);
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
 
 
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);
-
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);
 
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
 
-    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
-    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
+    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
+    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
+
     // -- DEPTH COLOR ------------------------------------
 
 
@@ -812,8 +820,10 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);
     S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Standard(default) + Other)
 
-    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
+    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
+    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60
+    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60
 
     S52_setMarinerParam(S52_MAR_SCAMIN,          1.0); // ON
     //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0); // debug OFF - show all (default ON)
@@ -841,12 +851,12 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
     //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
 
-#ifdef S52_USE_ANDROID
+//#ifdef S52_USE_ANDROID
     // trick to force symbole size (smaller on xoom so that proportion look the same
     // as a 'normal' screen - since the eye is closer to the 10" screen of the Xoom)
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
-#endif
+//#endif
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
     //S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
@@ -873,7 +883,7 @@ static int      _s52_init       (s52engine *engine)
 
     _s52_setupLEGLIN();
 
-    _s52_setupPRDARE(&engine->state);
+    //_s52_setupPRDARE(&engine->state);
 
 #ifdef S52_USE_FAKE_AIS
     _s52_setupVESSEL(&engine->state);

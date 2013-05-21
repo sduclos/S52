@@ -41,7 +41,7 @@ var _height;
             s52.draw().then((ret) {});
         });
         return;
-      
+
       case S52.MAR_DISP_CATEGORY        :  //= 14;
         //S52_MAR_DISP_CATEGORY_BASE     =        0;  //      0; 0000000
         //S52_MAR_DISP_CATEGORY_STD      =        1;  // 1 << 0; 0000001
@@ -111,7 +111,7 @@ var _height;
 
       completer.complete(true);
     });
-    
+
     return completer.future;
   }
 
@@ -128,7 +128,7 @@ var _height;
     if (null == UList)
       UList = new UListElement();
 
-    LIElement li = new LIElement(); 
+    LIElement li = new LIElement();
     li.text = txt;
     UList.nodes.add(li);
 
@@ -145,7 +145,7 @@ var _height;
     TableElement    t = query("#tableR");
     TableRowElement r = t.insertRow(-1);  // add at the end
     r.nodes.add(c);
-    
+
     return c;
   }
   _clearTable(id) {
@@ -156,14 +156,14 @@ var _height;
       nr = t.rows.isEmpty;
     }
   }
-  
+
   /////////////// Color Palette Button Handling //////////////////////////
   void _listPal(MouseEvent e) {
     // start color highlight animation
     //query("#td_buttonCell").style.animationIterationCount = '1';
-    
+
     _clearTable("#tableR");
-    
+
     s52.getPalettesNameList().then((palNmList) {
       var i = 0;
       var nmList = palNmList[0].split(',');
@@ -184,12 +184,12 @@ var _height;
       //query("#td_buttonCell").style.animationIterationCount = '0';
     });
   }
-  
+
   /////////////// AIS Button Handling //////////////////////////
   void _updateAIS(int idx, TableCellElement c){
 
     c.children[1].style.display = ('block' == c.children[1].style.display) ? 'none' : 'block';
-    
+
     int vesselSelect = ('block' == c.children[1].style.display) ? 1 : 2;
     // S57ID allway the first
     int S57ID        = int.parse(c.children[1].children[0].text);
@@ -202,9 +202,9 @@ var _height;
     if (idx < vesselList.length) {
       var l     = vesselList[idx].split(':');
       int S57ID = int.parse(l[0]);
-      
+
       //print('S57ID: $S57ID');
-      
+
       s52.getAttList(S57ID).then((ret) {
         TableCellElement cell;
         UListElement UList = new UListElement();
@@ -217,18 +217,18 @@ var _height;
             UList = _appendUList(UList, att);
           }
         });
-        
+
         cell.nodes.add(UList);
-        
+
         // recursion
-        _setAISatt(vesselList, idx+1); 
+        _setAISatt(vesselList, idx+1);
       });
     }
   }
   void _listAIS(MouseEvent e) {
     // start color highlight animation
     //query("#td_buttonCell").style.animationIterationCount = '1';
-    
+
     _clearTable("#tableR");
 
     s52.getObjList('--6MARIN.000', 'vessel').then((ret) {
@@ -259,7 +259,7 @@ var _height;
   }
   void _listENC(e) {
     _clearTable("#tableR");
-    
+
     s52.getCellNameList().then((cellList) {
       var idx = 0;
       var encList = cellList[0].split(',');
@@ -274,17 +274,17 @@ var _height;
 
     s52.getAttList(int.parse(S57ID)).then((ret) {
       print('ret: ${ret[0]}');
-      
+
       var Att = ret[0].split(',');
       for (int i=0; i<Att.length; ++i) {
         _appendCellRTable(Att[i], null, i);
       }
     });
   }
-  
+
 ///////////////////////////////////////
 //
-// init  
+// init
 //
 
   List _checkButton = [
@@ -308,14 +308,14 @@ void _initCheckBox(List lst, int idx, String prefix, Completer completer) {
       _initCheckBox(lst, idx+1, prefix, completer);
     });
   } else {
-    completer.complete(true);  
+    completer.complete(true);
   }
 }
 
 //*
 Future<bool> _initUI() {
   Completer completer = new Completer();
-  
+
   print('_initUI(): start');
 
   _setUIcolor().then((ret) {
@@ -382,7 +382,7 @@ Future<bool> _initUI() {
           ..onClick.listen((ev) => _handleInput(S52.MAR_ROT_BUOY_LIGHT, 0.0));
 
           //var svg = query("#svg1circle");
-          
+
           int startIdx = 0;
           _initCheckBox(_checkButton, startIdx, "i", completer);
         });
@@ -394,7 +394,7 @@ Future<bool> _initUI() {
   //}
   //);
 
-  
+
   return completer.future;
 }
 //*/
@@ -403,12 +403,12 @@ void _orientationChg(var orientation, var width, var height)
 {
   // debug
   print("++++++++++++++++++++++++++++++++++++++orientation:$orientation W:$width x H:$height");
-  
+
   _width  = width;
   _height = height;
   //s52.width  = width;
   //s52.height = height;
-  
+
   s52.setViewPort(0, 0, width, height).then((ret) {
     s52.draw().then((ret) {});
   });
@@ -440,18 +440,18 @@ void _initTouch(var orient, var w, var h) {
   int new_x2   =  0;
   int new_y2   =  0;
   int ticks    =  0;
-  
-  double dx_pc =  0.0; 
-  double dy_pc =  0.0; 
+
+  double dx_pc =  0.0;
+  double dy_pc =  0.0;
 
   double cLat  =  0.0;
   double cLon  =  0.0;
   double rNM   = -1.0;
   double north = -1.0;
-  
+
   // FIXME: get w/h on orientation change msg
   // Dart broken on android WebView
-  //var width   = window.innerWidth;   
+  //var width   = window.innerWidth;
   //var height  = window.innerHeight;
   //var width   = 1208;
   //var height  =  752;
@@ -460,16 +460,16 @@ void _initTouch(var orient, var w, var h) {
   //s52.width  = w;
   //s52.height = h;
 
-  
+
   target.onTouchStart.listen((TouchEvent event) {
     event.preventDefault();
-    
+
     // FIXME: move this to browser start
     if (false == newTouch) {
       newTouch = true;
       modeZoom = false;
       ticks    = 0;
-      
+
       //* FIXME: cLat/cLon doesn't propagate to touchEnd
       s52.getView().then((ret){
         cLat  = ret[0];
@@ -484,43 +484,43 @@ void _initTouch(var orient, var w, var h) {
     if (1 == event.touches.length) {
       start_x1 = event.touches[0].page.x;
       start_y1 = event.touches[0].page.y;
-      
+
       print("onTouchStart start_x1:$start_x1, start_y1:$start_y1");
 
       doBlit1 = true;
       doBlit2 = false;
     }
-    
+
     if (2 == event.touches.length) {
       start_x1 = event.touches[0].page.x;
       start_y1 = event.touches[0].page.y;
       start_x2 = event.touches[1].page.x;
       start_y2 = event.touches[1].page.y;
-      
+
       print("onTouchStart start_x2:$start_x2, start_y2:$start_y2");
-      
+
       modeZoom = true;
-      
+
       doBlit1 = false;
       doBlit2 = true;
     }
   });
-  
+
   target.onTouchMove.listen((TouchEvent event) {
     event.preventDefault();
-    
-    // trim the number of touchMove event 
+
+    // trim the number of touchMove event
     //if (0 != (++ticks % 5))
     //  return;
-    ++ticks;    
-    
+    ++ticks;
+
     // scrool
     if ((1==event.touches.length) && (false==modeZoom)) {
       new_x1 = event.touches[0].page.x;
       new_y1 = event.touches[0].page.y;
-    
+
       //print('onTouchMove 1: new_x1:$new_x1, new_x1:$new_y1');
-    
+
       double dx_pc =  (start_x1 - new_x1) / _width;  // %
       double dy_pc = -(start_y1 - new_y1) / _height; // % - Y down
       //double dx_pc =  (start_x1 - new_x1) / s52.width;  // %
@@ -531,23 +531,23 @@ void _initTouch(var orient, var w, var h) {
         s52.drawBlit(dx_pc/2.0, dy_pc, 0.0, 0.0).then((ret) {doBlit1 = true;});
       }
     }
-    
+
     // zoom (in/out)
     if (2==event.touches.length && true==doBlit2) {
       new_x1 = event.touches[0].page.x;
       new_y1 = event.touches[0].page.y;
       new_x2 = event.touches[1].page.x;
       new_y2 = event.touches[1].page.y;
-    
+
       //print('onTouchMove 2: new_x2:$new_x2, new_x2:$new_y2');
-    
+
       double dx1 = (start_x1 - new_x1).toDouble();
       double dy1 = (start_y1 - new_y1).toDouble();
       double dx2 = (start_x2 - new_x2).toDouble();
       double dy2 = (start_y2 - new_y2).toDouble();
       int dx;
       int dy;
-      
+
       // out: |---->    <----|
       // in : <----|    |---->
       //        dx1       dx2
@@ -556,7 +556,7 @@ void _initTouch(var orient, var w, var h) {
       } else {
         dx = (new_x1 - new_x2) - (start_x1 - start_x2);
       }
-      
+
       //dx_pc = (dx1 + dx2) / width;  // %
       //dy_pc = (dy1 + dy2) / height; // %
       dx_pc = dx1 / _width;  // %
@@ -567,7 +567,7 @@ void _initTouch(var orient, var w, var h) {
       //}
     }
   });
-  
+
   target.onTouchEnd.listen((TouchEvent event) {
     event.preventDefault();
     //#define TICKS_PER_TAP  6
@@ -577,7 +577,7 @@ void _initTouch(var orient, var w, var h) {
     if (ticks < 6) {
       if ('inline-block' == query('#svg1g').style.display)
         return;
-      
+
       s52.pickAt(start_x1.toDouble(), _height - start_y1.toDouble()).then((ret) {
         TextElement svg1txt = query('#svg1text');
         // set S52 UI Text Color
@@ -603,40 +603,40 @@ void _initTouch(var orient, var w, var h) {
                                  );
 
         query('#svg1g').style.display = 'inline-block';
-        
+
         s52.draw().then((ret) {});
       });
 
       return;
     }
-    
+
 
     // wait for last finger on the screen
     if (0 != event.touches.length) {
       print('onTouchEnd: event.len=${event.touches.length} .. ');
       return;
     }
-    
-    // reset 
+
+    // reset
     newTouch = false;
-    
+
     // no touch move event - view unchange
     if (-1 == new_x1)
       return;
 
     // wait for s52.drawBlit() to return
-    // 200ms found by trial and error 
+    // 200ms found by trial and error
     new Timer(new Duration(milliseconds: 300), () {
-      
-      //print('onTouchEnd zoom:$modeZoom');      
-      
+
+      //print('onTouchEnd zoom:$modeZoom');
+
       // 2 finger - Zoom
       if (true == modeZoom) {
         new_x1 = -1;
         new_y1 = -1;
 
-        //double rNMnew = rNM - (rNM * dxy_pc * 2.0);  // 
-        double rNMnew = rNM - (rNM * dx_pc * 2.0);  // x2: because .. 
+        //double rNMnew = rNM - (rNM * dxy_pc * 2.0);  //
+        double rNMnew = rNM - (rNM * dx_pc * 2.0);  // x2: because ..
         rNMnew = (0 < rNMnew) ? rNMnew : (-rNMnew);  // ABS()
         print("dx_pc:$dx_pc, dy_pc:$dy_pc, rNM:$rNM, rNMnew:$rNMnew, (rNM * dx_pc):${(rNM * dx_pc)}");
         //s52.setView(cLat, cLon, rNMnew, -1.0).then((ret) {
@@ -655,7 +655,7 @@ void _initTouch(var orient, var w, var h) {
           });
         });
         //*/
-      } 
+      }
       else  // 1 finger - scroll
       {
         //print('setView start_x1:$start_x1, start_y1:$start_y1, new_x1:$new_x1, new_y1:$new_y1');
@@ -676,7 +676,7 @@ void _initTouch(var orient, var w, var h) {
               double y2 = ret[1]; // lat
               double dx = x1 - x2;
               double dy = y1 - y2;
-  
+
               // FIXME: cLat/cLon doesn't propagate to touchEnd
               // but here it does .. sometime!
               s52.setView(cLat - dy, cLon - dx, -1.0, -1.0).then((ret) {
@@ -696,22 +696,22 @@ void _initTouch(var orient, var w, var h) {
 //}
 int _ownshp = 0;
 void _watchPosition() {
-  if (0 == _ownshp) { 
+  if (0 == _ownshp) {
     print('s5ui.dart:_setPosition(): failed, no _ownshp handle');
     return;
   }
   print('s5ui.dart:_watchPosition(): start');
-  
+
   // {'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000}
   //window.navigator.geolocation.watchPosition().listen(onData, onError, onDone, unsubscribeOnError)
-  
+
   //try {
   //  window.navigator.geolocation.watchPosition().listen(GPSpos);
   //} catch (e,s) {
   //  print(s);
   //}
-  
-  
+
+
   //subscribe(onData: (List<int> data) { print(data.length); });
   /* FF choke here
   window.navigator.geolocation.getCurrentPosition().then(
@@ -722,9 +722,12 @@ void _watchPosition() {
   // */
 }
 
-_toggleUIEvent(evt) {
-  evt.preventDefault();
-  
+//_toggleUIEvent(evt) {
+_toggleUIEvent() {
+  //evt.preventDefault();
+
+  print('_toggleUIEvent()');
+
   if ('none' == query('#tbodyL').style.display) {
     query('#tbodyL').style.display = 'table';
     query('#tbodyR').style.display = 'table';
@@ -739,11 +742,12 @@ _toggleUIEvent(evt) {
 
 _fullList(evt) {
   evt.preventDefault();
-  
-  _toggleUIEvent(evt);
-  
+
+  //_toggleUIEvent(evt);
+  _toggleUIEvent();
+
   var txtL = query('#svg1text').text.split(':');
-  _listS57IDatt(txtL[1]); 
+  _listS57IDatt(txtL[1]);
 }
 
 
@@ -758,11 +762,11 @@ void _initMain(evt) {
 
   s52.newOWNSHP('OWNSHP').then((ret) {
     //print('s5ui.dart:OWNSHP(): $ret');
-    _ownshp = ret[0]; 
-    
+    _ownshp = ret[0];
+
     // can't read GPS
     //_watchPosition();
-    
+
     query('#svg1g').onTouchStart.listen((ev) { _fullList(ev); });
 
     _initUI().then((ret) {});
@@ -771,18 +775,13 @@ void _initMain(evt) {
 
 void main() {
   print('s5ui.dart:main(): start');
-  
-  // wait for Websocket to initialyze
-  //new Timer(new Duration(milliseconds: 10), () {
-    //print('s5ui.dart:main():in Timer START --');
 
-    //js.context.wsReady        = new js.Callback.once(_initMain);
     js.context.onOpen         = new js.Callback.once(_initMain);
     js.context.setTouchScrnSz = new js.Callback.once(_initTouch);
-    
-    js.context.orientationChg = new js.Callback.many(_orientationChg);
-    js.context.toggleUIEvent  = new js.Callback.many(_toggleUIEvent);
 
-    print('s5ui.dart:main():in Timer END -1--');
-  //});
+    js.context.orientationChg = new js.Callback.many(_orientationChg);
+    //js.context.toggleUIEvent  = new js.Callback.many(_toggleUIEvent);
+    js.context.toggleUI       = new js.Callback.many(_toggleUIEvent);
+
+    //print('s5ui.dart:main():in Timer END -1--');
 }

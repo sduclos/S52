@@ -1,6 +1,6 @@
-// S57gvgeo.c: interface to OpenEV S57 geo data
+// S57data.c: interface to S57 geo data
 //
-// Project:  OpENCview/OpenEV
+// Project:  OpENCview
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
@@ -32,7 +32,9 @@ static projPJ      _pjsrc   = NULL;   // projection source
 static projPJ      _pjdst   = NULL;   // projection destination
 static int         _doInit  = TRUE;   // will set new src projection
 static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
-//static const char *_argsdst = NULL;
+//static const char *_argsdst = "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
+// Note: ../../../FWTools/FWTools-2.0.6/bin/gdalwarp -t_srs "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs" \
+// 46307260_LOD2.tif 46307260_LOD2.merc.tif
 #endif
 
 // MAXINT-6 is how OGR tag an UNKNOWN value

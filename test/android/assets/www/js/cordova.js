@@ -1,0 +1,1 @@
+../../../../s52ui/web/js/cordova.js

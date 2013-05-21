@@ -23,7 +23,7 @@
 // FIXME: split this file - 10 KLOC !
 
 
-#include "S52.h"        // S52_view,
+#include "S52.h"        // S52_view
 #include "S52utils.h"   // PRINTF(), CONF*, S52_getConfig(), S52_strstr()
 #include "S52PL.h"      // S52_PRIO_NUM
 #include "S52MP.h"      // S52MarinerParameter
@@ -37,17 +37,18 @@
 #include "S57ogr.h"     // S57_ogrLoadCell()
 #endif
 
-#include <string.h>     // memmove()
-#include <glib.h>       // GString, GArray, GPtrArray, g_strncasecmp(), g_ascii_strncasecmp()
+#include <string.h>     // memmove(), memcpy()
+#include <glib.h>       // GString, GArray, GPtrArray, ..
 #include <math.h>       // INFINITY
 
 // mkfifo
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>    // unlink()
+#include <unistd.h>     // unlink()
 #define PIPENAME "/tmp/S52_pipe_01"
 
+#include "gdal.h"       // to handle Raster
 
 
 #ifndef S52_USE_PROJ
@@ -260,11 +261,12 @@ static S52ObjectHandle _UNITMTR1 = FALSE;
 static S52ObjectHandle _CHKSYM01 = FALSE;
 static S52ObjectHandle _BLKADJ01 = FALSE;
 
-static S52_RADAR_cb  _RADAR_cb = NULL;
+static S52_RADAR_cb  _RADAR_cb   = NULL;
 //static int          _doRADAR  = TRUE;
+static GPtrArray    *_rasterList = NULL;    // list of Raster
 
-static char _version[] = "$Revision: 1.124 $\n"
-      "libS52 0.93\n"
+static char _version[] = "$Revision: 1.125 $\n"
+      "libS52 0.94\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -424,7 +426,8 @@ static double     _validate_int(double val)
 
 static double     _validate_disp(double val)
 {
-    int crntMask = (int) S52_getMarinerParam(S52_MAR_DISP_CATEGORY);
+    //int crntMask = (int) S52_getMarinerParam(S52_MAR_DISP_CATEGORY);
+    int crntMask = (int) S52_MP_get(S52_MAR_DISP_CATEGORY);
     int newMask  = (int) val;
     int maxMask  =
         S52_MAR_DISP_CATEGORY_BASE   +
@@ -463,7 +466,8 @@ static double     _validate_disp(double val)
 static double     _validate_mar(double val)
 // S52_MAR_DISP_LAYER_LAST  - MARINERS' CATEGORY (drawn on top - last)
 {
-    int crntMask = (int) S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST);
+    //int crntMask = (int) S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST);
+    int crntMask = (int) S52_MP_get(S52_MAR_DISP_LAYER_LAST);
     int newMask  = (int) val;
     int maxMask  =
         S52_MAR_DISP_LAYER_LAST_NONE  +
@@ -562,7 +566,8 @@ static int        _validate_screenPos(double *xx, double *yy)
 
 static double     _validate_filter(double mask)
 {
-    int crntMask = (int) S52_getMarinerParam(S52_CMD_WRD_FILTER);
+    //int crntMask = (int) S52_getMarinerParam(S52_CMD_WRD_FILTER);
+    int crntMask = (int) S52_MP_get(S52_CMD_WRD_FILTER);
     int newMask  = (int) mask;
     int maxMask  =
         S52_CMD_WRD_FILTER_SY +
@@ -655,10 +660,11 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
         case S52_MAR_DEEP_CONTOUR        : val = _validate_meter(val); _doCS = TRUE;    break;
         case S52_MAR_DISTANCE_TAGS       : val = _validate_nm(val);    _fixme(paramID); break;
         case S52_MAR_TIME_TAGS           : val = _validate_min(val);   _fixme(paramID); break;
-        case S52_MAR_DISP_CATEGORY       : g_static_mutex_unlock(&_mp_mutex);
-                                           val = _validate_disp(val);
-                                           S52_CHECK_MUTX;
-                                           break;
+        case S52_MAR_DISP_CATEGORY       : val = _validate_disp(val);                   break;
+        //case S52_MAR_DISP_CATEGORY       : g_static_mutex_unlock(&_mp_mutex);
+        //                                   val = _validate_disp(val);
+        //                                   S52_CHECK_MUTX;
+        //                                   break;
         case S52_MAR_COLOR_PALETTE       : val = _validate_pal(val);                    break;
 
         case S52_MAR_VECPER              : val = _validate_min(val);   _doCS = TRUE;    break;
@@ -675,10 +681,11 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
         case S52_MAR_ANTIALIAS           : val = _validate_bool(val);                   break;
         case S52_MAR_QUAPNT01            : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_OVERLAP        : val = _validate_bool(val);                   break;
-        case S52_MAR_DISP_LAYER_LAST     : g_static_mutex_unlock(&_mp_mutex);
-                                           val = _validate_mar (val);
-                                           S52_CHECK_MUTX;
-                                           break;
+        case S52_MAR_DISP_LAYER_LAST     : val = _validate_mar (val);                   break;
+        //case S52_MAR_DISP_LAYER_LAST     : g_static_mutex_unlock(&_mp_mutex);
+        //                                   val = _validate_mar (val);
+        //                                   S52_CHECK_MUTX;
+        //                                   break;
 
         case S52_MAR_ROT_BUOY_LIGHT      : val = _validate_deg(val);                    break;
 
@@ -700,14 +707,11 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
         case S52_MAR_DISP_WORLD          : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_RND_LN_END     : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_VRMEBL_LABEL   : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_RASTER         : val = _validate_bool(val);                   break;
 
-        case S52_CMD_WRD_FILTER          : g_static_mutex_unlock(&_mp_mutex);
-                                           val = _validate_filter(val);
-                                           S52_CHECK_MUTX;
-                                           break;
+        case S52_CMD_WRD_FILTER          : val = _validate_filter(val);                 break;
 
         default:
-            //PRINTF("WARNING: unknown Mariner Paramater type (%)\n", paramID);
             PRINTF("WARNING: unknown Mariner's Parameter type (%i)\n", paramID);
 
             g_static_mutex_unlock(&_mp_mutex);
@@ -843,24 +847,6 @@ static _cell     *_addCell(const char *filename)
     return _crntCell;
 }
 
-#if 0
-static _cell     *_removeCell(_cell *ch)
-// remove a cell from the set, else NULL
-{
-    for (guint i=0; i<_cellList->len; ++i) {
-        //_cell *c = &g_array_index(_cellList, _cell, i);
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-
-        if (c == ch) {
-            //g_array_remove_index(_cellList, i);
-            g_ptr_array_remove_index(_cellList, i);
-            return c;
-        }
-    }
-
-    return NULL;
-}
-#endif
 //#include <stdio.h>
 //#include "valgrind.h"
 //#include "memcheck.h"
@@ -1498,6 +1484,10 @@ DLL int    STD S52_init(void)
     _marinerCell->ext.N =  INFINITY;
     _marinerCell->ext.E =  INFINITY;
 
+    // init raster
+    if (NULL == _rasterList)
+        _rasterList = g_ptr_array_new();
+
 
 
 
@@ -1658,7 +1648,15 @@ DLL int    STD S52_done(void)
     g_string_free(_S57ClassList, TRUE); _S57ClassList = NULL;
 
     g_ptr_array_free(_objToDelList, TRUE); _objToDelList = NULL;
-//    g_ptr_array_free(_geoList,      TRUE); _geoList      = NULL;
+
+    // flush raster
+    for (guint i=0; i<_rasterList->len; ++i) {
+        S52_ras *r = (S52_ras *) g_ptr_array_index(_rasterList, i);
+        S52_GL_delRaster(r, FALSE);
+        g_free(r);
+    }
+    g_ptr_array_free(_rasterList, TRUE);
+    _rasterList = NULL;
 
 #ifdef S52_USE_EGL
     _eglBeg = NULL;
@@ -1984,6 +1982,7 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 
     S52_fclose(fd);
 
+
     {   // failsafe - check if a PLib put an object on the NODATA layer
         PRINTF("DEBUG: NODATA Layer check -START- ==============================================\n");
         for (guint i=0; i<_cellList->len; ++i) {
@@ -2010,7 +2009,7 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
                 }
             }
         }
-        PRINTF("DEBUG: NODATA Layer check -END- ==============================================\n");
+        PRINTF("DEBUG: NODATA Layer check -END-   ==============================================\n");
     }
 
     return ch;
@@ -2084,6 +2083,141 @@ static int        _loadCATALOG(char *filename)
 }
 #endif
 
+int               _loadRaster(const char *fname)
+{
+    // check if allready loaded
+    for (guint i=0; i<_rasterList->len; ++i) {
+        S52_ras *r = (S52_ras *) g_ptr_array_index(_rasterList, i);
+        if (0 == g_strcmp0(r->fname->str, fname))
+            return FALSE;
+    }
+
+    GDALAllRegister();
+    GDALDriverH driver = GDALGetDriverByName("GTiff");
+    if (NULL == driver) {
+        PRINTF("WARNING: fail to get GDAL driver\n");
+        return FALSE;
+    }
+
+    GDALDatasetH dataset = GDALOpen(fname, GA_ReadOnly);
+    if (NULL == dataset) {
+        PRINTF("WARNING: fail to read GDAL data set\n");
+        return FALSE;
+    }
+
+
+
+
+    PRINTF("FIXME: reproject to mercator here instead of using GDAL/gdalwrap to pre-format raster data\n");
+/*
+
+    //
+    // FIXME: reproject to mercator here instead of using GDAL/gdalwrap
+    //
+
+
+
+
+
+
+    // find src prog
+    const char *projStr = GDALGetProjectionRef(dataset);
+    if (NULL != projStr) {
+        PRINTF("%s\n", projStr);
+        // 46307250_LOD2.merc.tif
+        PROJCS["unnamed",
+               GEOGCS["WGS 84",
+                      DATUM["WGS_1984",
+                            SPHEROID["WGS 84",6378137,298.257223563,
+                                     AUTHORITY["EPSG","7030"]
+                                    ],
+                            AUTHORITY["EPSG","6326"]
+                           ],
+                      PRIMEM["Greenwich",0],
+                      UNIT["degree",0.0174532925199433],
+                      AUTHORITY["EPSG","4326"]
+                     ]
+               ...
+
+
+        46307250_LOD2.tif
+        GEOGCS[,
+               DATUM["unknown",
+                     SPHEROID["unretrievable - using WGS84",6378137,298.257223563]
+                    ],
+               PRIMEM["Greenwich",0],
+               UNIT[,0.0174532925199433]
+              ]
+
+
+
+
+
+
+    }
+
+    projStr = GDALGetGCPProjection(dataset);
+    if (NULL != projStr) {
+        PRINTF("%s\n", projStr);  // 46307250_LOD2.tif      --> projStr = ""
+                                  // 46307250_LOD2.merc.tif --> projStr = ""
+    }
+
+
+*/
+
+
+
+
+    GDALRasterBandH bandA = GDALGetRasterBand(dataset, 1);
+
+    // GDT_Float32
+    GDALDataType gdt = GDALGetRasterDataType(bandA);
+    int nbyte_gdt    = GDALGetDataTypeSize(gdt) / 8;
+
+    int w = GDALGetRasterXSize(dataset);
+    int h = GDALGetRasterYSize(dataset);
+
+    //int nodata_set = FALSE;
+    //double nodata = GDALGetRasterNoDataValue(bandA, &nodata_set);
+
+    // 32 bits
+    unsigned char *data = g_new0(unsigned char, w * h * nbyte_gdt);
+    GDALRasterIO(bandA, GF_Read, 0, 0, w, h, data, w, h, gdt, 0, 0);
+
+    double gt[6] = {0.0,1.0,0.0,0.0,0.0,1.0};
+    if (CE_None != GDALGetGeoTransform(dataset, (double *) &gt)) {
+        PRINTF("WARNING: GDALGetGeoTransform() failed\n");
+        g_assert(0);
+    }
+    // finish with GDAL
+    GDALClose(dataset);
+    GDALDestroyDriverManager();
+
+
+    // store data
+    S52_ras *ras = g_new0(S52_ras, 1);
+    ras->fname = g_string_new(fname);
+    ras->w = w;
+    ras->h = h;
+    ras->nbyte_gdt = nbyte_gdt;
+    ras->data = data;
+
+    //double XgeoLL = gt[0] + 0 * gt[1] + 0 * gt[2];
+    //double YgeoLL = gt[3] + 0 * gt[4] + 0 * gt[5];
+    //double XgeoUR = gt[0] + w * gt[1] + h * gt[2];
+    //double YgeoUR = gt[3] + w * gt[4] + h * gt[5];
+    ras->S = gt[3] + 0 * gt[4] + 0 * gt[5];  // YgeoLL;
+    ras->W = gt[0] + 0 * gt[1] + 0 * gt[2];  // XgeoLL;
+    ras->N = gt[3] + w * gt[4] + h * gt[5];  // YgeoUR;
+    ras->E = gt[0] + w * gt[1] + h * gt[2];  // XgeoUR;
+    memcpy(ras->gt, gt, sizeof(double) * 6);
+
+    g_ptr_array_add(_rasterList, ras);
+
+    return TRUE;
+}
+
+
 DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb)
 // FIXME: handle each type of cell separatly
 // OGR:
@@ -2092,6 +2226,8 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 //    - *.000 (and update)
 //    - ENC_ROOT/
 // - shapefile
+// GDAL:
+// - GeoTIFF
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;   // can't load 2 sets of charte at once
@@ -2143,13 +2279,13 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 
     if (TRUE != g_file_test(fname, (GFileTest) (G_FILE_TEST_EXISTS | G_FILE_TEST_IS_DIR))) {
         PRINTF("file or DIR not found (%s)\n", fname);
+        g_free(fname);
         g_static_mutex_unlock(&_mp_mutex);
         return FALSE;
     }
 
 #ifdef S52_USE_WORLD
     {   // experimental - load world shapefile
-        //const char *base = g_basename(fname);
         gchar *basename = g_path_get_basename(fname);
         if (0 == g_strcmp0(basename, WORLD_SHP))
             ch = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
@@ -2158,6 +2294,21 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     }
 #endif
 
+    //*
+    {   // experimental - load raster (GeoTIFF)
+        gchar *basename = g_path_get_basename(fname);
+        int len = strlen(basename);
+        if (0 == g_strcmp0(basename+(len-4), ".tif")) {
+            _loadRaster(fname);
+
+            g_free(basename);
+            g_free(fname);
+            g_static_mutex_unlock(&_mp_mutex);
+
+            return TRUE;
+        }
+    }
+    //*/
 
 #ifdef S52_USE_OGR_FILECOLLECTOR
     {
@@ -2221,42 +2372,56 @@ DLL int    STD S52_doneCell(const char *encPath)
 // so loadCell would load a CATALOG then CM would load individual cell
 // to fill the view (and unload cell outside the view)
 {
+    return_if_null(encPath);
+
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
 
-    gchar *base = g_path_get_basename(encPath);
-    base = g_strstrip(base);
-
     PRINTF("%s\n", encPath);
 
-    // skip file not terminated by .000
-    //const char *base = g_basename(filename);
-    //const char *base = g_path_get_basename(fname);
-    if (0 != g_strcmp0(base+8, ".000")) {
-        PRINTF("WARNING: filename (%s) not a S-57 base ENC [.000 terminated]\n", encPath);
-        g_free(base);
-        g_static_mutex_unlock(&_mp_mutex);
+    gchar *fname = g_strdup(encPath);
+    fname = g_strstrip(fname);
 
-        return FALSE;
+    if (TRUE != g_file_test(fname, (GFileTest) (G_FILE_TEST_EXISTS))) {
+        PRINTF("file not found (%s)\n", fname);
+        goto exit;
+    }
+
+
+    // unload .TIF
+    gchar *basename = g_path_get_basename(fname);
+    int len = strlen(basename);
+    if (0 == g_strcmp0(basename+(len-4), ".tif")) {
+        for (guint i=0; i<_rasterList->len; ++i) {
+            S52_ras *r = (S52_ras *) g_ptr_array_index(_rasterList, i);
+            if (0 == g_strcmp0(r->fname->str, fname)) {
+                S52_GL_delRaster(r, FALSE);
+                g_free(r);
+                goto exit;
+            }
+        }
+    }
+
+    // skip file not terminated by .000
+    if (0 != g_strcmp0(basename+8, ".000")) {
+        PRINTF("WARNING: filename (%s) not a S-57 base ENC [.000 terminated]\n", encPath);
+        goto exit;
     }
 
     for (guint idx=0; idx<_cellList->len; ++idx) {
         _cell *c = (_cell*)g_ptr_array_index(_cellList, idx);
 
         // check if allready loaded
-        //if (0 == S52_strncmp(base, c->filename->str, S57_CELL_NAME_MAX_LEN)) {
-        if (0 == g_strcmp0(base, c->filename->str)) {
+        if (0 == g_strcmp0(basename, c->filename->str)) {
             _freeCell(c);
             g_ptr_array_remove_index(_cellList, idx);
-
-            g_free(base);
-            g_static_mutex_unlock(&_mp_mutex);
-
-            return TRUE;
+            goto exit;
         }
     }
 
-    g_free(base);
+exit:
+    g_free(basename);
+    g_free(fname);
 
     g_static_mutex_unlock(&_mp_mutex);
 
@@ -2905,7 +3070,7 @@ static int        _app()
 {
     //PRINTF("_app(): -.0-\n");
 
-    // first delete pending mariner
+    // 1- delete pending mariner
     for (guint i=0; i<_objToDelList->len; ++i) {
         S52_obj *obj = (S52_obj *)g_ptr_array_index(_objToDelList, i);
 
@@ -2919,9 +3084,9 @@ static int        _app()
     g_ptr_array_set_size(_objToDelList, 0);
 
     //PRINTF("_app(): -.1-\n");
-
+    // 2 -
     if (TRUE == _doCS) {
-        // 1 - reparse CS
+        // 2.1 - reparse CS
         for (guint i=0; i<_cellList->len; ++i) {
             _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
             // one cell
@@ -2943,7 +3108,7 @@ static int        _app()
 
         //PRINTF("_app(): -0-\n");
 
-        // 2 - move obj
+        // 2.2 - move obj
         for (guint i=0; i<_cellList->len; ++i) {
             _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
             // one cell
@@ -2961,6 +3126,13 @@ static int        _app()
                 }
             }
         }
+
+        // 2.3 - flush all texApha if S52_MAR_SAFETY_CONTOUR as change
+        for (guint i=0; i<_rasterList->len; ++i) {
+            S52_ras *ras = (S52_ras *) g_ptr_array_index(_rasterList, i);
+            S52_GL_delRaster(ras, TRUE);
+        }
+
     }
 
     //PRINTF("_app(): -1-\n");
@@ -3077,7 +3249,7 @@ static int        _cull(_extent ext)
 #endif
 
     // all cells - larger region first (small scale)
-    // Note: skip MARINERS' Object (those layer 9)
+    // Note: skip MARINERS' Object (those on layer 9)
     for (guint i=cellIdx; i>0 ; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
 
@@ -3087,13 +3259,21 @@ static int        _cull(_extent ext)
         }
     }
 
+    // bebug
+    //PRINTF("nbr of object culled: %i (%i)\n", _nCull, _nTotal);
+
     return TRUE;
 }
 
 static int        _drawRADAR()
 {
-    if (NULL != _RADAR_cb)
+    if (NULL != _RADAR_cb) {
+        g_static_mutex_unlock(&_mp_mutex);
         _RADAR_cb();
+        S52_CHECK_MUTX;
+    }
+
+    g_ptr_array_foreach(_rasterList, (GFunc)S52_GL_drawRaster, NULL);
 
     return TRUE;
 }
@@ -3113,16 +3293,17 @@ static int        _draw()
         }
 
         // draw under radar
-        g_ptr_array_foreach (c->objList_supp, (GFunc)S52_GL_draw, NULL);
+        g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
 
         // draw radar
-        _drawRADAR();
+        if (1.0 == S52_MP_get(S52_MAR_DISP_RASTER))
+            _drawRADAR();
 
         // draw over radar
-        g_ptr_array_foreach (c->objList_over, (GFunc)S52_GL_draw, NULL);
+        g_ptr_array_foreach(c->objList_over, (GFunc)S52_GL_draw, NULL);
 
         // draw text
-        g_ptr_array_foreach (c->textList,     (GFunc)S52_GL_drawText, NULL);
+        g_ptr_array_foreach(c->textList,     (GFunc)S52_GL_drawText, NULL);
     }
 
     return TRUE;
@@ -3572,6 +3753,9 @@ DLL int    STD S52_draw(void)
         //PRINTF("S52_draw() .. -2-\n");
 
         ret = TRUE;
+
+    } else {
+        PRINTF("WARNING:S52_GL_begin() failed\n");
     }
 
     gdouble sec = g_timer_elapsed(_timer, NULL);
@@ -3609,6 +3793,45 @@ static void       _delOldVessel(gpointer data, gpointer user_data)
 
         _delObj(obj);
     }
+}
+
+static int        _drawLast(void)
+{
+    // debug
+    //PRINTF("DRAWLAST: ..  -2-\n");
+
+    // then draw the Mariners' Object on top of it
+    for (int i=S52_AREAS; i<N_OBJ_T; ++i) {
+        GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][i];
+        // FIFO
+        //for (guint idx=0; idx<rbin->len; ++idx) {
+        // LIFO: so that 'cursor' is drawn last (on top)
+        for (guint idx=rbin->len; idx>0; --idx) {
+            S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx-1);
+
+            g_atomic_int_get(&_atomicAbort);
+            if (TRUE == _atomicAbort) {
+                PRINTF("abort drawing .. \n");
+
+                //S52_GL_end(TRUE);
+
+                //ret = TRUE;
+                //goto exit;
+                return TRUE;
+            }
+
+            // in some graphic driver this is expensive
+            if (FALSE == S52_GL_isSupp(obj)) {
+                S52_GL_draw(obj, NULL);
+
+                // debug - commented
+                S52_GL_drawText(obj, NULL);
+            }
+        }
+    }
+
+
+    return TRUE;
 }
 
 DLL int    STD S52_drawLast(void)
@@ -3657,9 +3880,6 @@ DLL int    STD S52_drawLast(void)
         g_ptr_array_foreach(rbin, _delOldVessel, rbin);
     }
 
-    // debug
-    //PRINTF("DRAWLAST: .. -1-\n");
-
     ////////////////////////////////////////////////////////////////////
     // no CULL (so no journal)
     // cull()
@@ -3669,59 +3889,11 @@ DLL int    STD S52_drawLast(void)
     // DRAW:
     //
     if (TRUE == S52_GL_begin(FALSE, TRUE)) {
-        // debug
-        //PRINTF("DRAWLAST: ..  -2-\n");
-
-        // then draw the Mariners' Object on top of it
-        for (int i=S52_AREAS; i<N_OBJ_T; ++i) {
-        //for (int i=0; i<N_OBJ_T; ++i) {
-            GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][i];
-            // FIFO
-            //for (guint idx=0; idx<rbin->len; ++idx) {
-            // LIFO: so that 'cursor' is drawn last (on top)
-            for (guint idx=rbin->len; idx>0; --idx) {
-                S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx-1);
-
-                g_atomic_int_get(&_atomicAbort);
-                if (TRUE == _atomicAbort) {
-                    PRINTF("abort drawing .. \n");
-
-                    S52_GL_end(TRUE);
-
-                    ret = TRUE;
-                    goto exit;
-                }
-
-                // in some graphic driver this is expensive
-                if (FALSE == S52_GL_isSupp(obj)) {
-                    S52_GL_draw(obj, NULL);
-
-                    // debug - commented
-                    S52_GL_drawText(obj, NULL);
-                }
-            }
-        }
-
-        // debug
-        //PRINTF("DRAWLAST: ..  -3-\n");
-
-
-        /*
-        // HACK
-        if (TRUE == S52_MP_get(S52_MAR_DISP_CRSR_POS)) {
-            char str[80];
-            projXY uv = {_cursor_lon, _cursor_lat};
-            uv = S57_prj2geo(uv);
-            SPRINTF(str, "%f %f", uv.v, uv.u);
-            S52_GL_drawStr(_cursor_lon, _cursor_lat, str, 1, 1);
-        }
-        */
-
+        ret = _drawLast();
         S52_GL_end(TRUE);
-        ret = TRUE;
-
     } else {
         PRINTF("WARNING:S52_GL_begin() failed\n");
+        ret = FALSE;
     }
 
     // debug
@@ -4556,7 +4728,6 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         _nCull  = 0;
 
         // filter out objects that don't intersec the pick view
-        // FIXME: include mariner obj on last layer (9)
         _cull(ext);
         // bebug
         //PRINTF("nbr of object culled: %i (%i)\n", _nCull, _nTotal);
@@ -4564,8 +4735,15 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         // render object that fall in the pick view
         _draw();
 
+        // Mariners' (layer 9 - Last)
+        // FIXME: cull
+        _drawLast();
+
         S52_GL_end(FALSE);
+    } else {
+        PRINTF("WARNING:S52_GL_begin() failed\n");
     }
+
     // get object picked
     const char *name = S52_GL_getNameObjPick();
     PRINTF("OBJECT PICKED (%6.1f, %6.1f): %s\n", pixels_x, pixels_y, name);

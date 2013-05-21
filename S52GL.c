@@ -26,9 +26,6 @@
 // the end of this file.
 
 
-    //glPixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    //glTexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, texture.image);
-
 #include "S52GL.h"
 #include "S52MP.h"        // S52_MP_get/set()
 #include "S52utils.h"     // PRINTF(), S52_atof(), S52_atoi(), S52_strlen()
@@ -1348,8 +1345,6 @@ static GLint     _initGLU(void)
 
          str = gluGetString(GLU_VERSION);
          PRINTF("GLU version:%s\n",str);
-         str = glGetString(GL_VERSION);
-         PRINTF("GL version:%s\n",str);
          */
     }
 
@@ -3009,53 +3004,6 @@ static int       _glCallList(S52_DListData *DListData)
     return TRUE;
 }
 
-#if 0
-static int       _parseTEX(S52_obj *obj)
-// parse TE or TX
-{
-    /*
-    S52_Color *col    = NULL;
-    int        xoffs  = 0;
-    int        yoffs  = 0;
-    int        bsize  = 0;
-    int        weight = 0;
-    char      *str    = NULL;;
-
-    str = S52_PL_getEX(obj, &col, &xoffs, &yoffs, &bsize, &weight);
-    //PRINTF("xoffs/yoffs/bsize/weight: %i/%i/%i/%i\n", xoffs, yoffs, bsize, weight);
-    if (NULL == str) {
-        //PRINTF("NULL text string\n");
-        return FALSE;
-    }
-    */
-
-    return TRUE;
-}
-#endif
-
-//static S52_CmdL *_renderTX(S52_obj *obj)
-// TeXt
-//{
-//    if (NULL == instruc->text)
-//        instruc->text = S52_PL_parseTX(instruc->geoData, cmd);
-//
-//    _renderTEXT(obj);
-//
-//    return cmd;
-//}
-
-//static S52_CmdL *_renderTE(S52_obj *obj)
-// TExt formatted
-//{
-//    if (NULL == instruc->text)
-//        instruc->text = S52_PL_parseTE(instruc->geoData, cmd);
-//
-//    _renderTEXT(instruc, cmd);
-//
-//    return cmd;
-//}
-
-//static GArray   *_computeCentroid(S57_geo *geoData)
 static int       _computeCentroid(S57_geo *geoData)
 // return centroids
 // fill global array _centroid
@@ -6502,12 +6450,14 @@ static int       _renderAP(S52_obj *obj)
     // optimisation --experimental
     // TODO: optimisation: if proven to be faster, compare S57 object number instead of string name
 #ifdef S52_USE_GLES2
-    if (0 == g_ascii_strncasecmp("DRGARE", S52_PL_getOBCL(obj), 6)) {
+    //if (0 == g_ascii_strncasecmp("DRGARE", S52_PL_getOBCL(obj), 6)) {
+    if (0 == g_strcmp0("DRGARE", S52_PL_getOBCL(obj))) {
         if (TRUE != (int) S52_MP_get(S52_MAR_DISP_DRGARE_PATTERN))
             return TRUE;
     }
 #else
-    if (0 == g_ascii_strncasecmp("DRGARE", S52_PL_getOBCL(obj), 6)) {
+    //if (0 == g_ascii_strncasecmp("DRGARE", S52_PL_getOBCL(obj), 6)) {
+    if (0 == g_strcmp0("DRGARE", S52_PL_getOBCL(obj))) {
         if (TRUE != (int) S52_MP_get(S52_MAR_DISP_DRGARE_PATTERN))
             return TRUE;
 
@@ -6640,8 +6590,8 @@ static int       _renderAP(S52_obj *obj)
     GLdouble pivotyPix     = py  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
 
     // convert tile in pixel to world
-    GLdouble w = tileWidthPix  * ((_pmax.u - _pmin.u) / (GLdouble)_vp[2]);
-    GLdouble h = tileHeightPix * ((_pmax.v - _pmin.v) / (GLdouble)_vp[3]);
+    GLdouble w0 = tileWidthPix  * ((_pmax.u - _pmin.u) / (GLdouble)_vp[2]);
+    GLdouble h0 = tileHeightPix * ((_pmax.v - _pmin.v) / (GLdouble)_vp[3]);
     //GLdouble d = stagOffsetPix * ((_pmax.u - _pmin.u) / (GLdouble)_vp[2]);
 
     // grid alignment
@@ -6656,22 +6606,22 @@ static int       _renderAP(S52_obj *obj)
     x2  = xyz[3];
     y2  = xyz[4];
 
-    x1  = floor(x1 / w) * w;
-    y1  = floor(y1 / (2*h)) * (2*h);
+    x1  = floor(x1 / w0) * w0;
+    y1  = floor(y1 / (2*h0)) * (2*h0);
 
     // optimisation, resize extent grid to fit window
     if (x1 < _pmin.u)
-        x1 += floor((_pmin.u-x1) / w) * w;
+        x1 += floor((_pmin.u-x1) / w0) * w0;
     if (y1 < _pmin.v)
-        y1 += floor((_pmin.v-y1) / (2*h)) * (2*h);
+        y1 += floor((_pmin.v-y1) / (2*h0)) * (2*h0);
     if (x2 > _pmax.u)
-        x2 -= floor((x2 - _pmax.u) / w) * w;
+        x2 -= floor((x2 - _pmax.u) / w0) * w0;
     if (y2 > _pmax.v)
-        y2 -= floor((y2 - _pmax.v) / h) * h;
+        y2 -= floor((y2 - _pmax.v) / h0) * h0;
 
     // cover completely
-    x2 += w;
-    y2 += h;
+    x2 += w0;
+    y2 += h0;
 
     //PRINTF("PIXEL: tileW:%f tileH:%f\n", tileWidthPix, tileHeightPix);
 
@@ -6701,24 +6651,48 @@ static int       _renderAP(S52_obj *obj)
     // So there is a little discrepancy between S52 pattern size and GLES2
     // (but it has zero impact, as far as I can tell, on the meaning of the pattern)
     {
-        int x = 0;
-        int y = 0;
+        int w = 0;
+        int h = 0;
 
         if (0.0 == stagOffsetPix) {
-            x = ceil(tileWidthPix );
-            y = ceil(tileHeightPix);
+            w = ceil(tileWidthPix );
+            h = ceil(tileHeightPix);
         } else {
-            x = ceil(tileWidthPix  + stagOffsetPix);
-            y = ceil(tileHeightPix * 2);
+            w = ceil(tileWidthPix  + stagOffsetPix);
+            h = ceil(tileHeightPix * 2);
         }
-        x = (x<=8)?8:(x<=16)?16:(x<=32)?32:(x<=64)?64:(x<=128)?128:(x<=256)?256:512;
-        y = (y<=8)?8:(y<=16)?16:(y<=32)?32:(y<=64)?64:(y<=128)?128:(y<=256)?256:512;
+
+        /* Compute the nearest power of 2 number that is 
+         * less than or equal to the value passed in.
+         */
+
+        /*
+        static GLuint nearestPower( GLuint value )
+        {
+            int i = 1;
+
+            if (value == 0) return -1;      // Error!
+
+            for (;;) {
+              if (value == 1) return i;
+              else if (value == 3) return i*4;
+              value >>= 1;
+              i *= 2;
+            }
+        }
+        */
+
+        // FIXME: compute POT (see code above)
+        if (512 < w) g_assert(0);
+        if (512 < h) g_assert(0);
+        w = (w<=8)?8:(w<=16)?16:(w<=32)?32:(w<=64)?64:(w<=128)?128:(w<=256)?256:512;
+        h = (h<=8)?8:(h<=16)?16:(h<=32)?32:(h<=64)?64:(h<=128)?128:(h<=256)?256:512;
 
         GLuint mask_texID = S52_PL_getAPtexID(obj);
         if (0 == mask_texID) {
             glGenTextures(1, &mask_texID);
             glBindTexture(GL_TEXTURE_2D, mask_texID);
-            glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            glTexImage2D (GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
             _checkError("_renderAP() -0.0-");
 
@@ -6733,7 +6707,7 @@ static int       _renderAP(S52_obj *obj)
                 PRINTF("ERROR: glCheckFramebufferStatus() fail: %s\n", S52_PL_getOBCL(obj));
                 g_assert(0);
             } else {
-                PRINTF("OK: glCheckFramebufferStatus(): %s, tile: %i x %i\n", S52_PL_getOBCL(obj), x, y);
+                PRINTF("OK: glCheckFramebufferStatus(): %s, tile: %i x %i\n", S52_PL_getOBCL(obj), w, h);
                 PRINTF("pixels w/h: %f x %f, d: %f\n", tileWidthPix, tileHeightPix, stagOffsetPix);
             }
 
@@ -6801,10 +6775,10 @@ static int       _renderAP(S52_obj *obj)
                 // FIXME: why 0.03 and not 0.3 (ie S52_MAR_DOTPITCH_MM_ X/Y)
                 // FIXME: use _pushScaletoPixel() on _glMatrixSet(VP_PRJ) !!
                 //_glScaled(0.03, 0.03, 1.0);
-                _glScaled(0.03/(tileWidthPix/x), 0.03/(tileHeightPix/y), 1.0);
+                _glScaled(0.03/(tileWidthPix/w), 0.03/(tileHeightPix/h), 1.0);
 
             } else {
-                _glTranslated(x/4.0, y/4.0, 0.0);
+                _glTranslated(w/4.0, h/4.0, 0.0);
                 _glScaled(0.05, -0.05, 1.0);
             }
 
@@ -6846,7 +6820,7 @@ static int       _renderAP(S52_obj *obj)
             if (0.0 != stagOffsetPix) {
                 _glLoadIdentity();
 
-                _glTranslated((x/4.0)*3.0, (y/4.0)*3.0, 0.0);
+                _glTranslated((w/4.0)*3.0, (h/4.0)*3.0, 0.0);
 
                 //_glScaled(0.03, -0.03, 1.0);
                 _glScaled(0.05, -0.05, 1.0);
@@ -6931,8 +6905,8 @@ static int       _renderAP(S52_obj *obj)
         if (0.0 == stagOffsetPix) {
             // this strech the texture
 
-            glUniform1f(_uPattX,    w);        // tile width in world
-            glUniform1f(_uPattY,    h);        // tile height in world
+            glUniform1f(_uPattX,    w0);        // tile width in world
+            glUniform1f(_uPattY,    h0);        // tile height in world
             //glUniform1f(_uPattX,    x);
             //glUniform1f(_uPattY,    y);
             //glUniform1f(_uPattX,    x * ((_pmax.u - _pmin.u) / (GLdouble)_vp[2]));
@@ -6945,8 +6919,8 @@ static int       _renderAP(S52_obj *obj)
         } else {
             //glUniform1f(_uPattX,    w + dx);
             //glUniform1f(_uPattY,    h * 2 );
-            glUniform1f(_uPattX,    x * ((_pmax.u - _pmin.u) / (GLdouble)_vp[2]));
-            glUniform1f(_uPattY,    y * ((_pmax.v - _pmin.v) / (GLdouble)_vp[3]));
+            glUniform1f(_uPattX,    w * ((_pmax.u - _pmin.u) / (GLdouble)_vp[2]));
+            glUniform1f(_uPattY,    h * ((_pmax.v - _pmin.v) / (GLdouble)_vp[3]));
             //glUniform1f(_uPattMaxX, 1.0);
             //glUniform1f(_uPattMaxY, 1.0);
         }
@@ -8218,6 +8192,150 @@ int        S52_GL_isOFFscreen(S52_obj *obj)
     return FALSE;
 }
 
+static guint     _nearestPOT(guint value)
+// nearest POT:
+{
+    int i = 1;
+
+    if (value == 0) return -1;      // Error!
+
+    // test - mallest POT greather than 'value'
+    for (;;) {
+        if (value == 0) return i;
+        value >>= 1;
+        i *= 2;
+    }
+
+    /*
+    // nearest POT
+    for (;;) {
+        if (value == 1) return i;
+        if (value == 3) return i*4;
+        value >>= 1;
+        i *= 2;
+    }
+    */
+}
+
+static int       _newTexture(S52_ras *raster)
+// copy and blend raster 'data' to alpha texture
+{   
+    guint potX = _nearestPOT(raster->w);
+    guint potY = _nearestPOT(raster->h);
+
+    float min  =  INFINITY;
+    float max  = -INFINITY;
+    float safe = S52_MP_get(S52_MAR_SAFETY_CONTOUR) * -1.0;  // change signe
+    float *dataf = (float*) raster->data;
+    unsigned char *texAlpha = g_new0(unsigned char, potX * potY);
+    unsigned char *texTmp   = texAlpha;
+    guint count = raster->w * raster->h;
+
+    for (guint i=0; i<count; ++i) {
+        if (-9999 == dataf[i])
+            continue;
+
+        min = MIN(dataf[i], min);
+        max = MAX(dataf[i], max);
+
+        int Yline = i/raster->w;
+        int k     = i - Yline*raster->w;
+
+        if ((safe/2.0) <= dataf[i]) {
+            //texTmp[Yline*potX + k] = 100;
+            texTmp[Yline*potX + k] = 0;
+            continue;
+        }
+        if (safe <= dataf[i]) {
+            texTmp[Yline*potX + k] = 255;
+            continue;
+        }
+        if ((safe-2.0) <= dataf[i]) {
+            texTmp[Yline*potX + k] = 100;
+            continue;
+        }
+    }
+    raster->min      = min;
+    raster->max      = max;
+    raster->potX     = potX;
+    raster->potY     = potY;
+    raster->texAlpha = texAlpha;
+
+    return TRUE;
+}
+
+
+int        S52_GL_drawRaster(S52_ras *raster)
+{
+    // bailout if not in view
+    // NOTE: extent are reverse in N-S to flip raster in Y
+    //if ((raster->W < _pmin.u) || (raster->S < _pmin.v) || (raster->E > _pmax.u) || (raster->N > _pmax.v)) {
+    if ((raster->E < _pmin.u) || (raster->S < _pmin.v) || (raster->W > _pmax.u) || (raster->N > _pmax.v)) {
+    //if ((raster->W < _pmin.u) || (raster->N < _pmin.v) || (raster->E > _pmax.u) || (raster->S > _pmax.v)) {
+        return TRUE;
+    }
+
+    if (0 == raster->texID) {
+        _newTexture(raster);
+
+        glGenTextures(1, &raster->texID);
+        glBindTexture(GL_TEXTURE_2D, raster->texID);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->potX, raster->potY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+        _checkError("S52_GL_drawRaster() -1.0-");
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        // debug
+        PRINTF("DEBUG: MIN=%f MAX=%f\n", raster->min, raster->max);
+    }
+
+    S52_Color *dnghl = S52_PL_getColor("DNGHL");
+    glUniform4f(_uColor, dnghl->R/255.0, dnghl->G/255.0, dnghl->B/255.0, (4 - (dnghl->trans - '0'))*TRNSP_FAC_GLES2);
+
+    _glMatrixMode(GL_MODELVIEW);
+    _glLoadIdentity();
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+    float fracX = (float)raster->w/(float)raster->potX;
+    float fracY = (float)raster->h/(float)raster->potY;
+    vertex_t ppt[4*3 + 4*2] = {
+        raster->W, raster->S, 0.0,        0.0f, 0.0f,
+        raster->W, raster->N, 0.0,        0.0f,  fracY,
+        raster->E, raster->N, 0.0,        fracX, fracY,
+        raster->E, raster->S, 0.0,        fracX, 0.0f
+    };
+
+    glEnableVertexAttribArray(_aUV);
+    glVertexAttribPointer(_aUV, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
+
+    glEnableVertexAttribArray(_aPosition);
+    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
+
+    glUniform1f(_uStipOn, 1.0);
+    glBindTexture(GL_TEXTURE_2D, raster->texID);
+
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    _checkError("_renderAP_NODATA_layer0 -4-");
+
+    glBindTexture(GL_TEXTURE_2D,  0);
+
+    glUniform1f(_uStipOn, 0.0);
+
+    glDisableVertexAttribArray(_aUV);
+    glDisableVertexAttribArray(_aPosition);
+
+
+    return TRUE;
+}
+
 int        S52_GL_drawLIGHTS(S52_obj *obj)
 // draw lights
 {
@@ -8432,8 +8550,9 @@ static int       _contextValid(void)
         const GLubyte *renderer   = glGetString(GL_RENDERER);
         //const GLubyte *extensions = glGetString(GL_EXTENSIONS);
         const GLubyte *version    = glGetString(GL_VERSION);
+        const GLubyte *slglver    = glGetString(GL_SHADING_LANGUAGE_VERSION);
 
-        PRINTF("\nVendor:%s\nRenderer:%s\nVersion:%s\n", vendor, renderer, version);
+        PRINTF("\nVendor:%s\nRenderer:%s\nVersion:%s\nShader:%s\n", vendor, renderer, version, slglver);
     }
 
 
@@ -8809,6 +8928,12 @@ int        S52_GL_end(int drawLast)
     //    glFinish();
     //}
 
+    // debug Raster
+    //if (TRUE == drawLast) {
+    //    unsigned char pixels;
+    //    S52_GL_drawRaster(&pixels);
+    //}
+
     return TRUE;
 }
 
@@ -8855,6 +8980,25 @@ int        S52_GL_del(S52_obj *obj)
 #endif
 
     _checkError("S52_GL_del()");
+
+    return TRUE;
+}
+
+int        S52_GL_delRaster(S52_ras *raster, int texOnly)
+{
+    g_free(raster->texAlpha);
+    raster->texAlpha = NULL;
+    glDeleteTextures(1, &raster->texID);
+    raster->texID = 0;
+
+    if (TRUE != texOnly) {
+        g_string_free(raster->fname, TRUE);
+        raster->fname = NULL;
+        g_free(raster->data);
+        raster->data = NULL;
+    }
+
+    _checkError("S52_GL_delRaster()");
 
     return TRUE;
 }
@@ -8960,7 +9104,7 @@ int        S52_GL_init_GLES2(void)
         "       v_texCoord.x = (aPosition.x - uPattOffX) / uPattX; \n"
         "       v_texCoord.y = (aPosition.y - uPattOffY) / uPattY; \n"
         "   } else {                       \n"
-        "     v_texCoord = aUV;            \n"
+        "       v_texCoord = aUV;          \n"
         "   }                              \n"
         "   gl_PointSize = uPointSize;     \n"
         "}                                 \n";
@@ -8985,25 +9129,36 @@ int        S52_GL_init_GLES2(void)
 //        "uniform float     uPattMaxY;  \n"
         "uniform float     uGlowOn;    \n"
         "uniform float     uStipOn;    \n"
+        "uniform float     uRasterOn;  \n"
+        "uniform float     uDepth;     \n"
         "uniform vec4      uColor;     \n"
         "                              \n"
         "varying vec2  v_texCoord;     \n"
 //        "varying float v_pattOn;       \n"
         "varying float v_alpha;        \n"
-//        "varying float v_cnt;          \n"
-//        "varying vec2  v_coords;       \n"
-//        "varying float v_tmp;          \n"
         "                              \n"
-        "vec2 coords;                  \n"
+        "float depth;                  \n"
+        "                              \n"
         "void main(void)               \n"
         "{                             \n"
+
+//        "{gl_FragColor = uColor;}      \n";
+//        "{    textureLod(uSampler2d, v_texCoord, 0.0);                         \n"
+
+
+//        "    if (1.0 == uRasterOn) {   \n"
+//        "       depth = texture2D(uSampler2d, v_texCoord).x;  \n"
+//        "       depth = gl_DepthRange.diff;         \n"
+//        "                                                     \n"
+//        "       if (uDepth > depth) {                         \n"
+//        "           gl_FragColor = uColor;                    \n"
+//        "       }                      \n"
+//        "    }                         \n"
         "                              \n"
         "    if (1.0 == uStipOn) {     \n"
         "       gl_FragColor = texture2D(uSampler2d, v_texCoord); \n"
         "       gl_FragColor.rgb = uColor.rgb;                    \n"
         "    } else {                  \n"
-        "                              \n"
-        "                              \n"
         "                              \n"
         "    if (1.0 == uBlitOn) {     \n"
         "       gl_FragColor = texture2D(uSampler2d, v_texCoord);\n"
@@ -9011,20 +9166,7 @@ int        S52_GL_init_GLES2(void)
         "    else                            \n"
         "    {                               \n"
             "    if (1.0 == uPattOn) {          \n"
-//            "       coords.x = v_texCoord.x;                      \n"
-//            "       coords.y = v_texCoord.y;                      \n"
-//            "       coords.x = v_texCoord.x * uPattMaxX;                      \n"
-//            "       coords.y = v_texCoord.y * uPattMaxY;                      \n"
-//            "       coords.x = clamp(v_texCoord.x, 0.0, uPattMaxX);                      \n"
-//            "       coords.y = clamp(v_texCoord.y, 0.0, uPattMaxY);                      \n"
-//            "       coords.x = v_texCoord.x / uPattMaxX;                      \n"
-//            "       coords.y = v_texCoord.y / uPattMaxY;                      \n"
-//            "       if (0.5 < fract(coords.x)) {coords.x -= 0.5;}          \n"
-//            "       if (0.5 < fract(coords.y)) {coords.y -= 0.5;}          \n"
-//            "       if (uPattMaxX < fract(v_texCoord.x)) {discard;}          \n"
-//            "       if (uPattMaxY < fract(v_texCoord.y)) {discard;}          \n"
             "       gl_FragColor = texture2D(uSampler2d, v_texCoord);\n"
-//            "       gl_FragColor = texture2D(uSampler2d, coords);\n"
             "       gl_FragColor.rgb = uColor.rgb; \n"
 // debug
 //            "       gl_FragColor = vec4( v_texCoord.x, v_texCoord.y, 0.0, 1.0 );  \n"
@@ -9032,14 +9174,12 @@ int        S52_GL_init_GLES2(void)
             "    else                              \n"
             "    {                                 \n"
                 "    if (0.0 < uGlowOn) {          \n"
-//                "       if (0.5 < (gl_PointCoord.s + gl_PointCoord.t)) {      \n"
 //                "       if (1.0 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) + (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) {      \n"
                 "       if (0.5 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) + (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) {      \n"
-//                    "       gl_FragColor   = v_color;   \n"
                     "       gl_FragColor   = uColor;    \n"
                     "       gl_FragColor.a = v_alpha;   \n"
                     "   }                               \n"
-                    "      else {                       \n"
+                    "   else {                          \n"
                     "       discard;                    \n"
                     "   }                               \n"
                 "    }                                  \n"
@@ -9052,7 +9192,7 @@ int        S52_GL_init_GLES2(void)
             "}                                   \n"
             "}                                   \n"
         "}                                   \n";
-
+//*/
 
     //============ J U N K ==============================
     //        "       x = gl_FragCoord.x;    \n"
@@ -9764,13 +9904,13 @@ guchar    *S52_GL_readFBPixels(void)
 }
 
 #include "gdal.h"  // GDAL stuff to write .PNG
-
 int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height)
 // FIXME: width/height rounding error all over - fix: +0.5
 // to test 2 PNG using Python Imaging Library (PIL):
+// FIXME: move GDAL stuff to S52.c (and remove gdal.h)
 {
-    GDALDriverH   driver  = NULL;
-    GDALDatasetH  dataset = NULL;
+    GDALDriverH  driver  = NULL;
+    GDALDatasetH dataset = NULL;
 
     return_if_null(toFilename);
 
@@ -9794,6 +9934,7 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
             PRINTF("WARNING: dump height (%i) exceeded viewport height (%i)\n", height, _vp[3]);
             return FALSE;
         }
+
         // get extent to compute center in pixels coords
         double x1, y1, x2, y2;
         S57_geo  *geoData = S52_PL_getGeo(obj);
@@ -9810,10 +9951,8 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         p = _prj2win(p);
 
         // FIXME: what happen if the viewport change!!
-        //x = p.u - width/2;
-        if ((p.u - width/2)  <      0) x = width/2;
-        if ((x   + width  )  > _vp[2]) x = _vp[2] - width;
-        //y = p.v - height/2;
+        if ((p.u - width/2 ) <      0) x = width/2;
+        if ((x   + width   ) > _vp[2]) x = _vp[2] - width;
         if ((p.v - height/2) <      0) y = height/2;
         if ((y   + height  ) > _vp[3]) y = _vp[3] - height;
     }
@@ -9846,8 +9985,6 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
 
     // get framebuffer pixels
     guint8 *pixels = g_new0(guint8, width * height * 3);
-    //guint x = p.u-((int)width  / 2.0 );
-    //guint y = p.v-((int)height / 2.0 );
 
 #ifdef S52_USE_GLES2
     glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
@@ -9857,10 +9994,9 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     glReadBuffer(GL_BACK);
 #endif
 
+    //FIXME: use something like glPixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
-    //*
-    // flip vertically
-    {
+    {   // flip vertically
         guint8 *flipbuf = g_new0(guint8, width * height * 3);
         for (guint i=0; i<height; ++i) {
             memcpy(flipbuf + ((height-1) - i) * width * 3,
@@ -9870,7 +10006,7 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         g_free(pixels);
         pixels = flipbuf;
     }
-    //*/
+
     // write to temp file
     GDALRasterIO(bandR, GF_Write, 0, 0, width, height, pixels+0, width, height, GDT_Byte, 3, 0 );
     GDALRasterIO(bandG, GF_Write, 0, 0, width, height, pixels+1, width, height, GDT_Byte, 3, 0 );
@@ -9908,8 +10044,14 @@ int        S52_GL_drawFBPixels(void)
 
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
     if (TRUE == _update_fb) {
-        //PRINTF("DEBUG:glTexImage2D()\n");
+        // work with NPOT
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+
+        // FIXME: check if this is faster
+        //glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels);
+        //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+        //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 512, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+        //_checkError("S52_GL_drawFBPixels() -1.0-");
     }
 
     // turn ON 'sampler2d'

@@ -159,21 +159,8 @@ size_t   S52_strlen(const char *str)
 //#else
 //    return strlen(str);
 //#endif
-
-    /*
-    int len = 0;
-
-    register const char *s;
-
-    // BUG: int roll over
-    for (s = str; *s; s++, len++)
-        ;
-
-    return len;
-    */
 }
 
-//gchar* S52_strstr(const gchar *haystack, const gchar *needle)
 char*    S52_strstr(const char *haystack, const char *needle)
 {
 #ifdef S52_USE_GLIB2

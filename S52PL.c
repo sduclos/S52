@@ -1514,14 +1514,12 @@ static int        _parseLBID(_PL *fp)
 
 static _colTable *_findColTbl(const char *tblName)
 {
-    //unsigned int i = 0;
-
     return_if_null(tblName);
 
     for (guint i=0; i<_colTables->len; ++i) {
         _colTable *pct =  &g_array_index(_colTables, _colTable, i);
-        //if (0 == strcmp(tblName, pct->tableName->str))
-        if (0 == g_ascii_strcasecmp(tblName, pct->tableName->str))
+        //if (0 == g_ascii_strcasecmp(tblName, pct->tableName->str))
+        if (0 == g_strcmp0(tblName, pct->tableName->str))
             return pct;
     }
 
@@ -1536,7 +1534,6 @@ static int        _readColor(_PL *fp)
     _readS52Line(fp, pBuf);
     while ( 0 != strncmp(pBuf, "****",4)) {
         S52_Color c;
-        //int idx = 0;
 
         // debug
         //PRINTF("%s\n", pBuf);
@@ -3006,10 +3003,11 @@ S57_geo    *S52_PL_setGeo(_S52_obj *obj, S57_geo *geoData)
 }
 
 const char *S52_PL_getOBCL(_S52_obj *obj)
+// NOTE: geoData.name is the same as LUP.OBCL
+// (ie S57_getName(geo))
 {
     return_if_null(obj);
 
-    // NOTE: geoData.name is the same as LUP.OBCL
     if (NULL == obj->LUP)
         return S57_getName(obj->geoData);
     else

@@ -24,10 +24,6 @@
 
 // NOTE: remarks commenting each CS are extracted from pslb03_2.pdf (sec. 12)
 
-// FIXME: DEPCNT02: call DB for area DEPARE & DRGARE that intersect this line
-// FIXME:_DEPVAL01: call DB for area DEPARE & UNSARE that intersect this area
-// FIXME:_UDWHAZ03: call DB for area DRGARE & DEPARE that intersect this point/area
-
 #include "S52CS.h"
 #include "S52MP.h"      // S52_MP_get/set()
 #include "S52utils.h"   // PRINTF(), S52_atof(), S52_atoi()
@@ -1018,14 +1014,9 @@ static GString *DEPCNT02 (S57_geo *geo)
             } else {
             //    else {
                     // collect area DEPARE & DRGARE that touch this line
-                    //S57_geo *geoTmp    = S57_getTouchDEPARE(geo);
-                    //GString *drval1str = S57_getAttVal(geoTmp, "DRVAL1");
-                    //double   drval1    = (NULL == drval1str) ? 0.0 : S52_atof(drval1str->str);
                     S57_geo *geoTouch       = S57_getTouchDEPARE(geo);
                     GString *drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
                     double   drval1touch    = (NULL == drval1touchstr) ? 0.0 : S52_atof(drval1touchstr->str);
-                    //drval1str = S57_getAttVal(geoTmp, "DRVAL1");
-                    //drval1    = (NULL == drval1str) ? 0.0 : S52_atof(drval1str->str);
 
                     // adjuste datum
                     if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
@@ -1147,8 +1138,6 @@ static GString *DEPCNT02 (S57_geo *geo)
     }
 
     if (safe) {
-        //S57_setAtt(geo, "SCAMIN", "INFINITY");
-        //S57_setScamin(geo, (1.0/0.0));
         S57_setScamin(geo, INFINITY);
         depcnt02 = g_string_prepend(depcnt02, ";OP(8OD13010)");
     } else

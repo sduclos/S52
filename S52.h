@@ -52,10 +52,10 @@ typedef enum S52MarinerParameter {
     S52_MAR_NONE                =  0,   // default
     S52_MAR_SHOW_TEXT           =  1,   // view group 23 (on/off)
     S52_MAR_TWO_SHADES          =  2,   // flag indicating selection of two depth shades (on/off) [default ON]
-    S52_MAR_SAFETY_CONTOUR      =  3,   // selected safety contour (meters) [IMO PS 3.6]
-    S52_MAR_SAFETY_DEPTH        =  4,   // selected safety depth (for sounding) (meters) [IMO PS 3.7]
-    S52_MAR_SHALLOW_CONTOUR     =  5,   // selected shallow water contour (meters) (optional)
-    S52_MAR_DEEP_CONTOUR        =  6,   // selected deepwatercontour (meters) (optional)
+    S52_MAR_SAFETY_CONTOUR      =  3,   // S52_LINES: selected safety contour (meters) [IMO PS 3.6]
+    S52_MAR_SAFETY_DEPTH        =  4,   // S52_POINT:selected safety depth (for sounding color) (meters) [IMO PS 3.7]
+    S52_MAR_SHALLOW_CONTOUR     =  5,   // S52_AREAS: selected shallow water contour (meters) (optional) [OFF==S52_MAR_TWO_SHADES]
+    S52_MAR_DEEP_CONTOUR        =  6,   // S52_AREAS: selected deepwater contour (meters) (optional)
     S52_MAR_SHALLOW_PATTERN     =  7,   // flag indicating selection of shallow water highlight (on/off)(optional) [default OFF]
     S52_MAR_SHIPS_OUTLINE       =  8,   // flag indicating selection of ship scale symbol (on/off) [IMO PS 8.4]
     S52_MAR_DISTANCE_TAGS       =  9,   // selected spacing of "distance to run" tags at a route (nm) [default 0.0 - OFF]
@@ -124,7 +124,9 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_DISP_VRMEBL_LABEL   = 44,   // display bearing / range label on VRMEBL (on/off)
 
-    S52_MAR_NUM                 = 45    // number of parameters
+    S52_MAR_DISP_RASTER         = 45,   // display Raster:RADAR,Bathy,... (on/off) (default off)
+
+    S52_MAR_NUM                 = 46    // number of parameters
 } S52MarinerParameter;
 
 // debug - command word filter for profiling

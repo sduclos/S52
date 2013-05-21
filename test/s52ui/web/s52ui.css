@@ -70,15 +70,17 @@ ul {
   font-size        : 40pt;
   font-weight      : bold;
   display          : none;
-  //display         : inline-block;
-  //-webkit-transform : translate(200px,200px);        // OK
-  //-webkit-transform : translate3d(200px,200px,0px);  // OK
+  /*
+  display          : inline-block;
+  -webkit-transform : translate(200px,200px);        // OK
+  -webkit-transform : translate3d(200px,200px,0px);  // OK
+  */
 }
 #svg1g {
-  //display         : none;
+  display         : none;
 }
 #svg1rect {
-  //display         : inline-block;
+  /* display         : inline-block; */
 }
 #svg1text {
 }

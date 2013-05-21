@@ -558,7 +558,8 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         _ais_t newais;
         newais.mmsi     = mmsi;
         newais.status   = -1;     // 0 indicate that status form report is needed
-        newais.name[AIS_SHIPNAME_MAXLEN + 1] = '\0';
+        //newais.name[AIS_SHIPNAME_MAXLEN + 1] = '\0';
+        newais.name[0]  = '\0';
         g_get_current_time(&newais.lastUpdate);
         newais.course   = -1.0;
         newais.speed    =  0.0;
@@ -1154,12 +1155,13 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
         // AIS MSG TYPE 8: Broadcast Binary Message [mmsi:3160026, dac:316, fid:19]
         // DAC 316 - Canada
         // FID  19 - ???
-        g_print("AIS MSG TYPE 8 - Broadcast Binary Message [mmsi:%i, dac:%i, fid:%i]\n",
-                gpsdata->ais.mmsi, gpsdata->ais.type8.dac, gpsdata->ais.type8.fid);
+        g_print("AIS MSG TYPE 8 - Broadcast Binary Message [mmsi:%i, dac:%i, fid:%i, bitdata:%s]\n",
+                gpsdata->ais.mmsi, gpsdata->ais.type8.dac, gpsdata->ais.type8.fid, gpsdata->ais.type8.bitdata);
 
 
         // add a dummy entry to signal that GPSD is on-line
         //_setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 8 - Broadcast Binary Message");
+        _setAISLab(gpsdata->ais.mmsi,   "Broadcast Bin Msg");
 
         return;
     }
@@ -1167,7 +1169,8 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
 	// Type 20 - Data Link Management Message
     if (20 == gpsdata->ais.type) {
         // add a dummy entry to signal that GPSD is on-line
-        _setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 20 - Data Link Management Message");
+        //_setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 20 - Data Link Management Message");
+        _setAISLab(gpsdata->ais.mmsi,   "Data Link Mng Msg");
 
         return;
     }
@@ -1221,15 +1224,13 @@ static gpointer      _gpsdClientRead(gpointer dummy)
 {
     g_print("s52ais:_gpsdClientRead(): start looping ..\n");
 
-    //if (0 != gps_open("localhost", "2947", &_gpsdata)) {   // android (gpsd 2.96)
     while (0 != gps_open("localhost", "2947", &_gpsdata)) {   // android (gpsd 2.96)
+        g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec: %d, %s\n", errno, gps_errstr(errno));
+
         // Note: g_print() work on android only when the main loop is running
-#ifdef S52_USE_ANDROID
-        //LOGI   ("_gpsdClientRead(): no gpsd running or network error, wait 1 sec: %d, %s\n", errno, gps_errstr(errno));
-        g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec: %d, %s\n", errno, gps_errstr(errno));
-#else
-        g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec: %d, %s\n", errno, gps_errstr(errno));
-#endif
+        // debug - read glib events (for g_print())
+        while (g_main_context_iteration(NULL, FALSE))
+            ;
 
         g_usleep(1000 * 1000); // 1.0 sec
     }
@@ -1262,11 +1263,6 @@ static gpointer      _gpsdClientRead(gpointer dummy)
             g_static_mutex_lock(&_ais_list_mutex);
             _updateTimeTag();
             g_static_mutex_unlock(&_ais_list_mutex);
-
-            // debug - try to wake up the connection to gpsd (it seem to fall asleep on android)
-            //if (-1 == gps_stream(&_gpsdata, WATCH_ENABLE|WATCH_NEWSTYLE, NULL)) {
-            //    g_print("_gpsdClientRead():gps_stream() fail\n");
-            //}
 
             // read glib events
             while (g_main_context_iteration(NULL, FALSE))
@@ -1303,7 +1299,6 @@ static gpointer      _gpsdClientRead(gpointer dummy)
 #ifndef S52AIS_STANDALONE
 int            s52ais_updateTimeTag(void)
 // then adjust time tag of AIS
-// in S52GPS_STANDALONE this call is useless
 {
     g_static_mutex_lock(&_ais_list_mutex);
 
@@ -1399,7 +1394,6 @@ int            s52ais_initAIS(void)
     if (NULL == _ais_list) {
         _ais_list = g_array_new(FALSE, TRUE, sizeof(_ais_t));
     } else {
-        //LOGI("s52gps_initAIS(): bizzard case where we are restarting a running process!!\n");
         g_print("s52ais:s52ais_initAIS(): bizzard case where we are restarting a running process!!\n");
 
         g_static_mutex_unlock(&_ais_list_mutex);
@@ -1430,15 +1424,9 @@ int            s52ais_initAIS(void)
 
 // no thread needed in standalone
 #ifndef S52AIS_STANDALONE
-
-#define _g_thread_create(func, data, joinable, error)           \
-        (g_thread_create_full(func, data, 0, joinable, FALSE, G_THREAD_PRIORITY_NORMAL, error))
-    //_gpsClientThread = _g_thread_create(_gpsdClientRead, NULL, TRUE, NULL);
-
     // not joinable - gps done will not wait
     _gpsClientThread = g_thread_create_full(_gpsdClientRead, NULL, 0, FALSE, TRUE, G_THREAD_PRIORITY_NORMAL, NULL);
 #endif
-
 
     // setup timer
     g_get_current_time(&_timeTick);

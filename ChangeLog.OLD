@@ -2,10 +2,14 @@
 #                The 'real' ChangeLog is generated with the Perl script cvs2cl.pl
 #
 
+
+2013MAY21
+    -add Raster .tif, must be allready projected to Mercator
+
 2013APR28
     -fix rendering of accented char in TE & TX
     -add doc/ogrfeature.cpp.diff, to document the change on OGR to compute line overlap
-    
+
 2013APR21
     -fix cursorPick GEO filter
 

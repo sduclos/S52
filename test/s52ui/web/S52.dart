@@ -14,16 +14,16 @@ class S52 {
   Map       _data      = parse('{"id":1,"method":"???","params":["???"]}');
   int       _id        = 1;
   //WebSocket _ws;
-  
+
   Stopwatch _stopwatch = new Stopwatch();
-  
+
   // call drawLast() at interval
   Timer _timer        = null;
   bool  _cancelTimer  = false;
-  
+
   //var width;
   //var height;
-  
+
   // S52 color for UI element
   List UIBCK;  // background
   List UINFF;  // text
@@ -63,24 +63,26 @@ class S52 {
   static const int CMD_WRD_FILTER_AC          =        8;  // 1 << 3; 001000 - AC
   static const int CMD_WRD_FILTER_AP          =       16;  // 1 << 4; 010000 - AP
   static const int CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
-  
+
   S52() {
     //js.context.rcvS52Msg = new js.Callback.many(rcvMsg);
-    js.context.onMessage = new js.Callback.many(rcvMsg);
+    //js.context.onMessage = new js.Callback.many(rcvMsg);
+    js.context.websocket.onmessage = new js.Callback.many(rcvMsg);
 
     _drawLastTimer();
   }
   _drawLastTimer() {
     if (null != _timer)
       return;
-    
+
     // call drawLast every second (1000 msec)
     _timer = new Timer.periodic(new Duration(milliseconds: 2000), (timer) {
       //drawLast().then((ret) {});
-      
-      drawLast().then(      (ret) {})
-                .catchError((err) {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');} );
-                
+
+      drawLast()
+        .then(      (ret) {})
+        .catchError((err) {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');} );
+
 
       // FIXME: can't make onError / catchError work
       //drawLast().then      (    (ret)          {print('_drawLastTimer(): then       ... &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&');},
@@ -88,7 +90,7 @@ class S52 {
       //          .catchError(     (e)           {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');});
     });
   }
-  
+
   //rcvMsg(str) {
   rcvMsg(var evt) {
     // receive S52/JSON msg from WebSocket (Cordova) in s52ui.html
@@ -117,7 +119,7 @@ class S52 {
     }
 
     _stopwatch.stop();
-    print("roundtrip: ${_stopwatch.elapsedMilliseconds}msec"); 
+    print("roundtrip: ${_stopwatch.elapsedMilliseconds}msec");
     print('rcvMsg():receive JSON str from libS52: $str');
 
 
@@ -125,7 +127,7 @@ class S52 {
     _completer.complete(data['result']);
 
     // restart timer if need be
-    _drawLastTimer(); 
+    _drawLastTimer();
   }
   Future<List> _sendMsg(String str) {
     // send S52/JSON msg to WebSocket (Cordova) in s52ui.html
@@ -134,11 +136,12 @@ class S52 {
 
     _completer = new Completer();
 
-    js.context.sndS52Msg(str);
-    
+    //js.context.sndS52Msg(str);
+    js.context.websocket.send(str);
+
     return _completer.future;
   }
-  
+
   // alternate way of calling libS52 - one call for all S52.h calls
   Future<List> send(var cmdName, var params) {
     _data["id"    ] = _id;
@@ -149,10 +152,10 @@ class S52 {
     return _sendMsg(jsonCmdstr);
   }
 
-  
+
   ////////////////////// FIXME: REFACTOR use send() ////////////////////////////////
   // pro: less code
-  // con: lost of info .. doesn't mirror S52.h well since all call info would be 
+  // con: lost of info .. doesn't mirror S52.h well since all call info would be
   // littered across s52ui.dart
   Future<List> drawLast() {
     if (null!=_completer && false==_completer.isCompleted) {
@@ -164,7 +167,7 @@ class S52 {
       //throw new AsyncError('error');
       //return _completer.future;
     }
-    
+
     _data["id"    ] = _id;
     _data["method"] = "S52_drawLast";
     _data["params"] = [];
@@ -177,7 +180,7 @@ class S52 {
     _data["method"] = "S52_getMarinerParam";
     _data["params"] = [param];
     String jsonCmdstr = stringify(_data);
-    
+
     return _sendMsg(jsonCmdstr);
   }
   Future<List> setMarinerParam(int param, double value) {
@@ -205,7 +208,7 @@ class S52 {
     return _sendMsg(jsonCmdstr);
   }
   // FIXME: mistery .. no call to EGL and this call still work it seem
-  // Now call to EGL is done trough callback from libS52 
+  // Now call to EGL is done trough callback from libS52
   Future<List> draw() {
     _data["id"    ] = _id;
     _data["method"] = "S52_draw";
