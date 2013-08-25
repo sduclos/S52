@@ -1,4 +1,4 @@
-README: test and developement notes
+README: test and development notes
 
 In this folder is all the various branch for target
 using/testing/experimenting on top of libS52.so.
@@ -31,10 +31,10 @@ Makefile Target:
   Android
 
 - s52ais
-  gpsd cleint to feed AIS to s52eglx and s52android
+  gpsd cleint to feed AIS to s52eglx and s52droid
 
 - sl4agps (s52ui will replace this eventually)
-  feed android's GPS/GYRO to s52android
+  feed android's GPS/GYRO to s52droid
   also some libS52.so test via android UI
 
 

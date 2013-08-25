@@ -26,8 +26,9 @@
     <script type="text/javascript" src="js/websocket.js">     </script>
 
     <!-- dart code -->
-    <script type="application/dart" src="s52ui.dart">               </script>
-    <script type="text/javascript"  src="packages/browser/dart.js"> </script>
+    <script type="text/javascript"  src="packages/browser/dart.js">    </script>
+    <script type="text/javascript"  src="packages/browser/interop.js"> </script>
+    <script type="application/dart" src="s52ui.dart">                  </script>
 
   </head>
 
@@ -50,7 +51,7 @@
         websocket.onopen    = function(evt) { onOpen(evt)    };
         websocket.onclose   = function(evt) { onClose(evt)   };
         websocket.onerror   = function(evt) { onError(evt)   };
-        //websocket.onmessage = function(evt) { onMessage(evt) };
+        websocket.onmessage = function(evt) { onMessage(evt) };
 
         // cordova define android "menubutton", "backbutton"
         // FIXME: use a button or TAB menu to toggle touch
@@ -76,7 +77,7 @@
       function onClose(evt)   { console.log("s52ui.html:Websock:onClose():" + evt + "<<<"); }
       function onError(evt)   { console.log("s52ui.html:Websock:onError():" + evt + "<<<"); }
       //function toggleUI(evt)  { toggleUIEvent(evt);        }
-      function toggleUI()  {}
+      function toggleUI()     {}
       //function  closeUI(evt)  {  closeUIEvent(evt);        }
 
       function orientation()  { orientationChg(window.orientation, window.innerWidth, window.innerHeight);}

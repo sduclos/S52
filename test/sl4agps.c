@@ -38,9 +38,9 @@
 
 #define RAD_TO_DEG         57.29577951308232
 
-#define PATH "/data/media"     // android 4.1
-//#define PATH "/data/media/0" // android 4.2
-#define GPS   PATH "/s52droid/bin/sl4agps"
+//#define PATH "/data/media"     // android 4.1
+#define PATH "/sdcard/s52droid"  // android 4.2
+#define GPS   PATH "/bin/sl4agps"
 #define PID  ".pid"
 
 static char _localhost[] = "127.0.0.1";
@@ -657,7 +657,7 @@ static int      _sl4a_fullShow   (void)
     gsize   len    = 0;
     //gchar  *retstr = NULL;
 
-    if (TRUE == g_file_get_contents(PATH "/s52android/UI.xml", &layout, &len, &error)) {
+    if (TRUE == g_file_get_contents(PATH "/UI.xml", &layout, &len, &error)) {
         _flattenstr(layout, len);
         //retstr =
         _send_cmd(&_sl4a_connectionA, "fullShow", layout);
@@ -975,7 +975,7 @@ static int      _sl4a_parseEvent (void)
         gchar **pstr = g_strsplit_set(cellNmliststr, "[',]}", 0);
 
 
-        GDir *encdir = g_dir_open(PATH "/s52android/ENC_ROOT", 0, NULL);
+        GDir *encdir = g_dir_open(PATH "/ENC_ROOT", 0, NULL);
         if (NULL != encdir) {
             int          adddelim = FALSE;
             const gchar *encstr   = NULL;
@@ -1055,7 +1055,7 @@ static int      _sl4a_parseEvent (void)
             if (NULL != positionstr) {
                 int i = (int)g_ascii_strtod(positionstr+12, NULL);
 
-                GDir *encdir = g_dir_open(PATH "/s52android/ENC_ROOT", 0, NULL);
+                GDir *encdir = g_dir_open(PATH "/ENC_ROOT", 0, NULL);
                 if (NULL != encdir) {
                     int          count  = 0;
                     const gchar *encstr = NULL;
@@ -1066,10 +1066,10 @@ static int      _sl4a_parseEvent (void)
                             _send_cmd(&_sl4a_connectionA, "fullDismiss", "");
                             _send_cmd(&_sl4a_connectionA, "makeToast", encstrstr);  // v=a
 
-                            const gchar *retstr = _s52_encodeNsend("S52_loadCell", "\"%s/s52android/ENC_ROOT/%s\"", PATH, encstr);
+                            const gchar *retstr = _s52_encodeNsend("S52_loadCell", "\"%s/ENC_ROOT/%s\"", PATH, encstr);
                             //g_print("sl4agps:DEBUG:%s\n", retstr);
                             if ((NULL!=retstr) && ('0'==*(retstr+1)))
-                                _s52_encodeNsend("S52_doneCell", "\"%s/s52android/ENC_ROOT/%s\"", PATH, encstr);
+                                _s52_encodeNsend("S52_doneCell", "\"%s/ENC_ROOT/%s\"", PATH, encstr);
 
                             _s52_encodeNsend("S52_draw", "");
 

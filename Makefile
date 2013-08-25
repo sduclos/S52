@@ -143,7 +143,6 @@ CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl egl` \
          -DS52_USE_FTGL                                \
          -DS52_USE_GLIB2                               \
          -DS52_USE_PROJ                                \
-         -DS52_USE_SUPP_LINE_OVERLAP                   \
          -DS52_USE_BACKTRACE                           \
          -DS52_USE_OPENGL_VBO                          \
          -DS52_DEBUG $(DBG)

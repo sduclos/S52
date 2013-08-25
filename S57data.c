@@ -33,8 +33,7 @@ static projPJ      _pjdst   = NULL;   // projection destination
 static int         _doInit  = TRUE;   // will set new src projection
 static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 //static const char *_argsdst = "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
-// Note: ../../../FWTools/FWTools-2.0.6/bin/gdalwarp -t_srs "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs" \
-// 46307260_LOD2.tif 46307260_LOD2.merc.tif
+// Note: ../../../FWTools/FWTools-2.0.6/bin/gdalwarp -t_srs "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs" 46307260_LOD2.tif 46307260_LOD2.merc.tif
 #endif
 
 // MAXINT-6 is how OGR tag an UNKNOWN value

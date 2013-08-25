@@ -1217,7 +1217,6 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
 }
 
 static GString *LEGLIN02 (S57_geo *geo)
-
 // Remarks: The course of a leg is given by its start and end point. Therefore this
 // conditional symbology procedure calculates the course and shows it
 // alongside the leg. It also places the "distance to run" labels and cares for the
@@ -1254,7 +1253,6 @@ static GString *LEGLIN02 (S57_geo *geo)
 }
 
 static GString *LEGLIN03 (S57_geo *geo)
-
 // Remarks: The course of a leg is given by its start and end point. Therefore this
 // conditional symbology procedure calculates the course and shows it
 // alongside the leg. It also places the "distance to run" labels and cares for the

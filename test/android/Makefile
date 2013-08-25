@@ -12,9 +12,10 @@ APKNAME = s52droid-debug.apk
 all: build.xml bin/$(APKNAME)
 #all: bin/$(APKNAME)
 
-# Based on Android 4.1.2 (API level 16)
+# Android 4.1.2 (API level 16)
+# Android 4.2.2 (API level 17)
 build.xml: AndroidManifest.xml
-	android update project -p . -t "android-14" -n s52droid
+	android update project -p . -t "android-17" -n s52droid
 
 bin/$(APKNAME):
 	ndk-build -B V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1
@@ -22,11 +23,11 @@ bin/$(APKNAME):
 
 # make sure there is no loop in Dart packages
 clean:
-	-rm -f bin/$(APKNAME)               \
-	../s52ui/packages/browser/packages  \
-	../s52ui/packages/js/packages       \
-	../s52ui/packages/meta/packages     \
-	../s52ui/packages/unittest
+	-rm -f bin/$(APKNAME)
+#	../s52ui/packages/browser/packages  \
+#	../s52ui/packages/js/packages       \
+#	../s52ui/packages/meta/packages     \
+#	../s52ui/packages/unittest
 
 distclean: clean
 	-rm -rf build.xml bin libs/armeabi-v7a obj gen proguard-project.txt project.properties local.properties

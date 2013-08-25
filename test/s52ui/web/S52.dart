@@ -64,10 +64,15 @@ class S52 {
   static const int CMD_WRD_FILTER_AP          =       16;  // 1 << 4; 010000 - AP
   static const int CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
 
-  S52() {
+  S52(var wsUri) {
     //js.context.rcvS52Msg = new js.Callback.many(rcvMsg);
     //js.context.onMessage = new js.Callback.many(rcvMsg);
     js.context.websocket.onmessage = new js.Callback.many(rcvMsg);
+
+    //_ws = new WebSocket(wsUri);
+    //_ws.onMessage.listen((MessageEvent e) {
+    //  rcvMsg(e);
+    //});
 
     _drawLastTimer();
   }
@@ -75,14 +80,13 @@ class S52 {
     if (null != _timer)
       return;
 
-    // call drawLast every second (1000 msec)
+    // call drawLast every second (2sec)
     _timer = new Timer.periodic(new Duration(milliseconds: 2000), (timer) {
-      //drawLast().then((ret) {});
+      drawLast().then((ret) {});
 
-      drawLast()
-        .then(      (ret) {})
-        .catchError((err) {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');} );
-
+      //drawLast()
+      //  .then(      (ret) {})
+      //  .catchError((err) {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');} );
 
       // FIXME: can't make onError / catchError work
       //drawLast().then      (    (ret)          {print('_drawLastTimer(): then       ... &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&');},
@@ -91,10 +95,10 @@ class S52 {
     });
   }
 
-  //rcvMsg(str) {
+  //rcvMsg(MessageEvent evt) {
   rcvMsg(var evt) {
     // receive S52/JSON msg from WebSocket (Cordova) in s52ui.html
-    //print('............................str:$str');
+    //print('............................str:${evt.data}');
     var str = evt.data;
     Map data;
     try {
@@ -120,7 +124,7 @@ class S52 {
 
     _stopwatch.stop();
     print("roundtrip: ${_stopwatch.elapsedMilliseconds}msec");
-    print('rcvMsg():receive JSON str from libS52: $str');
+    //print('rcvMsg():receive JSON str from libS52: $str');
 
 
     ++_id;
@@ -138,6 +142,13 @@ class S52 {
 
     //js.context.sndS52Msg(str);
     js.context.websocket.send(str);
+
+    //_ws.send(str);
+    //if (_ws.readyState == WebSocket.OPEN) {
+    //  _ws.send(str);
+    //} else {
+    //  print('WebSocket not connected, message not sent:$str');
+    //}
 
     return _completer.future;
   }

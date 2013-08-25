@@ -755,11 +755,7 @@ _fullList(evt) {
 //
 // Main
 //
-
-void _initMain(evt) {
-  print('s52ui.dart:_initMain()');
-  s52 = new S52();
-
+void _start() {
   s52.newOWNSHP('OWNSHP').then((ret) {
     //print('s5ui.dart:OWNSHP(): $ret');
     _ownshp = ret[0];
@@ -773,15 +769,28 @@ void _initMain(evt) {
   });
 }
 
+void _initMain(evt) {
+  print('s52ui.dart:_initMain()');
+
+  var wsUri = 'ws://127.0.0.1:2950';
+  s52 = new S52(wsUri);
+
+  //new Timer(new Duration(milliseconds: 1000), () {_start();});
+  _start();
+}
+
 void main() {
   print('s5ui.dart:main(): start');
 
+  //js.scoped(() {
     js.context.onOpen         = new js.Callback.once(_initMain);
     js.context.setTouchScrnSz = new js.Callback.once(_initTouch);
 
     js.context.orientationChg = new js.Callback.many(_orientationChg);
     //js.context.toggleUIEvent  = new js.Callback.many(_toggleUIEvent);
     js.context.toggleUI       = new js.Callback.many(_toggleUIEvent);
+  //});
 
-    //print('s5ui.dart:main():in Timer END -1--');
+
+  //print('s5ui.dart:main():in Timer END -1--');
 }

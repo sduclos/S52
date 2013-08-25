@@ -147,7 +147,9 @@ typedef struct _S52_cmdDef {
     char           pen_w;       // LC: width in pixel of last pen in (ASCII)
 
 #ifdef S52_USE_GLES2
-    guint          mask_texID;            // texture ID of pattern after running VBO
+    guint          mask_texID;  // texture ID of pattern after running VBO
+    int            potW;        // tex widht
+    int            potH;        // tex height
 #endif
 
 } _S52_cmdDef;
@@ -176,7 +178,6 @@ typedef union _cmdDef {
 
     _S52_Text       *text;        // after parsing this could de NULL
 
-    //S52_CS_cb      CScb;
     S52_CS_condSymb *CS;
 
     // because there is no cmdDef for light sector
@@ -3568,7 +3569,6 @@ int         S52_PL_setAPtexID(_S52_obj *obj, guint mask_texID)
     if ((NULL==cmd) || (NULL==cmd->cmd.def))
         return FALSE;
 
-    //cmd->cmd.def->DListData.mask_texID = mask_texID;
     cmd->cmd.def->mask_texID = mask_texID;
 
     return TRUE;
@@ -3589,8 +3589,6 @@ guint       S52_PL_getAPtexID(_S52_obj *obj)
     if ((NULL==cmd) || (NULL==cmd->cmd.def))
         return FALSE;
 
-
-    //return cmd->cmd.def->DListData.mask_texID;
     return cmd->cmd.def->mask_texID;
 }
 #endif
@@ -4312,16 +4310,13 @@ int         S52_PL_setTextParsed(S52_obj *obj)
 
     if (NULL == obj->crntA)
         return FALSE;
-        //return NULL;
 
     if (obj->crntAidx >= obj->crntA->len)
         return FALSE;
-        //return NULL;
 
     _S52_CmdL *cmd = &g_array_index(obj->crntA, _S52_CmdL, obj->crntAidx);
     if (NULL == cmd)
         return FALSE;
-        //return NULL;
 
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
         PRINTF("ERROR: bug, not a text command\n");
@@ -4361,12 +4356,6 @@ int         S52_PL_hasText(_S52_obj *obj)
     }
 
     return FALSE;
-
-    //if (NULL == obj->text)
-    //if (TRUE == obj->notext)
-    //    return FALSE;
-    //else
-    //    return TRUE;
 }
 
 int         S52_PL_hasLC(_S52_obj *obj)
@@ -4508,7 +4497,7 @@ S52_objSup  S52_PL_getToggleState(_S52_obj *obj)
         }
 
         // 3.0 and above
-        //return S52_SUP_OFF;
+        return S52_SUP_OFF;
         // debug - should not reach!
         g_assert(0);
     }

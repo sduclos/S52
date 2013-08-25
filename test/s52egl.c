@@ -69,14 +69,14 @@
 
 #define RAD_TO_DEG    57.29577951308232
 
-#define PATH     "/data/media"         // android 4.1
-//#define PATH     "/data/media/0"     // android 4.2
-#define PLIB     PATH "/s52droid/PLAUX_00.DAI"
-#define COLS     PATH "/s52droid/plib_COLS-3.4.1.rle"
-#define GPS      PATH "/s52droid/bin/sl4agps"
-#define AIS      PATH "/s52droid/bin/s52ais"
+//#define PATH     "/data/media"         // android 4.1
+#define PATH     "/sdcard/s52droid"      // android 4.2
+#define PLIB     PATH "/PLAUX_00.DAI"
+#define COLS     PATH "/plib_COLS-3.4.1.rle"
+#define GPS      PATH "/bin/sl4agps"
+#define AIS      PATH "/bin/s52ais"
 #define PID           ".pid"
-#define ALLSTOP  PATH "/s52droid/bin/run_allstop.sh"
+#define ALLSTOP  PATH "/bin/run_allstop.sh"
 
 #include <glibconfig.h>
 #include <gio/gio.h>
@@ -172,6 +172,8 @@ typedef struct s52engine {
     int32_t             height;
     // Xoom - dpi = 160 (density)
     int32_t             dpi;            // = AConfiguration_getDensity(engine->app->config);
+    int32_t             wmm;
+    int32_t             hmm;
 
     GTimeVal            timeLastDraw;
 
@@ -687,6 +689,10 @@ static int      _s52_init       (s52engine *engine)
     eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
     eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
 
+    // return constant value EGL_UNKNOWN (-1) with Mesa
+    eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HORIZONTAL_RESOLUTION, &engine->wmm);
+    eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_VERTICAL_RESOLUTION,   &engine->hmm);
+
     {
         int w   = 0;
         int h   = 0;
@@ -694,30 +700,34 @@ static int      _s52_init       (s52engine *engine)
         int hmm = 0;
 
 #ifdef S52_USE_ANDROID
+        // Xoom: pixels_w: 1280, pixels_h: 752, mm_w: 203, mm_h: 101
         w   = engine->width;
         h   = engine->height;
         wmm = (int)(w / engine->dpi) * 25.4;  // inch to mm
         hmm = (int)(h / engine->dpi) * 25.4;
 #else
-        // kludge: some X11 get this wrong
-        //int h   = XDisplayHeight  (dpy, 0);
-        //int hmm = XDisplayHeightMM(dpy, 0);
-        //int w   = XDisplayWidth   (dpy, 0);
-        //int wmm = XDisplayWidthMM (dpy, 0);
+        // Aspire 5542G - 15.6" HD 1366 x 768 pixel resolution
+        // dual-screen: 2648 x 1024, 700 x 270 mm
+        h   = XDisplayHeight  (engine->dpy, 0);
+        hmm = XDisplayHeightMM(engine->dpy, 0);
+        w   = XDisplayWidth   (engine->dpy, 0);
+        wmm = XDisplayWidthMM (engine->dpy, 0);
         //w   = 1280;
         //h   = 1024;
-        w   = engine->width;
-        h   = engine->height;
-        wmm = 376;
+        //w   = engine->width;
+        //h   = engine->height;
+        //wmm = 376;
         //hmm = 301; // wrong
-        hmm = 307;
+        //hmm = 307;
 #endif
-        // Xoom: screen_pixels_w: 1280, screen_pixels_h: 752, screen_mm_w: 203, screen_mm_h: 101
-        // could fail (and android loop in init()) with unstable code
+        //LOGE("_init_S52(): start -1- ..\n");
+
         if (FALSE == S52_init(w, h, wmm, hmm, NULL)) {
             engine->state.do_S52init = FALSE;
             return FALSE;
         }
+
+        //LOGE("_init_S52(): start -2- ..\n");
 
         S52_setViewPort(0, 0, w, h);
 
@@ -790,15 +800,17 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
 
 
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);
 
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
 
-    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
-    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
+    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
+    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON
     // -- DEPTH COLOR ------------------------------------
 
 
@@ -825,8 +837,8 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60
 
-    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0); // ON
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0); // debug OFF - show all (default ON)
+    //S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
+    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
 
     // remove QUAPNT01 symbole (black diagonal and a '?')
     S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);   // off
@@ -842,21 +854,22 @@ static int      _s52_init       (s52engine *engine)
 
     // cell's legend
     //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
-    S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);   // hide
+    S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);   // hide (default)
     // -------------------------------------------------------
 
 
-    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // default ON
+    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
+    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
 
     S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
     //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
 
-//#ifdef S52_USE_ANDROID
+#ifdef S52_USE_ANDROID
     // trick to force symbole size (smaller on xoom so that proportion look the same
     // as a 'normal' screen - since the eye is closer to the 10" screen of the Xoom)
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
-//#endif
+#endif
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
     //S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
@@ -883,7 +896,7 @@ static int      _s52_init       (s52engine *engine)
 
     _s52_setupLEGLIN();
 
-    //_s52_setupPRDARE(&engine->state);
+    _s52_setupPRDARE(&engine->state);
 
 #ifdef S52_USE_FAKE_AIS
     _s52_setupVESSEL(&engine->state);
@@ -1041,25 +1054,6 @@ exit:
 
 //static int _androidUIon = FALSE;
 
-static int      _android_done_external_sensors(void)
-{
-    GError *error = NULL;
-    char run_allstop_sh[] = "/system/bin/sh -c "  ALLSTOP ;
-    // FIXME: can't run 'su' - premission problem
-    // but SL4A need root to accept shutdown command
-    // sl4agps start another instance (or something) that make
-    // the UI real slow
-    //char run_allstop_sh[] = "/system/bin/su -c "  ALLSTOP ;
-
-    if (TRUE != g_spawn_command_line_async(run_allstop_sh, &error)) {
-        LOGE("s52egl:g_spawn_command_line_async() failed [%s]\n", (NULL==error) ? "NULL" : error->message);
-        return FALSE;
-    }
-    LOGI("s52egl:_android_done_external_sensors() .. done\n");
-
-    return TRUE;
-}
-
 static int      _android_init_external_gps(void)
 // start sl4agps - get GPS & Gyro from Android
 {
@@ -1069,7 +1063,6 @@ static int      _android_init_external_gps(void)
     if (TRUE == g_file_test(GPS PID, (GFileTest) (G_FILE_TEST_EXISTS))) {
         LOGI("s52egl:GPS prog is allready running (%s)\n", GPS);
         const char connS52[] = "/system/bin/sh -c 'kill -SIGUSR1 `cat " GPS PID "`'";
-        //const char connS52[] = "/system/bin/sh -c 'kill -SIGUSR2 `cat " GPS PID "`'";
         if (TRUE != g_spawn_command_line_async(connS52, &error)) {
             LOGI("s52egl:g_spawn_command_line_async() failed [%s]\n", error->message);
             return FALSE;
@@ -1090,7 +1083,7 @@ static int      _android_init_external_gps(void)
 }
 
 static int      _android_init_external_ais(void)
-// FIXME: this func is the same as _android_spawn_gps()
+// FIXME: this func is the same as _android_init_external_gps(), except SIGUSR
 {
     GError *error = NULL;
 
@@ -1117,13 +1110,34 @@ static int      _android_init_external_ais(void)
     return TRUE;
 }
 
+static int      _android_done_external_sensors(void)
+{
+    GError *error = NULL;
+    char run_allstop_sh[] = "/system/bin/sh -c "  ALLSTOP ;
+    // FIXME: can't run 'su' - premission problem
+    // but SL4A need root to accept shutdown command
+    // sl4agps start another instance (or something) that make
+    // the UI real slow
+    //char run_allstop_sh[] = "/system/bin/su -c "  ALLSTOP ;
+
+    if (TRUE != g_spawn_command_line_async(run_allstop_sh, &error)) {
+        LOGE("s52egl:g_spawn_command_line_async() failed [%s]\n", (NULL==error) ? "NULL" : error->message);
+        return FALSE;
+    }
+    LOGI("s52egl:_android_done_external_sensors() .. done\n");
+
+    return TRUE;
+}
+
+
 static int      _android_init_external_UI (s52engine *engine)
 // start UI - get GPS & Gyro from Android
 {
     const gchar cmd[] =
+        "su -c \"                      "
         "sh /system/bin/am start       "
         "-a android.intent.action.MAIN "
-        "-n nav.ecs.s52droid/.s52ui    ";
+        "-n nav.ecs.s52droid/.s52ui \" ";
 
     int ret = g_spawn_command_line_async(cmd, NULL);
     if (FALSE == ret) {
@@ -1137,6 +1151,7 @@ static int      _android_init_external_UI (s52engine *engine)
 
     return TRUE;
 }
+
 
 static int      _android_done_external_UI (s52engine *engine)
 // FIXME: stop UI broken
@@ -1303,6 +1318,9 @@ static int      _android_display_init(s52engine *engine)
         //extern int   S52_GL_init_GLES2(void);
         //S52_GL_init_GLES2();
     }
+    //else {
+    //    _android_init_external_UI(engine);
+    //}
 
     engine->do_S52drawLast = TRUE;
 
@@ -1746,7 +1764,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 
             if (NULL != engine->app->window) {
                 if (EGL_TRUE == _android_display_init(engine)) {
-                    _android_init_external_ais();
+                    //_android_init_external_ais();
                     //_android_init_external_gps();
                 }
             }
@@ -1990,7 +2008,7 @@ void android_main(struct android_app *app)
         // if re-starting - the process is already up
         _engine.state = *(s52droid_state_t*)app->savedState;
 
-        LOGI("s52egl:DEBUG: bypassing _init_S52(), reset state .. \n");
+        LOGI("s52egl:DEBUG: bypassing _init_S52(), reset state .. \n" );
         LOGI("s52egl:       cLat =%f\n", _engine.state.cLat           );
         LOGI("s52egl:       cLon =%f\n", _engine.state.cLon           );
         LOGI("s52egl:       rNM  =%f\n", _engine.state.rNM            );
@@ -2220,7 +2238,7 @@ static int      _X11_handleXevent(gpointer user_data)
                 S52_loadPLib("plib-test-priv.rle");
                 return TRUE;
             }
-            // debug - unicode (S57ID:552 on CA579041.000 - Rimouski)
+            // debug - unicode at S57ID:552 on CA579041.000 - Rimouski
             if (XK_F8 == keysym) {
                 const char *str = S52_getAttList(552);
                 g_print("s52eglx:F8:%s\n", str);
@@ -2304,8 +2322,9 @@ static int      _X11_handleXevent(gpointer user_data)
             engine->do_S52drawLast = TRUE;
         }
         break;
-        }
-    }
+
+        }  // switch
+    }      // while
 
     return TRUE;
 }

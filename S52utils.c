@@ -61,14 +61,15 @@ void g_get_current_time(GTimeVal *result);
 
 void _printf(const char *file, int line, const char *function, const char *frmt, ...)
 {
-	char buf[256];
-    snprintf(buf, 256, "%s:%i in %s(): ", file, line, function);
+    const int MAX = 1024;
+    char buf[MAX];
+    snprintf(buf, MAX, "%s:%i in %s(): ", file, line, function);
 
 	int size = (int) strlen(buf);
-	if (size < 256) {
+	if (size < MAX) {
 		va_list argptr;
 		va_start(argptr, frmt);
-		vsnprintf(&buf[size], 256 - size, frmt, argptr);
+		vsnprintf(&buf[size], MAX - size, frmt, argptr);
 		va_end(argptr);
 	}
 

@@ -182,25 +182,30 @@ android/dist/sdcard/s52droid/UI.xml: android/dist/sdcard/s52droid/UI.tmpl.xml
     END { print("#define NBR_TEXT   ", count_text,   "// grep s52_text_   UI.xml" ) >  "sl4agps.cfg";   \
           print("#define NBR_BORDER ", count_border, "// grep s52_border_ UI.xml" ) >> "sl4agps.cfg";   \
         }'                                                                                              \
-    android/dist/sdcard/s52droid/UI.tmpl.xml > android/dist/sdcard/s52droid/UI.xml                  
-	adb push  android/dist/sdcard/s52droid/UI.xml /sdcard/s52droid/UI.xml                           
+    android/dist/sdcard/s52droid/UI.tmpl.xml > android/dist/sdcard/s52droid/UI.xml
+	adb push  android/dist/sdcard/s52droid/UI.xml /sdcard/s52droid/UI.xml
 
 sl4agps.cfg:
 	-rm android/dist/sdcard/s52droid/UI.xml
 
+# android 4.1
+# adb push  sl4agps   /sdcard/s52droid/bin
+# adb shell chmod 755 /data/media/s52droid/bin/sl4agps
 sl4agps: sl4agps.c sl4agps.cfg android/dist/sdcard/s52droid/UI.xml
 	$(CC)  $(CFLAGS)    sl4agps.c $(LIBS) -o sl4agps
 	$(STRIP)  sl4agps
 	cp        sl4agps   android/dist/sdcard/s52droid/bin
 	adb push  sl4agps   /sdcard/s52droid/bin
-	adb shell chmod 755 /data/media/s52droid/bin/sl4agps
+	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/sl4agps'
 
-#$(STRIP)  s52ais
+# adb push  s52ais    /sdcard/s52droid/bin
+# adb shell chmod 755 /data/media/s52droid/bin/s52ais
 s52ais: s52ais.c
 	$(CXX) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c  $(LIBS) -o s52ais
+	$(STRIP)  s52ais
 	cp        s52ais    android/dist/sdcard/s52droid/bin
 	adb push  s52ais    /sdcard/s52droid/bin
-	adb shell chmod 755 /data/media/s52droid/bin/s52ais
+	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/s52ais'
 
 s52eglarm: s52ais sl4agps
 

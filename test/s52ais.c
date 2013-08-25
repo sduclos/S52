@@ -45,7 +45,8 @@
 #include <android/log.h>
 #define  LOG_TAG    "s52ais"
 
-#define PATH "/data/media/s52droid/bin"
+//#define PATH "/data/media/s52droid/bin"
+#define PATH "/sdcard/s52droid/bin"
 #define AIS  PATH "/s52ais"
 #define PID  ".pid"
 //#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)

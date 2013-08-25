@@ -16,4 +16,4 @@ clean:
 	rm web/s52ui.dart.js
 
 install:
-	adb push ../s52ui /data/media/dart/s52ui
+	adb push ../s52ui /sdcard/dart/s52ui

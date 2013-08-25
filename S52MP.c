@@ -104,8 +104,8 @@ static double _MARparamVal[] = {
     //30.0,     // 6 - DEEP_CONTOUR (SEABED01 defautl)
     15.0,     // 6 - DEEP_CONTOUR
 
-    //FALSE,    // 7 - SHALLOW_PATTERN (SEABED01 defautl)
-    TRUE,    // 7 - SHALLOW_PATTERN
+    FALSE,    // 7 - SHALLOW_PATTERN (SEABED01 defautl)
+    //TRUE,    // 7 - SHALLOW_PATTERN
 
     FALSE,    // 8 - SHIPS_OUTLINE
 

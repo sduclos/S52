@@ -34,7 +34,7 @@ typedef struct S52_ras {
     // src
     int w;
     int h;
-    int nbyte_gdt;            // gdt: GDALDataType
+    int gdtSz;            // gdt: GDALDataType
     unsigned char *data;      // size =  w * h * nbyte_gdt
     float min;                // exclusing nodata
     float max;                // exclusing nodata

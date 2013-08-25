@@ -265,8 +265,8 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 //static int          _doRADAR  = TRUE;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
-static char _version[] = "$Revision: 1.125 $\n"
-      "libS52 0.94\n"
+static char _version[] = "$Revision: 1.126 $\n"
+      "libS52 0.95\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -2172,7 +2172,7 @@ int               _loadRaster(const char *fname)
 
     // GDT_Float32
     GDALDataType gdt = GDALGetRasterDataType(bandA);
-    int nbyte_gdt    = GDALGetDataTypeSize(gdt) / 8;
+    int gdtSz    = GDALGetDataTypeSize(gdt) / 8;
 
     int w = GDALGetRasterXSize(dataset);
     int h = GDALGetRasterYSize(dataset);
@@ -2181,7 +2181,7 @@ int               _loadRaster(const char *fname)
     //double nodata = GDALGetRasterNoDataValue(bandA, &nodata_set);
 
     // 32 bits
-    unsigned char *data = g_new0(unsigned char, w * h * nbyte_gdt);
+    unsigned char *data = g_new0(unsigned char, w * h * gdtSz);
     GDALRasterIO(bandA, GF_Read, 0, 0, w, h, data, w, h, gdt, 0, 0);
 
     double gt[6] = {0.0,1.0,0.0,0.0,0.0,1.0};
@@ -2197,19 +2197,14 @@ int               _loadRaster(const char *fname)
     // store data
     S52_ras *ras = g_new0(S52_ras, 1);
     ras->fname = g_string_new(fname);
-    ras->w = w;
-    ras->h = h;
-    ras->nbyte_gdt = nbyte_gdt;
-    ras->data = data;
-
-    //double XgeoLL = gt[0] + 0 * gt[1] + 0 * gt[2];
-    //double YgeoLL = gt[3] + 0 * gt[4] + 0 * gt[5];
-    //double XgeoUR = gt[0] + w * gt[1] + h * gt[2];
-    //double YgeoUR = gt[3] + w * gt[4] + h * gt[5];
-    ras->S = gt[3] + 0 * gt[4] + 0 * gt[5];  // YgeoLL;
-    ras->W = gt[0] + 0 * gt[1] + 0 * gt[2];  // XgeoLL;
-    ras->N = gt[3] + w * gt[4] + h * gt[5];  // YgeoUR;
-    ras->E = gt[0] + w * gt[1] + h * gt[2];  // XgeoUR;
+    ras->w     = w;
+    ras->h     = h;
+    ras->gdtSz = gdtSz;
+    ras->data  = data;
+    ras->S     = gt[3] + 0 * gt[4] + 0 * gt[5];  // YgeoLL;
+    ras->W     = gt[0] + 0 * gt[1] + 0 * gt[2];  // XgeoLL;
+    ras->N     = gt[3] + w * gt[4] + h * gt[5];  // YgeoUR;
+    ras->E     = gt[0] + w * gt[1] + h * gt[2];  // XgeoUR;
     memcpy(ras->gt, gt, sizeof(double) * 6);
 
     g_ptr_array_add(_rasterList, ras);
@@ -3245,7 +3240,8 @@ static int        _cull(_extent ext)
     guint worldOff = (TRUE == S52_MP_get(S52_MAR_DISP_WORLD)) ? 1 : 0;
     guint cellIdx  = _cellList->len - 1 + worldOff;
 #else
-    guint cellIdx  = _cellList->len - 1;
+    //guint cellIdx  = _cellList->len - 1;
+    guint cellIdx  = _cellList->len;
 #endif
 
     // all cells - larger region first (small scale)
@@ -3273,7 +3269,9 @@ static int        _drawRADAR()
         S52_CHECK_MUTX;
     }
 
+#ifdef S52_USE_GLES2
     g_ptr_array_foreach(_rasterList, (GFunc)S52_GL_drawRaster, NULL);
+#endif
 
     return TRUE;
 }
@@ -3303,6 +3301,7 @@ static int        _draw()
         g_ptr_array_foreach(c->objList_over, (GFunc)S52_GL_draw, NULL);
 
         // draw text
+        // FIXME: implicit call to S52_PL_hasText() again
         g_ptr_array_foreach(c->textList,     (GFunc)S52_GL_drawText, NULL);
     }
 
@@ -3337,10 +3336,8 @@ static int        _drawLayer(_extent ext, int layer)
                         //S52_GL_draw(obj);
                         S52_GL_draw(obj, NULL);
 
-                        // doing this after the draw because draw() will
-                        // parse the text
+                        // doing this after the draw because draw() will parse the text
                         if (TRUE == S52_PL_hasText(obj))
-                            //g_ptr_array_add(_textList, obj);
                             g_ptr_array_add(c->textList, obj); // not tested
 
                     } //else
@@ -5706,7 +5703,6 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
                 PRINTF("WARNING: previousLEGLIN not a valid S52ObjectHandle\n");
                 previousLEGLIN = FALSE;
             } else {
-                //S52_PL_setNextLeg((S52_obj*)fromLeglin, (S52_obj*)toLeglin);
                 S52_PL_setNextLeg((S52_obj*)previousLEGLIN, (S52_obj*)leglin);
             }
 
