@@ -45,7 +45,6 @@ In a day:
     -GL: SENC save display list / VBO (somehow!) 
     -BUG: S-52 specs 3.2 for TOPMAR01 (init 'floating' inside loop)
     -WARN: chart no 1 PLib put $LINE in layer 0
-    -OGR: validate CRC (the source code is at IHO)
     -OGR: IHOOCDD.XXX
     -GL: display 'dipping distance' of light (need the height of eye and sea level)
     -GL: bearing snap to light

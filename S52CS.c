@@ -556,7 +556,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
                     //} else { // AREA DEPARE and AREA DRGARE
                         GString *drval1str = S57_getAttVal(candidate, "DRVAL1");
                         double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
-                        if (NULL!=drval1str && drval1<drvalmin) {
+                        if (drval1 < drvalmin) {
                             drvalmin = drval1;
                             S57_setTouchDEPARE(geo, candidate);
                         }
@@ -598,7 +598,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
                     GString *drval1str = S57_getAttVal(candidate, "DRVAL1");
                     double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
 
-                    if (NULL!=drval1str && drval1<drvalmin) {
+                    if (drval1 < drvalmin) {
                         drvalmin = drval1;
                         S57_setTouchDEPVAL(geo, candidate);
                     }

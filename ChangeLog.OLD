@@ -3,10 +3,14 @@
 #
 
 
+2013AUG26
+    -fix path for world shapefile
+    -fix default build flag to skip experimental stuff
+
 2013AUG24
     -fix s52gtk2 build
     -mod refactor pattern tilling in GLES2 code
-    
+
 2013MAY21
     -add Raster .tif, must be allready projected to Mercator
 

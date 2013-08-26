@@ -143,7 +143,6 @@ CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl egl` \
          -DS52_USE_FTGL                                \
          -DS52_USE_GLIB2                               \
          -DS52_USE_PROJ                                \
-         -DS52_USE_BACKTRACE                           \
          -DS52_USE_OPENGL_VBO                          \
          -DS52_DEBUG $(DBG)
 
@@ -167,12 +166,11 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0`\
                   -DS52_USE_PROJ                 \
                   -DS52_USE_DOTPITCH $(DBG)
 
-# -DS52_USE_FTGL
-# -DS52_USE_OGR_FILECOLLECTOR
-# -DS52_USE_SYM_AISSEL01         (experimental - symbol in plib-test-priv.rle)
+# -DS52_USE_SYM_AISSEL01 (experimental - symbol in plib-test-priv.rle)
 # -DS52_USE_SOCK
-# -DS52_USE_WORLD - rename shapefile to WORLD_SHP in S52.c:201 ("--0WORLD.shp")
-#                  -DS52_USE_SUPP_LINE_OVERLAP
+# -DS52_USE_WORLD - shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
+# -DS52_USE_SUPP_LINE_OVERLAP
+# -DS52_USE_OGR_FILECOLLECTOR
 s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
@@ -187,11 +185,7 @@ s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   -DS52_USE_EGL                  \
                   -DS52_USE_GLES2                \
                   -DS52_USE_FREETYPE_GL          \
-                  -DS52_USE_SUPP_LINE_OVERLAP    \
-                  -DS52_USE_OGR_FILECOLLECTOR    \
                   -DS52_USE_SOCK                 \
-                  -DS52_USE_SYM_AISSEL01         \
-                  -DS52_USE_WORLD                \
                   -DS52_DEBUG $(DBG)
 
 
@@ -213,8 +207,8 @@ s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -g -fPIC 
 s52eglarm : AR     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ar
 s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 
-s52eglarm : S52ANDROIDINC = /home/sduclos/S52/test/android/dist/system/include
-s52eglarm : S52ANDROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
+s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/system/include
+s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
 
 # -DS52_USE_SYM_AISSEL01         (experimental - symbol in plib-test-priv.rle)
 # -DS52_USE_BACKTRACE
@@ -238,9 +232,9 @@ s52eglarm : S52ANDROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_DEBUG                           \
                      -DG_DISABLE_ASSERT
 
-s52eglarm : CFLAGS = -I$(S52ANDROIDINC)                    \
-                     -I$(S52ANDROIDINC)/glib-2.0           \
-                     -I$(S52ANDROIDINC)/glib-2.0/include   \
+s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
+                     -I$(S52DROIDINC)/glib-2.0             \
+                     -I$(S52DROIDINC)/glib-2.0/include     \
                      -I/usr/include/freetype2              \
                      -I./lib/freetype-gl                   \
                      -I./lib/tesselator                    \
@@ -348,7 +342,7 @@ s52gv2 : LIBS = `pkg-config  --libs glib-2.0 lcms` \
 
 s52glx        : libS52.so    test/s52glx
 s52eglx       : libS52.so    test/s52eglx
-s52eglarm     : $(S52ANDROIDLIB)/libS52.a     test/s52eglarm
+s52eglarm     : $(S52DROIDLIB)/libS52.a     test/s52eglarm
 s52gv         : libS52gv.so  test/s52gv
 s52gv2        : libS52gv.so  test/s52gv2
 s52gtk2       : libS52.so    test/s52gtk2
@@ -378,8 +372,8 @@ S52raz-3.2.rle.o: S52raz.s
 ./lib/parson/%.o: ./lib/parson/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(S52ANDROIDLIB)/libS52.a: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
-	$(AR) r   $(S52ANDROIDLIB)/libS52.a $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
+$(S52DROIDLIB)/libS52.a: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
+	$(AR) r   $(S52DROIDLIB)/libS52.a $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
 
 libS52.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 	$(CXX) -rdynamic -shared $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON) $(LIBS) -o $@

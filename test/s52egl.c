@@ -85,6 +85,7 @@ static GStaticMutex _engine_mutex = G_STATIC_MUTEX_INIT;  // protect engine
 
 #else   // S52_USE_ANDROID
 
+#define  PATH "/home/sduclos/dev/gis/data"
 #define  PLIB "PLAUX_00.DAI"
 #define  COLS "plib_COLS-3.4.1.rle"
 #define  LOGI(...)   g_print(__VA_ARGS__)
@@ -743,31 +744,16 @@ static int      _s52_init       (s52engine *engine)
 #ifdef S52_USE_ANDROID
     // Estuaire du St-Laurent
     //S52_loadCell(NULL, NULL);
-    //S52_loadCell("/data/media/s52droid/ENC_ROOT/CA279037.000", NULL);
+    //S52_loadCell(PATH "/ENC_ROOT/CA279037.000", NULL);
     // Rimouski
-    S52_loadCell("/sdcard/s52droid/ENC_ROOT/CA579041.000", NULL);
+    S52_loadCell(PATH "/ENC_ROOT/CA579041.000", NULL);
     // load all 3 S57 charts
-    //S52_loadCell("/data/media/s52droid/ENC_ROOT", NULL);
+    //S52_loadCell(PATH "/ENC_ROOT", NULL);
 
-#ifdef S52_USE_WORLD
-    // World data
-    S52_loadCell("/sdcard/s52droid/gdal_data/--0WORLD.shp", NULL);
-    // show world
-    S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);
-#endif // WORLD
-
-#else  // ANDROID
+#else  // S52_USE_ANDROID
 
     // read cell location fron s52.cfg
     S52_loadCell(NULL, NULL);
-
-#ifdef S52_USE_WORLD
-    // World data
-    S52_loadCell("/home/sduclos/dev/gis/data/0WORLD/--0WORLD.shp", NULL);
-    // show world
-    //S52_setMarinerParam(S52_MAR_DISP_WORLD, 0.0);   // default
-    S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);
-#endif // WORLD
 
     // Ice - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
@@ -779,6 +765,14 @@ static int      _s52_init       (s52engine *engine)
 
     // load AIS select symb.
     //S52_loadPLib("plib-test-priv.rle");
+#endif  // S52_USE_ANDROID
+
+#ifdef S52_USE_WORLD
+    // World data
+    if (TRUE == S52_loadCell(PATH "/0WORLD/--0WORLD.shp", NULL)) {
+        //S52_setMarinerParam(S52_MAR_DISP_WORLD, 0.0);   // default
+        S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);     // show world
+    }
 #endif
 
     // debug - remove clutter from this symb in SELECT mode

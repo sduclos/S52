@@ -10,7 +10,3 @@
 - --0WORLD.*: remane of shapefiles in TM_WORLD_BORDERS_SIMPL-0.2.zip (see Readme.txt)
               to fit 8.3 filename format of S-57 cells.
               (Note: the '--' doesn't correspond to any S-62 Agency Codes)
-              
-- s57attributes.cvs: used by GDAL/OGR/S57 reader
-
-- s57objectclasses.cvs: used by GDAL/OGR/S57 reader
