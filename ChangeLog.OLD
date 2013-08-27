@@ -3,6 +3,9 @@
 #
 
 
+2013AUG27
+    -fix not needed inclusion of glu.h in GLES2
+
 2013AUG26
     -fix path for world shapefile
     -fix default build flag to skip experimental stuff

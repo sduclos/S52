@@ -266,14 +266,13 @@ static int        _doHighlight   = FALSE;   // TRUE then _objhighlight point to 
 #define CALLBACK
 #endif
 
-#ifdef S52_USE_ANDROID
+#ifdef S52_USE_GLES2
 #include "tesselator.h"
 typedef GLUtesselator GLUtesselatorObj;
 typedef GLUtesselator GLUtriangulatorObj;
 #else
-#include <GL/glu.h>     // tess, quadric,...
+#include <GL/glu.h>
 #endif
-
 
 typedef void (CALLBACK *f) ();
 typedef void (CALLBACK *fint) (GLint);
@@ -296,10 +295,7 @@ static GLboolean           _startEdge  = GL_TRUE;  // start inside edge --for he
 static int                 _inSeg      = FALSE;    // next vertex will complete an edge
 
 // display list
-//static GLuint  _listIndex  = 0;         // GL display index (0==error)
 static   int  _symbCreated = FALSE;  // TRUE symb display list created
-
-// hack: first coordinate of polygon mode
 
 // transparency factor
 #ifdef S52_USE_GLES2
@@ -6503,9 +6499,9 @@ static int       _renderAP_es2(S52_obj *obj)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW, potH, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
 #else
         // NPOT - fail on TEGRA2
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, w, h, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, w, h, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
         // test POT on MESA
-        //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW, potH, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW, potH, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
 #endif
 
         glBindFramebuffer     (GL_FRAMEBUFFER, _frameBufferID);
@@ -6513,7 +6509,7 @@ static int       _renderAP_es2(S52_obj *obj)
 
         GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
         if (status != GL_FRAMEBUFFER_COMPLETE) {
-            PRINTF("ERROR: glCheckFramebufferStatus() fail: %s\n", S52_PL_getOBCL(obj));
+            PRINTF("ERROR: glCheckFramebufferStatus() fail: %s status: %i\n", S52_PL_getOBCL(obj), status);
             g_assert(0);
         } else {
             PRINTF("OK: glCheckFramebufferStatus(): %s, tex: %i x %i, frac: %f x %f\n",

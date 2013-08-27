@@ -176,6 +176,7 @@ s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   -I/usr/include                 \
                   -I/usr/include/freetype2       \
                   -I./lib/freetype-gl            \
+				  -I./lib/tesselator             \
                   -I./lib/parson                 \
                   -DS52_USE_PROJ                 \
                   -DS52_USE_GLIB2                \
