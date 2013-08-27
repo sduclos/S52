@@ -6629,8 +6629,8 @@ static int       _renderAP_es2(S52_obj *obj)
         }
 
         // debug - break if patt has stag
-        if (0.0 != stagOffsetPix)
-            g_assert(0);
+        //if (0.0 != stagOffsetPix)
+        //    g_assert(0);
 
         _renderTile(DListData);
 
