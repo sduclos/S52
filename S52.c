@@ -266,7 +266,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.96\n"
+      "libS52 0.97\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1291,6 +1291,18 @@ DLL int    STD S52_init(void)
 {
     //libS52Zdso();
 
+    if (NULL != err_cb)
+        err_cb("test err log\n");
+
+#ifdef S52_USE_LOG
+    S52_initLog(err_cb);
+    //S52_initLog(NULL);
+    //S52_LOG("starting log");
+#else
+    if (NULL != err_cb)
+        PRINTF("INFO: compiler flags 'S52_USE_LOG' not set, 'S52_error_cb' will not be used\n");
+#endif
+
     // check if run as root
     if (0 == getuid()) {
         PRINTF("ERROR: do NOT run as SUPERUSER (root) .. exiting\n");
@@ -1310,16 +1322,6 @@ DLL int    STD S52_init(void)
     //GMemVTable *glib_mem_profiler_table;
     //g_mem_set_vtable(glib_mem_profiler_table);
     //g_mem_profile();
-
-
-#ifdef S52_USE_LOG
-    S52_initLog(err_cb);
-    //S52_initLog(NULL);
-    //S52_LOG("starting log");
-#else
-    if (NULL != err_cb)
-        PRINTF("INFO: compiler flags 'S52_USE_LOG' not set, 'S52_error_cb' will not be used\n");
-#endif
 
 
     PRINTF("screen_pixels_w: %i, screen_pixels_h: %i, screen_mm_w: %i, screen_mm_h: %i\n",
@@ -2105,10 +2107,9 @@ int               _loadRaster(const char *fname)
         return FALSE;
     }
 
-
-
-
     PRINTF("FIXME: reproject to mercator here instead of using GDAL/gdalwrap to pre-format raster data\n");
+
+
 /*
 
     //
@@ -2381,7 +2382,6 @@ DLL int    STD S52_doneCell(const char *encPath)
         PRINTF("file not found (%s)\n", fname);
         goto exit;
     }
-
 
     // unload .TIF
     gchar *basename = g_path_get_basename(fname);
@@ -2738,6 +2738,12 @@ static S52_obj   *_insertS57Obj(_cell *c, S52_obj *objOld, S57_geo *geoData)
     S52_obj    *obj        = S52_PL_newObj(geoData);
     S52_disPrio disPrioIdx = S52_PL_getDPRI(obj);
 
+    // debug
+    //if (899 == S57_getGeoID(geoData)) {
+    //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoID(geoData));
+    //    //    return TRUE;
+    //}
+
     // FIXME: refactor this !
     if (NULL != objOld) {
         S52_PL_delDta(objOld);     // clean S52 obj internal data
@@ -2745,7 +2751,6 @@ static S52_obj   *_insertS57Obj(_cell *c, S52_obj *objOld, S57_geo *geoData)
         g_free(obj);
         obj = objOld;
     }
-
 
     if (NULL == obj) {
         PRINTF("WARNING: S52 object build failed\n");
@@ -3147,7 +3152,7 @@ static int        _cullObj(_cell *c)
     //for (int j=0; j<S52_PRIO_NUM; ++j) {
     for (int j=0; j<S52_PRIO_MARINR; ++j) {
 
-        // one layer
+        // one layer, skip META
         for (int k=S52_AREAS; k<N_OBJ_T; ++k) {
         //for (int k=0; k<N_OBJ_T; ++k) {
             GPtrArray *rbin = c->renderBin[j][k];
@@ -3358,7 +3363,8 @@ static int        _cullLights(void)
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         // a cell can have no lights sector
-        if (NULL  == c->lights_sector) {
+        if (NULL == c->lights_sector) {
+            PRINTF("NO lights_sector : %s\n", c->filename->str);
             continue;
         }
 
@@ -3372,6 +3378,12 @@ static int        _cullLights(void)
             S57_geo *geo = S52_PL_getGeo(obj);
             _extent oext;
             S57_getExt(geo,  &oext.W, &oext.S, &oext.E, &oext.N);
+
+            // debug
+            //if (899 == S57_getGeoID(geo)) {
+            //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoID(geo));
+            //    //    return TRUE;
+            //}
 
             // do CS wild traversing all lights sectors
             S52_PL_resloveSMB(obj);
@@ -3827,7 +3839,6 @@ static int        _drawLast(void)
         }
     }
 
-
     return TRUE;
 }
 
@@ -3836,7 +3847,8 @@ DLL int    STD S52_drawLast(void)
     S52_CHECK_INIT;
 
     // debug
-    //PRINTF("DRAWLAST: .. start -0- XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
+    //PRINTF("DRAWLAST: .. start -0-\n");
+    //return TRUE;
 
     if (S52_MAR_DISP_LAYER_LAST_NONE == S52_MP_get(S52_MAR_DISP_LAYER_LAST))
         return TRUE;
@@ -4592,6 +4604,7 @@ DLL int    STD S52_loadPLib(const char *plibName)
                 n.renderBin[i][j] = g_ptr_array_new();
         }
 
+        // insert obj in new cell
         for (int i=0; i<S52_PRIO_NUM; ++i) {
             for (int j=0; j<N_OBJ_T; ++j) {
                 GPtrArray *rbin = c->renderBin[i][j];
@@ -4601,18 +4614,27 @@ DLL int    STD S52_loadPLib(const char *plibName)
 
                     _insertS57Obj(&n, obj, geo);
                 }
+                // flush old rbin
                 g_ptr_array_free(rbin, TRUE);
             }
         }
 
+        // transfert rbin
         for (int i=0; i<S52_PRIO_NUM; ++i) {
             for (int j=0; j<N_OBJ_T; ++j) {
                 c->renderBin[i][j] = n.renderBin[i][j];
             }
         }
-        if (NULL != c->lights_sector)
-            g_ptr_array_free(c->lights_sector, TRUE);
 
+        if (NULL != c->lights_sector) {
+            for (guint i=0; i<c->lights_sector->len; ++i) {
+                    S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, i);
+                    S57_geo *geo = S52_PL_getGeo(obj);
+
+                    _insertS57Obj(&n, obj, geo);
+            }
+            g_ptr_array_free(c->lights_sector, TRUE);
+        }
         c->lights_sector = n.lights_sector;
     }
 

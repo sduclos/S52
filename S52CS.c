@@ -1454,7 +1454,7 @@ static GString *LIGHTS05 (S57_geo *geo)
 
         // passe value via attribs to _renderAC()
         if (extend_arc_radius) {
-            GString   *extradstr = S57_getAttVal(geoTmp, "extend_arc_radius");
+            GString *extradstr = S57_getAttVal(geoTmp, "extend_arc_radius");
 
             if (NULL!=extradstr && 'Y'==*extradstr->str)
                 S57_setAtt(geo, "extend_arc_radius", "N");
@@ -1472,7 +1472,8 @@ static GString *LIGHTS05 (S57_geo *geo)
         GString *litvisstr = S57_getAttVal(geo, "LITVIS");
 
         // get light vis.
-        if (NULL != litvisstr) _parseList(litvisstr->str, litvis);
+        if (NULL != litvisstr)
+            _parseList(litvisstr->str, litvis);
 
         // faint light
         // FIXME: spec say OR (ie 1 number) the code is AND/OR

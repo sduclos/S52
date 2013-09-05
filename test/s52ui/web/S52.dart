@@ -1,5 +1,7 @@
 part of s52ui;
 
+//import 'dart:async';
+//import 'package:js/js.dart' as js;
 
 
 //////////////////////////////////////////////////////
@@ -67,7 +69,8 @@ class S52 {
   S52(var wsUri) {
     //js.context.rcvS52Msg = new js.Callback.many(rcvMsg);
     //js.context.onMessage = new js.Callback.many(rcvMsg);
-    js.context.websocket.onmessage = new js.Callback.many(rcvMsg);
+    //js.context.websocket.onmessage = new js.Callback.many(rcvMsg);
+    js.context['websocket'].onmessage = new js.Callback.many(rcvMsg);
 
     //_ws = new WebSocket(wsUri);
     //_ws.onMessage.listen((MessageEvent e) {
@@ -141,7 +144,8 @@ class S52 {
     _completer = new Completer();
 
     //js.context.sndS52Msg(str);
-    js.context.websocket.send(str);
+    //js.context.websocket.send(str);
+    js.context['websocket'].send(str);
 
     //_ws.send(str);
     //if (_ws.readyState == WebSocket.OPEN) {

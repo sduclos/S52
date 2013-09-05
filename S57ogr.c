@@ -472,8 +472,8 @@ S57_geo       *S57_ogrLoadObject(const char *objname, void *feature)
 
 
     // debug
-    //if (2186==S57_getGeoID(geoData)) {
-    //    S57_dumpData(geoData);
+    //if (207 == S57_getGeoID(geoData)) {
+    //    S57_dumpData(geoData, FALSE);
     //}
 
     //PRINTF("DEBUG: finish loading object (%s)\n", objname);

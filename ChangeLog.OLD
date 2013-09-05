@@ -3,6 +3,9 @@
 #
 
 
+2013SEP04
+    -fix sector lights
+    
 2013AUG27
     -fix not needed inclusion of glu.h in GLES2
 

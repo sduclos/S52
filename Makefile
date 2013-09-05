@@ -10,16 +10,18 @@
 # SD 2011NOV08 - add s52eglarm (android)
 # SD 2012NOV04 - add Parson lib (simple JSON parser) to handle SOCK stream
 # SD 2012NOV05 - move sduc-git.txt note inside Makefile (bottom)
+# SD 2013AUG31 - add s52gtk3egl
 
 
-##### TARGET #########
+##### TARGETS #########
 #all: s52glx         # OGR & GLX
 #all: s52eglx        # OGR & EGL & X11 (for testing GLES2)
 #all: s52eglarm      # OGR & EGL & ARM/Android (for testing GLES2 on ARM)
 #all: s52gv          # GV  (GTK)
 #all: s52gv2         # GV2 (GTK2)
-all: s52gtk2         # OGR & GTK2
+#all: s52gtk2        # OGR & GTK2
 #all: s52gtk2p       # profiling
+all: s52gtk3egl      # GTK3 & EGL
 #all: s52qt4         # OGR & Qt4 (same as s52gtk2 but run on Qt4)
 #all: s52win32       # same as s52gtk2, run on wine/win32 (MinGW)
 #all: s52clutter     # use COGL for rendering text
@@ -160,23 +162,21 @@ s52clutter, s52clutter.js :                                 \
 
 s52gtk2p : CFLAGS += -pg
 
-#s52glx : CFLAGS = `glib-config --cflags`
 s52glx : CFLAGS = `pkg-config  --cflags glib-2.0`\
                   `gdal-config --cflags`         \
                   -DS52_USE_PROJ                 \
                   -DS52_USE_DOTPITCH $(DBG)
 
 # -DS52_USE_SYM_AISSEL01 (experimental - symbol in plib-test-priv.rle)
-# -DS52_USE_SOCK
 # -DS52_USE_WORLD - shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
 # -DS52_USE_SUPP_LINE_OVERLAP
-# -DS52_USE_OGR_FILECOLLECTOR
+#s52gtk3egl,
 s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
                   -I/usr/include/freetype2       \
                   -I./lib/freetype-gl            \
-				  -I./lib/tesselator             \
+                  -I./lib/tesselator             \
                   -I./lib/parson                 \
                   -DS52_USE_PROJ                 \
                   -DS52_USE_GLIB2                \
@@ -187,6 +187,7 @@ s52eglx : CFLAGS =`pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   -DS52_USE_GLES2                \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_SOCK                 \
+                  -DS52_USE_OGR_FILECOLLECTOR    \
                   -DS52_DEBUG $(DBG)
 
 
@@ -216,6 +217,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
 # -DS52_DEBUG
 # -DS52_USE_SOCK
 # -DS52_USE_WORLD
+# -DS52_USE_TEGRA2
 
             DEFS   = -DS52_USE_GLIB2                       \
                      -DS52_USE_PROJ                        \
@@ -225,12 +227,12 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
                      -DS52_USE_ANDROID                     \
-                     -DS52_USE_TEGRA2                      \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
                      -DS52_USE_WORLD                       \
                      -DS52_DEBUG                           \
+					 -DS52_USE_LOG                         \
                      -DG_DISABLE_ASSERT
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
@@ -311,8 +313,6 @@ LIBS   = `pkg-config  --libs glib-2.0 lcms ftgl dbus-1 dbus-glib-1 egl` \
          `gdal-config --libs`                                           \
           -lGL -lGLU -lproj
 
-#-L/usr/local/lib -lGLC
-
 s52clutter, s52clutter.js : LIBS = `pkg-config  --libs glib-2.0 lcms` \
                                    `gdal-config --libs`   -lGL -lGLU
 
@@ -321,7 +321,7 @@ s52glx : LIBS = `pkg-config  --libs glib-2.0 lcms` \
                 `gdal-config --libs`               \
                 -lGL -lGLU
 
-# glu
+#s52gtk3egl,
 s52eglx : LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl glesv2 freetype2` \
                  `gdal-config --libs` -lproj
 
@@ -343,6 +343,7 @@ s52gv2 : LIBS = `pkg-config  --libs glib-2.0 lcms` \
 
 s52glx        : libS52.so    test/s52glx
 s52eglx       : libS52.so    test/s52eglx
+s52gkt3egl    : libS52.so    test/s52gtk3egl
 s52eglarm     : $(S52DROIDLIB)/libS52.a     test/s52eglarm
 s52gv         : libS52gv.so  test/s52gv
 s52gv2        : libS52gv.so  test/s52gv2
@@ -399,11 +400,19 @@ libS52.dll: $(OBJS_S52)
 	-L$(GTKPATH) -lglib-2.0-0 -lfreetype6  \
 	-lopengl32 -lglu32 -o $@
 
+
+############### Test ##############################
+#
+#
+
 test/s52glx:
 	(cd test; make s52glx)
 
 test/s52eglx:
 	(cd test; make s52eglx)
+
+test/s52gtk3egl:
+	(cd test; make s52gtk3egl)
 
 test/s52eglarm:
 	(cd test; make s52eglarm; cd android; make clean; make)
@@ -446,6 +455,11 @@ s52win32fini:
 # to get to the handle of gvProperty of layers
 #../../openev/pymod/_gvmodule.so
 
+
+############### Utils ##############################
+#
+#
+
 clean:
 	rm -f *.o tags openc.* *~ *.so *.dll err.txt                \
 	./lib/tesselator/*.o ./lib/freetype-gl/*.o ./lib/parson/*.o
@@ -472,7 +486,7 @@ tags:
 err.txt: *.c *.h
 	cppcheck --enable=all $(DEFS) *.c 2> err.txt
 
-#git:
+# git:
 #	git init (one time)
 #	git add <file>  (ex README)
 #	git commit -m "new"

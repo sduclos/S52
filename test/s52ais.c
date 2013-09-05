@@ -1233,6 +1233,16 @@ static gpointer      _gpsdClientRead(gpointer dummy)
         while (g_main_context_iteration(NULL, FALSE))
             ;
 
+        g_static_mutex_lock(&_ais_list_mutex);
+        if (NULL == _ais_list) {
+            g_print("s52ais.c:_gpsdClientRead() no AIS list .. main exited .. terminate gpsRead thread\n");
+
+            g_static_mutex_unlock(&_ais_list_mutex);
+
+            return NULL;
+        }
+        g_static_mutex_unlock(&_ais_list_mutex);
+
         g_usleep(1000 * 1000); // 1.0 sec
     }
 

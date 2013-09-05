@@ -103,20 +103,20 @@ static GLuint _vertexShader   = 0;
 static GLuint _fragmentShader = 0;
 
 // glsl uniform
-static GLuint _uProjection = 0;
-static GLuint _uModelview  = 0;
-static GLuint _uColor      = 0;
-static GLuint _uPointSize  = 0;
-static GLuint _uSampler2d  = 0;
-static GLuint _uBlitOn     = 0;
-static GLuint _uGlowOn     = 0;
-static GLuint _uStipOn     = 0;
+static GLint _uProjection = 0;
+static GLint _uModelview  = 0;
+static GLint _uColor      = 0;
+static GLint _uPointSize  = 0;
+static GLint _uSampler2d  = 0;
+static GLint _uBlitOn     = 0;
+static GLint _uGlowOn     = 0;
+static GLint _uStipOn     = 0;
 
-static GLuint _uPattOn     = 0;
-static GLuint _uPattGridX  = 0;
-static GLuint _uPattGridY  = 0;
-static GLuint _uPattW      = 0;
-static GLuint _uPattH      = 0;
+static GLint _uPattOn     = 0;
+static GLint _uPattGridX  = 0;
+static GLint _uPattGridY  = 0;
+static GLint _uPattW      = 0;
+static GLint _uPattH      = 0;
 
 // glsl varying
 static GLint _aPosition    = 0;
@@ -488,8 +488,10 @@ static const GLubyte _oversc_mask_bits[4] = {     // 4 x 8 bits = 32 bits
 };
 
 // other pattern are created using FBO
-static GLuint        _frameBufferID  = 0;
-static GLuint        _renderBufferID = 0;
+static GLuint        _frameBufferID = 0;
+static GLuint        _FBBufferID    = 0;
+
+//static GLuint        _renderBufferID = 0;
 
 //---- PATTERN -----------------------------------------------------------
 
@@ -5815,7 +5817,6 @@ static int       _renderAC_NODATA_layer0(void)
     glClear(GL_COVERAGE_BUFFER_BIT_NV | GL_COLOR_BUFFER_BIT);
 #else
     glClear(GL_COLOR_BUFFER_BIT);
-    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 #endif
 
     //glDrawBuffer(GL_BACK);
@@ -5884,8 +5885,6 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
 #else
         gluQuadricDrawStyle(_qobj, GLU_FILL);
 #endif
-        //_gluQuadricDrawStyle(_qobj, GLU_LINE);
-
 
         // first pass - create VBO
         S52_DListData *DList = S52_PL_getDListData(obj);
@@ -6214,7 +6213,7 @@ static int       _renderAP_NODATA_layer0(void)
 
         // setup FBO (will need this later on)  ----------------------------------
         glGenFramebuffers (1, &_frameBufferID);
-        glGenRenderbuffers(1, &_renderBufferID);
+        //glGenRenderbuffers(1, &_renderBufferID);
     }
 
 
@@ -6487,8 +6486,8 @@ static int       _renderAP_es2(S52_obj *obj)
         // The npot extension for GLES2 is only about support of mipmaps and repeat/mirror wrap modes.
         // If you don't care about mipmaps and use only the clamp wrap mode, you can use npot textures.
         // It's part of the GLES2 spec.
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
+        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -6500,8 +6499,14 @@ static int       _renderAP_es2(S52_obj *obj)
 #else
         // NPOT - fail on TEGRA2
         //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, w, h, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
+
         // test POT on MESA
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW, potH, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW, potH, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
+
+        // NOTE: GL_RGBA is needed for:
+        // - Vendor: Tungsten Graphics, Inc. - Renderer: Mesa DRI Intel(R) 965GM x86/MMX/SSE2
+        // - Vendor: Qualcomm                - Renderer: Adreno (TM) 320
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 #endif
 
         glBindFramebuffer     (GL_FRAMEBUFFER, _frameBufferID);
@@ -6795,6 +6800,9 @@ static int       _renderAP(S52_obj *obj)
 
 #ifdef S52_USE_GLES2
     {
+        // debug: skip texture
+        //return TRUE;
+
         return _renderAP_es2(obj);
     }
 #else
@@ -8201,7 +8209,7 @@ int        S52_GL_isOFFscreen(S52_obj *obj)
         return FALSE;
     }
 
-    
+
     {   // clip all other object outside view
         double x1,y1,x2,y2;
         S57_geo *geo = S52_PL_getGeo(obj);
@@ -8267,7 +8275,7 @@ static guint     _minPOT(guint value)
 
 static int       _newTexture(S52_ras *raster)
 // copy and blend raster 'data' to alpha texture
-{   
+{
     guint potX = _minPOT(raster->w);
     guint potY = _minPOT(raster->h);
 
@@ -8368,7 +8376,7 @@ int        S52_GL_drawRaster(S52_ras *raster)
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-    _checkError("_renderAP_NODATA_layer0 -4-");
+    _checkError("S52_GL_drawRaster() -4-");
 
     glBindTexture(GL_TEXTURE_2D,  0);
 
@@ -8469,9 +8477,9 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //S57_geo *geo = S52_PL_getGeo(obj);
     //PRINTF("drawing geo ID: %i\n", S57_getGeoID(geo));
     //if (2184==S57_getGeoID(geo)) {
-    //if (2186==S57_getGeoID(geo)) {
-    //    PRINTF("found %i\n", S57_getGeoID(geo));
-    //    return TRUE;
+    //if (899 == S57_getGeoID(geo)) {
+    //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoID(geo));
+    ////    return TRUE;
     //}
     //if (TRUE == _doPick) {
     //    if (0 == strcmp("PRDARE", S52_PL_getOBCL(obj))) {
@@ -8893,6 +8901,7 @@ int        S52_GL_begin(int cursorPick, int drawLast)
     _glMatrixSet(VP_PRJ);
 
 #ifdef S52_USE_GLES2
+    glActiveTexture(GL_TEXTURE0);
 #else
     glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
     glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
@@ -8913,10 +8922,12 @@ int        S52_GL_begin(int cursorPick, int drawLast)
             _renderAP_NODATA_layer0();
         }
     } else {
-
         if (TRUE == _update_fb) {
+            PRINTF("DEBUG: call S52_GL_readFBPixels()\n");
             S52_GL_readFBPixels();
         }
+
+        //PRINTF("DEBUG: call S52_GL_drawFBPixels()\n");
 
         // load FB that was filled with the previous draw() call
         S52_GL_drawFBPixels();
@@ -9101,8 +9112,8 @@ static GLuint    _loadShader(GLenum type, const char *shaderSrc)
 //int        S52_GL_init_GLES2(void)
 static int       _init_es2(void)
 {
-    GLint  linked;
     const char* vShaderStr =
+        "precision mediump float;      \n"
         "uniform   mat4  uProjection;  \n"
         "uniform   mat4  uModelview;   \n"
         "                              \n"
@@ -9148,8 +9159,7 @@ static int       _init_es2(void)
 //        "#endif                        \n"
 //        "                              \n"
     const char* fShaderStr =
-        "#pragma profilepragma blendoperation(gl_FragColor, GL_FUNC_ADD, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)\n"
-//        "#pragma profilepragma blendoperation(gl_FragColor, GL_FUNC_ADD, GL_ONE, GL_ONE_MINUS_SRC_ALPHA)\n"
+//        "#pragma profilepragma blendoperation(gl_FragColor, GL_FUNC_ADD, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)\n"
         "precision mediump float;      \n"
         "                              \n"
         "uniform sampler2D uSampler2d; \n"
@@ -9218,6 +9228,7 @@ static int       _init_es2(void)
 
 
     if (FALSE == glIsProgram(_programObject)) {
+        GLint  linked;
 
         PRINTF("DEBUG: re-building '_programObject'\n");
 
@@ -9246,8 +9257,14 @@ static int       _init_es2(void)
         glAttachShader(_programObject, _fragmentShader);
         glLinkProgram (_programObject);
         glGetProgramiv(_programObject, GL_LINK_STATUS, &linked);
-        if(!linked){
-            PRINTF("problem linking program!");
+        if (GL_FALSE == linked){
+            GLsizei length;
+            GLchar  infoLog[2048];
+
+            glGetProgramInfoLog(_programObject,  2048, &length, infoLog);
+            PRINTF("problem linking program:%s", infoLog);
+
+
             g_assert(0);
             exit(0);
             return FALSE;
@@ -9294,8 +9311,8 @@ static int       _init_es2(void)
 
 
     //clear FB ALPHA before use, also put blue but doen't show up unless startup bug
-    glClearColor(0, 0, 1, 1);     // blue
-    //glClearColor(1, 0, 0, 1);     // red
+    //glClearColor(0, 0, 1, 1);     // blue
+    glClearColor(1, 0, 0, 1);     // red
 
 #ifdef S52_USE_TEGRA2
     // xoom specific - clear FB to reset Tegra 2 CSAA (anti-aliase), define in gl2ext.h
@@ -9311,13 +9328,25 @@ static int       _init_es2(void)
     //    _fb_texture_id = 0;
     //}
 
+    // setup mem buffer to save FB to
     glGenBuffers(1, &_fb_texture_id);
     glBindTexture  (GL_TEXTURE_2D, _fb_texture_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+
+    GLint format;
+    GLint type;
+    glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &format);
+    glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_TYPE,   &type);
+    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_BYTE, _fb_pixels);
+    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
+    //glTexImage2D   (GL_TEXTURE_2D, 0, format,  _vp[2], _vp[3], 0, format, type, NULL);
     glBindTexture  (GL_TEXTURE_2D, 0);
 
 
@@ -9826,27 +9855,38 @@ int        S52_GL_setOWNSHP(S52_obj *obj, double heading)
 guchar    *S52_GL_readFBPixels(void)
 {
     if (TRUE==_doPick || NULL==_fb_pixels)
-        return FALSE;
+        return NULL;
 
-    // copy framebuffer
-    //glReadBuffer(GL_FRONT);
+    //GLint format;
+    //GLint type;
+    //glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &format);
+    //glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_TYPE,   &type);
 
-    // Wierd Planet: Clutter need GL_UNSIGNED_BYTE for read() and GL_BYTE for write(), GL_RGBA
-    // Note also that in normal OpenGL this setup accumulate layer 9!!
-    // Also FTGL rendering is lost
-    //
-    // this leak on Radeon HD 3450 (fglrx)
     glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);  // leak
-    //glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_BYTE, _fb_pixels);             // leak less (but slower)
-    //glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);   // leak
-    //glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGB, GL_BYTE, _fb_pixels);            // leak + slow
 
-    //glReadBuffer(GL_BACK);
-    //glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    // this leak on Radeon HD 3450 (fglrx)
+    //glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);  // leak
+
+
+    /*
+    // Create FB Buffer
+    if (0 == _FBBufferID) {
+        glGenBuffers(1, &_FBBufferID);
+
+        //glBindTexture  (GL_TEXTURE_2D, _FBTextureID);
+        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        //glTexImage2D   (GL_TEXTURE_2D, 0, format, _vp[2], _vp[3], 0, format, type, NULL);
+    }
+
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, _FBBufferID);
+    glBufferData(GL_PIXEL_PACK_BUFFER,  _vp[2] * _vp[3] * 4, _fb_pixels, GL_STREAM_READ);
+
+    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
+    */
+
 
     _checkError("S52_GL_readFBPixels()");
-
-    //_update_fb = FALSE;
 
     return _fb_pixels;
 }
@@ -9873,6 +9913,12 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         y      = _vp[1];
         width  = _vp[2];
         height = _vp[3];
+        /*
+        x      = 0;
+        y      = 0;
+        width  = 512;
+        height = 512;
+        */
     } else {
         if (width > _vp[2]) {
             PRINTF("WARNING: dump width (%i) exceeded viewport width (%i)\n", width, _vp[2]);
@@ -9922,7 +9968,7 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     */
 
 
-    dataset = GDALCreate(driver, "_temp.tif", width, height, 3, GDT_Byte, NULL);
+    dataset = GDALCreate(driver, "/sdcard/s52droid/_temp.tif", width, height, 3, GDT_Byte, NULL);
     if (NULL == dataset) {
         PRINTF("WARNING: fail to create GDAL data set\n");
         return FALSE;
@@ -9932,15 +9978,19 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     GDALRasterBandH bandB = GDALGetRasterBand(dataset, 3);
 
     // get framebuffer pixels
-    guint8 *pixels = g_new0(guint8, width * height * 3);
+    //guint8 *pixels = g_new0(guint8, width * height * 3); // RGB
+    guint8 *pixels = g_new0(guint8, width * height * 4);  // RGBA
 
 #ifdef S52_USE_GLES2
-    glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+    //glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+    glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 #else
     glReadBuffer(GL_FRONT);
     glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
     glReadBuffer(GL_BACK);
 #endif
+
+    _checkError("S52_GL_dumpS57IDPixels()");
 
     //FIXME: use something like glPixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
@@ -9966,7 +10016,7 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     //gdal.GetDriverByName('PNG').CreateCopy(self.file.get_text(), gdal.Open('_temp.tif'),TRUE)
     GDALDatasetH dst_dataset;
     driver      = GDALGetDriverByName("PNG");
-    dst_dataset = GDALCreateCopy(driver, toFilename, GDALOpen("_temp.tif", GA_ReadOnly), FALSE, NULL, NULL, NULL);
+    dst_dataset = GDALCreateCopy(driver, toFilename, GDALOpen("/sdcard/s52droid/_temp.tif", GA_ReadOnly), FALSE, NULL, NULL, NULL);
     GDALClose(dst_dataset);
 
     return TRUE;
@@ -9976,10 +10026,6 @@ int        S52_GL_drawFBPixels(void)
 {
     if (TRUE==_doPick || NULL==_fb_pixels)
         return FALSE;
-
-    // debug
-    //PRINTF("DEBUG: S52_GL_drawFBPixels() .. XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
-    //return TRUE;
 
     // set rotation temporatly to 0.0  (MatrixSet)
     double north = _north;
@@ -9991,16 +10037,22 @@ int        S52_GL_drawFBPixels(void)
     _glMatrixSet(VP_PRJ);
 
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
-    if (TRUE == _update_fb) {
-        // work with NPOT
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
 
-        // FIXME: check if this is faster
-        //glTexSubImage2D(GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const GLvoid* pixels);
-        //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-        //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 512, 512, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-        //_checkError("S52_GL_drawFBPixels() -1.0-");
+    //*
+    if (TRUE == _update_fb) {
+        GLint format;
+        GLint type;
+        glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &format);
+        glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_TYPE,   &type);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
     }
+    //*/
+
+    // GLES3
+    //glBindBuffer(GL_PIXEL_UNPACK_BUFFER, _FBBufferID);
+    //glBufferData(GL_PIXEL_UNPACK_BUFFER,  _vp[2] * _vp[3] * 4, _fb_pixels, GL_STREAM_READ);
+
 
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
@@ -10024,6 +10076,9 @@ int        S52_GL_drawFBPixels(void)
     glBindTexture(GL_TEXTURE_2D, 0);
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
+
+    // GLES3
+    //glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
 
     _glMatrixDel(VP_PRJ);
 
@@ -10062,10 +10117,6 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
 #ifdef S52_USE_GLES2
 
     _glMatrixSet(VP_PRJ);
-
-    // FIXME: clip artefac from old FB
-    //_renderAC_NODATA_layer0();
-
 
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 

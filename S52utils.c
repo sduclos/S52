@@ -236,7 +236,7 @@ void     S52_printf(const gchar *string)
     char str[MAXL];
     g_get_current_time(&_now);
 
-    snprintf(str, MAXL-1, "%s %s\n", g_time_val_to_iso8601(&_now), string);
+    snprintf(str, MAXL-1, "%s %s", g_time_val_to_iso8601(&_now), string);
     write(_log, str, strlen(str));
 
     if (NULL != _err_cb)
@@ -244,11 +244,14 @@ void     S52_printf(const gchar *string)
 }
 
 int      S52_initLog(S52_error_cb err_cb)
+// set print handler
+// set tmp log file
 {
     _err_cb = err_cb;
 
 #ifdef S52_USE_LOG
-    printf("starting log (%s)\n", g_get_tmp_dir());
+    //printf("starting log (%s)\n", g_get_tmp_dir());
+    //S52_printf("starting log\n");
 
     _log = g_file_open_tmp("XXXXXX", NULL, NULL);
     if (-1 == _log)

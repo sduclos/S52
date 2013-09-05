@@ -8,11 +8,12 @@
 
 #all: s52glx        # GLX & OGR
 #all: s52eglx       # EGL & GLX & OGR
-#all: s52eglarm     # EGL & GLES2 & ARM/Android & OGR
+#all: s52eglarm     # EGL & GLES2 & ARM/Android & OGR  S52_USE_ADRENO for Nexus & S52_USE_TEGRA2 for Xoom
 #all: s52gv         # GV  (OpenEV  / GTK )
 #all: s52gv2        # GV2 (OpenEV2 / GTK2)  broken
-all: s52gtk2       # GTK2 & OGR
+#all: s52gtk2       # GTK2 & OGR
 #all: s52gtk2p      # GTK2 & OGR (profiler)
+all: s52gtk3egl     # GTK3 & EGL
 #all: s52win32      # same as s52gtk2 but run on wine
 #all: s52clutter.js # same as s52gtk2 but use Clutter & Javascript (experimental)
 					# also used to build S52/doc/S52-0.1.gir
@@ -68,15 +69,22 @@ CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
 s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1`
 s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_USE_DOTPITCH
 
-# Note: the -DS52_USE_AFGLOW need symbole in PLAUX_00.DAI
-# -DS52_USE_AFGLOW -DS52_USE_FAKE_AIS -DS52_USE_WORLD
+# -DS52_USE_AFGLOW    - need symbole in PLAUX_00.DAI
+# -DS52_USE_FAKE_AIS 
+# -DS52_USE_WORLD
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps` \
                       -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL
 
+# same as s52eglx, but "gtk+-3.0" is added 
+s52gtk3egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` \
+                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL
+
+# -DS52_USE_TEGRA2 (Xoom)
+# -DS52_USE_ADRENO (Nexus 7)
 s52eglarm:  CFLAGS =  -DS52_USE_DOTPITCH                 \
                       -DS52_USE_EGL                      \
+					  -DS52_USE_ADRENO                   \
                       -DS52_USE_ANDROID                  \
-                      -DS52_USE_TEGRA2                   \
                       -DS52_USE_AFGLOW                   \
                       -DS52_USE_SOCK                     \
 					  -DS52_USE_WORLD                    \
@@ -85,11 +93,11 @@ s52eglarm:  CFLAGS =  -DS52_USE_DOTPITCH                 \
                       -I$(S52DROIDINC)                   \
                       -I$(S52DROIDINC)/glib-2.0
 
-s52gv:       CFLAGS = `gtk-config --cflags` `glib-config --cflags`     \
+s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`     \
                       -I$(OPENEV_HOME) -DGV_USE_DOUBLE_PRECISION_COORD \
                       -I.. -DS52_USE_GV
 
-s52gv2:      CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0`      \
+s52gv2:     CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0`      \
                       -D_REENTRANT  -DGV_USE_DOUBLE_PRECISION_COORD    \
                       -I$(OPENEV2HOME) -I..  -DS52_USE_GV -DS52_USE_GTK2
 
@@ -118,6 +126,9 @@ OGR_LIBS  = `gdal-config --libs`
 
 s52eglx   : LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS)
 
+# same as s52eglx, add "gtk+-3.0"
+s52gtk3egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` $(S52_LIBS) 
+
 s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a                 \
                       $(S52DROIDLIBS)/libgobject-2.0.a             \
                       $(S52DROIDLIBS)/libgmodule-2.0.a             \
@@ -127,17 +138,19 @@ s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a                 \
                       $(S52DROIDLIBS)/libgps.a                     \
                        -L$(DROIDLIBS) -llog
 
+ 
 ############### build ##############################
 #
 #
 s52glx: s52glx.c
 	$(CC) $(CFLAGS) s52glx.c $(S52_LIBS) -o $@
 
-#s52ais: s52ais.c
-#	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
-
 s52eglx: s52egl.c
 	$(CC) $(CFLAGS) s52egl.c $(LIBS) -o $@
+	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
+
+s52gtk3egl: s52gtk3egl.c
+	$(CC) $(CFLAGS) s52gtk3egl.c $(LIBS) -o $@
 	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
 
 
@@ -207,7 +220,9 @@ s52ais: s52ais.c
 	adb push  s52ais    /sdcard/s52droid/bin
 	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/s52ais'
 
-s52eglarm: s52ais sl4agps
+#s52eglarm: s52ais sl4agps
+	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/*.sh'
+	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/gpsd'
 
 # Note: to start s52ui (the HTML UI that replace sl4agps) in android by hand
 # adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/.s52ui
@@ -311,8 +326,7 @@ s52win32gps: libs52gps.dll s52gtk2.c  ../S52.h
 	$(CXX) $(CFLAGS) -I.. s52gtk2.c $(LIBS) -L. -llibs52gps -o s52gtk2gps.exe
 
 libs52gps.dll: s52gps.h s52gps.c
-	$(CC) -Wall -I.. -I/home/sduclos/dev/gis/gps/gpsd-2.90-mingw `pkg-config --cflags glib-2.0` -c s52gpsd
-	.c
+	$(CC) -Wall -I.. -I/home/sduclos/dev/gis/gps/gpsd-2.90-mingw `pkg-config --cflags glib-2.0` -c s52gpsd.c
 	$(CC) -shared -Wl,-rpath .. -L.. -lS52  \
 	 s52gps.o libgps.a -L$(WIN32PATH) -lglib-2.0-0  -L/usr/lib32/wine -lws2_32 -o $@
 
@@ -364,9 +378,10 @@ libS52-1.0.so: ../libS52.so ../S52.h
 ############### clean up ##############################
 #
 #
+
 clean:
 	rm -f s52glx s52eglx s52gv s52gv2 s52gtk2 s52gtk2p s52gtk2.exe s52qt4 *.o *.so \
-    s52gtk2gps S52-1.0.* s52eglx s52ais sl4agps
+    s52gtk2gps S52-1.0.* s52eglx s52ais sl4agps s52gtk3egl
 
 distclean: clean
 	rm -f sl4agps.cfg android/dist/sdcard/s52droid/bin/s52ais android/dist/sdcard/s52droid/bin/sl4agps

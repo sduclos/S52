@@ -15,7 +15,7 @@ all: build.xml bin/$(APKNAME)
 # Android 4.1.2 (API level 16)
 # Android 4.2.2 (API level 17)
 build.xml: AndroidManifest.xml
-	android update project -p . -t "android-17" -n s52droid
+	android update project -p . -t "android-18" -n s52droid
 
 bin/$(APKNAME):
 	ndk-build -B V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1
@@ -90,9 +90,9 @@ distclean: clean
 
 
 # to send STDOUT & STDERR to logd
-#$ adb shell stop
-#$ adb shell setprop log.redirect-stdio true
-#$ adb shell start
+#$ adb shell su -c stop
+#$ adb shell su -c "setprop log.redirect-stdio true"
+#$ adb shell su -c start
 
 # perfhudes
 #adb shell setprop debug.perfhudes 1

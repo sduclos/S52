@@ -263,21 +263,59 @@ static int      _egl_init       (s52engine *engine)
         EGL_NONE
     };
 #else
+
+#ifdef S52_USE_ADRENO
+    EGLint eglConfigList[] = {
+        EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
+        EGL_SAMPLES,             0,   // > 0, fail on xoom
+        //EGL_SAMPLE_BUFFERS,      1,   // 0 - MSAA fail (anti-aliassing)
+
+        /*
+        EGL_RED_SIZE,           5,
+        EGL_GREEN_SIZE,         6,
+        EGL_BLUE_SIZE,          5,
+        EGL_STENCIL_SIZE,       8,
+        */
+
+        EGL_RED_SIZE,           8,
+        EGL_GREEN_SIZE,         8,
+        EGL_BLUE_SIZE,          8,
+        EGL_ALPHA_SIZE,         8,
+        //EGL_DEPTH_SIZE,        16,
+
+#ifdef _OGLES3
+        // this bit opens access to ES3 functions on QCOM hardware pre-Android support for ES3
+        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT_KHR,
+#else
+        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
+#endif
+        EGL_NONE
+    };
+#else
+
+    // Mesa
     const EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+
+        //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
+        //EGL_CONTEXT_CLIENT_VERSION,3,
 
         EGL_RED_SIZE,        8,
         EGL_GREEN_SIZE,      8,
         EGL_BLUE_SIZE,       8,
 
+        //EGL_RED_SIZE,        5,
+        //EGL_GREEN_SIZE,      6,
+        //EGL_BLUE_SIZE,       5,
+
         // no matching config
-        //EGL_ALPHA_SIZE,      8,  // for pattern
         //EGL_ALPHA_SIZE,      1,  // for pattern
         //EGL_STENCIL_SIZE,    8,  // for pattern
 
         EGL_NONE
     };
+#endif  // S52_USE_ADRENO
 #endif
 
     /*
@@ -308,12 +346,14 @@ static int      _egl_init       (s52engine *engine)
     engine->dpy = XOpenDisplay(NULL);
     eglDisplay  = eglGetDisplay(engine->dpy);
 #endif
+
     if (EGL_NO_DISPLAY == eglDisplay)
         LOGE("eglGetDisplay() failed. [0x%x]\n", eglGetError());
 
-    EGLint major = 2;
+    //EGLint major = 2;
+    EGLint major = 0;
     EGLint minor = 0;
-    if (EGL_FALSE == eglInitialize(eglDisplay, &major, &minor) || EGL_SUCCESS != eglGetError())
+    if (EGL_FALSE == eglInitialize(eglDisplay, &major, &minor))
         LOGE("eglInitialize() failed. [0x%x]\n", eglGetError());
 
     LOGI("EGL Version   :%s\n", eglQueryString(eglDisplay, EGL_VERSION));
@@ -326,32 +366,34 @@ static int      _egl_init       (s52engine *engine)
     //EGLint     tmp;
     //EGLConfig  eglConfig[320];
     EGLint     eglNumConfigs = 0;
+    //EGLConfig  eglConfig[27];
     EGLConfig  eglConfig;
 
     //eglGetConfigs(eglDisplay, eglConfig, 320, &tmp);
     eglGetConfigs(eglDisplay, NULL, 0, &eglNumConfigs);
-    printf("eglNumConfigs = %i\n", eglNumConfigs);
+    LOGI("eglNumConfigs = %i\n", eglNumConfigs);
 
     /*
-    int i = 0;
-    for (i = 0; i<eglNumConfigs; ++i) {
+    for (int i = 0; i<eglNumConfigs; ++i) {
         EGLint samples = 0;
         //if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[i], EGL_SAMPLES, &samples))
-        //    printf("eglGetConfigAttrib in loop for an EGL_SAMPLES fail at i = %i\n", i);
+        //    LOGE(("eglGetConfigAttrib in loop for an EGL_SAMPLES fail at i = %i\n", i);
         if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[i], EGL_SAMPLE_BUFFERS, &samples))
-            printf("eglGetConfigAttrib in loop for an  EGL_SAMPLE_BUFFERS fail at i = %i\n", i);
+            LOGE(("eglGetConfigAttrib in loop for an  EGL_SAMPLE_BUFFERS fail at i = %i\n", i);
 
         if (samples > 0)
-            printf("sample found: %i\n", samples);
+            LOGE(("sample found: %i\n", samples);
 
     }
-    eglGetConfigs(eglDisplay, configs, num_config[0], num_config))
-    */
+    //*/
 
     if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, &eglConfig, 1, &eglNumConfigs))
-        LOGE("eglChooseConfig() failed. [0x%x]\n", eglGetError());
+    //if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, eglConfig, 27, &eglNumConfigs))
+        LOGI("eglChooseConfig() failed. [0x%x]\n", eglGetError());
     if (0 == eglNumConfigs)
-        LOGE("eglChooseConfig() eglNumConfigs no matching config [0x%x]\n", eglGetError());
+        LOGI("eglChooseConfig() eglNumConfigs no matching config [0x%x]\n", eglGetError());
+    else
+        LOGI("eglChooseConfig() eglNumConfigs = %i\n", eglNumConfigs);
 
     // EGL_NATIVE_VISUAL_ID is an attribute of the EGLConfig that is
     // guaranteed to be accepted by ANativeWindow_setBuffersGeometry().
@@ -359,10 +401,17 @@ static int      _egl_init       (s52engine *engine)
     // ANativeWindow buffers to match, using EGL_NATIVE_VISUAL_ID.
     EGLint vid;
     if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vid))
+    //if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[5], EGL_NATIVE_VISUAL_ID, &vid))
         LOGE("Error: eglGetConfigAttrib() failed\n");
 
+	
+
 #ifdef S52_USE_ANDROID
-    ANativeWindow_setBuffersGeometry(engine->app->window, 0, 0, vid);
+    //ANativeWindow_setBuffersGeometry(engine->app->window, 0, 0, vid);
+    ANativeWindow_setBuffersGeometry(engine->app->window,
+                                     ANativeWindow_getWidth(engine->app->window),
+                                     ANativeWindow_getHeight(engine->app->window),
+                                     vid);
     engine->eglWindow = (EGLNativeWindowType) engine->app->window;
 #else
     {
@@ -405,6 +454,7 @@ static int      _egl_init       (s52engine *engine)
 #endif
 
     eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, (EGLNativeWindowType)engine->eglWindow, NULL);
+    //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig[5], (EGLNativeWindowType)engine->eglWindow, NULL);
     if (EGL_NO_SURFACE == eglSurface || EGL_SUCCESS != eglGetError())
         LOGE("eglCreateWindowSurface() failed. EGL_NO_SURFACE [0x%x]\n", eglGetError());
 
@@ -413,7 +463,9 @@ static int      _egl_init       (s52engine *engine)
         EGL_CONTEXT_CLIENT_VERSION, 2,
         EGL_NONE
     };
+
     eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, eglContextList);
+    //eglContext = eglCreateContext(eglDisplay, eglConfig[5], EGL_NO_CONTEXT, eglContextList);
     if (EGL_NO_CONTEXT == eglContext || EGL_SUCCESS != eglGetError())
         LOGE("eglCreateContext() failed. [0x%x]\n", eglGetError());
 
@@ -680,6 +732,12 @@ static int      _s52_setupPRDARE(s52droid_state_t *state)
     return TRUE;
 }
 
+static int      _s52_error_cb   (const char *err)
+{
+    LOGI("%s", err);
+    return TRUE;
+}
+
 static int      _s52_init       (s52engine *engine)
 {
     if ((NULL==engine->eglDisplay) || (EGL_NO_DISPLAY==engine->eglDisplay)) {
@@ -721,21 +779,25 @@ static int      _s52_init       (s52engine *engine)
         //hmm = 301; // wrong
         //hmm = 307;
 #endif
-        //LOGE("_init_S52(): start -1- ..\n");
 
-        if (FALSE == S52_init(w, h, wmm, hmm, NULL)) {
+
+        // can be called any time
+        LOGE("_init_S52():S52_version():%s\n", S52_version());
+
+        LOGE("_init_S52(): start -1- ..\n");
+
+        LOGE("_init_S52():S52_init(%i,%i,%i,%i)\n", w, h, wmm, hmm);
+
+        if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb)) {
+            LOGE("_init_S52():S52_init(%i,%i,%i,%i)\n", w, h, wmm, hmm);
             engine->state.do_S52init = FALSE;
+            exit(0);
             return FALSE;
         }
 
-        //LOGE("_init_S52(): start -2- ..\n");
-
         S52_setViewPort(0, 0, w, h);
-
     }
 
-    // can be called any time
-    S52_version();
 
 #ifdef S52_USE_EGL
     S52_setEGLcb((EGL_cb)_egl_beg, (EGL_cb)_egl_end, engine);
@@ -831,7 +893,7 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60
 
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
+    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
     //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
 
     // remove QUAPNT01 symbole (black diagonal and a '?')
@@ -876,6 +938,8 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
 
+    //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
+    S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.1);   // default
 
     // if first start find where we are looking
     _s52_computeView(&engine->state);
@@ -949,6 +1013,21 @@ static int      _s52_updTimeTag (s52engine *engine)
 }
 #endif
 
+static int      _s52_screenShot (void)
+// debug - S57 obj ID of Becancour Cell (CA579016.000)
+{
+    static int takeScreenShot = TRUE;
+    if (TRUE == takeScreenShot) {
+        //S52_dumpS57IDPixels("test.png", 954, 200, 200); // waypnt
+        //S52_dumpS57IDPixels("test.png", 556, 200, 200); // land
+        S52_dumpS57IDPixels("/sdcard/s52droid/test.png", 0, 200, 200);
+    }
+    takeScreenShot = FALSE;
+
+    return EGL_TRUE;
+}
+
+
 static int      _s52_draw_cb    (gpointer user_data)
 // return TRUE for the signal to be called again
 {
@@ -1002,6 +1081,9 @@ static int      _s52_draw_cb    (gpointer user_data)
 
         S52_draw();
         engine->do_S52draw = FALSE;
+
+        //debug
+        //_s52_screenShot();
     }
 
     // draw AIS
@@ -1025,19 +1107,6 @@ exit:
 
     return EGL_TRUE;
 }
-
-//static int      _s52_screenShot(void)
-// debug - S57 obj ID of Becancour Cell (CA579016.000)
-//{
-//    static int takeScreenShot = TRUE;
-//    if (TRUE == takeScreenShot) {
-//        //S52_dumpS57IDPixels("test.png", 954, 200, 200); // waypnt
-//        S52_dumpS57IDPixels("test.png", 556, 200, 200); // land
-//    }
-//    takeScreenShot = FALSE;
-//
-//    return EGL_TRUE;
-//}
 
 
 #ifdef S52_USE_ANDROID
@@ -1084,7 +1153,7 @@ static int      _android_init_external_ais(void)
     // tell AIS to re-connect to libS52 if AIS is allready UP
     if (TRUE == g_file_test(AIS PID, (GFileTest) (G_FILE_TEST_EXISTS))) {
         LOGI("s52egl:AIS prog is allready running (%s)\n", AIS);
-        const char connS52[] = "/system/bin/sh -c 'kill -SIGUSR2 `cat " AIS PID "`'";
+        const char connS52[] = "su -c /system/bin/sh -c 'kill -SIGUSR2 `cat " AIS PID "`'";
         if (TRUE != g_spawn_command_line_async(connS52, &error)) {
             LOGI("s52egl:g_spawn_command_line_async() failed [%s]\n", error->message);
             return FALSE;
@@ -1094,7 +1163,8 @@ static int      _android_init_external_ais(void)
         return TRUE;
     }
 
-    char run_s52ais_sh[] = "/system/bin/sh -c " AIS;
+    //char run_s52ais_sh[] = "su -c \"/system/bin/sh -c " AIS "\"";
+    char run_s52ais_sh[] = "su -c " AIS;
     if (TRUE != g_spawn_command_line_async(run_s52ais_sh, &error)) {
         LOGE("s52egl:g_spawn_command_line_async() failed [%s]\n", error->message);
         return FALSE;
@@ -1758,7 +1828,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 
             if (NULL != engine->app->window) {
                 if (EGL_TRUE == _android_display_init(engine)) {
-                    //_android_init_external_ais();
+                    _android_init_external_ais();
                     //_android_init_external_gps();
                 }
             }

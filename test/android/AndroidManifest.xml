@@ -55,10 +55,10 @@
               android:targetSdkVersion = "16" />
     -->
     <uses-sdk android:minSdkVersion    = "3"
-              android:targetSdkVersion = "17" />
+              android:targetSdkVersion = "18" />
 
     <application android:label               = "@string/app_name"
-                 android:hasCode             = "true"
+                 android:hasCode             = "false"
                  android:debuggable          = "true"
                  android:hardwareAccelerated = "true"
                  android:theme               = "@android:style/Theme.Holo"
@@ -101,6 +101,7 @@
 
         </activity>
 
+<!--
         <activity android:name          = ".s52ui"
                   android:theme         = "@android:style/Theme.Translucent.NoTitleBar"
                   android:configChanges = "orientation|keyboardHidden|keyboard|screenSize|locale">
@@ -109,7 +110,7 @@
                 <category android:name  = "android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
+-->
 
         <!--      android:name       = ".BootUpReceiver" -->
         <!--      android:label="@string/app_name"       -->

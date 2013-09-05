@@ -782,14 +782,13 @@ void _initMain(evt) {
 void main() {
   print('s5ui.dart:main(): start');
 
-  //js.scoped(() {
-    js.context.onOpen         = new js.Callback.once(_initMain);
-    js.context.setTouchScrnSz = new js.Callback.once(_initTouch);
+    js.context['onOpen']         = new js.Callback.once(_initMain);
+    //js.context['websocket.onopen'] = new js.Callback.once(_initMain);
+    js.context['setTouchScrnSz'] = new js.Callback.once(_initTouch);
 
-    js.context.orientationChg = new js.Callback.many(_orientationChg);
+    js.context['orientationChg'] = new js.Callback.many(_orientationChg);
     //js.context.toggleUIEvent  = new js.Callback.many(_toggleUIEvent);
-    js.context.toggleUI       = new js.Callback.many(_toggleUIEvent);
-  //});
+    js.context['toggleUI']       = new js.Callback.many(_toggleUIEvent);
 
 
   //print('s5ui.dart:main():in Timer END -1--');

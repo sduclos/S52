@@ -10,9 +10,10 @@ LOCAL_SRC_FILES  := ../../s52egl.c
 # -DS52_USE_FAKE_AIS - fake AIS (debug)
 # -DS52_USE_SL4A     - SL4A is a RPC bridge to the Android framework
 # -DS52_USE_AIS      - not use
+# -DS52_USE_TEGRA2   - GLES2
 S52ANDRIODINC    := /home/sduclos/S52/test/android/dist/system/include
 LOCAL_CFLAGS     := -Wall -g -DG_LOG_DOMAIN=\"s52droid\"                                         \
-                    -DS52_USE_DOTPITCH -DS52_USE_ANDROID -DS52_USE_TEGRA2                        \
+                    -DS52_USE_DOTPITCH -DS52_USE_ANDROID -DS52_USE_ADRENO                        \
 					-DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_WORLD                               \
                     -I../..                                                                      \
                     -I$(S52ANDRIODINC)                                                           \
@@ -26,21 +27,25 @@ LOCAL_LDFLAGS    := -rdynamic -fexception
 
 #TIAMATLIBS       := /home/sduclos/dev/prog/Android/xoom/tiamat-xoom-rom/Xoom.Zone-Tiamat.Rom.2.2.2/system/lib
 #TIAMATLIBS       := /home/sduclos/dev/prog/Android/xoom/tiamat-xoom-rom/Eos-wingray/system/lib
-TEAMEOSLIBS      := /home/sduclos/dev/prog/Android/xoom/TeamEOS-wingray-rom/system/lib
+#TEAMEOSLIBS      := /home/sduclos/dev/prog/Android/xoom/TeamEOS-wingray-rom/system/lib
+CYANOGENLIBS     := /home/sduclos/dev/prog/Android/xoom/cm/system/lib
 S52ANDRIODLIBS   := /home/sduclos/S52/test/android/dist/system/lib
 ARMTOOLCHAINROOT := /home/sduclos/dev/prog/Android/dev/android-9-toolchain
 #ARMTOOLCHAINROOT := /home/sduclos/dev/prog/Android/dev/android-14-toolchain
 #ARMLIBS          := $(ARMTOOLCHAINROOT)/sysroot/usr/lib
 # -lGLESv1_CM
 # $(S52ANDRIODLIBS)/libgio-2.0.a
-#-lsurfaceflinger_client 
-LOCAL_LDLIBS     := -L$(TEAMEOSLIBS) -lEGL -lGLESv2                                          \
-                    -llog -lcutils -lz -lutils                                               \
-                    -lbinder -lpixelflinger -lhardware -lhardware_legacy -lskia -lui -lgui   \
-                    -landroid -lexpat -lnativehelper -lnetutils                              \
-                    -lcamera_client -lsqlite -ldvm -lETC1 -lsonivox -lcrypto                 \
-                    -lssl -licuuc -licui18n -lmedia -lwpa_client -ljpeg -lnfc_ndef -lusbhost \
-                    -lhwui -lbluedroid -ldbus -lemoji -lstlport -lstagefright_foundation     \
+#-lsurfaceflinger_client
+
+# -lhardware -lhardware_legacy
+#                    -lcutils -lutils -ljpeg
+#                    -lbinder -lpixelflinger -lskia -lui -lgui
+#                    -lexpat -lnativehelper -lnetutils
+#                    -lcamera_client -lsqlite -ldvm -lETC1 -lsonivox -lcrypto
+#                    -lssl -licuuc -licui18n -lmedia -lwpa_client -lnfc_ndef -lusbhost
+#                    -lhwui -lbluedroid -ldbus -lemoji -lstlport -lstagefright_foundation
+LOCAL_LDLIBS     := -L$(CYANOGENLIBS) -lEGL -lGLESv2                                         \
+					-llog -landroid -lz                                                      \
                     -landroid_runtime -lc -lm -ldl                                           \
                            $(S52ANDRIODLIBS)/libS52.a                                        \
                            $(S52ANDRIODLIBS)/libgps.a                                        \
@@ -59,7 +64,7 @@ LOCAL_LDLIBS     := -L$(TEAMEOSLIBS) -lEGL -lGLESv2                             
 
 
 # /home/sduclos/dev/prog/Android/dev/usr/arm-linux-gnueabi/lib/libSegFault.so
-# $(S52ANDRIODLIBS)/libunwind.a                  
+# $(S52ANDRIODLIBS)/libunwind.a
 
 LOCAL_ARM_MODE   := arm
 

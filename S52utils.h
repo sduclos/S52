@@ -89,7 +89,7 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
 #define CONF_CHART    "CHART"
 #define CONF_WORLD    "WORLD"
 
-#define MAXL 256    // MAX lenght of buffer _including_ '\0'
+#define MAXL 1024    // MAX lenght of buffer _including_ '\0'
 typedef char    valueBuf[MAXL];
 
 int      S52_getConfig(const char *label, valueBuf *vbuf);

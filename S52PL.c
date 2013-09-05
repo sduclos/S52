@@ -362,7 +362,7 @@ typedef unsigned char u8;
 
 // used to parse the PLib
 #define MAX_BUF    1024      // working buffer length
-#define MAXL       256       // max string 'str' length in buf
+//#define MAXL       256       // max string 'str' length in buf
 //static char buffer[MAX_BUF];
 //static char *pBuf = (char *)&buffer;
 static char pBuf[MAX_BUF];
