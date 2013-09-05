@@ -5,6 +5,7 @@
 
 2013SEP04
     -fix sector lights
+    -add test/s52gtk3egl.c
     
 2013AUG27
     -fix not needed inclusion of glu.h in GLES2
