@@ -45,7 +45,7 @@ ARMTOOLCHAINROOT := /home/sduclos/dev/prog/Android/dev/android-9-toolchain
 #                    -lcamera_client -lsqlite -ldvm -lETC1 -lsonivox -lcrypto
 #                    -lssl -licuuc -licui18n -lmedia -lwpa_client -lnfc_ndef -lusbhost
 #                    -lhwui -lbluedroid -ldbus -lemoji -lstlport -lstagefright_foundation
-LOCAL_LDLIBS     := -L$(CYANOGENLIBS) -lEGL -lGLESv3                                         \
+LOCAL_LDLIBS     := -L$(CYANOGENLIBS) -lEGL -lGLESv2                                         \
 					-llog -landroid -lz                                                      \
                     -landroid_runtime -lc -lm -ldl                                           \
                            $(S52ANDRIODLIBS)/libS52.a                                        \
