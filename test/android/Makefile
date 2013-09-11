@@ -14,8 +14,9 @@ all: build.xml bin/$(APKNAME)
 
 # Android 4.1.2 (API level 16)
 # Android 4.2.2 (API level 17)
+# Android 4.3   (API level 18)
 build.xml: AndroidManifest.xml
-	android update project -p . -t "android-18" -n s52droid
+	android update project -p . -t "android-17" -n s52droid
 
 bin/$(APKNAME):
 	ndk-build -B V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1

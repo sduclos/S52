@@ -266,7 +266,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.97\n"
+      "libS52 0.98\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -3821,19 +3821,12 @@ static int        _drawLast(void)
             g_atomic_int_get(&_atomicAbort);
             if (TRUE == _atomicAbort) {
                 PRINTF("abort drawing .. \n");
-
-                //S52_GL_end(TRUE);
-
-                //ret = TRUE;
-                //goto exit;
                 return TRUE;
             }
 
             // in some graphic driver this is expensive
             if (FALSE == S52_GL_isSupp(obj)) {
                 S52_GL_draw(obj, NULL);
-
-                // debug - commented
                 S52_GL_drawText(obj, NULL);
             }
         }
@@ -3844,11 +3837,11 @@ static int        _drawLast(void)
 
 DLL int    STD S52_drawLast(void)
 {
-    S52_CHECK_INIT;
-
     // debug
     //PRINTF("DRAWLAST: .. start -0-\n");
     //return TRUE;
+
+    S52_CHECK_INIT;
 
     if (S52_MAR_DISP_LAYER_LAST_NONE == S52_MP_get(S52_MAR_DISP_LAYER_LAST))
         return TRUE;
@@ -4065,6 +4058,9 @@ DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx)
 
 DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north)
 {
+    // debug
+    //return TRUE;
+
     S52_CHECK_INIT;
     EGL_BEGIN;
     S52_CHECK_MUTX;

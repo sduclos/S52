@@ -169,6 +169,7 @@ typedef struct s52engine {
     int                 do_S52drawLast;    // TRUE to call S52_drawLast() - S52_draw() was called at least once
     int                 do_S52setViewPort; // set in Android callback
 
+    int32_t             orientation;       // 1=180, 2=090
     int32_t             width;
     int32_t             height;
     // Xoom - dpi = 160 (density)
@@ -267,28 +268,20 @@ static int      _egl_init       (s52engine *engine)
 #ifdef S52_USE_ADRENO
     EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
-        EGL_SAMPLES,             0,   // > 0, fail on xoom
-        //EGL_SAMPLE_BUFFERS,      1,   // 0 - MSAA fail (anti-aliassing)
 
-        /*
-        EGL_RED_SIZE,           5,
-        EGL_GREEN_SIZE,         6,
-        EGL_BLUE_SIZE,          5,
-        EGL_STENCIL_SIZE,       8,
-        */
+        // Note: MSAA work on Andreno in: setting > developer > MSAA
+        //EGL_SAMPLES,             1,  // fail on Adreno
+        //EGL_SAMPLE_BUFFERS,      4,  // fail on Adreno
 
         EGL_RED_SIZE,           8,
         EGL_GREEN_SIZE,         8,
         EGL_BLUE_SIZE,          8,
-        EGL_ALPHA_SIZE,         8,
-        //EGL_DEPTH_SIZE,        16,
+        //EGL_ALPHA_SIZE,         8,
 
-#ifdef _OGLES3
         // this bit opens access to ES3 functions on QCOM hardware pre-Android support for ES3
-        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT_KHR,
-#else
+        //EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT_KHR,
         EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
-#endif
+
         EGL_NONE
     };
 #else
@@ -304,14 +297,11 @@ static int      _egl_init       (s52engine *engine)
         EGL_RED_SIZE,        8,
         EGL_GREEN_SIZE,      8,
         EGL_BLUE_SIZE,       8,
+        //EGL_ALPHA_SIZE,      8,
 
         //EGL_RED_SIZE,        5,
         //EGL_GREEN_SIZE,      6,
         //EGL_BLUE_SIZE,       5,
-
-        // no matching config
-        //EGL_ALPHA_SIZE,      1,  // for pattern
-        //EGL_STENCIL_SIZE,    8,  // for pattern
 
         EGL_NONE
     };
@@ -365,9 +355,9 @@ static int      _egl_init       (s52engine *engine)
     // the first EGLConfig that matches our criteria
     //EGLint     tmp;
     //EGLConfig  eglConfig[320];
-    EGLint     eglNumConfigs = 0;
     //EGLConfig  eglConfig[27];
     EGLConfig  eglConfig;
+    EGLint     eglNumConfigs = 0;
 
     //eglGetConfigs(eglDisplay, eglConfig, 320, &tmp);
     eglGetConfigs(eglDisplay, NULL, 0, &eglNumConfigs);
@@ -387,9 +377,11 @@ static int      _egl_init       (s52engine *engine)
     }
     //*/
 
-    if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, &eglConfig, 1, &eglNumConfigs))
+    if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, &eglConfig, 1, &eglNumConfigs)) {
     //if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, eglConfig, 27, &eglNumConfigs))
-        LOGI("eglChooseConfig() failed. [0x%x]\n", eglGetError());
+        LOGI("eglChooseConfig() failed, exiting .. [0x%x]\n", eglGetError());
+        exit(0);
+    }
     if (0 == eglNumConfigs)
         LOGI("eglChooseConfig() eglNumConfigs no matching config [0x%x]\n", eglGetError());
     else
@@ -844,8 +836,8 @@ static int      _s52_init       (s52engine *engine)
     //S52_toggleObjClassOFF("M_QUAL");         //  suppression OFF
 
 
-    S52_loadPLib(PLIB);
-    S52_loadPLib(COLS);
+    //S52_loadPLib(PLIB);
+    //S52_loadPLib(COLS);
 
     // -- DEPTH COLOR ------------------------------------
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
@@ -939,7 +931,7 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
 
     //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
-    S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.1);   // default
+    S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
 
     // if first start find where we are looking
     _s52_computeView(&engine->state);
@@ -1074,8 +1066,15 @@ static int      _s52_draw_cb    (gpointer user_data)
             eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
             eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
 
-            S52_setViewPort(0, 0, engine->width, engine->height);
-
+#ifdef S52_USE_ADRENO
+            // On Nexus 7, orientation doesn't change EGL w/h!
+            if (1 == engine->orientation)
+                S52_setViewPort(0, 0, engine->width,  engine->height);
+            else
+                S52_setViewPort(0, 0, engine->height, engine->width);
+#else
+            S52_setViewPort(0, 0, engine->width,  engine->height);
+#endif
             engine->do_S52setViewPort = FALSE;
         }
 
@@ -1539,6 +1538,9 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
 
             if (TRUE == mode_zoom) {
                 double dz_pc =  (start_y - new_y) / engine->height; // %
+#ifdef S52_USE_ADRENO
+                dz_pc /= 30.0;
+#endif
                 if (TRUE == S52_drawBlit(0.0, 0.0, dz_pc, 0.0))
                     zoom_fac = dz_pc;
             }
@@ -1563,6 +1565,10 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             if (TRUE==mode_scroll && FALSE==mode_zoom && FALSE==mode_rot && FALSE==mode_vrmebl) {
                 double dx_pc =  (start_x - new_x) / engine->width;  // %
                 double dy_pc = -(start_y - new_y) / engine->height; // %
+#ifdef S52_USE_ADRENO
+                dx_pc /= 10.0;
+                dy_pc /= 10.0;
+#endif
 
                 S52_drawBlit(dx_pc, dy_pc, 0.0, 0.0);
             }
@@ -1662,7 +1668,11 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             if (TRUE == mode_zoom) {
                 new_x = engine->state.cLon;
                 new_y = engine->state.cLat;
+#ifdef S52_USE_ADRENO
+                new_z = engine->state.rNM - (zoom_fac * engine->state.rNM * 20); // FIXME: where is the 2 comming from?
+#else
                 new_z = engine->state.rNM - (zoom_fac * engine->state.rNM * 2); // FIXME: where is the 2 comming from?
+#endif
                 new_r = engine->state.north;
             }
 
@@ -1891,7 +1901,8 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 
             // ACONFIGURATION_ORIENTATION == 0x0080,
             // ACONFIGURATION_SCREEN_SIZE == 0x0200,
-            if ((ACONFIGURATION_ORIENTATION|ACONFIGURATION_SCREEN_SIZE) & confDiff) {
+            if ((ACONFIGURATION_ORIENTATION | ACONFIGURATION_SCREEN_SIZE) & confDiff) {
+                engine->orientation       = AConfiguration_getOrientation(engine->config),
                 engine->do_S52setViewPort = TRUE;
                 engine->do_S52draw        = TRUE;
             }
@@ -1956,8 +1967,19 @@ static void     _onConfigurationChanged(ANativeActivity *activity)
 }
 
 static void     _onNativeWindowResized(ANativeActivity* activity, ANativeWindow* window)
+// FIXME: not sure if this come from the main thread
+// so in case the glib main loop is still running at this point
+// the mutex prevent a collision
 {
     LOGI("s52egl:_onNativeWindowResized(): starting ..\n");
+
+    g_static_mutex_lock(&_engine_mutex);
+
+    _engine.do_S52setViewPort = TRUE;
+    _engine.do_S52draw        = TRUE;
+    _engine.do_S52drawLast    = TRUE;
+
+    g_static_mutex_unlock(&_engine_mutex);
 
     return;
 }
@@ -1989,7 +2011,7 @@ void android_main(struct android_app *app)
 
     // setup callbacks to detect android rotation
     _engine.callbacks  = _engine.app->activity->callbacks;
-    _engine.callbacks->onConfigurationChanged = _onConfigurationChanged;
+    //_engine.callbacks->onConfigurationChanged = _onConfigurationChanged;
     //_engine.callbacks->onNativeWindowResized  = _onNativeWindowResized;
 
     // prepare to monitor sensor

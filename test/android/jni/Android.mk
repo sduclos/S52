@@ -11,10 +11,11 @@ LOCAL_SRC_FILES  := ../../s52egl.c
 # -DS52_USE_SL4A     - SL4A is a RPC bridge to the Android framework
 # -DS52_USE_AIS      - not use
 # -DS52_USE_TEGRA2   - GLES2
+# -DS52_USE_WORLD    - 
 S52ANDRIODINC    := /home/sduclos/S52/test/android/dist/system/include
 LOCAL_CFLAGS     := -Wall -g -DG_LOG_DOMAIN=\"s52droid\"                                         \
                     -DS52_USE_DOTPITCH -DS52_USE_ANDROID -DS52_USE_ADRENO                        \
-					-DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_WORLD                               \
+					-DS52_USE_AFGLOW -DS52_USE_EGL                                               \
                     -I../..                                                                      \
                     -I$(S52ANDRIODINC)                                                           \
 					-I$(S52ANDRIODINC)/glib-2.0                                                  \
@@ -44,7 +45,7 @@ ARMTOOLCHAINROOT := /home/sduclos/dev/prog/Android/dev/android-9-toolchain
 #                    -lcamera_client -lsqlite -ldvm -lETC1 -lsonivox -lcrypto
 #                    -lssl -licuuc -licui18n -lmedia -lwpa_client -lnfc_ndef -lusbhost
 #                    -lhwui -lbluedroid -ldbus -lemoji -lstlport -lstagefright_foundation
-LOCAL_LDLIBS     := -L$(CYANOGENLIBS) -lEGL -lGLESv2                                         \
+LOCAL_LDLIBS     := -L$(CYANOGENLIBS) -lEGL -lGLESv3                                         \
 					-llog -landroid -lz                                                      \
                     -landroid_runtime -lc -lm -ldl                                           \
                            $(S52ANDRIODLIBS)/libS52.a                                        \

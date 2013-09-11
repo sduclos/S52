@@ -70,24 +70,24 @@ s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --l
 s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_USE_DOTPITCH
 
 # -DS52_USE_AFGLOW    - need symbole in PLAUX_00.DAI
-# -DS52_USE_FAKE_AIS 
+# -DS52_USE_FAKE_AIS
 # -DS52_USE_WORLD
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps` \
-                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL
+                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_WORLD
 
-# same as s52eglx, but "gtk+-3.0" is added 
+# same as s52eglx, but "gtk+-3.0" is added
 s52gtk3egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` \
                       -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL
 
 # -DS52_USE_TEGRA2 (Xoom)
 # -DS52_USE_ADRENO (Nexus 7)
+# -DS52_USE_WORLD
 s52eglarm:  CFLAGS =  -DS52_USE_DOTPITCH                 \
                       -DS52_USE_EGL                      \
 					  -DS52_USE_ADRENO                   \
                       -DS52_USE_ANDROID                  \
                       -DS52_USE_AFGLOW                   \
                       -DS52_USE_SOCK                     \
-					  -DS52_USE_WORLD                    \
                       -I..                               \
                       -I$(DROIDINCLUDE)                  \
                       -I$(S52DROIDINC)                   \
@@ -127,7 +127,7 @@ OGR_LIBS  = `gdal-config --libs`
 s52eglx   : LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS)
 
 # same as s52eglx, add "gtk+-3.0"
-s52gtk3egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` $(S52_LIBS) 
+s52gtk3egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` $(S52_LIBS)
 
 s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a                 \
                       $(S52DROIDLIBS)/libgobject-2.0.a             \
@@ -138,7 +138,7 @@ s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a                 \
                       $(S52DROIDLIBS)/libgps.a                     \
                        -L$(DROIDLIBS) -llog
 
- 
+
 ############### build ##############################
 #
 #

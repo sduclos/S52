@@ -3,6 +3,9 @@
 #
 
 
+2013SEP10
+    -mod bring up Adreno (Nexus 7)
+
 2013SEP04
     -fix sector lights
     -add test/s52gtk3egl.c

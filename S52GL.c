@@ -1570,15 +1570,11 @@ static int       _init_freetype_gl(void)
                                 L"`abcdefghijklmnopqrstuvwxyz{|}~"
                                 L"èàé";
 
-    //_freetype_gl_atlas = texture_atlas_new(512, 512, 3);  // RGB
     if (NULL == _freetype_gl_atlas) {
+        //_freetype_gl_atlas = texture_atlas_new(512, 512, 3);  // RGB
         _freetype_gl_atlas = texture_atlas_new(512, 512, 1);    // alpha only
     }
 
-    //if (NULL != _freetype_gl_font) {
-    //    texture_font_delete(_freetype_gl_font);
-    //    _freetype_gl_font = NULL;
-    //}
     if (NULL != _freetype_gl_font[0]) {
         texture_font_delete(_freetype_gl_font[0]);
         texture_font_delete(_freetype_gl_font[1]);
@@ -1601,12 +1597,10 @@ static int       _init_freetype_gl(void)
         return FALSE;
     }
 
-    //texture_font_load_glyphs(_freetype_gl_font, cache);
     texture_font_load_glyphs(_freetype_gl_font[0], cache);
     texture_font_load_glyphs(_freetype_gl_font[1], cache);
     texture_font_load_glyphs(_freetype_gl_font[2], cache);
     texture_font_load_glyphs(_freetype_gl_font[3], cache);
-
 
     // PL module save VBO ID (a GLuint) as a unsigned int
     // this check document that
@@ -3570,8 +3564,9 @@ static int       _renderSY_CSYMB(S52_obj *obj)
     if (TRUE == S52_MP_get(S52_MAR_DISP_CALIB)) {
         // check symbol should be 5mm by 5mm
         if (0==g_strcmp0(attval->str, "CHKSYM01")) {
-            double      x = 40;
-            double      y = 50;
+            // FIXME: use _dotpitch_ ..
+            double      x = _vp[0] + 50;
+            double      y = _vp[1] + 50;
             double scalex = (_pmax.u - _pmin.u) / (double) _vp[2];
             double scaley = (_pmax.v - _pmin.v) / (double) _vp[3];
 
@@ -3610,10 +3605,10 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
         // symbol to be used for checking and adjusting the brightness and contrast controls
         if (0==g_strcmp0(attval->str, "BLKADJ01")) {
-            //double x = 50;
-            double x = 1230;
-            //double y = 100;
-            double y = 710;
+            // FIXME: use _dotpitch_ ..
+            // top left (witch is under CPU usage on Android)
+            double x = _vp[2] - 50;
+            double y = _vp[3] - 50;
 
             _glMatrixSet(VP_PRJ);
             _win2prj(&x, &y);
@@ -5803,7 +5798,8 @@ static int       _renderAC_NODATA_layer0(void)
     //glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
 
     glClearColor(c->R/255.0, c->G/255.0, c->B/255.0, 1.0);
-    //glClearColor(c->R/255.0, c->G/255.0, c->B/255.0, 0.0);
+    //glClearColor(c->R/255.0, c->G/255.0, c->B/255.0, 0.0); // debug Nexus/Adreno draw() frame
+
     //glClearColor(c->R/255.0, 0.0, c->B/255.0, 0.0);
     //glClearColor(1.0, 0.0, 0.0, 1.0);
 
@@ -6266,10 +6262,15 @@ static int       _renderAP_NODATA_layer0(void)
     glUniform1f(_uPattW,     tile_x);
     glUniform1f(_uPattH,     tile_y);
 
+    //glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     //glDrawArrays(GL_TRIANGLES, 0, 3);
 
     _checkError("_renderAP_NODATA_layer0 -4-");
+
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // reset transparency
 
     glBindTexture(GL_TEXTURE_2D,  0);
 
@@ -6657,7 +6658,6 @@ static int       _renderAP_es2(S52_obj *obj)
         _glMatrixDel(VP_WIN);
 
         glBindTexture(GL_TEXTURE_2D, 0);
-
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         _checkError("_renderAP() -1-");
@@ -8702,7 +8702,6 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
 
 
 int        S52_GL_begin(int cursorPick, int drawLast)
-//int        S52_GL_begin(int cursorPick)
 {
     CHECK_GL_END;
     //CHECK_GL_BEGIN;
@@ -8731,7 +8730,7 @@ int        S52_GL_begin(int cursorPick, int drawLast)
     // check if this context (grahic card) can draw all of S52
     _contextValid();
 
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // transparency
     //glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     //glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
@@ -8856,8 +8855,8 @@ int        S52_GL_begin(int cursorPick, int drawLast)
     //    return FALSE;
     //}
 
-    // skip projection if picking since the view is the same
-    if (FALSE == cursorPick) {
+    // skip projection if picking (or drawLast()) since the view is the same
+    if (FALSE==cursorPick || FALSE==drawLast) {
         // this will setup _pmin/_pmax, need a valide _vp
         _doProjection(_centerLat, _centerLon, _rangeNM/60.0);
     }
@@ -8910,9 +8909,13 @@ int        S52_GL_begin(int cursorPick, int drawLast)
     // make sure nothing is bound (crash fglrx at DrawArray())
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+
     //-- update background ------------------------------------------
-    //
-    if (TRUE != drawLast) {
+    if (FALSE == drawLast) {
         // CS DATCVR01: 2.2 - No data areas
         if (1.0 == S52_MP_get(S52_MAR_DISP_NODATA_LAYER)) {
             // fill display with 'NODTA' color
@@ -8922,12 +8925,19 @@ int        S52_GL_begin(int cursorPick, int drawLast)
             _renderAP_NODATA_layer0();
         }
     } else {
+        // user can draw on top of base
+        // then call drawLast repeatdly
         if (TRUE == _update_fb) {
-            PRINTF("DEBUG: call S52_GL_readFBPixels()\n");
+#ifdef S52_USE_ADRENO
+            // FIXME: BUG: Adreno break here
+            // call need to be at S52_GL_end()
+            // maybe no window associated with the current rendering context
+            // no data has been written to framebuffer since EGL_beg() so that take make the window unavailable!!
+            //S52_GL_readFBPixels();
+#else
             S52_GL_readFBPixels();
+#endif
         }
-
-        //PRINTF("DEBUG: call S52_GL_drawFBPixels()\n");
 
         // load FB that was filled with the previous draw() call
         S52_GL_drawFBPixels();
@@ -8936,7 +8946,6 @@ int        S52_GL_begin(int cursorPick, int drawLast)
     //---------------------------------------------------------------
 
 #endif  // S52_USE_GV
-
 
     _checkError("S52_GL_begin() - fini");
 
@@ -8969,16 +8978,22 @@ int        S52_GL_end(int drawLast)
     glPopAttrib();     // NOT in OpenGL ES SC
 #endif
 
-    // this seem to loop i
+    // this seem to loop
     //_checkError("S52_GL_end()");
 
     // end picking (return to normal or stay normal)
     _doPick = FALSE;
 
     // flag that the FB changed
-    // and _fb_pixels need updating
-    if (FALSE == drawLast)
+    if (FALSE == drawLast) {
         _update_fb = TRUE;
+#ifdef S52_USE_ADRENO
+        // FIXME: Adreno need the call here rather than in S52_GL_begin()  why ???
+        // the window/framebuffer if full of data
+        S52_GL_readFBPixels();
+#endif
+
+    }
 
 #ifdef S52_USE_COGL
     cogl_end_gl();
@@ -9114,6 +9129,7 @@ static int       _init_es2(void)
 {
     const char* vShaderStr =
         "precision mediump float;      \n"
+//        "precision highp float;        \n"
         "uniform   mat4  uProjection;  \n"
         "uniform   mat4  uModelview;   \n"
         "                              \n"
@@ -9159,8 +9175,11 @@ static int       _init_es2(void)
 //        "#endif                        \n"
 //        "                              \n"
     const char* fShaderStr =
-//        "#pragma profilepragma blendoperation(gl_FragColor, GL_FUNC_ADD, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)\n"
+#ifdef S52_USE_TEGRA2
+        "#pragma profilepragma blendoperation(gl_FragColor, GL_FUNC_ADD, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)\n"
+#endif
         "precision mediump float;      \n"
+//        "precision highp float;        \n"
         "                              \n"
         "uniform sampler2D uSampler2d; \n"
         "                              \n"
@@ -9184,6 +9203,7 @@ static int       _init_es2(void)
         "                                       \n"
         "    if (1.0 == uBlitOn) {              \n"
         "       gl_FragColor = texture2D(uSampler2d, v_texCoord); \n"
+//        "       gl_FragColor.a = 0.0;           \n"
         "    } else {                           \n"
         "                                       \n"
         "    if (1.0 == uStipOn) {              \n"
@@ -9312,7 +9332,8 @@ static int       _init_es2(void)
 
     //clear FB ALPHA before use, also put blue but doen't show up unless startup bug
     //glClearColor(0, 0, 1, 1);     // blue
-    glClearColor(1, 0, 0, 1);     // red
+    glClearColor(1.0, 0.0, 0.0, 1.0);     // red
+    //glClearColor(1.0, 0.0, 0.0, 0.0);     // red
 
 #ifdef S52_USE_TEGRA2
     // xoom specific - clear FB to reset Tegra 2 CSAA (anti-aliase), define in gl2ext.h
@@ -9328,27 +9349,35 @@ static int       _init_es2(void)
     //    _fb_texture_id = 0;
     //}
 
+    //glDisable(GL_BLEND);
+
     // setup mem buffer to save FB to
-    glGenBuffers(1, &_fb_texture_id);
+    glGenTextures(1, &_fb_texture_id);
     glBindTexture  (GL_TEXTURE_2D, _fb_texture_id);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 
-
-    GLint format;
-    GLint type;
-    glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &format);
-    glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_TYPE,   &type);
+#ifdef S52_USE_TEGRA2
+    // FIXME: needed?
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
     //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_BYTE, _fb_pixels);
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
-    //glTexImage2D   (GL_TEXTURE_2D, 0, format,  _vp[2], _vp[3], 0, format, type, NULL);
+    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_UNSIGNED_BYTE, NULL);
+#else
+    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_UNSIGNED_BYTE, NULL);
+    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_BYTE, NULL);
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
+    //glTexStorage2D();
+#endif
+
     glBindTexture  (GL_TEXTURE_2D, 0);
 
+
+    //glEnable(GL_BLEND);
 
     _checkError("S52_GL_initGLES2() -fini-");
 
@@ -9852,46 +9881,120 @@ int        S52_GL_setOWNSHP(S52_obj *obj, double heading)
 }
 #endif
 
+
+#define GL_RGB8 0x8051
 guchar    *S52_GL_readFBPixels(void)
 {
     if (TRUE==_doPick || NULL==_fb_pixels)
         return NULL;
 
-    //GLint format;
-    //GLint type;
-    //glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &format);
-    //glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_TYPE,   &type);
-
-    glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);  // leak
-
     // this leak on Radeon HD 3450 (fglrx)
     //glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);  // leak
 
+    //glDisable(GL_BLEND);
 
-    /*
-    // Create FB Buffer
-    if (0 == _FBBufferID) {
-        glGenBuffers(1, &_FBBufferID);
+    glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
-        //glBindTexture  (GL_TEXTURE_2D, _FBTextureID);
-        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        //glTexImage2D   (GL_TEXTURE_2D, 0, format, _vp[2], _vp[3], 0, format, type, NULL);
-    }
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, 0, 0, _vp[2], _vp[3], 0);
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, 1024, 1024, 0);
 
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, _FBBufferID);
-    glBufferData(GL_PIXEL_PACK_BUFFER,  _vp[2] * _vp[3] * 4, _fb_pixels, GL_STREAM_READ);
+    //glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, _vp[2], _vp[3]);
 
-    glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-    */
+    glBindTexture(GL_TEXTURE_2D, 0);
 
+    //glEnable(GL_BLEND);
 
-    _checkError("S52_GL_readFBPixels()");
+    _checkError("S52_GL_readFBPixels().. -1-");
 
     return _fb_pixels;
 }
 
 #include "gdal.h"  // GDAL stuff to write .PNG
+int        S52_GL_drawFBPixels(void)
+{
+    if (TRUE==_doPick || NULL==_fb_pixels)
+        return FALSE;
+
+    // set rotation temporatly to 0.0  (MatrixSet)
+    double north = _north;
+    _north = 0.0;
+
+
+#ifdef S52_USE_GLES2
+
+    _glMatrixSet(VP_PRJ);
+
+    /*
+    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
+    //glClearColor(1.0, 0.0, 0.0, 1.0);     // red
+    glClearColor(1.0, 0.0, 0.0, 0.0);     // red
+    glClear(GL_COLOR_BUFFER_BIT);
+    */
+
+    glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
+
+    /*
+    if (TRUE == _update_fb) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    }
+    //*/
+
+    glDisable(GL_BLEND);
+    //glBlendFunc(GL_SRC_COLOR, GL_SRC_ALPHA_SATURATE);
+
+    // turn ON 'sampler2d'
+    glUniform1f(_uBlitOn, 1.0);
+
+    GLfloat ppt[4*3 + 4*2] = {
+        _pmin.u, _pmin.v, 0.0,   0.0, 0.0,
+        _pmin.u, _pmax.v, 0.0,   0.0, 1.0,
+        _pmax.u, _pmax.v, 0.0,   1.0, 1.0,
+        _pmax.u, _pmin.v, 0.0,   1.0, 0.0
+    };
+    glEnableVertexAttribArray(_aUV);
+    glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
+
+    glEnableVertexAttribArray(_aPosition);
+    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
+
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    // turn OFF 'sampler2d'
+    glUniform1f(_uBlitOn, 0.0);
+
+    glDisableVertexAttribArray(_aUV);
+    glDisableVertexAttribArray(_aPosition);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // transparency
+    glEnable(GL_BLEND);
+
+
+    _glMatrixDel(VP_PRJ);
+
+#else
+
+
+    _glMatrixSet(VP_WIN);
+    glRasterPos2i(0, 0);
+
+    // parameter must be in sync with glReadPixels()
+    glDrawPixels(_vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    //glDrawPixels(_vp[2], _vp[3], GL_RGBA, GL_BYTE,         _fb_pixels);
+
+    _glMatrixDel(VP_WIN);
+#endif
+
+    _north = north;
+
+    _checkError("S52_GL_drawFBPixels() -fini-");
+
+    return TRUE;
+}
+
 int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height)
 // FIXME: width/height rounding error all over - fix: +0.5
 // to test 2 PNG using Python Imaging Library (PIL):
@@ -9913,12 +10016,6 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         y      = _vp[1];
         width  = _vp[2];
         height = _vp[3];
-        /*
-        x      = 0;
-        y      = 0;
-        width  = 512;
-        height = 512;
-        */
     } else {
         if (width > _vp[2]) {
             PRINTF("WARNING: dump width (%i) exceeded viewport width (%i)\n", width, _vp[2]);
@@ -10022,88 +10119,6 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     return TRUE;
 }
 
-int        S52_GL_drawFBPixels(void)
-{
-    if (TRUE==_doPick || NULL==_fb_pixels)
-        return FALSE;
-
-    // set rotation temporatly to 0.0  (MatrixSet)
-    double north = _north;
-    _north = 0.0;
-
-
-#ifdef S52_USE_GLES2
-
-    _glMatrixSet(VP_PRJ);
-
-    glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
-
-    //*
-    if (TRUE == _update_fb) {
-        GLint format;
-        GLint type;
-        glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_FORMAT, &format);
-        glGetIntegerv(GL_IMPLEMENTATION_COLOR_READ_TYPE,   &type);
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    }
-    //*/
-
-    // GLES3
-    //glBindBuffer(GL_PIXEL_UNPACK_BUFFER, _FBBufferID);
-    //glBufferData(GL_PIXEL_UNPACK_BUFFER,  _vp[2] * _vp[3] * 4, _fb_pixels, GL_STREAM_READ);
-
-
-    // turn ON 'sampler2d'
-    glUniform1f(_uBlitOn, 1.0);
-
-    GLfloat ppt[4*3 + 4*2] = {
-        _pmin.u, _pmin.v, 0.0,   0.0, 0.0,
-        _pmin.u, _pmax.v, 0.0,   0.0, 1.0,
-        _pmax.u, _pmax.v, 0.0,   1.0, 1.0,
-        _pmax.u, _pmin.v, 0.0,   1.0, 0.0
-    };
-    glEnableVertexAttribArray(_aUV);
-    glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
-
-    glEnableVertexAttribArray(_aPosition);
-    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
-
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-    // turn OFF 'sampler2d'
-    glUniform1f(_uBlitOn, 0.0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    glDisableVertexAttribArray(_aUV);
-    glDisableVertexAttribArray(_aPosition);
-
-    // GLES3
-    //glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
-
-    _glMatrixDel(VP_PRJ);
-
-#else
-
-
-    _glMatrixSet(VP_WIN);
-    glRasterPos2i(0, 0);
-
-    // parameter must be in sync with glReadPixels()
-    glDrawPixels(_vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    //glDrawPixels(_vp[2], _vp[3], GL_RGBA, GL_BYTE,         _fb_pixels);
-    //glDrawPixels(_vp[2], _vp[3], GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
-    //glDrawPixels(_vp[2], _vp[3], GL_RGB, GL_BYTE,          _fb_pixels);
-
-    _glMatrixDel(VP_WIN);
-#endif
-
-    _north = north;
-
-    _checkError("S52_GL_drawFBPixels() -fini-");
-
-    return TRUE;
-}
-
 int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north)
 {
     if (TRUE==_doPick || NULL==_fb_pixels)
@@ -10118,6 +10133,7 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
 
     _glMatrixSet(VP_PRJ);
 
+    glDisable(GL_BLEND);
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
     // turn ON 'sampler2d'
@@ -10139,9 +10155,11 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
 
     // turn OFF 'sampler2d'
     glUniform1f(_uBlitOn, 0.0);
-    glBindTexture(GL_TEXTURE_2D, 0);
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glEnable(GL_BLEND);
 
     _glMatrixDel(VP_PRJ);
 
