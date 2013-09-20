@@ -18,7 +18,7 @@
 
 
 
-    <!-- Allows applications to open network sockets (ex: to get AIS from radar.imar.ca) -->
+    <!-- Allows applications to open network sockets (ex: to get AIS from GPSD on a network host) -->
     <uses-permission android:name = "android.permission.INTERNET"               />
     <!-- Allows applications to write gpsd.sock, gpsd.pid, sl4agps.pid, s52ais.pid to sdcard -->
     <uses-permission android:name = "android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -34,6 +34,7 @@
     <!-- Android 4.1.2 SDK-16 not reconize !
     <uses-permission android:name="android.permission.RECORD_VIDEO"/>
     -->
+
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
     <uses-permission android:name="android.permission.WRITE_CONTACTS" />
@@ -55,10 +56,10 @@
               android:targetSdkVersion = "16" />
     -->
     <uses-sdk android:minSdkVersion    = "3"
-              android:targetSdkVersion = "17" />
+              android:targetSdkVersion = "14" />
 
     <application android:label               = "@string/app_name"
-                 android:hasCode             = "false"
+                 android:hasCode             = "true"
                  android:debuggable          = "true"
                  android:hardwareAccelerated = "true"
                  android:theme               = "@android:style/Theme.Holo"
@@ -73,9 +74,11 @@
                   android:launchMode            = "singleInstance"
                   android:configChanges         = "orientation|screenSize"
                   android:theme                 = "@android:style/Theme.Holo"
+                  android:screenOrientation     = "reverseLandscape"
                   >
 
                   <!--
+                  android:screenOrientation     = "reverseLandscape"
                   android:screenOrientation     = "sensorLandscape"
                   android:clearTaskOnLaunch     = "true"
                   -->
@@ -95,7 +98,9 @@
             </intent-filter>
 
         </activity>
+
 <!--
+-->
         <activity android:name          = ".s52ui"
                   android:theme         = "@android:style/Theme.Translucent.NoTitleBar"
                   android:configChanges = "orientation|keyboardHidden|keyboard|screenSize|locale">
@@ -104,7 +109,6 @@
                 <category android:name  = "android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
--->
 
         <!--      android:name       = ".BootUpReceiver" -->
         <!--      android:label="@string/app_name"       -->

@@ -4,11 +4,12 @@
 # SD NOV2009 -add s52glx minimal
 # SD 2011MAR -add s52clutter.js
 # SD 2011NOV -add s52eglx s52eglarm
+# SD 2013SEP -add s52gtk3egl
 
 
 #all: s52glx        # GLX & OGR
 #all: s52eglx       # EGL & GLX & OGR
-#all: s52eglarm     # EGL & GLES2 & ARM/Android & OGR  S52_USE_ADRENO for Nexus & S52_USE_TEGRA2 for Xoom
+#all: s52eglarm     # DEPRECATE - EGL & GLES2 & ARM/Android & OGR  S52_USE_ADRENO for Nexus & S52_USE_TEGRA2 for Xoom
 #all: s52gv         # GV  (OpenEV  / GTK )
 #all: s52gv2        # GV2 (OpenEV2 / GTK2)  broken
 #all: s52gtk2       # GTK2 & OGR
@@ -27,8 +28,6 @@ CXX   = g++ -O0 -g -Wall
 s52win32 : CC = /usr/bin/i586-mingw32msvc-gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
 #s52win32 : CC = /usr/bin/i586-mingw32msvc-g++ -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
 s52win32 : CXX = /usr/bin/i586-mingw32msvc-g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
-#s52win32 : WIN32PATH = $(HOME)/dev/wine/drive_c/Ruby/lib/GTK/bin
-#s52win32 : WIN32PATH = $(HOME)/dev/wine/drive_c/Ruby/lib/GTK/bin
 s52win32 : GTKPATH   = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
 s52win32 : GTKGLPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/bin
 
@@ -39,8 +38,8 @@ LIBS52_HOME = ..
 # using Android toolchain from NDK to cross compile for ARM (s52eglarm target)
 # xoom info: Processor : ARMv7 Processor rev 0 (v7l)
 #            Features  : swp half thumb fastmult vfp edsp vfpv3 vfpv3d16
-#s52eglarm : DROIDTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-9-toolchain
-s52eglarm : DROIDTOOLCHAINROOT = $(HOME)/dev/prog/Android/dev/android-14-toolchain
+s52eglarm : DROIDTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-9-toolchain
+#s52eglarm : DROIDTOOLCHAINROOT = $(HOME)/dev/prog/Android/dev/android-14-toolchain
 s52eglarm : DROIDINCLUDE       = $(DROIDTOOLCHAINROOT)/sysroot/usr/include
 s52eglarm : DROIDLIBS          = $(DROIDTOOLCHAINROOT)/sysroot/usr/lib
 s52eglarm : CC                 = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -g -fPIC -mthumb -std=c99
@@ -73,7 +72,7 @@ s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_US
 # -DS52_USE_FAKE_AIS
 # -DS52_USE_WORLD
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps` \
-                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_WORLD
+                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL
 
 # same as s52eglx, but "gtk+-3.0" is added
 s52gtk3egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` \
@@ -84,7 +83,7 @@ s52gtk3egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gob
 # -DS52_USE_WORLD
 s52eglarm:  CFLAGS =  -DS52_USE_DOTPITCH                 \
                       -DS52_USE_EGL                      \
-					  -DS52_USE_ADRENO                   \
+					  -DS52_USE_TEGRA2                   \
                       -DS52_USE_ANDROID                  \
                       -DS52_USE_AFGLOW                   \
                       -DS52_USE_SOCK                     \
@@ -154,7 +153,7 @@ s52gtk3egl: s52gtk3egl.c
 	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
 
 
-############### build: Android ##############################
+############### DEPRECATED build: Android (Android.mk do the build) ##############################
 
 #s52eglarm: libs52gps.so s52egl.c ../S52.h -Wl,-allow-shlib-undefin
 # -Wl,--entry=_start -Wl,-rpath=/system/lib -nostdlib
@@ -221,6 +220,7 @@ s52ais: s52ais.c
 	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/s52ais'
 
 #s52eglarm: s52ais sl4agps
+s52eglarm: s52ais
 	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/*.sh'
 	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/gpsd'
 

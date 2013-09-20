@@ -37,6 +37,8 @@
 #include <glib/gprintf.h>   // g_sprintf()
 #include <glib/gstdio.h>    // g_stat()
 
+static GThread *_gpsClientThread = NULL;
+
 #ifdef WIN32
 #include <winsock2.h>
 #endif
@@ -177,6 +179,7 @@ static GStaticMutex       _ais_list_mutex = G_STATIC_MUTEX_INIT;  // protect _ai
 //#define OWNSHIP 316007848    // ALPHONSE DESJARDINS
 //#define OWNSHIP 316007853    // LOMER GOUIN
 
+#ifdef S52AIS_STANDALONE
 // trap signal
 #include <sys/types.h>
 #include <signal.h>
@@ -185,11 +188,13 @@ static struct sigaction _old_signal_handler_SIGUSR1;
 static struct sigaction _old_signal_handler_SIGUSR2;
 static struct sigaction _old_signal_handler_SIGSEGV;   // loop in android
 static struct sigaction _old_signal_handler_SIGTERM;
+#endif
 
-
+//#define GPSD_HOST  "localhost"
+#define GPSD_HOST "192.168.1.66"
+#define GPSD_PORT "2947"
 
 #ifdef S52_USE_SOCK
-//static int  _s52_initOK  = FALSE; //
 static char _localhost[] = "127.0.0.1";
 #define S52_PORT            2950
 #include <gio/gio.h>
@@ -198,11 +203,13 @@ static GSocketConnection  *_s52_connection = NULL;
 static char  _response[BUFSZ];
 static char  _params  [BUFSZ];  // JSON
 static int   _request_id = 0;
-static GTimeVal _timeTick;
 #endif
 
-#define TB "\\t"  // Tabulation
-#define NL "\\n"  // New Line
+static GTimeVal _timeTick;
+
+//#define TB "\\t"  // Tabulation
+//#define NL "\\n"  // New Line
+#define NL '\n'  // New Line
 
 #ifdef S52_USE_DBUS
 // DBUS messaging
@@ -658,7 +665,6 @@ static int           _delAIS    (unsigned int mmsi)
     return FALSE;
 }
 
-
 static int           _setAISInfo(unsigned int mmsi, unsigned int imo, char *callsign,
                                  unsigned int shiptype,
                                  unsigned int month, unsigned int day, unsigned int hour, unsigned int minute,
@@ -695,7 +701,8 @@ static int           _setAISPos (unsigned int mmsi, double lat, double lon, doub
         }
     }
 #else
-    S52_pushPosition(ais->vesselH, lat, lon, heading);
+    if (FALSE == S52_pushPosition(ais->vesselH, lat, lon, heading))
+        _delAIS(mmsi);
 #endif
 
 #ifdef S52_USE_AFGLOW
@@ -708,7 +715,8 @@ static int           _setAISPos (unsigned int mmsi, double lat, double lon, doub
         }
     }
 #else
-    S52_pushPosition(ais->afglowH, lat, lon, 0.0);
+    if (FALSE == S52_pushPosition(ais->afglowH, lat, lon, 0.0))
+        _delAIS(mmsi);
 #endif
 #endif
 
@@ -716,7 +724,6 @@ static int           _setAISPos (unsigned int mmsi, double lat, double lon, doub
     _signal_setPosition   (_dbus, ais->vesselH, lat, lon, heading);
     _signal_setVESSELlabel(_dbus, ais->vesselH, ais->name);
 #endif
-
 
     return TRUE;
 }
@@ -959,9 +966,7 @@ static int           _updateTimeTag(void)
         g_get_current_time(&now);
 
         if (-1.0 != ais->course) {
-            //g_snprintf(str, 127, "%s %lis\\n%03.f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
-            //g_snprintf(str, 127, "%s %lis%s%03.f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), TB, ais->course, ais->speed);
-            g_snprintf(str, 127, "%s %lis%s%03.f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), NL, ais->course, ais->speed);
+            g_snprintf(str, 127, "%s %lis%c%03.f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), (int)NL, ais->course, ais->speed);
         } else {
             g_snprintf(str, 127, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
         }
@@ -1000,11 +1005,13 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
     //int s = gpsdata->set & AIS_SET;
     //g_print("set = %i, ais.type = %u, tag = %s\n", s, gpsdata->ais.type, gpsdata->tag);
 
+#ifdef S52_USE_SOCK
     if (FALSE == _s52_connection) {
         _s52_connection = _s52_init_sock(_localhost, S52_PORT);
         if (FALSE == _s52_connection)
             return;
     }
+#endif
 
     // Types 1,2,3 - Common navigation info
     if (1==gpsdata->ais.type || 2==gpsdata->ais.type || 3==gpsdata->ais.type) {
@@ -1225,7 +1232,7 @@ static gpointer      _gpsdClientRead(gpointer dummy)
 {
     g_print("s52ais:_gpsdClientRead(): start looping ..\n");
 
-    while (0 != gps_open("localhost", "2947", &_gpsdata)) {   // android (gpsd 2.96)
+    while (0 != gps_open(GPSD_HOST, GPSD_PORT, &_gpsdata)) {   // android (gpsd 2.96)
         g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec: %d, %s\n", errno, gps_errstr(errno));
 
         // Note: g_print() work on android only when the main loop is running
@@ -1319,7 +1326,7 @@ int            s52ais_updateTimeTag(void)
         return TRUE;
     }
 
-    _isMainLoopUP = TRUE;
+    //_isMainLoopUP = TRUE;
 
     // no AIS time tag to update on chart
     //static int silent = FALSE;
@@ -1343,9 +1350,7 @@ int            s52ais_updateTimeTag(void)
 
         g_get_current_time(&now);
 
-        //g_snprintf(str, 80, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
-        //g_snprintf(str, 80, "%s %lis \\n %3f deg / %3.1f kt", ais->name, now.tv_sec - ais->lastUpdate.tv_sec, ais->course, ais->speed);
-        g_snprintf(str, 80, "%s %lis%c%3f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), TB, ais->course, ais->speed);
+        g_snprintf(str, 80, "%s %lis%c%3f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), (int)NL, ais->course, ais->speed);
         S52_setVESSELlabel(ais->vesselH, str);
     }
 
@@ -1355,7 +1360,8 @@ int            s52ais_updateTimeTag(void)
 }
 #endif
 
-#ifdef S52_USE_ANDROID
+//#ifdef S52_USE_ANDROID
+#if 0
 static int           _startGPSD(void)
 {
     /*
@@ -1412,7 +1418,8 @@ int            s52ais_initAIS(void)
     }
     g_static_mutex_unlock(&_ais_list_mutex);
 
-#ifdef S52_USE_ANDROID
+//#ifdef S52_USE_ANDROID
+#if 0
     // NOTE: on Ubuntu, GPSD is started at boot-time
     if (TRUE != _startGPSD())
         return FALSE;
@@ -1482,12 +1489,15 @@ int            s52ais_doneAIS()
 #endif
 
 #ifdef S52_USE_ANDROID
+#ifdef S52AIS_STANDALONE
     unlink(AIS PID);
+#endif
 #endif
 
     return TRUE;
 }
 
+#ifdef S52AIS_STANDALONE
 static void          _trapSIG(int sig, siginfo_t *info, void *secret)
 {
     switch(sig) {
@@ -1568,7 +1578,7 @@ static int           _initSIG(void)
     //sa.sa_flags = SA_RESTART | SA_SIGINFO;
     sa.sa_flags = SA_SIGINFO;
 
-    //  2 - Interrupt (ANSI) - user press ESC to stop rendering
+    //  2 - Interrupt (ANSI)
     sigaction(SIGINT,  &sa, &_old_signal_handler_SIGINT);
     sigaction(SIGUSR1, &sa, &_old_signal_handler_SIGUSR1);
     sigaction(SIGUSR2, &sa, &_old_signal_handler_SIGUSR2);
@@ -1579,7 +1589,6 @@ static int           _initSIG(void)
     return TRUE;
 }
 
-#ifdef S52AIS_STANDALONE
 int main(int argc, char *argv[])
 {
     g_print("main():starting: argc=%i, argv[0]=%s\n", argc, argv[0]);
@@ -1629,7 +1638,7 @@ int main(int argc, char *argv[])
 
 
 #ifdef S52_USE_ANDROID
-    // clean up
+    // clean up PID
     unlink(AIS PID);
 #endif
 
@@ -1637,4 +1646,4 @@ int main(int argc, char *argv[])
 
     return TRUE;
 }
-#endif
+#endif  // S52AIS_STANDALONE

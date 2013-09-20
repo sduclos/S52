@@ -3,19 +3,19 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE     := s52droid
-#LOCAL_SRC_FILES  := ../../s52egl.c ../../s52gps.c
-LOCAL_SRC_FILES  := ../../s52egl.c
+LOCAL_SRC_FILES  := ../../s52egl.c ../../s52ais.c
 
 # -DS52_USE_AFGLOW   - add afterglow to target (VESSEL/OWNSHP), need symbole in PLAUX_00.DAI
 # -DS52_USE_FAKE_AIS - fake AIS (debug)
 # -DS52_USE_SL4A     - SL4A is a RPC bridge to the Android framework
-# -DS52_USE_AIS      - not use
 # -DS52_USE_TEGRA2   - GLES2
-# -DS52_USE_WORLD    - 
+# -DS52_USE_AIS      - get AIS data from gpsd running on a host machine
+# -DS52_USE_WORLD    - experimental - load world Shapefile
+# -DS52_USE_SOCK     - send call to S52_*() via socket
 S52ANDRIODINC    := /home/sduclos/S52/test/android/dist/system/include
-LOCAL_CFLAGS     := -Wall -g -DG_LOG_DOMAIN=\"s52droid\"                                         \
-                    -DS52_USE_DOTPITCH -DS52_USE_ANDROID -DS52_USE_ADRENO                        \
-					-DS52_USE_AFGLOW -DS52_USE_EGL                                               \
+LOCAL_CFLAGS     := -std=c99 -Wall -g -DG_LOG_DOMAIN=\"s52droid\"                                \
+                    -DS52_USE_DOTPITCH -DS52_USE_ANDROID -DS52_USE_TEGRA2                        \
+					-DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_AIS                                 \
                     -I../..                                                                      \
                     -I$(S52ANDRIODINC)                                                           \
 					-I$(S52ANDRIODINC)/glib-2.0                                                  \
@@ -26,41 +26,24 @@ LOCAL_CFLAGS     := -Wall -g -DG_LOG_DOMAIN=\"s52droid\"                        
 #LOCAL_LDFLAGS    := -Wl,-Map,xxx.map -rdynamic -fexception
 LOCAL_LDFLAGS    := -rdynamic -fexception
 
-#TIAMATLIBS       := /home/sduclos/dev/prog/Android/xoom/tiamat-xoom-rom/Xoom.Zone-Tiamat.Rom.2.2.2/system/lib
-#TIAMATLIBS       := /home/sduclos/dev/prog/Android/xoom/tiamat-xoom-rom/Eos-wingray/system/lib
-#TEAMEOSLIBS      := /home/sduclos/dev/prog/Android/xoom/TeamEOS-wingray-rom/system/lib
 CYANOGENLIBS     := /home/sduclos/dev/prog/Android/xoom/cm/system/lib
 S52ANDRIODLIBS   := /home/sduclos/S52/test/android/dist/system/lib
 ARMTOOLCHAINROOT := /home/sduclos/dev/prog/Android/dev/android-9-toolchain
-#ARMTOOLCHAINROOT := /home/sduclos/dev/prog/Android/dev/android-14-toolchain
-#ARMLIBS          := $(ARMTOOLCHAINROOT)/sysroot/usr/lib
-# -lGLESv1_CM
-# $(S52ANDRIODLIBS)/libgio-2.0.a
-#-lsurfaceflinger_client
-
-# -lhardware -lhardware_legacy
-#                    -lcutils -lutils -ljpeg
-#                    -lbinder -lpixelflinger -lskia -lui -lgui
-#                    -lexpat -lnativehelper -lnetutils
-#                    -lcamera_client -lsqlite -ldvm -lETC1 -lsonivox -lcrypto
-#                    -lssl -licuuc -licui18n -lmedia -lwpa_client -lnfc_ndef -lusbhost
-#                    -lhwui -lbluedroid -ldbus -lemoji -lstlport -lstagefright_foundation
-LOCAL_LDLIBS     := -L$(CYANOGENLIBS) -lEGL -lGLESv2                                         \
-					-llog -landroid -lz                                                      \
-                    -landroid_runtime -lc -lm -ldl                                           \
-                           $(S52ANDRIODLIBS)/libS52.a                                        \
-                           $(S52ANDRIODLIBS)/libgps.a                                        \
-                           $(S52ANDRIODLIBS)/libgthread-2.0.a                                \
-                           $(S52ANDRIODLIBS)/libproj.a                                       \
-                           $(S52ANDRIODLIBS)/libgdal.a                                       \
-                           $(S52ANDRIODLIBS)/liblcms.a                                       \
-						   $(S52ANDRIODLIBS)/libfreetype.a                                   \
-                           $(S52ANDRIODLIBS)/libgio-2.0.a                                    \
-						   $(S52ANDRIODLIBS)/libgobject-2.0.a                                \
-						   $(S52ANDRIODLIBS)/libgmodule-2.0.a                                \
-						   $(S52ANDRIODLIBS)/libglib-2.0.a                                   \
-						   $(S52ANDRIODLIBS)/libiconv.a                                      \
-						   $(S52ANDRIODLIBS)/libandroid_native_app_glue.a                    \
+LOCAL_LDLIBS     := -L$(CYANOGENLIBS) -lEGL -lGLESv2                                  \
+					-llog -landroid -lz -lc -lm -ldl                                  \
+                    $(S52ANDRIODLIBS)/libS52.a                                        \
+                    $(S52ANDRIODLIBS)/libgps.a                                        \
+                    $(S52ANDRIODLIBS)/libgthread-2.0.a                                \
+                    $(S52ANDRIODLIBS)/libproj.a                                       \
+                    $(S52ANDRIODLIBS)/libgdal.a                                       \
+                    $(S52ANDRIODLIBS)/liblcms.a                                       \
+					$(S52ANDRIODLIBS)/libfreetype.a                                   \
+                    $(S52ANDRIODLIBS)/libgio-2.0.a                                    \
+					$(S52ANDRIODLIBS)/libgobject-2.0.a                                \
+					$(S52ANDRIODLIBS)/libgmodule-2.0.a                                \
+					$(S52ANDRIODLIBS)/libglib-2.0.a                                   \
+					$(S52ANDRIODLIBS)/libiconv.a                                      \
+					$(S52ANDRIODLIBS)/libandroid_native_app_glue.a                    \
                     $(ARMTOOLCHAINROOT)/arm-linux-androideabi/lib/thumb/libstdc++.a
 
 

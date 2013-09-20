@@ -121,6 +121,7 @@ static S52ObjectHandle _prdare = NULL;
 typedef struct s52droid_state_t {
     // GLib stuff
     GMainLoop *main_loop;
+
     guint      s52_draw_sigID;
     gpointer   gobject;
     gulong     handler;
@@ -495,29 +496,30 @@ static void     _egl_done       (s52engine *engine)
     return;
 }
 
-static void     _egl_beg        (s52engine *engine)
+static int      _egl_beg        (s52engine *engine)
 {
     // On Android, Blit x10 slower whitout
     if (EGL_FALSE == eglWaitGL()) {
         LOGE("_egl_beg(): eglWaitGL() failed. [0x%x]\n", eglGetError());
-        return;
+        return FALSE;
     }
 
     if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
-        LOGE("_egl_beg_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
+        LOGE("_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
+        return FALSE;
     }
 
-    return;
+    return TRUE;
 }
 
-static void     _egl_end        (s52engine *engine)
+static int      _egl_end        (s52engine *engine)
 {
     if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
         LOGE("_egl_end(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
-        //return FALSE;
+        return FALSE;
     }
 
-    return;
+    return TRUE;
 }
 
 static int      _s52_computeView(s52droid_state_t *state)
@@ -772,28 +774,17 @@ static int      _s52_init       (s52engine *engine)
         //hmm = 307;
 #endif
 
-
-        // can be called any time
-        LOGE("_init_S52():S52_version():%s\n", S52_version());
-
-        LOGE("_init_S52(): start -1- ..\n");
-
-        LOGE("_init_S52():S52_init(%i,%i,%i,%i)\n", w, h, wmm, hmm);
-
-        if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb)) {
+        //if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb)) {
+        if (FALSE == S52_init(w, h, wmm, hmm, NULL)) {
             LOGE("_init_S52():S52_init(%i,%i,%i,%i)\n", w, h, wmm, hmm);
             engine->state.do_S52init = FALSE;
-            exit(0);
+            //exit(0);
             return FALSE;
         }
 
         S52_setViewPort(0, 0, w, h);
     }
 
-
-#ifdef S52_USE_EGL
-    S52_setEGLcb((EGL_cb)_egl_beg, (EGL_cb)_egl_end, engine);
-#endif
 
 #ifdef S52_USE_ANDROID
     // Estuaire du St-Laurent
@@ -836,8 +827,8 @@ static int      _s52_init       (s52engine *engine)
     //S52_toggleObjClassOFF("M_QUAL");         //  suppression OFF
 
 
-    //S52_loadPLib(PLIB);
-    //S52_loadPLib(COLS);
+    S52_loadPLib(PLIB);
+    S52_loadPLib(COLS);
 
     // -- DEPTH COLOR ------------------------------------
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
@@ -920,7 +911,7 @@ static int      _s52_init       (s52engine *engine)
 #endif
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
-    //S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
+    S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
 
     // debug - use for timing redering
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
@@ -954,6 +945,9 @@ static int      _s52_init       (s52engine *engine)
     _s52_setupOWNSHP(&engine->state);
 #endif
 
+#ifdef S52_USE_EGL
+    S52_setEGLcb((EGL_cb)_egl_beg, (EGL_cb)_egl_end, engine);
+#endif
 
     engine->do_S52draw        = TRUE;
     engine->do_S52drawLast    = TRUE;
@@ -1000,7 +994,6 @@ static int      _s52_updTimeTag (s52engine *engine)
 #endif
     }
 
-
     return TRUE;
 }
 #endif
@@ -1025,7 +1018,7 @@ static int      _s52_draw_cb    (gpointer user_data)
 {
     struct s52engine *engine = (struct s52engine*)user_data;
 
-    //LOGI("s52egl:_s52_draw_cb(): begin .. \n");
+    LOGI("s52egl:_s52_draw_cb(): begin .. \n");
 
     /*
     GTimeVal now;  // 2 glong (at least 32 bits each - but amd64 !?
@@ -1046,7 +1039,7 @@ static int      _s52_draw_cb    (gpointer user_data)
 
     // wait for libS52 to init - no use to go further - bailout
     if (TRUE == engine->state.do_S52init) {
-        LOGI("s52egl:_s52_draw_cb(): re-starting .. waiting for S52_init() to finish\n");
+        LOGI("s52egl:_s52_draw_cb(): waiting for _s52_init() to finish\n");
         goto exit;
     }
 
@@ -1162,8 +1155,7 @@ static int      _android_init_external_ais(void)
         return TRUE;
     }
 
-    //char run_s52ais_sh[] = "su -c \"/system/bin/sh -c " AIS "\"";
-    char run_s52ais_sh[] = "su -c " AIS;
+    char run_s52ais_sh[] = "su -c \"/system/bin/sh -c " AIS "\"";
     if (TRUE != g_spawn_command_line_async(run_s52ais_sh, &error)) {
         LOGE("s52egl:g_spawn_command_line_async() failed [%s]\n", error->message);
         return FALSE;
@@ -1191,7 +1183,6 @@ static int      _android_done_external_sensors(void)
 
     return TRUE;
 }
-
 
 static int      _android_init_external_UI (s52engine *engine)
 // start UI - get GPS & Gyro from Android
@@ -1797,19 +1788,26 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 
     switch (cmd) {
         case APP_CMD_START: {
-            // onRestart()  only in Java !!
+            // onRestart() only in Java !!
             LOGI("s52egl:--> APP_CMD_START\n");
             if (NULL == engine->app->window)
                 LOGI("s52egl:APP_CMD_START: ANativeWindow is NULL\n");
             else
                 LOGI("s52egl:APP_CMD_START: ANativeWindow is NOT NULL\n");
+
+            if (NULL == engine->app->savedState)
+                LOGI("s52egl:APP_CMD_START: savedState is NULL\n");
+            else
+                LOGI("s52egl:APP_CMD_START: savedState is NOT NULL\n");
+
             break;
         }
         case APP_CMD_RESUME: {
             LOGI("s52egl:--> APP_CMD_RESUME\n");
 
-            engine->do_S52draw     = TRUE;
-            engine->do_S52drawLast = TRUE;
+            // do not start rendering yet, wait for APP_CMD_GAINED_FOCUS instead
+            //engine->do_S52draw     = TRUE;
+            //engine->do_S52drawLast = TRUE;
 
             break;
         }
@@ -1838,7 +1836,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 
             if (NULL != engine->app->window) {
                 if (EGL_TRUE == _android_display_init(engine)) {
-                    _android_init_external_ais();
+                    //_android_init_external_ais();
                     //_android_init_external_gps();
                 }
             }
@@ -1863,7 +1861,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             break;
         }
         case APP_CMD_GAINED_FOCUS: {
-            // app gains focus, start monitoring sensor
+            // app gains focus
             LOGI("s52egl:--> APP_CMD_GAINED_FOCUS\n");
 
             if (NULL == engine->app->window) {
@@ -2055,6 +2053,12 @@ void android_main(struct android_app *app)
     g_thread_init(NULL);
     g_type_init();
 
+#ifdef S52_USE_AIS
+    // Note: data form AIS start too fast for the main loop
+    s52ais_initAIS();
+#endif
+
+
     //*
     if (NULL == _engine.app->savedState) {
 
@@ -2071,6 +2075,7 @@ void android_main(struct android_app *app)
         //------------------------------------------
 
         _engine.state.main_loop       = g_main_loop_new(NULL, FALSE);
+        /*
         _engine.state.gobject         = g_object_new(G_TYPE_OBJECT, NULL);
         _engine.state.s52_draw_sigID  = g_signal_new("s52-draw",
                                                      G_TYPE_FROM_INSTANCE(_engine.state.gobject),
@@ -2086,6 +2091,7 @@ void android_main(struct android_app *app)
 
         _engine.state.handler = g_signal_connect(G_OBJECT(_engine.state.gobject), "s52-draw",
                                                 G_CALLBACK(_s52_draw_cb), (gpointer)&_engine);
+        */
 
         g_timeout_add(500, _s52_draw_cb, (void*)&_engine);     // 0.5 sec (500msec)
 
@@ -2154,7 +2160,11 @@ void android_main(struct android_app *app)
 
 exit:
 
-    _android_done_external_sensors();
+    //_android_done_external_sensors();
+
+#ifdef S52_USE_AIS
+    s52ais_doneAIS();
+#endif
 
     _s52_done(&_engine);
 
