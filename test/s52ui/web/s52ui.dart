@@ -581,25 +581,26 @@ void _initTouch(var orient, var w, var h) {
       s52.pickAt(start_x1.toDouble(), _height - start_y1.toDouble()).then((ret) {
         TextElement svg1txt = query('#svg1text');
         // set S52 UI Text Color
-        svg1txt.$dom_setAttribute('style', 'fill:rgba(${s52.UINFF[0]},${s52.UINFF[1]},${s52.UINFF[2]}, 1.0);');
+        svg1txt.setAttribute('style', 'fill:rgba(${s52.UINFF[0]},${s52.UINFF[1]},${s52.UINFF[2]}, 1.0);');
+        //svg1txt.$dom_setAttribute('style', 'fill:rgba(${s52.UINFF[0]},${s52.UINFF[1]},${s52.UINFF[2]}, 1.0);');
         svg1txt.text = '${ret[0]}';
 
         var x = start_x1 +  5;
         var y = start_y1 + 55;
-        svg1txt.$dom_setAttribute('x', '$x');
-        svg1txt.$dom_setAttribute('y', '$y');
+        svg1txt.setAttribute('x', '$x');
+        svg1txt.setAttribute('y', '$y');
 
         var rec = svg1txt.client;
         var w   = rec.width  + 10;
         var h   = rec.height + 10;
 
         RectElement svg1rec = query('#svg1rect');
-        svg1rec.$dom_setAttribute('width',  '$w');
-        svg1rec.$dom_setAttribute('height', '$h');
-        svg1rec.$dom_setAttribute('x', '${start_x1}');
-        svg1rec.$dom_setAttribute('y', '${start_y1}');
+        svg1rec.setAttribute('width',  '$w');
+        svg1rec.setAttribute('height', '$h');
+        svg1rec.setAttribute('x', '${start_x1}');
+        svg1rec.setAttribute('y', '${start_y1}');
         // set S52 UI background & border color - test:display:inline-block;
-        svg1rec.$dom_setAttribute('style', 'fill:rgba(${s52.UIBCK[0]},${s52.UIBCK[1]},${s52.UIBCK[2]}, 0.7);stroke:rgb(${s52.UIBDR[0]},${s52.UIBDR[1]},${s52.UIBDR[2]});display:inline-block;'
+        svg1rec.setAttribute('style', 'fill:rgba(${s52.UIBCK[0]},${s52.UIBCK[1]},${s52.UIBCK[2]}, 0.7);stroke:rgb(${s52.UIBDR[0]},${s52.UIBDR[1]},${s52.UIBDR[2]});display:inline-block;'
                                  );
 
         query('#svg1g').style.display = 'inline-block';

@@ -12,6 +12,7 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/async_p
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/collection_dev_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/collection_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/constant_map.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/convert_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/core_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/foreign_helper.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/interceptors.dart
@@ -24,7 +25,6 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/js_name
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/js_number.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/js_rti.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/js_string.dart
-file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/json_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/math_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/mirrors_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/native_helper.dart
@@ -63,6 +63,7 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/convert/codec.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/convert/convert.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/convert/converter.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/convert/encoding.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/convert/html_escape.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/convert/json.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/convert/latin1.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/convert/line_splitter.dart
