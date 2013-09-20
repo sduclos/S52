@@ -1,0 +1,21 @@
+--- s57filecollector.cpp.old	2013-09-17 10:01:18.659168045 -0400
++++ s57filecollector.cpp.new	2013-09-17 10:03:05.755167287 -0400
+@@ -157,6 +157,18 @@
+ 
+             pszFile = poRecord->GetStringSubfield("CATD",0,"FILE",0);
+ 
++#ifdef __unix__
++            // replace dos dir separator character
++            unsigned int len = strlen(pszFile);
++            char file[len + 1];
++            for (unsigned int i=0; i<len; ++i)
++            {
++                file[i] = (pszFile[i] == '\\') ? '/' : pszFile[i];
++            }
++            file[len] = '\0';
++            pszFile   = file;
++#endif
++
+             // Often there is an extra ENC_ROOT in the path, try finding 
+             // this file. 
+ 

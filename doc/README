@@ -2,6 +2,7 @@
 #
 # SD 2011MAR30 - created
 # SD 2012OCT03 - clean up, restructure
+# SD 2013SEP17 - add s57filecollector.cpp.diff
 
 doc/
 - README                (this file)
@@ -14,7 +15,8 @@ doc/
 - c1-cs.txt
 - c1-cs_mp.txt
 - C1.dispPrioSwitch.txt
-- ogrfeature.cpp.diff   (gdal/ogr diff for -DS52_USE_SUPP_LINE_OVERLAP)
+- ogrfeature.cpp.diff       (gdal/ogr patch for -DS52_USE_SUPP_LINE_OVERLAP)
+- s57filecollector.cpp.diff (gdal/ogr patch to fix DOS path in CATALOG.031 on Unix)
 
 doc/wiki/
 - libS52wiki.html       (root doc)
