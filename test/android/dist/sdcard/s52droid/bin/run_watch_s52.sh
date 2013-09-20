@@ -4,4 +4,4 @@
 # SD 2012MAR01
 
 
-watch -n 60 ps|grep s52droid
+watch -n 60 ps|grep nav.ecs.s52droid
