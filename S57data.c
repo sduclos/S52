@@ -104,8 +104,10 @@ typedef struct _S57_geo {
 
     GData       *attribs;
 
+#ifdef S52_USE_C_AGGR_C_ASSO
     // point to the S57 relationship object C_AGGR / C_ASSO this S57_geo belong
     S57_geo     *relation;
+#endif
 
     // for CS - object "touched" by this object
     union {
@@ -1067,6 +1069,7 @@ double     S57_resetScamin(_S57_geo *geo)
     return geo->scamin;
 }
 
+#ifdef S52_USE_C_AGGR_C_ASSO
 int       S57_setRelationship(_S57_geo *geo, _S57_geo *geoRel)
 {
     return_if_null(geo);
@@ -1075,7 +1078,8 @@ int       S57_setRelationship(_S57_geo *geo, _S57_geo *geoRel)
     if (NULL == geo->relation) {
         geo->relation = geoRel;
     } else {
-        PRINTF("WARNING: 'geo->relation' allready in use .. ");
+        // FIXME: ENC_ROOT/US3NY21M/US3NY21M.000 has multiple relation for the same object
+        PRINTF("WARNING: 'geo->relation' allready in use ..\n");
         g_assert(0);
         return FALSE;
     }
@@ -1089,6 +1093,7 @@ S57_geo  *S57_getRelationship(_S57_geo *geo)
 
     return geo->relation;
 }
+#endif
 
 static void   _printAtt(GQuark key_id, gpointer data, gpointer user_data)
 {
@@ -1209,7 +1214,6 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
 
     return;
 }
-
 
 cchar     *S57_getAtt(_S57_geo *geoData)
 {

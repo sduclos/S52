@@ -1543,9 +1543,9 @@ static GString *_LITDSN01(S57_geo *geo)
     // CATLIT, LITCHR, COLOUR, HEIGHT, LITCHR, SIGGRP, SIGPER, STATUS, VALNMR
 
     // debug
-    if (3154 == S57_getGeoID(geo)) {
-        PRINTF("lights found         XXXXXXXXXXXXXXXXXXXXXXX\n");
-    }
+    //if (3154 == S57_getGeoID(geo)) {
+    //    PRINTF("lights found         XXXXXXXXXXXXXXXXXXXXXXX\n");
+    //}
 
 
     // CATLIT
@@ -1619,7 +1619,7 @@ static GString *_LITDSN01(S57_geo *geo)
         const char *tmp = NULL;
 
         if (1 < _parseList(litchrstr->str, litchr)) {
-            PRINTF("ERROR: more then one 'light characteristic' (LITCHR), other not displayed\n");
+            PRINTF("WARNING: more then one 'light characteristic' (LITCHR), other not displayed\n");
             g_assert(0);
         }
 
@@ -1794,7 +1794,7 @@ static GString *_LITDSN01(S57_geo *geo)
         const char *tmp = NULL;
 
         if (1 < _parseList(statusstr->str, status))
-            PRINTF("ERROR: more then one 'status' (STATUS), other not displayed\n");
+            PRINTF("WARNING: more then one 'status' (STATUS), other not displayed\n");
 
         switch (status[0]) {
             //1: permanent

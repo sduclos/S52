@@ -114,23 +114,28 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # NOTE: -D_REENTRANT add this if threading
 # NOTE: signal is handled by glib-2.0 as of gtk+-2.0
 # NOTE: -DS52_USE_SUPP_LINE_OVERLAP, experiment in progresse to suppress overlapping lines
-#       --see S52 manual p. 45 (GDAL/OGR/S57 need a patch to work as it max out)
-# NOTE: need to compile with g++ to use gdal/ogr filecollector()
-#        -DS52_USE_OGR_FILECOLLECTOR
-#       also experimental parsing of CATALOG.03?
-#       need: -I/home/sduclos/dev/gis/gdal/gdal/frmts/iso8211/
+#      (GDAL/OGR/S57 need a patch to work as it max out)
 #
-# NOTE: experimental
+# NOTE: *** experimental ***
 # -DS52_USE_COGL: used to test text rendering from COGL
 # -DS52_USE_FTGL: text rendering
 # -DS52_USE_GLC : text rendering
 # -DS52_USE_FREETYPE_GL: text rendering need -DS52_USE_GLES2
+# -DS52_USE_OGR_FILECOLLECTOR:
+#        - compile with g++ to use gdal/ogr s57filecollector()
+#        - add 'extern "C"' to ogr/ogrsf_frmts/s57.h:40 S57FileCollector()  -or- compile S52 with g++ 
+#        - for file path in CATALOG to work on unix apply patch in doc/s57filecollector.cpp.diff
+# -DS52_USE_SUPP_LINE_OVERLAP: supress display of overlapping line  (OGR patch in doc/ogrfeature.cpp.diff)
+#                              --see S52 manual p. 45 doc/pslb03_2.pdf
+# -DS52_USE_C_AGGR_C_ASSO: return info C_AGGR C_ASSO on cursor pick (OGR patch in doc/ogrfeature.cpp.diff)
+# -DS52_USE_SYM_AISSEL01: need symbol in test/plib-test-priv.rle
+# -DS52_USE_WORLD: need shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
 #
+
+
 # -DS52_DEBUG: add more info for debugging libS52 (ex _checkError() in S52GL.c)
 # -DS52_USE_LOG: log every S52_* in tmp file
 #
-# -DS52_USE_SUPP_LINE_OVERLAP: supress display of overlapping line
-# -DS52_USE_OGR_FILECOLLECTOR: call OGR fileColletor() to apply S57 update
 # -DS52_USE_OPENGL_VBO: GL version 1.5 or greater.
 # -DS52_USE_EGL:  for GLES2
 # -DS52_USE_DBUS: mimic S52.h
@@ -167,9 +172,6 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0`\
                   -DS52_USE_PROJ                 \
                   -DS52_USE_DOTPITCH $(DBG)
 
-# -DS52_USE_SYM_AISSEL01 (experimental - symbol in plib-test-priv.rle)
-# -DS52_USE_WORLD - shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
-# -DS52_USE_SUPP_LINE_OVERLAP
 s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
@@ -187,7 +189,6 @@ s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_SOCK                 \
                   -DS52_USE_OGR_FILECOLLECTOR    \
-                  -DS52_USE_WORLD                \
                   -DS52_DEBUG $(DBG)
 
 # WARNING: gdal run OK on android with android-9-toolchain
@@ -212,11 +213,12 @@ s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/system/include
 s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
 
 # -DS52_USE_SYM_AISSEL01 - experimental - symbol in plib-test-priv.rle
-# -DS52_USE_BACKTRACE
-# -DS52_USE_SOCK
-# -DS52_USE_WORLD
+# -DS52_USE_BACKTRACE    - debug
+# -DS52_USE_SOCK         - socket & WebSocket
+# -DS52_USE_WORLD        - experimental - load world Shapefile
 # -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
 # -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7)
+# -DS52_USE_LOG          - use S52_error_cb in init to get log in STDOUT
 
             DEFS   = -DS52_USE_GLIB2                       \
                      -DS52_USE_PROJ                        \
@@ -226,12 +228,11 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
                      -DS52_USE_ANDROID                     \
-                     -DS52_USE_ADRENO                      \
+                     -DS52_USE_TEGRA2                      \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
                      -DS52_DEBUG                           \
-                     -DS52_USE_LOG                         \
                      -DG_DISABLE_ASSERT
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
@@ -295,13 +296,6 @@ s52win32 : CFLAGS   = -mms-bitfields                         \
                       -DS52_USE_OGR_FILECOLLECTOR            \
                       -DS52_USE_LOG                          \
                       -DS52_DEBUG $(DBG)
-
-# to use this flags, gdal need  'extern "C"' wrapper around
-# S57FileCollector in gdal/ogr/ogr_frmts/s57/s57.h
-# -or-
-# compile S52 with g++ (uncomment the CC line above)
-#CFLAGS += -DS52_USE_OGR_FILECOLLECTOR
-
 
 
 ############### LIBS setup ##############################
@@ -412,7 +406,7 @@ test/s52gtk3egl:
 	(cd test; make s52gtk3egl)
 
 test/s52eglarm:
-	(cd test; make s52eglarm; cd android; make clean; make)
+	(cd test/android; make clean; make)
 
 test/s52gv:
 	(cd test; make s52gv)

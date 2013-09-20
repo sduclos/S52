@@ -124,9 +124,6 @@ static GLint _aUV          = 0;
 static GLint _aColor       = 0;
 static GLint _aAlpha       = 0;
 
-static GLuint _framebufferID       = 0;
-static GLuint _colorRenderbufferID = 0;
-
 #endif // S52_USE_GLES2
 
 
@@ -442,6 +439,7 @@ static const GLubyte _nodata_mask_bits[4*32] = {
     0x00, 0x00, 0x00, 0x00, // 3
     0x00, 0x00, 0x00, 0x00, // 4
     0x00, 0x00, 0x00, 0x00, // 5
+
     0x00, 0x00, 0x00, 0x00, // 6
     0x00, 0x00, 0x00, 0x00, // 7
     0xFE, 0x00, 0x00, 0x00, // 8
@@ -488,10 +486,7 @@ static const GLubyte _oversc_mask_bits[4] = {     // 4 x 8 bits = 32 bits
 };
 
 // other pattern are created using FBO
-static GLuint        _frameBufferID = 0;
-static GLuint        _FBBufferID    = 0;
-
-//static GLuint        _renderBufferID = 0;
+static GLuint        _fboID = 0;
 
 //---- PATTERN -----------------------------------------------------------
 
@@ -556,10 +551,11 @@ static    GLdouble _mvm[16];       // modelview matrix
 static    GLdouble _pjm[16];       // projection matrix
 #endif
 
-#endif  // S52_USE_GLES2
-
 static GLuint   _vboIDaftglwVertID = 0;
 static GLuint   _vboIDaftglwColrID = 0;
+
+#endif  // S52_USE_GLES2
+
 static GArray  *_aftglwColorArr    = NULL;
 
 // utils
@@ -1004,18 +1000,8 @@ static GLvoid CALLBACK   _vertexCin(GLvoid *data)
 static void      _dumpATImemInfo(GLenum glenum)
 {
     GLint params[4] = {0,0,0,0};
-    //glGetIntegerv(GL_ATI_meminfo, GLint *params);
-    //glGetIntegerv(VBO_FREE_MEMORY_ATI, params);
     glGetIntegerv(glenum, params);
-    //#define VBO_FREE_MEMORY_ATI                     0x87FB
-    //#define TEXTURE_FREE_MEMORY_ATI                 0x87FC
-    //#define RENDERBUFFER_FREE_MEMORY_ATI            0x87FD
-    /*
-     param[0] - total memory free in the pool
-     param[1] - largest available free block in the pool
-     param[2] - total auxiliary memory free
-     param[3] - largest auxiliary free block
-     */
+
     PRINTF("---------------ATI mem info: %x -----------------\n", glenum);
     PRINTF("%i Kbyte:total memory free in the pool\n",            params[0]);
     PRINTF("%i Kbyte:largest available free block in the pool\n", params[1]);
@@ -1343,8 +1329,6 @@ static GLint     _initGLU(void)
          PRINTF("GLU version:%s\n",str);
          */
     }
-
-    //_dumpATImemInfo(VBO_FREE_MEMORY_ATI);
 
     return TRUE;
 }
@@ -2415,6 +2399,7 @@ static void      _glPointSize(GLfloat size)
 }
 
 #ifdef S52_USE_GLES2
+/*
 static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
 // not used
 {
@@ -2433,7 +2418,7 @@ static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
 
     return;
 }
-
+*/
 #else
 
 static GLvoid    _DrawArrays_QUADS(guint npt, vertex_t *ppt)
@@ -2515,6 +2500,7 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
 }
 
 #ifdef S52_USE_GLES2
+/*
 static GLvoid    _DrawArrays_POINTS(guint npt, vertex_t *ppt)
 // not used
 {
@@ -2530,6 +2516,7 @@ static GLvoid    _DrawArrays_POINTS(guint npt, vertex_t *ppt)
 
     return;
 }
+*/
 #endif
 
 #ifdef S52_USE_OPENGL_VBO
@@ -2560,6 +2547,18 @@ static int       _VBODrawArrays(S57_prim *prim)
         //    PRINTF("57 FOUND!\n");
         //}
 
+        // FIXME: optimisation: make stat for 'count' avrg
+        // to get a baseline before optimisation
+        // Should be long strip or fan .. in theorie
+        /*
+        switch (mode) {
+            case GL_TRIANGLE_STRIP: PRINTF("TRIANGLE_STRIP = %i\n", count); break;
+            case GL_TRIANGLE_FAN:   PRINTF("TRIANGLE_FAN   = %i\n", count); break;
+            case GL_TRIANGLES:      PRINTF("TRIANGLES      = %i\n", count); break;
+            default: PRINTF("unkown: [0x%x]\n", mode);
+            g_assert(0);
+        }
+        */
         glDrawArrays(mode, first, count);
 
 
@@ -2571,6 +2570,7 @@ static int       _VBODrawArrays(S57_prim *prim)
         //    glDrawArrays(mode, first, count);
         //}
     }
+
 
     //_checkError("_VBODrawArrays()");
 
@@ -6083,9 +6083,8 @@ static int       _renderAC(S52_obj *obj)
     // FIXME: BUG BUG BUG
     // THIS SHOULD NOT BE HERE .. BUT MIXUP AREA DRAW
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-    //glUniform1f(_uColOn, 1.0);
+
     _fillarea(geo);
-    //glUniform1f(_uColOn, 0.0);
 
 #else
     glMatrixMode(GL_MODELVIEW);
@@ -6206,10 +6205,6 @@ static int       _renderAP_NODATA_layer0(void)
 
         glBindTexture(GL_TEXTURE_2D, 0);
         _checkError("_renderAP_NODATA_layer0 -0.1-");
-
-        // setup FBO (will need this later on)  ----------------------------------
-        glGenFramebuffers (1, &_frameBufferID);
-        //glGenRenderbuffers(1, &_renderBufferID);
     }
 
 
@@ -6458,7 +6453,6 @@ static int       _renderAP_es2(S52_obj *obj)
     double tileWw = tileWpx * ((_pmax.u - _pmin.u) / (GLdouble)_vp[2]);
     double tileHw = tileHpx * ((_pmax.v - _pmin.v) / (GLdouble)_vp[3]);
 
-
     // GLES2 on TEGRA2 (xoom), tile are POT (power-of-two) and so are the pattern after scaling.
     /*
      int w = 0;
@@ -6487,8 +6481,8 @@ static int       _renderAP_es2(S52_obj *obj)
         // The npot extension for GLES2 is only about support of mipmaps and repeat/mirror wrap modes.
         // If you don't care about mipmaps and use only the clamp wrap mode, you can use npot textures.
         // It's part of the GLES2 spec.
-        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -6510,7 +6504,8 @@ static int       _renderAP_es2(S52_obj *obj)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 #endif
 
-        glBindFramebuffer     (GL_FRAMEBUFFER, _frameBufferID);
+        glGenFramebuffers (1, &_fboID);
+        glBindFramebuffer     (GL_FRAMEBUFFER, _fboID);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mask_texID, 0);
 
         GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -6518,11 +6513,11 @@ static int       _renderAP_es2(S52_obj *obj)
             PRINTF("ERROR: glCheckFramebufferStatus() fail: %s status: %i\n", S52_PL_getOBCL(obj), status);
             g_assert(0);
         } else {
-            PRINTF("OK: glCheckFramebufferStatus(): %s, tex: %i x %i, frac: %f x %f\n",
+            PRINTF("DEBUG: FRAMEBUFFER OK: glCheckFramebufferStatus(): %s, tex: %i x %i, frac: %f x %f\n",
                    S52_PL_getOBCL(obj), potW, potH, tileWpx/(double)potW, tileHpx/(double)potH);
             //PRINTF("pixels w/h: %f x %f, world: %f x %f\n", tileWpx, tileHpx, tileWw, tileHw);
         }
-        _checkError("_renderAP() -0.32-");
+        _checkError("_renderAP_es2() -0.32-");
 
         // save texture mask ID whem everythings check ok
         S52_PL_setAPtexID(obj, mask_texID);
@@ -6542,7 +6537,7 @@ static int       _renderAP_es2(S52_obj *obj)
         // set color alpha
         glUniform4f(_uColor, 0.0, 0.0, 0.0, 1.0);
 
-        _checkError("_renderAP() -0.4-");
+        _checkError("_renderAP_es2() -0.4-");
 
         // render to texture -----------------------------------------
 
@@ -6660,7 +6655,7 @@ static int       _renderAP_es2(S52_obj *obj)
         glBindTexture(GL_TEXTURE_2D, 0);
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        _checkError("_renderAP() -1-");
+        _checkError("_renderAP_es2() -1-");
 
 
 //---------------------------------------------------------------------------------------------------------------
@@ -6754,7 +6749,7 @@ static int       _renderAP_es2(S52_obj *obj)
     glUniform1f(_uPattW,     0.0);
     glUniform1f(_uPattH,     0.0);
 
-    _checkError("_renderAP() -2-");
+    _checkError("_renderAP_es2() -2-");
 
     return TRUE;
 }
@@ -8273,7 +8268,7 @@ static guint     _minPOT(guint value)
     }
 }
 
-static int       _newTexture(S52_ras *raster)
+static int       _newTexture(S52_GL_ras *raster)
 // copy and blend raster 'data' to alpha texture
 {
     guint potX = _minPOT(raster->w);
@@ -8321,7 +8316,7 @@ static int       _newTexture(S52_ras *raster)
 }
 
 
-int        S52_GL_drawRaster(S52_ras *raster)
+int        S52_GL_drawRaster(S52_GL_ras *raster)
 {
     // bailout if not in view
     if ((raster->E < _pmin.u) || (raster->S < _pmin.v) || (raster->W > _pmax.u) || (raster->N > _pmax.v)) {
@@ -8701,19 +8696,27 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
 }
 
 
-int        S52_GL_begin(int cursorPick, int drawLast)
+//int        S52_GL_begin(int cursorPick, int drawLast)
+int        S52_GL_begin(S52_GL_mode mode)
 {
     CHECK_GL_END;
-    //CHECK_GL_BEGIN;
     _GL_BEGIN = TRUE;
 
     //static int saveAttrib;
 
     //_checkError("S52_GL_begin() -0-");
 
+    // ATI
     //_dumpATImemInfo(VBO_FREE_MEMORY_ATI);          // 0x87FB
     //_dumpATImemInfo(TEXTURE_FREE_MEMORY_ATI);      // 0x87FC
     //_dumpATImemInfo(RENDERBUFFER_FREE_MEMORY_ATI); // 0x87FD
+
+    // Nvidia - GetIntegerv
+    // GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX          0x9047
+    // GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX    0x9048
+    // GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX  0x9049
+    // GPU_MEMORY_INFO_EVICTION_COUNT_NVX            0x904A
+    // GPU_MEMORY_INFO_EVICTED_MEMORY_NVX            0x904B
 
     // debug
     _drgare = 0;
@@ -8755,7 +8758,8 @@ int        S52_GL_begin(int cursorPick, int drawLast)
 
 
     // picking or rendering cycle
-    if (TRUE == cursorPick) {
+    //if (TRUE == cursorPick) {
+    if (S52_GL_PICK == mode) {
         _doPick   = TRUE;
         //_cIdx.idx = 0;
         _cIdx.color.r = 0;
@@ -8822,7 +8826,7 @@ int        S52_GL_begin(int cursorPick, int drawLast)
 
 #ifdef S52_USE_GLES2
 #else
-    glShadeModel(GL_FLAT);
+    glShadeModel(GL_FLAT);                       // NOT in GLES2
     // draw both side
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);   // NOT in OpenGL ES SC
     glEnableClientState(GL_VERTEX_ARRAY);
@@ -8856,7 +8860,8 @@ int        S52_GL_begin(int cursorPick, int drawLast)
     //}
 
     // skip projection if picking (or drawLast()) since the view is the same
-    if (FALSE==cursorPick || FALSE==drawLast) {
+    //if (FALSE==cursorPick || FALSE==drawLast) {
+    if (S52_GL_DRAW == mode) {
         // this will setup _pmin/_pmax, need a valide _vp
         _doProjection(_centerLat, _centerLon, _rangeNM/60.0);
     }
@@ -8910,12 +8915,12 @@ int        S52_GL_begin(int cursorPick, int drawLast)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glBindTexture(GL_TEXTURE_2D, 0);
-
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
     //-- update background ------------------------------------------
-    if (FALSE == drawLast) {
+    //if (FALSE == drawLast) {
+    if (S52_GL_DRAW == mode) {
         // CS DATCVR01: 2.2 - No data areas
         if (1.0 == S52_MP_get(S52_MAR_DISP_NODATA_LAYER)) {
             // fill display with 'NODTA' color
@@ -8929,10 +8934,11 @@ int        S52_GL_begin(int cursorPick, int drawLast)
         // then call drawLast repeatdly
         if (TRUE == _update_fb) {
 #ifdef S52_USE_ADRENO
-            // FIXME: BUG: Adreno break here
+            // FIXME: Adreno mess up here
             // call need to be at S52_GL_end()
             // maybe no window associated with the current rendering context
             // no data has been written to framebuffer since EGL_beg() so that take make the window unavailable!!
+            // Android 4.3 (Adreno) has triple buffer!
             //S52_GL_readFBPixels();
 #else
             S52_GL_readFBPixels();
@@ -8952,12 +8958,12 @@ int        S52_GL_begin(int cursorPick, int drawLast)
     return TRUE;
 }
 
-int        S52_GL_end(int drawLast)
+int        S52_GL_end(S52_GL_mode mode)
 //
 {
     CHECK_GL_BEGIN;
 
-#ifdef S52_USE_GLES2
+#if (defined S52_USE_GLES2 || defined S52_USE_OPENGL_SAFETY_CRITICAL)
     //* test - use GLES2 FBO instead of PBuffer
     //if (FALSE == drawLast) {
     //    // return to normal FBO
@@ -8965,18 +8971,9 @@ int        S52_GL_end(int drawLast)
     //}
 #else
     glDisableClientState(GL_VERTEX_ARRAY);
-#endif
-
-#ifndef S52_USE_GV
-    _glMatrixDel(VP_PRJ);
-#endif
-
-
-
-#if (defined S52_USE_GLES2 || defined S52_USE_OPENGL_SAFETY_CRITICAL)
-#else
     glPopAttrib();     // NOT in OpenGL ES SC
 #endif
+
 
     // this seem to loop
     //_checkError("S52_GL_end()");
@@ -8985,20 +8982,23 @@ int        S52_GL_end(int drawLast)
     _doPick = FALSE;
 
     // flag that the FB changed
-    if (FALSE == drawLast) {
+    //if (FALSE == drawLast) {
+    if (S52_GL_DRAW == mode) {
         _update_fb = TRUE;
 #ifdef S52_USE_ADRENO
         // FIXME: Adreno need the call here rather than in S52_GL_begin()  why ???
-        // the window/framebuffer if full of data
+        // is it because the window/framebuffer if full of data
+        // BUG: rereading FB break blitting
         S52_GL_readFBPixels();
 #endif
-
+        //S52_GL_readFBPixels();
     }
 
 #ifdef S52_USE_COGL
     cogl_end_gl();
 #endif
 
+    _glMatrixDel(VP_PRJ);
 
     //CHECK_GL_BEGIN;
     _GL_BEGIN = FALSE;
@@ -9065,7 +9065,7 @@ int        S52_GL_del(S52_obj *obj)
     return TRUE;
 }
 
-int        S52_GL_delRaster(S52_ras *raster, int texOnly)
+int        S52_GL_delRaster(S52_GL_ras *raster, int texOnly)
 {
     g_free(raster->texAlpha);
     raster->texAlpha = NULL;
@@ -9349,8 +9349,6 @@ static int       _init_es2(void)
     //    _fb_texture_id = 0;
     //}
 
-    //glDisable(GL_BLEND);
-
     // setup mem buffer to save FB to
     glGenTextures(1, &_fb_texture_id);
     glBindTexture  (GL_TEXTURE_2D, _fb_texture_id);
@@ -9360,24 +9358,19 @@ static int       _init_es2(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 
-#ifdef S52_USE_TEGRA2
-    // FIXME: needed?
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_UNSIGNED_BYTE, NULL);
-#else
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_UNSIGNED_BYTE, NULL);
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_BYTE, NULL);
+#ifdef S52_USE_ADRENO
     //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
-    //glTexStorage2D();
+#else
+    glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_UNSIGNED_BYTE, NULL);
+    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_BYTE, NULL);
+
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
 #endif
 
     glBindTexture  (GL_TEXTURE_2D, 0);
-
-
-    //glEnable(GL_BLEND);
 
     _checkError("S52_GL_initGLES2() -fini-");
 
@@ -9588,13 +9581,9 @@ int        S52_GL_done(void)
     glDeleteProgram(_programObject);
     _programObject = 0;
 
-    glDeleteFramebuffers (1, &_framebufferID);
-    _framebufferID = 0;
+    glDeleteFramebuffers(1, &_fboID);
+    _fboID = 0;
 
-    if (glIsRenderbuffer(_colorRenderbufferID)) {
-        glDeleteRenderbuffers(1, &_colorRenderbufferID);
-        _colorRenderbufferID = 0;
-    }
 
 #ifdef S52_USE_FREETYPE_GL
     //texture_font_delete(_freetype_gl_font);
@@ -9819,6 +9808,7 @@ char      *S52_GL_getNameObjPick(void)
     S57_geo *geo  = S52_PL_getGeo(objhighlight);
     S57_highlightON(geo);
 
+#ifdef S52_USE_C_AGGR_C_ASSO
     // debug
     GString *geo_refs = S57_getAttVal(geo, "_LNAM_REFS_GEO");
     if (NULL != geo_refs)
@@ -9862,7 +9852,7 @@ char      *S52_GL_getNameObjPick(void)
 
         g_strfreev(topRefs);
     }
-    //*/
+#endif
 
     return (const char *)_strPick->str;
 }
@@ -9888,23 +9878,19 @@ guchar    *S52_GL_readFBPixels(void)
     if (TRUE==_doPick || NULL==_fb_pixels)
         return NULL;
 
-    // this leak on Radeon HD 3450 (fglrx)
-    //glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);  // leak
-
-    //glDisable(GL_BLEND);
-
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
+#ifdef S52_USE_ADRENO
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, 0, 0, _vp[2], _vp[3], 0);
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, 1024, 1024, 0);
+#else
+    // this leak on Radeon HD 3450 (fglrx)
+    glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);  // leak
 
-    //glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, _vp[2], _vp[3]);
+    // FIXME: this flip Y
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
+#endif
 
     glBindTexture(GL_TEXTURE_2D, 0);
-
-    //glEnable(GL_BLEND);
 
     _checkError("S52_GL_readFBPixels().. -1-");
 
@@ -9926,23 +9912,24 @@ int        S52_GL_drawFBPixels(void)
 
     _glMatrixSet(VP_PRJ);
 
-    /*
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
-    //glClearColor(1.0, 0.0, 0.0, 1.0);     // red
-    glClearColor(1.0, 0.0, 0.0, 0.0);     // red
-    glClear(GL_COLOR_BUFFER_BIT);
-    */
+    glDisable(GL_BLEND);
 
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
-    /*
+#ifdef S52_USE_ADRENO
+    // .. do nothing
+#else
     if (TRUE == _update_fb) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
     }
-    //*/
 
-    glDisable(GL_BLEND);
-    //glBlendFunc(GL_SRC_COLOR, GL_SRC_ALPHA_SATURATE);
+    // FIXME: this flip Y at each call
+
+    //_glScaled(1.0, -1.0, 1.0);
+    //glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+#endif
+
 
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
@@ -9953,6 +9940,7 @@ int        S52_GL_drawFBPixels(void)
         _pmax.u, _pmax.v, 0.0,   1.0, 1.0,
         _pmax.u, _pmin.v, 0.0,   1.0, 0.0
     };
+
     glEnableVertexAttribArray(_aUV);
     glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
 
@@ -9969,7 +9957,6 @@ int        S52_GL_drawFBPixels(void)
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // transparency
     glEnable(GL_BLEND);
 
 
@@ -10136,6 +10123,11 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     glDisable(GL_BLEND);
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
+    // FIXME: this flip Y
+
+    //_glScaled(1.0, -1.0, 1.0);
+    //glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
 
@@ -10145,6 +10137,7 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
         _pmax.u, _pmax.v, 0.0,   1.0 + scale_x - scale_z, 1.0 + scale_y - scale_z,
         _pmax.u, _pmin.v, 0.0,   1.0 + scale_x - scale_z, 0.0 + scale_y + scale_z
     };
+
     glEnableVertexAttribArray(_aUV);
     glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
 

@@ -267,6 +267,7 @@ DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int
  *
  *
  * NOTE:
+ *  - BUG: Y is Down, but origin is LL !!
  *  - X is Right and Y is Down to match X11 origin
  *  - in the next frame, the object is drawn with the "DNGHL" color (experimental))
  *  - using 'double' instead of 'unsigned int' because X11 handle mouse in 'double'.

@@ -3,13 +3,33 @@
 #
 
 
+2013SEP19
+    -mod s52eglarm to link directly s52ais to s52egl
+    -mod s52ais to get AIS data from a GPSD running on the network
+    -mod remove the folder s52droid/bin on android and the need to get root access
+
+2013SEP18
+    -add doc/s57filecollector.cpp.diff (gdal/ogr patch to fix DOS path in CATALOG.031 on Unix)
+
+2013SEP16
+    -fix unlock mutex in S52_getS57ObjClassSupp()
+
+2013SEP15
+    -add -DS52_USE_C_AGGR_C_ASSO to get experimental S-57 relationship C_AGGR & C_ASSO
+
+2013SEP14
+    -add refactor S52_GL_mode to track GL DRAW/LAST/PICK/BLIT and clarify the state/mode
+
+2013SEP13
+    -fix bug when S52_MAR_DISP_NODATA_LAYER is OFF
+
 2013SEP10
     -mod bring up Adreno (Nexus 7)
 
 2013SEP04
     -fix sector lights
     -add test/s52gtk3egl.c
-    
+
 2013AUG27
     -fix not needed inclusion of glu.h in GLES2
 

@@ -266,7 +266,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.98\n"
+      "libS52 0.99\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -348,7 +348,12 @@ static EGL_cb _eglBeg = NULL;
 static EGL_cb _eglEnd = NULL;
 static void  *_EGLctx = NULL;
 // WARNING: call BEFORE mutex
-#define EGL_BEGIN       if (NULL != _eglBeg) _eglBeg(_EGLctx);
+//#define EGL_BEGIN       if (NULL != _eglBeg) _eglBeg(_EGLctx);
+#define EGL_BEGIN       if (NULL != _eglBeg) {              \
+                            if (FALSE == _eglBeg(_EGLctx))  \
+    							return FALSE;               \
+						}
+
 // WARNING: call AFTER mutex
 #define EGL_END         if (NULL != _eglEnd) _eglEnd(_EGLctx);
 #else
@@ -1653,7 +1658,7 @@ DLL int    STD S52_done(void)
 
     // flush raster
     for (guint i=0; i<_rasterList->len; ++i) {
-        S52_ras *r = (S52_ras *) g_ptr_array_index(_rasterList, i);
+        S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
         S52_GL_delRaster(r, FALSE);
         g_free(r);
     }
@@ -1685,7 +1690,9 @@ DLL int    STD S52_setFont(int font)
 }
 #endif
 
+#ifdef S52_USE_C_AGGR_C_ASSO
 static int        _linkRel2LNAM(_cell* c)
+// link geo to C_AGGR / C_ASSO geo
 {
     for (guint i=0; i<S52_PRIO_NUM; ++i) {
         for (int j=0; j<N_OBJ_T; ++j) {
@@ -1745,6 +1752,7 @@ static int        _linkRel2LNAM(_cell* c)
 
     return TRUE;
 }
+#endif
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 static int        _suppLineOverlap()
@@ -1931,17 +1939,6 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
         PRINTF("WARNING: filename (%s) not a S-57 base ENC [.000 terminated]\n", filename);
     }
 
-
-
-    // G_OS_WIN32, G_OS_UNIX
-    // convert paths to unix style
-    //for (int i = 0; i < strlen(line); i++) {
-    //    // replace dos dir separator character
-    //    if (line[i] == '\\')
-    //        line[i]='/'; // G_DIR_SEPARATOR
-    //}
-
-
     if (NULL == (fd = S52_fopen(filename, "r"))) {
         PRINTF("WARNING: cell not found (%s)\n", filename);
 
@@ -1978,7 +1975,9 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
     _suppLineOverlap();
 #endif
 
+#ifdef S52_USE_C_AGGR_C_ASSO
     _linkRel2LNAM(ch);
+#endif
 
     _collect_CS_touch(ch);
 
@@ -2022,6 +2021,7 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 // Note: must add 'extern "C"' to GDAL/OGR at S57.h:40
 char **S57FileCollector( const char *pszDataset );
 
+#if 0
 //#include "iso8211.h"
 static int        _loadCATALOG(char *filename)
 {
@@ -2083,13 +2083,14 @@ static int        _loadCATALOG(char *filename)
 
     return TRUE;
 }
-#endif
+#endif  // 0
+#endif  // S52_USE_OGR_FILECOLLECTOR
 
 int               _loadRaster(const char *fname)
 {
     // check if allready loaded
     for (guint i=0; i<_rasterList->len; ++i) {
-        S52_ras *r = (S52_ras *) g_ptr_array_index(_rasterList, i);
+        S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
         if (0 == g_strcmp0(r->fname->str, fname))
             return FALSE;
     }
@@ -2196,7 +2197,7 @@ int               _loadRaster(const char *fname)
 
 
     // store data
-    S52_ras *ras = g_new0(S52_ras, 1);
+    S52_GL_ras *ras = g_new0(S52_GL_ras, 1);
     ras->fname = g_string_new(fname);
     ras->w     = w;
     ras->h     = h;
@@ -2388,7 +2389,7 @@ DLL int    STD S52_doneCell(const char *encPath)
     int len = strlen(basename);
     if (0 == g_strcmp0(basename+(len-4), ".tif")) {
         for (guint i=0; i<_rasterList->len; ++i) {
-            S52_ras *r = (S52_ras *) g_ptr_array_index(_rasterList, i);
+            S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
             if (0 == g_strcmp0(r->fname->str, fname)) {
                 S52_GL_delRaster(r, FALSE);
                 g_free(r);
@@ -3129,7 +3130,7 @@ static int        _app()
 
         // 2.3 - flush all texApha if S52_MAR_SAFETY_CONTOUR as change
         for (guint i=0; i<_rasterList->len; ++i) {
-            S52_ras *ras = (S52_ras *) g_ptr_array_index(_rasterList, i);
+            S52_GL_ras *ras = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
             S52_GL_delRaster(ras, TRUE);
         }
 
@@ -3364,7 +3365,7 @@ static int        _cullLights(void)
 
         // a cell can have no lights sector
         if (NULL == c->lights_sector) {
-            PRINTF("NO lights_sector : %s\n", c->filename->str);
+            //PRINTF("DEBUG: NO lights_sector : %s\n", c->filename->str);
             continue;
         }
 
@@ -3656,6 +3657,9 @@ static int        _drawLegend()
 
 DLL int    STD S52_draw(void)
 {
+    // debug
+    //PRINTF("DRAW: start ..\n");
+
     S52_CHECK_INIT;
 
     EGL_BEGIN;
@@ -3688,7 +3692,8 @@ DLL int    STD S52_draw(void)
 
     g_timer_reset(_timer);
 
-    if (TRUE == S52_GL_begin(FALSE, FALSE)) {
+    //if (TRUE == S52_GL_begin(FALSE, FALSE)) {
+    if (TRUE == S52_GL_begin(S52_GL_DRAW)) {
 
         //PRINTF("S52_draw() .. -1.2-\n");
 
@@ -3751,8 +3756,9 @@ DLL int    STD S52_draw(void)
         //S52_GL_drawStr(-5567198.0, 4019200.0,"Thai:"
 		//"๏ เป็นมนุษย์สุดประเสริฐเลิศคุณค่า  กว่าบรรดาฝูงสัตว์เดรัจฉาน");
 
-        S52_GL_end(FALSE);
-
+        //S52_GL_end(FALSE);
+        S52_GL_end(S52_GL_DRAW);
+                             
         // for each cell, not after all cell,
         // because city name appear twice
         // FIXME: cull object of overlapping region of cell of DIFFERENT nav pourpose
@@ -3890,9 +3896,11 @@ DLL int    STD S52_drawLast(void)
     ////////////////////////////////////////////////////////////////////
     // DRAW:
     //
-    if (TRUE == S52_GL_begin(FALSE, TRUE)) {
+    //if (TRUE == S52_GL_begin(FALSE, TRUE)) {
+    if (TRUE == S52_GL_begin(S52_GL_LAST)) {
         ret = _drawLast();
-        S52_GL_end(TRUE);
+        //S52_GL_end(TRUE);
+        S52_GL_end(S52_GL_LAST);
     } else {
         PRINTF("WARNING:S52_GL_begin() failed\n");
         ret = FALSE;
@@ -3980,7 +3988,8 @@ DLL int    STD S52_drawLayer(const char *name)
 
 
     _doPick = FALSE;
-    if (TRUE == S52_GL_begin(_doPick, FALSE)) {
+    //if (TRUE == S52_GL_begin(_doPick, FALSE)) {
+    if (TRUE == S52_GL_begin(S52_GL_DRAW)) {
 
         //////////////////////////////////////////////
         // APP  .. update object (eg moving AIS, ..)
@@ -4012,7 +4021,8 @@ DLL int    STD S52_drawLayer(const char *name)
         // done rebuilding CS
         _doCS = FALSE;
 
-        S52_GL_end(TRUE);
+        //S52_GL_end(TRUE);
+        S52_GL_end(S52_GL_DRAW);
     }
 
     g_static_mutex_unlock(&_mp_mutex);
@@ -4048,6 +4058,8 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
 #ifdef S52_USE_EGL
 DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx)
 {
+    PRINTF("set EGL_cb .. \n");
+
     _eglBeg = eglBeg;
     _eglEnd = eglEnd;
     _EGLctx = EGLctx;
@@ -4059,6 +4071,7 @@ DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx)
 DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north)
 {
     // debug
+    //PRINTF("BLIT start ..\n"):
     //return TRUE;
 
     S52_CHECK_INIT;
@@ -4095,9 +4108,12 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
     g_timer_reset(_timer);
 
 
-    if (TRUE == S52_GL_begin(FALSE, FALSE)) {
+    //if (TRUE == S52_GL_begin(FALSE, FALSE)) {
+    if (TRUE == S52_GL_begin(S52_GL_BLIT)) {
         S52_GL_drawBlit(scale_x, scale_y, scale_z, north);
-        S52_GL_end(FALSE);
+
+        //S52_GL_end(FALSE);
+        S52_GL_end(S52_GL_BLIT);
         ret = TRUE;
     } else {
         PRINTF("WARNING:S52_GL_begin() failed\n");
@@ -4424,9 +4440,7 @@ DLL int    STD S52_toggleObjClass(const char *className)
     S52_objSup ret = S52_PL_toggleObjClass(className);
     if (S52_SUP_ERR == ret) {
         PRINTF("WARNING: can't toggle object: %s\n", className);
-
         g_static_mutex_unlock(&_mp_mutex);
-
         return FALSE;
     }
 
@@ -4436,7 +4450,6 @@ DLL int    STD S52_toggleObjClass(const char *className)
         PRINTF("Supressing display of object: %s\n", className);
     else
         PRINTF("NOT supressing display of object: %s\n", className);
-
 
     return TRUE;
 }
@@ -4452,9 +4465,7 @@ DLL int    STD S52_toggleObjClassON (const char *className)
     S52_objSup supState = S52_PL_getObjClassState(className);
     if (S52_SUP_ERR == supState) {
         PRINTF("WARNING: can't toggle %s\n", className);
-
         g_static_mutex_unlock(&_mp_mutex);
-
         return -1;
     }
 
@@ -4463,10 +4474,8 @@ DLL int    STD S52_toggleObjClassON (const char *className)
     if (S52_SUP_OFF == supState) {
         S52_toggleObjClass(className);
     } else {
-
         return FALSE;
     }
-
 
     return TRUE;
 }
@@ -4482,9 +4491,7 @@ DLL int    STD S52_toggleObjClassOFF(const char *className)
     S52_objSup supState = S52_PL_getObjClassState(className);
     if (S52_SUP_ERR == supState) {
         PRINTF("WARNING: can't toggle %s\n", className);
-
         g_static_mutex_unlock(&_mp_mutex);
-
         return -1;
     }
 
@@ -4493,10 +4500,8 @@ DLL int    STD S52_toggleObjClassOFF(const char *className)
     if (S52_SUP_ON == supState) {
         S52_toggleObjClass(className);
     } else {
-
         return FALSE;
     }
-
 
     return TRUE;
 }
@@ -4512,6 +4517,7 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className)
     S52_objSup supState = S52_PL_getObjClassState(className);
     if (S52_SUP_ERR == supState) {
         PRINTF("WARNING: can't toggle %s\n", className);
+        g_static_mutex_unlock(&_mp_mutex);
         return -1;
     }
 
@@ -4738,7 +4744,8 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     }
 
 
-    if (TRUE == S52_GL_begin(TRUE, FALSE)) {
+    //if (TRUE == S52_GL_begin(TRUE, FALSE)) {
+    if (TRUE == S52_GL_begin(S52_GL_PICK)) {
         _nTotal = 0;
         _nCull  = 0;
 
@@ -4754,7 +4761,8 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         // FIXME: cull
         _drawLast();
 
-        S52_GL_end(FALSE);
+        //S52_GL_end(FALSE);
+        S52_GL_end(S52_GL_PICK);
     } else {
         PRINTF("WARNING:S52_GL_begin() failed\n");
     }

@@ -1265,11 +1265,7 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
                 tmp = tmp->next;
             }
         } else {
-            // when S52_MAR_QUAPNT01 is true, this printf() happend all the time
-            // since S52_MAR_QUAPNT01 test is done at render-time this test is now useless
-            //if (0==strcmp(S57_getName(obj->geoData), "LNDARE"))
-            //    return FALSE;
-
+            // FIXME: ENC_ROOT/US3NY21M/US3NY21M.000 land here
             PRINTF("NOTE: CS for object %s expand to NULL\n", S57_getName(obj->geoData));
             g_assert(0);
             return FALSE;

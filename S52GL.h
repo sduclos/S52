@@ -28,13 +28,13 @@
 #include "S52PL.h"	// S52_obj
 
 // Raster (RADAR,Bathy,...)
-typedef struct S52_ras {
+typedef struct S52_GL_ras {
     GString *fname;
 
     // src
     int w;
     int h;
-    int gdtSz;            // gdt: GDALDataType
+    int gdtSz;                // gdt: GDALDataType
     unsigned char *data;      // size =  w * h * nbyte_gdt
     float min;                // exclusing nodata
     float max;                // exclusing nodata
@@ -46,7 +46,15 @@ typedef struct S52_ras {
     guint potY;
     unsigned char *texAlpha;  // size = potX * potY
     unsigned int   texID;
-} S52_ras;
+} S52_GL_ras;
+
+typedef enum S52_GL_mode {
+    S52_GL_NONE,
+    S52_GL_DRAW,
+    S52_GL_LAST,
+    S52_GL_BLIT,
+    S52_GL_PICK
+} S52_GL_mode;
 
 int   S52_GL_init(void);
 int   S52_GL_setDotPitch(int w, int h, int wmm, int hmm);
@@ -54,7 +62,8 @@ int   S52_GL_setFontDL(int fontDL);
 
 // -- framebuffer stuff --------------------------------
 // init frame, save OpenGL state (see S52_GL_end())
-int   S52_GL_begin(int cursorPick, int drawLast);
+//int   S52_GL_begin(int cursorPick, int drawLast);
+int   S52_GL_begin(S52_GL_mode mode);
 // render an object to framebuffer
 int   S52_GL_draw(S52_obj *obj, gpointer user_data);
 // draw lights
@@ -62,9 +71,9 @@ int   S52_GL_drawLIGHTS(S52_obj *obj);
 // draw text
 int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
 // draw RADAR,Bathy,...
-int   S52_GL_drawRaster(S52_ras *raster);
+int   S52_GL_drawRaster(S52_GL_ras *raster);
 
-// use to copy from framebuffer to memory, return pixels
+// use to copy from framebuffer to memory (or texture), return pixels
 unsigned
 char *S52_GL_readFBPixels(void);
 // debug
@@ -76,7 +85,8 @@ int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double nor
 
 // done frame, restore OpenGL state
 // drawLast: FALSE then the next S52_drawLast() will pull the chart background from memory
-int   S52_GL_end(int drawLast);
+//int   S52_GL_end(int drawLast);
+int   S52_GL_end(S52_GL_mode mode);
 // ----------------------------------
 
 
@@ -87,7 +97,7 @@ int   S52_GL_isOFFscreen(S52_obj *obj);
 // delete GL data of object (DL of geo)
 int   S52_GL_del(S52_obj *obj);
 // delete raster
-int   S52_GL_delRaster(S52_ras *raster, int texOnly);
+int   S52_GL_delRaster(S52_GL_ras *raster, int texOnly);
 
 // flush GL objects, clean up mem
 int   S52_GL_done(void);
