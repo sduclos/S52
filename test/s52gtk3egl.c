@@ -29,7 +29,7 @@
 
 #include "S52.h"
 
-#ifdef S52_USE_AIS
+#ifdef USE_AIS
 #include "s52ais.h"       // s52ais_*()
 #endif
 
@@ -115,7 +115,7 @@ static s52engine _engine;
 
 //------ FAKE AIS - DEBUG ----
 // debug - no real AIS, then fake target
-#ifdef S52_USE_FAKE_AIS
+#ifdef USE_FAKE_AIS
 static S52ObjectHandle _vessel_ais        = NULL;
 #define VESSELLABEL "~~MV Non Such~~ "           // last char will be trimmed
 // test - ownshp
@@ -328,7 +328,7 @@ static int      _s52_computeView(s52droid_state_t *state)
     return TRUE;
 }
 
-#ifdef S52_USE_FAKE_AIS
+#ifdef USE_FAKE_AIS
 static int      _s52_setupVESSEL(s52droid_state_t *state)
 {
     // ARPA
@@ -383,7 +383,7 @@ static int      _s52_setupOWNSHP(s52droid_state_t *state)
 
     return TRUE;
 }
-#endif  // S52_USE_FAKE_AIS
+#endif  // USE_FAKE_AIS
 
 static int      _s52_setupLEGLIN(void)
 {
@@ -709,7 +709,7 @@ static int      _s52_init       (s52engine *engine)
 
     _s52_setupPRDARE(&engine->state);
 
-#ifdef S52_USE_FAKE_AIS
+#ifdef USE_FAKE_AIS
     _s52_setupVESSEL(&engine->state);
 
     _s52_setupOWNSHP(&engine->state);
@@ -735,7 +735,7 @@ static int      _s52_done       (s52engine *engine)
     return TRUE;
 }
 
-#ifdef S52_USE_FAKE_AIS
+#ifdef USE_FAKE_AIS
 static int      _s52_updTimeTag (s52engine *engine)
 {
     (void)engine;
@@ -828,7 +828,7 @@ static int      _s52_draw_cb(GtkWidget *widget,
     // draw AIS
     if (TRUE == engine->do_S52drawLast) {
 
-#ifdef S52_USE_FAKE_AIS
+#ifdef USE_FAKE_AIS
         _s52_updTimeTag(engine);
 #endif
         S52_drawLast();

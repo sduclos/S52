@@ -54,9 +54,6 @@ S57_geo  *S57_set_META();
 // used for PASTRK
 S57_geo  *S57_setGeoLine(S57_geo *geoData, guint xyznbr, geocoord *xyz);
 
-
-//S57_geo  *S57_getGeoNext(S57_geo *geoData);
-//S57_geo  *S57_setGeoNext(S57_geo *geoData, S57_geo *next);
 S57_geo  *S57_getGeoLink(S57_geo *geoData);
 S57_geo  *S57_setGeoLink(S57_geo *geoData, S57_geo *link);
 
@@ -84,7 +81,6 @@ S57_prim *S57_donePrim     (S57_prim *prim);
 S57_prim *S57_initPrimGeo  (S57_geo  *geoData);
 S57_geo  *S57_donePrimGeo  (S57_geo  *geoData);
 int       S57_begPrim      (S57_prim *prim, int mode);
-//int       S57_begPrim      (S57_prim *prim, int mode, int cIdx);
 
 // GLES2 need float vertex
 #ifdef S52_USE_GLES2

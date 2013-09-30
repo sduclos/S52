@@ -239,7 +239,13 @@ static guint   _nobj  = 0;     // number of object drawn during lap
 static guint   _ncmd  = 0;     // number of command drawn during lap
 static guint   _oclip = 0;     // number of object clipped
 //static guint   _nFrag = 0;     // number of pixel fragment (color switch)
-//static int   _debug = 0;
+//static int     _debug = 0;
+
+// tessalated area stat
+static guint   _ntris     = 0;     // area GL_TRIANGLES      count
+static guint   _ntristrip = 0;     // area GL_TRIANGLE_STRIP count
+static guint   _ntrifan   = 0;     // area GL_TRIANGLE_FAN   count
+static guint   _nCall     = 0;
 
 
 ///////////////////////////////////////////////////////////////////
@@ -495,14 +501,17 @@ static GLuint        _fboID = 0;
 // debug
 //static int _DEBUG = FALSE; //
 
-static int            _update_fb      = TRUE;
+static int            _update_fb      = TRUE;  // TRUE flag that the FB changed
 static unsigned char *_fb_pixels      = NULL;
 static unsigned int   _fb_pixels_size = 0;
 static GLuint         _fb_texture_id  = 0;
-
+#define RGB           3
+#define RGBA          4
+static int            _fb_format      = RGBA;  // NOTE: on TEGRA2 RGB (3) spend a lot of time converting
+                                               //       and an RGB EGL buffer (wierd)
 // debug
 static int _GL_BEGIN = FALSE;
-#define CHECK_GL_BEGIN if (TRUE != _GL_BEGIN) {                     \
+#define CHECK_GL_BEGIN if (FALSE == _GL_BEGIN) {                     \
                            PRINTF("ERROR: not inside glBegin()\n"); \
                            g_assert(0);                             \
                        }
@@ -513,8 +522,7 @@ static int _GL_BEGIN = FALSE;
                        }
 
 #ifdef S52_USE_GLES2
-// FIXME: put into struct
-//static    int      _debugMatrix = 1;
+//static int _debugMatrix = 1;
 #define   MATRIX_STACK_MAX 8
 
 // symbole not in GLES2
@@ -527,8 +535,8 @@ static int _GL_BEGIN = FALSE;
 #define   GLU_FILL                           100012
 #define   GLU_SILHOUETTE                     100013
 /* Boolean */
-#define   GLU_FALSE                          0
 #define   GLU_TRUE                           1
+#define   GLU_FALSE                          0
 
 static    GLenum   _mode = GL_MODELVIEW;  // GL_MODELVIEW (initial) or GL_PROJECTION
 static    GLfloat  _mvm[MATRIX_STACK_MAX][16];       // modelview matrix
@@ -1669,11 +1677,6 @@ static double    _computeSCAMIN(void)
 
 #ifdef S52_USE_GLES2
 
-//static GLint   _u_matrix  = -1;
-//static GLfloat _view_rotx = 0.0;
-//static GLfloat _view_roty = 0.0;
-
-
 static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m)
 {
    float c = cos(angle * M_PI / 180.0);
@@ -2548,17 +2551,30 @@ static int       _VBODrawArrays(S57_prim *prim)
         //}
 
         // FIXME: optimisation: make stat for 'count' avrg
-        // to get a baseline before optimisation
-        // Should be long strip or fan .. in theorie
-        /*
+        // to get a baseline before optimisation with glDrawElements
+        // FIX: glDrawElements need to send indices array (one per vertex)
+        //      glDrawArrays indices are 'count' but no overhead / code compexity
+        //*
         switch (mode) {
-            case GL_TRIANGLE_STRIP: PRINTF("TRIANGLE_STRIP = %i\n", count); break;
-            case GL_TRIANGLE_FAN:   PRINTF("TRIANGLE_FAN   = %i\n", count); break;
-            case GL_TRIANGLES:      PRINTF("TRIANGLES      = %i\n", count); break;
-            default: PRINTF("unkown: [0x%x]\n", mode);
+        case GL_TRIANGLE_STRIP:
+            //PRINTF("TRIANGLE_STRIP = %i\n", count);
+            _ntristrip += count;
+            break;
+        case GL_TRIANGLE_FAN:
+            //PRINTF("TRIANGLE_FAN   = %i\n", count);
+            _ntrifan += count;
+            break;
+        case GL_TRIANGLES:
+            //PRINTF("TRIANGLES **** = %i\n", count);
+            _ntris += count;
+            ++_nCall;
+            break;
+        default:
+            PRINTF("unkown: [0x%x]\n", mode);
             g_assert(0);
         }
-        */
+        //*/
+
         glDrawArrays(mode, first, count);
 
 
@@ -2898,6 +2914,8 @@ static int       _glCallList(S52_DListData *DListData)
     if (NULL == DListData)
         return FALSE;
 
+    _checkError("_glCallList(): -start-");
+
 #ifdef S52_USE_GLES2
     // set shader matrix before draw
     //glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
@@ -2985,7 +3003,7 @@ static int       _glCallList(S52_DListData *DListData)
         }
     }
 
-    _checkError("_glCallList()");
+    _checkError("_glCallList(): -end-");
 
     return TRUE;
 }
@@ -6512,11 +6530,15 @@ static int       _renderAP_es2(S52_obj *obj)
         if (status != GL_FRAMEBUFFER_COMPLETE) {
             PRINTF("ERROR: glCheckFramebufferStatus() fail: %s status: %i\n", S52_PL_getOBCL(obj), status);
             g_assert(0);
-        } else {
+        }
+        /*
+        else {
             PRINTF("DEBUG: FRAMEBUFFER OK: glCheckFramebufferStatus(): %s, tex: %i x %i, frac: %f x %f\n",
                    S52_PL_getOBCL(obj), potW, potH, tileWpx/(double)potW, tileHpx/(double)potH);
             //PRINTF("pixels w/h: %f x %f, world: %f x %f\n", tileWpx, tileHpx, tileWw, tileHw);
         }
+        */
+
         _checkError("_renderAP_es2() -0.32-");
 
         // save texture mask ID whem everythings check ok
@@ -6630,8 +6652,10 @@ static int       _renderAP_es2(S52_obj *obj)
         }
 
         // debug - break if patt has stag
-        //if (0.0 != stagOffsetPix)
-        //    g_assert(0);
+        if (0.0 != stagOffsetPix) {
+            PRINTF("FIXME: stagOffsetPix not implemented for S52_USE_GLES2\n");
+            //g_assert(0);
+        }
 
         _renderTile(DListData);
 
@@ -7070,22 +7094,21 @@ static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
     int pen_y = 0;
     int space = FALSE;
 
-    int len = strlen(str);
-
     g_array_set_size(buf, 0);
 
+    int len = strlen(str);
     for (int i=0; i<len; ++i) {
-    //for (int i=1; i<len; i+=2) {
         // experimental: smaller text size if second line
         if (NL == str[i]) {
-        //if (NL == wstr[i]) {
-        //if (TB == str[i]) {
             weight = (0<weight) ? weight-1 : weight;
             texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], 'A');
             pen_x =  0;
             pen_y = (NULL!=glyph) ? -(glyph->height+5) : 10 ;
             space = TRUE;
-            ++i;
+
+            // Note: When S52_USE_SOCK, setVESSELlabel() in s52ais STANDALONE,
+            // JSON string need this because '\n' must be escaped ('\\n')
+            //++i;
         }
 
         unsigned char uc = str[i];
@@ -8711,15 +8734,24 @@ int        S52_GL_begin(S52_GL_mode mode)
     //_dumpATImemInfo(TEXTURE_FREE_MEMORY_ATI);      // 0x87FC
     //_dumpATImemInfo(RENDERBUFFER_FREE_MEMORY_ATI); // 0x87FD
 
+#ifdef S52_USE_TEGRA2
     // Nvidia - GetIntegerv
     // GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX          0x9047
     // GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX    0x9048
     // GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX  0x9049
     // GPU_MEMORY_INFO_EVICTION_COUNT_NVX            0x904A
     // GPU_MEMORY_INFO_EVICTED_MEMORY_NVX            0x904B
+#endif
 
     // debug
     _drgare = 0;
+
+    // stat
+    _ntristrip = 0;
+    _ntrifan   = 0;
+    _ntris     = 0;
+    _nCall     = 0;
+
 
 #ifdef S52_USE_COGL
     cogl_begin_gl();
@@ -8861,10 +8893,10 @@ int        S52_GL_begin(S52_GL_mode mode)
 
     // skip projection if picking (or drawLast()) since the view is the same
     //if (FALSE==cursorPick || FALSE==drawLast) {
-    if (S52_GL_DRAW == mode) {
+    //if (S52_GL_DRAW == mode) {
         // this will setup _pmin/_pmax, need a valide _vp
         _doProjection(_centerLat, _centerLon, _rangeNM/60.0);
-    }
+    //}
 
     // then create all symbol
     _createSymb();
@@ -8878,20 +8910,19 @@ int        S52_GL_begin(S52_GL_mode mode)
 
     _SCAMIN = _computeSCAMIN();
 
-    if (_fb_pixels_size < (_vp[2] * _vp[3] * 4) ) {
-        PRINTF("ERROR: pixels buffer overflow: fb_pixels_size=%i, VP=%i \n", _fb_pixels_size, (_vp[2] * _vp[3] * 4));
+    if (_fb_pixels_size < (_vp[2] * _vp[3] * _fb_format) ) {
+        PRINTF("ERROR: pixels buffer overflow: fb_pixels_size=%i, VP=%i \n", _fb_pixels_size, (_vp[2] * _vp[3] * _fb_format));
         // NOTE: since the assert() is removed in the release, draw last can
         // still be called (but does notting) if _fb_pixels is NULL
         g_free(_fb_pixels);
         _fb_pixels = NULL;
 
         g_assert(0);
-        exit(0);
     }
 
-// GV set the matrix it self
-// also don't erase GV stuff with NODTA
 #ifndef S52_USE_GV
+    // GV set the matrix it self
+    // also don't erase GV stuff with NODATA
     /*
     if (TRUE != drawLast) {
         _glMatrixSet(VP_PRJ);
@@ -8942,12 +8973,14 @@ int        S52_GL_begin(S52_GL_mode mode)
             //S52_GL_readFBPixels();
 #else
             S52_GL_readFBPixels();
+            _update_fb = FALSE;
 #endif
         }
 
         // load FB that was filled with the previous draw() call
         S52_GL_drawFBPixels();
-        _update_fb = FALSE;
+
+        //_update_fb = FALSE;
     }
     //---------------------------------------------------------------
 
@@ -8981,7 +9014,6 @@ int        S52_GL_end(S52_GL_mode mode)
     // end picking (return to normal or stay normal)
     _doPick = FALSE;
 
-    // flag that the FB changed
     //if (FALSE == drawLast) {
     if (S52_GL_DRAW == mode) {
         _update_fb = TRUE;
@@ -9014,6 +9046,15 @@ int        S52_GL_end(S52_GL_mode mode)
     //    unsigned char pixels;
     //    S52_GL_drawRaster(&pixels);
     //}
+
+    /*
+    // debug - stat
+    if (S52_GL_DRAW == mode) {
+        //PRINTF("TRIANGLE_STRIP = %i\n", _ntristrip);
+        //PRINTF("TRIANGLE_FAN   = %i\n", _ntrifan);
+        PRINTF("TRIANGLES **** = %i, _nCall = %i\n", (int)_ntris/3, _nCall);
+    }
+    */
 
     return TRUE;
 }
@@ -9264,14 +9305,14 @@ static int       _init_es2(void)
             exit(0);
             return FALSE;
         }
-        _checkError("S52_GL_initGLES2() -0-");
+        _checkError("_init_es2() -0-");
 
         if (TRUE != glIsShader(_vertexShader))
             exit(0);
         if (TRUE != glIsShader(_fragmentShader))
             exit(0);
 
-        _checkError("S52_GL_initGLES2() -1-");
+        _checkError("_init_es2() -1-");
 
         glAttachShader(_programObject, _vertexShader);
         glAttachShader(_programObject, _fragmentShader);
@@ -9290,7 +9331,7 @@ static int       _init_es2(void)
             return FALSE;
         }
 
-        _checkError("S52_GL_initGLES2() -2-");
+        _checkError("_init_es2() -2-");
 
         //use the program
         glUseProgram(_programObject);
@@ -9301,7 +9342,7 @@ static int       _init_es2(void)
         _init_freetype_gl();
 #endif
 
-        _checkError("S52_GL_initGLES2() -3-");
+        _checkError("_init_es2() -3-");
     }
 
 
@@ -9357,22 +9398,26 @@ static int       _init_es2(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    _checkError("_init_es2() -4-");
 
 #ifdef S52_USE_ADRENO
     //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
 #else
+    // must be in sync with _fb_format
+    // RGBA
     glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_UNSIGNED_BYTE, NULL);
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_BYTE, NULL);
+    // RGB
+    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_UNSIGNED_BYTE, _fb_pixels);
 
+    _checkError("_init_es2() -5-");
     //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,  0, 0, _vp[2], _vp[3], 0);
 #endif
 
     glBindTexture  (GL_TEXTURE_2D, 0);
 
-    _checkError("S52_GL_initGLES2() -fini-");
+    _checkError("_init_es2() -fini-");
 
     return TRUE;
 }
@@ -9477,7 +9522,7 @@ int        S52_GL_setDotPitch(int w, int h, int wmm, int hmm)
     // 1 screen: X = 0.293750, Y = 0.293945
     // 2 screen: X = 0.264844, Y = 0.264648
 
-    _fb_pixels_size = w * h * 4;
+    _fb_pixels_size = w * h * _fb_format;
     _fb_pixels      = g_new0(unsigned char, _fb_pixels_size);
 
 
@@ -9711,8 +9756,8 @@ int        S52_GL_setViewPort(int x, int y, int width, int height)
     _vp[2] = width;
     _vp[3] = height;
 
-    if (_fb_pixels_size < (_vp[2] * _vp[3] * 4) ) {
-        _fb_pixels_size = _vp[2] * _vp[3] * 4;
+    if (_fb_pixels_size < (_vp[2] * _vp[3] * _fb_format) ) {
+        _fb_pixels_size =  _vp[2] * _vp[3] * _fb_format;
         _fb_pixels      = g_renew(unsigned char, _fb_pixels, _fb_pixels_size);
         PRINTF("pixels buffer resized (%i)\n", _fb_pixels_size);
     }
@@ -9883,8 +9928,21 @@ guchar    *S52_GL_readFBPixels(void)
 #ifdef S52_USE_ADRENO
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
 #else
-    // this leak on Radeon HD 3450 (fglrx)
-    glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);  // leak
+    // TEGRA2 share MEM with CPU, so this read call is fast (1ms)
+    // must be in sync with _fb_format
+    // copy FB --> MEM
+    // RGBA
+    glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    // RGB
+    //glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
+
+    _checkError("S52_GL_readFBPixels().. -1-");
+
+    // copy MEM --> Texture
+    // RGBA
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    // RGB
+    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _vp[2], _vp[3], 0, GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
 
     // FIXME: this flip Y
     //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
@@ -9892,12 +9950,11 @@ guchar    *S52_GL_readFBPixels(void)
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    _checkError("S52_GL_readFBPixels().. -1-");
+    _checkError("S52_GL_readFBPixels().. -end-");
 
     return _fb_pixels;
 }
 
-#include "gdal.h"  // GDAL stuff to write .PNG
 int        S52_GL_drawFBPixels(void)
 {
     if (TRUE==_doPick || NULL==_fb_pixels)
@@ -9915,21 +9972,6 @@ int        S52_GL_drawFBPixels(void)
     glDisable(GL_BLEND);
 
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
-
-#ifdef S52_USE_ADRENO
-    // .. do nothing
-#else
-    if (TRUE == _update_fb) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    }
-
-    // FIXME: this flip Y at each call
-
-    //_glScaled(1.0, -1.0, 1.0);
-    //glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-#endif
-
 
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
@@ -9962,18 +10004,20 @@ int        S52_GL_drawFBPixels(void)
 
     _glMatrixDel(VP_PRJ);
 
-#else
-
+#else   // S52_USE_GLES2
 
     _glMatrixSet(VP_WIN);
     glRasterPos2i(0, 0);
 
     // parameter must be in sync with glReadPixels()
+    // RGBA
     glDrawPixels(_vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    //glDrawPixels(_vp[2], _vp[3], GL_RGBA, GL_BYTE,         _fb_pixels);
+    // RGB
+    //glDrawPixels(_vp[2], _vp[3], GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
 
     _glMatrixDel(VP_WIN);
-#endif
+
+#endif  // S52_USE_GLES2
 
     _north = north;
 
@@ -9982,6 +10026,7 @@ int        S52_GL_drawFBPixels(void)
     return TRUE;
 }
 
+#include "gdal.h"  // GDAL stuff to write .PNG
 int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height)
 // FIXME: width/height rounding error all over - fix: +0.5
 // to test 2 PNG using Python Imaging Library (PIL):
@@ -10122,11 +10167,6 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
 
     glDisable(GL_BLEND);
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
-
-    // FIXME: this flip Y
-
-    //_glScaled(1.0, -1.0, 1.0);
-    //glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);

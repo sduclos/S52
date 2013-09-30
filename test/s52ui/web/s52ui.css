@@ -11,7 +11,8 @@ table {
   position         : relative;
 }
 tbody {
-  width            : 100%;    // need 100% otherwise the width of the table element will kick in
+  width            : 100%;
+  // need 100% otherwise the width of the table element will kick in
 }
 tr {
 }

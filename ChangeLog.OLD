@@ -3,6 +3,12 @@
 #
 
 
+2013SEP28
+    -fix Android rotation, do not set EGL Native Window Geometry
+
+2013SEP22
+    -fix do _initPROJ() once only 
+
 2013SEP19
     -mod s52eglarm to link directly s52ais to s52egl
     -mod s52ais to get AIS data from a GPSD running on the network

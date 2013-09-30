@@ -69,10 +69,12 @@ s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --l
 s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_USE_DOTPITCH
 
 # -DS52_USE_AFGLOW    - need symbole in PLAUX_00.DAI
-# -DS52_USE_FAKE_AIS
-# -DS52_USE_WORLD
+# -DUSE_FAKE_AIS      - debug - programmaticaly faked AIS data
+# -DUSE_AIS           - 
+# -DS52_USE_WORLD     -
+# -DS52_USE_SOCK      - when S52AIS_STANDALONE use socket
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps` \
-                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL
+                      -DS52_USE_DOTPITCH -DS52_USE_AFGLOW -DS52_USE_EGL -DUSE_AIS
 
 # same as s52eglx, but "gtk+-3.0" is added
 s52gtk3egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` \
@@ -83,7 +85,7 @@ s52gtk3egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gob
 # -DS52_USE_WORLD
 s52eglarm:  CFLAGS =  -DS52_USE_DOTPITCH                 \
                       -DS52_USE_EGL                      \
-					  -DS52_USE_TEGRA2                   \
+					  -DS52_USE_ADRENO                   \
                       -DS52_USE_ANDROID                  \
                       -DS52_USE_AFGLOW                   \
                       -DS52_USE_SOCK                     \
@@ -144,9 +146,11 @@ s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a                 \
 s52glx: s52glx.c
 	$(CC) $(CFLAGS) s52glx.c $(S52_LIBS) -o $@
 
-s52eglx: s52egl.c
-	$(CC) $(CFLAGS) s52egl.c $(LIBS) -o $@
-	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
+#s52eglx: s52egl.c
+#	$(CC) $(CFLAGS) s52egl.c $(LIBS) -o $@
+#	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
+s52eglx: s52egl.c s52ais.c
+	$(CC) $(CFLAGS) s52egl.c s52ais.c $(LIBS) -o $@
 
 s52gtk3egl: s52gtk3egl.c
 	$(CC) $(CFLAGS) s52gtk3egl.c $(LIBS) -o $@

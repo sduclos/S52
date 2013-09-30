@@ -29,6 +29,9 @@ import org.java_websocket.drafts.Draft_17;
 import org.java_websocket.framing.Framedata;
 import org.java_websocket.handshake.ServerHandshake;
 
+// SD 2013SEP24
+//import android.webkit.JavascriptInterface;  // anotation @JavascriptInterface
+
  public class AndroidWebSocket extends WebSocketClient
 {
 	private WebView mView;
@@ -54,7 +57,8 @@ import org.java_websocket.handshake.ServerHandshake;
 			return "{\"type\":\"" + type + "\",\"socket_id\":\"" + socket_id + "\",\"data\":\"\"}";
 		}		
 	}
-		
+
+    //@JavascriptInterface
 	public String getIdentifier()
 	{
 		return this.toString();

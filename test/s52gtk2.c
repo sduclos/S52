@@ -28,7 +28,7 @@
 #include <GL/gl.h>          // glGenLists() for font and testing GL drwing
 #include <string.h>         // strcmp(), memcpy()
 
-#ifdef S52_USE_AIS
+#ifdef USE_AIS
 #include "s52ais.h"
 gboolean update_cb(void *dummy);
 #endif
@@ -703,7 +703,7 @@ static gint     _execOption()
 static void     realize(GtkWidget *widget, gpointer   data)
 {
 
-#ifdef S52_USE_AIS
+#ifdef USE_AIS
     // Note: data form AIS start too fast for the main loop
     s52ais_initAIS(update_cb);
 
@@ -1849,7 +1849,7 @@ static int      _err_cb(const char *err)
 }
 //#endif
 
-#ifdef S52_USE_AIS
+#ifdef USE_AIS
 //static
 gboolean update_cb(void *dummy)
 {
@@ -1940,7 +1940,7 @@ int main(int argc, char **argv)
     //
     S52_version();
 
-#ifdef S52_USE_AIS
+#ifdef USE_AIS
     //when running with GPSD use hard coded setup
     _setupS52();
 #else
@@ -2057,7 +2057,7 @@ int main(int argc, char **argv)
     _leglin3     = S52_delMarObj(_leglin3);
     _clrlin      = S52_delMarObj(_clrlin);
 
-#ifdef S52_USE_AIS
+#ifdef USE_AIS
     s52ais_doneAIS();
 #endif
 

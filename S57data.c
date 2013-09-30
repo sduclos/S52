@@ -262,15 +262,18 @@ int        S57_donePROJ()
 
 int        S57_setMercPrj(double lat)
 {
-    //const char  *templ = "+proj=merc +lat_ts=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
+    const char  *templ = "+proj=merc +lat_ts=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
     //const char  *templ = "+proj=merc +lat_ts=-50.0 +ellps=WGS84 +datum=WGS84 +unit=m";
-    const char  *templ = "+proj=merc +lat_ts=0.0 +ellps=WGS84 +datum=WGS84 +unit=m";
+
     gchar *pjstr = g_strdup_printf(templ, lat);
 
-    if (NULL != _pjdst) pj_free(_pjdst);
+    if (NULL != _pjdst)
+        pj_free(_pjdst);
 
     if (!(_pjdst = pj_init_plus(templ))) {
         PRINTF("ERROR: init pjdst PROJ4 (lat:%f) [%s]\n", lat, pj_strerrno(pj_errno));
+        g_free(pjstr);
+
         g_assert(0);
         return FALSE;
     }

@@ -24,7 +24,7 @@
 
 #include "S52.h"
 
-#ifdef S52_USE_AIS
+#ifdef USE_AIS
 #include "s52ais.h"       // s52ais_*()
 #endif
 
@@ -91,6 +91,8 @@ static GStaticMutex _engine_mutex = G_STATIC_MUTEX_INIT;  // protect engine
 #define  LOGI(...)   g_print(__VA_ARGS__)
 #define  LOGE(...)   g_print(__VA_ARGS__)
 
+static int _drawVRMEBLtxt = FALSE;  // ebline draw text flag in X11
+
 #endif  // S52_USE_ANDROID
 
 // test - St-Laurent Ice Route
@@ -105,7 +107,6 @@ static S52ObjectHandle _leglin3 = NULL;
 
 // test - VRMEBL
 // S52 object name:"ebline"
-static int             _drawVRMEBLtxt = FALSE;
 static S52ObjectHandle _vrmeblA       = NULL;
 
 // test - cursor DISP 9 (instead of IHO PLib DISP 8)
@@ -127,6 +128,9 @@ typedef struct s52droid_state_t {
     gulong     handler;
 
     int        do_S52init;
+
+    guint      s52_draw_cb_ID;
+    GSource   *s52_draw_cb_source;
 
     // initial view
     double     cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
@@ -194,7 +198,7 @@ static s52engine _engine;
 
 //------ FAKE AIS - DEBUG ----
 // debug - no real AIS, then fake target
-#ifdef S52_USE_FAKE_AIS
+#ifdef USE_FAKE_AIS
 static S52ObjectHandle _vessel_ais        = NULL;
 #define VESSELLABEL "~~MV Non Such~~ "           // last char will be trimmed
 // test - ownshp
@@ -215,10 +219,18 @@ static S52ObjectHandle _vessel_ais_afglow = NULL;
 
 static int      _egl_init       (s52engine *engine)
 {
-    LOGI("s52egl:_egl_init(): starting ..\n");
+    LOGI("_egl_init(): starting ..\n");
 
-    if ((NULL!=engine->eglDisplay) && (EGL_NO_DISPLAY!=engine->eglDisplay)) {
-        LOGE("_egl_init(): EGL is already up .. skipped!\n");
+    if ((NULL != engine) && (engine->eglDisplay != EGL_NO_DISPLAY)) {
+        if (engine->eglDisplay != EGL_NO_DISPLAY)
+            LOGI("_egl_init(): EGL DISPLAY OK\n");
+        if (engine->eglContext != EGL_NO_CONTEXT)
+            LOGI("_egl_init(): EGL CONTEXT OK\n");
+        if (engine->eglSurface != EGL_NO_SURFACE)
+            LOGI("_egl_init(): EGL SURFACE OK\n");
+
+        LOGE("_egl_init(): EGL is already up .. init skipped!\n");
+
         return FALSE;
     }
 
@@ -341,8 +353,8 @@ static int      _egl_init       (s52engine *engine)
     if (EGL_NO_DISPLAY == eglDisplay)
         LOGE("eglGetDisplay() failed. [0x%x]\n", eglGetError());
 
-    //EGLint major = 2;
-    EGLint major = 0;
+    EGLint major = 2;
+    //EGLint major = 0;
     EGLint minor = 0;
     if (EGL_FALSE == eglInitialize(eglDisplay, &major, &minor))
         LOGE("eglInitialize() failed. [0x%x]\n", eglGetError());
@@ -397,14 +409,13 @@ static int      _egl_init       (s52engine *engine)
     //if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[5], EGL_NATIVE_VISUAL_ID, &vid))
         LOGE("Error: eglGetConfigAttrib() failed\n");
 
-	
-
 #ifdef S52_USE_ANDROID
-    //ANativeWindow_setBuffersGeometry(engine->app->window, 0, 0, vid);
-    ANativeWindow_setBuffersGeometry(engine->app->window,
-                                     ANativeWindow_getWidth(engine->app->window),
-                                     ANativeWindow_getHeight(engine->app->window),
-                                     vid);
+    // do not use get/set Width() has it break rotation
+    ANativeWindow_setBuffersGeometry(engine->app->window, 0, 0, vid);
+    //ANativeWindow_setBuffersGeometry(engine->app->window,
+    //                                 ANativeWindow_getWidth(engine->app->window),
+    //                                 ANativeWindow_getHeight(engine->app->window),
+    //                                 vid);
     engine->eglWindow = (EGLNativeWindowType) engine->app->window;
 #else
     {
@@ -479,16 +490,18 @@ static void     _egl_done       (s52engine *engine)
 {
     if (engine->eglDisplay != EGL_NO_DISPLAY) {
         eglMakeCurrent(engine->eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+
         if (engine->eglContext != EGL_NO_CONTEXT) {
             eglDestroyContext(engine->eglDisplay, engine->eglContext);
         }
+
         if (engine->eglSurface != EGL_NO_SURFACE) {
             eglDestroySurface(engine->eglDisplay, engine->eglSurface);
         }
+
         eglTerminate(engine->eglDisplay);
     }
 
-    //engine->animating  = 0;
     engine->eglDisplay = EGL_NO_DISPLAY;
     engine->eglContext = EGL_NO_CONTEXT;
     engine->eglSurface = EGL_NO_SURFACE;
@@ -505,7 +518,8 @@ static int      _egl_beg        (s52engine *engine)
     }
 
     if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
-        LOGE("_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
+        // eglMakeCurrent() output the same error msg
+        //LOGE("_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
         return FALSE;
     }
 
@@ -537,7 +551,24 @@ static int      _s52_computeView(s52droid_state_t *state)
     return TRUE;
 }
 
-#ifdef S52_USE_FAKE_AIS
+static int      _s52_setView    (s52engine *engine, double new_y, double new_x, double new_z, double new_r)
+{
+    if (TRUE == S52_setView(new_y, new_x, new_z, new_r)) {
+        engine->state.cLat  = new_y;
+        engine->state.cLon  = new_x;
+        engine->state.rNM   = new_z;
+        engine->state.north = new_r;
+
+        engine->do_S52draw     = TRUE;
+        engine->do_S52drawLast = TRUE;
+
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+#ifdef USE_FAKE_AIS
 static int      _s52_setupVESSEL(s52droid_state_t *state)
 {
     // ARPA
@@ -592,7 +623,7 @@ static int      _s52_setupOWNSHP(s52droid_state_t *state)
 
     return TRUE;
 }
-#endif  // S52_USE_FAKE_AIS
+#endif  // USE_FAKE_AIS
 
 static int      _s52_setupLEGLIN(void)
 {
@@ -753,7 +784,8 @@ static int      _s52_init       (s52engine *engine)
         int hmm = 0;
 
 #ifdef S52_USE_ANDROID
-        // Xoom: pixels_w: 1280, pixels_h: 752, mm_w: 203, mm_h: 101
+        // Xoom : pixels_w: 1280, pixels_h: 752,  mm_w: 203, mm_h: 101
+        // Nexus: pixels_w: 1920, pixels_h: 1200, mm_w: ---, mm_h: --- (323 PPI)
         w   = engine->width;
         h   = engine->height;
         wmm = (int)(w / engine->dpi) * 25.4;  // inch to mm
@@ -774,8 +806,8 @@ static int      _s52_init       (s52engine *engine)
         //hmm = 307;
 #endif
 
-        //if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb)) {
-        if (FALSE == S52_init(w, h, wmm, hmm, NULL)) {
+        if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb)) {
+        //if (FALSE == S52_init(w, h, wmm, hmm, NULL)) {
             LOGE("_init_S52():S52_init(%i,%i,%i,%i)\n", w, h, wmm, hmm);
             engine->state.do_S52init = FALSE;
             //exit(0);
@@ -792,6 +824,8 @@ static int      _s52_init       (s52engine *engine)
     //S52_loadCell(PATH "/ENC_ROOT/CA279037.000", NULL);
     // Rimouski
     S52_loadCell(PATH "/ENC_ROOT/CA579041.000", NULL);
+    // Tadoussac
+    //S52_loadCell(PATH "/ENC_ROOT/CA379035.000", NULL);
     // load all 3 S57 charts
     //S52_loadCell(PATH "/ENC_ROOT", NULL);
 
@@ -939,7 +973,7 @@ static int      _s52_init       (s52engine *engine)
 
     _s52_setupPRDARE(&engine->state);
 
-#ifdef S52_USE_FAKE_AIS
+#ifdef USE_FAKE_AIS
     _s52_setupVESSEL(&engine->state);
 
     _s52_setupOWNSHP(&engine->state);
@@ -968,7 +1002,7 @@ static int      _s52_done       (s52engine *engine)
     return TRUE;
 }
 
-#ifdef S52_USE_FAKE_AIS
+#ifdef USE_FAKE_AIS
 static int      _s52_updTimeTag (s52engine *engine)
 {
     (void)engine;
@@ -1018,7 +1052,7 @@ static int      _s52_draw_cb    (gpointer user_data)
 {
     struct s52engine *engine = (struct s52engine*)user_data;
 
-    LOGI("s52egl:_s52_draw_cb(): begin .. \n");
+    //LOGI("s52egl:_s52_draw_cb(): begin .. \n");
 
     /*
     GTimeVal now;  // 2 glong (at least 32 bits each - but amd64 !?
@@ -1043,7 +1077,7 @@ static int      _s52_draw_cb    (gpointer user_data)
         goto exit;
     }
 
-    // no draw at all, the window is not visible
+    // Failsafe: no draw at all, the window is not visible (EGL_NO_DISPLAY)
     if ((FALSE==engine->do_S52draw) && (FALSE==engine->do_S52drawLast)) {
         //LOGI("s52egl:_s52_draw_cb(): nothing to draw (do_S52draw & do_S52drawLast FALSE)\n");
         goto exit;
@@ -1056,18 +1090,14 @@ static int      _s52_draw_cb    (gpointer user_data)
     // draw background
     if (TRUE == engine->do_S52draw) {
         if (TRUE == engine->do_S52setViewPort) {
-            eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
-            eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
+            //g_usleep(300 * 1000);  // wait 0.1 sec for EGL to settle
 
-#ifdef S52_USE_ADRENO
-            // On Nexus 7, orientation doesn't change EGL w/h!
-            if (1 == engine->orientation)
-                S52_setViewPort(0, 0, engine->width,  engine->height);
-            else
-                S52_setViewPort(0, 0, engine->height, engine->width);
-#else
-            S52_setViewPort(0, 0, engine->width,  engine->height);
-#endif
+            //eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
+            //eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
+            engine->width  = ANativeWindow_getWidth (engine->app->window);
+            engine->height = ANativeWindow_getHeight(engine->app->window);
+
+            S52_setViewPort(0, 0, engine->width, engine->height);
             engine->do_S52setViewPort = FALSE;
         }
 
@@ -1081,7 +1111,7 @@ static int      _s52_draw_cb    (gpointer user_data)
     // draw AIS
     if (TRUE == engine->do_S52drawLast) {
 
-#ifdef S52_USE_FAKE_AIS
+#ifdef USE_FAKE_AIS
         _s52_updTimeTag(engine);
 #endif
         S52_drawLast();
@@ -1107,8 +1137,7 @@ exit:
 // android specific code
 //
 
-//static int _androidUIon = FALSE;
-
+#if 0
 static int      _android_init_external_gps(void)
 // start sl4agps - get GPS & Gyro from Android
 {
@@ -1138,6 +1167,7 @@ static int      _android_init_external_gps(void)
 }
 
 static int      _android_init_external_ais(void)
+// DEPRECATED: s52ais.c is linked to main()
 // FIXME: this func is the same as _android_init_external_gps(), except SIGUSR
 {
     GError *error = NULL;
@@ -1166,6 +1196,7 @@ static int      _android_init_external_ais(void)
 }
 
 static int      _android_done_external_sensors(void)
+// DEPRECATED:
 {
     GError *error = NULL;
     char run_allstop_sh[] = "/system/bin/sh -c "  ALLSTOP ;
@@ -1183,13 +1214,22 @@ static int      _android_done_external_sensors(void)
 
     return TRUE;
 }
+#endif
 
 static int      _android_init_external_UI (s52engine *engine)
-// start UI - get GPS & Gyro from Android
+// start Android HTML5 UI - get GPS & Gyro from Android
 {
+    /*
     const gchar cmd[] =
         "su -c \"                      "
         "sh /system/bin/am start       "
+        "-a android.intent.action.MAIN "
+        "-n nav.ecs.s52droid/.s52ui \" ";
+    */
+
+    const gchar cmd[] =
+        "/system/bin/sh -c \"          "
+        "/system/bin/am start --user 0 "
         "-a android.intent.action.MAIN "
         "-n nav.ecs.s52droid/.s52ui \" ";
 
@@ -1206,7 +1246,7 @@ static int      _android_init_external_UI (s52engine *engine)
     return TRUE;
 }
 
-
+#if 0
 static int      _android_done_external_UI (s52engine *engine)
 // FIXME: stop UI broken
 {
@@ -1233,7 +1273,7 @@ static int      _android_done_external_UI (s52engine *engine)
 
     return TRUE;
 }
-
+#endif
 
 #if 0
 static int      _android_sensors_gyro(gpointer user_data)
@@ -1364,8 +1404,12 @@ static int      _android_display_init(s52engine *engine)
         return FALSE;
     }
 
-    _egl_init(engine);
+    if (FALSE == _egl_init(engine)) {
+        // EGL allready up
+        return FALSE;
+    }
 
+    //*
     if (TRUE != _s52_init(engine)) {
         // land here if libS52 as been init before
         // then re-init only GLES2 part of libS52
@@ -1375,8 +1419,12 @@ static int      _android_display_init(s52engine *engine)
     //else {
     //    _android_init_external_UI(engine);
     //}
+    //*/
 
-    engine->do_S52drawLast = TRUE;
+    //engine->do_S52drawLast = TRUE;
+
+    engine->state.s52_draw_cb_ID     = g_timeout_add(500, _s52_draw_cb, (void*)engine);     // 0.5 sec (500msec)
+    engine->state.s52_draw_cb_source = g_main_context_find_source_by_id(NULL, engine->state.s52_draw_cb_ID);
 
     return EGL_TRUE;
 }
@@ -1451,6 +1499,8 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
 #define EDGE_X0       50   // 0 at left
 #define EDGE_Y0       50   // 0 at top
 #define DELTA          5
+
+    int EDGE_X1 = engine->width - 50;
 
 
     int32_t actraw = AMotionEvent_getAction(event);
@@ -1529,9 +1579,6 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
 
             if (TRUE == mode_zoom) {
                 double dz_pc =  (start_y - new_y) / engine->height; // %
-#ifdef S52_USE_ADRENO
-                dz_pc /= 30.0;
-#endif
                 if (TRUE == S52_drawBlit(0.0, 0.0, dz_pc, 0.0))
                     zoom_fac = dz_pc;
             }
@@ -1556,10 +1603,6 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             if (TRUE==mode_scroll && FALSE==mode_zoom && FALSE==mode_rot && FALSE==mode_vrmebl) {
                 double dx_pc =  (start_x - new_x) / engine->width;  // %
                 double dy_pc = -(start_y - new_y) / engine->height; // %
-#ifdef S52_USE_ADRENO
-                dx_pc /= 10.0;
-                dy_pc /= 10.0;
-#endif
 
                 S52_drawBlit(dx_pc, dy_pc, 0.0, 0.0);
             }
@@ -1588,17 +1631,22 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             if (NULL != nameid) {
                 unsigned int S57ID = atoi(nameid+7);
                 LOGI("s52egl:_android_motion_event(): XY(%f, %f): NAME:ID=%s attList(%s)\n",
-                     new_x, engine->height - new_y, nameid, S52_getAttList(S57ID));
+                     new_x, engine->height-new_y, nameid, S52_getAttList(S57ID));
 
                 new_x = engine->state.cLon;
                 new_y = engine->state.cLat;
                 new_z = engine->state.rNM;
                 new_r = engine->state.north;
 
+                //*
                 _android_render(engine, new_y, new_x, new_z, new_r);
-
                 engine->do_S52draw     = FALSE;
                 engine->do_S52drawLast = TRUE;
+                //*/
+
+                //_s52_setView(engine, new_y, new_x, new_z, new_r);
+                //g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0);
+
             }
             return TRUE;
         }
@@ -1626,13 +1674,21 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             }
         }
 
-        // touch North reset chart upright
+        // touch UR start s52ui
+        if ((new_x > EDGE_X1) && (new_y < EDGE_Y0) && (start_x > EDGE_X1) && (start_y < EDGE_Y0)) {
+            LOGI("s52egl:_android_motion_event():AMOTION_EVENT_ACTION_UP: start external UI\n");
+            _android_init_external_UI(engine);
+            return TRUE;
+        }
+
+        // touch UL (North Arrow) reset chart upright
         if ((new_x < EDGE_X0) && (new_y < EDGE_Y0) && (start_x < EDGE_X0) && (start_y < EDGE_Y0)) {
+            LOGI("s52egl:_android_motion_event():AMOTION_EVENT_ACTION_UP: north=%f\n", new_r);
+
             new_x = engine->state.cLon;
             new_y = engine->state.cLat;
             new_z = engine->state.rNM;
             new_r = 0.0;
-
         } else {
             // screen Center
             //double cw = engine->width  / 2.0;
@@ -1659,11 +1715,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             if (TRUE == mode_zoom) {
                 new_x = engine->state.cLon;
                 new_y = engine->state.cLat;
-#ifdef S52_USE_ADRENO
-                new_z = engine->state.rNM - (zoom_fac * engine->state.rNM * 20); // FIXME: where is the 2 comming from?
-#else
                 new_z = engine->state.rNM - (zoom_fac * engine->state.rNM * 2); // FIXME: where is the 2 comming from?
-#endif
                 new_r = engine->state.north;
             }
 
@@ -1688,6 +1740,9 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             }
 
         }
+
+        //_s52_setView(engine, new_y, new_x, ABS(new_z), new_r);
+        //g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0);
 
         _android_render(engine, new_y, new_x, ABS(new_z), new_r);
         //LOGI("s52egl:_android_motion_event():AMOTION_EVENT_ACTION_UP: north=%f\n", new_r);
@@ -1758,7 +1813,7 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
                 S52_toggleObjClassOFF("ebline");
             }
 
-            //*
+            /*
             if (AKEYCODE_BACK == code) {
                 // .. do nothing
                 // .. eat the key (ie return TRUE --> event has been handled)
@@ -1805,6 +1860,16 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
         case APP_CMD_RESUME: {
             LOGI("s52egl:--> APP_CMD_RESUME\n");
 
+            if (NULL == engine->app->window)
+                LOGI("s52egl:APP_CMD_RESUME: ANativeWindow is NULL\n");
+            else
+                LOGI("s52egl:APP_CMD_RESUME: ANativeWindow is NOT NULL\n");
+
+            if (NULL == engine->app->savedState)
+                LOGI("s52egl:APP_CMD_RESUME: savedState is NULL\n");
+            else
+                LOGI("s52egl:APP_CMD_RESUME: savedState is NOT NULL\n");
+
             // do not start rendering yet, wait for APP_CMD_GAINED_FOCUS instead
             //engine->do_S52draw     = TRUE;
             //engine->do_S52drawLast = TRUE;
@@ -1835,43 +1900,44 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             LOGI("s52egl:--> APP_CMD_INIT_WINDOW\n");
 
             if (NULL != engine->app->window) {
+                /*
                 if (EGL_TRUE == _android_display_init(engine)) {
                     //_android_init_external_ais();
                     //_android_init_external_gps();
                 }
+                */
+                _android_display_init(engine);
             }
             break;
         }
         case APP_CMD_TERM_WINDOW: {
             LOGI("s52egl:--> APP_CMD_TERM_WINDOW\n");
 
-            // UI on top, so keep rendering
-            //if (TRUE == _androidUIon)
-            //    break;
-
             // window hidden or closed
-            // check this,
             engine->do_S52draw     = FALSE;
             engine->do_S52drawLast = FALSE;
 
-            _android_done_external_sensors();
+            //_android_done_external_sensors();
 
             _egl_done(engine);
 
             break;
         }
         case APP_CMD_GAINED_FOCUS: {
-            // app gains focus
+            // app (re) gains focus
             LOGI("s52egl:--> APP_CMD_GAINED_FOCUS\n");
 
             if (NULL == engine->app->window) {
                 LOGI("s52egl:APP_CMD_GAINED_FOCUS: ANativeWindow is NULL\n");
             } else {
                 LOGI("s52egl:APP_CMD_GAINED_FOCUS: ANativeWindow is NOT NULL\n");
-                //ANativeWindow_acquire(engine->app->window);
             }
 
-            //_android_done_external_UI(engine);
+            if (NULL == engine->app->savedState)
+                LOGI("s52egl:APP_CMD_GAINED_FOCUS: savedState is NULL\n");
+            else
+                LOGI("s52egl:APP_CMD_GAINED_FOCUS: savedState is NOT NULL\n");
+
             engine->do_S52draw     = TRUE;
             engine->do_S52drawLast = TRUE;
 
@@ -1885,7 +1951,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             break;
         }
         case APP_CMD_CONFIG_CHANGED: {
-            // device rotated
+            // device rotated (callbacks onConfigurationChanged must be NULL)
             LOGI("s52egl:--> APP_CMD_CONFIG_CHANGED\n");
             int32_t confDiff = AConfiguration_diff(engine->config, engine->app->config);
             LOGI("s52egl: config diff: 0x%04x\n", confDiff);
@@ -1910,7 +1976,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
         case APP_CMD_DESTROY: {
             LOGI("s52egl:--> APP_CMD_DESTROY\n");
             if (TRUE == engine->app->destroyRequested) {
-                LOGI("s52egl:DEBUG (check this): --> APP_CMD_DESTROY: destroyRequested flags set\n");
+                LOGI("s52egl:DEBUG (check this): --> APP_CMD_DESTROY: destroyRequested flags is set\n");
                 //g_main_loop_quit(engine->state.main_loop);
             }
 
@@ -1957,7 +2023,13 @@ static void     _onConfigurationChanged(ANativeActivity *activity)
 
     _engine.do_S52setViewPort = TRUE;
     _engine.do_S52draw        = TRUE;
-    _engine.do_S52drawLast    = TRUE;
+
+    if (0 == _engine.state.s52_draw_cb_ID) {
+        // reset s52_draw_cb timeout - wait rotation to stabilise
+        g_source_destroy(_engine.state.s52_draw_cb_source);
+        _engine.state.s52_draw_cb_ID     = g_timeout_add(500, _s52_draw_cb, (void*)&_engine);     // 0.5 sec (500msec)
+        _engine.state.s52_draw_cb_source = g_main_context_find_source_by_id(NULL, _engine.state.s52_draw_cb_ID);
+    }
 
     g_static_mutex_unlock(&_engine_mutex);
 
@@ -2009,7 +2081,7 @@ void android_main(struct android_app *app)
 
     // setup callbacks to detect android rotation
     _engine.callbacks  = _engine.app->activity->callbacks;
-    //_engine.callbacks->onConfigurationChanged = _onConfigurationChanged;
+    _engine.callbacks->onConfigurationChanged = _onConfigurationChanged;
     //_engine.callbacks->onNativeWindowResized  = _onNativeWindowResized;
 
     // prepare to monitor sensor
@@ -2053,48 +2125,34 @@ void android_main(struct android_app *app)
     g_thread_init(NULL);
     g_type_init();
 
-#ifdef S52_USE_AIS
-    // Note: data form AIS start too fast for the main loop
+#ifdef USE_AIS
     s52ais_initAIS();
 #endif
 
-
-    //*
     if (NULL == _engine.app->savedState) {
 
         // first time startup
         _engine.state.do_S52init = TRUE;
 
-        //------------------------------------------
-        // FIXME: check this, start after the main loop
-        // (should not need to be started before or
-        // after the server mainloop)
-        // START Clients
-        //_android_spawn_gps();
-        //_android_spawn_ais();
-        //------------------------------------------
-
         _engine.state.main_loop       = g_main_loop_new(NULL, FALSE);
-        /*
+
+        /* signal s52-draw - not used
         _engine.state.gobject         = g_object_new(G_TYPE_OBJECT, NULL);
         _engine.state.s52_draw_sigID  = g_signal_new("s52-draw",
                                                      G_TYPE_FROM_INSTANCE(_engine.state.gobject),
                                                      G_SIGNAL_RUN_LAST,
-                                                     //G_SIGNAL_ACTION,
-                                                     //G_SIGNAL_RUN_FIRST,
-                                                     0,                      // offset
-                                                     NULL, NULL,             // accumulator / data
-                                                     NULL,                   // marshaller
-                                                     G_TYPE_NONE,            // signal without a return value.
-                                                     0);                     // the number of parameter types to follow
+                                                     0,
+                                                     NULL, NULL,
+                                                     NULL,
+                                                     G_TYPE_NONE, 0);
 
+        _engine.state.handler = g_signal_connect_data(_engine.state.gobject, "s52-draw",
+                                                      G_CALLBACK(_s52_draw_cb), (gpointer)&_engine,
+                                                      NULL, G_CONNECT_SWAPPED);
 
-        _engine.state.handler = g_signal_connect(G_OBJECT(_engine.state.gobject), "s52-draw",
-                                                G_CALLBACK(_s52_draw_cb), (gpointer)&_engine);
-        */
-
+        // start too fast
         g_timeout_add(500, _s52_draw_cb, (void*)&_engine);     // 0.5 sec (500msec)
-
+        */
 
     } else {
         // if re-starting - the process is already up
@@ -2122,11 +2180,7 @@ void android_main(struct android_app *app)
     //g_main_loop_run(engine.state.main_loop);
     //LOGI("s52egl:exiting g_main_loop_run() ..\n");
 
-    //*
-    //
-    // android main loop - read msg to free android msg queue, mem leak
-    // GPSD - OK
-    // SL4A - leak (but not makeToast()!)
+    // android main loop - read msg to free android msg queue
     LOGI("s52egl:android_main(): while loop start\n");
     while (1) {
         int ident;
@@ -2143,7 +2197,6 @@ void android_main(struct android_app *app)
             // Check if we are exiting.
             if (0 != _engine.app->destroyRequested) {
                 LOGI("s52egl:android_main(): IN while loop .. destroyRecquested\n");
-                //engine_term_display(&engine);
                 goto exit;
             }
         }
@@ -2155,14 +2208,13 @@ void android_main(struct android_app *app)
         // slow down the loop to 1% CPU (without it then 50% CPU)
         g_usleep(10 * 1000);  // 0.01 sec
     }
-    //*/
 
 
 exit:
 
     //_android_done_external_sensors();
 
-#ifdef S52_USE_AIS
+#ifdef USE_AIS
     s52ais_doneAIS();
 #endif
 
@@ -2171,6 +2223,8 @@ exit:
     _egl_done(&_engine);
 
     AConfiguration_delete(_engine.config);
+
+    LOGI("s52egl:android_main(): exiting ..\n");
 
     return;
 }
@@ -2438,6 +2492,9 @@ int  main(int argc, char *argv[])
     g_thread_init(NULL);
     g_type_init();
 
+#ifdef USE_AIS
+    s52ais_initAIS();
+#endif
 
     _engine.state.main_loop       = g_main_loop_new(NULL, FALSE);
     _engine.state.gobject         = g_object_new(G_TYPE_OBJECT, NULL);
@@ -2463,6 +2520,10 @@ int  main(int argc, char *argv[])
     //g_mem_set_vtable(glib_mem_profiler_table);
 
     g_main_loop_run(_engine.state.main_loop);
+
+#ifdef USE_AIS
+    s52ais_doneAIS();
+#endif
 
     _s52_done(&_engine);
 

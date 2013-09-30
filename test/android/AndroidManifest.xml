@@ -5,8 +5,11 @@
           android:versionCode = "1"
           android:versionName = "1.0"
           android:windowSoftInputMode = "adjustPan"
-          android:hardwareAccelerated = "true"
           >
+<!--
+android:hardwareAccelerated = "true"
+-->
+
     <supports-screens
         android:largeScreens  = "true"
         android:normalScreens = "true"
@@ -42,28 +45,28 @@
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
     <uses-permission android:name="android.permission.BROADCAST_STICKY" />
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS_FULL" />
-
+    <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
+    
     <!--  NOT browser cache
     <uses-permission android:name="android.permission.CLEAR_APP_USER_DATA"/>
     -->
 
     <!-- This is the platform API where NativeActivity was introduced. -->
     <!-- target sdk 11 to get action bar  (and no MENU)                -->
-    <!--      android:targetSdkVersion = "16" />                       -->
-    <!--
-              android:targetSdkVersion = "10" />
-    <uses-sdk android:minSdkVersion    = "10"
-              android:targetSdkVersion = "16" />
-    -->
     <uses-sdk android:minSdkVersion    = "3"
-              android:targetSdkVersion = "14" />
+              android:targetSdkVersion = "16" />
 
     <application android:label               = "@string/app_name"
                  android:hasCode             = "true"
                  android:debuggable          = "true"
+                 android:theme               = "@android:style/Theme.Holo.NoActionBar.Fullscreen"
+                 >
+
+<!--
                  android:hardwareAccelerated = "true"
                  android:theme               = "@android:style/Theme.Holo"
-                 >
+                 android:theme               = "@android:style/Theme.Holo.NoActionBar.Fullscreen"
+-->
 
         <!-- Our activity is the built-in NativeActivity framework class.
              This will take care of integrating with our NDK code.
@@ -73,14 +76,14 @@
                   android:alwaysRetainTaskState = "true"
                   android:launchMode            = "singleInstance"
                   android:configChanges         = "orientation|screenSize"
-                  android:theme                 = "@android:style/Theme.Holo"
-                  android:screenOrientation     = "reverseLandscape"
                   >
 
                   <!--
-                  android:screenOrientation     = "reverseLandscape"
-                  android:screenOrientation     = "sensorLandscape"
+                  android:theme                 = "@android:style/Theme.Holo"
                   android:clearTaskOnLaunch     = "true"
+                  
+                  debug - no orientation change
+                  android:screenOrientation     = "reverseLandscape"
                   -->
 
             <!-- Tell NativeActivity the name of or .so -->
@@ -102,7 +105,7 @@
 <!--
 -->
         <activity android:name          = ".s52ui"
-                  android:theme         = "@android:style/Theme.Translucent.NoTitleBar"
+                  android:theme         = "@android:style/Theme.Translucent"
                   android:configChanges = "orientation|keyboardHidden|keyboard|screenSize|locale">
             <intent-filter>
                 <action   android:name  = "android.intent.action.MAIN" />
@@ -110,8 +113,14 @@
             </intent-filter>
         </activity>
 
+<!--
+                  android:theme         = "@android:style/Theme.Translucent
+                  android:theme         = "@android:style/Theme.Translucent.NoTitleBar"
+-->
+
         <!--      android:name       = ".BootUpReceiver" -->
         <!--      android:label="@string/app_name"       -->
+
         <!--
         <receiver android:enabled    = "true"
                   android:name       = "android.app.NativeActivity"

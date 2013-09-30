@@ -640,11 +640,8 @@ void _initTouch(var orient, var w, var h) {
         double rNMnew = rNM - (rNM * dx_pc * 2.0);  // x2: because ..
         rNMnew = (0 < rNMnew) ? rNMnew : (-rNMnew);  // ABS()
         print("dx_pc:$dx_pc, dy_pc:$dy_pc, rNM:$rNM, rNMnew:$rNMnew, (rNM * dx_pc):${(rNM * dx_pc)}");
-        //s52.setView(cLat, cLon, rNMnew, -1.0).then((ret) {
-        //  s52.draw().then((ret) {});
-        //});
 
-        //*
+        // FIXME: get/set view, view change after loadCell
         s52.getView().then((ret){
           cLat  = ret[0];
           cLon  = ret[1];
@@ -655,7 +652,6 @@ void _initTouch(var orient, var w, var h) {
             s52.draw().then((ret) {});
           });
         });
-        //*/
       }
       else  // 1 finger - scroll
       {
@@ -714,7 +710,7 @@ void _watchPosition() {
 
 
   //subscribe(onData: (List<int> data) { print(data.length); });
-  /* FF choke here
+  //* FF choke here
   window.navigator.geolocation.getCurrentPosition().then(
     (Geoposition position) {
       s52.setPosition(_ownshp, position.coords.latitude, position.coords.longitude, 0.0).then((ret){});
@@ -724,8 +720,9 @@ void _watchPosition() {
 }
 
 //_toggleUIEvent(evt) {
+//evt.preventDefault();
+
 _toggleUIEvent() {
-  //evt.preventDefault();
 
   print('_toggleUIEvent()');
 
@@ -784,11 +781,9 @@ void main() {
   print('s5ui.dart:main(): start');
 
     js.context['onOpen']         = new js.Callback.once(_initMain);
-    //js.context['websocket.onopen'] = new js.Callback.once(_initMain);
     js.context['setTouchScrnSz'] = new js.Callback.once(_initTouch);
 
-    js.context['orientationChg'] = new js.Callback.many(_orientationChg);
-    //js.context.toggleUIEvent  = new js.Callback.many(_toggleUIEvent);
+    //js.context['orientationChg'] = new js.Callback.many(_orientationChg);
     js.context['toggleUI']       = new js.Callback.many(_toggleUIEvent);
 
 

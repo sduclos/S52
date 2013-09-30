@@ -4,20 +4,23 @@
 
 
 # $adb shell bugreport
-# $ndk-build -B APP_ABI=armeabi-v7a
-# NDK_LOG=1 APP_ABI=armeabi
+# APP_ABI=armeabi-v7a
+# -B, --always-make, Unconditionally make all targets.
 
 APKNAME = s52droid-debug.apk
 
 all: build.xml bin/$(APKNAME)
 
-# Android 4.1.2 (API level 16)
-# Android 4.2.2 (API level 17)
-# Android 4.3   (API level 18)
-build.xml: AndroidManifest.xml
-	android update project -p . -t "android-14" -n s52droid
+# API level 14 - no MENU button !!
+# Android 4.1.2 (API level 16) - OK - JELLY_BEAN
+# Android 4.2.2 (API level 17) - NO - cordova need upgrade
+# Android 4.3   (API level 18) - NO - cordova need upgrade
+# NOTE: JELLY_BEAN_MR1 & JELLY_BEAN_MR2, add anotation @JavascriptInterface in WebSocketFactory.java
 
-bin/$(APKNAME):
+build.xml: AndroidManifest.xml
+	android update project -p . -t "android-16" -n s52droid
+
+bin/$(APKNAME): dist/system/lib/libS52.a
 	ndk-build -B V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1
 	ant debug install
 
@@ -44,6 +47,8 @@ distclean: clean
 # target remote :5039
 # setprop debug.db.uid 32767
 
+# show mem - check every 10 min
+# watch -n 600 ps|grep nav.ecs.s52droid
 
 #
 # Note:

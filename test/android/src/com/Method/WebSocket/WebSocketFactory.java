@@ -22,23 +22,28 @@ import java.util.HashMap;
 import java.util.Map;
 import android.webkit.WebView;
 
+// SD 2013SEP24
+//import android.webkit.JavascriptInterface;  // anotation @JavascriptInterface
+
 public class WebSocketFactory
 {
 	private WebView mView;
 	private Map<String, AndroidWebSocket> collection;
 	
-	public WebSocketFactory(WebView view)
+    public WebSocketFactory(WebView view)
 	{
 		mView = view;
 		collection = new HashMap<String, AndroidWebSocket>();
 	}
-	
-	public AndroidWebSocket getNew(String url) throws URISyntaxException
+
+    //@JavascriptInterface
+    public AndroidWebSocket getNew(String url) throws URISyntaxException
 	{
 		return getNew(url, (String)null);
 	}
-	
-	public AndroidWebSocket getNew(String url, String[] protocols) throws URISyntaxException
+
+    //@JavascriptInterface
+    public AndroidWebSocket getNew(String url, String[] protocols) throws URISyntaxException
 	{
 		String p = new String();
 		if (protocols != null && protocols.length > 0) {
@@ -51,7 +56,8 @@ public class WebSocketFactory
 		}
 		return getNew(url, p);
 	}
-	
+
+    //@JavascriptInterface
 	public AndroidWebSocket getNew(String url, String protocols) throws URISyntaxException
 	{
 		Map<String, String> headers = null;
@@ -66,6 +72,7 @@ public class WebSocketFactory
 		return ws;
 	}
 	
+    //@JavascriptInterface
 	public void removeSocket(String key)
 	{
 		if (!collection.containsKey(key)) {

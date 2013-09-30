@@ -58,12 +58,9 @@
         document.addEventListener("menubutton", toggleUI, false);
         //document.addEventListener("menubutton", toggleUI, true);
 
-        // this override normal back action!
-        //document.addEventListener("backbutton",  closeUI, false);
-
         // device orientation change
         //window.addEventListener("resize", orientation, false);
-        window.addEventListener("orientationchange", orientation, false);
+        //window.addEventListener("orientationchange", orientation, false);
         // (optional) Android doesn't always fire orientationChange on 180 degree turns
         //setInterval(orientation, 2000);
 
@@ -76,11 +73,11 @@
       function onOpen(evt)    {}
       function onClose(evt)   { console.log("s52ui.html:Websock:onClose():" + evt + "<<<"); }
       function onError(evt)   { console.log("s52ui.html:Websock:onError():" + evt + "<<<"); }
-      //function toggleUI(evt)  { toggleUIEvent(evt);        }
-      function toggleUI()     {}
-      //function  closeUI(evt)  {  closeUIEvent(evt);        }
 
-      function orientation()  { orientationChg(window.orientation, window.innerWidth, window.innerHeight);}
+      function toggleUI()     {}
+      //function toggleUI(evt)     {}
+
+      //function orientation()  { orientationChg(window.orientation, window.innerWidth, window.innerHeight);}
       function screenSize()   { setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight);}
       //function screenSize()   { setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight); wsReady();}
       //function screenSize()   { console.log("window.orientation: " + window.orientation);setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight);}

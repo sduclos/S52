@@ -266,7 +266,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.99\n"
+      "libS52 0.100\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1185,15 +1185,18 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 static int        _getCellsExt(_extent* ext);
 static int        _initPROJ(void)
 {
+    if (TRUE == _mercPrjSet)
+        return TRUE;
+
     _extent ext;
     if (FALSE == _getCellsExt(&ext)) {
-        PRINTF("WARNING: failed, no cell loaded!\n");
+        PRINTF("WARNING: failed, no cell loaded\n");
         return FALSE;
     }
 
-    double clat = (ext.N + ext.S) / 2.0;
-    S57_setMercPrj(clat);
-    //_mercPrjSet = TRUE;
+    //double clat = (ext.N + ext.S) / 2.0;
+    //_mercPrjSet = S57_setMercPrj(clat);
+    _mercPrjSet = S57_setMercPrj(0.0); // test - 0 clat
 
     // while here, set default view center
     _view.cLat  =  (ext.N + ext.S) / 2.0;
@@ -1297,12 +1300,10 @@ DLL int    STD S52_init(void)
     //libS52Zdso();
 
     if (NULL != err_cb)
-        err_cb("test err log\n");
+        err_cb("S52_init(): test err log\n");
 
 #ifdef S52_USE_LOG
     S52_initLog(err_cb);
-    //S52_initLog(NULL);
-    //S52_LOG("starting log");
 #else
     if (NULL != err_cb)
         PRINTF("INFO: compiler flags 'S52_USE_LOG' not set, 'S52_error_cb' will not be used\n");
@@ -1631,6 +1632,7 @@ DLL int    STD S52_done(void)
     S52_PL_done();
 
     S57_donePROJ();
+    _mercPrjSet = FALSE;
 
     _intl   = NULL;
 
@@ -1798,6 +1800,7 @@ static int        _suppLineOverlap()
                 }
 
 
+                //* CA379035.000 (Tadoussac) has Mask
                 //MASK (IntegerList) = (7:255,255,255,255,255,255,255)
                 GString *maskstr = S57_getAttVal(geo, "MASK");
                 if (NULL != maskstr) {
@@ -1811,12 +1814,13 @@ static int        _suppLineOverlap()
                         if (('1'==*splitMASK[0]) || ('5'==*splitMASK[1])) {
                             PRINTF("FIXME: 'MASK' FOUND ---> %s : %s\n", S57_getName(geo), maskstr->str);
 
-                            // debug
-                            g_assert(0);
+                            // debug - CA379035.000 (Tadoussac) pass here
+                            //g_assert(0);
                         }
                     }
                     g_strfreev(topMASK);
                 }
+                //*/
 
                 // take only Edge (ie rcnm == 130 (Edge type))
                 gchar **splitrcnm  = g_strsplit_set(name_rcnmstr->str+1, "():,", 0);
@@ -2351,7 +2355,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 
 #ifdef S52_USE_PROJ
     {
-        _mercPrjSet = _initPROJ();
+        _initPROJ();
         _projectCells();
     }
 #endif
@@ -4300,12 +4304,6 @@ DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int
     PRINTF("viewport: %i %i %i %i\n", pixels_x, pixels_y, pixels_width, pixels_height);
 
     //_validate_screenPos(&x, &y);
-
-    // save this viewport
-    //_viewPort.x      = pixels_x;
-    //_viewPort.y      = pixels_y;
-    //_viewPort.width  = pixels_width;
-    //_viewPort.height = pixels_height;
 
     S52_GL_setViewPort(pixels_x, pixels_y, pixels_width, pixels_height);
 

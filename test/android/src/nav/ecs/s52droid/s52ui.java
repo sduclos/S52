@@ -25,6 +25,7 @@ public class s52ui extends DroidGap
     {
         super.onCreate(savedInstanceState);
         super.setIntegerProperty("backgroundColor", Color.TRANSPARENT);
+
         //super.loadUrl("file:///android_asset/www/index.html");
         super.loadUrl("file:///android_asset/www/s52ui.html");
 

@@ -252,15 +252,19 @@ int      S52_initLog(S52_error_cb err_cb)
 #ifdef S52_USE_LOG
     //printf("starting log (%s)\n", g_get_tmp_dir());
     //S52_printf("starting log\n");
-
-    _log = g_file_open_tmp("XXXXXX", NULL, NULL);
-    if (-1 == _log)
-        g_assert(0);
+     GError *error;
+    _log = g_file_open_tmp("XXXXXX", NULL, &error);
 
     _oldPrintHandler = g_set_print_handler(S52_printf);
-    //S52_LOG("log started");
-#endif
 
+    //S52_LOG("log started");
+
+    if (-1 == _log) {
+        //PRINTF("g_file_open_tmp(): failed [%s]\n", error->message);
+        PRINTF("g_file_open_tmp(): failed\n");
+        //g_assert(0);
+    }
+#endif
 
     return TRUE;
 }

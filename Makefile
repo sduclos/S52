@@ -123,7 +123,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_FREETYPE_GL: text rendering need -DS52_USE_GLES2
 # -DS52_USE_OGR_FILECOLLECTOR:
 #        - compile with g++ to use gdal/ogr s57filecollector()
-#        - add 'extern "C"' to ogr/ogrsf_frmts/s57.h:40 S57FileCollector()  -or- compile S52 with g++ 
+#        - add 'extern "C"' to ogr/ogrsf_frmts/s57.h:40 S57FileCollector()  -or- compile S52 with g++
 #        - for file path in CATALOG to work on unix apply patch in doc/s57filecollector.cpp.diff
 # -DS52_USE_SUPP_LINE_OVERLAP: supress display of overlapping line  (OGR patch in doc/ogrfeature.cpp.diff)
 #                              --see S52 manual p. 45 doc/pslb03_2.pdf
@@ -219,21 +219,22 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
 # -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
 # -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7)
 # -DS52_USE_LOG          - use S52_error_cb in init to get log in STDOUT
+# -DG_DISABLE_ASSERT
 
             DEFS   = -DS52_USE_GLIB2                       \
                      -DS52_USE_PROJ                        \
-                     -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_DOTPITCH                    \
+					 -DS52_USE_LOG                         \
+                     -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_FREETYPE_GL                 \
                      -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
+                     -DS52_USE_ADRENO                      \
                      -DS52_USE_ANDROID                     \
-                     -DS52_USE_TEGRA2                      \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
-                     -DS52_DEBUG                           \
-                     -DG_DISABLE_ASSERT
+                     -DS52_DEBUG
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
                      -I$(S52DROIDINC)/glib-2.0             \
@@ -406,7 +407,7 @@ test/s52gtk3egl:
 	(cd test; make s52gtk3egl)
 
 test/s52eglarm:
-	(cd test/android; make clean; make)
+	(cd test/android; make)
 
 test/s52gv:
 	(cd test; make s52gv)

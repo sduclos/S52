@@ -45,15 +45,11 @@ static GThread *_gpsClientThread = NULL;
 
 #ifdef S52_USE_ANDROID
 #include <android/log.h>
-#define  LOG_TAG    "s52ais"
-
-//#define PATH "/data/media/s52droid/bin"
-#define PATH "/sdcard/s52droid/bin"
-#define AIS  PATH "/s52ais"
-#define PID  ".pid"
-//#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
-//#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
-//#define g_print g_message
+#define LOG_TAG    "s52ais"
+#define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
+#define PATH       "/sdcard/s52droid/bin"
+#define AIS        PATH "/s52ais"
+#define PID        ".pid"
 #endif
 
 /*
@@ -190,8 +186,12 @@ static struct sigaction _old_signal_handler_SIGSEGV;   // loop in android
 static struct sigaction _old_signal_handler_SIGTERM;
 #endif
 
-//#define GPSD_HOST  "localhost"
-#define GPSD_HOST "192.168.1.66"
+#ifdef S52_USE_ANDROID
+#define GPSD_HOST "192.168.1.66"  // connect to GPSD on network
+#else
+#define GPSD_HOST "localhost"     // connect to local GPSD
+#endif
+
 #define GPSD_PORT "2947"
 
 #ifdef S52_USE_SOCK
@@ -209,7 +209,7 @@ static GTimeVal _timeTick;
 
 //#define TB "\\t"  // Tabulation
 //#define NL "\\n"  // New Line
-#define NL '\n'  // New Line
+#define NL '\n'  // New Line - break JSNON string if build with S52_USE_SOCK
 
 #ifdef S52_USE_DBUS
 // DBUS messaging
@@ -357,6 +357,7 @@ static int           _signal_setVector     (DBusConnection *bus, S52ObjectHandle
     return TRUE;
 }
 
+#if 0
 static int           _signal_setAISInfo    (DBusConnection *bus, S52ObjectHandle objH,
                                                    unsigned int mmsi, unsigned int imo, char *callsign,
                                                    unsigned int shiptype,
@@ -387,6 +388,7 @@ static int           _signal_setAISInfo    (DBusConnection *bus, S52ObjectHandle
 
     return TRUE;
 }
+#endif
 
 static int           _initDBus(void)
 {
@@ -665,6 +667,7 @@ static int           _delAIS    (unsigned int mmsi)
     return FALSE;
 }
 
+#if 0
 static int           _setAISInfo(unsigned int mmsi, unsigned int imo, char *callsign,
                                  unsigned int shiptype,
                                  unsigned int month, unsigned int day, unsigned int hour, unsigned int minute,
@@ -681,7 +684,7 @@ static int           _setAISInfo(unsigned int mmsi, unsigned int imo, char *call
 
     return TRUE;
 }
-
+#endif
 
 static int           _setAISPos (unsigned int mmsi, double lat, double lon, double heading)
 {
@@ -826,7 +829,6 @@ static int           _setAISSta (unsigned int mmsi, int status, int turn)
         } else {
 #ifdef S52_USE_SOCK
             _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, 1, turn);
-
 #else
             S52_setVESSELstate(ais->vesselH, 0, 1, turn);   // AIS active
 #endif
@@ -1127,6 +1129,7 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
         //unsigned int spare; // spare bits
         */
 
+        /*
         _setAISInfo(gpsdata->ais.mmsi,
                     gpsdata->ais.type5.imo,
                     gpsdata->ais.type5.callsign,
@@ -1137,6 +1140,7 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
                     gpsdata->ais.type5.minute,
                     gpsdata->ais.type5.draught,
                     gpsdata->ais.type5.destination);
+        */
 
         _setAISLab(gpsdata->ais.mmsi, gpsdata->ais.type5.shipname);
 
@@ -1228,8 +1232,10 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
 
 static gpointer      _gpsdClientRead(gpointer dummy)
 // start gpsd client - loop forever
-// if _ais_list is NULL then exit
+// return if _ais_list is NULL or 10 failed attempt to connect
 {
+    int nWait = 0;
+
     g_print("s52ais:_gpsdClientRead(): start looping ..\n");
 
     while (0 != gps_open(GPSD_HOST, GPSD_PORT, &_gpsdata)) {   // android (gpsd 2.96)
@@ -1240,9 +1246,11 @@ static gpointer      _gpsdClientRead(gpointer dummy)
         while (g_main_context_iteration(NULL, FALSE))
             ;
 
+        // try to connect to GPSD server, bailout after 10 failed attempt
         g_static_mutex_lock(&_ais_list_mutex);
-        if (NULL == _ais_list) {
-            g_print("s52ais.c:_gpsdClientRead() no AIS list .. main exited .. terminate gpsRead thread\n");
+        //if (NULL == _ais_list) {
+        if ((NULL==_ais_list) || (10 <= ++nWait)) {
+            g_print("s52ais.c:_gpsdClientRead() no AIS list (main exited) or no GPSD server.. terminate _gpsClientRead thread\n");
 
             g_static_mutex_unlock(&_ais_list_mutex);
 
@@ -1350,7 +1358,7 @@ int            s52ais_updateTimeTag(void)
 
         g_get_current_time(&now);
 
-        g_snprintf(str, 80, "%s %lis%c%3f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), (int)NL, ais->course, ais->speed);
+        g_snprintf(str, 80, "%s %lis%c%03.f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), (int)NL, ais->course, ais->speed);
         S52_setVESSELlabel(ais->vesselH, str);
     }
 
