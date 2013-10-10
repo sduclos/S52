@@ -4,9 +4,9 @@ library s52ui;
 
 import 'dart:html';
 import 'dart:svg';
-import 'dart:json';
 import 'dart:async';
 import 'package:js/js.dart' as js;
+import 'dart:convert';
 
 part 'S52.dart';
 
@@ -687,41 +687,42 @@ void _initTouch(var orient, var w, var h) {
   });     // touchEnd
 }
 
-//void GPSpos(Geoposition position) {
-//  print('GPS new pos');
-//  s52.setPosition(_ownshp, position.coords.latitude, position.coords.longitude, 0.0).then((ret){});
-//}
+void GPSpos(Geoposition position) {
+  print('GPS new pos');
+  s52.setPosition(_ownshp, position.coords.latitude, position.coords.longitude, 0.0).then((ret){});
+}
+
+void alertError(PositionError error) {
+  print("Error occurred. Error code: ${error.code}");
+}
+
 int _ownshp = 0;
 void _watchPosition() {
   if (0 == _ownshp) {
     print('s5ui.dart:_setPosition(): failed, no _ownshp handle');
     return;
   }
-  print('s5ui.dart:_watchPosition(): start');
+  print('s5ui.dart:_watchPosition(): - start -');
 
-  // {'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000}
-  //window.navigator.geolocation.watchPosition().listen(onData, onError, onDone, unsubscribeOnError)
-
-  //try {
-  //  window.navigator.geolocation.watchPosition().listen(GPSpos);
-  //} catch (e,s) {
-  //  print(s);
-  //}
-
-
-  //subscribe(onData: (List<int> data) { print(data.length); });
   //* FF choke here
   window.navigator.geolocation.getCurrentPosition().then(
+  //window.navigator.geolocation.getCurrentPosition({'enableHighAccuracy':'true', 'timeout':5000, 'maximumAge':60000}).then(
     (Geoposition position) {
       s52.setPosition(_ownshp, position.coords.latitude, position.coords.longitude, 0.0).then((ret){});
-    }
+    }, onError: (error) => alertError(error)
   );
-  // */
+  //*/
+
+  // {'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000}
+  try {
+    window.navigator.geolocation.watchPosition().listen(GPSpos);
+  } catch (e,s) {
+    print(s);
+  }
 }
 
 //_toggleUIEvent(evt) {
 //evt.preventDefault();
-
 _toggleUIEvent() {
 
   print('_toggleUIEvent()');
@@ -758,8 +759,8 @@ void _start() {
     //print('s5ui.dart:OWNSHP(): $ret');
     _ownshp = ret[0];
 
-    // can't read GPS
-    //_watchPosition();
+    // Some device can't read GPS
+    _watchPosition();
 
     query('#svg1g').onTouchStart.listen((ev) { _fullList(ev); });
 
@@ -770,10 +771,8 @@ void _start() {
 void _initMain(evt) {
   print('s52ui.dart:_initMain()');
 
-  var wsUri = 'ws://127.0.0.1:2950';
-  s52 = new S52(wsUri);
+  s52 = new S52();
 
-  //new Timer(new Duration(milliseconds: 1000), () {_start();});
   _start();
 }
 

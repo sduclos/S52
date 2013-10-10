@@ -90,6 +90,7 @@ distclean: clean
 
 
 # to send STDOUT & STDERR to logd
+# if
 #$ adb shell su -c stop
 #$ adb shell su -c "setprop log.redirect-stdio true"
 #$ adb shell su -c start

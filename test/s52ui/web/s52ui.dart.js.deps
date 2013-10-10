@@ -1,5 +1,6 @@
 file:///home/sduclos/dev/gis/openev-cvs/contrib/S52/test/s52ui/web/S52.dart
 file:///home/sduclos/dev/gis/openev-cvs/contrib/S52/test/s52ui/web/packages/js/js.dart
+file:///home/sduclos/dev/gis/openev-cvs/contrib/S52/test/s52ui/web/packages/meta/meta.dart
 file:///home/sduclos/dev/gis/openev-cvs/contrib/S52/test/s52ui/web/s52ui.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_collection_dev/arrays.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_collection_dev/collection_dev.dart
@@ -107,15 +108,17 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/html/html_common/css_
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/html/html_common/device.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/html/html_common/filtered_element_list.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/html/html_common/html_common_dart2js.dart
-file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/html/html_common/jenkins_smi_hash.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/html/html_common/lists.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/html/html_common/metadata.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/indexed_db/dart2js/indexed_db_dart2js.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/isolate/isolate.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/isolate/isolate_stream.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/json/json.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/math/jenkins_smi_hash.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/math/math.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/math/point.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/math/random.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/math/rectangle.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/mirrors/mirrors.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/svg/dart2js/svg_dart2js.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/typed_data/dart2js/typed_data_dart2js.dart

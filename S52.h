@@ -348,7 +348,7 @@ DLL const char * STD S52_version(void);
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int   STD S52_done(void);
+DLL int    STD S52_done(void);
 
 
 // ---- CHART LOADING (cell) -------------------------------------------
@@ -370,20 +370,20 @@ DLL int   STD S52_done(void);
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int   STD S52_loadObject      (const char *objname, void *feature);
+DLL int   STD S52_loadObject      (const char *objname, /* OGRFeatureH */ void *feature);
 
 /**
  * S52_loadObject_cb:
  * @objname: (in): name of S57 object (same as layer name)
  * @feature: (in): S57 object feature passed from GDAL/OGR (OGRFeatureH)
  *
- * This callback provide a way to maninulate each S57 object before
- * they are inserted into the scenegraph via S52_loadObject()
+ * This callback provide a way to manipulate each S57 object before
+ * they are inserted into the scenegraph (via S52_loadObject())
  *
  *
  * Return: TRUE on success, else FALSE
  */
-typedef DLL int STD (*S52_loadObject_cb)(const char *objname, void *feature);
+typedef DLL int STD (*S52_loadObject_cb)(const char *objname, /* OGRFeatureH */ void *feature);
 
 /**
  * S52_loadCell:
@@ -557,7 +557,7 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className);
  *
  * Return: TRUE if call successfull else FALSE, error -1 (DISPLAYBASE or invalid className)
  */
-DLL int          STD S52_setS57ObjClassSupp(const char *className, int value);
+DLL int    STD S52_setS57ObjClassSupp(const char *className, int value);
 
 /**
  * S52_loadPLib:
@@ -570,7 +570,7 @@ DLL int          STD S52_setS57ObjClassSupp(const char *className, int value);
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int          STD S52_loadPLib(const char *plibName);
+DLL int    STD S52_loadPLib(const char *plibName);
 
 /**
  * S52_getPLibsIDList:
@@ -694,7 +694,7 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
  * Return: TRUE on success, else FALSE
  */
 typedef DLL int STD (*S52_RADAR_cb)(void);
-DLL int   STD S52_setRADARCallBack(S52_RADAR_cb cb);
+DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb);
 
 /**
  * S52_dumpS57IDPixels:
@@ -713,7 +713,7 @@ DLL int   STD S52_setRADARCallBack(S52_RADAR_cb cb);
  * Return: TRUE on success, else FALSE
  */
 
-DLL int   STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height);
+DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height);
 
 
 ///////////////////////////////////////////////////////////////
@@ -1051,7 +1051,7 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int            STD S52_newCSYMB(void);
+DLL int    STD S52_newCSYMB(void);
 
 
 // FIXME: use GDBus instead

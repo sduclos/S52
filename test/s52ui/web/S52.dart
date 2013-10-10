@@ -1,9 +1,5 @@
 part of s52ui;
 
-//import 'dart:async';
-//import 'package:js/js.dart' as js;
-
-
 //////////////////////////////////////////////////////
 //
 // Base Class that mimic S52 interface (S52.h)
@@ -13,7 +9,8 @@ part of s52ui;
 //abstract class S52 {
 class S52 {
   Completer _completer = null;
-  Map       _data      = parse('{"id":1,"method":"???","params":["???"]}');
+  //Map       _data      = parse('{"id":1,"method":"???","params":["???"]}');
+  Map       _data      = JSON.decode('{"id":1,"method":"???","params":["???"]}');
   int       _id        = 1;
   //WebSocket _ws;
 
@@ -66,16 +63,8 @@ class S52 {
   static const int CMD_WRD_FILTER_AP          =       16;  // 1 << 4; 010000 - AP
   static const int CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
 
-  S52(var wsUri) {
-    //js.context.rcvS52Msg = new js.Callback.many(rcvMsg);
-    //js.context.onMessage = new js.Callback.many(rcvMsg);
-    //js.context.websocket.onmessage = new js.Callback.many(rcvMsg);
+  S52() {
     js.context['websocket'].onmessage = new js.Callback.many(rcvMsg);
-
-    //_ws = new WebSocket(wsUri);
-    //_ws.onMessage.listen((MessageEvent e) {
-    //  rcvMsg(e);
-    //});
 
     _drawLastTimer();
   }
@@ -105,7 +94,7 @@ class S52 {
     var str = evt.data;
     Map data;
     try {
-      data = parse(str);
+      data = JSON.decode(str);
     } catch(e) {
       print('rcvMsg(): malformed JSON throw the parser: $str');
       return;
@@ -162,7 +151,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = cmdName;
     _data["params"] = params;
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -186,7 +175,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_drawLast";
     _data["params"] = [];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -194,7 +183,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getMarinerParam";
     _data["params"] = [param];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -202,7 +191,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_setMarinerParam";
     _data["params"] = [param, value];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -210,7 +199,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getPalettesNameList";
     _data["params"] = [];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -218,7 +207,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getRGB";
     _data["params"] = [colorName];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -228,7 +217,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_draw";
     _data["params"] = [];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -236,7 +225,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_newOWNSHP";
     _data["params"] = [label];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -244,7 +233,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_pushPosition";
     _data["params"] = [objH,latitude,longitude,z];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -252,7 +241,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_setVector";
     _data["params"] = [objH,vecstb,course,speed];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -260,7 +249,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_pickAt";
     _data["params"] = [pixels_x,pixels_y];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -268,7 +257,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getObjList";
     _data["params"] = [cellName,className];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -276,7 +265,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getAttList";
     _data["params"] = [S57ID];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -284,7 +273,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getMarObjH";
     _data["params"] = [S57ID];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -292,7 +281,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_setVESSELstate";
     _data["params"] = [objH,vesselSelect,vestat,vesselTurn];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -300,7 +289,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getCellNameList";
     _data["params"] = [];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -308,7 +297,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_doneCell";
     _data["params"] = [encPath];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -316,7 +305,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_loadCell";
     _data["params"] = [encPath];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -324,7 +313,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_drawBlit";
     _data["params"] = [scale_x,scale_y,scale_z,north];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -332,7 +321,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_xy2LL";
     _data["params"] = [pixels_x,pixels_y];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -340,7 +329,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_setView";
     _data["params"] = [cLat,cLon,rNM,north];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -348,7 +337,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getView";
     _data["params"] = [];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }
@@ -356,7 +345,7 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_setViewPort";
     _data["params"] = [x,y,w,h];
-    String jsonCmdstr = stringify(_data);
+    String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
   }

@@ -767,7 +767,7 @@ static gboolean expose_event(GtkWidget      *widget,
 
     /*
     {   // Example of small viewport overlay
-        // draw you stuff on top (draw() above) the base chart
+        // draw your stuff on top (draw() above) the base chart
         // ...
 
         static S52_view view;

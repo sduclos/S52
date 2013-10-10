@@ -607,27 +607,57 @@ static
 inline void      _checkError(const char *msg)
 {
 #ifdef S52_DEBUG
-
-    //CHECK_GL_BEGIN;
+/*
+GL_NO_ERROR
+                No error has been recorded. The value of this
+                    symbolic constant is guaranteed to be 0.
+GL_INVALID_ENUM
+                An unacceptable value is specified for an
+                    enumerated argument. The offending command is ignored,
+                    and has no other side effect than to set the error
+                    flag.
+GL_INVALID_VALUE
+                A numeric argument is out of range. The offending
+                    command is ignored, and has no other side effect than to
+                    set the error flag.
+GL_INVALID_OPERATION
+                The specified operation is not allowed in the
+                    current state. The offending command is ignored, and has
+                    no other side effect than to set the error flag.
+GL_STACK_OVERFLOW
+                This command would cause a stack overflow. The
+                    offending command is ignored, and has no other side
+                    effect than to set the error flag.
+GL_STACK_UNDERFLOW
+                This command would cause a stack underflow. The
+                    offending command is ignored, and has no other side
+                    effect than to set the error flag.
+GL_OUT_OF_MEMORY
+                There is not enough memory left to execute the
+                    command. The state of the GL is undefined, except for the
+                    state of the error flags, after this error is
+                    recorded.
+*/
 
     GLint err = GL_NO_ERROR; // == 0x0
     for (err = glGetError(); GL_NO_ERROR != err; err = glGetError()) {
-            const char *name = NULL;
-            switch (err) {
-                case GL_INVALID_ENUM:      name = "GL_INVALID_ENUM";      break;
-                case GL_INVALID_VALUE:     name = "GL_INVALID_VALUE";     break;
-                case GL_INVALID_OPERATION: name = "GL_INVALID_OPERATION"; break;
-                case GL_OUT_OF_MEMORY:     name = "GL_OUT_OF_MEMORY";     break;
+        const char *name = NULL;
+        switch (err) {
+            case GL_INVALID_ENUM:      name = "GL_INVALID_ENUM";      break;
+            case GL_INVALID_VALUE:     name = "GL_INVALID_VALUE";     break;
+            case GL_INVALID_OPERATION: name = "GL_INVALID_OPERATION"; break;
+            case GL_OUT_OF_MEMORY:     name = "GL_OUT_OF_MEMORY";     break;
 
-                //case GL_STACK_OVERFLOW:    name = "GL_STACK_OVERFLOW";    break;
-                default:
-                    name = "Unknown text for this GL_ERROR";
-            }
+            //case GL_STACK_OVERFLOW:    name = "GL_STACK_OVERFLOW";    break;
 
-            //PRINTF("from %s: 0x%4x:%s (%s)\n", msg, err, gluErrorString(err), name);
-            PRINTF("from %s: 0x%x (%s)\n", msg, err, name);
-            g_assert(0);
-            //exit(0);
+            default:
+                name = "Unknown text for this GL_ERROR";
+        }
+
+        //PRINTF("from %s: 0x%4x:%s (%s)\n", msg, err, gluErrorString(err), name);
+        PRINTF("from %s: 0x%x (%s)\n", msg, err, name);
+        g_assert(0);
+        //exit(0);
     }
 #endif
 }
@@ -1555,6 +1585,7 @@ static int       _initA3D(void)
 #endif
 
 #ifdef S52_USE_FREETYPE_GL
+#ifdef S52_USE_GLES2
 static int       _init_freetype_gl(void)
 {
     const wchar_t   *cache    = L" !\"#$%&'()*+,-./0123456789:;<=>?"
@@ -1606,6 +1637,7 @@ static int       _init_freetype_gl(void)
 
     return TRUE;
 }
+#endif
 #endif
 
 static GLint     _tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
@@ -7085,7 +7117,7 @@ static int       _traceOP(S52_obj *obj)
 }
 
 #ifdef S52_USE_FREETYPE_GL
-//static GArray   *_fillFtglBuf(texture_font_t *font, GArray *buf, const char *str)
+#ifdef S52_USE_GLES2
 static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
 // experimental: smaller text size if second line
 // could translate into a TX command word to be added in the PLib
@@ -7168,6 +7200,7 @@ static int       _sendFtglBuf(GArray *buf)
         return TRUE;
 }
 #endif
+#endif
 
 static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
 // render text in AA if Mar Param set
@@ -7196,6 +7229,7 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
 
 
 #ifdef S52_USE_FREETYPE_GL
+#ifdef S52_USE_GLES2
     (void)obj;
 
     // debug - check logic (should this be a bug!)
@@ -7266,6 +7300,7 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
 
     _checkError("_drawTextAA() freetype-gl");
 
+#endif
 #endif
 
 #ifdef S52_USE_GLC
@@ -8617,13 +8652,14 @@ static int       _contextValid(void)
     //PRINTF("double buffer: %s\n", ((TRUE==d) ? "TRUE" : "FALSE"));
 
 
+#ifdef S52_USE_GLES2
     {
         const GLubyte *vendor     = glGetString(GL_VENDOR);
         const GLubyte *renderer   = glGetString(GL_RENDERER);
-        const GLubyte *extensions = glGetString(GL_EXTENSIONS);
         const GLubyte *version    = glGetString(GL_VERSION);
         const GLubyte *slglver    = glGetString(GL_SHADING_LANGUAGE_VERSION);
 
+        const GLubyte *extensions = glGetString(GL_EXTENSIONS);
         if (NULL != strstr((const char *)extensions, "GL_OES_texture_npot"))
             PRINTF("DEBUG: GL_OES_texture_npot OK\n");
         else
@@ -8635,9 +8671,9 @@ static int       _contextValid(void)
         PRINTF("Version:    %s\n", version);
         PRINTF("Shader:     %s\n", slglver);
     }
-
-
     _checkError("_contextValid()");
+#endif
+
 
     return TRUE;
 }
@@ -8975,6 +9011,7 @@ int        S52_GL_begin(S52_GL_mode mode)
             S52_GL_readFBPixels();
             _update_fb = FALSE;
 #endif
+            
         }
 
         // load FB that was filled with the previous draw() call
@@ -9022,6 +9059,7 @@ int        S52_GL_end(S52_GL_mode mode)
         // is it because the window/framebuffer if full of data
         // BUG: rereading FB break blitting
         S52_GL_readFBPixels();
+        _update_fb = FALSE;
 #endif
         //S52_GL_readFBPixels();
     }
@@ -9437,6 +9475,7 @@ int        S52_GL_init(void)
     // juste checking
     g_assert(sizeof(double) == sizeof(GLdouble));
 
+    // GL sanity check
     _checkError("S52_GL_init() -0-");
 
     _initGLU();
@@ -9459,7 +9498,6 @@ int        S52_GL_init(void)
 
 
 #ifdef S52_USE_GLES2
-    //S52_GL_init_GLES2();
     _init_es2();
 
     // FIXME: first init_GLES2 no VBO created

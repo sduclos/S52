@@ -3,11 +3,14 @@
 #
 
 
+2013OCT10
+    -fix s52ui GPS
+
 2013SEP28
     -fix Android rotation, do not set EGL Native Window Geometry
 
 2013SEP22
-    -fix do _initPROJ() once only 
+    -fix do _initPROJ() once only
 
 2013SEP19
     -mod s52eglarm to link directly s52ais to s52egl

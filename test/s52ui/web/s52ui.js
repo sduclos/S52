@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////
 //
-// Main
+// Main (Template)
 //
 
 
@@ -14,7 +14,7 @@ Main.prototype.checkCell = function(html, arg)
 {
 	html.tr({},
     	html.td({},
-        		html.div({}, 
+        		html.div({},
         				 arg[1],
             	         html.input({id:arg[0], type:"checkbox"}),
                   		 html.hr()
@@ -27,7 +27,7 @@ Main.prototype.rangeCell = function(html, arg)
 {
 	html.tr({},
     	html.td({},
-        		html.div({}, 
+        		html.div({},
             	         html.input({id:arg[0], type:"range", min:"0", max:"360", step:"10"}),
         				 arg[1],
                   		 html.hr()
@@ -101,10 +101,10 @@ Main.prototype.tables = function(html)
                           html.insert(this.checkCell, ['i25','Quality Of Position']),
                           html.insert(this.checkCell, ['i37','Dredge Pattern']     ),
                           html.insert(this.checkCell, ['i38','Nodata Layer']       ),
-											
+
 						  // r - input Range
                           html.insert(this.rangeCell, ['r28','Rot. Buoy Light']  ),
-                          
+
 						  //  S52_MAR_CMD_WRD_FILTER(33)
                           // f - Filter
                           html.insert(this.checkCell, ['f1', 'CMD_WRD_FILTER_SY']),
@@ -129,15 +129,15 @@ Main.prototype.tables = function(html)
 Main.prototype.render = function(html)
 {
     //*
-    var radius = '50%'; 
-    if (window.innerWidth < window.innerHeight) 
+    var radius = '50%';
+    if (window.innerWidth < window.innerHeight)
     	radius = window.innerWidth  / 2.0;
     else
     	radius = window.innerHeight / 2.0;
-    	
+
     var SVG = html.SVG();
     SVG.svg({id:'svg1', width:'100%', height:'100%', version:'1.1'},
-            SVG.g({id:'svg1g'},   
+            SVG.g({id:'svg1g'},
             	  SVG.rect({id:'svg1rect', x:'100', y:'100', rx:'10', ry:'10', width:'300', height:'64', style:'fill:rgba(0,0,255, 0.5);stroke-width:1;'}),
            		  SVG.text({id:'svg1text', x:'105', y:'155', style:'fill:rgb(0,255,255);'},'SVG')
                  ),

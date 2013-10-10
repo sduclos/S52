@@ -239,8 +239,10 @@ void     S52_printf(const gchar *string)
     snprintf(str, MAXL-1, "%s %s", g_time_val_to_iso8601(&_now), string);
     write(_log, str, strlen(str));
 
-    if (NULL != _err_cb)
+    // if user set a callback .. call it
+    if (NULL != _err_cb) {
         _err_cb(str);
+    }
 }
 
 int      S52_initLog(S52_error_cb err_cb)
@@ -252,7 +254,7 @@ int      S52_initLog(S52_error_cb err_cb)
 #ifdef S52_USE_LOG
     //printf("starting log (%s)\n", g_get_tmp_dir());
     //S52_printf("starting log\n");
-     GError *error;
+     GError *error = NULL;
     _log = g_file_open_tmp("XXXXXX", NULL, &error);
 
     _oldPrintHandler = g_set_print_handler(S52_printf);

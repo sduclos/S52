@@ -15,7 +15,6 @@ import org.apache.cordova.*;
 
 import com.Method.WebSocket.WebSocketFactory;
 
-
 public class s52ui extends DroidGap
 {
     private static final String TAG = "s52ui";
@@ -24,23 +23,28 @@ public class s52ui extends DroidGap
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
+
         super.setIntegerProperty("backgroundColor", Color.TRANSPARENT);
 
-        //super.loadUrl("file:///android_asset/www/index.html");
+        // release
         super.loadUrl("file:///android_asset/www/s52ui.html");
 
+        //*
         // debug - work OK for dev (faster)
         //super.loadUrl("file:///data/media/dart/s52ui/web/s52ui.html");  // android 4.1
         //super.loadUrl("file:///sdcard/dart/s52ui/web/s52ui.html");        // android 4.2
-
-        // debug - page loading always from file (a bit slower)
-        //appView.clearCache(false);
+        //appView.clearCache(false);                                      // page loading always from file (a bit slower)
+        //*/
 
         appView.setBackgroundColor(0);
 
+        // quiet Err msg in logcat
+        appView.getSettings().setGeolocationDatabasePath("/data/data/nav.ecs.s52droid");
+
         appView.addJavascriptInterface(new WebSocketFactory(appView), "WebSocketFactory");
 
-        Log.i(TAG, "starting WebView ...");
+        Log.i(TAG, "Starting WebView ...");
+
 
         /*
         // shutdown activity

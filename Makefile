@@ -19,9 +19,9 @@
 #all: s52eglarm      # OGR & EGL & ARM/Android (for testing GLES2 on ARM)
 #all: s52gv          # GV  (GTK)
 #all: s52gv2         # GV2 (GTK2)
-#all: s52gtk2        # OGR & GTK2
+all: s52gtk2        # OGR & GTK2
 #all: s52gtk2p       # profiling
-all: s52gtk3egl      # GTK3 & EGL
+#all: s52gtk3egl      # GTK3 & EGL
 #all: s52qt4         # OGR & Qt4 (same as s52gtk2 but run on Qt4)
 #all: s52win32       # same as s52gtk2, run on wine/win32 (MinGW)
 #all: s52clutter     # use COGL for rendering text
@@ -124,7 +124,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_OGR_FILECOLLECTOR:
 #        - compile with g++ to use gdal/ogr s57filecollector()
 #        - add 'extern "C"' to ogr/ogrsf_frmts/s57.h:40 S57FileCollector()  -or- compile S52 with g++
-#        - for file path in CATALOG to work on unix apply patch in doc/s57filecollector.cpp.diff
+#        - for Windows file path in CATALOG to work on unix apply patch in doc/s57filecollector.cpp.diff
 # -DS52_USE_SUPP_LINE_OVERLAP: supress display of overlapping line  (OGR patch in doc/ogrfeature.cpp.diff)
 #                              --see S52 manual p. 45 doc/pslb03_2.pdf
 # -DS52_USE_C_AGGR_C_ASSO: return info C_AGGR C_ASSO on cursor pick (OGR patch in doc/ogrfeature.cpp.diff)
@@ -144,14 +144,14 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_GOBJECT
 # -DS52_USE_BACKTRACE
 
-#CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl egl` \
-#         `gdal-config --cflags`                        \
-#         -DS52_USE_DOTPITCH                            \
-#         -DS52_USE_FTGL                                \
-#         -DS52_USE_GLIB2                               \
-#         -DS52_USE_PROJ                                \
-#         -DS52_USE_OPENGL_VBO                          \
-#         -DS52_DEBUG $(DBG)
+CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl gl` \
+         `gdal-config --cflags`                        \
+         -DS52_USE_DOTPITCH                            \
+         -DS52_USE_FTGL                                \
+         -DS52_USE_GLIB2                               \
+         -DS52_USE_PROJ                                \
+         -DS52_USE_OPENGL_VBO                          \
+         -DS52_DEBUG $(DBG)
 
 s52clutter, s52clutter.js :                                 \
          CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl` \
@@ -172,6 +172,9 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0`\
                   -DS52_USE_PROJ                 \
                   -DS52_USE_DOTPITCH $(DBG)
 
+# GL - EGL/GL 1.x broken
+#s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl gl`
+# GLES2  -DS52_USE_GLES2
 s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
@@ -224,12 +227,11 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
             DEFS   = -DS52_USE_GLIB2                       \
                      -DS52_USE_PROJ                        \
                      -DS52_USE_DOTPITCH                    \
-					 -DS52_USE_LOG                         \
                      -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_FREETYPE_GL                 \
                      -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
-                     -DS52_USE_ADRENO                      \
+                     -DS52_USE_TEGRA2                      \
                      -DS52_USE_ANDROID                     \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
@@ -303,9 +305,8 @@ s52win32 : CFLAGS   = -mms-bitfields                         \
 #
 #
 
-#LIBS   = `pkg-config  --libs glib-2.0 lcms ftgl dbus-1 dbus-glib-1 egl` \
-#         `gdal-config --libs`                                           \
-#          -lGL -lGLU -lproj
+LIBS   = `pkg-config  --libs glib-2.0 lcms ftgl glu gl` \
+         `gdal-config --libs` -lproj                    \
 
 s52clutter, s52clutter.js : LIBS = `pkg-config  --libs glib-2.0 lcms` \
                                    `gdal-config --libs`   -lGL -lGLU
@@ -315,6 +316,7 @@ s52glx : LIBS = `pkg-config  --libs glib-2.0 lcms` \
                 `gdal-config --libs`               \
                 -lGL -lGLU
 
+#s52gtk3egl s52eglx: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl glu gl freetype2`
 s52gtk3egl s52eglx: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl glesv2 freetype2` \
                            `gdal-config --libs` -lproj
 

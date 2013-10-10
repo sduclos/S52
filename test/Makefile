@@ -68,24 +68,26 @@ CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
 s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1`
 s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_USE_DOTPITCH
 
-# -DS52_USE_AFGLOW    - need symbole in PLAUX_00.DAI
 # -DUSE_FAKE_AIS      - debug - programmaticaly faked AIS data
-# -DUSE_AIS           - 
-# -DS52_USE_WORLD     -
-# -DS52_USE_SOCK      - when S52AIS_STANDALONE use socket
+# -DUSE_AIS           -
+
+# -DS52_USE_GLES2
+# -DS52_USE_AFGLOW    - need symbole in PLAUX_00.DAI
+# -DS52_USE_WORLD     - load world shapefile
+# -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps` \
-                      -DS52_USE_DOTPITCH -DS52_USE_AFGLOW -DS52_USE_EGL -DUSE_AIS
+                      -DS52_USE_DOTPITCH -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2 -DUSE_AIS
 
 # same as s52eglx, but "gtk+-3.0" is added
 s52gtk3egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` \
-                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL
+                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2
 
 # -DS52_USE_TEGRA2 (Xoom)
 # -DS52_USE_ADRENO (Nexus 7)
 # -DS52_USE_WORLD
 s52eglarm:  CFLAGS =  -DS52_USE_DOTPITCH                 \
                       -DS52_USE_EGL                      \
-					  -DS52_USE_ADRENO                   \
+					  -DS52_USE_TEGRA2                   \
                       -DS52_USE_ANDROID                  \
                       -DS52_USE_AFGLOW                   \
                       -DS52_USE_SOCK                     \
@@ -205,7 +207,6 @@ sl4agps.cfg:
 	-rm android/dist/sdcard/s52droid/UI.xml
 
 # android 4.1
-# adb push  sl4agps   /sdcard/s52droid/bin
 # adb shell chmod 755 /data/media/s52droid/bin/sl4agps
 sl4agps: sl4agps.c sl4agps.cfg android/dist/sdcard/s52droid/UI.xml
 	$(CC)  $(CFLAGS)    sl4agps.c $(LIBS) -o sl4agps
@@ -214,7 +215,7 @@ sl4agps: sl4agps.c sl4agps.cfg android/dist/sdcard/s52droid/UI.xml
 	adb push  sl4agps   /sdcard/s52droid/bin
 	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/sl4agps'
 
-# adb push  s52ais    /sdcard/s52droid/bin
+# android 4.1
 # adb shell chmod 755 /data/media/s52droid/bin/s52ais
 s52ais: s52ais.c
 	$(CXX) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c  $(LIBS) -o s52ais
@@ -223,10 +224,10 @@ s52ais: s52ais.c
 	adb push  s52ais    /sdcard/s52droid/bin
 	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/s52ais'
 
-#s52eglarm: s52ais sl4agps
 s52eglarm: s52ais
-	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/*.sh'
-	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/gpsd'
+#s52eglarm: s52ais sl4agps
+#	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/*.sh'
+#	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/gpsd'
 
 # Note: to start s52ui (the HTML UI that replace sl4agps) in android by hand
 # adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/.s52ui
@@ -389,5 +390,4 @@ clean:
 
 distclean: clean
 	rm -f sl4agps.cfg android/dist/sdcard/s52droid/bin/s52ais android/dist/sdcard/s52droid/bin/sl4agps
-	(cd android; make distclean)
-
+	make -C android distclean
