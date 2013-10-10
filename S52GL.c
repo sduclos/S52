@@ -8926,8 +8926,7 @@ int        S52_GL_begin(S52_GL_mode mode)
     //    return FALSE;
     //}
 
-    // skip projection if picking (or drawLast()) since the view is the same
-    //if (FALSE==cursorPick || FALSE==drawLast) {
+    // do projection if draw() since the view is the same for all other mode
     if (S52_GL_DRAW == mode) {
         // this will setup _pmin/_pmax, need a valide _vp
         _doProjection(_centerLat, _centerLon, _rangeNM/60.0);
@@ -9010,7 +9009,7 @@ int        S52_GL_begin(S52_GL_mode mode)
             S52_GL_readFBPixels();
             _update_fb = FALSE;
 #endif
-            
+
         }
 
         // load FB that was filled with the previous draw() call
