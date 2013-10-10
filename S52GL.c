@@ -8755,7 +8755,6 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
 }
 
 
-//int        S52_GL_begin(int cursorPick, int drawLast)
 int        S52_GL_begin(S52_GL_mode mode)
 {
     CHECK_GL_END;
@@ -8929,10 +8928,10 @@ int        S52_GL_begin(S52_GL_mode mode)
 
     // skip projection if picking (or drawLast()) since the view is the same
     //if (FALSE==cursorPick || FALSE==drawLast) {
-    //if (S52_GL_DRAW == mode) {
+    if (S52_GL_DRAW == mode) {
         // this will setup _pmin/_pmax, need a valide _vp
         _doProjection(_centerLat, _centerLon, _rangeNM/60.0);
-    //}
+    }
 
     // then create all symbol
     _createSymb();
