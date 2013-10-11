@@ -26,15 +26,19 @@ android:hardwareAccelerated = "true"
     <!-- Allows applications to write gpsd.sock, gpsd.pid, sl4agps.pid, s52ais.pid to sdcard -->
     <uses-permission android:name = "android.permission.WRITE_EXTERNAL_STORAGE" />
 
+
+<!-- GPS -->
 <uses-permission android:name="android.permission.ACCESS_GPS" />
 <uses-permission android:name="android.permission.ACCESS_ASSISTED_GPS" />
 <uses-permission android:name="android.permission.ACCESS_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 <uses-permission android:name="android.permission.ACCESS_LOCATION_EXTRA_COMMANDS" />
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
     <uses-permission android:name="android.permission.INTERACT_ACROSS_USERS_FULL" />
+
 
     <!--  NOT browser cache
     <uses-permission android:name="android.permission.CLEAR_APP_USER_DATA"/>
@@ -132,8 +136,6 @@ android:hardwareAccelerated = "true"
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.GET_ACCOUNTS" />
     <uses-permission android:name="android.permission.BROADCAST_STICKY" />
-
-
 
 
     allow script to kill com.googlecode.android_scripting on exit
