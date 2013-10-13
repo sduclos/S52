@@ -51,7 +51,7 @@
       	  	console.log('EEEEEEEEE geoError(): code: '    + error.code    + ', ' + 'message: ' + error.message + '\n');
         }
         //*/
-
+		document.addEventListener("backbutton", toggleUI, true);
       	// WebSocket <--> libS52
       	// FIXME: can Dart handle directly Cordova websocket on Android ?
 
@@ -66,28 +66,13 @@
         	websocket.onclose   = function(evt) { onClose(evt)   };
         	websocket.onerror   = function(evt) { onError(evt)   };
         	websocket.onopen    = function(evt) { onOpen(evt)    };
-
-        	// device orientation change
-        	//window.addEventListener("resize", orientation, false);
-        	//window.addEventListener("orientationchange", orientation, false);
-        	// (optional) Android doesn't always fire orientationChange on 180 degree turns
-        	//setInterval(orientation, 2000);
-
-        	// will trigger touch initialisation and also set W x H
-	        //document.addEventListener("deviceready", screenSize, false);
-
-        	//screenSize();
       	}
 
       	function onOpen (evt)   {}
       	function onClose(evt)   { console.log("s52ui.html:Websock:onClose():" + evt + "<<<"); }
       	function onError(evt)   { console.log("s52ui.html:Websock:onError():" + evt + "<<<"); }
 
-      	//function orientation()  { orientationChg(window.orientation, window.innerWidth, window.innerHeight);}
-      	//function screenSize()   { setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight);}
-      	//function screenSize()   { setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight); wsReady();}
-      	//function screenSize()   { console.log("window.orientation: " + window.orientation);setTouchScrnSz(window.orientation, window.innerWidth, window.innerHeight);}
-
+      	function toggleUI()     {}
     </script>
   
     <p id="__beg_mainWindowComponent" hidden="true">id_beg</p>
@@ -99,15 +84,6 @@
 
 
 <!--
-//*
- var supportsOrientation = ( typeof window.orientation == 'number' && typeof window.onorientationchange == 'object' );
-
-// Do nothing if we don't need to shim
-if ( supportsOrientation ) return;
-//*/
- 
-
-<div id="example"></div>
 <script>
 txt = "<p>Browser CodeName:    " + window.navigator.appCodeName    + "</p>";
 txt+= "<p>Browser Name:        " + window.navigator.appName        + "</p>";
@@ -119,7 +95,6 @@ txt+= "<p>User-agent language: " + window.navigator.systemLanguage + "</p>";
 
 window.document.getElementById("example").innerHTML=txt;
 </script>
-
 -->
 
 

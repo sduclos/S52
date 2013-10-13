@@ -231,7 +231,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_USE_FREETYPE_GL                 \
                      -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
-                     -DS52_USE_TEGRA2                      \
+                     -DS52_USE_ADRENO                      \
                      -DS52_USE_ANDROID                     \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \

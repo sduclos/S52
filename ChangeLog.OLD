@@ -2,9 +2,16 @@
 #                The 'real' ChangeLog is generated with the Perl script cvs2cl.pl
 #
 
+2013OCT13
+    -fix Adreno swapbuffer handling while saving draw() FB to texture
+    -fix eglMakeCurrent EGL_BAD_ACCESS Error msg on Android
+
+2013OCT11
+    -mod remove unneeded android uses-permission
 
 2013OCT10
-    -fix s52ui GPS
+    -fix s52ui GPS with Android 4.2
+    -fix cursor pick after refactoring S52_GL_mode
 
 2013SEP28
     -fix Android rotation, do not set EGL Native Window Geometry

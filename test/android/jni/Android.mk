@@ -10,6 +10,7 @@ LOCAL_SRC_FILES  := ../../s52egl.c ../../s52ais.c
 
 # -DS52_USE_AFGLOW   - add afterglow to target (VESSEL/OWNSHP), need symbole in PLAUX_00.DAI
 # -DS52_USE_SL4A     - SL4A is a RPC bridge to the Android framework
+# -DS52_USE_GLES2    -
 # -DS52_USE_TEGRA2   - GLES2
 # -DS52_USE_ADRENO   - GLES2
 # -DS52_USE_WORLD    - experimental - load world Shapefile
@@ -17,8 +18,8 @@ LOCAL_SRC_FILES  := ../../s52egl.c ../../s52ais.c
 # -DS52_USE_LOG      - use S52_error_cb in init to get log isend to STDOUT (usefull on non-rooted device)
 S52ANDRIODINC    := /home/sduclos/S52/test/android/dist/system/include
 LOCAL_CFLAGS     := -std=c99 -Wall -g -DG_LOG_DOMAIN=\"s52droid\"                                \
-                    -DS52_USE_DOTPITCH -DS52_USE_ANDROID -DS52_USE_TEGRA2                        \
-					-DS52_USE_AFGLOW -DS52_USE_EGL -DUSE_AIS                                     \
+                    -DS52_USE_DOTPITCH -DS52_USE_ANDROID -DS52_USE_ADRENO                        \
+					-DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2 -DUSE_AIS                     \
                     -I../..                                                                      \
                     -I$(S52ANDRIODINC)                                                           \
 					-I$(S52ANDRIODINC)/glib-2.0                                                  \

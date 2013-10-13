@@ -229,7 +229,7 @@ class S52 {
 
     return _sendMsg(jsonCmdstr);
   }
-  Future<List> setPosition(int objH, double latitude, double longitude, double z) {
+  Future<List> pushPosition(int objH, double latitude, double longitude, double z) {
     _data["id"    ] = _id;
     _data["method"] = "S52_pushPosition";
     _data["params"] = [objH,latitude,longitude,z];

@@ -31,7 +31,7 @@
     <!-- <access origin="https://example.com" subdomains="true" /> such as above, but including subdomains, such as www -->
     <access origin=".*"/>
 
-    <log level="DEBUG"/>
+    <log level="ERROR"/>
     <preference name="useBrowserHistory" value="true" />
     <preference name="exit-on-suspend"   value="false" />
 

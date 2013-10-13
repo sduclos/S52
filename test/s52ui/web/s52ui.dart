@@ -399,29 +399,10 @@ Future<bool> _initUI() {
 }
 //*/
 
-void _orientationChg(var orientation, var width, var height)
-{
+//void _initTouch(var orient, var w, var h) {
+void _initTouch() {
   // debug
-  print("++++++++++++++++++++++++++++++++++++++orientation:$orientation W:$width x H:$height");
-
-  _width  = width;
-  _height = height;
-  //s52.width  = width;
-  //s52.height = height;
-
-  s52.setViewPort(0, 0, width, height).then((ret) {
-    s52.draw().then((ret) {});
-  });
-
-  // rehook callback for next rotation
-  //js.scoped(() {
-  //  js.context.orientationChg = new js.Callback.once(_orientationChg);
-  //});
-}
-
-void _initTouch(var orient, var w, var h) {
-  // debug
-  print("+++++++++++++++++++++++++++_initTouch(): O:$orient W:$w x H:$h");
+  //print("+++++++++++++++++++++++++++_initTouch(): O:$orient W:$w x H:$h");
 
   // Handle touch events.
   Element target = query('#svg1');
@@ -451,12 +432,12 @@ void _initTouch(var orient, var w, var h) {
 
   // FIXME: get w/h on orientation change msg
   // Dart broken on android WebView
-  //var width   = window.innerWidth;
-  //var height  = window.innerHeight;
+  //_width   = window.innerWidth;
+  //_height  = window.innerHeight;
   //var width   = 1208;
   //var height  =  752;
-  _width  = w;
-  _height = h;
+  //_width  = w;
+  //_height = h;
   //s52.width  = w;
   //s52.height = h;
 
@@ -521,8 +502,10 @@ void _initTouch(var orient, var w, var h) {
 
       //print('onTouchMove 1: new_x1:$new_x1, new_x1:$new_y1');
 
-      double dx_pc =  (start_x1 - new_x1) / _width;  // %
-      double dy_pc = -(start_y1 - new_y1) / _height; // % - Y down
+      //double dx_pc =  (start_x1 - new_x1) / _width;  // %
+      //double dy_pc = -(start_y1 - new_y1) / _height; // % - Y down
+      double dx_pc =  (start_x1 - new_x1) / window.innerWidth;  // %
+      double dy_pc = -(start_y1 - new_y1) / window.innerHeight; // % - Y down
       //double dx_pc =  (start_x1 - new_x1) / s52.width;  // %
       //double dy_pc = -(start_y1 - new_y1) / s52.height; // % - Y down
 
@@ -688,15 +671,18 @@ void _initTouch(var orient, var w, var h) {
 }
 
 void GPSpos(Geoposition position) {
-  print('GPS new pos');
-  s52.setPosition(_ownshp, position.coords.latitude, position.coords.longitude, 0.0).then((ret){});
+  print('GPS new pos: _devOrient: $_devOrient');
+  s52.pushPosition(_ownshp, position.coords.latitude, position.coords.longitude, _devOrient).then((ret){});
+  s52.setVector(_ownshp, 1, _devOrient, 16.0);   // 1 - ground
+
 }
 
 void alertError(PositionError error) {
   print("Error occurred. Error code: ${error.code}");
 }
 
-int _ownshp = 0;
+int    _ownshp    = 0;
+double _devOrient = 0.0;
 void _watchPosition() {
   if (0 == _ownshp) {
     print('s5ui.dart:_setPosition(): failed, no _ownshp handle');
@@ -708,7 +694,7 @@ void _watchPosition() {
   window.navigator.geolocation.getCurrentPosition().then(
   //window.navigator.geolocation.getCurrentPosition({'enableHighAccuracy':'true', 'timeout':5000, 'maximumAge':60000}).then(
     (Geoposition position) {
-      s52.setPosition(_ownshp, position.coords.latitude, position.coords.longitude, 0.0).then((ret){});
+      s52.pushPosition(_ownshp, position.coords.latitude, position.coords.longitude, _devOrient).then((ret){});
     }, onError: (error) => alertError(error)
   );
   //*/
@@ -762,6 +748,12 @@ void _start() {
     // Some device can't read GPS
     _watchPosition();
 
+    window.onDeviceOrientation.listen(
+        (DeviceOrientationEvent e) {
+          _devOrient = e.alpha;
+          //print('_devOrient: $_devOrient');
+        });
+
     query('#svg1g').onTouchStart.listen((ev) { _fullList(ev); });
 
     _initUI().then((ret) {});
@@ -774,15 +766,16 @@ void _initMain(evt) {
   s52 = new S52();
 
   _start();
+  _initTouch();
 }
 
 void main() {
   print('s5ui.dart:main(): start');
 
     js.context['onOpen']         = new js.Callback.once(_initMain);
-    js.context['setTouchScrnSz'] = new js.Callback.once(_initTouch);
 
-    //js.context['orientationChg'] = new js.Callback.many(_orientationChg);
+    //js.context['setTouchScrnSz'] = new js.Callback.once(_initTouch);
+
     js.context['toggleUI']       = new js.Callback.many(_toggleUIEvent);
 
 
