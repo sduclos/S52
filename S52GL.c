@@ -258,6 +258,7 @@ static GPtrArray *_objPick       = NULL;    // list of object picked
 static GString   *_strPick       = NULL;  // hold temps val
 static int        _doHighlight   = FALSE;   // TRUE then _objhighlight point to the object to hightlight
 //static S52_obj   *_objhighlight  = NULL;
+static S52_GL_mode _crnt_GL_mode = S52_GL_NONE; // failsafe - keep mode in sync between begin / end
 
 
 //////////////////////////////////////////////////////
@@ -2434,6 +2435,7 @@ static void      _glPointSize(GLfloat size)
 }
 
 #ifdef S52_USE_GLES2
+#if 0
 /*
 static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
 // not used
@@ -2454,6 +2456,7 @@ static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
     return;
 }
 */
+#endif
 #else
 
 static GLvoid    _DrawArrays_QUADS(guint npt, vertex_t *ppt)
@@ -2535,6 +2538,7 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
 }
 
 #ifdef S52_USE_GLES2
+#if 0
 /*
 static GLvoid    _DrawArrays_POINTS(guint npt, vertex_t *ppt)
 // not used
@@ -2552,6 +2556,7 @@ static GLvoid    _DrawArrays_POINTS(guint npt, vertex_t *ppt)
     return;
 }
 */
+#endif
 #endif
 
 #ifdef S52_USE_OPENGL_VBO
@@ -8760,6 +8765,12 @@ int        S52_GL_begin(S52_GL_mode mode)
     CHECK_GL_END;
     _GL_BEGIN = TRUE;
 
+    if (S52_GL_NONE != _crnt_GL_mode) {
+        PRINTF("WARNING: S52_GL_mode out of sync\n");
+        g_assert(0);
+    }
+    _crnt_GL_mode = mode;
+
     //static int saveAttrib;
 
     //_checkError("S52_GL_begin() -0-");
@@ -9004,11 +9015,11 @@ int        S52_GL_begin(S52_GL_mode mode)
             // maybe no window associated with the current rendering context
             // no data has been written to framebuffer since EGL_beg() so that take make the window unavailable!!
             // Android 4.3 (Adreno) has triple buffer!
-            //S52_GL_readFBPixels();
+            S52_GL_readFBPixels();
 #else
             S52_GL_readFBPixels();
-            _update_fb = FALSE;
 #endif
+            _update_fb = FALSE;
 
         }
 
@@ -9030,6 +9041,13 @@ int        S52_GL_end(S52_GL_mode mode)
 //
 {
     CHECK_GL_BEGIN;
+
+    if (mode != _crnt_GL_mode) {
+        PRINTF("WARNING: S52_GL_mode out of sync\n");
+        g_assert(0);
+    }
+    _crnt_GL_mode = mode;
+
 
 #if (defined S52_USE_GLES2 || defined S52_USE_OPENGL_SAFETY_CRITICAL)
     //* test - use GLES2 FBO instead of PBuffer
@@ -9056,8 +9074,8 @@ int        S52_GL_end(S52_GL_mode mode)
         // FIXME: Adreno need the call here rather than in S52_GL_begin()  why ???
         // is it because the window/framebuffer if full of data
         // BUG: rereading FB break blitting
-        S52_GL_readFBPixels();
-        _update_fb = FALSE;
+        //S52_GL_readFBPixels();
+        //_update_fb = FALSE;
 #endif
         //S52_GL_readFBPixels();
     }
@@ -9070,6 +9088,9 @@ int        S52_GL_end(S52_GL_mode mode)
 
     //CHECK_GL_BEGIN;
     _GL_BEGIN = FALSE;
+
+    _crnt_GL_mode = S52_GL_NONE;
+
 
     // hang xoom if no drawFB!
     //if (TRUE == drawLast) {
@@ -9438,7 +9459,9 @@ static int       _init_es2(void)
 
 #ifdef S52_USE_ADRENO
     //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, 2048, 2048, 0);
+    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  2048, 1024, 0, GL_RGB,  GL_UNSIGNED_BYTE, 0);
 #else
     // must be in sync with _fb_format
     // RGBA
@@ -9446,10 +9469,10 @@ static int       _init_es2(void)
     // RGB
     //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_UNSIGNED_BYTE, _fb_pixels);
 
-    _checkError("_init_es2() -5-");
     //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
     //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,  0, 0, _vp[2], _vp[3], 0);
 #endif
+    _checkError("_init_es2() -5-");
 
     glBindTexture  (GL_TEXTURE_2D, 0);
 
@@ -9938,22 +9961,6 @@ char      *S52_GL_getNameObjPick(void)
     return (const char *)_strPick->str;
 }
 
-#if 0
-//int        S52_GL_setOWNSHP(double breadth, double length)
-int        S52_GL_setOWNSHP(S52_obj *obj, double heading)
-{
-    _shpbrd = breadth;
-    _shplen = length;
-
-    if (breadth < 1.0) _shpbrd = 1.0;
-    if (length  < 1.0) _shplen = 1.0;
-
-    return TRUE;
-}
-#endif
-
-
-#define GL_RGB8 0x8051
 guchar    *S52_GL_readFBPixels(void)
 {
     if (TRUE==_doPick || NULL==_fb_pixels)
@@ -9962,7 +9969,9 @@ guchar    *S52_GL_readFBPixels(void)
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
 #ifdef S52_USE_ADRENO
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
+    //glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, _vp[2], _vp[3]);
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, 2048, 2048);
 #else
     // TEGRA2 share MEM with CPU, so this read call is fast (1ms)
     // must be in sync with _fb_format
@@ -10012,12 +10021,23 @@ int        S52_GL_drawFBPixels(void)
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
 
+#ifdef S52_USE_ADRENO
+    GLfloat x = (GLfloat)_vp[2] / 2048.0;
+    GLfloat y = (GLfloat)_vp[3] / 2048.0;
+    GLfloat ppt[4*3 + 4*2] = {
+        _pmin.u, _pmin.v, 0.0,   0.0, 0.0,
+        _pmin.u, _pmax.v, 0.0,   0.0,   y,
+        _pmax.u, _pmax.v, 0.0,     x,   y,
+        _pmax.u, _pmin.v, 0.0,     x, 0.0
+    };
+#else
     GLfloat ppt[4*3 + 4*2] = {
         _pmin.u, _pmin.v, 0.0,   0.0, 0.0,
         _pmin.u, _pmax.v, 0.0,   0.0, 1.0,
         _pmax.u, _pmax.v, 0.0,   1.0, 1.0,
         _pmax.u, _pmin.v, 0.0,   1.0, 0.0
     };
+#endif
 
     glEnableVertexAttribArray(_aUV);
     glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
@@ -10207,12 +10227,23 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
 
+#ifdef S52_USE_ADRENO
+    GLfloat x = (GLfloat)_vp[2] / 2048.0;
+    GLfloat y = (GLfloat)_vp[3] / 2048.0;
+    GLfloat ppt[4*3 + 4*2] = {
+        _pmin.u, _pmin.v, 0.0,   0.0 + scale_x + scale_z, 0.0 + scale_y + scale_z,
+        _pmin.u, _pmax.v, 0.0,   0.0 + scale_x + scale_z,   y + scale_y - scale_z,
+        _pmax.u, _pmax.v, 0.0,     x + scale_x - scale_z,   y + scale_y - scale_z,
+        _pmax.u, _pmin.v, 0.0,     x + scale_x - scale_z, 0.0 + scale_y + scale_z
+    };
+#else
     GLfloat ppt[4*3 + 4*2] = {
         _pmin.u, _pmin.v, 0.0,   0.0 + scale_x + scale_z, 0.0 + scale_y + scale_z,
         _pmin.u, _pmax.v, 0.0,   0.0 + scale_x + scale_z, 1.0 + scale_y - scale_z,
         _pmax.u, _pmax.v, 0.0,   1.0 + scale_x - scale_z, 1.0 + scale_y - scale_z,
         _pmax.u, _pmin.v, 0.0,   1.0 + scale_x - scale_z, 0.0 + scale_y + scale_z
     };
+#endif
 
     glEnableVertexAttribArray(_aUV);
     glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);

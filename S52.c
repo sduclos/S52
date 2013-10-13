@@ -202,11 +202,11 @@ typedef struct _cell {
 // BBTree of LANM 'key' with S57_geo as 'value'
 static GTree     *_lnamBBT     = NULL;
 static GPtrArray *_cellList    = NULL;    // list of loaded cells - sorted, big to small scale (small to large region)
-static _cell     *_crntCell    = NULL;    // current cell (passed around when loading --FIXME:global (dumb)
-static _cell     *_marinerCell = NULL;    // palce holder MIO's, and other (fake) S57 object
-#define MARINER_CELL   "--6MARIN.000"
+static _cell     *_crntCell    = NULL;    // current cell (passed around when loading --FIXME: global var (dumb))
+static _cell     *_marinerCell = NULL;    // place holder MIO's, and other (fake) S57 object
+#define MARINER_CELL   "--6MARIN.000"     // a chart purpose 6 (bellow knowm IHO chart pupose)
 #define WORLD_SHP_EXT  ".shp"             // shapefile ext
-#define WORLD_BASENM   "--0WORLD"         // '--' - agency (none), 0 - chart purpose (S52 is 1-6)
+#define WORLD_BASENM   "--0WORLD"         // '--' - agency (none), 0 - chart purpose (S52 is 1-5 (harbour))
 #define WORLD_SHP      WORLD_BASENM WORLD_SHP_EXT
 
 static GString   *_plibNameList = NULL;    // string that gather plibName
@@ -266,7 +266,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.101\n"
+      "libS52 0.102\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1194,9 +1194,9 @@ static int        _initPROJ(void)
         return FALSE;
     }
 
-    //double clat = (ext.N + ext.S) / 2.0;
-    //_mercPrjSet = S57_setMercPrj(clat);
-    _mercPrjSet = S57_setMercPrj(0.0); // test - 0 clat
+    double clat = (ext.N + ext.S) / 2.0;
+    _mercPrjSet = S57_setMercPrj(clat);
+    //_mercPrjSet = S57_setMercPrj(0.0); // test - 0 clat
 
     // while here, set default view center
     _view.cLat  =  (ext.N + ext.S) / 2.0;
@@ -3233,6 +3233,8 @@ static int        _cullObj(_cell *c)
 }
 
 static int        _cull(_extent ext)
+// FIXME: allow for chart rotation - north != 0.0
+
 // cull chart not in view extent
 // - viewport
 // - small cell region on top
@@ -4742,7 +4744,6 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     }
 
 
-    //if (TRUE == S52_GL_begin(TRUE, FALSE)) {
     if (TRUE == S52_GL_begin(S52_GL_PICK)) {
         _nTotal = 0;
         _nCull  = 0;
@@ -4759,7 +4760,6 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         // FIXME: cull
         _drawLast();
 
-        //S52_GL_end(FALSE);
         S52_GL_end(S52_GL_PICK);
     } else {
         PRINTF("WARNING:S52_GL_begin() failed\n");

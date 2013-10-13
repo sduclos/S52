@@ -50,10 +50,10 @@ typedef struct S52_GL_ras {
 
 typedef enum S52_GL_mode {
     S52_GL_NONE,
-    S52_GL_DRAW,
-    S52_GL_LAST,
-    S52_GL_BLIT,
-    S52_GL_PICK
+    S52_GL_DRAW,              // normal cycle - first pass draw layer 0-8
+    S52_GL_LAST,              // normal cycle - last/top/repeatable draw of layer 9
+    S52_GL_BLIT,              // bitblit mode - blit FB of first pass
+    S52_GL_PICK               // pick    mode - cursor pick
 } S52_GL_mode;
 
 int   S52_GL_init(void);
@@ -61,8 +61,9 @@ int   S52_GL_setDotPitch(int w, int h, int wmm, int hmm);
 int   S52_GL_setFontDL(int fontDL);
 
 // -- framebuffer stuff --------------------------------
-// init frame, save OpenGL state (see S52_GL_end())
-//int   S52_GL_begin(int cursorPick, int drawLast);
+// init frame, save OpenGL state
+// when mode is S52_GL_LAST and previous mode was S52_GL_DRAW
+// pull the FB of Draw() from memory
 int   S52_GL_begin(S52_GL_mode mode);
 // render an object to framebuffer
 int   S52_GL_draw(S52_obj *obj, gpointer user_data);
@@ -73,7 +74,7 @@ int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
 // draw RADAR,Bathy,...
 int   S52_GL_drawRaster(S52_GL_ras *raster);
 
-// use to copy from framebuffer to memory (or texture), return pixels
+// copy from framebuffer to memory (or texture), return pixels
 unsigned
 char *S52_GL_readFBPixels(void);
 // debug
@@ -84,8 +85,6 @@ int   S52_GL_drawFBPixels(void);
 int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north);
 
 // done frame, restore OpenGL state
-// drawLast: FALSE then the next S52_drawLast() will pull the chart background from memory
-//int   S52_GL_end(int drawLast);
 int   S52_GL_end(S52_GL_mode mode);
 // ----------------------------------
 
@@ -103,8 +102,6 @@ int   S52_GL_delRaster(S52_GL_ras *raster, int texOnly);
 int   S52_GL_done(void);
 
 int   S52_GL_setView(double centerLat, double centerLon, double rangeNM, double north);
-//int  S52_GL_getView(double *s, double *w, double *n, double *e);
-
 int   S52_GL_setPRJView(double  s, double  w, double  n, double  e);
 int   S52_GL_getPRJView(double *s, double *w, double *n, double *e);
 int   S52_GL_setGEOView(double  s, double  w, double  n, double  e);
@@ -119,9 +116,6 @@ int   S52_GL_getViewPort(int *x, int *y, int *width, int *height);
 // return the name of the top object
 const
 char *S52_GL_getNameObjPick(void);
-
-//int   S52_GL_setOWNSHP(double breadth, double length);
-//int   S52_GL_setOWNSHP(S52_obj *obj);
 
 int   S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, unsigned int weight);
 int   S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);

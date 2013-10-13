@@ -219,7 +219,7 @@ static S52ObjectHandle _vessel_ais_afglow = NULL;
 
 static int      _egl_init       (s52engine *engine)
 {
-    LOGI("_egl_init(): starting ..\n");
+    LOGI("s52egl:_egl_init(): starting ..\n");
 
     if ((NULL != engine) && (engine->eglDisplay != EGL_NO_DISPLAY)) {
         if (engine->eglDisplay != EGL_NO_DISPLAY)
@@ -433,12 +433,8 @@ static int      _egl_init       (s52engine *engine)
         LOGE("Error: eglGetConfigAttrib() failed\n");
 
 #ifdef S52_USE_ANDROID
-    // do not use get/set Width() has it break rotation
+    // WARNING: do not use native get Width()/Height() has it break rotation
     ANativeWindow_setBuffersGeometry(engine->app->window, 0, 0, vid);
-    //ANativeWindow_setBuffersGeometry(engine->app->window,
-    //                                 ANativeWindow_getWidth(engine->app->window),
-    //                                 ANativeWindow_getHeight(engine->app->window),
-    //                                 vid);
     engine->eglWindow = (EGLNativeWindowType) engine->app->window;
 #else
     {
@@ -490,6 +486,11 @@ static int      _egl_init       (s52engine *engine)
         LOGE("eglCreateWindowSurface() failed. EGL_NO_SURFACE [0x%x]\n", eglGetError());
         g_assert(0);
     }
+
+    // when swapping Adreno clear old buffer
+    // http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html
+    eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
+
 
     // Then we can create the context and set it current:
     EGLint eglContextList[] = {
@@ -547,9 +548,22 @@ static int      _egl_beg        (s52engine *engine)
         return FALSE;
     }
 
-    if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
-        // eglMakeCurrent() output the same error msg
-        //LOGE("_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
+    // this prevent EGL_BAD_ACCESS on Adreno/Tegra - eglMakeCurrent:671 error 3002 (EGL_BAD_ACCESS)
+    if (EGL_NO_CONTEXT == eglGetCurrentContext()) {
+        //LOGI("s52egl:_egl_beg(): EGL_NO_CONTEXT .. exit FALSE\n");
+        return FALSE;
+    }
+
+    if (engine->eglContext == eglGetCurrentContext()) {
+        //LOGI("s52egl:_egl_beg(): engine->eglContext ..\n");
+        if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
+            // eglMakeCurrent() output the same error msg:
+            // eglMakeCurrent:671 error 3002 (EGL_BAD_ACCESS)
+            //LOGE("_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
+            return FALSE;
+        }
+    } else {
+        LOGI("s52egl:_egl_beg(): NOT engine->eglContext ..\n");
         return FALSE;
     }
 
@@ -562,6 +576,8 @@ static int      _egl_end        (s52engine *engine)
         LOGE("_egl_end(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
         return FALSE;
     }
+
+    //LOGI("s52egl:_egl_end(): eglSwapBuffers ..\n");
 
     return TRUE;
 }
@@ -581,48 +597,21 @@ static int      _s52_computeView(s52droid_state_t *state)
     return TRUE;
 }
 
-static int      _s52_setVwNDraw (s52engine *engine, double new_y, double new_x, double new_z, double new_r)
-// set View then call draw_cb
-{
-    if (TRUE == S52_setView(new_y, new_x, new_z, new_r)) {
-        engine->state.cLat  = new_y;
-        engine->state.cLon  = new_x;
-        engine->state.rNM   = new_z;
-        engine->state.north = new_r;
-
-        engine->do_S52draw     = TRUE;
-        engine->do_S52drawLast = TRUE;
-
-        // FIXME: signal broken on Android, trigger:
-        // GLib-GObject-CRITICAL **: g_closure_invoke: assertion `closure->marshal || closure->meta_marshal' failed
-
-        // from android_native_app_glue.h
-        // * The 'threaded_native_app' static library is used to provide a different
-        // * execution model where the application can implement its own main event
-        // * loop in a different thread instead.
-        g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0, NULL);
-
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
 #ifdef USE_FAKE_AIS
 static int      _s52_setupVESSEL(s52droid_state_t *state)
 {
     // ARPA
     //_vessel_arpa = S52_newVESSEL(1, dummy, "ARPA label");
     //_vessel_arpa = S52_newVESSEL(1, "ARPA label");
-    //S52_pushPosition(_vessel_arpa, _view.cLat + 0.01, _view.cLon - 0.02, 045.0);
+    //S52_pushPosition(_vessel_arpa, _view.cLat + 0.01, _view.cLon - 0.02, 0.0);
     //S52_setVector(_vessel_arpa, 2, 060.0, 3.0);   // water
 
     // AIS active
     _vessel_ais = S52_newVESSEL(2, NULL);
     S52_setDimension(_vessel_ais, 100.0, 100.0, 15.0, 15.0);
-    //S52_pushPosition(_vessel_ais, _view.cLat - 0.02, _view.cLon + 0.02, 045.0);
-    //S52_pushPosition(_vessel_ais, state->cLat - 0.04, state->cLon + 0.04, 045.0);
-    S52_pushPosition(_vessel_ais, state->cLat - 0.01, state->cLon + 0.01, 045.0);
+    //S52_pushPosition(_vessel_ais, _view.cLat - 0.02, _view.cLon + 0.02, 0.0);
+    //S52_pushPosition(_vessel_ais, state->cLat - 0.04, state->cLon + 0.04, 0.0);
+    S52_pushPosition(_vessel_ais, state->cLat - 0.01, state->cLon + 0.01, 45.0);
     S52_setVector(_vessel_ais, 1, 060.0, 16.0);   // ground
 
     // (re) set label
@@ -634,7 +623,7 @@ static int      _s52_setupVESSEL(s52droid_state_t *state)
 
     // AIS sleeping
     //_vessel_ais = S52_newVESSEL(2, 2, "MV Non Such - sleeping"););
-    //S52_pushPosition(_vessel_ais, _view.cLat - 0.02, _view.cLon + 0.02, 045.0);
+    //S52_pushPosition(_vessel_ais, _view.cLat - 0.02, _view.cLon + 0.02, 0.0);
 
     // VTS (this will not draw anything!)
     //_vessel_vts = S52_newVESSEL(3, dummy);
@@ -657,7 +646,7 @@ static int      _s52_setupOWNSHP(s52droid_state_t *state)
     _ownshp = S52_setDimension(_ownshp, 0.0, 100.0, 15.0, 0.0);
     //_ownshp = S52_setDimension(_ownshp, 1000.0, 50.0, 15.0, 15.0);
 
-    S52_pushPosition(_ownshp, state->cLat - 0.02, state->cLon - 0.01, 180.0 + 045.0);
+    S52_pushPosition(_ownshp, state->cLat - 0.02, state->cLon - 0.01, 0.0);
 
     S52_setVector(_ownshp, 0, 220.0, 6.0);  // ownship use S52_MAR_VECSTB
 
@@ -797,14 +786,18 @@ static int      _s52_setupPRDARE(s52droid_state_t *state)
     return TRUE;
 }
 
+#ifdef S52_USE_LOG
 static int      _s52_error_cb   (const char *err)
 {
     LOGI("%s", err);
     return TRUE;
 }
+#endif
 
 static int      _s52_init       (s52engine *engine)
 {
+    LOGI("s52egl:_s52_init(): starting ..\n");
+
     if ((NULL==engine->eglDisplay) || (EGL_NO_DISPLAY==engine->eglDisplay)) {
         LOGE("_init_S52(): no EGL display ..\n");
         return FALSE;
@@ -847,11 +840,12 @@ static int      _s52_init       (s52engine *engine)
 #endif
 
 #ifdef S52_USE_LOG
-        // no root to do: su -c "setprop log.redirect-stdio true"
-        if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb)) {
+        // no root, can't do: $ su -c "setprop log.redirect-stdio true"
+        if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb))
 #else
-        if (FALSE == S52_init(w, h, wmm, hmm, NULL)) {
+        if (FALSE == S52_init(w, h, wmm, hmm, NULL))
 #endif
+        {
             LOGE("_init_S52():S52_init(%i,%i,%i,%i)\n", w, h, wmm, hmm);
             engine->state.do_S52init = FALSE;
             //exit(0);
@@ -868,7 +862,12 @@ static int      _s52_init       (s52engine *engine)
     // Estuaire du St-Laurent
     //S52_loadCell(PATH "/ENC_ROOT/CA279037.000", NULL);
     // Rimouski
+#ifdef S52_USE_ADRENO
+    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
+#else
     S52_loadCell(PATH "/ENC_ROOT/CA579041.000", NULL);
+#endif
+
     // Tadoussac
     //S52_loadCell(PATH "/ENC_ROOT/CA379035.000", NULL);
     // load all 3 S57 charts
@@ -878,6 +877,8 @@ static int      _s52_init       (s52engine *engine)
 
     // read cell location fron s52.cfg
     S52_loadCell(NULL, NULL);
+
+    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
 
     // Ice - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
@@ -889,6 +890,7 @@ static int      _s52_init       (s52engine *engine)
 
     // load AIS select symb.
     //S52_loadPLib("plib-test-priv.rle");
+
 #endif  // S52_USE_ANDROID
 
 #ifdef S52_USE_WORLD
@@ -1035,6 +1037,8 @@ static int      _s52_init       (s52engine *engine)
 
     engine->state.do_S52init  = FALSE;
 
+    LOGI("s52egl:_s52_init(): end ..\n");
+
     return EGL_TRUE;
 }
 
@@ -1077,20 +1081,26 @@ static int      _s52_updTimeTag (s52engine *engine)
 }
 #endif
 
-static int      _s52_screenShot (void)
-// debug - S57 obj ID of Becancour Cell (CA579016.000)
+static int      _s52_draw_user  (s52engine *engine)
 {
-    static int takeScreenShot = TRUE;
-    if (TRUE == takeScreenShot) {
-        //S52_dumpS57IDPixels("test.png", 954, 200, 200); // waypnt
-        //S52_dumpS57IDPixels("test.png", 556, 200, 200); // land
-        S52_dumpS57IDPixels("/sdcard/s52droid/test.png", 0, 200, 200);
+    /*
+    // debug - S57 obj ID of Becancour Cell (CA579016.000)
+    {
+        static int takeScreenShot = TRUE;
+        if (TRUE == takeScreenShot) {
+            //S52_dumpS57IDPixels("test.png", 954, 200, 200); // waypnt
+            //S52_dumpS57IDPixels("test.png", 556, 200, 200); // land
+            S52_dumpS57IDPixels("/sdcard/s52droid/test.png", 0, 200, 200);
+        }
+        takeScreenShot = FALSE;
     }
-    takeScreenShot = FALSE;
+    */
 
-    return EGL_TRUE;
+    // test
+    S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test String");
+
+    return TRUE;
 }
-
 
 static int      _s52_draw_cb    (gpointer user_data)
 // return TRUE for the signal to be called again
@@ -1135,13 +1145,14 @@ static int      _s52_draw_cb    (gpointer user_data)
     // draw background
     if (TRUE == engine->do_S52draw) {
         if (TRUE == engine->do_S52setViewPort) {
-            //g_usleep(300 * 1000);  // wait 0.1 sec for EGL to settle
-
+#ifdef S52_USE_ADRENO
+            engine->width  = ANativeWindow_getWidth (engine->app->window);
+            engine->height = ANativeWindow_getHeight(engine->app->window);
+#else
+            // broken Nexus 7 (to fast!)
             eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
             eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
-            //engine->width  = ANativeWindow_getWidth (engine->app->window);
-            //engine->height = ANativeWindow_getHeight(engine->app->window);
-
+#endif
             S52_setViewPort(0, 0, engine->width, engine->height);
             engine->do_S52setViewPort = FALSE;
         }
@@ -1149,10 +1160,8 @@ static int      _s52_draw_cb    (gpointer user_data)
         S52_draw();
         engine->do_S52draw = FALSE;
 
-        //debug
-        //_s52_screenShot();
-        S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test String");
-
+        // user can add stuff on top of draw()
+        _s52_draw_user(engine);
     }
 
     // draw AIS
@@ -1175,42 +1184,6 @@ exit:
     //LOGI("s52egl:_s52_draw_cb(): end .. \n");
 
     return EGL_TRUE;
-}
-
-static int      _s52_drawcb_init(s52engine *engine)
-{
-    engine->state.main_loop       = g_main_loop_new(NULL, FALSE);
-
-    // signal _s52_draw_cb to draw immediatly
-    engine->state.gobject         = g_object_new(G_TYPE_OBJECT, NULL);
-    engine->state.s52_draw_sigID  = g_signal_new("s52-draw",             // detailed_signal
-                                                 G_TYPE_FROM_INSTANCE(engine->state.gobject),
-                                                 G_SIGNAL_RUN_LAST,
-                                                 0,
-                                                 NULL,
-                                                 NULL,
-                                                 NULL,                    // c_marshaller (default to g_cclosure_marshal_generic())
-                                                 G_TYPE_NONE,           // return_type
-                                                 //G_TYPE_INT,
-                                                 0);
-
-    /*
-    engine->state.handler = g_signal_connect_data(engine->state.gobject,      // instance
-                                                  "s52-draw",                 // detailed_signal
-                                                  G_CALLBACK(_s52_draw_cb),
-                                                  (gpointer)engine,
-                                                  NULL,
-                                                  G_CONNECT_SWAPPED);
-
-    */
-
-    engine->state.handler = g_signal_connect(G_OBJECT(engine->state.gobject),           // instance
-                                             "s52-draw",                      // detailed_signal
-                                             G_CALLBACK(_s52_draw_cb),        // c_handler
-                                             (gpointer)engine                 // data
-                                            );
-
-    return TRUE;
 }
 
 #ifdef S52_USE_ANDROID
@@ -1507,6 +1480,7 @@ static int      _android_display_init(s52engine *engine)
 
 //#if 0
 static int      _android_setVwNDraw  (s52engine *engine, double new_y, double new_x, double new_z, double new_r)
+// can't use glib signal here - android thread
 {
     if (TRUE == S52_setView(new_y, new_x, new_z, new_r)) {
         engine->state.cLat  = new_y;
@@ -1516,10 +1490,13 @@ static int      _android_setVwNDraw  (s52engine *engine, double new_y, double ne
 
 #ifdef S52_USE_EGL
         S52_draw();
+        _s52_draw_user(engine);
         S52_drawLast();
+        //_s52_draw_user(engine); // add stuff after darwLast()
 #else
         _egl_beg(engine);
         S52_draw();
+        _s52_draw_user(engine);
         S52_drawLast();
         _egl_end(engine);
 #endif
@@ -2029,10 +2006,9 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             _android_config_dump(engine->app->config);
             AConfiguration_copy(engine->config, engine->app->config);
 
-            // no AIS update with drawLast() meen that
-            // s52ui handle device orientation
-            if (FALSE == engine->do_S52drawLast)
-                break;
+            // no AIS update with drawLast()
+            //if (FALSE == engine->do_S52drawLast)
+            //    break;
 
             // ACONFIGURATION_ORIENTATION == 0x0080,
             // ACONFIGURATION_SCREEN_SIZE == 0x0200,
@@ -2107,6 +2083,7 @@ static void     _onConfigurationChanged(ANativeActivity *activity)
     return;
 }
 
+#if 0
 static void     _onNativeWindowResized(ANativeActivity* activity, ANativeWindow* window)
 // FIXME: not sure if this come from the main thread
 // so in case the glib main loop is still running at this point
@@ -2124,6 +2101,7 @@ static void     _onNativeWindowResized(ANativeActivity* activity, ANativeWindow*
 
     return;
 }
+#endif
 
 void android_main(struct android_app *app)
 // This is the main entry point of a native application that is using
@@ -2291,6 +2269,68 @@ exit:
 //
 
 #include </usr/include/X11/XKBlib.h>  // XkbKeycodeToKeysym()
+static int      _s52_setVwNDraw (s52engine *engine, double new_y, double new_x, double new_z, double new_r)
+// set View then call draw_cb
+{
+    if (TRUE == S52_setView(new_y, new_x, new_z, new_r)) {
+        engine->state.cLat  = new_y;
+        engine->state.cLon  = new_x;
+        engine->state.rNM   = new_z;
+        engine->state.north = new_r;
+
+        engine->do_S52draw     = TRUE;
+        engine->do_S52drawLast = TRUE;
+
+        // FIXME: signal broken on Android, trigger:
+        // GLib-GObject-CRITICAL **: g_closure_invoke: assertion `closure->marshal || closure->meta_marshal' failed
+
+        // from android_native_app_glue.h
+        // * The 'threaded_native_app' static library is used to provide a different
+        // * execution model where the application can implement its own main event
+        // * loop in a different thread instead.
+        g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0, NULL);
+
+        return TRUE;
+    }
+
+    return FALSE;
+}
+
+static int      _s52_drawcb_init(s52engine *engine)
+{
+    engine->state.main_loop       = g_main_loop_new(NULL, FALSE);
+
+    // signal _s52_draw_cb to draw immediatly
+    engine->state.gobject         = g_object_new(G_TYPE_OBJECT, NULL);
+    engine->state.s52_draw_sigID  = g_signal_new("s52-draw",             // detailed_signal
+                                                 G_TYPE_FROM_INSTANCE(engine->state.gobject),
+                                                 G_SIGNAL_RUN_LAST,
+                                                 0,
+                                                 NULL,
+                                                 NULL,
+                                                 NULL,                   // c_marshaller (default to g_cclosure_marshal_generic())
+                                                 G_TYPE_NONE,            // return_type
+                                                 0);
+
+    /*
+    engine->state.handler = g_signal_connect_data(engine->state.gobject,      // instance
+                                                  "s52-draw",                 // detailed_signal
+                                                  G_CALLBACK(_s52_draw_cb),
+                                                  (gpointer)engine,
+                                                  NULL,
+                                                  G_CONNECT_SWAPPED);
+
+    */
+
+    engine->state.handler = g_signal_connect(G_OBJECT(engine->state.gobject), // instance
+                                             "s52-draw",                      // detailed_signal
+                                             G_CALLBACK(_s52_draw_cb),        // c_handler
+                                             (gpointer)engine                 // data
+                                            );
+
+    return TRUE;
+}
+
 
 static int      _X11_error(Display *display, XErrorEvent *err)
 {

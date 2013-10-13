@@ -394,6 +394,7 @@ typedef DLL int STD (*S52_loadObject_cb)(const char *objname, /* OGRFeatureH */ 
  * if @encPath is a path load all S57 base cell + update
  * if @loadObject_cb is NULL then S52_loadObject() is executed
  *
+ * Note: the first ENCs to load will set the Mercator Projection Latitude
  *
  * Return: TRUE on success, else FALSE
  */
