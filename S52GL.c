@@ -108,9 +108,9 @@ static GLint _uModelview  = 0;
 static GLint _uColor      = 0;
 static GLint _uPointSize  = 0;
 static GLint _uSampler2d  = 0;
-static GLint _uBlitOn     = 0;
-static GLint _uGlowOn     = 0;
+ static GLint _uBlitOn     = 0;
 static GLint _uStipOn     = 0;
+static GLint _uGlowOn     = 0;
 
 static GLint _uPattOn     = 0;
 static GLint _uPattGridX  = 0;
@@ -121,7 +121,6 @@ static GLint _uPattH      = 0;
 // glsl varying
 static GLint _aPosition    = 0;
 static GLint _aUV          = 0;
-static GLint _aColor       = 0;
 static GLint _aAlpha       = 0;
 
 #endif // S52_USE_GLES2
@@ -2436,7 +2435,7 @@ static void      _glPointSize(GLfloat size)
 
 #ifdef S52_USE_GLES2
 #if 0
-/*
+//*
 static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
 // not used
 {
@@ -2455,7 +2454,7 @@ static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
 
     return;
 }
-*/
+//*/
 #endif
 #else
 
@@ -2539,7 +2538,7 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
 
 #ifdef S52_USE_GLES2
 #if 0
-/*
+//*
 static GLvoid    _DrawArrays_POINTS(guint npt, vertex_t *ppt)
 // not used
 {
@@ -2555,7 +2554,7 @@ static GLvoid    _DrawArrays_POINTS(guint npt, vertex_t *ppt)
 
     return;
 }
-*/
+//*/
 #endif
 #endif
 
@@ -2591,7 +2590,7 @@ static int       _VBODrawArrays(S57_prim *prim)
         // to get a baseline before optimisation with glDrawElements
         // FIX: glDrawElements need to send indices array (one per vertex)
         //      glDrawArrays indices are 'count' but no overhead / code compexity
-        //*
+        /*
         switch (mode) {
         case GL_TRIANGLE_STRIP:
             //PRINTF("TRIANGLE_STRIP = %i\n", count);
@@ -6526,8 +6525,6 @@ static int       _renderAP_es2(S52_obj *obj)
     if (0 == mask_texID) {
         int w    = ceil(tileWpx);
         int h    = ceil(tileHpx);
-        int potW = _minPOT(w);
-        int potH = _minPOT(h);
 
         glGenTextures(1, &mask_texID);
         glBindTexture(GL_TEXTURE_2D, mask_texID);
@@ -6545,6 +6542,8 @@ static int       _renderAP_es2(S52_obj *obj)
 
 #ifdef S52_USE_TEGRA2
         // POT
+        int potW = _minPOT(w);
+        int potH = _minPOT(h);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW, potH, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
 #else
         // NPOT - fail on TEGRA2
@@ -8995,7 +8994,6 @@ int        S52_GL_begin(S52_GL_mode mode)
 
 
     //-- update background ------------------------------------------
-    //if (FALSE == drawLast) {
     if (S52_GL_DRAW == mode) {
         // CS DATCVR01: 2.2 - No data areas
         if (1.0 == S52_MP_get(S52_MAR_DISP_NODATA_LAYER)) {
@@ -9009,24 +9007,12 @@ int        S52_GL_begin(S52_GL_mode mode)
         // user can draw on top of base
         // then call drawLast repeatdly
         if (TRUE == _update_fb) {
-#ifdef S52_USE_ADRENO
-            // FIXME: Adreno mess up here
-            // call need to be at S52_GL_end()
-            // maybe no window associated with the current rendering context
-            // no data has been written to framebuffer since EGL_beg() so that take make the window unavailable!!
-            // Android 4.3 (Adreno) has triple buffer!
             S52_GL_readFBPixels();
-#else
-            S52_GL_readFBPixels();
-#endif
             _update_fb = FALSE;
-
         }
 
         // load FB that was filled with the previous draw() call
         S52_GL_drawFBPixels();
-
-        //_update_fb = FALSE;
     }
     //---------------------------------------------------------------
 
@@ -9060,36 +9046,25 @@ int        S52_GL_end(S52_GL_mode mode)
     glPopAttrib();     // NOT in OpenGL ES SC
 #endif
 
-
-    // this seem to loop
-    //_checkError("S52_GL_end()");
-
-    // end picking (return to normal or stay normal)
-    _doPick = FALSE;
-
-    //if (FALSE == drawLast) {
-    if (S52_GL_DRAW == mode) {
-        _update_fb = TRUE;
-#ifdef S52_USE_ADRENO
-        // FIXME: Adreno need the call here rather than in S52_GL_begin()  why ???
-        // is it because the window/framebuffer if full of data
-        // BUG: rereading FB break blitting
-        //S52_GL_readFBPixels();
-        //_update_fb = FALSE;
-#endif
-        //S52_GL_readFBPixels();
-    }
-
 #ifdef S52_USE_COGL
     cogl_end_gl();
 #endif
 
     _glMatrixDel(VP_PRJ);
 
-    //CHECK_GL_BEGIN;
-    _GL_BEGIN = FALSE;
+    // end picking
+    if (S52_GL_PICK == mode) {
+        _doPick = FALSE;
+    }
+
+    // texture of FB need update
+    if (S52_GL_DRAW == mode) {
+        _update_fb = TRUE;
+    }
 
     _crnt_GL_mode = S52_GL_NONE;
+
+    _GL_BEGIN = FALSE;
 
 
     // hang xoom if no drawFB!
@@ -9112,6 +9087,9 @@ int        S52_GL_end(S52_GL_mode mode)
         PRINTF("TRIANGLES **** = %i, _nCall = %i\n", (int)_ntris/3, _nCall);
     }
     */
+
+    // this seem to loop
+    _checkError("S52_GL_end() -fini-");
 
     return TRUE;
 }
@@ -9232,8 +9210,6 @@ static int       _init_es2(void)
         "uniform   mat4  uModelview;   \n"
         "                              \n"
         "uniform   float uPointSize;   \n"
-        "uniform   float uStipOn;      \n"
-        "uniform   float uBlitOn;      \n"
         "                              \n"
         "uniform   float uPattOn;      \n"
         "uniform   float uPattGridX;   \n"
@@ -9243,7 +9219,6 @@ static int       _init_es2(void)
         "                              \n"
         "attribute vec2  aUV;          \n"
         "attribute vec4  aPosition;    \n"
-        "attribute vec4  aColor;       \n"
         "attribute float aAlpha;       \n"
         "                              \n"
         "varying   vec4  v_acolor;     \n"
@@ -9281,37 +9256,29 @@ static int       _init_es2(void)
         "                              \n"
         "uniform sampler2D uSampler2d; \n"
         "                              \n"
+        "uniform float     uFlatOn;    \n"
         "uniform float     uBlitOn;    \n"
+        "uniform float     uStipOn;    \n"
         "uniform float     uPattOn;    \n"
         "uniform float     uGlowOn;    \n"
-        "uniform float     uStipOn;    \n"
         "uniform float     uRasterOn;  \n"
         "                              \n"
         "uniform vec4      uColor;     \n"
         "                              \n"
-        "varying vec2  v_texCoord;     \n"
-        "varying float v_alpha;        \n"
+        "varying vec2      v_texCoord; \n"
+        "varying float     v_alpha;    \n"
         "                              \n"
         "void main(void)               \n"
         "{                             \n"
 
-//        "{gl_FragColor = uColor;}      \n";
-
-        "                                       \n"
         "                                       \n"
         "    if (1.0 == uBlitOn) {              \n"
         "       gl_FragColor = texture2D(uSampler2d, v_texCoord); \n"
-//        "       gl_FragColor.a = 0.0;           \n"
         "    } else {                           \n"
         "                                       \n"
         "    if (1.0 == uStipOn) {              \n"
         "       gl_FragColor = texture2D(uSampler2d, v_texCoord); \n"
-        "       gl_FragColor.rgb = uColor.rgb;                    \n"
-//        "       if (0.3 > gl_FragColor.a) {     \n"
-//        "           gl_FragColor.r = 1.0;       \n"
-//        "           gl_FragColor.g = 1.0;       \n"
-//        "           gl_FragColor.b = 1.0;       \n"
-//        "       }                               \n"
+        "       gl_FragColor.rgb = uColor.rgb;  \n"
         "    } else {                           \n"
         "                                       \n"
         "    if (1.0 == uPattOn) {              \n"
@@ -9406,7 +9373,6 @@ static int       _init_es2(void)
     //load all attributes
     //FIXME: move to bindShaderAttrib();
     _aPosition   = glGetAttribLocation(_programObject, "aPosition");
-    _aColor      = glGetAttribLocation(_programObject, "aColor");
     _aUV         = glGetAttribLocation(_programObject, "aUV");
     _aAlpha      = glGetAttribLocation(_programObject, "aAlpha");
 
@@ -9418,8 +9384,8 @@ static int       _init_es2(void)
     _uSampler2d  = glGetUniformLocation(_programObject, "uSampler2d");
 
     _uBlitOn     = glGetUniformLocation(_programObject, "uBlitOn");
-    _uGlowOn     = glGetUniformLocation(_programObject, "uGlowOn");
     _uStipOn     = glGetUniformLocation(_programObject, "uStipOn");
+    _uGlowOn     = glGetUniformLocation(_programObject, "uGlowOn");
 
     _uPattOn     = glGetUniformLocation(_programObject, "uPattOn");
     _uPattGridX  = glGetUniformLocation(_programObject, "uPattGridX");

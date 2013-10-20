@@ -87,7 +87,8 @@ s52gtk3egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gob
 # -DS52_USE_WORLD
 s52eglarm:  CFLAGS =  -DS52_USE_DOTPITCH                 \
                       -DS52_USE_EGL                      \
-					  -DS52_USE_TEGRA2                   \
+                      -DS52_USE_GLES2                    \
+                      -DS52_USE_TEGRA2                   \
                       -DS52_USE_ANDROID                  \
                       -DS52_USE_AFGLOW                   \
                       -DS52_USE_SOCK                     \

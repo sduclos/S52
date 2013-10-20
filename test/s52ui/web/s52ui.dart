@@ -8,7 +8,7 @@ import 'dart:async';
 import 'package:js/js.dart' as js;
 import 'dart:convert';
 
-part 'S52.dart';
+part 's52.dart';
 
 S52  s52;
 
@@ -432,8 +432,8 @@ void _initTouch() {
 
   // FIXME: get w/h on orientation change msg
   // Dart broken on android WebView
-  //_width   = window.innerWidth;
-  //_height  = window.innerHeight;
+  _width   = window.innerWidth;
+  _height  = window.innerHeight;
   //var width   = 1208;
   //var height  =  752;
   //_width  = w;
@@ -502,10 +502,10 @@ void _initTouch() {
 
       //print('onTouchMove 1: new_x1:$new_x1, new_x1:$new_y1');
 
-      //double dx_pc =  (start_x1 - new_x1) / _width;  // %
-      //double dy_pc = -(start_y1 - new_y1) / _height; // % - Y down
-      double dx_pc =  (start_x1 - new_x1) / window.innerWidth;  // %
-      double dy_pc = -(start_y1 - new_y1) / window.innerHeight; // % - Y down
+      double dx_pc =  (start_x1 - new_x1) / _width;  // %
+      double dy_pc = -(start_y1 - new_y1) / _height; // % - Y down
+      //double dx_pc =  (start_x1 - new_x1) / window.innerWidth;  // %
+      //double dy_pc = -(start_y1 - new_y1) / window.innerHeight; // % - Y down
       //double dx_pc =  (start_x1 - new_x1) / s52.width;  // %
       //double dy_pc = -(start_y1 - new_y1) / s52.height; // % - Y down
 
@@ -707,9 +707,9 @@ void _watchPosition() {
   }
 }
 
-//_toggleUIEvent(evt) {
-//evt.preventDefault();
-_toggleUIEvent() {
+_toggleUIEvent(evt) {
+  evt.preventDefault();
+//_toggleUIEvent() {
 
   print('_toggleUIEvent()');
 
@@ -728,8 +728,8 @@ _toggleUIEvent() {
 _fullList(evt) {
   evt.preventDefault();
 
-  //_toggleUIEvent(evt);
-  _toggleUIEvent();
+  _toggleUIEvent(evt);
+  //_toggleUIEvent();
 
   var txtL = query('#svg1text').text.split(':');
   _listS57IDatt(txtL[1]);

@@ -22,7 +22,7 @@
     <script type="text/javascript" src="js/cordova.js">       </script>
     <script type="text/javascript" src="js/cordova-2.2.0.js"> </script>
     -->
-    <script type="text/javascript" src="js/cordova-2.2.0.js"> </script>
+    <script type="text/javascript" src="js/cordova.js">       </script>
     <script type="text/javascript" src="js/websocket.js">     </script>
 
     <!-- dart code -->
@@ -32,27 +32,29 @@
 
   </head>
 
-  <body id="mainBody" onkeypress="toggleUI();">
+  <body id="mainBody">
     <script type="text/javascript">
-        //*
+        //* onkeypress="toggleUI();"
     	// set geolocation options here because Dart geolocation options 
     	// seem broken as of 2013OCT13 latest build (28108)
     	document.addEventListener("deviceready", getCurrentPosition, false);
       	function getCurrentPosition() {
-        	console.log("XXXX getCurrentPosition(): - start -");
+      		document.addEventListener("backbutton", toggleUI, false);
+      		//document.addEventListener("keypress", toggleUI, false);
+        	console.log("XXXXX getCurrentPosition(): - start -");
         	navigator.geolocation.getCurrentPosition(showPosition, geoError, {maximumAge:60000, timeout:5000, enableHighAccuracy:true});
-        	console.log("XXXX getCurrentPosition(): - end -");
+        	console.log("XXXXX getCurrentPosition(): - end -");
     	}
       	function showPosition(position) {
   			var latlon = "ZZZZZ showPosition(): " + position.coords.latitude + "," + position.coords.longitude;
   			console.log(latlon);
 	  	}
       	function geoError(error) {
-      	  	console.log('EEEEEEEEE geoError(): code: '    + error.code    + ', ' + 'message: ' + error.message + '\n');
+      	  	console.log('EEEEE geoError(): code: '    + error.code    + ', ' + 'message: ' + error.message + '\n');
         }
+      	
         //*/
-		document.addEventListener("backbutton", toggleUI, true);
-      	// WebSocket <--> libS52
+        // WebSocket <--> libS52
       	// FIXME: can Dart handle directly Cordova websocket on Android ?
 
       	//var wsUri = 'ws://192.168.1.66:2950'; // laptop
@@ -72,7 +74,7 @@
       	function onClose(evt)   { console.log("s52ui.html:Websock:onClose():" + evt + "<<<"); }
       	function onError(evt)   { console.log("s52ui.html:Websock:onError():" + evt + "<<<"); }
 
-      	function toggleUI()     {}
+      	function toggleUI(evt)  {}
     </script>
   
     <p id="__beg_mainWindowComponent" hidden="true">id_beg</p>

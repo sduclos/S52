@@ -73,7 +73,7 @@ $ ln -s ../libS52.so libS52.so (to make a symbolic link)
 
 Other Folder:
 
-- s52ui: HTML5 S52 test UI (Dart)
+- s52ui: HTML5/Dart UI for testing libS52 functionality
 
 - android: run libS52 on android, use s52ui
 

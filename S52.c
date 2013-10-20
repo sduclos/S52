@@ -266,7 +266,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.102\n"
+      "libS52 0.103\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif

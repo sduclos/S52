@@ -112,8 +112,6 @@ $$.Closure$4 = [P, {"": "Closure;call$4,$name"}];
 
 $$.Closure$5 = [P, {"": "Closure;call$5,$name"}];
 
-$$.Closure$3 = [X, {"": "Closure;call$3,$name"}];
-
 init.mangledNames = {$$dom_addEventListener$3: "$dom_addEventListener:3:0", $$dom_removeEventListener$3: "$dom_removeEventListener:3:0", $add: "+:1:0", $and: "&:1:0", $div: "/:1:0", $ge: ">=:1:0", $gt: ">:1:0", $index: "[]:1:0", $indexSet: "[]=:2:0", $lt: "<:1:0", $mul: "*:1:0", $negate: "unary-:0:0", $shl: "<<:1:0", $shr: ">>:1:0", $sub: "-:1:0", $xor: "^:1:0", __isolate_helper$_callback$2: "_callback:2:0", _addError$1: "_addError:1:0", _addPending$1: "_addPending:1:0", _async$_add$1: "_add:1:0", _asyncCompleteError$2: "_asyncCompleteError:2:0", _complete$1: "_complete:1:0", _completeError$1: "_completeError:1:0", _initCustomEvent$4: "_initCustomEvent:4:0", _onError$1: "_onError:1:0", _onValue$1: "_onValue:1:0", _removeListeners$0: "_removeListeners:0:0", _replaceChild$2: "_replaceChild:2:0", _setError$1: "_setError:1:0", _setValue$1: "_setValue:1:0", _whenCompleteAction$0: "_whenCompleteAction:0:0", abs$0: "abs:0:0", add$1: "add:1:0", bindCallback$2$runGuarded: "bindCallback:2:0:runGuarded", bindUnaryCallback$2$runGuarded: "bindUnaryCallback:2:0:runGuarded", call$0: "call:0:0", call$1: "call:1:0", call$2: "call:2:0", call$2$onError: "call:2:0:onError", call$2$runGuarded: "call:2:0:runGuarded", call$3: "call:3:0", call$3$onDone$onError: "call:3:0:onDone:onError", call$4: "call:4:0", call$4$cancelOnError$onDone$onError: "call:4:0:cancelOnError:onDone:onError", call$5: "call:5:0", callSync$1: "callSync:1:0", cancel$0: "cancel:0:0", cancelSchedule$0: "cancelSchedule:0:0", catchError$1: "catchError:1:0", codeUnitAt$1: "codeUnitAt:1:0", createPeriodicTimer$2: "createPeriodicTimer:2:0", createTimer$2: "createTimer:2:0", deleteRow$1: "deleteRow:1:0", deserializeCloseToken$1: "deserializeCloseToken:1:0", deserializeIsolateSink$1: "deserializeIsolateSink:1:0", deserializeSendPort$1: "deserializeSendPort:1:0", endsWith$1: "endsWith:1:0", eval$1: "eval:1:0", forEach$1: "forEach:1:0", get$__isolate_helper$_callback: "_callback", get$__isolate_helper$_id: "_id", get$_collection$_element: "_element", get$_collection$_value: "_value", get$_contents: "_contents", get$_duration: "_duration", get$_error: "_error", get$_errorTest: "_errorTest", get$_errorZone: "_errorZone", get$_hasError: "_hasError", get$_isChained: "_isChained", get$_isComplete: "_isComplete", get$_key: "_key", get$_name: "_name", get$_next: "_next", get$_nextListener: "_nextListener", get$_onCancel: "_onCancel", get$_onError: "_onError", get$_onListen: "_onListen", get$_onPause: "_onPause", get$_onResume: "_onResume", get$_onValue: "_onValue", get$_previous: "_previous", get$_specification: "_specification", get$_state: "_state", get$_value: "_value", get$_whenCompleteAction: "_whenCompleteAction", get$_zone: "_zone", get$alpha: "alpha", get$attributes: "attributes", get$backgroundColor: "backgroundColor", get$checked: "checked", get$children: "children", get$code: "code", get$color: "color", get$coords: "coords", get$createPeriodicTimer: "createPeriodicTimer", get$createTimer: "createTimer", get$current: "current", get$data: "data", get$detail: "detail", get$disabled: "disabled", get$display: "display", get$future: "future", get$handleUncaughtError: "handleUncaughtError", get$inMilliseconds: "inMilliseconds", get$isEmpty: "isEmpty", get$isGetter: "isGetter", get$isSetter: "isSetter", get$isolateStatics: "isolateStatics", get$iterator: "iterator", get$latitude: "latitude", get$length: "length", get$longitude: "longitude", get$memberName: "memberName", get$name: "name", get$namedArguments: "namedArguments", get$next: "next", get$onmessage: "onmessage", get$page: "page", get$parent: "parent", get$positionalArguments: "positionalArguments", get$registerCallback: "registerCallback", get$registerUnaryCallback: "registerUnaryCallback", get$rows: "rows", get$run: "run", get$runUnary: "runUnary", get$scheduleMicrotask: "scheduleMicrotask", get$style: "style", get$text: "text", get$touches: "touches", get$type: "type", get$value: "value", get$valueAsNumber: "valueAsNumber", get$varData: "varData", get$x: "x", get$y: "y", getPropertyValue$1: "getPropertyValue:1:0", handleUncaughtError$1: "handleUncaughtError:1:0", inSameErrorZone$1: "inSameErrorZone:1:0", indexOf$1: "indexOf:1:0", insertRow$1: "insertRow:1:0", lookup$1: "lookup:1:0", map$1: "map:1:0", matchAsPrefix$2: "matchAsPrefix:2:0", moveNext$0: "moveNext:0:0", pause$0: "pause:0:0", preventDefault$0: "preventDefault:0:0", process$0: "process:0:0", registerCallback$1: "registerCallback:1:0", registerUnaryCallback$1: "registerUnaryCallback:1:0", remove$0: "remove:0:0", removeAt$1: "removeAt:1:0", replaceWith$1: "replaceWith:1:0", resume$0: "resume:0:0", run$1: "run:1:0", runGuarded$1: "runGuarded:1:0", runUnaryGuarded$2: "runUnaryGuarded:2:0", schedule$1: "schedule:1:0", scheduleMicrotask$1: "scheduleMicrotask:1:0", send$1: "send:1:0", send$2: "send:2:0", set$_collection$_value: "_value=", set$_isChained: "_isChained=", set$_next: "_next=", set$_nextListener: "_nextListener=", set$_previous: "_previous=", set$backgroundColor: "backgroundColor=", set$checked: "checked=", set$color: "color=", set$disabled: "disabled=", set$display: "display=", set$length: "length=", set$onmessage: "onmessage=", set$type: "type=", set$varData: "varData=", setProperty$3: "setProperty:3:0", skip$1: "skip:1:0", split$1: "split:1:0", startsWith$1: "startsWith:1:0", substring$1: "substring:1:0", substring$2: "substring:2:0", then$1: "then:1:0", then$2$onError: "then:2:0:onError", toDouble$0: "toDouble:0:0", toInt$0: "toInt:0:0", toJson$0: "toJson:0:0", toList$0: "toList:0:0", toSendPort$0: "toSendPort:0:0", visitCloseToken$1: "visitCloseToken:1:0", visitIsolateSink$1: "visitIsolateSink:1:0", visitList$1: "visitList:1:0", visitMap$1: "visitMap:1:0", visitPrimitive$1: "visitPrimitive:1:0", visitSendPort$1: "visitSendPort:1:0", visitSendPortSync$1: "visitSendPortSync:1:0", write$1: "write:1:0", writeAll$2: "writeAll:2:0"};
 (function (reflectionData) {
   function map(x){x={x:x};delete x.x;return x}
@@ -13566,10 +13564,9 @@ _initUI: function() {
 
 "+_initUI:0:0": 1,
 
-_initTouch: function(orient, w, h) {
+_initTouch: function() {
   var t1, target, t2, t3;
   t1 = {};
-  H.Primitives_printString("+++++++++++++++++++++++++++_initTouch(): O:" + H.S(orient) + " W:" + H.S(w) + " x H:" + H.S(h));
   target = document.querySelector("#svg1");
   t1.doBlit1_1 = true;
   t1.doBlit2_2 = true;
@@ -13589,8 +13586,8 @@ _initTouch: function(orient, w, h) {
   t1.cLon_16 = 0;
   t1.rNM_17 = -1;
   t1.north_18 = -1;
-  $._width = w;
-  $._height = h;
+  $._width = window.innerWidth;
+  $._height = window.innerHeight;
   target.toString;
   t2 = new W._ElementEventStreamImpl(target, C.EventStreamProvider_touchstart._eventType, false);
   H.setRuntimeTypeInfo(t2, [null]);
@@ -13609,7 +13606,7 @@ _initTouch: function(orient, w, h) {
   t1._tryResume$0();
 },
 
-"+_initTouch:3:0": 1,
+"+_initTouch:0:0": 1,
 
 GPSpos: function(position) {
   var t1;
@@ -13641,7 +13638,8 @@ _watchPosition: function() {
 
 "+_watchPosition:0:0": 1,
 
-_toggleUIEvent: function() {
+_toggleUIEvent: function(evt) {
+  J.preventDefault$0$x(evt);
   H.Primitives_printString("_toggleUIEvent()");
   if ("none" === J.get$display$x(document.querySelector("#tbodyL").style)) {
     J.set$display$x(document.querySelector("#tbodyL").style, "table");
@@ -13655,12 +13653,12 @@ _toggleUIEvent: function() {
   }
 },
 
-"+_toggleUIEvent:0:0": 1,
+"+_toggleUIEvent:1:0": 1,
 
 _fullList: function(evt) {
   var txtL;
   J.preventDefault$0$x(evt);
-  X._toggleUIEvent();
+  X._toggleUIEvent(evt);
   txtL = document.querySelector("#svg1text").textContent.split(":");
   if (1 >= txtL.length)
     throw H.ioore(txtL, 1);
@@ -13679,6 +13677,7 @@ _initMain: function(evt) {
   H.Primitives_printString("s52ui.dart:_initMain()");
   $.s52 = X.S52$();
   X._start();
+  X._initTouch();
 },
 
 "+_initMain:1:0": 1,
@@ -13687,8 +13686,6 @@ main: function() {
   H.Primitives_printString("s5ui.dart:main(): start");
   Q._enterScopeIfNeeded();
   J.$indexSet$ax(Q._deserialize($._jsPortSync.callSync$1([])), "onOpen", Q.Callback$once(X._initMain$closure, false));
-  Q._enterScopeIfNeeded();
-  J.$indexSet$ax(Q._deserialize($._jsPortSync.callSync$1([])), "setTouchScrnSz", Q.Callback$once(X._initTouch$closure, false));
   Q._enterScopeIfNeeded();
   J.$indexSet$ax(Q._deserialize($._jsPortSync.callSync$1([])), "toggleUI", Q.Callback$many(X._toggleUIEvent$closure, false));
 },
@@ -13771,7 +13768,7 @@ S52: {"": "Object;_completer-,_data-,_s52ui$_id-,_stopwatch-,_timer-,_cancelTime
     var t1, t2;
     t1 = this._completer;
     if (null != t1 && t1.future._state === 0) {
-      H.Primitives_printString("drawLast(): _completer NOT completed XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+      H.Primitives_printString("drawLast(): _completer NOT completed XXXXXXXXX");
       this._timer.cancel$0();
       this._timer = null;
       throw H.wrapException("drawLast(): _completer is busy");
@@ -14910,14 +14907,22 @@ _initTouch__closure2: {"": "Closure;box_1-",
 
 _initTouch_closure1: {"": "Closure;box_1-,dy_pc_2-",
   call$1: function($event) {
-    var t1, t2;
+    var t1, t2, t3, t4, t5;
     t1 = J.getInterceptor$x($event);
     t1.preventDefault$0($event);
     t2 = this.box_1;
     if (t2.ticks_13 < 6) {
       if ("inline-block" === J.get$display$x(document.querySelector("#svg1g").style))
         return;
-      $.s52.pickAt$2(J.toDouble$0$n(t2.start_x1_5), J.$sub$n($._height, J.toDouble$0$n(t2.start_y1_6))).then$1(new X._initTouch__closure(t2));
+      t1 = $.s52;
+      t3 = J.toDouble$0$n(t2.start_x1_5);
+      t4 = $._height;
+      t5 = J.toDouble$0$n(t2.start_y1_6);
+      if (typeof t4 !== "number")
+        throw t4.$sub();
+      if (typeof t5 !== "number")
+        throw H.iae(t5);
+      t1.pickAt$2(t3, t4 - t5).then$1(new X._initTouch__closure(t2));
       return;
     }
     if (0 !== J.get$length$asx(t1.get$touches($event))) {
@@ -15048,7 +15053,7 @@ _initTouch_____closure0: {"": "Closure;",
 
 _initTouch___closure0: {"": "Closure;box_1-",
   call$1: function(ret) {
-    var t1, t2;
+    var t1, t2, t3, t4, t5;
     t1 = J.getInterceptor$asx(ret);
     t2 = this.box_1;
     t2.cLat_15 = t1.$index(ret, 0);
@@ -15056,7 +15061,15 @@ _initTouch___closure0: {"": "Closure;box_1-",
     t2.rNM_17 = t1.$index(ret, 2);
     t2.north_18 = t1.$index(ret, 3);
     H.Primitives_printString("getView(): cLat:" + H.S(t2.cLat_15) + ", cLon:" + H.S(t2.cLon_16) + ", rNM:" + H.S(t2.rNM_17) + ", north:" + H.S(t2.north_18));
-    $.s52.xy2LL$2(J.toDouble$0$n(t2.new_x1_9), J.$sub$n($._height, J.toDouble$0$n(t2.new_y1_10))).then$1(new X._initTouch____closure(t2));
+    t1 = $.s52;
+    t3 = J.toDouble$0$n(t2.new_x1_9);
+    t4 = $._height;
+    t5 = J.toDouble$0$n(t2.new_y1_10);
+    if (typeof t4 !== "number")
+      throw t4.$sub();
+    if (typeof t5 !== "number")
+      throw H.iae(t5);
+    t1.xy2LL$2(t3, t4 - t5).then$1(new X._initTouch____closure(t2));
   },
   "+call:1:0": 1,
   $isFunction: true
@@ -15066,14 +15079,22 @@ _initTouch___closure0: {"": "Closure;box_1-",
 
 _initTouch____closure: {"": "Closure;box_1-",
   call$1: function(ret) {
-    var t1, x1, y1;
+    var t1, x1, y1, t2, t3, t4, t5;
     t1 = J.getInterceptor$asx(ret);
     x1 = t1.$index(ret, 0);
     y1 = t1.$index(ret, 1);
     t1 = this.box_1;
     t1.new_x1_9 = -1;
     t1.new_y1_10 = -1;
-    $.s52.xy2LL$2(J.toDouble$0$n(t1.start_x1_5), J.$sub$n($._height, J.toDouble$0$n(t1.start_y1_6))).then$1(new X._initTouch_____closure(t1, x1, y1));
+    t2 = $.s52;
+    t3 = J.toDouble$0$n(t1.start_x1_5);
+    t4 = $._height;
+    t5 = J.toDouble$0$n(t1.start_y1_6);
+    if (typeof t4 !== "number")
+      throw t4.$sub();
+    if (typeof t5 !== "number")
+      throw H.iae(t5);
+    t2.xy2LL$2(t3, t4 - t5).then$1(new X._initTouch_____closure(t1, x1, y1));
   },
   "+call:1:0": 1,
   $isFunction: true
@@ -15250,9 +15271,8 @@ init.globalFunctions._deserialize$closure = Q._deserialize$closure = new H.Closu
 init.globalFunctions._updateUIcol$closure = X._updateUIcol$closure = new H.Closure$2(X._updateUIcol, "_updateUIcol$closure");
 init.globalFunctions._updateAIS$closure = X._updateAIS$closure = new H.Closure$2(X._updateAIS, "_updateAIS$closure");
 init.globalFunctions._loadENC$closure = X._loadENC$closure = new H.Closure$2(X._loadENC, "_loadENC$closure");
-init.globalFunctions._initTouch$closure = X._initTouch$closure = new X.Closure$3(X._initTouch, "_initTouch$closure");
 init.globalFunctions.GPSpos$closure = X.GPSpos$closure = new H.Closure$1(X.GPSpos, "GPSpos$closure");
-init.globalFunctions._toggleUIEvent$closure = X._toggleUIEvent$closure = new H.Closure$0(X._toggleUIEvent, "_toggleUIEvent$closure");
+init.globalFunctions._toggleUIEvent$closure = X._toggleUIEvent$closure = new H.Closure$1(X._toggleUIEvent, "_toggleUIEvent$closure");
 init.globalFunctions._initMain$closure = X._initMain$closure = new H.Closure$1(X._initMain, "_initMain$closure");
 init.globalFunctions.main$closure = X.main$closure = new H.Closure$0(X.main, "main$closure");
 // Runtime type support

@@ -157,13 +157,13 @@ class S52 {
   }
 
 
-  ////////////////////// FIXME: REFACTOR use send() ////////////////////////////////
+  ////////////////////// FIXME: REFACTOR use send() ///////////////////////////
   // pro: less code
   // con: lost of info .. doesn't mirror S52.h well since all call info would be
   // littered across s52ui.dart
   Future<List> drawLast() {
     if (null!=_completer && false==_completer.isCompleted) {
-      print("drawLast(): _completer NOT completed XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+      print("drawLast(): _completer NOT completed XXXXXXXXX");
       _timer.cancel();
       _timer = null;
       throw "drawLast(): _completer is busy";

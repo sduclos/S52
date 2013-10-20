@@ -1,4 +1,4 @@
-# Makefile:
+# Makefile: make HTML5/Dart(JS) UI for testing libS52 functionality
 #
 # 2013FEB25
 

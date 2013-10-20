@@ -877,8 +877,7 @@ static int      _s52_init       (s52engine *engine)
 
     // read cell location fron s52.cfg
     S52_loadCell(NULL, NULL);
-
-    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
+    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
 
     // Ice - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
@@ -1464,12 +1463,16 @@ static int      _android_display_init(s52engine *engine)
         return FALSE;
     }
 
-    if (TRUE != _s52_init(engine)) {
+    if (FALSE == _s52_init(engine)) {
         // land here if libS52 as been init before
         // then re-init only GLES2 part of libS52
         //extern int   S52_GL_init_GLES2(void);
         //S52_GL_init_GLES2();
+        return FALSE;
     }
+
+    // init s52ui (HTML5)
+    //_android_init_external_UI(engine);
 
     // start draw loop
     engine->state.s52_draw_cb_ID     = g_timeout_add(500, _s52_draw_cb, (void*)engine);     // 0.5 sec (500msec)

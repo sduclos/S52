@@ -227,10 +227,10 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
             DEFS   = -DS52_USE_GLIB2                       \
                      -DS52_USE_PROJ                        \
                      -DS52_USE_DOTPITCH                    \
-                     -DS52_USE_OPENGL_VBO                  \
-                     -DS52_USE_FREETYPE_GL                 \
                      -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
+                     -DS52_USE_OPENGL_VBO                  \
+                     -DS52_USE_FREETYPE_GL                 \
                      -DS52_USE_ADRENO                      \
                      -DS52_USE_ANDROID                     \
                      -DS52_USE_OGR_FILECOLLECTOR           \
