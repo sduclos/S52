@@ -1,8 +1,12 @@
+// s52ui.js: helper functional template for 
+//           DOM loading via tinyjet.js (witch is base on XULjet.js)
+//
+ 
+
 //////////////////////////////////////////////////////////////////
 //
 // Main (Template)
 //
-
 
 var Main = function(aWindow)
 {
@@ -59,7 +63,7 @@ Main.prototype.sectionTitle = function(html, txt)
 }
 
 Main.prototype.tables = function(html)
-{   //, cellpadding:"0", cellspacing:"0" , width:"50%"
+{   // width:"50%"
     html.table({id:'tableL', class:"scrollTableL", border:"0", cellpadding:"0", cellspacing:"0"},
                html.tbody({id:"tbodyL", class:"scrollContentL"},
 
@@ -118,7 +122,7 @@ Main.prototype.tables = function(html)
               ); // table
 
 
-    // , cellpadding:"0", cellspacing:"0", width:"50%"
+    // width:"50%"
     html.table({id:'tableR', class:"scrollTableR", border:"0", cellpadding:"0", cellspacing:"0"},
                html.tbody({id:"tbodyR", class:"scrollContentR"})
               ); // table
@@ -128,7 +132,6 @@ Main.prototype.tables = function(html)
 
 Main.prototype.render = function(html)
 {
-    //*
     var radius = '50%';
     if (window.innerWidth < window.innerHeight)
     	radius = window.innerWidth  / 2.0;
@@ -145,22 +148,30 @@ Main.prototype.render = function(html)
            );
 
 
+/* test
+    SVG.svg({id:'svg2', width:'100%', height:'100%', version:'1.1'},
+        	SVG.circle({id:'svg1circle', r:radius, cx:'50%', cy:'50%', style:'stroke:red;fill:none;stroke-width:1;'})
+        	);
 
-    //SVG.svg({id:'svg2', width:'100%', height:'100%', version:'1.1'},
-    //    	SVG.circle({id:'svg1circle', r:radius, cx:'50%', cy:'50%', style:'stroke:red;fill:none;stroke-width:1;'})
-    //    	);
+        	SVG.circle({id:'svg1circle1', r:radius-10, cx:'50%', cy:'50%',
+        	 style:'stroke:red;fill:none;stroke-width:10;stroke-dasharray:1,67;'}),
+            SVG.line({x1:'50%', y1:'0',   x2:'50%',             y2:window.innerHeight, style:'stroke:blue;stroke-width:1;'}),
+            SVG.line({x1:'0',   y1:'50%', x2:window.innerWidth, y2:'50%',              style:'stroke:blue;stroke-width:1;'})
+        	
+        	SVG.circle({id:'svg1circle1', r:radius-5, cx:'50%', cy:'50%',
+        	 style:'stroke:red;fill:none;stroke-width:5;stroke-dasharray:10,10;'}),
 
-    //SVG.svg({id:'svg1'},
-            	//SVG.text({id:'svg1text', x:'20%', y:'20%', fill:'red'},
-             	//SVG.line  ({x1:'0', y1:'0', x2:'100', y2:'200', style:"stroke:blue;stroke-width:20"})
-            	//SVG.line  ({x1:'30', y1:'90', x2:'90', y2:'30', stroke:'red', stroke-width:'20'})
-               	//onmouseover:onOver, onmouseout:onOut })
-                	       //SVG.animate({attributeName:'cx', from:'60', to:'200', dur:'30s'})
+    SVG.svg({id:'svg1'},
+            SVG.text({id:'svg1text', x:'20%', y:'20%', fill:'red'},
+            SVG.line  ({x1:'0', y1:'0', x2:'100', y2:'200', style:"stroke:blue;stroke-width:20"})
+            SVG.line  ({x1:'30', y1:'90', x2:'90', y2:'30', stroke:'red', stroke-width:'20'})
+            //onmouseover:onOver, onmouseout:onOut })
+            //SVG.animate({attributeName:'cx', from:'60', to:'200', dur:'30s'})
 
 
-    //html.textarea({id:'output1', rows:10, cols:40});
-    //html.hr();
-    //*/
+    html.textarea({id:'output1', rows:10, cols:40});
+    html.hr();
+*/
 
     html.insert(this.tables);
 }

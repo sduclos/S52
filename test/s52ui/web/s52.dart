@@ -18,7 +18,7 @@ class S52 {
 
   // call drawLast() at interval
   Timer _timer        = null;
-  bool  _cancelTimer  = false;
+  bool  skipTimer     = false;
 
   //var width;
   //var height;
@@ -73,8 +73,9 @@ class S52 {
       return;
 
     // call drawLast every second (2sec)
-    _timer = new Timer.periodic(new Duration(milliseconds: 2000), (timer) {
-      drawLast().then((ret) {});
+    _timer = new Timer.periodic(new Duration(milliseconds: 1000), (timer) {
+      if (false == skipTimer)
+        drawLast().then((ret) {});
 
       //drawLast()
       //  .then(      (ret) {})
@@ -101,23 +102,24 @@ class S52 {
     }
 
     if (null == data["error"]) {
-      print('rcvMsg(): failed NO key: "error" [${str}]');
+      print('rcvMsg(): failed NO key: "error" [$data]');
       return;
     }
     if ("no error" != data["error"]) {
-      print("rcvMsg(): S52 call failed");
+      print("rcvMsg(): S52 call failed  [$data]");
       return;
     }
 
     if (_id != data["id"]) {
-      print('rcvMsg(): failed on key: _id=$_id data_id=${data["id"]}');
+      print('rcvMsg(): failed on key: _id=$_id data_id=${data["id"]} [$data]');
       throw "rcvMsg(): ID mismatch";
     }
 
     _stopwatch.stop();
-    print("roundtrip: ${_stopwatch.elapsedMilliseconds}msec");
+    
+    // debug
+    //print("roundtrip: ${_stopwatch.elapsedMilliseconds}msec");
     //print('rcvMsg():receive JSON str from libS52: $str');
-
 
     ++_id;
     _completer.complete(data['result']);
@@ -132,8 +134,6 @@ class S52 {
 
     _completer = new Completer();
 
-    //js.context.sndS52Msg(str);
-    //js.context.websocket.send(str);
     js.context['websocket'].send(str);
 
     //_ws.send(str);
