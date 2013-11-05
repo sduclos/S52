@@ -77,15 +77,14 @@ s52win32 : LIBWIN32PATH = ../../mingw
 TAGS     = ctags
 
 SRCS_S52 = S52GL.c S52PL.c S52CS.c S57ogr.c S57data.c S52MP.c S52utils.c S52.c
-#OBJS_S52 = S52GL.o S52PL.o S52CS.o S57ogr.o S57data.o S52MP.o S52utils.o S52raz-3.2.rle.o S52.o
 OBJS_S52 = $(SRCS_S52:.c=.o) S52raz-3.2.rle.o
 
 OBJS_GV  = gvS57layer.o S57gv.o
 
 OBJS_FREETYPE_GL = ./lib/freetype-gl/vector.o ./lib/freetype-gl/texture-atlas.o ./lib/freetype-gl/texture-font.o
 
-# Note: there is no GLU for ARM, but ARM can handle double of tess, so we pull
-# tess for ARM in COGL.
+# Note: there is no GLU for ARM, the code handle tessallation by converting double->float on the fly, 
+# so the tess code is pulled from COGL.
 # (Quadric are also in GLU, but it is done by hand in S52GL.c to output float
 # for VBO in GLES2 for circle / disk / arc.)
 OBJS_TESS = ./lib/tesselator/dict.o      ./lib/tesselator/geom.o     \
@@ -94,6 +93,7 @@ OBJS_TESS = ./lib/tesselator/dict.o      ./lib/tesselator/geom.o     \
             ./lib/tesselator/sweep.o     ./lib/tesselator/tessmono.o \
             ./lib/tesselator/tess.o
 
+# handle JSON in WebSocket
 OBJ_PARSON = ./lib/parson/parson.o
 
 OPENEV_HOME  = `pwd -P`/../../openev-cvs

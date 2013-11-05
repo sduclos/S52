@@ -34,14 +34,11 @@ Curent focus (top priority *):
     -use "freedesktop.org" specs for .cfg (ie XDG_*)
 
     Testing:
-    -compare to S52/test/ref_dump/, for self testing, regression, ..
-    -dump gl* call in clear text to diff with reference dump (debug)
-    -write to file raw GL call --for self test
+    -apitrace: to record gl*() calls / playback / diff / optimisation
     
 In a day:
     -libgdal.a: full build is heavy, build only with the final driver set (S57, PNG, shapefile)
     -code: static global variable should all be inside a context struct .. of course!
-    -GL: SENC save display list / VBO (somehow!) 
     -BUG: S-52 specs 3.2 for TOPMAR01 (init 'floating' inside loop)
     -WARN: chart no 1 PLib put $LINE in layer 0
     -OGR: IHOOCDD.XXX

@@ -35,7 +35,7 @@
 #endif
 
 #ifdef __cplusplus
-// Ruby FFI need to see C when S52 is compiled with g++
+// Ruby FFI need to see C when libS52.so is compiled with g++
 extern "C" {
 #endif
 
@@ -253,7 +253,7 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
  *   respond to changes in size of the canvas and set the OpenGL viewport in turn.
  * So this call is simply a wrapper on 'void glViewport(GLint x, GLint y, GLsizei width, GLsizei height)'
  *
- * Use this call in conjuction with S52_view() and S52_draw() to setup a magnifying glass
+ * Use this call in conjuction with S52_setView() and S52_draw() to setup a magnifying glass
  * or an overview
  *
  * Return: TRUE on success, else FALSE

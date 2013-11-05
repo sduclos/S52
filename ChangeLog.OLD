@@ -2,6 +2,11 @@
 #                The 'real' ChangeLog is generated with the Perl script cvs2cl.pl
 #
 
+
+2013NOV05
+    -mob use GLES3 for Adreno (android) to get NPOT texture in blit()
+    -mod s52ui to account for devicePixelRatio for the Nexus 7
+
 2013OCT13
     -fix Adreno swapbuffer handling while saving draw() FB to texture
     -fix eglMakeCurrent EGL_BAD_ACCESS Error msg on Android

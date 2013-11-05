@@ -233,10 +233,10 @@ static char      *_intl     = NULL;
 static int        _nCull    = 0;
 static int        _nTotal   = 0;
 
+// helper - save user center of view in degree
 typedef struct {
     double cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
 } _view_t;
-//static _view_t _view = {INFINITY, INFINITY, INFINITY, INFINITY};
 static _view_t _view = {0.0, 0.0, 0.0, 0.0};
 
 // Note: thread awarness to prenvent two threads from writing into the 'scene graph' at once
@@ -266,7 +266,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.103\n"
+      "libS52 0.104\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1203,11 +1203,19 @@ static int        _initPROJ(void)
     _view.cLon  =  (ext.E + ext.W) / 2.0;
     _view.rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
     _view.north = 0.0;
+    //double cLat  =  (ext.N + ext.S) / 2.0;
+    //double cLon  =  (ext.E + ext.W) / 2.0;
+    //double rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
+    //double north = 0.0;
+
+    //S52_GL_setView(cLat, cLon, rNM, north);
 
     {// debug
         double xyz[3] = {_view.cLat, _view.cLon, 0.0};
+        //double xyz[3] = {cLat, cLon, 0.0};
         S57_geo2prj3dv(1, xyz);
         PRINTF("PROJ CENTER: lat:%f, lon:%f, rNM:%f\n", xyz[0], xyz[1], _view.rNM);
+        //PRINTF("PROJ CENTER: lat:%f, lon:%f, rNM:%f\n", xyz[0], xyz[1], rNM);
     }
 
     return TRUE;
@@ -1299,6 +1307,12 @@ DLL int    STD S52_init(void)
 {
     //libS52Zdso();
 
+    PRINTF("screen_pixels_w: %i, screen_pixels_h: %i, screen_mm_w: %i, screen_mm_h: %i\n",
+            screen_pixels_w,     screen_pixels_h,     screen_mm_w,     screen_mm_h);
+
+    if (screen_pixels_w<1 || screen_pixels_h<1 || screen_mm_w<1 || screen_mm_h<1)
+        return FALSE;
+
     if (NULL != err_cb)
         err_cb("S52_init(): test err log\n");
 
@@ -1329,9 +1343,6 @@ DLL int    STD S52_init(void)
     //g_mem_set_vtable(glib_mem_profiler_table);
     //g_mem_profile();
 
-
-    PRINTF("screen_pixels_w: %i, screen_pixels_h: %i, screen_mm_w: %i, screen_mm_h: %i\n",
-            screen_pixels_w,     screen_pixels_h,     screen_mm_w,     screen_mm_h);
 
 
     g_atomic_int_set(&_atomicAbort, FALSE);
@@ -2254,6 +2265,8 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
             PRINTF("       (this msg will not repeat)\n");
             silent = TRUE;
         }
+        // FIXME: add macro in S52_utils.h
+        //WARN_ONCE("NOTE: using default S52_loadObject() callback\n");
         loadObject_cb = S52_loadObject;
     }
 
@@ -3992,9 +4005,6 @@ DLL int    STD S52_drawLayer(const char *name)
         return FALSE;
     */
 
-
-    _doPick = FALSE;
-    //if (TRUE == S52_GL_begin(_doPick, FALSE)) {
     if (TRUE == S52_GL_begin(S52_GL_DRAW)) {
 
         //////////////////////////////////////////////
@@ -4086,39 +4096,36 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
 
     int ret = FALSE;
 
+    // debug
+    PRINTF("scale_x:%f, scale_y:%f, scale_z:%f, north:%f\n", scale_x, scale_y, scale_z, north);
+
     if (1.0 < ABS(scale_x)) {
-        PRINTF("zoom factor overflow (>1.0) [%f]\n", scale_x);
+        PRINTF("zoom factor X overflow (>1.0) [%f]\n", scale_x);
         goto exit;
     }
 
     if (1.0 < ABS(scale_y)) {
-        PRINTF("zoom factor overflow (>1.0) [%f]\n", scale_y);
+        PRINTF("zoom factor Y overflow (>1.0) [%f]\n", scale_y);
         goto exit;
     }
 
-    //if (1.0 < ABS(scale_z)) {
-    if (0.6 < ABS(scale_z)) {
-        PRINTF("zoom factor overflow (>0.6) [%f]\n", scale_z);
+    if (0.5 < ABS(scale_z)) {
+        PRINTF("zoom factor Z overflow (>0.5) [%f]\n", scale_z);
         goto exit;
     }
 
     if ((north<0.0) || (360.0<=north)) {
         PRINTF("WARNING: north (%f), reset to %f\n", north, _view.north);
+        // FIXME: get the real value
         north = _view.north;
+        //north = 0.0;
     }
-
-
-    // debug
-    PRINTF("scale_x:%f, scale_y:%f, scale_z:%f, north:%f\n", scale_x, scale_y, scale_z, north);
 
     g_timer_reset(_timer);
 
-
-    //if (TRUE == S52_GL_begin(FALSE, FALSE)) {
     if (TRUE == S52_GL_begin(S52_GL_BLIT)) {
         S52_GL_drawBlit(scale_x, scale_y, scale_z, north);
 
-        //S52_GL_end(FALSE);
         S52_GL_end(S52_GL_BLIT);
         ret = TRUE;
     } else {
@@ -4226,20 +4233,21 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
         return FALSE;
     }
 
+    //*
     if (90.0 < ABS(cLat))
         cLat = _view.cLat;
     if (180.0 < ABS(cLon))
         cLon = _view.cLon;
+    //*/
 
     // FIXME: no warning if -1
     if ((rNM < MIN_RANGE) || (rNM > MAX_RANGE)) {
         PRINTF("WARNING:  rNM (%f), reset to %f\n", rNM, _view.rNM);
         rNM = _view.rNM;
+        //g_assert(0);
     }
 
     // FIXME: PROJ4 will explode here (INFINITY) for mercator
-    //if (view->rNM > (90.0*60)) {
-    //if (rNM > (90.0*60)) {
     if ((ABS(cLat)*60.0 + rNM) > (90.0*60)) {
         PRINTF("WARNING: rangeNM > 90*60 NM, call failed (%f)\n", rNM);
         g_static_mutex_unlock(&_mp_mutex);
@@ -4250,6 +4258,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     if ((north>=360.0) || (north<0.0)) {
         PRINTF("WARNING: north (%f), reset to %f\n", north, _view.north);
         north = _view.north;
+        //g_assert(0);
     }
 
     // debug
@@ -4284,11 +4293,24 @@ DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *nort
         return FALSE;
     }
 
+
     // update local var _view
     *cLat  = _view.cLat;
     *cLon  = _view.cLon;
     *rNM   = _view.rNM;
     *north = _view.north;
+    /*
+    double LLv;
+    double LLu;
+    double URv;
+    double URu;
+    S52_GL_getGEOView(&LLv, &LLu, &URv, &URu);
+    *cLat  = URv - LLv;
+    *cLon  = URu - LLu;
+    *rNM   = ((URv - LLv)/ 2.0) * 60.0;
+    // FIXME: get the real value
+    *north = 0.0;
+    */
 
     // debug
     PRINTF("lat:%f, long:%f, range:%f north:%f\n", *cLat, *cLon, *rNM, *north);
@@ -4702,10 +4724,11 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         PRINTF("pixels_x:%f, pixels_y:%f\n", pixels_x, pixels_y);
 
         // FIXME: check bound
+        // Nexus/Adreno ReadPixels must be POT, hence 8 x 8 extent
         ext.N = tmp_px_y + 4;
         ext.S = tmp_px_y - 4;
-        ext.E = pixels_x + 4;
-        ext.W = pixels_x - 4;
+        ext.E = pixels_x + 3;
+        ext.W = pixels_x - 3;
         S52_GL_win2prj(&ext.W, &ext.S);
         S52_GL_win2prj(&ext.E, &ext.N);
 
@@ -4713,7 +4736,7 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         S52_GL_getPRJView(&ps, &pw, &pn, &pe);
 
         // set view of the pick (PRJ)
-        S52_GL_setViewPort(pixels_x-4, tmp_px_y-4, 9, 9);
+        S52_GL_setViewPort(pixels_x-4, tmp_px_y-4, 8, 8);  
         S52_GL_setPRJView(ext.S, ext.W, ext.N, ext.E);
         //PRINTF("PICK PRJ EXTENT (swne): %f, %f  %f, %f \n", ext.s, ext.w, ext.n, ext.e);
 
@@ -5746,7 +5769,10 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
     return_if_null((void*)label);  // what if we need to erase label!
 
     char   attval[256];
-    double xyz[3] = {_view.cLon, _view.cLat, 0.0};      // quiet the warning in S52_newMarObj()
+
+    // FIXME: get the real value
+    //double xyz[3] = {_view.cLon, _view.cLat, 0.0};      // quiet the warning in S52_newMarObj()
+    double xyz[3] = {0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
 
     SPRINTF(attval, "_vessel_label:%s", label);
 
@@ -6000,10 +6026,13 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
 
     //PRINTF("-1- objH:%#lX, latitude:%f, longitude:%f, data:%f\n", (long unsigned int)objH, latitude, longitude, data);
 
+    /*
     if (_SELECTED == objH) {
+        // FIXME: get the real value
         S52_setView(latitude, longitude, _view.rNM, _view.north);
         S52_draw();
     }
+    */
 
     return objH;
 }
@@ -6320,8 +6349,10 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
             lonA = ppt[0];
             latA = ppt[1];
         } else {
+            // FIXME: get the real value
             lonA = _view.cLon;
             latA = _view.cLat;
+            //g_assert(0);
         }
         break;
     }

@@ -251,12 +251,10 @@ static guint   _nCall     = 0;
 // state
 static int        _doInit        = TRUE;    // initialize (but GL context --need main loop)
 static int        _ctxValidated  = FALSE;   // validate GL context
-static int        _doPick        = FALSE;   // TRUE inside curcor picking cycle
 static GPtrArray *_objPick       = NULL;    // list of object picked
 //static char       _strPick[80]   = {'\0'};  // hold temps val
 static GString   *_strPick       = NULL;  // hold temps val
 static int        _doHighlight   = FALSE;   // TRUE then _objhighlight point to the object to hightlight
-//static S52_obj   *_objhighlight  = NULL;
 static S52_GL_mode _crnt_GL_mode = S52_GL_NONE; // failsafe - keep mode in sync between begin / end
 
 
@@ -499,16 +497,22 @@ static GLuint        _fboID = 0;
 
 
 // debug
-//static int _DEBUG = FALSE; //
+//static int _DEBUG = FALSE;
 
-static int            _update_fb      = TRUE;  // TRUE flag that the FB changed
+static int            _fb_update      = TRUE;  // TRUE flag that the FB changed
 static unsigned char *_fb_pixels      = NULL;
 static unsigned int   _fb_pixels_size = 0;
 static GLuint         _fb_texture_id  = 0;
 #define RGB           3
 #define RGBA          4
-static int            _fb_format      = RGBA;  // NOTE: on TEGRA2 RGB (3) spend a lot of time converting
-                                               //       and an RGB EGL buffer (wierd)
+#ifdef S52_USE_ADRENO
+static int            _fb_format      = RGB;   // alpha blending done in shader
+                                               // no need to read alpha from FB
+#else
+static int            _fb_format      = RGBA;  // NOTE: on TEGRA2 RGB (3) very slow
+                                               // (spend a lot of time converting)
+#endif
+
 // debug
 static int _GL_BEGIN = FALSE;
 #define CHECK_GL_BEGIN if (FALSE == _GL_BEGIN) {                     \
@@ -1609,11 +1613,19 @@ static int       _init_freetype_gl(void)
         _freetype_gl_font[3] = NULL;
     }
 
-    //_freetype_gl_font  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 20);
+#ifdef S52_USE_ADRENO
+    // bigger font on Nexus 7
+    _freetype_gl_font[0]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 16);
+    _freetype_gl_font[1]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 22);
+    _freetype_gl_font[2]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 28);
+    _freetype_gl_font[3]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 34);
+#else
     _freetype_gl_font[0]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 12);
     _freetype_gl_font[1]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 18);
     _freetype_gl_font[2]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 24);
     _freetype_gl_font[3]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 30);
+#endif
+
     if (NULL == _freetype_gl_font[0]) {
         PRINTF("WARNING: texture_font_new() failed\n");
         g_assert(0);
@@ -2681,6 +2693,9 @@ static int       _VBODraw(S57_prim *prim)
         S57_setPrimDList(prim, vboID);
     }
 
+    // no speed gain
+    //glDisable(GL_BLEND);
+
     // bind VBOs for vertex array
     glBindBuffer(GL_ARRAY_BUFFER, vboID);      // for vertex coordinates
 
@@ -2696,6 +2711,8 @@ static int       _VBODraw(S57_prim *prim)
 
     // bind with 0 - switch back to normal pointer operation
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    //glEnable(GL_BLEND);
 
     _checkError("_VBODraw() -fini-");
 
@@ -2834,13 +2851,13 @@ typedef struct col {
     GLubyte a;
 } col;
 
+// S52_GL_PICK mode
 typedef union cIdx {
     col   color;
     guint idx;
 } cIdx;
-
 static cIdx _cIdx;
-static cIdx _read[81];
+static cIdx _read[8 * 8];  // buffer to collect pixels when in S52_GL_PICK mode
 
 static int       _setBlend(int blend)
 // TRUE turn on blending if AA
@@ -2885,7 +2902,7 @@ static GLubyte   _glColor4ub(S52_Color *c)
 
     //_checkError("_glColor4ub() -0-");
 
-    if (TRUE == _doPick) {
+    if (S52_GL_PICK == _crnt_GL_mode) {
         // debug
         //printf("_glColor4ub: set current cIdx R to : %X\n", _cIdx.color.r);
 
@@ -4523,7 +4540,7 @@ static int       _renderSY(S52_obj *obj)
         if ((0==S52_PL_cmpCmdParam(obj, "LOWACC01")) && (0.0==S52_MP_get(S52_MAR_QUAPNT01)))
             return TRUE;
 
-        if (TRUE == _doPick) {
+        if (S52_GL_PICK == _crnt_GL_mode) {
             double x;
             double y;
 
@@ -4808,12 +4825,11 @@ static int       _renderLS_ownshp(S52_obj *obj)
     //double   _ownshp_off_x    = (NULL == _ownshp_off_xstr) ? 0.0 : S52_atof(_ownshp_off_xstr->str);
     //double   _ownshp_off_y    = (NULL == _ownshp_off_ystr) ? 0.0 : S52_atof(_ownshp_off_ystr->str);
 
-    //if ((NULL!=headngstr) && (FALSE==_SHIPS_OUTLINE_DRAWN)) {
-    if ((NULL != headngstr) && (TRUE==S52_MP_get(S52_MAR_HEADNG_LINE))) {
+    // draw heading line
+    if ((NULL!=headngstr) && (TRUE==S52_MP_get(S52_MAR_HEADNG_LINE))) {
         double orient = S52_PL_getSYorient(obj);
 
 #ifdef S52_USE_GLES2
-        // heading line
         _glMatrixMode(GL_MODELVIEW);
         _glLoadIdentity();
 
@@ -4835,21 +4851,13 @@ static int       _renderLS_ownshp(S52_obj *obj)
         glRotated(orient-90.0, 0.0, 0.0, 1.0);
 #endif
 
-        //*
+        // OWNSHP Heading
+        // FIXME: draw to the edge of the screen
+        // FIXME: coord. sys. must be in meter
         {
             pt3v pt[2] = {{0.0, 0.0, 0.0}, {_rangeNM * NM_METER * 2.0, 0.0, 0.0}};
             _DrawArrays_LINE_STRIP(2, (vertex_t*)&pt);
         }
-        //*/
-        /*
-        glBegin(GL_LINES);
-            glVertex3d(0.0, 0.0, 0.0);
-            // FIXME: draw to the edge of the screen
-            // FIXME: coord. sys. must be in meter
-            //glVertex3d(2.0 * NM_METER, 0.0, 0.0);
-            glVertex3d(_rangeNM * NM_METER * 2.0, 0.0, 0.0);
-        glEnd();
-        //*/
     }
 
     // beam bearing line
@@ -4929,10 +4937,7 @@ static int       _renderLS_vessel(S52_obj *obj)
 {
     S57_geo *geo       = S52_PL_getGeo(obj);
     GString *headngstr = S57_getAttVal(geo, "headng");
-    //double   period    = S52_MP_get(S52_MAR_VECPER);
     double   vecper    = S52_MP_get(S52_MAR_VECPER);
-    //GString *vecperstr = S57_getAttVal(geo, "vecper");
-    //int      vecper    = (NULL==vecperstr) ? 0 : S52_atoi(vecperstr->str);
 
     // debug
     //return TRUE;
@@ -4951,11 +4956,10 @@ static int       _renderLS_vessel(S52_obj *obj)
     // or
     // create a heading symbol!
 
-    //if (NULL!=headngstr && 1.0==S52_MP_get(S52_MAR_HEADNG_LINE))  {
-    if (NULL!=headngstr && TRUE==S52_MP_get(S52_MAR_HEADNG_LINE))  {
-        GLdouble *ppt     = NULL;
-        guint     npt     = 0;
-        //double    orient  = S52_PL_getSYorient(obj);
+    // draw heading line
+    if ((NULL!=headngstr) && (TRUE==S52_MP_get(S52_MAR_HEADNG_LINE)))  {
+        GLdouble *ppt = NULL;
+        guint     npt = 0;
 
         if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
             double headng = S52_atof(headngstr->str);
@@ -4968,8 +4972,6 @@ static int       _renderLS_vessel(S52_obj *obj)
             _glLoadIdentity();
 
             _glTranslated(ppt[0], ppt[1], ppt[2]);
-            //_glScaled(1.0, -1.0, 1.0);
-            //_glRotated(headng-90.0, 0.0, 0.0, 1.0);
             _glRotated(90.0 - headng, 0.0, 0.0, 1.0);
             _glScaled(1.0, -1.0, 1.0);
 
@@ -4995,8 +4997,8 @@ static int       _renderLS_vessel(S52_obj *obj)
         }
     }
 
+    // vector
     if (0 != vecper) {
-        //double course, speed, period;
         double course, speed;
         if (TRUE == _getVesselVector(obj, &course, &speed)) {
             double orientRAD = (90.0 - course) * DEG_TO_RAD;
@@ -5029,7 +5031,6 @@ static int       _renderLS_vessel(S52_obj *obj)
     return TRUE;
 }
 
-//static int       _renderLS_afglow(S52_obj *obj)
 static int       _renderLS_afterglow(S52_obj *obj)
 {
     S57_geo   *geo = S52_PL_getGeo(obj);
@@ -5853,12 +5854,8 @@ static int       _renderAC_NODATA_layer0(void)
 
     glClearColor(c->R/255.0, c->G/255.0, c->B/255.0, 1.0);
     //glClearColor(c->R/255.0, c->G/255.0, c->B/255.0, 0.0); // debug Nexus/Adreno draw() frame
-
     //glClearColor(c->R/255.0, 0.0, c->B/255.0, 0.0);
     //glClearColor(1.0, 0.0, 0.0, 1.0);
-
-    //glDrawBuffer(GL_FRONT|GL_BACK);
-    //glDrawBuffer(GL_BACK);
 
 #ifdef S52_USE_TEGRA2
     // xoom specific - clear FB to reset Tegra 2 CSAA (anti-aliase)
@@ -5868,8 +5865,6 @@ static int       _renderAC_NODATA_layer0(void)
 #else
     glClear(GL_COLOR_BUFFER_BIT);
 #endif
-
-    //glDrawBuffer(GL_BACK);
 
     _checkError("_renderAC_NODATA_layer0()");
 
@@ -6836,12 +6831,13 @@ static int       _renderAP(S52_obj *obj)
 
     //--------------------------------------------------------
     // don't pick pattern for now
-    if (TRUE == _doPick)
+    if (S52_GL_PICK == _crnt_GL_mode) {
         return TRUE;
+    }
 
     // when in pick mode, fill the area
     /*
-    if (TRUE == _doPick) {
+    if (S52_GL_PICK == _crnt_GL_mode) {
         S57_geo *geoData = S52_PL_getGeo(obj);
         S52_Color dummy;
 
@@ -6855,9 +6851,6 @@ static int       _renderAP(S52_obj *obj)
 
 #ifdef S52_USE_GLES2
     {
-        // debug: skip texture
-        //return TRUE;
-
         return _renderAP_es2(obj);
     }
 #else
@@ -7547,8 +7540,11 @@ static int       _drawText(S52_obj *obj)
     // convert offset to PRJ
     double scalex = (_pmax.u - _pmin.u) / (double)_vp[2];
     double scaley = (_pmax.v - _pmin.v) / (double)_vp[3];
-    double uoffs  = ((10 * PICA * xoffs) / _dotpitch_mm_x) * scalex;
-    double voffs  = ((10 * PICA * yoffs) / _dotpitch_mm_y) * scaley;
+    //double uoffs  = ((10 * PICA * xoffs) / _dotpitch_mm_x) * scalex;
+    //double voffs  = ((10 * PICA * yoffs) / _dotpitch_mm_y) * scaley;
+    double uoffs  = ((10 * PICA * xoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_X)) * scalex;
+    double voffs  = ((10 * PICA * yoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_Y)) * scaley;
+
     //PRINTF("uoffs/voffs: %f/%f %s\n", uoffs, voffs, str);
 
 #ifndef S52_USE_COGL
@@ -8241,12 +8237,6 @@ int        S52_GL_isOFFscreen(S52_obj *obj)
     //    PRINTF("%s\n", FIDNstr->str);
     //}
 
-    // filter on extent is just to small
-    // to pick point object
-    //if (TRUE == _doPick) {
-    //    return TRUE;
-    //}
-
     // debug: CHKSYM01 land here because it is on layer 8, other use layer 9
     S57_geo *geo  = S52_PL_getGeo(obj);
     if (0 == g_strcmp0("$CSYMB", S57_getName(geo))) {
@@ -8524,7 +8514,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //    PRINTF("UNSARE found\n");
     //    //return;
     //}
-    //if (TRUE == _doPick) {
+    //if (S52_GL_PICK == _crnt_GL_mode) {
     //    S57_geo *geo = S52_PL_getGeo(obj);
     //    GString *FIDNstr = S57_getAttVal(geo, "FIDN");
     //    if (0==strcmp("2135161787", FIDNstr->str)) {
@@ -8538,7 +8528,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoID(geo));
     ////    return TRUE;
     //}
-    //if (TRUE == _doPick) {
+    //if (S52_GL_PICK == _crnt_GL_mode) {
     //    if (0 == strcmp("PRDARE", S52_PL_getOBCL(obj))) {
     //        PRINTF("PRDARE found\n");
     //    }
@@ -8546,8 +8536,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //------------------------------------------------------
 
 
-
-    if (TRUE == _doPick) {
+    if (S52_GL_PICK == _crnt_GL_mode) {
         ++_cIdx.color.r;
     }
 
@@ -8585,14 +8574,21 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
 
     // Can cursor pick now use the journal in S52.c instead of the GPU?
     // NO, if extent is use then concave AREA and LINES can trigger false positive
-    if (TRUE == _doPick) {
+    if (S52_GL_PICK == _crnt_GL_mode) {
         // FIXME: optimisation - read only once all draw to get the top obj
-        // WARNING: some graphic card preffer RGB / BYTE .. YMMV
-        glReadPixels(_vp[0], _vp[1], 9, 9, GL_RGBA, GL_UNSIGNED_BYTE, &_read);
-        //glReadPixels(_vp[0], _vp[1], 9, 9, GL_RGBA, GL_BYTE, &_read);
-        //glReadPixels(_vp[0], _vp[1], 9, 9, GL_RGB, GL_UNSIGNED_BYTE, &_read);
+        // FIXME: copy to texture then test pixels!
+        // FB --> TEX
+        //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, 8, 8, 0);
+        // TEX --> MEM
+        // gl...
+        // -OR-
+        // a shader trick! .. put the pixels back in an array then back to main!!
 
-        for (int i=0; i<81; ++i) {
+
+        // WARNING: some graphic card preffer RGB / BYTE .. YMMV
+        glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGB, GL_UNSIGNED_BYTE, &_read);
+
+        for (int i=0; i<(8*8); ++i) {
             if (_read[i].color.r == _cIdx.color.r) {
                 g_ptr_array_add(_objPick, obj);
 
@@ -8607,12 +8603,12 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
 
         // debug - dump pixel
         /*
-        for (int i=8; i>=0; --i) {
-            int j = i*9;
-            printf("%i |%X %X %X %X %X %X %X %X %X|\n", i,
+        for (int i=7; i>=0; --i) {
+            int j = i*8;
+            printf("%i |%X %X %X %X %X %X %X %X|\n", i,
                    _read[j+0].color.r, _read[j+1].color.r, _read[j+2].color.r,
                    _read[j+3].color.r, _read[j+4].color.r, _read[j+5].color.r,
-                   _read[j+6].color.r, _read[j+7].color.r, _read[j+8].color.r);
+                   _read[j+6].color.r, _read[j+7].color.r;
         }
         printf("finish with object: cIdx: %X\n", _cIdx.idx);
         printf("----------------------------\n");
@@ -8758,7 +8754,6 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
     return TRUE;
 }
 
-
 int        S52_GL_begin(S52_GL_mode mode)
 {
     CHECK_GL_END;
@@ -8837,8 +8832,6 @@ int        S52_GL_begin(S52_GL_mode mode)
     // picking or rendering cycle
     //if (TRUE == cursorPick) {
     if (S52_GL_PICK == mode) {
-        _doPick   = TRUE;
-        //_cIdx.idx = 0;
         _cIdx.color.r = 0;
         _cIdx.color.g = 0;
         _cIdx.color.b = 0;
@@ -9006,9 +8999,9 @@ int        S52_GL_begin(S52_GL_mode mode)
     } else {
         // user can draw on top of base
         // then call drawLast repeatdly
-        if (TRUE == _update_fb) {
+        if (TRUE == _fb_update) {
             S52_GL_readFBPixels();
-            _update_fb = FALSE;
+            _fb_update = FALSE;
         }
 
         // load FB that was filled with the previous draw() call
@@ -9052,14 +9045,9 @@ int        S52_GL_end(S52_GL_mode mode)
 
     _glMatrixDel(VP_PRJ);
 
-    // end picking
-    if (S52_GL_PICK == mode) {
-        _doPick = FALSE;
-    }
-
     // texture of FB need update
     if (S52_GL_DRAW == mode) {
-        _update_fb = TRUE;
+        _fb_update = TRUE;
     }
 
     _crnt_GL_mode = S52_GL_NONE;
@@ -9424,10 +9412,7 @@ static int       _init_es2(void)
     _checkError("_init_es2() -4-");
 
 #ifdef S52_USE_ADRENO
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, 2048, 2048, 0);
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  2048, 1024, 0, GL_RGB,  GL_UNSIGNED_BYTE, 0);
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
 #else
     // must be in sync with _fb_format
     // RGBA
@@ -9929,15 +9914,17 @@ char      *S52_GL_getNameObjPick(void)
 
 guchar    *S52_GL_readFBPixels(void)
 {
-    if (TRUE==_doPick || NULL==_fb_pixels)
+    if (S52_GL_PICK==_crnt_GL_mode || NULL==_fb_pixels) {
         return NULL;
+    }
+
+    // debug
+    //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
 
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
 #ifdef S52_USE_ADRENO
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
-    //glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, _vp[2], _vp[3]);
-    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, 2048, 2048);
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
 #else
     // TEGRA2 share MEM with CPU, so this read call is fast (1ms)
     // must be in sync with _fb_format
@@ -9955,7 +9942,7 @@ guchar    *S52_GL_readFBPixels(void)
     // RGB
     //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _vp[2], _vp[3], 0, GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
 
-    // FIXME: this flip Y
+    // this flip Y
     //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
 #endif
 
@@ -9968,13 +9955,16 @@ guchar    *S52_GL_readFBPixels(void)
 
 int        S52_GL_drawFBPixels(void)
 {
-    if (TRUE==_doPick || NULL==_fb_pixels)
+    if (S52_GL_PICK==_crnt_GL_mode || NULL==_fb_pixels) {
         return FALSE;
+    }
 
     // set rotation temporatly to 0.0  (MatrixSet)
     double north = _north;
     _north = 0.0;
 
+    // debug
+    //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
 
 #ifdef S52_USE_GLES2
 
@@ -9987,23 +9977,32 @@ int        S52_GL_drawFBPixels(void)
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
 
-#ifdef S52_USE_ADRENO
-    GLfloat x = (GLfloat)_vp[2] / 2048.0;
-    GLfloat y = (GLfloat)_vp[3] / 2048.0;
+//#ifdef S52_USE_ADRENO
+    //GLfloat x = (GLfloat)_vp[2] / 2048.0;
+    //GLfloat y = (GLfloat)_vp[3] / 2048.0;
+    /*
     GLfloat ppt[4*3 + 4*2] = {
         _pmin.u, _pmin.v, 0.0,   0.0, 0.0,
         _pmin.u, _pmax.v, 0.0,   0.0,   y,
         _pmax.u, _pmax.v, 0.0,     x,   y,
         _pmax.u, _pmin.v, 0.0,     x, 0.0
     };
-#else
+
     GLfloat ppt[4*3 + 4*2] = {
         _pmin.u, _pmin.v, 0.0,   0.0, 0.0,
         _pmin.u, _pmax.v, 0.0,   0.0, 1.0,
         _pmax.u, _pmax.v, 0.0,   1.0, 1.0,
         _pmax.u, _pmin.v, 0.0,   1.0, 0.0
     };
-#endif
+    */
+//#else
+    GLfloat ppt[4*3 + 4*2] = {
+        _pmin.u, _pmin.v, 0.0,   0.0, 0.0,
+        _pmin.u, _pmax.v, 0.0,   0.0, 1.0,
+        _pmax.u, _pmax.v, 0.0,   1.0, 1.0,
+        _pmax.u, _pmin.v, 0.0,   1.0, 0.0
+    };
+//#endif
 
     glEnableVertexAttribArray(_aUV);
     glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
@@ -10175,8 +10174,9 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
 
 int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north)
 {
-    if (TRUE==_doPick || NULL==_fb_pixels)
+    if (S52_GL_PICK==_crnt_GL_mode || NULL==_fb_pixels) {
         return FALSE;
+    }
 
     // set rotation temporatly to 0.0  (MatrixSet)
     double northtmp = _north;
@@ -10193,23 +10193,34 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
 
-#ifdef S52_USE_ADRENO
-    GLfloat x = (GLfloat)_vp[2] / 2048.0;
-    GLfloat y = (GLfloat)_vp[3] / 2048.0;
+//#ifdef S52_USE_ADRENO
+    // FIXME: Nexus 7 scroll in short axys (X or Y), is the double of touch delta!
+    //GLfloat x = (GLfloat)_vp[2] / 2048.0;
+    //GLfloat y = (GLfloat)_vp[3] / 2048.0;
+
+    /*
     GLfloat ppt[4*3 + 4*2] = {
         _pmin.u, _pmin.v, 0.0,   0.0 + scale_x + scale_z, 0.0 + scale_y + scale_z,
         _pmin.u, _pmax.v, 0.0,   0.0 + scale_x + scale_z,   y + scale_y - scale_z,
         _pmax.u, _pmax.v, 0.0,     x + scale_x - scale_z,   y + scale_y - scale_z,
         _pmax.u, _pmin.v, 0.0,     x + scale_x - scale_z, 0.0 + scale_y + scale_z
     };
-#else
+
+    GLfloat ppt[4*3 + 4*2] = {
+        _pmin.u, _pmin.v, 0.0,   0.0 + scale_x + scale_z, 0.0 + scale_y + scale_z,
+        _pmin.u, _pmax.v, 0.0,   0.0 + scale_x + scale_z,   1 + scale_y - scale_z,
+        _pmax.u, _pmax.v, 0.0,     1 + scale_x - scale_z,   1 + scale_y - scale_z,
+        _pmax.u, _pmin.v, 0.0,     1 + scale_x - scale_z, 0.0 + scale_y + scale_z
+    };
+    */
+//#else
     GLfloat ppt[4*3 + 4*2] = {
         _pmin.u, _pmin.v, 0.0,   0.0 + scale_x + scale_z, 0.0 + scale_y + scale_z,
         _pmin.u, _pmax.v, 0.0,   0.0 + scale_x + scale_z, 1.0 + scale_y - scale_z,
         _pmax.u, _pmax.v, 0.0,   1.0 + scale_x - scale_z, 1.0 + scale_y - scale_z,
         _pmax.u, _pmin.v, 0.0,   1.0 + scale_x - scale_z, 0.0 + scale_y + scale_z
     };
-#endif
+//#endif
 
     glEnableVertexAttribArray(_aUV);
     glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);

@@ -168,6 +168,7 @@ static GStaticMutex       _ais_list_mutex = G_STATIC_MUTEX_INIT;  // protect _ai
 //#define MAX_AFGLOW_PT 100         // debug
 
 // debug - mmsi of AIS for testing ownship
+// FIXME: test ship's head up setView()
 #define OWNSHIP  0             // debug
 //#define OWNSHIP 316133000    // CORIOLIS II
 //#define OWNSHIP 316006302    // CNM EVOLUTION
@@ -745,6 +746,7 @@ static int           _setAISVec (unsigned int mmsi, double course, double speed)
 #ifdef S52_USE_SOCK
     _encodeNsend("S52_setVector", "%lu,%i,%lf,%lf", ais->vesselH, vecstb, course, speed);
 #else
+    // FIXME: test ship's head up setView()
     S52_setVector(ais->vesselH, vecstb, course, speed);
 #endif
 
