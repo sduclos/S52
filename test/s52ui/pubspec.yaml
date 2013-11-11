@@ -1,6 +1,5 @@
 name: s52ui
-description: A sample web application
+description: HTML UI for testing s52droid
 dependencies:
   browser: any
-dependencies:
-  js: { hosted: js }
+  js: any

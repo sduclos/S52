@@ -574,7 +574,7 @@ DLL int    STD S52_setS57ObjClassSupp(const char *className, int value);
 DLL int    STD S52_loadPLib(const char *plibName);
 
 /**
- * S52_getPLibsIDList:
+ * S52_getPLibNameList:
  *
  * List of PLib name loaded delimited by ','
  * WARNING: the return str can be dandling, so raw C call must save
@@ -583,7 +583,7 @@ DLL int    STD S52_loadPLib(const char *plibName);
  *
  * Return: (transfer none): string
  */
-DLL const char * STD S52_getPLibsIDList(void);
+DLL const char * STD S52_getPLibNameList(void);
 
 /**
  * S52_getPalettesNameList:
@@ -879,6 +879,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
  * 'ownshp': CS(OWNSHP--)
  * Note: if OWNSHP has allready been created then an other call will
  * return the handle of the first OWNSHIP call.
+ * Note: text priority of @label is 75
  *
  *
  * Return: (transfer none): an handle to S52_obj or NULL if call fail
@@ -948,10 +949,11 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
 
 /**
  * S52_newVESSEL:
- * @vesrce: (in): Vessel report source: 1 - ARPA target, 2 - AIS vessel report, 3 - VTS report
+ * @vesrce: (in): vessel report source: 1 - ARPA target, 2 - AIS vessel report, 3 - VTS report
  * @label:  (in) (allow-none): NULL or a string
  *
  *  'vessel': CS(VESSEL--) ARPA & AIS
+ * Note: text priority of @label is 76
  *
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
@@ -963,7 +965,8 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
  * @objH:     (in) (transfer none): addressed S52ObjectHandle
  * @newLabel: (in) (allow-none): NULL or a string
  *
- *  (re) set label
+ * (re) set label
+ * Note: text priority of @newLabel is 76
  *
  *
  * Return: (transfer none): the handle to S52_obj or NULL if call fail
@@ -974,17 +977,19 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
  * S52_setVESSELstate:
  * @objH:         (in) (transfer none): addressed S52ObjectHandle
  * @vesselSelect: (in): 0 - undefined, 1 - selected (ON) and follow, 2 - de-seltected (OFF), (ie bracket symbol on vessel),
- * @vestat:       (in): 0 - undefined, 1 - AIS active,    2 - AIS sleeping
+ * @vestat:       (in): 0 - undefined, 1 - AIS active, 2 - AIS sleeping, 3 - AIS active, close quarter (red)
  * @vesselTurn:   (in): Turn rate is encoded as follows: [from gpsd doc]
  *         0       - not turning
  *         1..126  - turning right at up to 708 degrees per minute or higher
- *        -1..-126 - turning left at up to 708 degrees per minute or higher
+ *        -1..-126 - turning left  at up to 708 degrees per minute or higher
  *         127     - turning right at more than 5deg/30s (No TI available)
- *        -127     - turning left at more than 5deg/30s (No TI available)
+ *        -127     - turning left  at more than 5deg/30s (No TI available)
  *         128     - (80 hex) indicates no turn information available (default)
  *         129     - undefined
  *
  * "undefined" mean that the current value of the variable of this objH is unafected
+ *
+ * Note: experimental @vestat = 3, compile with S52_USE_SYM_AISVES01_RED, symb in PLAUX_00
  *
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail

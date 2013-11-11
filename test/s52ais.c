@@ -594,10 +594,14 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         }
 #else
         // debug: make ferry acte as ownshp
-        if (OWNSHIP == mmsi)
+        if (OWNSHIP == mmsi) {
             newais.vesselH = S52_newOWNSHP(newais.name);
-        else
-            newais.vesselH = S52_newVESSEL(2, newais.name);
+        } else {
+            //int vesrce = 1;  // ARPA
+            int vesrce = 2;  // AIS
+            //int vesrce = 3;  // VTS
+            newais.vesselH = S52_newVESSEL(vesrce, newais.name);
+        }
 #endif
 
         // new AIS failed
@@ -823,16 +827,21 @@ static int           _setAISSta (unsigned int mmsi, int status, int turn)
 
     if ((status!=ais->status) || (turn!=ais->turn)) {
         if (1==status || 5==status || 6==status) {
+            int vestat = 2;  // AIS sleeping
 #ifdef S52_USE_SOCK
-            _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, 2, turn);
+            _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, vestat, turn);
 #else
-            S52_setVESSELstate(ais->vesselH, 0, 2, turn);   // AIS sleeping
+            S52_setVESSELstate(ais->vesselH, 0, vestat, turn);   // AIS sleeping
 #endif
         } else {
+            // AIS active
+            int vestat       = 1;  // normal
+            //int vestat       = 3;  // red, close quarters
 #ifdef S52_USE_SOCK
-            _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, 1, turn);
+            _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, vestat, turn);
 #else
-            S52_setVESSELstate(ais->vesselH, 0, 1, turn);   // AIS active
+
+            S52_setVESSELstate(ais->vesselH, 0, vestat, turn);   // AIS active
 #endif
         }
 

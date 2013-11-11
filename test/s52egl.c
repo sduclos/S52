@@ -620,7 +620,9 @@ static int      _s52_setupVESSEL(s52droid_state_t *state)
     // (re) set label
     S52_setVESSELlabel(_vessel_ais, VESSELLABEL);
     int vesselSelect = 0;  // OFF
-    int vestat       = 1;
+    //int vestat       = 1; // AIS active
+    //int vestat       = 2; // AIS sleeping
+    int vestat       = 3;  // AIS red, close quarters
     int vesselTurn   = VESSELTURN_UNDEFINED;
     S52_setVESSELstate(_vessel_ais, vesselSelect, vestat, vesselTurn);
 
@@ -1100,6 +1102,8 @@ static int      _s52_updTimeTag (s52engine *engine)
 
 static int      _s52_draw_user  (s52engine *engine)
 {
+    (void) engine; // quiet compiler
+
     /*
     // debug - S57 obj ID of Becancour Cell (CA579016.000)
     {

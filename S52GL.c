@@ -477,6 +477,12 @@ static const GLubyte _dottpa_mask_bits[4] = {     // 4 x 8 bits = 32 bits
 //    0x00, 0x00, 0x00, 0x00
 };
 
+static GLuint        _dashpa_mask_texID = 0;
+static GLubyte       _dashpa_mask_rgba[8*4*4];    // 32 * 4rgba = 8bits * 4col * 1row * 4rgba
+static const GLubyte _dashpa_mask_bits[4] = {     // 4 x 8 bits = 32 bits
+    0xFF, 0xF0, 0xFF, 0xF0
+};
+
 
 // OVERSC01
 // vertical line at each 400 units (4 mm)
@@ -4016,8 +4022,8 @@ static int       _renderSY_vessel(S52_obj *obj)
     S57_geo  *geo       = S52_PL_getGeo(obj);
     guint     npt       = 0;
     GLdouble *ppt       = NULL;
-    GString  *vestatstr = S57_getAttVal(geo, "vestat");
-    GString  *vecstbstr = S57_getAttVal(geo, "vecstb");
+    GString  *vestatstr = S57_getAttVal(geo, "vestat");  // vessel state
+    GString  *vecstbstr = S57_getAttVal(geo, "vecstb");  // vector stabilize
     GString  *headngstr = S57_getAttVal(geo, "headng");
 
     // debug
@@ -4027,16 +4033,15 @@ static int       _renderSY_vessel(S52_obj *obj)
         return FALSE;
 
 #ifdef S52_USE_SYM_AISSEL01
-    // AIS selected: experimental, put selected symbol on taget
+    // AIS selected: experimental, put selected symbol on target
     if ((0 == S52_PL_cmpCmdParam(obj, "AISSEL01")) &&
         (NULL!=vestatstr                           &&
-        ('1'==*vestatstr->str || '2'==*vestatstr->str ))
+        ('1'==*vestatstr->str || '2'==*vestatstr->str || '3'==*vestatstr->str))
        ) {
         GString *_vessel_selectstr = S57_getAttVal(geo, "_vessel_select");
         if ((NULL!=_vessel_selectstr) && ('Y'== *_vessel_selectstr->str)) {
             _renderSY_POINT_T(obj, ppt[0], ppt[1], 0.0);
         }
-        //return TRUE;
     }
 #endif
 
@@ -4044,6 +4049,27 @@ static int       _renderSY_vessel(S52_obj *obj)
         _renderSY_silhoutte(obj);
         return TRUE;
     }
+
+#ifdef S52_USE_SYM_VESSEL_DNGHL
+    // experimental: VESSEL close quarters situation; target red, skip the reste
+    if (NULL!=vestatstr && '3'==*vestatstr->str) {
+        GString *vesrcestr = S57_getAttVal(geo, "vesrce");
+        GString *headngstr = S57_getAttVal(geo, "headng");
+        double   headng    = (NULL==headngstr) ? 0.0 : S52_atof(headngstr->str);
+
+        if (NULL!=vesrcestr && '2'==*vesrcestr->str) {
+            if (0 == S52_PL_cmpCmdParam(obj, "aisves01")) {
+                _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
+            }
+        }
+        if (NULL!=vesrcestr && '1'==*vesrcestr->str) {
+            if (0 == S52_PL_cmpCmdParam(obj, "arpatg01")) {
+                _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
+            }
+        }
+        return TRUE;
+    }
+#endif
 
     // draw vector stabilization
     if (0 == S52_PL_cmpCmdParam(obj, "VECGND21") ||
@@ -4146,12 +4172,10 @@ static int       _renderSY_vessel(S52_obj *obj)
     if (0 == S52_PL_cmpCmdParam(obj, "AISVES01")) {
         GString *headngstr = S57_getAttVal(geo, "headng");
         double   headng    = (NULL==headngstr) ? 0.0 : S52_atof(headngstr->str);
-
-        double scaley      = (_pmax.v - _pmin.v) / (double)_vp[3] ;
-
         GString *shplenstr = S57_getAttVal(geo, "shplen");
         double   shplen    = (NULL==shplenstr) ? 0.0 : S52_atof(shplenstr->str);
 
+        double scaley      = (_pmax.v - _pmin.v) / (double)_vp[3] ;
         double shpLenPixel = shplen / scaley;
 
         // drawn VESSEL symbol
@@ -4171,9 +4195,7 @@ static int       _renderSY_vessel(S52_obj *obj)
     }
 
     // AIS sleeping, no heading: this symbol put a '?' beside the target
-    if ((0 == S52_PL_cmpCmdParam(obj, "AISDEF01")) &&
-        (NULL == headngstr)
-       ) {
+    if ((0 == S52_PL_cmpCmdParam(obj, "AISDEF01")) && (NULL == headngstr) ) {
         // drawn upright
         _renderSY_POINT_T(obj, ppt[0], ppt[1], 0.0);
 
@@ -4181,9 +4203,7 @@ static int       _renderSY_vessel(S52_obj *obj)
     }
 
     // AIS sleeping
-    if ((0 == S52_PL_cmpCmdParam(obj, "AISSLP01")) &&
-        (NULL!=vestatstr && '2'==*vestatstr->str)
-       ) {
+    if ((0 == S52_PL_cmpCmdParam(obj, "AISSLP01")) && (NULL!=vestatstr && '2'==*vestatstr->str) ) {
         GString *headngstr = S57_getAttVal(geo, "headng");
         double   headng    = (NULL==headngstr) ? 0.0 : S52_atof(headngstr->str);
 
@@ -4934,6 +4954,7 @@ static int       _renderLS_ownshp(S52_obj *obj)
 }
 
 static int       _renderLS_vessel(S52_obj *obj)
+// draw heading & vector line, colour is set by the previously drawn symbol
 {
     S57_geo *geo       = S52_PL_getGeo(obj);
     GString *headngstr = S57_getAttVal(geo, "headng");
@@ -4956,47 +4977,49 @@ static int       _renderLS_vessel(S52_obj *obj)
     // or
     // create a heading symbol!
 
-    // draw heading line
-    if ((NULL!=headngstr) && (TRUE==S52_MP_get(S52_MAR_HEADNG_LINE)))  {
-        GLdouble *ppt = NULL;
-        guint     npt = 0;
+    // heading line, AIS only
+    GString *vesrcestr = S57_getAttVal(geo, "vesrce");
+    if (NULL!=vesrcestr && '2'==*vesrcestr->str) {
 
-        if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
-            double headng = S52_atof(headngstr->str);
-            // draw a line 50mm in length
-            //pt3v pt[2] = {{0.0, 0.0, 0.0}, {50.0 / _dotpitch_mm_x, 0.0, 0.0}};
-            pt3v pt[2] = {{0.0, 0.0, 0.0}, {50.0 / S52_MP_get(S52_MAR_DOTPITCH_MM_X), 0.0, 0.0}};
+        if ((NULL!=headngstr) && (TRUE==S52_MP_get(S52_MAR_HEADNG_LINE)))  {
+            GLdouble *ppt = NULL;
+            guint     npt = 0;
+
+            if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
+                double headng = S52_atof(headngstr->str);
+                // draw a line 50mm in length
+                //pt3v pt[2] = {{0.0, 0.0, 0.0}, {50.0 / _dotpitch_mm_x, 0.0, 0.0}};
+                pt3v pt[2] = {{0.0, 0.0, 0.0}, {50.0 / S52_MP_get(S52_MAR_DOTPITCH_MM_X), 0.0, 0.0}};
 
 #ifdef S52_USE_GLES2
-            _glMatrixMode(GL_MODELVIEW);
-            _glLoadIdentity();
+                _glMatrixMode(GL_MODELVIEW);
+                _glLoadIdentity();
 
-            _glTranslated(ppt[0], ppt[1], ppt[2]);
-            _glRotated(90.0 - headng, 0.0, 0.0, 1.0);
-            _glScaled(1.0, -1.0, 1.0);
+                _glTranslated(ppt[0], ppt[1], ppt[2]);
+                _glRotated(90.0 - headng, 0.0, 0.0, 1.0);
+                _glScaled(1.0, -1.0, 1.0);
 
-            _pushScaletoPixel(FALSE);
+                _pushScaletoPixel(FALSE);
 
-            //glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
-            glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+                glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 #else
-            glMatrixMode(GL_MODELVIEW);
-            glLoadIdentity();
+                glMatrixMode(GL_MODELVIEW);
+                glLoadIdentity();
 
-            glTranslated(ppt[0], ppt[1], ppt[2]);
-            glRotated(90.0 - headng, 0.0, 0.0, 1.0);
-            glScaled(1.0, -1.0, 1.0);
+                glTranslated(ppt[0], ppt[1], ppt[2]);
+                glRotated(90.0 - headng, 0.0, 0.0, 1.0);
+                glScaled(1.0, -1.0, 1.0);
 
-            _pushScaletoPixel(FALSE);
+                _pushScaletoPixel(FALSE);
 #endif
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
+                _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
 
-            _popScaletoPixel();
+                _popScaletoPixel();
 
 
+            }
         }
     }
-
     // vector
     if (0 != vecper) {
         double course, speed;
@@ -5016,14 +5039,44 @@ static int       _renderLS_vessel(S52_obj *obj)
 #ifdef S52_USE_GLES2
                 _glMatrixMode(GL_MODELVIEW);
                 _glLoadIdentity();
-
-                //glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
                 glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+                GString *vestatstr = S57_getAttVal(geo, "vestat");
+                if (NULL!=vestatstr && '3'==*vestatstr->str) {
+                    // FIXME: move to _renderLS_setPatDott()
+                    float dx       = pt[0].x - pt[1].x;
+                    float dy       = pt[0].y - pt[1].y;
+                    float leglen_m = sqrt(dx*dx + dy*dy);                     // leg length in meter
+                    float px_m_x   = (_pmax.u - _pmin.u) / (double)_vp[2] ;   // scale X
+                    float leglen_px= leglen_m  / px_m_x;                      // leg length in pixel
+                    float sym_n    = leglen_px / 32.0;  // 32 pixels (rgba)
+                    float ptr[4] = {
+                        0.0,   0.0,
+                        sym_n, 1.0
+                    };
+
+                    glLineWidth (3);
+                    glUniform1f(_uStipOn, 1.0);
+                    glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
+                    glEnableVertexAttribArray(_aUV);
+                    glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
+                }
+
 #else
                 glMatrixMode(GL_MODELVIEW);
                 glLoadIdentity();
 #endif
                 _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
+
+#ifdef S52_USE_GLES2
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
+                glBindTexture(GL_TEXTURE_2D,  0);
+                // turn OFF stippling
+                glUniform1f(_uStipOn, 0.0);
+
+                glDisableVertexAttribArray(_aUV);
+                glDisableVertexAttribArray(_aPosition);
+#endif
             }
         }
     }
@@ -5247,13 +5300,12 @@ static int       _renderLS(S52_obj *obj)
     return FALSE;
 #endif
 
-    _checkError("_renderLS() -0-");
-
     // debug
     //S57_geo  *geoData = S52_PL_getGeo(obj);
     //if (0 != g_strcmp0("leglin", S57_getName(geoData), 6)) {
     //    return TRUE;
     //}
+    //_checkError("_renderLS() -0-");
 
     if (S52_CMD_WRD_FILTER_LS & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
@@ -5312,23 +5364,31 @@ static int       _renderLS(S52_obj *obj)
     {
         S57_geo  *geoData = S52_PL_getGeo(obj);
 
-        //*  commented for debug
         if (POINT_T == S57_getObjtype(geoData)) {
-            //if (0 == g_ascii_strncasecmp("LIGHTS", S57_getName(geoData), 6))
             if (0 == g_strcmp0("LIGHTS", S57_getName(geoData)))
                 _renderLS_LIGHTS05(obj);
             else {
-                //if (0 == g_ascii_strncasecmp("ownshp", S57_getName(geoData), 6))
                 if (0 == g_strcmp0("ownshp", S57_getName(geoData)))
                     _renderLS_ownshp(obj);
                 else {
-                    if (0 == g_strcmp0("vessel", S57_getName(geoData)))
-                        _renderLS_vessel(obj);
+                    if (0 == g_strcmp0("vessel", S57_getName(geoData))) {
+                        // AIS close quarters
+                        GString *vestatstr = S57_getAttVal(geoData, "vestat");
+                        if (NULL!=vestatstr && '3'==*vestatstr->str) {
+                            if (0 == g_strcmp0("DNGHL", col->colName))
+                                _renderLS_vessel(obj);
+                            else
+                                // discard all other line not of DNGHL colour
+                                return TRUE;
+                        } else {
+                            // normal line
+                            _renderLS_vessel(obj);
+                        }
+                    }
                 }
             }
         }
         else
-        //*/
         {
             // LINES_T, AREAS_T
 
@@ -5359,8 +5419,8 @@ static int       _renderLS(S52_obj *obj)
                     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
                     _d2f(_tessWorkBuf_f, npt, ppt);
 
-                    // FIXME: move to _renderLS_setPatDott()
                     if (0 == g_strcmp0("leglin", S57_getName(geoData))) {
+                        // FIXME: move to _renderLS_setPatDott()
                         glUniform1f(_uStipOn, 1.0);
                         glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
 
@@ -6222,9 +6282,11 @@ static int       _renderAP_NODATA_layer0(void)
         _1024bitMask2RGBATex(_nodata_mask_bits, _nodata_mask_rgba);
         //_64bitMask2RGBATex  (_dottpa_mask_bits, _dottpa_mask_rgba);
         _32bitMask2RGBATex  (_dottpa_mask_bits, _dottpa_mask_rgba);
+        _32bitMask2RGBATex  (_dashpa_mask_bits, _dashpa_mask_rgba);
 
         glGenTextures(1, &_nodata_mask_texID);
         glGenTextures(1, &_dottpa_mask_texID);
+        glGenTextures(1, &_dashpa_mask_texID);
 
         _checkError("_renderAP_NODATA_layer0 -0-");
 
@@ -6251,6 +6313,19 @@ static int       _renderAP_NODATA_layer0(void)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dottpa_mask_rgba);
+
+        // ------------
+        // dash pattern
+        glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
+
 
         glBindTexture(GL_TEXTURE_2D, 0);
         _checkError("_renderAP_NODATA_layer0 -0.1-");
@@ -9412,6 +9487,7 @@ static int       _init_es2(void)
     _checkError("_init_es2() -4-");
 
 #ifdef S52_USE_ADRENO
+    // FIXME: make sure vp2 * vp3 * RGB doesn't overflow
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
 #else
     // must be in sync with _fb_format
@@ -9924,6 +10000,7 @@ guchar    *S52_GL_readFBPixels(void)
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
 #ifdef S52_USE_ADRENO
+    // FIXME: make sure vp2 * vp3 * RGB doesn't overflow
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
 #else
     // TEGRA2 share MEM with CPU, so this read call is fast (1ms)

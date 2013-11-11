@@ -212,7 +212,7 @@ static _cell     *_marinerCell = NULL;    // place holder MIO's, and other (fake
 static GString   *_plibNameList = NULL;    // string that gather plibName
 static GString   *_paltNameList = NULL;    // string that gather palette name
 static GString   *_S57ClassList = NULL;    // string that gather cell S57 class name
-//static GString   *_S52ObjList   = NULL;    // string that gather cell S52 obj (FIXME: not used)
+static GString   *_S52ObjNmList = NULL;    // string that gather cell S52 obj name
 static GString   *_cellNameList = NULL;    // string that gather cell name
 
 static GPtrArray *_objToDelList = NULL;    // list of obj to delete in next APP cycle
@@ -266,7 +266,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.104\n"
+      "libS52 0.105\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -338,6 +338,9 @@ static char _version[] = "$Revision: 1.126 $\n"
 #endif
 #ifdef S52_USE_WORLD
       "S52_USE_WORLD\n"
+#endif
+#ifdef S52_USE_SYM_VESSEL_DNGHL
+      "S52_USE_SYM_VESSEL_DNGHL\n"
 #endif
 ;
 
@@ -1391,6 +1394,8 @@ DLL int    STD S52_init(void)
         _cellNameList = g_string_new("");
     if (NULL == _S57ClassList)
         _S57ClassList = g_string_new("");
+    if (NULL == _S52ObjNmList)
+        _S52ObjNmList = g_string_new("");
     if (NULL == _objToDelList)
         _objToDelList = g_ptr_array_new();
 
@@ -1666,6 +1671,7 @@ DLL int    STD S52_done(void)
     g_string_free(_paltNameList, TRUE); _paltNameList = NULL;
     g_string_free(_cellNameList, TRUE); _cellNameList = NULL;
     g_string_free(_S57ClassList, TRUE); _S57ClassList = NULL;
+    g_string_free(_S52ObjNmList, TRUE); _S52ObjNmList = NULL;
 
     g_ptr_array_free(_objToDelList, TRUE); _objToDelList = NULL;
 
@@ -4812,7 +4818,7 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     return name;
 }
 
-DLL cchar *STD S52_getPLibsIDList(void)
+DLL cchar *STD S52_getPLibNameList(void)
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
@@ -4835,20 +4841,9 @@ DLL cchar *STD S52_getPalettesNameList(void)
 
     g_string_set_size(_paltNameList, 0);
 
-    /*
     for (int i=0; i<palTblsz; ++i) {
-        if (0 == i)
-            g_string_append_printf(_paltNameList, "\"%s\"",  (char*)S52_PL_getPalTableNm(i));
-        else
-            g_string_append_printf(_paltNameList, ",\"%s\"", (char*)S52_PL_getPalTableNm(i));
-    }
-    */
-
-    for (int i=0; i<palTblsz; ++i) {
-        if (0 == i)
-            g_string_append_printf(_paltNameList, "%s",  (char*)S52_PL_getPalTableNm(i));
-        else
-            g_string_append_printf(_paltNameList, ",%s", (char*)S52_PL_getPalTableNm(i));
+        char *frmt = (0 == i) ? "%s" : ",%s";
+        g_string_append_printf(_paltNameList, frmt, (char*)S52_PL_getPalTableNm(i));
     }
 
     str = _paltNameList->str;
@@ -4897,10 +4892,8 @@ DLL cchar *STD S52_getS57ClassList(const char *cellName)
                 g_string_append_printf(_S57ClassList, ",%s", c->S57ClassList->str);
         } else {
             // check if filename is loaded
-            //if (0 == S52_strncmp(cellName, c->filename->str, S57_CELL_NAME_MAX_LEN)) {
             if (0 == g_strcmp0(cellName, c->filename->str)) {
                 // special case
-                //if (0 == S52_strncmp(MARINER_CELL, c->filename->str, S57_CELL_NAME_MAX_LEN)) {
                 if (0 == g_strcmp0(MARINER_CELL, c->filename->str)) {
                     GString *classList = _getMARINClassList();
 
@@ -4951,12 +4944,12 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
     PRINTF("cellName: %s, className: %s\n", cellName, className);
 
     // a _S52ObjList in fact
-    g_string_set_size(_S57ClassList, 0);
+    //g_string_set_size(_S57ClassList, 0);
+    g_string_set_size(_S52ObjNmList, 0);
 
     for (guint cidx=0; cidx<_cellList->len; ++cidx) {
         _cell *c = (_cell*)g_ptr_array_index(_cellList, cidx);
 
-        //if (0 == S52_strncmp(cellName, c->filename->str, S57_CELL_NAME_MAX_LEN)) {
         if (0 == g_strcmp0(cellName, c->filename->str)) {
             for (guint i=0; i<S52_PRIO_NUM; ++i) {
                 for (guint j=0; j<N_OBJ_T; ++j) {
@@ -4964,15 +4957,16 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
                     for (guint idx=0; idx<rbin->len; ++idx) {
                         S52_obj    *obj   = (S52_obj *)g_ptr_array_index(rbin, idx);
                         const char *oname = S52_PL_getOBCL(obj);
-                        //if (0 == S52_strncmp(className, oname, S52_PL_NMLN)) {
                         if (0 == g_strcmp0(className, oname)) {
-                            if (header) {
-                                g_string_printf(_S57ClassList, "%s,%s", cellName, className);
+                            if (TRUE == header) {
+                                //g_string_printf(_S57ClassList, "%s,%s", cellName, className);
+                                g_string_printf(_S52ObjNmList, "%s,%s", cellName, className);
                                 header = FALSE;
                             }
                             S57_geo *geo = S52_PL_getGeo(obj);
                             //  S57ID / geo / disp cat / disp prio
-                            g_string_append_printf(_S57ClassList, ",%i:%c:%c:%i",
+                            //g_string_append_printf(_S57ClassList, ",%i:%c:%c:%i",
+                            g_string_append_printf(_S52ObjNmList, ",%i:%c:%c:%i",
                                                    S57_getGeoID(geo),
                                                    S52_PL_getFTYP(obj),    // same as 'j', but in text equivalent
                                                    S52_PL_getDISC(obj),    //
@@ -4981,8 +4975,10 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
                     }
                 }
             }
-            PRINTF("%s\n", _S57ClassList->str);
-            str = _S57ClassList->str;
+            //PRINTF("%s\n", _S57ClassList->str);
+            //str = _S57ClassList->str;
+            PRINTF("%s\n", _S52ObjNmList->str);
+            str = _S52ObjNmList->str;
             g_static_mutex_unlock(&_mp_mutex);
 
             return str;
@@ -6171,11 +6167,11 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
         attvaltmp += S52_strlen(attvaltmp);
 
         // validate vestat (Vessel Status): 1 AIS active, 2 AIS sleeping
-        if (0!=vestat && 1!=vestat && 2!=vestat) {
-            PRINTF("WARNING: 'vestat' must be 0, 1 or 2 .. reset to 1\n");
+        if (0!=vestat && 1!=vestat && 2!=vestat && 3!=vestat) {
+            PRINTF("WARNING: 'vestat' must be 0, 1, 2 or 3.. reset to 1\n");
             vestat = 1;
         }
-        if (1==vestat || 2==vestat ) {
+        if (1==vestat || 2==vestat || 3==vestat ) {
             SPRINTF(attvaltmp, "vestat:%i,", vestat);
             // FIXME: _doCS to get the new text (and prio)
         }

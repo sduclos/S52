@@ -6,6 +6,8 @@ import 'dart:html';
 import 'dart:svg';
 import 'dart:async';
 import 'package:js/js.dart' as js;
+//import 'dart:js';
+
 import 'dart:convert';
 
 part 's52.dart';
@@ -286,10 +288,10 @@ void _listS57IDatt(var S57ID) {
 //
 
 List _checkButton = [
-                     S52.MAR_SHOW_TEXT,S52.MAR_SCAMIN,S52.MAR_ANTIALIAS,
-                     S52.MAR_QUAPNT01,S52.MAR_DISP_LEGEND,S52.MAR_DISP_CALIB,
-                     S52.MAR_DISP_DRGARE_PATTERN,S52.MAR_DISP_NODATA_LAYER,
-                     S52.MAR_DISP_AFTERGLOW,S52.MAR_DISP_CENTROIDS,S52.MAR_DISP_WORLD
+                     S52.MAR_SHOW_TEXT, S52.MAR_SCAMIN, S52.MAR_ANTIALIAS,
+                     S52.MAR_QUAPNT01, S52.MAR_DISP_LEGEND, S52.MAR_DISP_CALIB,
+                     S52.MAR_DISP_DRGARE_PATTERN, S52.MAR_DISP_NODATA_LAYER,
+                     S52.MAR_DISP_AFTERGLOW, S52.MAR_DISP_CENTROIDS, S52.MAR_DISP_WORLD
                     ];
 
 void _initCheckBox(List lst, int idx, String prefix, Completer completer) {
@@ -310,7 +312,6 @@ void _initCheckBox(List lst, int idx, String prefix, Completer completer) {
   }
 }
 
-//*
 Future<bool> _initUI() {
   Completer completer = new Completer();
 
@@ -390,7 +391,6 @@ Future<bool> _initUI() {
 
   return completer.future;
 }
-//*/
 
 void _initTouch() {
   // Handle touch events.
@@ -581,7 +581,7 @@ void _initTouch() {
     // 200ms found by trial and error
     new Timer(new Duration(milliseconds: 200), () {
       //double w = window.innerWidth  * window.devicePixelRatio; // not used
-      double h = window.innerHeight * window.devicePixelRatio;
+      double h = window.innerHeight * window.devicePixelRatio ;
 
       // 2 fingers - Zoom
       if (true == modeZoom) {
@@ -684,49 +684,54 @@ void posError(PositionError error) {
 }
 
 void GPSpos(Geoposition position) {
-  print('GPS new pos: _devOrient: $_devOrient');
-  s52.pushPosition(_ownshpID, position.coords.latitude, position.coords.longitude, _devOrient).then((ret){});
-  s52.setVector(_ownshpID, 1, _devOrient, 16.0);   // 1 - ground
+  //print('GPS new pos: _devOrient: $_devOrient');
+  
+  s52.pushPosition(_ownshpID, position.coords.latitude, position.coords.longitude, _devOrient).then((ret){
+    s52.setVector(_ownshpID, 1, _devOrient, 16.0).then((ret){});   // 1 - ground
+  });
+}
+
+void hdg(DeviceOrientationEvent o) {
+  //_devOrient = o.alpha;  
 }
 
 void _watchPosition(int ownshpID) {
-  if (0 == ownshpID) {
-    print('s5ui.dart:_watchPosition(): failed, no _ownshp handle');
-    return;
-  }
   print('s5ui.dart:_watchPosition(): - start -');
 
-  // GYRO
-  // FIXME: test ship's head up
-  window.onDeviceOrientation.listen(
-      (DeviceOrientationEvent e) {_devOrient = e.alpha;}
-  );
+  _ownshpID = ownshpID;
+  if (0 == _ownshpID) {
+    print('s5ui.dart:_watchPosition(): failed, no _ownshpID handle');
+    return;
+  }
 
-
+  // GYRO - TODO: test ship's head up
+  // dart2js webview broken 'window.onDeviceOrientation.listen()':
+  // Uncaught NoSuchMethodError : method not found: 'Symbol("addEventListener")'
+  //window.onDeviceOrientation.listen(hdg);
+  
   // GPS
-  //*
   //Object options = {'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000};
   //window.navigator.geolocation.getCurrentPosition(options).then(
   //window.navigator.geolocation.getCurrentPosition({'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000}).then(
-  window.navigator.geolocation.getCurrentPosition().then(
-    (Geoposition position) {
-      s52.pushPosition(ownshpID, position.coords.latitude, position.coords.longitude, _devOrient).then((ret){});
-    },
-    onError: (error) => posError(error)
-  );
-  //*/
+  //(Geoposition position) {
+  //  s52.pushPosition(ownshpID, position.coords.latitude, position.coords.longitude, _devOrient).then((ret){});
+  //},
+  //  onError: (error) => posError(error)
+  //);
+  
+  //window.navigator.geolocation.getCurrentPosition().then(
+  //  GPSpos,
+  //  onError: (error) => posError(error)
+  //);
 
   // {'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000}
-  //try {
-    _ownshpID = ownshpID;
-    window.navigator.geolocation.watchPosition().listen(
-        GPSpos,
-        onError: (error) => posError(error)
-    );
-  //} catch (e,s) {
-  //  print(s);
-  //}
-
+  //*
+  window.navigator.geolocation.watchPosition().listen(
+      GPSpos,
+      onError: (error) => posError(error)
+  );
+  //*/
+  
   print('s5ui.dart:_watchPosition(): - end -');
 }
 
@@ -738,39 +743,22 @@ void _watchPosition(int ownshpID) {
 void _initMain(evt) {
   print('s52ui.dart:_initMain()');
 
-  _initTouch();
-
   s52 = new S52();
 
-  // FIXME: create OWNSHP when fisrt GSP pos come available
   s52.newOWNSHP('OWNSHP').then((ret) {
-    //print('s5ui.dart:OWNSHP(): $ret');
-    int ownshpID = ret[0];
-    _watchPosition(ownshpID);
-    _initUI().then((ret) {});
+    _watchPosition(ret[0]);
+    _initUI().then((ret) { _initTouch(); });
   });
 }
 
 void main() {
   print('s5ui.dart:main(): start');
-  //print('window.navigator.appName:    ${window.navigator.appName} \t- '    );
-  //print('window.navigator.appCodeName:${window.navigator.appCodeName} \t- ');
-  //print('window.navigator.platform:   ${window.navigator.platform} \t- '   );
-  //print('window.navigator.product:    ${window.navigator.product} \t- '    );
-  //print('window.navigator.productSub: ${window.navigator.productSub} \t- ' );
 
-  /* Xoom & Nexus 7: Android WebView return same info
-  I/Web Console( 8356): window.navigator.appName:    Netscape       -  at file:///sdcard/s52ui/s52ui.dart.js:3283
-  I/Web Console( 8356): window.navigator.appCodeName:Mozilla        -  at file:///sdcard/s52ui/s52ui.dart.js:3283
-  I/Web Console( 8356): window.navigator.platform:   Linux armv7l   -  at file:///sdcard/s52ui/s52ui.dart.js:3283
-  I/Web Console( 8356): window.navigator.product:    Gecko          -  at file:///sdcard/s52ui/s52ui.dart.js:3283
-  I/Web Console( 8356): window.navigator.productSub: 20030107       -  at file:///sdcard/s52ui/s52ui.dart.js:3283
-  */
+  // Xoom = 1, Nexus = 2
+  print('window.devicePixelRatio: ${window.devicePixelRatio}');
 
-  // Nexus = 2
-  print('window.devicePixelRatio:     ${window.devicePixelRatio} \t- '     );
-
-  js.context['onOpen']   = new js.Callback.once(_initMain);
-  js.context['toggleUI'] = new js.Callback.many(_toggleUIEvent);
-
+  js.context['onOpen']   = new js.FunctionProxy(_initMain);
+  js.context['toggleUI'] = new js.FunctionProxy(_toggleUIEvent);
+  //context['onOpen']   = _initMain;
+  //context['toggleUI'] = _toggleUIEvent;
 }

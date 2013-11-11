@@ -41,9 +41,8 @@
       	function getCurrentPosition() {
       		document.addEventListener("backbutton", toggleUI, false);
       		//document.addEventListener("keypress", toggleUI, false);
-        	console.log("XXXXX getCurrentPosition(): - start -");
+        	console.log("XXXXX getCurrentPosition(): ..");
         	navigator.geolocation.getCurrentPosition(showPosition, geoError, {maximumAge:60000, timeout:5000, enableHighAccuracy:true});
-        	console.log("XXXXX getCurrentPosition(): - end -");
     	}
       	function showPosition(position) {
   			var latlon = "ZZZZZ showPosition(): " + position.coords.latitude + "," + position.coords.longitude;
@@ -70,11 +69,12 @@
         	websocket.onopen    = function(evt) { onOpen(evt)    };
       	}
 
-      	function onOpen (evt)   {}
-      	function onClose(evt)   { console.log("s52ui.html:Websock:onClose():" + evt + "<<<"); }
-      	function onError(evt)   { console.log("s52ui.html:Websock:onError():" + evt + "<<<"); }
-
-      	function toggleUI(evt)  {}
+      	function onOpen  (evt)   {}
+      	function onClose (evt)   { console.log("s52ui.html:Websock:onClose():" + evt + "<<<"); }
+      	function onError (evt)   { console.log("s52ui.html:Websock:onError():" + evt + "<<<"); }
+        function onSend  (str)   { websocket.send(str);}
+        
+      	function toggleUI(evt)   {}
     </script>
   
     <p id="__beg_mainWindowComponent" hidden="true">id_beg</p>

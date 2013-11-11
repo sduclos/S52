@@ -15,6 +15,8 @@ import org.apache.cordova.*;
 
 import com.Method.WebSocket.WebSocketFactory;
 
+import android.os.StatFs;
+
 public class s52ui extends DroidGap
 {
     private static final String TAG = "s52ui";
@@ -26,14 +28,16 @@ public class s52ui extends DroidGap
 
         super.setIntegerProperty("backgroundColor", Color.TRANSPARENT);
 
-        // release
-        //super.loadUrl("file:///android_asset/www/s52ui.html");
-
-        // debug - work OK for dev (faster)
-        //super.loadUrl("file:///data/media/dart/s52ui/web/s52ui.html");  // android 4.1
-        super.loadUrl("file:///sdcard/s52ui/s52ui.html");                 // android 4.2
-        appView.clearCache(false);                                        // page loading always from file (a bit slower)
-
+        try {
+            StatFs stat = new StatFs("/sdcard/s52ui/s52ui.html");
+            Log.i(TAG, "StatFs: " + stat.getAvailableBlocks());
+            // debug - work OK for dev (faster)
+            //super.loadUrl("file:///data/media/dart/s52ui/web/s52ui.html");  // android 4.1
+            super.loadUrl("file:///sdcard/s52ui/s52ui.html");                 // android 4.2
+            appView.clearCache(false);                                        // page loading always from file (a bit slower)
+        } catch (IllegalArgumentException e) {
+            super.loadUrl("file:///android_asset/www/s52ui.html");
+        }
 
         appView.setBackgroundColor(0);
 

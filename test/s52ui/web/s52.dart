@@ -9,19 +9,14 @@ part of s52ui;
 //abstract class S52 {
 class S52 {
   Completer _completer = null;
-  //Map       _data      = parse('{"id":1,"method":"???","params":["???"]}');
   Map       _data      = JSON.decode('{"id":1,"method":"???","params":["???"]}');
   int       _id        = 1;
-  //WebSocket _ws;
 
   Stopwatch _stopwatch = new Stopwatch();
 
   // call drawLast() at interval
   Timer _timer        = null;
   bool  skipTimer     = false;
-
-  //var width;
-  //var height;
 
   // S52 color for UI element
   List UIBCK;  // background
@@ -64,7 +59,8 @@ class S52 {
   static const int CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
 
   S52() {
-    js.context['websocket'].onmessage = new js.Callback.many(rcvMsg);
+    js.context['websocket'].onmessage = new js.FunctionProxy(rcvMsg);
+    //context['websocket']['onmessage'] = rcvMsg;
 
     _drawLastTimer();
   }
@@ -74,17 +70,18 @@ class S52 {
 
     // call drawLast every second (2sec)
     _timer = new Timer.periodic(new Duration(milliseconds: 1000), (timer) {
-      if (false == skipTimer)
+      if (false == skipTimer) {
         drawLast().then((ret) {});
+      
+        //drawLast()
+        //  .then(      (ret) {})
+        //  .catchError((err) {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');} );
 
-      //drawLast()
-      //  .then(      (ret) {})
-      //  .catchError((err) {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');} );
-
-      // FIXME: can't make onError / catchError work
-      //drawLast().then      (    (ret)          {print('_drawLastTimer(): then       ... &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&');},
-      //                 onError: (AsyncError e) {print('_drawLastTimer(): onError:   ... ##############################');})
-      //          .catchError(     (e)           {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');});
+        // FIXME: can't make onError / catchError work
+        //drawLast().then      (    (ret) {print('_drawLastTimer(): then       ... &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&');},
+        //                 onError: (e)   {print('_drawLastTimer(): onError:   ... ##############################');})
+        //          .catchError(    (e)   {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');});
+      }
     });
   }
 
@@ -121,6 +118,8 @@ class S52 {
     //print("roundtrip: ${_stopwatch.elapsedMilliseconds}msec");
     //print('rcvMsg():receive JSON str from libS52: $str');
 
+    // Javascript: MAXINT overflow if (x == x + 1)
+    // Dart: same; 2^53 = 9007199254740992 = 52124995687 days @ 0.5s 
     ++_id;
     _completer.complete(data['result']);
 
@@ -134,8 +133,14 @@ class S52 {
 
     _completer = new Completer();
 
+    // js-interop
     js.context['websocket'].send(str);
+    
+    // dart:js
+    //context['websocket'].callMethod('send', [str]);
+    //context.callMethod('onSend', [str]);
 
+    
     //_ws.send(str);
     //if (_ws.readyState == WebSocket.OPEN) {
     //  _ws.send(str);

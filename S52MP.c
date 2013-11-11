@@ -84,11 +84,11 @@ gboolean SYMBOLIZED_BND  = TRUE;     // symbolized area boundaries
 static double _MARparamVal[] = {
     0.0,      // 0 - NONE
 
-    //0.0,     // 1 - SHOW_TEXT  (0 - off, 0 < display categorie)
-    80.0,     // 1 - SHOW_TEXT
+    //0.0,     // 1 - SHOW_TEXT  (0 - off)
+    1.0,     // 1 - SHOW_TEXT (default)
 
     FALSE,    // 2 - TWO_SHADES (flase -> 4 shade)
-    //TRUE,    // 2 - TWO_SHADES (SEABED01 defautl)
+    //TRUE,    // 2 - TWO_SHADES (SEABED01 default)
 
     15.0,     // 3 - SAFETY_CONTOUR
     //0.0,     // 3 - SAFETY_CONTOUR  --to test DEPCNT02 selection (GL) in CA49995A.000

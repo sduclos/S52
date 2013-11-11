@@ -3,6 +3,10 @@
 #
 
 
+2013NOV11
+    -add experimental S52_USE_SYM_VESSEL_DNGHL to draw in red
+    -mod remove heading line on ARPA
+
 2013NOV05
     -mob use GLES3 for Adreno (android) to get NPOT texture in blit()
     -mod s52ui to account for devicePixelRatio for the Nexus 7

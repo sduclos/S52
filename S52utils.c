@@ -49,7 +49,6 @@
 
 #define NaN         (1.0/0.0)
 
-//static FILE      *_log = NULL;
 static gint _log = 0;
 
 typedef void (*GPrintFunc)(const gchar *string);
@@ -77,7 +76,7 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
 }
 
 int      S52_getConfig(const char *label, valueBuf *vbuf)
-// return TRUE and string value in vbuf for label, FLASE if fail
+// return TRUE and string value in vbuf for label, FALSE if fail
 {
    FILE *fp;
    int  ret;
@@ -121,7 +120,7 @@ int      S52_getConfig(const char *label, valueBuf *vbuf)
 }
 
 int      S52_atoi(const char *str)
-// relacement of stdlib.h atoi
+// replacement of stdlib.h atoi
 {
     //return atoi(str);
 

@@ -2197,7 +2197,6 @@ static GString *OWNSHP02 (S57_geo *geo)
 
     // text label (experimental)
     if (NULL != vlabelstr) {
-        //g_string_append(ownshp02, ";TX(_vessel_label,3,3,3,'15110',1,1,SHIPS,23)" );
         g_string_append(ownshp02, ";TX(_vessel_label,3,3,3,'15110',1,1,SHIPS,75)" );
     }
 
@@ -2644,6 +2643,19 @@ static GString *RESARE02 (S57_geo *geo)
     g_string_append(resare02, symb);
 
     return resare02;
+}
+
+static GString *RESARE03 (S57_geo *geo)
+{
+    static int silent = FALSE;
+
+    if (FALSE == silent) {
+        PRINTF("FIXME: CS(RESARE03) --> CS(RESARE02)\n");
+        PRINTF("       (this msg will not repeat)\n");
+        silent = TRUE;
+    }
+
+    return RESARE02(geo);
 }
 
 static GString *RESTRN01 (S57_geo *geo)
@@ -3204,7 +3216,7 @@ static GString *VESSEL01 (S57_geo *geo)
 // vectors.
 {
     GString *vessel01  = g_string_new("");
-    GString *vesrcestr = S57_getAttVal(geo, "vesrce");
+    GString *vesrcestr = S57_getAttVal(geo, "vesrce");  // vessel report source
     //GString *vecperstr = S57_getAttVal(geo, "vecper");
     //GString *vecmrkstr = S57_getAttVal(geo, "vecmrk");
     //GString *vecstbstr = S57_getAttVal(geo, "vecstb");
@@ -3222,7 +3234,8 @@ static GString *VESSEL01 (S57_geo *geo)
 
     // add the symbols ground and water arrow right now
     // and draw only the proper one when the user enter the 'vecstb'
-    g_string_append(vessel01, ";SY(VECGND21);SY(VECWTR21)");
+    // FIXME: AIS: leave a gap (size AISSIX01) at every minute mark
+    g_string_append(vessel01, ";SY(VECGND21);SY(VECWTR21);LS(SOLD,2,ARPAT)");
 
     // experimental: AIS draw ship's silhouettte (OWNSHP05) if length > 10 mm
     if (TRUE == S52_MP_get(S52_MAR_SHIPS_OUTLINE) && (NULL!=vesrcestr && '2'==*vesrcestr->str))
@@ -3232,9 +3245,12 @@ static GString *VESSEL01 (S57_geo *geo)
     if (NULL!=vesrcestr && '1'==*vesrcestr->str) {
         g_string_append(vessel01, ";SY(ARPATG01)");
 
+#ifdef S52_USE_SYM_VESSEL_DNGHL
+        // experimental: ARPA target & close quarters
+        g_string_append(vessel01, ";SY(arpatg01);LS(SOLD,1,DNGHL)");
+#endif
+
         // add time mark (on ARPA vector)
-        //if (NULL!=vecmrkstr && '0'!=*vecmrkstr->str) {
-        //if (NULL != vecmrkstr) {
         if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
 
             // none - do nothing
@@ -3250,16 +3266,6 @@ static GString *VESSEL01 (S57_geo *geo)
             if (2.0 == S52_MP_get(S52_MAR_VECMRK))
                 g_string_append(vessel01, ";SY(ARPSIX01)");
         }
-
-        // add time mark (on vector) ARPA
-        //if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
-        //    if (1.0 == S52_MP_get(S52_MAR_VECMRK))
-        //        // 6 min. and 1 min. symb.
-        //        g_string_append(vessel01, ";SY(ARPSIX01);SY(ARPONE01)");
-        //    else
-        //        // 6 min. symb
-        //        g_string_append(vessel01, ";SY(ARPSIX01)");
-        //}
     }
 
     // AIS
@@ -3285,55 +3291,35 @@ static GString *VESSEL01 (S57_geo *geo)
             g_string_append(vessel01, ";SY(AISVES01)");
         //}
 
-        // AIS only: add heading line (50 mm)
+#ifdef S52_USE_SYM_VESSEL_DNGHL
+        // experimental: active AIS target & close quarters
+        //if (NULL!=vestatstr && '3'==*vestatstr->str) {
+            g_string_append(vessel01, ";SY(aisves01);LS(SOLD,1,DNGHL)");
+        //}
+#endif
+
+        // add heading line (50 mm)
         //if (1.0 == S52_MP_get(S52_MAR_HEADNG_LINE)) {
         if (TRUE == S52_MP_get(S52_MAR_HEADNG_LINE)) {
             g_string_append(vessel01, ";LS(SOLD,1,ARPAT)");
         }
 
         // add time mark (on AIS vector)
-        //if (NULL!=vecmrkstr && '0'!=*vecmrkstr->str) {
-        //if (NULL != vecmrkstr) {
         if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
 
-            // none - do nothing
-            //if ('0' == *vecmrkstr->str) { ; }
-
             // 6 min. and 1 min. symb
-            //if ('1' == *vecmrkstr->str)
             if (1.0 == S52_MP_get(S52_MAR_VECMRK))
                 g_string_append(vessel01, ";SY(AISSIX01);SY(AISONE01)");
 
-            // 6 min. symb
-            //if ('2' == *vecmrkstr->str)
+            // 6 min. symb only
             if (2.0 == S52_MP_get(S52_MAR_VECMRK))
                 g_string_append(vessel01, ";SY(AISSIX01)");
-
-
-
         }
-
-
-        // add time mark (on AIS vector)
-        //if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
-        //    //if ('1' == *vecmrkstr->str)
-        //    if (1.0 == S52_MP_get(S52_MAR_VECMRK))
-        //        // 6 min. and 1 min. symb.
-        //        g_string_append(vessel01, ";SY(AISSIX01);SY(AISONE01)");
-        //    else
-        //        // 6 min. symb
-        //        g_string_append(vessel01, ";SY(AISSIX01)");
-        //}
     }
 
-    // ARPA & AIS - course and speed vector
+    /*
+    // ARPA & AIS - course/speed vector
     if (0.0 != S52_MP_get(S52_MAR_VECPER)) {
-    //if (NULL!=vecperstr && '0'!=*vecperstr->str) {
-        //GString *vecstbstr = S57_getAttVal(geo, "vecstb");
-
-        // BUG: AIS: leave a gap (size AISSIX01) at every minute mark
-        g_string_append(vessel01, ";LS(SOLD,2,ARPAT)");
-
 
         // add vector stabilisation symbol
         if (0.0 != S52_MP_get(S52_MAR_VECSTB)) {
@@ -3346,19 +3332,10 @@ static GString *VESSEL01 (S57_geo *geo)
                 g_string_append(vessel01, ";SY(VECWTR21)");
         }
 
-        /*
-        // add vector stabilisation symbol
-        // ground
-        if (NULL!=vecstbstr && '1'==*vecstbstr->str) {
-            g_string_append(vessel01, ";SY(VECGND21)");
-        }
-
-        // water
-        if (NULL!=vecstbstr && '2'==*vecstbstr->str) {
-            g_string_append(vessel01, ";SY(VECWTR21)");
-        }
-        */
+        // FIXME: AIS: leave a gap (size AISSIX01) at every minute mark
+        g_string_append(vessel01, ";LS(SOLD,2,ARPAT)");
     }
+    */
 
     // VTS
     if (NULL!=vesrcestr && '3'==*vesrcestr->str) {
@@ -3370,6 +3347,19 @@ static GString *VESSEL01 (S57_geo *geo)
     }
 
     return vessel01;
+}
+
+static GString *VESSEL02 (S57_geo *geo)
+{
+    static int silent = FALSE;
+
+    if (FALSE == silent) {
+        PRINTF("FIXME: CS(VESSEL02) --> CS(VESSEL01)\n");
+        PRINTF("       (this msg will not repeat)\n");
+        silent = TRUE;
+    }
+
+    return VESSEL01(geo);
 }
 
 static GString *VRMEBL01 (S57_geo *geo)
@@ -3402,6 +3392,19 @@ static GString *VRMEBL01 (S57_geo *geo)
     g_string_append(vrmebl01str, ";TX(_vrmebl_label,3,3,3,'15110',1,1,CURSR,77)");
 
     return vrmebl01str;
+}
+
+static GString *VRMEBL02 (S57_geo *geo)
+{
+    static int silent = FALSE;
+
+    if (FALSE == silent) {
+        PRINTF("FIXME: CS(VRMEBL02) --> CS(VRMEBL01)\n");
+        PRINTF("       (this msg will not repeat)\n");
+        silent = TRUE;
+    }
+
+    return VRMEBL01(geo);
 }
 
 static GString *WRECKS02 (S57_geo *geo)
@@ -3715,6 +3718,7 @@ _UDWHAZ03 <-  OBSTRN04, WRECKS02
 //--------------------------------
 
 
+// Note: CS marked '????' are stub that point to CS-1
 S52_CS_condSymb S52_CS_condTable[] = {
    // name      call            Sub-Procedure
    {"CLRLIN01", CLRLIN01},   //
@@ -3734,16 +3738,28 @@ S52_CS_condSymb S52_CS_condTable[] = {
    {"PASTRK01", PASTRK01},   //
    {"QUAPOS01", QUAPOS01},   // _QUALIN01, _QUAPNT01
    {"RESARE02", RESARE02},   //
+   {"RESARE03", RESARE03},   // ????
    {"RESTRN01", RESTRN01},   // _RESCSP01
    {"SLCONS03", SLCONS03},   //
    {"SOUNDG02", SOUNDG02},   // _SNDFRM02
    {"TOPMAR01", TOPMAR01},   //
    {"VESSEL01", VESSEL01},   //
+   {"VESSEL02", VESSEL02},   // ????
    {"VRMEBL01", VRMEBL01},   //
+   {"VRMEBL02", VRMEBL02},   // ????
    {"WRECKS02", WRECKS02},   // _DEPVAL01, _QUAPNT01, _SNDFRM02, _UDWHAZ03
    {"WRECKS03", WRECKS03},   // ????
-
    {"QUESMRK1", QUESMRK1},
    {"########", NULL}
 };
 
+/* new CS not handled
+DEPVAL02
+QUAPNT02
+RESCSP02
+SAFCON01
+SNDFRM03
+SYMINSnn'
+UDWHAZ04
+WRECKS04
+*/
