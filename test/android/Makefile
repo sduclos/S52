@@ -15,10 +15,11 @@ all: build.xml bin/$(APKNAME)
 # Android 4.1.2 (API level 16) - OK - JELLY_BEAN
 # Android 4.2.2 (API level 17) - NO - cordova need upgrade
 # Android 4.3   (API level 18) - NO - cordova need upgrade
+# Android 4.4   (API level 19) - NO - cordova need upgrade
 # NOTE: JELLY_BEAN_MR1 & JELLY_BEAN_MR2, add anotation @JavascriptInterface in WebSocketFactory.java
 
 build.xml: AndroidManifest.xml
-	android update project -p . -t "android-16" -n s52droid
+	android update project -p . -t "android-19" -n s52droid
 
 bin/$(APKNAME): dist/system/lib/libS52.a
 	ndk-build -B V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1
@@ -89,8 +90,7 @@ distclean: clean
 #All of these come with a performance penalty.
 
 
-# to send STDOUT & STDERR to logd
-# if
+# to send STDOUT & STDERR to logcat
 #$ adb shell su -c stop
 #$ adb shell su -c "setprop log.redirect-stdio true"
 #$ adb shell su -c start

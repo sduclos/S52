@@ -194,6 +194,9 @@ static s52engine _engine;
 // Common stuff
 //
 
+// debug
+static int _doLoadRADAR = TRUE;
+
 #define VESSELTURN_UNDEFINED 129
 
 //------ FAKE AIS - DEBUG ----
@@ -791,13 +794,11 @@ static int      _s52_setupPRDARE(s52droid_state_t *state)
     return TRUE;
 }
 
-#ifdef S52_USE_LOG
 static int      _s52_error_cb   (const char *err)
 {
     LOGI("%s", err);
     return TRUE;
 }
-#endif
 
 static int      _s52_init       (s52engine *engine)
 {
@@ -845,12 +846,9 @@ static int      _s52_init       (s52engine *engine)
         //hmm = 307;
 #endif
 
-#ifdef S52_USE_LOG
         // Nexus: no root, can't do: $ su -c "setprop log.redirect-stdio true"
         if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb))
-#else
-        if (FALSE == S52_init(w, h, wmm, hmm, NULL))
-#endif
+        //if (FALSE == S52_init(w, h, wmm, hmm, NULL))
         {
             LOGE("ERROR:_init_S52():S52_init(%i,%i,%i,%i)\n", w, h, wmm, hmm);
             engine->state.do_S52init = FALSE;
@@ -879,6 +877,10 @@ static int      _s52_init       (s52engine *engine)
     //S52_loadCell(NULL, NULL);
     // Rimouski (Nexus)
     S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
+    // Portneuf
+    //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
+    //S52_loadCell(PATH "/bathy/SCX_CapSante.merc-0.tif", NULL);
+    //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
 #else
     // Rimouski (Xoom)
     S52_loadCell(PATH "/ENC_ROOT/CA579041.000", NULL);
@@ -890,13 +892,18 @@ static int      _s52_init       (s52engine *engine)
     S52_loadCell(NULL, NULL);
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
 
-    // Ice - experimental
+    // Ice - experimental (HACK: ice symb link to --0WORLD.shp for one shot test)
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
 
     // Bathy - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/bathy/2009_HD_BATHY_TRIALS/46307260_LOD2.merc.tif", NULL);
     //S52_loadCell("/home/sduclos/dev/gis/data/bathy/2009_HD_BATHY_TRIALS/46307250_LOD2.merc.tif", NULL);
-    //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+    //S52_loadCell("/home/sduclos/dev/gis/data/bathy/SCX_CapSante.merc-0.tif", NULL);
+
+    // RADAR - experimental
+    //S52_loadCell("/home/sduclos/dev/gis/data/radar/RADAR_imitator/out.raw", NULL);
+
+    S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
 
     // load AIS select symb.
     //S52_loadPLib("plib-test-priv.rle");
@@ -907,7 +914,7 @@ static int      _s52_init       (s52engine *engine)
     // World data
     if (TRUE == S52_loadCell(PATH "/0WORLD/--0WORLD.shp", NULL)) {
         //S52_setMarinerParam(S52_MAR_DISP_WORLD, 0.0);   // default
-        S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);     // show world
+        //S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);     // show world
     }
 #endif
 
@@ -1184,11 +1191,20 @@ static int      _s52_draw_cb    (gpointer user_data)
         S52_draw();
         engine->do_S52draw = FALSE;
 
+        /*
+        // RADAR - experimental - will be displayed at the next draw
+        if (TRUE == _doLoadRADAR) {
+            S52_loadCell("/home/sduclos/dev/gis/data/radar/RADAR_imitator/out.raw", NULL);
+            S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+            _doLoadRADAR = FALSE;
+        }
+        */
+
         // user can add stuff on top of draw()
         _s52_draw_user(engine);
     }
 
-    // draw AIS
+    // draw AIS on last layer (9)
     if (TRUE == engine->do_S52drawLast) {
 
 #ifdef USE_FAKE_AIS
@@ -1295,22 +1311,16 @@ static int      _android_done_external_sensors(void)
 }
 #endif
 
-static int      _android_init_external_UI (s52engine *engine)
+static int      _android_init_external_UI(s52engine *engine)
 // start Android HTML5 UI - also get GPS & Gyro from Android
 {
-    /*
     const gchar cmd[] =
-        "su -c \"                      "
-        "sh /system/bin/am start       "
-        "-a android.intent.action.MAIN "
-        "-n nav.ecs.s52droid/.s52ui \" ";
-    */
-
-    const gchar cmd[] =
-        "/system/bin/sh -c \"          "
-        "/system/bin/am start --user 0 "
-        "-a android.intent.action.MAIN "
-        "-n nav.ecs.s52droid/.s52ui \" ";
+        "/system/bin/sh -c \"             "
+        "/system/bin/am start --user 0    "
+        "-a android.intent.action.MAIN    "
+        "-n nav.ecs.s52droid/.s52ui   \"  ";
+        //"-n nav.ecs.s52droid/.s52ui_API19 \" ";
+        //"-n nav.ecs.s52droid/.s52ui_API16 \" ";
 
     int ret = g_spawn_command_line_async(cmd, NULL);
     if (FALSE == ret) {
@@ -1328,7 +1338,7 @@ static int      _android_init_external_UI (s52engine *engine)
 }
 
 #if 0
-static int      _android_done_external_UI (s52engine *engine)
+static int      _android_done_external_UI(s52engine *engine)
 // FIXME: stop UI broken
 {
     // this start the UI
@@ -1512,6 +1522,13 @@ static int      _android_display_init(s52engine *engine)
 static int      _android_setVwNDraw  (s52engine *engine, double new_y, double new_x, double new_z, double new_r)
 // can't use glib signal here - android thread
 {
+    /*
+    // debug - test optimisation using viewPort to draw area
+    if (engine->state.rNM == new_z) {
+        S52_setViewPort(0, 0, 100, 100);
+    }
+    //*/
+
     if (TRUE == S52_setView(new_y, new_x, new_z, new_r)) {
         engine->state.cLat  = new_y;
         engine->state.cLon  = new_x;
@@ -2297,6 +2314,17 @@ exit:
 static int      _s52_setVwNDraw (s52engine *engine, double new_y, double new_x, double new_z, double new_r)
 // set View then call draw_cb
 {
+    /*
+    // debug - test optimisation using viewPort to draw area
+    if (engine->state.rNM == new_z) {
+        S52_setViewPort(0, 0, 200, engine->width);
+
+        // FIXME: get/setView to pin/set it
+        //DLL int    STD S52_setView(double  cLat, double  cLon, double  rNM, double  north);
+        //DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *north);
+    }
+    //*/
+
     if (TRUE == S52_setView(new_y, new_x, new_z, new_r)) {
         engine->state.cLat  = new_y;
         engine->state.cLon  = new_x;
@@ -2532,6 +2560,8 @@ static int      _X11_handleXevent(gpointer user_data)
             }
             // Move up, up arrow
             if (XK_Up        == keysym) {
+                // test - optimisation
+                //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
                 engine->state.cLat += delta;
                 _s52_setVwNDraw(engine, engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
@@ -2542,18 +2572,24 @@ static int      _X11_handleXevent(gpointer user_data)
             }
             // Move down, down arrow
             if (XK_Down      == keysym) {
+                // test - optimisation
+                //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
                 engine->state.cLat -= delta;
                 _s52_setVwNDraw(engine, engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
             // zoom in
             if (XK_Page_Up   == keysym) {
-                engine->state.rNM -= (engine->state.rNM / 10.0);
-                _s52_setVwNDraw(engine, engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
+                //engine->state.rNM -= (engine->state.rNM / 10.0);
+                //_s52_setVwNDraw(engine, engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
+                double rNM = engine->state.rNM - (engine->state.rNM / 10.0);
+                _s52_setVwNDraw(engine, engine->state.cLat, engine->state.cLon, rNM, engine->state.north);
             }
             // zoom out
             if (XK_Page_Down == keysym) {
-                engine->state.rNM += (engine->state.rNM / 10.0);
-                _s52_setVwNDraw(engine, engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
+                //engine->state.rNM += (engine->state.rNM / 10.0);
+                //_s52_setVwNDraw(engine, engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
+                double rNM = engine->state.rNM + (engine->state.rNM / 10.0);
+                _s52_setVwNDraw(engine, engine->state.cLat, engine->state.cLon, rNM, engine->state.north);
             }
             // rot -10.0 deg
             if (XK_Home      == keysym) {

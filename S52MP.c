@@ -175,8 +175,8 @@ static double _MARparamVal[] = {
 
     0.0,      // 33 - S52_CMD_WRD_FILTER command word filter for profiling (default off)
 
-    0.3,      // 34 - S52_DOTPITCH_MM_X dotpitch X (mm) - pixel size in X
-    0.3,      // 35 - S52_DOTPITCH_MM_Y dotpitch Y (mm) - pixel size in Y
+    0.3,      // 34 - S52_MAR_DOTPITCH_MM_X dotpitch X (mm) - pixel size in X
+    0.3,      // 35 - S52_MAR_DOTPITCH_MM_Y dotpitch Y (mm) - pixel size in Y
 
     0.0,      // 36 - S52_MAR_DISP_CALIB - display calibration symbol (on/off) (default off)
 

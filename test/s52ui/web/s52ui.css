@@ -5,14 +5,18 @@ body {
   line-height      : 1.2em;
   margin           : 0px;
   background-color : transparent;
+  
 }
 table {
   width            : 30%;
   position         : relative;
+  border           : 0;
+  cellpadding      : 0;
+  cellspacing      : 0;
 }
 tbody {
   width            : 100%;
-  // need 100% otherwise the width of the table element will kick in
+  /* need 100% otherwise the width of the table element will kick in */
 }
 tr {
 }
@@ -49,39 +53,69 @@ ul {
   -webkit-animation : mymove 2s;
   -webkit-animation-iteration-count : 0;
 }
-@-webkit-keyframes mymove /*Safari and Chrome*/
+
+/*Safari and Chrome
+@-webkit-keyframes mymove 
 {
   from {background-color:red;}
   to   {background-color:transparent;}
 }
+*/
 
-.scrollTableL
+#tableL
 {
-  float:left;
-  background-color:#00e0e6;
+  float            : left;
+  background-color : #00e0e6;
 }
-.scrollTableR
+#tableR
 {
-  float:right;
-  background-color:rgba(200,0,0,0.5);
+  float            : right;
+  background-color : rgba(200,0,0,0.5);
+  word-wrap        : break-word; 
 }
 
+
+#tbodyL
+{
+/*  display          : none; */
+  display          : table;
+}
+#tbodyR 
+{
+  display          : none;
+  word-wrap        : break-word; 
+  /* white-space      : pre-line; */
+  /* white-space: pre-wrap; */
+  
+}
+
+
+/* SVG page */
 #svg1 {
   font-family      : 'Open Sans', sans-serif;
   font-size        : 40pt;
   font-weight      : bold;
-  display          : none;
+  display          : inline-block;
+
   /*
   display          : inline-block;
+  display          : none;  
   -webkit-transform : translate(200px,200px);        // OK
   -webkit-transform : translate3d(200px,200px,0px);  // OK
   */
 }
+
+/*
 #svg1g {
-  display         : none;
+  display         : none; 
 }
 #svg1rect {
-  /* display         : inline-block; */
+  display         : none; 
 }
 #svg1text {
+  display         : none; 
 }
+#svg1c {
+  display         : none; 
+}
+*/

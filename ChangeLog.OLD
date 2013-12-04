@@ -3,6 +3,9 @@
 #
 
 
+2013NOV26
+    -mod upgrade s52droid & s52ui for Android 4.4 KitKat to get chromium in WebView
+
 2013NOV11
     -add experimental S52_USE_SYM_VESSEL_DNGHL to draw in red
     -mod remove heading line on ARPA

@@ -53,13 +53,13 @@ typedef enum S52MarinerParameter {
     S52_MAR_SHOW_TEXT           =  1,   // view group 23 (on/off)
     S52_MAR_TWO_SHADES          =  2,   // flag indicating selection of two depth shades (on/off) [default ON]
     S52_MAR_SAFETY_CONTOUR      =  3,   // S52_LINES: selected safety contour (meters) [IMO PS 3.6]
-    S52_MAR_SAFETY_DEPTH        =  4,   // S52_POINT:selected safety depth (for sounding color) (meters) [IMO PS 3.7]
+    S52_MAR_SAFETY_DEPTH        =  4,   // S52_POINT: selected safety depth (for sounding color) (meters) [IMO PS 3.7]
     S52_MAR_SHALLOW_CONTOUR     =  5,   // S52_AREAS: selected shallow water contour (meters) (optional) [OFF==S52_MAR_TWO_SHADES]
     S52_MAR_DEEP_CONTOUR        =  6,   // S52_AREAS: selected deepwater contour (meters) (optional)
     S52_MAR_SHALLOW_PATTERN     =  7,   // flag indicating selection of shallow water highlight (on/off)(optional) [default OFF]
     S52_MAR_SHIPS_OUTLINE       =  8,   // flag indicating selection of ship scale symbol (on/off) [IMO PS 8.4]
-    S52_MAR_DISTANCE_TAGS       =  9,   // selected spacing of "distance to run" tags at a route (nm) [default 0.0 - OFF]
-    S52_MAR_TIME_TAGS           = 10,   // selected spacing of time tags at the past track (min), [ref S52_addPASTRKPosition() bellow]
+    S52_MAR_DISTANCE_TAGS       =  9,   // -not implemented- selected spacing of "distance to run" tags at a route (nm) [default 0.0 - OFF]
+    S52_MAR_TIME_TAGS           = 10,   // -not implemented- selected spacing of time tags at the past track (min), [ref S52_addPASTRKPosition() bellow]
     S52_MAR_FULL_SECTORS        = 11,   // show full length light sector lines (on/off) [default ON]
     S52_MAR_SYMBOLIZED_BND      = 12,   // symbolized area boundaries (on/off) [default ON]
     S52_MAR_SYMPLIFIED_PNT      = 13,   // simplified point (on/off) [default ON]
@@ -989,7 +989,7 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
  *
  * "undefined" mean that the current value of the variable of this objH is unafected
  *
- * Note: experimental @vestat = 3, compile with S52_USE_SYM_AISVES01_RED, symb in PLAUX_00
+ * Note: experimental @vestat = 3, compile with S52_USE_SYM_VESSEL_DNGHL, symb in PLAUX_00
  *
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail

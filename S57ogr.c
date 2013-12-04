@@ -95,17 +95,11 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
     return TRUE;
 }
 
-DLL int   STD S52_loadLayer (const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
-//DLL int   STD S52_loadObject(const char *objname,   void *shape);
-
-//static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb)
+DLL int   STD  S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
 static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
 {
     OGRDataSourceH hDS         = NULL;;
     OGRSFDriverH   hDriver     = NULL;
-    //OGRLayerH      m_covrLayer = NULL;
-    //const char    *drvName     = NULL;
-    //static int     silent      = FALSE;
 
     PRINTF("DEBUG: starting to load cell (%s)\n", filename);
 
@@ -125,12 +119,6 @@ static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_
         PRINTF("ERROR: should be using default S52_loadObject_cb() callback\n");
         g_assert(0);
     }
-
-
-    // debug: not verery usefull
-    //drvName = OGR_Dr_GetName(hDriver);
-    //if (NULL == drvName)
-    //   PRINTF("DEBUG: not drv name (!!) should be 'S57'\n", filename);
 
     //_loadAux(hDS);
     int nLayer = OGR_DS_GetLayerCount(hDS);
@@ -155,7 +143,6 @@ static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_
     return TRUE;
 }
 
-//int            S57_ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb)
 int            S57_ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
 {
     // check that geometric data type are in sync with OpenGL
@@ -171,15 +158,13 @@ int            S57_ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_
 
 int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadObject_cb loadObject_cb)
 {
-    OGRFeatureH feature = NULL;
-    static int  silent  = FALSE;
-
     if (NULL==layername || NULL==ogrlayer) {
         PRINTF("ERROR: layername || ogrlayer || S52_loadLayer_cb is NULL\n");
         g_assert(0);
     }
 
     if (NULL == loadObject_cb) {
+        static int  silent  = FALSE;
         if (FALSE == silent) {
             PRINTF("NOTE: using default S52_loadObject() callback\n");
             PRINTF("       (this msg will not repeat)\n");
@@ -188,6 +173,7 @@ int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadO
         loadObject_cb = S52_loadObject;
     }
 
+    OGRFeatureH feature = NULL;
     while ( NULL != (feature = OGR_L_GetNextFeature((OGRLayerH)ogrlayer))) {
         // debug
         //PRINTF("layer:feature %X:%X\n",  ogrlayer, feature);

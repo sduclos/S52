@@ -237,7 +237,7 @@ static a3d_texstring_t *_a3d_str       = NULL;
 static guint   _nobj  = 0;     // number of object drawn during lap
 static guint   _ncmd  = 0;     // number of command drawn during lap
 static guint   _oclip = 0;     // number of object clipped
-//static guint   _nFrag = 0;     // number of pixel fragment (color switch)
+static guint   _nFrag = 0;     // number of pixel fragment (color switch)
 //static int     _debug = 0;
 
 // tessalated area stat
@@ -353,6 +353,9 @@ static double _dotpitch_mm_x      = 0.3;  // will be overright at init()
 static double _dotpitch_mm_y      = 0.3;  // will be overright at init()
 static double _SCAMIN             = 0.0;  // screen scale
 #define MM2INCH 25.4
+
+//#define SHIPS_OUTLINE_MM    10.0   // 10 mm
+#define SHIPS_OUTLINE_MM     6.0   // 6 mm
 
 // symbol twice as big (see _pushScaletoPixel())
 #define STRETCH_SYM_FAC 2.0
@@ -1891,11 +1894,11 @@ static void      _glRotated(double angle, double x, double y, double z)
 
 static void      _glLoadIdentity(void)
 {
-    // FIXME: bzero(_crntMat, sizeof(GLfloat) * 16);
-    GLfloat *ptr = _crntMat;
-    for (int i=0; i<16; ++i)
-        *ptr++ = 0.0;
+    //GLfloat *ptr = _crntMat;
+    //for (int i=0; i<16; ++i)
+    //    *ptr++ = 0.0;
 
+    bzero(_crntMat, sizeof(GLfloat) * 16);
     _crntMat[0] = _crntMat[5] = _crntMat[10] = _crntMat[15] = 1.0;
 
     return;
@@ -2415,13 +2418,12 @@ int        S52_GL_prj2win(double *x, double *y)
 static void      _glLineStipple(GLint  factor,  GLushort  pattern)
 {
 #ifdef S52_USE_GLES2
-    // silence warning
+    // silence gcc warning
     (void)factor;
     (void)pattern;
 
     /*
     static int silent = FALSE;
-
     if (FALSE == silent) {
         PRINTF("FIXME: line stipple\n");
         PRINTF("       (this msg will not repeat)\n");
@@ -2699,9 +2701,6 @@ static int       _VBODraw(S57_prim *prim)
         S57_setPrimDList(prim, vboID);
     }
 
-    // no speed gain
-    //glDisable(GL_BLEND);
-
     // bind VBOs for vertex array
     glBindBuffer(GL_ARRAY_BUFFER, vboID);      // for vertex coordinates
 
@@ -2717,8 +2716,6 @@ static int       _VBODraw(S57_prim *prim)
 
     // bind with 0 - switch back to normal pointer operation
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    //glEnable(GL_BLEND);
 
     _checkError("_VBODraw() -fini-");
 
@@ -3030,7 +3027,11 @@ static int       _glCallList(S52_DListData *DListData)
 #endif
 
                 } else {
-                    glDrawArrays(mode, first, count);
+                    // debug - test filter at GL level instead of CmdWord level
+                    //if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_CMD_WRD_FILTER))
+                    //    ++_nFrag;
+                    //else
+                        glDrawArrays(mode, first, count);
                 }
                 ++j;
 
@@ -3206,111 +3207,14 @@ static int       _computeCentroid(S57_geo *geoData)
     return TRUE;
 }
 
-//static int       _getOwnshpAtt(S52_obj *obj, double *course, double *speed, double *period)
 static int       _getVesselVector(S52_obj *obj, double *course, double *speed)
 // return TRUE and course, speed, else FALSE
 {
-    //S57_geo *geo       = S52_PL_getGeo(obj);
-    //GString *vecstbstr = S57_getAttVal(geo, "vecstb");
-    // NOTE: ownship doesn't have a vecstb attribute, rather it take the value
-    // from S52_MAR_VECSTB
-    //gint     vecstb    = (NULL == vecstbstr) ? (int) S52_MP_get(S52_MAR_VECSTB) : S52_atoi(vecstbstr->str);
-
-
-    /*
-    {
-        GString *sogspdstr = S57_getAttVal(geo, "sogspd");
-        GString *stwspdstr = S57_getAttVal(geo, "stwspd");
-        double   sogspd    = 0.0;
-        double   stwspd    = 0.0;
-
-        GString *cogcrsstr = S57_getAttVal(geo, "cogcrs");
-        GString *ctwcrsstr = S57_getAttVal(geo, "ctwcrs");
-        double   cogcrs    = 0.0;
-        double   ctwcrs    = 0.0;
-        //double   speed     = 0.0;
-
-
-        if ((NULL==sogspdstr) && (NULL==stwspdstr))
-            return FALSE;
-
-        if ((NULL==cogcrsstr) && (NULL==ctwcrsstr))
-            return FALSE;
-
-        sogspd = (NULL == sogspdstr)? 0.0 : S52_atof(sogspdstr->str);
-        stwspd = (NULL == stwspdstr)? 0.0 : S52_atof(stwspdstr->str);
-
-        *speed = (sogspd > stwspd)? sogspd : stwspd;
-
-        cogcrs = (NULL == cogcrsstr)? 0.0 : S52_atof(cogcrsstr->str);
-        ctwcrs = (NULL == ctwcrsstr)? 0.0 : S52_atof(ctwcrsstr->str);
-
-        *course= (cogcrs > ctwcrs)? cogcrs : ctwcrs;
-
-        // *period= vecper;
-
-        return TRUE;
-    }
-    */
-
-
-    // OWNSHP
-    /*
-    if (0.0 == S52_MP_get(S52_MAR_VECSTB))
-        return FALSE;
-
-    if (1.0 == S52_MP_get(S52_MAR_VECSTB)) {
-        GString *sogspdstr = S57_getAttVal(geo, "sogspd");
-        GString *cogcrsstr = S57_getAttVal(geo, "cogcrs");
-
-        *speed  = (NULL == sogspdstr)? 0.0 : S52_atof(sogspdstr->str);
-        *course = (NULL == cogcrsstr)? 0.0 : S52_atof(cogcrsstr->str);
-
-    } else {
-        GString *stwspdstr = S57_getAttVal(geo, "stwspd");
-        GString *ctwcrsstr = S57_getAttVal(geo, "ctwcrs");
-
-        *speed  = (NULL == stwspdstr)? 0.0 : S52_atof(stwspdstr->str);
-        *course = (NULL == ctwcrsstr)? 0.0 : S52_atof(ctwcrsstr->str);
-    }
-    */
-
-    /*
-    // none
-    if (0 == vecstb)
-        return FALSE;
+    S57_geo *geo    = S52_PL_getGeo(obj);
+    double   vecstb = S52_MP_get(S52_MAR_VECSTB);
 
     // ground
-    if (1 == vecstb) {
-        GString *sogspdstr = S57_getAttVal(geo, "sogspd");
-        GString *cogcrsstr = S57_getAttVal(geo, "cogcrs");
-
-        *speed  = (NULL == sogspdstr)? 0.0 : S52_atof(sogspdstr->str);
-        *course = (NULL == cogcrsstr)? 0.0 : S52_atof(cogcrsstr->str);
-
-        return TRUE;
-    }
-
-    // water
-    if (2 == vecstb) {
-        GString *stwspdstr = S57_getAttVal(geo, "stwspd");
-        GString *ctwcrsstr = S57_getAttVal(geo, "ctwcrs");
-
-        *speed  = (NULL == stwspdstr)? 0.0 : S52_atof(stwspdstr->str);
-        *course = (NULL == ctwcrsstr)? 0.0 : S52_atof(ctwcrsstr->str);
-
-        return TRUE;
-    }
-    */
-
-    S57_geo *geo       = S52_PL_getGeo(obj);
-    //GString *overGroundstr = S57_getAttVal(geo, "_overGround");
-    //int      overGround    = (NULL == overGroundstr)? TRUE : S52_atoi(overGroundstr->str);
-    //GString *vecstbstr = S57_getAttVal(geo, "vecstb");
-    //gint     vecstb    = (NULL == vecstbstr) ? 0 : S52_atoi(vecstbstr->str);
-
-    // ground
-    //if (1 == vecstb) {
+    if (1.0 == vecstb) {
         GString *sogspdstr = S57_getAttVal(geo, "sogspd");
         GString *cogcrsstr = S57_getAttVal(geo, "cogcrs");
 
@@ -3322,20 +3226,25 @@ static int       _getVesselVector(S52_obj *obj, double *course, double *speed)
             return FALSE;
 
         return TRUE;
-    //}
+    }
 
     // water
-    //if (2 == vecstb) {
-    //    GString *stwspdstr = S57_getAttVal(geo, "stwspd");
-    //    GString *ctwcrsstr = S57_getAttVal(geo, "ctwcrs");
-    //
-    //    *speed  = (NULL == stwspdstr)? 0.0 : S52_atof(stwspdstr->str);
-    //    *course = (NULL == ctwcrsstr)? 0.0 : S52_atof(ctwcrsstr->str);
-    //
-    //    return TRUE;
-    //}
+    if (2.0 == vecstb) {
+        GString *stwspdstr = S57_getAttVal(geo, "stwspd");
+        GString *ctwcrsstr = S57_getAttVal(geo, "ctwcrs");
 
-    //return FALSE;
+        *speed  = (NULL == stwspdstr)? 0.0 : S52_atof(stwspdstr->str);
+        *course = (NULL == ctwcrsstr)? 0.0 : S52_atof(ctwcrsstr->str);
+
+        // if no speed then draw no vector
+        if (0.0 == *speed)
+            return FALSE;
+
+        return TRUE;
+    }
+
+    // none - 0
+    return FALSE;
 }
 
 static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rotation)
@@ -3401,8 +3310,8 @@ static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rota
 static int       _renderSY_silhoutte(S52_obj *obj)
 // ownship & vessel (AIS)
 {
-    S57_geo       *geo       = S52_PL_getGeo(obj);
-    GLdouble       orient    = S52_PL_getSYorient(obj);
+    S57_geo  *geo    = S52_PL_getGeo(obj);
+    GLdouble  orient = S52_PL_getSYorient(obj);
 
     guint     npt = 0;
     GLdouble *ppt = NULL;
@@ -3447,9 +3356,7 @@ static int       _renderSY_silhoutte(S52_obj *obj)
     double shpLenPixel = shplen / scaley;
 
     // > 10 mm draw to scale
-    //if (((shpLenPixel*_dotpitch_mm_y)>10.0) && (TRUE==S52_MP_get(S52_MAR_SHIPS_OUTLINE))) {
-    //if ((shpLenPixel*_dotpitch_mm_y) > 10.0) {
-    if ((shpLenPixel*_dotpitch_mm_y) >= 6.0) {
+    if (((shpLenPixel*_dotpitch_mm_y) >= SHIPS_OUTLINE_MM) && (TRUE==S52_MP_get(S52_MAR_SHIPS_OUTLINE))) {
 
         // 3 - compute stretch of symbol (ratio)
         double lenRatio = shpLenPixel / symLenPixel;
@@ -3735,147 +3642,7 @@ static int       _renderSY_ownshp(S52_obj *obj)
     //double   _ownshp_off_x    = (NULL == _ownshp_off_xstr) ? 0.0 : S52_atof(_ownshp_off_xstr->str);
     //double   _ownshp_off_y    = (NULL == _ownshp_off_ystr) ? 0.0 : S52_atof(_ownshp_off_ystr->str);
 
-/*
-    // > 10 mm draw to scale
-    if (TRUE==S52_MP_get(S52_MAR_SHIPS_OUTLINE) && (0==S52_PL_cmpCmdParam(obj, "OWNSHP05"))) {
-        // compute ship symbol size on screen
-        int width;  // breadth (beam)
-        int height; // length
-        S52_PL_getSYbbox(obj, &width, &height);
 
-        // 1 - compute symbol size in pixel
-        double symLenPixel = (height/10.0) * _dotpitch_mm_y;
-        double symBrdPixel = (width /10.0) * _dotpitch_mm_x;
-
-        // 2 - compute ship's length in pixel
-        double scalex      = (_pmax.u - _pmin.u) / (double)_vp[2] ;
-        double scaley      = (_pmax.v - _pmin.v) / (double)_vp[3] ;
-
-        GString *shpbrdstr = S57_getAttVal(geoData, "shpbrd");
-        GString *shplenstr = S57_getAttVal(geoData, "shplen");
-        double   shpbrd    = (NULL==shpbrdstr) ? 0.0 : S52_atof(shpbrdstr->str);
-        double   shplen    = (NULL==shplenstr) ? 0.0 : S52_atof(shplenstr->str);
-
-        double shpBrdPixel = shpbrd / scalex;
-        double shpLenPixel = shplen / scaley;
-
-        if ((shpLenPixel*_dotpitch_mm_y) > 10.0) {
-
-            // 3 - compute stretch of symbol (ratio)
-            double lenRatio = shpLenPixel / symLenPixel;
-            double brdRatio = shpBrdPixel / symBrdPixel;
-
-            // FIXME: this work only for projected coodinate in meter
-            _glTranslated(ppt[0], ppt[1], 0.0);
-            _glScaled(1.0, -1.0, 1.0);
-            _glRotated(orient, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
-
-            //_glTranslated(-_ownshp_off_x, -_ownshp_off_y, 0.0);
-            _glTranslated(0.0, -_ownshp_off_y, 0.0);
-
-            _pushScaletoPixel();
-
-            // apply stretch
-            _glScaled(brdRatio, lenRatio, 1.0);
-
-
-            _glCallList(DListData);
-
-            _popScaletoPixel();
-
-
-            _SHIPS_OUTLINE_DRAWN = TRUE;
-
-            _checkError("_renderSY() / POINT_T");
-        }
-        return TRUE;
-    }
-
-    // < 10 mm draw cercle
-    if (0 == S52_PL_cmpCmdParam(obj, "OWNSHP01")) {
-        if (FALSE == _SHIPS_OUTLINE_DRAWN) {
-
-            //_renderSY_POINT_T(obj, ppt[0]+_ownshp_off_x, ppt[1]+_ownshp_off_y, orient);
-            //_renderSY_POINT_T(obj, ppt[0]+_ownshp_off_x, ppt[1], orient);
-            _renderSY_POINT_T(obj, ppt[0], ppt[1], orient);
-
-            _SHIPS_OUTLINE_DRAWN = TRUE;
-
-            _checkError("_renderSY() / POINT_T");
-        }
-        return TRUE;
-    }
-*/
-
-    /*
-    //if ((0==S52_PL_cmpCmdParam(obj, "OWNSHP01")) || (0==S52_PL_cmpCmdParam(obj, "OWNSHP05"))) {
-    if (0 == S52_PL_cmpCmdParam(obj, "OWNSHP05")) {
-        // compute ship symbol size on screen
-        int width;  // breadth (beam)
-        int height; // length
-        S52_PL_getSYbbox(obj, &width, &height);
-
-        // 1 - compute symbol size in pixel
-        double symLenPixel = (height/10.0) * _dotpitch_mm_y;
-        double symBrdPixel = (width /10.0) * _dotpitch_mm_x;
-
-        // 2 - compute ship's length in pixel
-        double scalex      = (_pmax.u - _pmin.u) / (double)_vp[2] ;
-        double scaley      = (_pmax.v - _pmin.v) / (double)_vp[3] ;
-
-        GString *shpbrdstr = S57_getAttVal(geoData, "shpbrd");
-        GString *shplenstr = S57_getAttVal(geoData, "shplen");
-        double   shpbrd    = (NULL==shpbrdstr) ? 0.0 : S52_atof(shpbrdstr->str);
-        double   shplen    = (NULL==shplenstr) ? 0.0 : S52_atof(shplenstr->str);
-
-        double shpBrdPixel = shpbrd / scalex;
-        double shpLenPixel = shplen / scaley;
-
-        // > 10 mm draw to scale
-        if ((shpLenPixel*_dotpitch_mm_y) > 10.0) {
-            //if (0 == S52_PL_cmpCmdParam(obj, "OWNSHP05")) {
-                // 3 - compute stretch of symbol (ratio)
-                double lenRatio = shpLenPixel / symLenPixel;
-                double brdRatio = shpBrdPixel / symBrdPixel;
-
-                // FIXME: this work only for projected coodinate in meter
-                _glTranslated(ppt[0], ppt[1], 0.0);
-                _glScaled(1.0, -1.0, 1.0);
-                _glRotated(orient, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
-
-                //_glTranslated(-_ownshp_off_x, -_ownshp_off_y, 0.0);
-                _glTranslated(0.0, -_ownshp_off_y, 0.0);
-
-                _pushScaletoPixel();
-
-                // apply stretch
-                _glScaled(brdRatio, lenRatio, 1.0);
-
-
-                _glCallList(DListData);
-
-                _popScaletoPixel();
-
-            //}
-            //else {
-            //    // < 10 mm draw cercle
-            //    _renderSY_POINT_T(obj, ppt[0], ppt[1], orient);
-            //}
-        }
-        //else {
-        //    // < 10 mm draw cercle
-        //    if (((shpLenPixel*_dotpitch_mm_y) < 10.0) && (0 == S52_PL_cmpCmdParam(obj, "OWNSHP01")))
-        //        _renderSY_POINT_T(obj, ppt[0], ppt[1], orient);
-        //}
-
-
-        //_SHIPS_OUTLINE_DRAWN = TRUE;
-
-        _checkError("_renderSY() / POINT_T");
-
-        return TRUE;
-    }
-    */
 
     if (0 == S52_PL_cmpCmdParam(obj, "OWNSHP05")) {
         _renderSY_silhoutte(obj);
@@ -3904,9 +3671,8 @@ static int       _renderSY_ownshp(S52_obj *obj)
         //double shpBrdPixel = shpbrd / scalex;
         double shpLenPixel = shplen / scaley;
 
-        // drawn circle if silhoutte to small OR no silhouette at all
-        //if ( ((shpLenPixel*_dotpitch_mm_y) < 10.0) || (FALSE==S52_MP_get(S52_MAR_SHIPS_OUTLINE))) {
-        if ( ((shpLenPixel*_dotpitch_mm_y) < 6.0) || (FALSE==S52_MP_get(S52_MAR_SHIPS_OUTLINE))) {
+        // 10 mm drawn circle if silhoutte to small OR no silhouette at all
+        if ( ((shpLenPixel*_dotpitch_mm_y) < SHIPS_OUTLINE_MM) || (FALSE==S52_MP_get(S52_MAR_SHIPS_OUTLINE))) {
             _renderSY_POINT_T(obj, ppt[0], ppt[1], orient);
         }
 
@@ -3916,18 +3682,13 @@ static int       _renderSY_ownshp(S52_obj *obj)
     // draw vector stabilization
     if (0 == S52_PL_cmpCmdParam(obj, "VECGND01") ||
         0 == S52_PL_cmpCmdParam(obj, "VECWTR01") ) {
-        //double period = S52_MP_get(S52_MAR_VECPER);
-        gint     vecper = (int) S52_MP_get(S52_MAR_VECPER);
-
-        //if (0.0 != period) {
-        if (0 != vecper) {
+        double vecper = S52_MP_get(S52_MAR_VECPER);
+        if (0.0 != vecper) {
             // compute symbol offset due to course and seep
-            //double course, speed, period;
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
 
                 double courseRAD = (90.0 - course)*DEG_TO_RAD;
-                //double veclenNM  = period   * (speed /60.0);
                 double veclenNM  = vecper   * (speed /60.0);
                 double veclenM   = veclenNM * NM_METER;
                 double veclenMX  = veclenM  * cos(courseRAD);
@@ -3945,13 +3706,9 @@ static int       _renderSY_ownshp(S52_obj *obj)
 
     // time marks on vector - 6 min
     if (0 == S52_PL_cmpCmdParam(obj, "OSPSIX02")) {
-        //double period = S52_MP_get(S52_MAR_VECPER);
-        gint     vecper = (int) S52_MP_get(S52_MAR_VECPER);
-
-        //if (0.0 != period) {
-        if (0 != vecper) {
+        double     vecper = S52_MP_get(S52_MAR_VECPER);
+        if (0.0 != vecper) {
             // compute symbol offset of each 6 min mark
-            //double course, speed, period;
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
                 double orientRAD    = (90.0 - course)*DEG_TO_RAD;
@@ -3959,7 +3716,6 @@ static int       _renderSY_ownshp(S52_obj *obj)
                 double veclenM6min  = veclenNM6min * NM_METER;
                 double veclenM6minX = veclenM6min  * cos(orientRAD);
                 double veclenM6minY = veclenM6min  * sin(orientRAD);
-                //int    nmrk         = (int) period / 6.0;
                 int    nmrk         = (int) (vecper / 6.0);
 
                 for (int i=0; i<nmrk; ++i) {
@@ -3979,11 +3735,8 @@ static int       _renderSY_ownshp(S52_obj *obj)
 
     // time marks on vector - 1 min
     if (0 == S52_PL_cmpCmdParam(obj, "OSPONE02")) {
-        //double period = S52_MP_get(S52_MAR_VECPER);
-        gint     vecper = (int) S52_MP_get(S52_MAR_VECPER);
-
-        //if (0.0 != period) {
-        if (0 != vecper) {
+        double     vecper = S52_MP_get(S52_MAR_VECPER);
+        if (0.0 != vecper) {
             // compute symbol offset of each 1 min mark
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
@@ -3992,7 +3745,6 @@ static int       _renderSY_ownshp(S52_obj *obj)
                 double veclenM1min  = veclenNM1min * NM_METER;
                 double veclenM1minX = veclenM1min  * cos(orientRAD);
                 double veclenM1minY = veclenM1min  * sin(orientRAD);
-                //int    nmrk         = (int) period;
                 int    nmrk         = vecper;
 
                 for (int i=0; i<nmrk; ++i) {
@@ -4072,18 +3824,14 @@ static int       _renderSY_vessel(S52_obj *obj)
 #endif
 
     // draw vector stabilization
+    // FIXME: NO VECT STAB if target sleeping
     if (0 == S52_PL_cmpCmdParam(obj, "VECGND21") ||
         0 == S52_PL_cmpCmdParam(obj, "VECWTR21") ) {
-        gint     vecper    = (int) S52_MP_get(S52_MAR_VECPER);
-
-        // FIXME: NO VECT STAB if target sleeping
-
-        if (0 != vecper) {
+        double     vecper = S52_MP_get(S52_MAR_VECPER);
+        if (0.0 != vecper) {
             // compute symbol offset due to course and speed
-            //double course, speed, period;
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
-
                 double courseRAD = (90.0 - course)*DEG_TO_RAD;
                 double veclenNM  = vecper   * (speed /60.0);
                 double veclenM   = veclenNM * NM_METER;
@@ -4110,11 +3858,9 @@ static int       _renderSY_vessel(S52_obj *obj)
     // time marks on vector - 6 min
     if ((0 == S52_PL_cmpCmdParam(obj, "ARPSIX01")) ||
         (0 == S52_PL_cmpCmdParam(obj, "AISSIX01")) ){
-        gint     vecper    = S52_MP_get(S52_MAR_VECPER);
-
-        if (0 != vecper) {
+        double     vecper = S52_MP_get(S52_MAR_VECPER);
+        if (0.0 != vecper) {
             // compute symbol offset of each 6 min mark
-            //double course, speed, period;
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
                 double orientRAD    = (90.0 - course)*DEG_TO_RAD;
@@ -4122,7 +3868,7 @@ static int       _renderSY_vessel(S52_obj *obj)
                 double veclenM6min  = veclenNM6min * NM_METER;
                 double veclenM6minX = veclenM6min  * cos(orientRAD);
                 double veclenM6minY = veclenM6min  * sin(orientRAD);
-                int    nmrk         = (int) (vecper/6);
+                int    nmrk         = vecper / 6.0;
 
                 for (int i=0; i<nmrk; ++i) {
                     double ptx = ppt[0] + veclenM6minX*(i+1);
@@ -4138,9 +3884,8 @@ static int       _renderSY_vessel(S52_obj *obj)
     // time marks on vector - 1 min
     if ((0 == S52_PL_cmpCmdParam(obj, "ARPONE01")) ||
         (0 == S52_PL_cmpCmdParam(obj, "AISONE01"))  ) {
-        gint     vecper = S52_MP_get(S52_MAR_VECPER);
-
-        if (0 != vecper) {
+        double     vecper = S52_MP_get(S52_MAR_VECPER);
+        if (0.0 != vecper) {
             // compute symbol offset of each 1 min mark
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
@@ -4181,7 +3926,7 @@ static int       _renderSY_vessel(S52_obj *obj)
         // drawn VESSEL symbol
         // 1 - if silhoutte too small
         // 2 - OR no silhouette at all
-        if ( ((shpLenPixel*_dotpitch_mm_y) < 10.0) || (FALSE==S52_MP_get(S52_MAR_SHIPS_OUTLINE)) ) {
+        if ( ((shpLenPixel*_dotpitch_mm_y) < SHIPS_OUTLINE_MM) || (FALSE==S52_MP_get(S52_MAR_SHIPS_OUTLINE)) ) {
             // 3 - AND active (ie not sleeping)
             if (NULL!=vestatstr && '1'==*vestatstr->str)
                 _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
@@ -4337,6 +4082,7 @@ static int       _renderSY(S52_obj *obj)
     return FALSE;
 #endif
 
+    // debug - moved to glDrawArray()
     if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
@@ -4829,7 +4575,7 @@ static int       _renderLS_ownshp(S52_obj *obj)
 {
     S57_geo *geo       = S52_PL_getGeo(obj);
     GString *headngstr = S57_getAttVal(geo, "headng");
-    double   period    = S52_MP_get(S52_MAR_VECPER);
+    double   vecper    = S52_MP_get(S52_MAR_VECPER);
 
     GLdouble *ppt     = NULL;
     guint     npt     = 0;
@@ -4845,8 +4591,20 @@ static int       _renderLS_ownshp(S52_obj *obj)
     //double   _ownshp_off_x    = (NULL == _ownshp_off_xstr) ? 0.0 : S52_atof(_ownshp_off_xstr->str);
     //double   _ownshp_off_y    = (NULL == _ownshp_off_ystr) ? 0.0 : S52_atof(_ownshp_off_ystr->str);
 
+
+    // FIXME: 2 type of line for 3 line symbol - but one overdraw the other
+    // pen_w:
+    //   2px - vector
+    //   1px - heading, beam brg
+
+    S52_Color *col;
+    char       style;   // L/S/T
+    char       pen_w;
+    S52_PL_getLSdata(obj, &pen_w, &style, &col);
+
+
     // draw heading line
-    if ((NULL!=headngstr) && (TRUE==S52_MP_get(S52_MAR_HEADNG_LINE))) {
+    if ((NULL!=headngstr) && (TRUE==S52_MP_get(S52_MAR_HEADNG_LINE)) && ('1'==pen_w)) {
         double orient = S52_PL_getSYorient(obj);
 
 #ifdef S52_USE_GLES2
@@ -4881,7 +4639,7 @@ static int       _renderLS_ownshp(S52_obj *obj)
     }
 
     // beam bearing line
-    if (0.0 != S52_MP_get(S52_MAR_BEAM_BRG_NM)) {
+    if ((0.0!=S52_MP_get(S52_MAR_BEAM_BRG_NM)) && ('1'==pen_w)) {
         double orient    = S52_PL_getSYorient(obj);
         double beambrgNM = S52_MP_get(S52_MAR_BEAM_BRG_NM);
 
@@ -4918,11 +4676,11 @@ static int       _renderLS_ownshp(S52_obj *obj)
     }
 
     // vector
-    if (0 != period) {
+    if ((0.0!=vecper) && ('2'==pen_w)) {
         double course, speed;
         if (TRUE == _getVesselVector(obj, &course, &speed)) {
             double orientRAD = (90.0 - course) * DEG_TO_RAD;
-            double veclenNM  = period   * (speed / 60.0);
+            double veclenNM  = vecper   * (speed / 60.0);
             double veclenM   = veclenNM * NM_METER;
             double veclenMX  = veclenM  * cos(orientRAD);
             double veclenMY  = veclenM  * sin(orientRAD);
@@ -4980,11 +4738,9 @@ static int       _renderLS_vessel(S52_obj *obj)
     // heading line, AIS only
     GString *vesrcestr = S57_getAttVal(geo, "vesrce");
     if (NULL!=vesrcestr && '2'==*vesrcestr->str) {
-
         if ((NULL!=headngstr) && (TRUE==S52_MP_get(S52_MAR_HEADNG_LINE)))  {
             GLdouble *ppt = NULL;
             guint     npt = 0;
-
             if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
                 double headng = S52_atof(headngstr->str);
                 // draw a line 50mm in length
@@ -5291,10 +5047,6 @@ static int       _renderLS(S52_obj *obj)
 // FIXME: do overlapping line supression (need to find a test case - S52_MAR_SYMBOLIZED_BND)
 // FIX: add clip plane in shader (GLES2)
 {
-    S52_Color *col;
-    char       style;   // L/S/T
-    char       pen_w;
-
 #ifdef S52_USE_GV
     // FIXME
     return FALSE;
@@ -5310,6 +5062,9 @@ static int       _renderLS(S52_obj *obj)
     if (S52_CMD_WRD_FILTER_LS & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
+    S52_Color *col;
+    char       style;   // L/S/T
+    char       pen_w;
     S52_PL_getLSdata(obj, &pen_w, &style, &col);
     glLineWidth(pen_w - '0');
     //glLineWidth(pen_w - '0' + 0.1);  // WARNING: THIS +0.1 SLOW DOWN EVERYTHING
@@ -5404,9 +5159,13 @@ static int       _renderLS(S52_obj *obj)
                 npt = S57_getGeoSize(geoData);
             }
 
-            if (0 == g_strcmp0("ownshp", S57_getName(geoData)))
+            if (0 == g_strcmp0("ownshp", S57_getName(geoData))) {
+                // what symbol for ownshp of type line or area ?
+                // when ownshp is a POINT_T type !!!
+                PRINTF("DEBUG: ownshp obj of type LINES_T, AREAS_T!");
                 _renderLS_ownshp(obj);
-            else {
+                g_assert(0);
+            } else {
                 if ((0 == g_strcmp0("afgves", S57_getName(geoData))) ||
                     (0 == g_strcmp0("afgshp", S57_getName(geoData)))
                    ) {
@@ -5424,8 +5183,6 @@ static int       _renderLS(S52_obj *obj)
                         glUniform1f(_uStipOn, 1.0);
                         glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
 
-                        //float sym_x_px = 32 * 0.3 / _dotpitch_mm_x;
-                        //float sym_x_mm = 32 * 0.3;
                         float dx       = ppt[0] - ppt[3];
                         float dy       = ppt[1] - ppt[4];
                         float leglen_m = sqrt(dx*dx + dy*dy);                     // leg length in meter
@@ -6156,6 +5913,7 @@ static int       _renderAC(S52_obj *obj)
     S52_Color *c   = S52_PL_getACdata(obj);
     S57_geo   *geo = S52_PL_getGeo(obj);
 
+    // commented for testing
     if (S52_CMD_WRD_FILTER_AC & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
@@ -6186,11 +5944,9 @@ static int       _renderAC(S52_obj *obj)
 #ifndef S52_USE_GV
     // don't reset matrix if used in GV
 #ifdef S52_USE_GLES2
+    // FIXME: reset matrix here OR reset matrix after translation
     _glMatrixMode(GL_MODELVIEW);
     _glLoadIdentity();
-
-    // FIXME: BUG BUG BUG
-    // THIS SHOULD NOT BE HERE .. BUT MIXUP AREA DRAW
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
     _fillarea(geo);
@@ -8397,42 +8153,69 @@ static guint     _minPOT(guint value)
 
 static int       _newTexture(S52_GL_ras *raster)
 // copy and blend raster 'data' to alpha texture
+// FIXME: use shader to blend rather than precomputing value here
 {
     guint potX = _minPOT(raster->w);
     guint potY = _minPOT(raster->h);
 
     float min  =  INFINITY;
     float max  = -INFINITY;
+
     float safe = S52_MP_get(S52_MAR_SAFETY_CONTOUR) * -1.0;  // change signe
+    //unsigned char safe = 100;
+
     float *dataf = (float*) raster->data;
-    unsigned char *texAlpha = g_new0(unsigned char, potX * potY);
-    unsigned char *texTmp   = texAlpha;
+    //unsigned char *datab = (unsigned char *) raster->data;
+
     guint count = raster->w * raster->h;
+    unsigned char *texAlpha = g_new0(unsigned char, potX * potY);
+    //unsigned char *texAlpha = g_new0(unsigned char, count);
+    unsigned char *texTmp   = texAlpha;
 
     for (guint i=0; i<count; ++i) {
-        if (-9999 == dataf[i])
-            continue;
-
-        min = MIN(dataf[i], min);
-        max = MAX(dataf[i], max);
-
         int Yline = i/raster->w;
         int k     = i - Yline*raster->w;
 
-        if ((safe/2.0) <= dataf[i]) {
-            //texTmp[Yline*potX + k] = 100;
+        // NODATA
+        if (-9999.0 == dataf[i]) {
             texTmp[Yline*potX + k] = 0;
+            //texTmp[Yline*w + k] = 0;
+            //texTmp[i] = 0;
+            continue;
+        }
+
+        min = MIN(dataf[i], min);
+        max = MAX(dataf[i], max);
+        //min = MIN(datab[i], min);
+        //max = MAX(datab[i], max);
+
+        if ((safe/2.0) <= dataf[i]) {
+        //if ((safe/2.0) <= datab[i]) {
+            // debug
+            //texTmp[Yline*potX + k] = 100;
+
+            // OK
+            texTmp[Yline*potX + k] = 0;
+            //texTmp[Yline*w + k] = 0;
+            //texTmp[i] = 0;
             continue;
         }
         if (safe <= dataf[i]) {
+        //if (safe <= datab[i]) {
             texTmp[Yline*potX + k] = 255;
+            //texTmp[Yline*w + k] = 255;
+            //texTmp[i] = 255;
             continue;
         }
         if ((safe-2.0) <= dataf[i]) {
+        //if ((safe-2.0) <= datab[i]) {
             texTmp[Yline*potX + k] = 100;
+            //texTmp[Yline*w + k] = 100;
+            //texTmp[i] = 100;
             continue;
         }
     }
+
     raster->min      = min;
     raster->max      = max;
     raster->potX     = potX;
@@ -8441,7 +8224,6 @@ static int       _newTexture(S52_GL_ras *raster)
 
     return TRUE;
 }
-
 
 int        S52_GL_drawRaster(S52_GL_ras *raster)
 {
@@ -8457,15 +8239,16 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
         glBindTexture(GL_TEXTURE_2D, raster->texID);
 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->potX, raster->potY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->w, raster->h, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
-        _checkError("S52_GL_drawRaster() -1.0-");
-
         glBindTexture(GL_TEXTURE_2D, 0);
+
+        _checkError("S52_GL_drawRaster() -1.0-");
 
         // debug
         PRINTF("DEBUG: MIN=%f MAX=%f\n", raster->min, raster->max);
@@ -8480,6 +8263,8 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
     float fracX = (float)raster->w/(float)raster->potX;
     float fracY = (float)raster->h/(float)raster->potY;
+    //float fracX = 1.0;
+    //float fracY = 1.0;
     vertex_t ppt[4*3 + 4*2] = {
         raster->W, raster->S, 0.0,        0.0f, 0.0f,
         raster->W, raster->N, 0.0,        0.0f,  fracY,
@@ -8488,7 +8273,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
     };
 
     glEnableVertexAttribArray(_aUV);
-    glVertexAttribPointer(_aUV, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
+    glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
 
     glEnableVertexAttribArray(_aPosition);
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
@@ -8849,6 +8634,9 @@ int        S52_GL_begin(S52_GL_mode mode)
     //_dumpATImemInfo(TEXTURE_FREE_MEMORY_ATI);      // 0x87FC
     //_dumpATImemInfo(RENDERBUFFER_FREE_MEMORY_ATI); // 0x87FD
 
+    // debug - apitrace
+    //glInsertEventMarkerEXT(6, "marker");
+
 #ifdef S52_USE_TEGRA2
     // Nvidia - GetIntegerv
     // GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX          0x9047
@@ -8860,6 +8648,8 @@ int        S52_GL_begin(S52_GL_mode mode)
 
     // debug
     _drgare = 0;
+    _nFrag  = 0;
+
 
     // stat
     _ntristrip = 0;
@@ -9150,6 +8940,7 @@ int        S52_GL_end(S52_GL_mode mode)
         PRINTF("TRIANGLES **** = %i, _nCall = %i\n", (int)_ntris/3, _nCall);
     }
     */
+    //PRINTF("SKIP POIN_T glDrawArrays(): nFragment = %i\n", _nFrag);
 
     // this seem to loop
     _checkError("S52_GL_end() -fini-");
@@ -9331,9 +9122,9 @@ static int       _init_es2(void)
         "varying vec2      v_texCoord; \n"
         "varying float     v_alpha;    \n"
         "                              \n"
-        "void main(void)               \n"
-        "{                             \n"
 
+        "void main(void)                        \n"
+        "{                                      \n"
         "                                       \n"
         "    if (1.0 == uBlitOn) {              \n"
         "       gl_FragColor = texture2D(uSampler2d, v_texCoord); \n"

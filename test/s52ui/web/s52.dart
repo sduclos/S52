@@ -11,6 +11,8 @@ class S52 {
   Completer _completer = null;
   Map       _data      = JSON.decode('{"id":1,"method":"???","params":["???"]}');
   int       _id        = 1;
+  
+  WebSocket _ws;
 
   Stopwatch _stopwatch = new Stopwatch();
 
@@ -25,6 +27,12 @@ class S52 {
 
 
   static const int MAR_SHOW_TEXT              =  1;
+  
+  static const int MAR_SAFETY_CONTOUR         =  3;   // S52_LINES: selected safety contour (meters) [IMO PS 3.6]
+  static const int MAR_SAFETY_DEPTH           =  4;   // S52_POINT: selected safety depth (for sounding color) (meters) [IMO PS 3.7]
+  static const int MAR_SHALLOW_CONTOUR        =  5;   // S52_AREAS: selected shallow water contour (meters) (optional) [OFF==S52_MAR_TWO_SHADES]
+  static const int MAR_DEEP_CONTOUR           =  6;   // S52_AREAS: selected deepwater contour (meters) (optional)
+
   static const int MAR_COLOR_PALETTE          = 15;
   static const int MAR_SCAMIN                 = 23;
   static const int MAR_ANTIALIAS              = 24;
@@ -59,11 +67,24 @@ class S52 {
   static const int CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
 
   S52() {
-    js.context['websocket'].onmessage = new js.FunctionProxy(rcvMsg);
+
+    //js.context['websocket'].onmessage = new js.FunctionProxy(rcvMsg);
     //context['websocket']['onmessage'] = rcvMsg;
 
-    _drawLastTimer();
+    //_drawLastTimer();
   }
+  Future<bool> initWS(var wsUri) {
+    Completer completer = new Completer();
+
+    _ws = new WebSocket(wsUri);
+    _ws.onOpen.   listen((Event e)        {completer.complete(true);});
+    _ws.onMessage.listen((MessageEvent e) {_rcvMsg(e);});
+    _ws.onClose.  listen((CloseEvent e)   {print('_ws CLOSE:$e');});
+    _ws.onError.  listen((Event e)        {print('_ws ERROR:$e');});
+
+    return completer.future;
+  }
+  
   _drawLastTimer() {
     if (null != _timer)
       return;
@@ -85,8 +106,8 @@ class S52 {
     });
   }
 
-  //rcvMsg(MessageEvent evt) {
-  rcvMsg(var evt) {
+  _rcvMsg(MessageEvent evt) {
+  //rcvMsg(var evt) {
     // receive S52/JSON msg from WebSocket (Cordova) in s52ui.html
     //print('............................str:${evt.data}');
     var str = evt.data;
@@ -134,7 +155,7 @@ class S52 {
     _completer = new Completer();
 
     // js-interop
-    js.context['websocket'].send(str);
+    //js.context['websocket'].send(str);
     
     // dart:js
     //context['websocket'].callMethod('send', [str]);
@@ -142,11 +163,13 @@ class S52 {
 
     
     //_ws.send(str);
-    //if (_ws.readyState == WebSocket.OPEN) {
-    //  _ws.send(str);
-    //} else {
-    //  print('WebSocket not connected, message not sent:$str');
-    //}
+    if (_ws.readyState == WebSocket.OPEN) {
+      _ws.send(str);
+      print('send:$str');
+    } else {
+      //print('WebSocket not connected, message not sent:$str');
+      throw 'WebSocket not connected, message not sent:$str';
+    }
 
     return _completer.future;
   }

@@ -1178,7 +1178,7 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
         // AIS MSG TYPE 8: Broadcast Binary Message [mmsi:3160026, dac:316, fid:19]
         // DAC 316 - Canada
         // FID  19 - ???
-        g_print("AIS MSG TYPE 8 - Broadcast Binary Message [mmsi:%i, dac:%i, fid:%i, bitdata:%s]\n",
+        g_print("s52ais:_updateAISdata(): AIS MSG TYPE 8 - Broadcast Binary Message [mmsi:%i, dac:%i, fid:%i, bitdata:%s]\n",
                 gpsdata->ais.mmsi, gpsdata->ais.type8.dac, gpsdata->ais.type8.fid, gpsdata->ais.type8.bitdata);
 
 
@@ -1236,7 +1236,7 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
 
     // debug
     int set = gpsdata->set & AIS_SET;
-    g_print("s52ais:DEBUG - SKIP AIS MSG TYPE:%u - AIS_SET = %i [error:%s]\n", gpsdata->ais.type, set, gpsdata->error);
+    g_print("s52ais:_updateAISdata(): DEBUG - SKIP AIS MSG TYPE:%u - AIS_SET = %i [error:%s]\n", gpsdata->ais.type, set, gpsdata->error);
 
     return;
 }

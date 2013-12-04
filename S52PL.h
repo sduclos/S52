@@ -90,7 +90,7 @@ typedef enum S52_CmdWrd {
     S52_CMD_COM_LN,     // LC --SHOWLINE
     S52_CMD_ARE_CO,     // AC --SHOWAREA`
     S52_CMD_ARE_PA,     // AP --SHOWAREA
-    S52_CMD_CND_SY,     // CS --CALLSYMPROC
+    S52_CMD_CND_SY,     // CS --CALLSYMPROC (Conditional Symbology)
 
     S52_CMD_OVR_PR      // OVERRIDE PRIORITY (not in S52specs).
                         // Used 8 char to passe data from S52CS ('-' = field not used):
@@ -110,7 +110,6 @@ typedef struct S52_Color {
                         // but not VBO
     //--------------------------
 
-    //char     colName[5];
     char     colName[S52_PL_COLN+1];   // '\0' terminated
     double   x;
     double   y;
@@ -295,6 +294,8 @@ int            S52_PL_setTextParsed(S52_obj *obj);
 int            S52_PL_hasText(S52_obj *obj);
 // TRUE if this object has LC (Line Complex) else FALSE
 int            S52_PL_hasLC(S52_obj *obj);
+// return CS name if this object has CS (Conditional Symbology) else NULL
+const char    *S52_PL_hasCS(S52_obj *obj);
 
 
 // get new display priority

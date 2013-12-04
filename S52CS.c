@@ -778,13 +778,10 @@ static GString *DATCVR01 (S57_geo *geo)
 // described in terms of a flow chart in the same way as other conditional procedures,
 // this procedure is in the form of written notes.
 {
-    // FIXME: 'geo' useless
-    (void) geo;
-
     // NOTE: this CS apply to object M_COVR and M_CSCL
 
-    // debug --return empty command for now
-    //GString *datcvr01 = g_string_new(";OP(----)");
+    // quiet compiler
+    (void) geo;
     GString *datcvr01 = NULL;
 
     ///////////////////////
@@ -862,10 +859,7 @@ static GString *DATCVR02 (S57_geo *geo)
         silent = TRUE;
     }
 
-    //GString *datcvr02 = g_string_new(";OP(----)");
-    GString *datcvr02 = DATCVR01(geo);
-
-    return datcvr02;
+    return DATCVR01(geo);
 }
 
 static GString *_SEABED01(double drval1, double drval2);
@@ -935,7 +929,6 @@ static GString *DEPARE02 (S57_geo *geo)
         silent = TRUE;
     }
 
-    //return g_string_new(";LC(QUESMRK1)");
     return DEPARE01(geo);
 }
 
@@ -1144,11 +1137,11 @@ static GString *DEPCNT02 (S57_geo *geo)
         depcnt02 = g_string_prepend(depcnt02, ";OP(---33020)");
 
     // depth label (facultative in S-52)
-    //if (TRUE == S52_MP_get(S52_MAR_SHOW_TEXT)) {
-    //    GString *sndfrm02 = _SNDFRM02(geo, depth_value);
-    //    depcnt02 = g_string_append(depcnt02, sndfrm02->str);
-    //    g_string_free(sndfrm02, TRUE);
-    //}
+    /*
+    GString *sndfrm02 = _SNDFRM02(geo, depth_value);
+    depcnt02 = g_string_append(depcnt02, sndfrm02->str);
+    g_string_free(sndfrm02, TRUE);
+    */
 
     // debug
     //PRINTF("depth= %f\n", depth_value);
@@ -1235,7 +1228,7 @@ static GString *LEGLIN02 (S57_geo *geo)
         // LUCM 52210 STANDARD
     }
 
-    // NOTE: problem of determining witch TX() to draw
+    // FIXME: problem of determining witch TX() to draw
 
     // TX: course made good (mid point of leg)
     g_string_append(leglin02, ";TX('leglin',2,1,2,'15110',-1,-1,CHBLK,51)");
@@ -1302,7 +1295,7 @@ static GString *LIGHTS05 (S57_geo *geo)
 // NOTE: why is this relationship not already encoded in S57 (ei. C_AGGR or C_STAC) ?
 
 {
-    GString *lights05          = NULL;
+    GString *lights05          = g_string_new("");
     //GString *valnmrstr         = S57_getAttVal(geo, "VALNMR");
     //double   valnmr            = 0.0;
     GString *catlitstr         = S57_getAttVal(geo, "CATLIT");
@@ -1322,8 +1315,6 @@ static GString *LIGHTS05 (S57_geo *geo)
     //if (1555 == S57_getGeoID(geo)) {
     //    PRINTF("lights found\n");
     //}
-
-    lights05 = g_string_new("");
 
     // NOTE: valmnr is only use when rendering
     //valnmr = (NULL == valnmrstr) ? 9.0 : S52_atof(valnmrstr->str);
@@ -2133,7 +2124,6 @@ static GString *OBSTRN05 (S57_geo *geo)
         silent = TRUE;
     }
 
-    //return g_string_new(";OP(----)");
     return OBSTRN04(geo);
 }
 
@@ -2147,7 +2137,6 @@ static GString *OBSTRN06 (S57_geo *geo)
         silent = TRUE;
     }
 
-    //return g_string_new(";OP(----)");
     return OBSTRN04(geo);
 }
 
@@ -2192,92 +2181,68 @@ static GString *OWNSHP02 (S57_geo *geo)
 // FIXME: get conning position (where/how to get those values?)
 {
     GString *ownshp02  = g_string_new("");
-    GString *headngstr = S57_getAttVal(geo, "headng");
+    //GString *headngstr = S57_getAttVal(geo, "headng");
     GString *vlabelstr = S57_getAttVal(geo, "_vessel_label");
 
-    // text label (experimental)
+    // experimental: text label
     if (NULL != vlabelstr) {
         g_string_append(ownshp02, ";TX(_vessel_label,3,3,3,'15110',1,1,SHIPS,75)" );
     }
 
-    // heading need specific MP (ON/OFF)
-    // NOTE: first instruction before OUTLINE flag in GL
-    if (NULL != headngstr)
-        // draw to the edge of window
+    // FIXME: 2 type of line for 3 line symbol - overdraw of 1px pen_w type
+    // pen_w:
+    //   2px - vector
+    //   1px - heading, beam brg
+
+    // draw to the edge of window
+    // first LS() 1px
+    //if (NULL != headngstr)
         g_string_append(ownshp02, ";LS(SOLD,1,SHIPS)");
 
-    if (TRUE == S52_MP_get(S52_MAR_SHIPS_OUTLINE))
-        // draw OWNSHP05 if length > 10 mm, else OWNSHP01 (circle)
+    // draw OWNSHP05 if length > 10 mm, else OWNSHP01 (circle)
+    //if (TRUE == S52_MP_get(S52_MAR_SHIPS_OUTLINE))
         g_string_append(ownshp02, ";SY(OWNSHP05)");
 
     g_string_append(ownshp02, ";SY(OWNSHP01)");
 
 
     // course / speed vector on ground / water
-    //if ((NULL!=vecperstr) && ('-'!=vecperstr->str[1])) {
-    //if (NULL != vecperstr)  {
-    if (0.0 != S52_MP_get(S52_MAR_VECPER))  {
+    //if (0.0 != S52_MP_get(S52_MAR_VECPER))  {
         // draw line according to ships course (cogcrs or ctwcrs) and speed (sogspd or stwspd)
-        g_string_append(ownshp02, ";LS(SOLD,2,SHIPS)");
+        // Note: second LS() 2px
+        //g_string_append(ownshp02, ";LS(SOLD,2,SHIPS)");
+        g_string_append(ownshp02, ";SY(VECGND01);SY(VECWTR01);LS(SOLD,2,SHIPS)");
 
+        /*
         // vector stabilisation (symb place at the end of vector)
-        //if (NULL != vecstbstr) {
         if (0.0 != S52_MP_get(S52_MAR_VECSTB)) {
-
-            // none
-            //if ('0' == *vecstbstr->str) { ; }
-
             // ground
-            //if ('1' == *vecstbstr->str)
             if (1.0 == S52_MP_get(S52_MAR_VECSTB))
                 g_string_append(ownshp02, ";SY(VECGND01)");
 
             // water
-            //if ('2' == *vecstbstr->str)
             if (2.0 == S52_MP_get(S52_MAR_VECSTB))
                 g_string_append(ownshp02, ";SY(VECWTR01)");
-
-            /*
-            if (1.0 == S52_MP_get(S52_MAR_VECSTB))
-                // ground
-                g_string_append(ownshp02, ";SY(VECGND01)");
-                // water
-                g_string_append(ownshp02, ";SY(VECWTR01)");
-            */
         }
+        */
 
         // time mark (on vector)
-        //if (NULL != vecmrkstr) {
         if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
-            // none
-            //if ('0' == *vecmrkstr->str) { ; }
-
             // 6 min. and 1 min. symb.
-            //if ('1' == *vecmrkstr->str)
             if (1.0 == S52_MP_get(S52_MAR_VECMRK))
                 g_string_append(ownshp02, ";SY(OSPSIX02);SY(OSPONE02)");
 
             // 6 min. symb
-            //if ('2' == *vecmrkstr->str)
             if (2.0 == S52_MP_get(S52_MAR_VECMRK))
                 g_string_append(ownshp02, ";SY(OSPSIX02)");
-
-            /*
-            if (1.0 == S52_MP_get(S52_MAR_VECMRK))
-                // 6 min. and 1 min. symb.
-                g_string_append(ownshp02, ";SY(OSPSIX02);SY(OSPONE02)");
-            else
-                // 6 min. symb
-                g_string_append(ownshp02, ";SY(OSPSIX02)");
-            */
         }
-
-    }
+    //}
 
     // beam bearing
-    if (0.0 != S52_MP_get(S52_MAR_BEAM_BRG_NM)) {
+    // Note: third LS() 1px
+    //if (0.0 != S52_MP_get(S52_MAR_BEAM_BRG_NM)) {
         g_string_append(ownshp02, ";LS(SOLD,1,SHIPS)");
-    }
+    //}
 
     return ownshp02;
 }
@@ -3217,9 +3182,6 @@ static GString *VESSEL01 (S57_geo *geo)
 {
     GString *vessel01  = g_string_new("");
     GString *vesrcestr = S57_getAttVal(geo, "vesrce");  // vessel report source
-    //GString *vecperstr = S57_getAttVal(geo, "vecper");
-    //GString *vecmrkstr = S57_getAttVal(geo, "vecmrk");
-    //GString *vecstbstr = S57_getAttVal(geo, "vecstb");
     GString *vlabelstr = S57_getAttVal(geo, "_vessel_label");
 
     // text label (experimental)
@@ -3233,12 +3195,12 @@ static GString *VESSEL01 (S57_geo *geo)
 #endif
 
     // add the symbols ground and water arrow right now
-    // and draw only the proper one when the user enter the 'vecstb'
+    // and draw only the proper one when the user enter the S52_MAR_VECSTB
     // FIXME: AIS: leave a gap (size AISSIX01) at every minute mark
     g_string_append(vessel01, ";SY(VECGND21);SY(VECWTR21);LS(SOLD,2,ARPAT)");
 
     // experimental: AIS draw ship's silhouettte (OWNSHP05) if length > 10 mm
-    if (TRUE == S52_MP_get(S52_MAR_SHIPS_OUTLINE) && (NULL!=vesrcestr && '2'==*vesrcestr->str))
+    //if (TRUE == S52_MP_get(S52_MAR_SHIPS_OUTLINE) && (NULL!=vesrcestr && '2'==*vesrcestr->str))
         g_string_append(vessel01, ";SY(OWNSHP05)");
 
     // ARPA
@@ -3247,22 +3209,18 @@ static GString *VESSEL01 (S57_geo *geo)
 
 #ifdef S52_USE_SYM_VESSEL_DNGHL
         // experimental: ARPA target & close quarters
+        // Note: the LS() command word for ARPA trigger vector
+        // but not heading line will be drawn
         g_string_append(vessel01, ";SY(arpatg01);LS(SOLD,1,DNGHL)");
 #endif
 
         // add time mark (on ARPA vector)
         if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
-
-            // none - do nothing
-            //if ('0' == *vecmrkstr->str) { ; }
-
             // 6 min. and 1 min. symb.
-            //if ('1' == *vecmrkstr->str)
             if (1.0 == S52_MP_get(S52_MAR_VECMRK))
                 g_string_append(vessel01, ";SY(ARPSIX01);SY(ARPONE01)");
 
             // 6 min. symb
-            //if ('2' == *vecmrkstr->str)
             if (2.0 == S52_MP_get(S52_MAR_VECMRK))
                 g_string_append(vessel01, ";SY(ARPSIX01)");
         }
@@ -3299,10 +3257,9 @@ static GString *VESSEL01 (S57_geo *geo)
 #endif
 
         // add heading line (50 mm)
-        //if (1.0 == S52_MP_get(S52_MAR_HEADNG_LINE)) {
-        if (TRUE == S52_MP_get(S52_MAR_HEADNG_LINE)) {
+        //if (TRUE == S52_MP_get(S52_MAR_HEADNG_LINE)) {
             g_string_append(vessel01, ";LS(SOLD,1,ARPAT)");
-        }
+        //}
 
         // add time mark (on AIS vector)
         if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
@@ -3316,26 +3273,6 @@ static GString *VESSEL01 (S57_geo *geo)
                 g_string_append(vessel01, ";SY(AISSIX01)");
         }
     }
-
-    /*
-    // ARPA & AIS - course/speed vector
-    if (0.0 != S52_MP_get(S52_MAR_VECPER)) {
-
-        // add vector stabilisation symbol
-        if (0.0 != S52_MP_get(S52_MAR_VECSTB)) {
-            // ground
-            if (1.0 == S52_MP_get(S52_MAR_VECSTB))
-                g_string_append(vessel01, ";SY(VECGND21)");
-
-            // water
-            if (2.0 == S52_MP_get(S52_MAR_VECSTB))
-                g_string_append(vessel01, ";SY(VECWTR21)");
-        }
-
-        // FIXME: AIS: leave a gap (size AISSIX01) at every minute mark
-        g_string_append(vessel01, ";LS(SOLD,2,ARPAT)");
-    }
-    */
 
     // VTS
     if (NULL!=vesrcestr && '3'==*vesrcestr->str) {
@@ -3654,7 +3591,6 @@ static GString *WRECKS03 (S57_geo *geo)
         silent = TRUE;
     }
 
-    //return g_string_new(";OP(----)");
     return WRECKS02(geo);
 }
 
@@ -3685,9 +3621,12 @@ S52_MAR_SAFETY_CONTOUR      DEPCNT02; _SEABED01(via DEPARE01); _UDWHAZ03(via OBS
 S52_MAR_SAFETY_DEPTH        _SNDFRM02(via OBSTRN04, WRECKS02);
 S52_MAR_SHALLOW_CONTOUR     _SEABED01(via DEPARE01);
 S52_MAR_SHALLOW_PATTERN     _SEABED01(via DEPARE01);
-S52_MAR_SHOW_TEXT           DEPCNT02; LIGHTS05;
 S52_MAR_SYMBOLIZED_BND      RESARE02;
 S52_MAR_TWO_SHADES          _SEABED01(via DEPARE01);
+
+// not implemented
+S52_MAR_DISTANCE_TAGS       LEGLIN02;
+S52_MAR_TIME_TAGS           ?
 
 
 //CS          called by S57 objects

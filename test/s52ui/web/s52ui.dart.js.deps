@@ -8,6 +8,7 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_collection_dev/list.
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_collection_dev/print.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_collection_dev/sort.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_collection_dev/symbol.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/annotations.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/async_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/collection_dev_patch.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/collection_patch.dart
@@ -23,6 +24,7 @@ file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/js_help
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/js_mirrors.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/js_names.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/js_number.dart
+file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/js_primitives.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/js_rti.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/js_string.dart
 file:///home/sduclos/dev/prog/dart/dart-12440/dart-sdk/lib/_internal/lib/math_patch.dart

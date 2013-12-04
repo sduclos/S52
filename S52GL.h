@@ -39,11 +39,13 @@ typedef struct S52_GL_ras {
     float min;                // exclusing nodata
     float max;                // exclusing nodata
     double gt[6];             // GeoTransform
-    double S,W,N,E;           // extent
 
-    // dst
+    double S,W,N,E;           // projected extent
+
+    // dst texture size
     guint potX;
     guint potY;
+
     unsigned char *texAlpha;  // size = potX * potY
     unsigned int   texID;
 } S52_GL_ras;

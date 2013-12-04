@@ -41,6 +41,18 @@ void _handleInput(int param, double value) {
       });
       return;
 
+    case S52.MAR_SAFETY_CONTOUR       :   
+    case S52.MAR_SAFETY_DEPTH         :
+    case S52.MAR_SHALLOW_CONTOUR      :
+    case S52.MAR_DEEP_CONTOUR         :
+      InputElement i = querySelector("#I$param");
+      var val = i.valueAsNumber;
+      s52.setMarinerParam(param, val).then((ret) {
+          s52.draw().then((ret) {});
+      });
+      return;
+      
+      
     case S52.MAR_DISP_CATEGORY        :  //= 14;
       //S52_MAR_DISP_CATEGORY_BASE     =        0;  //      0; 0000000
       //S52_MAR_DISP_CATEGORY_STD      =        1;  // 1 << 0; 0000001
@@ -99,7 +111,7 @@ Future<bool> _setUIcolor() {
   Completer completer = new Completer();
   _getS52UIcolor().then((value) {
     // set S52 UI background color
-    querySelector(".scrollTableL").style.backgroundColor =
+    querySelector("#tableL").style.backgroundColor =
         "rgba(${s52.UIBCK[0]},${s52.UIBCK[1]},${s52.UIBCK[2]}, 0.7)";
     // set S52 UI Border Color
     querySelectorAll("hr").forEach((s) => s.style.backgroundColor =
@@ -257,9 +269,11 @@ void _loadENC(int idx, TableCellElement c) {
 void _listENC(e) {
   _clearTable("#tableR");
 
+  //print('_listENC(): ..');
   s52.getCellNameList().then((cellList) {
     var idx = 0;
     var encList = cellList[0].split(',');
+    //print('_listENC(): .. $encList');
     encList.forEach((enc) {
       _appendCellRTable(enc, _loadENC, idx++);
     });
@@ -287,17 +301,20 @@ void _listS57IDatt(var S57ID) {
 // init UI (fill state)
 //
 
-List _checkButton = [
-                     S52.MAR_SHOW_TEXT, S52.MAR_SCAMIN, S52.MAR_ANTIALIAS,
+List _checkButton = [S52.MAR_SHOW_TEXT, S52.MAR_SCAMIN, S52.MAR_ANTIALIAS,
                      S52.MAR_QUAPNT01, S52.MAR_DISP_LEGEND, S52.MAR_DISP_CALIB,
                      S52.MAR_DISP_DRGARE_PATTERN, S52.MAR_DISP_NODATA_LAYER,
                      S52.MAR_DISP_AFTERGLOW, S52.MAR_DISP_CENTROIDS, S52.MAR_DISP_WORLD
                     ];
+List _numButton = [S52.MAR_SAFETY_CONTOUR,  S52.MAR_SAFETY_DEPTH, 
+                   S52.MAR_SHALLOW_CONTOUR, S52.MAR_DEEP_CONTOUR
+                  ];
 
-void _initCheckBox(List lst, int idx, String prefix, Completer completer) {
+Future<bool> _initCheckBox(List lst, int idx, String prefix, Completer completer) {
   // need recursion: wait Future of call before calling libS52 again
-  if (idx < _checkButton.length) {
-    int el = _checkButton[idx];
+  // FIXME: MAR_SCAMIN fail on key
+  if (idx < lst.length) {
+    int el = lst[idx];
     s52.getMarinerParam(el).then((ret) {
       InputElement i = querySelector("#$prefix$el");
       i.checked = (1.0 == ret[0]) ? true : false;
@@ -310,12 +327,39 @@ void _initCheckBox(List lst, int idx, String prefix, Completer completer) {
   } else {
     completer.complete(true);
   }
+  
+  return completer.future; 
 }
+
+//*
+Future<bool> _initNumBox(List lst, int idx, String prefix, Completer completer) {
+  // need recursion: wait Future of call before calling libS52 again
+  // FIXME: MAR_SCAMIN fail on key
+  if (idx < lst.length) {
+    int el = lst[idx];
+    s52.getMarinerParam(el).then((ret) {
+      InputElement i = querySelector("#$prefix$el");
+      i.defaultValue = ret[0].toString();
+      print("id:'I$el'");
+
+      //i.onClick.listen((ev) => print("id:'$prefix$el'"));
+      //i.onClick.listen((ev) => _handleInput(el, 0.0));
+      i.onInput.listen((ev) => _handleInput(el, 0.0));
+      // recursion
+      _initNumBox(lst, idx+1, prefix, completer);
+    });
+  } else {
+    completer.complete(true);
+  }
+
+  return completer.future; 
+}
+//*/
 
 Future<bool> _initUI() {
   Completer completer = new Completer();
 
-  print('_initUI(): start');
+  print('_initUI(): - start -');
 
   _setUIcolor().then((ret) {
     // S52_MAR_CMD_WRD_FILTER(33)
@@ -363,7 +407,8 @@ Future<bool> _initUI() {
              i.onClick.listen((ev) => print("id:'l$el'"));
              i.onClick.listen((ev) => _handleInput(S52.MAR_DISP_LAYER_LAST, el.toDouble()));
           });
-
+        
+          
           querySelector("#td_buttonCell1")
           ..onClick.listen((ev) => print("id:'td_buttonCell1'"))
           ..onClick.listen((ev) => _listPal(ev));
@@ -380,10 +425,14 @@ Future<bool> _initUI() {
           ..onClick.listen((ev) => print("id:'r28'"))
           ..onClick.listen((ev) => _handleInput(S52.MAR_ROT_BUOY_LIGHT, 0.0));
 
-          //var svg = query("#svg1circle");
-
+          print('s52ui.dart:_checkButton() - start - ');
+        
           int startIdx = 0;
-          _initCheckBox(_checkButton, startIdx, "i", completer);
+          _initCheckBox(_checkButton, startIdx, "i", completer).then((ret) {          
+            completer = new Completer();
+            startIdx = 0;
+            _initNumBox(_numButton, startIdx, "I", completer);
+          });
         });
       });
     });
@@ -413,6 +462,9 @@ void _initTouch() {
   double zoom_fac = 0.0;
 
   querySelector('#svg1g').onTouchStart.listen((ev) { _fullList(ev); });
+
+  print('s52ui.dart:_initTouch():target');
+  print('s52ui.dart:_initTouch():target=$target');
 
   target.onTouchStart.listen((TouchEvent event) {
     event.preventDefault();
@@ -528,6 +580,7 @@ void _initTouch() {
 
     // short tap
     if (ticks < 6) {
+      // do nothing if object allready displayed
       if ('inline-block' == querySelector('#svg1g').style.display)
         return;
 
@@ -645,29 +698,32 @@ void _initTouch() {
   });
 }
 
-void _toggleUIEvent(evt) {
-  evt.preventDefault();
-
-  print('_toggleUIEvent()');
+//void _toggleUIEvent(evt) {
+void _toggleUIEvent() {
+  //evt.preventDefault();
+  //var tbodyL = querySelector('#tbodyL').style; 
+  //print('s52ui.dart:_toggleUIEvent(): tbodyL=$tbodyL');
 
   // FIXME: style.invisible: "visible|hidden|collapse|inherit"
-  // - test if async call propagate
-  if ('none' == querySelector('#tbodyL').style.display) {
-    querySelector('#tbodyL').style.display = 'table';
-    querySelector('#tbodyR').style.display = 'table';
-    querySelector('#svg1'  ).style.display = 'none';
-  } else {
+  if ('table' == querySelector('#tbodyL').style.display) {
     querySelector('#tbodyL').style.display = 'none';
     querySelector('#tbodyR').style.display = 'none';
     querySelector('#svg1'  ).style.display = 'inline-block';
-    querySelector('#svg1g' ).style.display = 'none';
+    querySelector('#svg1c' ).style.display = 'inline-block';
+  } else {
+    querySelector('#tbodyL').style.display = 'table';
+    querySelector('#tbodyR').style.display = 'table';
+    querySelector('#svg1'  ).style.display = 'none';
+    querySelector('#svg1c' ).style.display = 'none';
+    querySelector('#svg1g' ).style.display = 'none';  // text group OFF
   }
 }
 
 void _fullList(evt) {
   evt.preventDefault();
 
-  _toggleUIEvent(evt);
+  //_toggleUIEvent(evt);
+  _toggleUIEvent();
 
   var txtL = querySelector('#svg1text').text.split(':');
   _listS57IDatt(txtL[1]);
@@ -683,20 +739,21 @@ void posError(PositionError error) {
   print("s52ui.dart:posError():Error occurred. Error code: ${error.code}");
 }
 
-void GPSpos(Geoposition position) {
-  //print('GPS new pos: _devOrient: $_devOrient');
+void _GPSpos(Geoposition position) {
+  //print('GPS new pos: ...');
   
   s52.pushPosition(_ownshpID, position.coords.latitude, position.coords.longitude, _devOrient).then((ret){
     s52.setVector(_ownshpID, 1, _devOrient, 16.0).then((ret){});   // 1 - ground
   });
 }
 
-void hdg(DeviceOrientationEvent o) {
-  //_devOrient = o.alpha;  
+void _hdg(DeviceOrientationEvent o) {
+  _devOrient = o.alpha;  
+  //print('s52ui.dart:_hdg():$_devOrient');
 }
 
 void _watchPosition(int ownshpID) {
-  print('s5ui.dart:_watchPosition(): - start -');
+  print('s5ui.dart:_watchPosition(): - beg -');
 
   _ownshpID = ownshpID;
   if (0 == _ownshpID) {
@@ -705,33 +762,17 @@ void _watchPosition(int ownshpID) {
   }
 
   // GYRO - TODO: test ship's head up
-  // dart2js webview broken 'window.onDeviceOrientation.listen()':
-  // Uncaught NoSuchMethodError : method not found: 'Symbol("addEventListener")'
-  //window.onDeviceOrientation.listen(hdg);
+  window.onDeviceOrientation.listen(_hdg);
   
   // GPS
-  //Object options = {'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000};
-  //window.navigator.geolocation.getCurrentPosition(options).then(
-  //window.navigator.geolocation.getCurrentPosition({'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000}).then(
-  //(Geoposition position) {
-  //  s52.pushPosition(ownshpID, position.coords.latitude, position.coords.longitude, _devOrient).then((ret){});
-  //},
-  //  onError: (error) => posError(error)
-  //);
+  window.navigator.geolocation.getCurrentPosition().then(_GPSpos);
   
-  //window.navigator.geolocation.getCurrentPosition().then(
-  //  GPSpos,
-  //  onError: (error) => posError(error)
-  //);
-
   // {'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000}
-  //*
   window.navigator.geolocation.watchPosition().listen(
-      GPSpos,
+      _GPSpos,
       onError: (error) => posError(error)
   );
-  //*/
-  
+
   print('s5ui.dart:_watchPosition(): - end -');
 }
 
@@ -740,14 +781,26 @@ void _watchPosition(int ownshpID) {
 //
 // Main / Init
 //
-void _initMain(evt) {
-  print('s52ui.dart:_initMain()');
+//void _initMain(evt) {
+void _initMain() {
+  var url = window.location.search.toString();
+  //var url = window.
+  print('s52ui.dart:_initMain(): URL:$url');
+
+
+  //var wsUri = 'ws://192.168.1.66:2950'; // laptop
+  //var wsUri = 'ws://192.168.1.67:2950'; // xoom
+  var wsUri = 'ws://192.168.1.69:2950'; // Nexus
+  //var wsUri = 'ws://127.0.0.1:2950';   // localhost
 
   s52 = new S52();
-
-  s52.newOWNSHP('OWNSHP').then((ret) {
-    _watchPosition(ret[0]);
-    _initUI().then((ret) { _initTouch(); });
+  s52.initWS(wsUri).then((ret) {
+    // here the WebSocket init is completed - all JS loaded
+    _initTouch();
+    s52.newOWNSHP('OWNSHP').then((ret) {
+      _watchPosition(ret[0]);
+      _initUI().then((ret) {});
+    });
   });
 }
 
@@ -755,10 +808,11 @@ void main() {
   print('s5ui.dart:main(): start');
 
   // Xoom = 1, Nexus = 2
-  print('window.devicePixelRatio: ${window.devicePixelRatio}');
+  //print('window.devicePixelRatio: ${window.devicePixelRatio}');
 
-  js.context['onOpen']   = new js.FunctionProxy(_initMain);
+  //js.context['onOpen']   = new js.FunctionProxy(_initMain);
   js.context['toggleUI'] = new js.FunctionProxy(_toggleUIEvent);
-  //context['onOpen']   = _initMain;
-  //context['toggleUI'] = _toggleUIEvent;
+  //js.context['hdg']      = new js.FunctionProxy(_hdg);
+  
+  _initMain();
 }

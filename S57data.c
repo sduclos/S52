@@ -925,8 +925,6 @@ GString   *S57_getAttVal(_S57_geo *geoData, const char *att_name)
     return_if_null(geoData);
     return_if_null(att_name);
 
-    static int silent = FALSE;
-
     //GString *att = (GString*) g_datalist_get_data(&geoData->attribs, att_name);
     //GString *att = (GString*) g_dataset_id_get_data(&geoData->attribs, g_quark_try_string(att_name));
     GQuark   q   = g_quark_from_string(att_name);
@@ -939,6 +937,7 @@ GString   *S57_getAttVal(_S57_geo *geoData, const char *att_name)
     }
 
     // display this NOTE once (because of to many warning)
+    static int silent = FALSE;
     if (!silent && NULL!=att && 0==att->len) {
         PRINTF("NOTE: attribute (%s) has no value [obj:%s]\n", att_name, geoData->name->str);
         PRINTF("      (this msg will not repeat)\n");

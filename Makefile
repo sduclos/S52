@@ -223,7 +223,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
 # -DS52_USE_WORLD        - experimental - load world Shapefile
 # -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
 # -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7)
-# -DS52_USE_LOG          - use S52_error_cb in init to get log in STDOUT
+# -DS52_USE_LOG          - log S52_* call to tmp file
 # -DG_DISABLE_ASSERT
 
             DEFS   = -DS52_USE_GLIB2                       \
@@ -233,11 +233,12 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_USE_GLES2                       \
                      -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_FREETYPE_GL                 \
-                     -DS52_USE_TEGRA2                      \
+                     -DS52_USE_ADRENO                      \
                      -DS52_USE_ANDROID                     \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
+					 -DS52_USE_WORLD                       \
                      -DS52_DEBUG
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \

@@ -49,7 +49,9 @@
 
 #define NaN         (1.0/0.0)
 
+#ifdef S52_USE_LOG
 static gint _log = 0;
+#endif
 
 typedef void (*GPrintFunc)(const gchar *string);
 static GPrintFunc   _oldPrintHandler = NULL;
@@ -230,41 +232,38 @@ void     S52_tree_replace(GTree *tree, gpointer key, gpointer value)
 #endif
 }
 
-void     S52_printf(const gchar *string)
+static void     _S52_printf(const gchar *string)
 {
     char str[MAXL];
     g_get_current_time(&_now);
 
     snprintf(str, MAXL-1, "%s %s", g_time_val_to_iso8601(&_now), string);
-    write(_log, str, strlen(str));
 
     // if user set a callback .. call it
     if (NULL != _err_cb) {
         _err_cb(str);
     }
+#ifdef S52_USE_LOG
+    // log to file
+    write(_log, str, strlen(str));
+#endif
 }
 
 int      S52_initLog(S52_error_cb err_cb)
 // set print handler
 // set tmp log file
 {
-    _err_cb = err_cb;
+    _err_cb          = err_cb;
+    _oldPrintHandler = g_set_print_handler(_S52_printf);
 
 #ifdef S52_USE_LOG
-    //printf("starting log (%s)\n", g_get_tmp_dir());
-    //S52_printf("starting log\n");
-     GError *error = NULL;
+    GError *error = NULL;
     _log = g_file_open_tmp("XXXXXX", NULL, &error);
-
-    _oldPrintHandler = g_set_print_handler(S52_printf);
-
-    //S52_LOG("log started");
-
     if (-1 == _log) {
-        //PRINTF("g_file_open_tmp(): failed [%s]\n", error->message);
         PRINTF("g_file_open_tmp(): failed\n");
-        //g_assert(0);
     }
+#else
+    PRINTF("NOTE: no LOG, compiler flags 'S52_USE_LOG' not set\n");
 #endif
 
     return TRUE;
@@ -272,13 +271,13 @@ int      S52_initLog(S52_error_cb err_cb)
 
 int      S52_doneLog()
 {
-    //S52_LOG("log finish");
-
     g_set_print_handler(_oldPrintHandler);
+    _err_cb = NULL;
+
+#ifdef S52_USE_LOG
     if (0 != _log)
         close(_log);
-
-    _err_cb = NULL;
+#endif
 
     return TRUE;
 }
