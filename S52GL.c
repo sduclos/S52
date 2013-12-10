@@ -8176,7 +8176,7 @@ static int       _newTexture(S52_GL_ras *raster)
         int Yline = i/raster->w;
         int k     = i - Yline*raster->w;
 
-        // NODATA
+        // FIXME: get NODATA
         if (-9999.0 == dataf[i]) {
             texTmp[Yline*potX + k] = 0;
             //texTmp[Yline*w + k] = 0;
@@ -9003,8 +9003,8 @@ int        S52_GL_delRaster(S52_GL_ras *raster, int texOnly)
     raster->texID = 0;
 
     if (TRUE != texOnly) {
-        g_string_free(raster->fname, TRUE);
-        raster->fname = NULL;
+        g_string_free(raster->fnameMerc, TRUE);
+        raster->fnameMerc = NULL;
         g_free(raster->data);
         raster->data = NULL;
     }

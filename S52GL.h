@@ -29,13 +29,14 @@
 
 // Raster (RADAR,Bathy,...)
 typedef struct S52_GL_ras {
-    GString *fname;
+    GString *fnameMerc;       // Mercator GeoTiff file name
 
     // src
     int w;
     int h;
     int gdtSz;                // gdt: GDALDataType
     unsigned char *data;      // size =  w * h * nbyte_gdt
+    double nodata;            // nodata value
     float min;                // exclusing nodata
     float max;                // exclusing nodata
     double gt[6];             // GeoTransform

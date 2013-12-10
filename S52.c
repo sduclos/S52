@@ -275,7 +275,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.106\n"
+      "libS52 0.107\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -332,6 +332,9 @@ static char _version[] = "$Revision: 1.126 $\n"
 #endif
 #ifdef S52_USE_TEGRA2
       "S52_USE_TEGRA2\n"
+#endif
+#ifdef S52_USE_ADRENO
+      "S52_USE_ADRENO\n"
 #endif
 #ifdef S52_USE_COGL
       "S52_USE_COGL\n"
@@ -2198,15 +2201,128 @@ static int        _loadCATALOG(char *filename)
 #endif  // 0
 #endif  // S52_USE_OGR_FILECOLLECTOR
 
+// see http://www.gdal.org/warptut.html
+#include "gdal_alg.h"
+#include "ogr_srs_api.h"
+#include "gdalwarper.h"
+
+static char      *_getSRS(const char *str)
+{
+    char *ret = NULL;
+
+    OGRSpatialReferenceH hSRS = OSRNewSpatialReference(NULL);
+    if (OGRERR_NONE == OSRSetFromUserInput(hSRS, str))
+        OSRExportToWkt(hSRS, &ret);
+    else
+    {
+        //CPLError( CE_Failure, CPLE_AppDefined, "Translating source or target SRS failed:\n%s", pszUserInput );
+        PRINTF("Translating source or target SRS failed:%s\n", str );
+        g_assert(0);
+    }
+
+    OSRDestroySpatialReference(hSRS);
+
+    return ret;
+}
+
+static GDALDatasetH _createDSTfile(GDALDatasetH hSrcDS, const char *pszFilename,
+                                   GDALDriverH hDriver, const char *pszSourceSRS,
+                                   const char *pszTargetSRS)
+
+{
+    double adfDstGeoTransform[6];
+    int nPixels = 0;
+    int nLines  = 0;
+
+    // Create a transformation object from the source to destination coordinate system.
+    void *hTransformArg = GDALCreateGenImgProjTransformer(hSrcDS, pszSourceSRS, NULL, pszTargetSRS, TRUE, 1000.0, 0);
+    if (NULL == hTransformArg) {
+        PRINTF("WARNING: GDALCreateGenImgProjTransformer() failed\n");
+        return NULL;
+    }
+
+    // Get approximate output definition.
+    if (CE_None != GDALSuggestedWarpOutput(hSrcDS, GDALGenImgProjTransform, hTransformArg, adfDstGeoTransform, &nPixels, &nLines)) {
+        PRINTF("WARNING: GDALSuggestedWarpOutput() failed\n");
+        return NULL;
+    }
+
+    GDALDestroyGenImgProjTransformer(hTransformArg);
+
+    // Create the output file.
+    PRINTF("Creating output file is that %dP x %dL.\n", nPixels, nLines);
+
+    //GDALDriverH hDriver = GDALGetDriverByName(pszFormat);
+    GDALDatasetH hDstDS = GDALCreate(hDriver, pszFilename, nPixels, nLines,
+                                     GDALGetRasterCount(hSrcDS),
+                                     GDALGetRasterDataType(GDALGetRasterBand(hSrcDS,1)),
+                                     NULL);
+    if (NULL == hDstDS) {
+        PRINTF("WARNING: GDALCreate() failed\n");
+        return NULL;
+    }
+
+    // Write out the projection definition.
+    GDALSetProjection  (hDstDS, pszTargetSRS);
+    GDALSetGeoTransform(hDstDS, adfDstGeoTransform);
+
+    // Copy the color table, if required.
+    GDALColorTableH hCT = GDALGetRasterColorTable(GDALGetRasterBand(hSrcDS,1));
+    if (NULL !=  hCT)
+        GDALSetRasterColorTable(GDALGetRasterBand(hDstDS,1), hCT);
+
+    return hDstDS;
+}
+
+static int        _warp(GDALDatasetH hSrcDS, GDALDatasetH hDstDS)
+{
+    // Setup warp options.
+    GDALWarpOptions *psWarpOptions = GDALCreateWarpOptions();
+
+    psWarpOptions->hSrcDS = hSrcDS;
+    psWarpOptions->hDstDS = hDstDS;
+
+    psWarpOptions->nBandCount  = 1;
+    //psWarpOptions->panSrcBands = (int *) CPLMalloc(sizeof(int) * psWarpOptions->nBandCount );
+    psWarpOptions->panSrcBands = (int *) malloc(sizeof(int) * psWarpOptions->nBandCount );
+    psWarpOptions->panSrcBands[0] = 1;
+    //psWarpOptions->panDstBands = (int *) CPLMalloc(sizeof(int) * psWarpOptions->nBandCount );
+    psWarpOptions->panDstBands = (int *) malloc(sizeof(int) * psWarpOptions->nBandCount );
+    psWarpOptions->panDstBands[0] = 1;
+
+    psWarpOptions->pfnProgress = GDALTermProgress;
+
+    // Establish reprojection transformer.
+    psWarpOptions->pTransformerArg = GDALCreateGenImgProjTransformer(hSrcDS, GDALGetProjectionRef(hSrcDS),
+                                                                     hDstDS, GDALGetProjectionRef(hDstDS),
+                                                                     FALSE, 0.0, 1 );
+    psWarpOptions->pfnTransformer = GDALGenImgProjTransform;
+
+    // Initialize and execute the warp operation.
+    GDALWarpOperationH wOP = GDALCreateWarpOperation(psWarpOptions);
+    GDALChunkAndWarpImage(wOP, 0, 0, GDALGetRasterXSize(hDstDS), GDALGetRasterYSize(hDstDS));
+
+    // clean up
+    GDALDestroyGenImgProjTransformer(psWarpOptions->pTransformerArg);
+    GDALDestroyWarpOptions(psWarpOptions);
+    GDALDestroyWarpOperation(wOP);
+
+    return TRUE;
+}
+
 int               _loadRaster(const char *fname)
 {
+    char fnameMerc[1024];
+    g_sprintf(fnameMerc, "%s%s", fname, ".merc");
+
     // check if allready loaded
     for (guint i=0; i<_rasterList->len; ++i) {
         S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
-        if (0 == g_strcmp0(r->fname->str, fname))
+        if (0 == g_strcmp0(r->fnameMerc->str, fnameMerc))
             return FALSE;
     }
 
+    // no, convert to GeoTiff Mercator
     GDALAllRegister();
     GDALDriverH driver = GDALGetDriverByName("GTiff");
     if (NULL == driver) {
@@ -2214,118 +2330,74 @@ int               _loadRaster(const char *fname)
         return FALSE;
     }
 
-    GDALDatasetH dataset = GDALOpen(fname, GA_ReadOnly);
-    if (NULL == dataset) {
-        PRINTF("WARNING: fail to read GDAL data set\n");
-        return FALSE;
+    GDALDatasetH datasetDST = GDALOpen(fnameMerc, GA_ReadOnly);
+    // no Merc on disk, then create it
+    if (NULL == datasetDST) {
+        GDALDatasetH datasetSRC = GDALOpen(fname, GA_ReadOnly);
+        if (NULL == datasetSRC) {
+            PRINTF("WARNING: fail to read GDAL data set\n");
+            return FALSE;
+        }
+
+        char *srs_SRC = g_strdup(GDALGetProjectionRef(datasetSRC));
+        char *srs_DST = _getSRS("+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs");
+
+        datasetDST = _createDSTfile(datasetSRC, fnameMerc, driver, srs_SRC, srs_DST);
+        g_free((gpointer)srs_SRC);
+
+        // convert to Mercator
+        _warp(datasetSRC, datasetDST);
+
+        GDALClose(datasetSRC);
     }
 
-    PRINTF("FIXME: reproject to mercator here instead of using GDAL/gdalwrap to pre-format raster data\n");
+    if (NULL != datasetDST) {
+        // get data for texure
+        GDALRasterBandH bandA = GDALGetRasterBand(datasetDST, 1);
 
+        // GDT_Float32
+        GDALDataType gdt = GDALGetRasterDataType(bandA);
+        int gdtSz        = GDALGetDataTypeSize(gdt) / 8;
 
-/*
+        int w = GDALGetRasterXSize(datasetDST);
+        int h = GDALGetRasterYSize(datasetDST);
 
-    //
-    // FIXME: reproject to mercator here instead of using GDAL/gdalwrap
-    //
+        int nodata_set = FALSE;
+        double nodata  = GDALGetRasterNoDataValue(bandA, &nodata_set);
 
+        // 32 bits
+        unsigned char *data = g_new0(unsigned char, w * h * gdtSz);
+        GDALRasterIO(bandA, GF_Read, 0, 0, w, h, data, w, h, gdt, 0, 0);
 
+        double gt[6] = {0.0,1.0,0.0,0.0,0.0,1.0};
+        if (CE_None != GDALGetGeoTransform(datasetDST, (double *) &gt)) {
+            PRINTF("WARNING: GDALGetGeoTransform() failed\n");
+            g_assert(0);
+        }
 
+        // store data
+        S52_GL_ras *ras = g_new0(S52_GL_ras, 1);
+        ras->fnameMerc  = g_string_new(fnameMerc);
+        ras->w          = w;
+        ras->h          = h;
+        ras->gdtSz      = gdtSz;
+        ras->data       = data;
+        ras->nodata     = nodata;  // check nodata_set
+        ras->S          = gt[3] + 0 * gt[4] + 0 * gt[5];  // YgeoLL;
+        ras->W          = gt[0] + 0 * gt[1] + 0 * gt[2];  // XgeoLL;
+        ras->N          = gt[3] + w * gt[4] + h * gt[5];  // YgeoUR;
+        ras->E          = gt[0] + w * gt[1] + h * gt[2];  // XgeoUR;
+        memcpy(ras->gt, gt, sizeof(double) * 6);
 
-
-
-    // find src prog
-    const char *projStr = GDALGetProjectionRef(dataset);
-    if (NULL != projStr) {
-        PRINTF("%s\n", projStr);
-        // 46307250_LOD2.merc.tif
-        PROJCS["unnamed",
-               GEOGCS["WGS 84",
-                      DATUM["WGS_1984",
-                            SPHEROID["WGS 84",6378137,298.257223563,
-                                     AUTHORITY["EPSG","7030"]
-                                    ],
-                            AUTHORITY["EPSG","6326"]
-                           ],
-                      PRIMEM["Greenwich",0],
-                      UNIT["degree",0.0174532925199433],
-                      AUTHORITY["EPSG","4326"]
-                     ]
-               ...
-
-
-        46307250_LOD2.tif
-        GEOGCS[,
-               DATUM["unknown",
-                     SPHEROID["unretrievable - using WGS84",6378137,298.257223563]
-                    ],
-               PRIMEM["Greenwich",0],
-               UNIT[,0.0174532925199433]
-              ]
-
-
-
-
-
-
+        g_ptr_array_add(_rasterList, ras);
     }
 
-    projStr = GDALGetGCPProjection(dataset);
-    if (NULL != projStr) {
-        PRINTF("%s\n", projStr);  // 46307250_LOD2.tif      --> projStr = ""
-                                  // 46307250_LOD2.merc.tif --> projStr = ""
-    }
-
-
-*/
-
-
-
-
-    GDALRasterBandH bandA = GDALGetRasterBand(dataset, 1);
-
-    // GDT_Float32
-    GDALDataType gdt = GDALGetRasterDataType(bandA);
-    int gdtSz        = GDALGetDataTypeSize(gdt) / 8;
-
-    int w = GDALGetRasterXSize(dataset);
-    int h = GDALGetRasterYSize(dataset);
-
-    //int nodata_set = FALSE;
-    //double nodata = GDALGetRasterNoDataValue(bandA, &nodata_set);
-
-    // 32 bits
-    unsigned char *data = g_new0(unsigned char, w * h * gdtSz);
-    GDALRasterIO(bandA, GF_Read, 0, 0, w, h, data, w, h, gdt, 0, 0);
-
-    double gt[6] = {0.0,1.0,0.0,0.0,0.0,1.0};
-    if (CE_None != GDALGetGeoTransform(dataset, (double *) &gt)) {
-        PRINTF("WARNING: GDALGetGeoTransform() failed\n");
-        g_assert(0);
-    }
     // finish with GDAL
-    GDALClose(dataset);
+    GDALClose(datasetDST);  // if NULL ?
     GDALDestroyDriverManager();
-
-
-    // store data
-    S52_GL_ras *ras = g_new0(S52_GL_ras, 1);
-    ras->fname = g_string_new(fname);
-    ras->w     = w;
-    ras->h     = h;
-    ras->gdtSz = gdtSz;
-    ras->data  = data;
-    ras->S     = gt[3] + 0 * gt[4] + 0 * gt[5];  // YgeoLL;
-    ras->W     = gt[0] + 0 * gt[1] + 0 * gt[2];  // XgeoLL;
-    ras->N     = gt[3] + w * gt[4] + h * gt[5];  // YgeoUR;
-    ras->E     = gt[0] + w * gt[1] + h * gt[2];  // XgeoUR;
-    memcpy(ras->gt, gt, sizeof(double) * 6);
-
-    g_ptr_array_add(_rasterList, ras);
 
     return TRUE;
 }
-
 
 DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb)
 // FIXME: handle each type of cell separatly
@@ -2542,9 +2614,11 @@ DLL int    STD S52_doneCell(const char *encPath)
     gchar *basename = g_path_get_basename(fname);
     int len = strlen(basename);
     if (0 == g_strcmp0(basename+(len-4), ".tif")) {
+        char fnameMerc[1024];
+        g_sprintf(fnameMerc, "%s%s", fname, ".merc");
         for (guint i=0; i<_rasterList->len; ++i) {
             S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
-            if (0 == g_strcmp0(r->fname->str, fname)) {
+            if (0 == g_strcmp0(r->fnameMerc->str, fnameMerc)) {
                 S52_GL_delRaster(r, FALSE);
                 g_free(r);
                 goto exit;

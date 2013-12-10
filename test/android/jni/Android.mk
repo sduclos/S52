@@ -36,6 +36,7 @@ S52ANDRIODLIBS   := /home/sduclos/S52/test/android/dist/system/lib
 ARMTOOLCHAINROOT := /home/sduclos/dev/prog/Android/dev/android-9-toolchain
 LOCAL_LDLIBS     := -L$(CYANOGENLIBS) -lEGL -lGLESv2                                  \
 					-llog -landroid -lz -landroid_runtime -lc -lm -ldl                \
+                    $(ARMTOOLCHAINROOT)/arm-linux-androideabi/lib/thumb/libstdc++.a   \
                     $(S52ANDRIODLIBS)/libS52.a                                        \
                     $(S52ANDRIODLIBS)/libgps.a                                        \
                     $(S52ANDRIODLIBS)/libgthread-2.0.a                                \
@@ -49,7 +50,7 @@ LOCAL_LDLIBS     := -L$(CYANOGENLIBS) -lEGL -lGLESv2                            
 					$(S52ANDRIODLIBS)/libglib-2.0.a                                   \
 					$(S52ANDRIODLIBS)/libiconv.a                                      \
 					$(S52ANDRIODLIBS)/libandroid_native_app_glue.a                    \
-                    $(ARMTOOLCHAINROOT)/arm-linux-androideabi/lib/thumb/libstdc++.a
+                    $(ARMTOOLCHAINROOT)/arm-linux-androideabi/lib/thumb/libstdc++.a   
 
 
 # /home/sduclos/dev/prog/Android/dev/usr/arm-linux-gnueabi/lib/libSegFault.so

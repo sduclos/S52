@@ -3,6 +3,9 @@
 #
 
 
+2013DEC09
+    -add GDAL projection to Mercator for raster (bathy)
+
 2013NOV26
     -mod upgrade s52droid & s52ui for Android 4.4 KitKat to get chromium in WebView
 

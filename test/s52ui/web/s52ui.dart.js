@@ -11415,7 +11415,7 @@ init.mangledNames = {$add: "+:1:0", $and: "&:1:0", $div: "/:1:0", $ge: ">=:1:0",
     P.print("s52ui.dart:_initMain(): URL:" + H.S(J.toString$0(J.get$search$x(C.Window_methods.get$location(window)))));
     var t1 = new X.S52(null, C.C_JsonCodec.decode$1("{\"id\":1,\"method\":\"???\",\"params\":[\"???\"]}"), 1, null, new P.Stopwatch(null, null), null, false, null, null, null);
     $.s52 = t1;
-    t1.initWS$1("ws://192.168.1.69:2950").then$1(new X._initMain_closure());
+    t1.initWS$1("ws://127.0.0.1:2950").then$1(new X._initMain_closure());
   },
   "+_initMain:0:0": 1,
   main: function() {

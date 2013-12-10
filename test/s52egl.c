@@ -847,8 +847,8 @@ static int      _s52_init       (s52engine *engine)
 #endif
 
         // Nexus: no root, can't do: $ su -c "setprop log.redirect-stdio true"
-        if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb))
-        //if (FALSE == S52_init(w, h, wmm, hmm, NULL))
+        //if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb))
+        if (FALSE == S52_init(w, h, wmm, hmm, NULL))
         {
             LOGE("ERROR:_init_S52():S52_init(%i,%i,%i,%i)\n", w, h, wmm, hmm);
             engine->state.do_S52init = FALSE;
@@ -876,14 +876,19 @@ static int      _s52_init       (s52engine *engine)
 #ifdef S52_USE_ADRENO
     //S52_loadCell(NULL, NULL);
     // Rimouski (Nexus)
-    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
+    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
     // Portneuf
-    //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
-    //S52_loadCell(PATH "/bathy/SCX_CapSante.merc-0.tif", NULL);
-    //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+    S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
+    S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
+    S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
 #else
     // Rimouski (Xoom)
     S52_loadCell(PATH "/ENC_ROOT/CA579041.000", NULL);
+
+    // Portneuf
+    //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
+    //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
+    //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
 #endif
 
 #else  // S52_USE_ANDROID
@@ -896,9 +901,7 @@ static int      _s52_init       (s52engine *engine)
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
 
     // Bathy - experimental
-    //S52_loadCell("/home/sduclos/dev/gis/data/bathy/2009_HD_BATHY_TRIALS/46307260_LOD2.merc.tif", NULL);
-    //S52_loadCell("/home/sduclos/dev/gis/data/bathy/2009_HD_BATHY_TRIALS/46307250_LOD2.merc.tif", NULL);
-    //S52_loadCell("/home/sduclos/dev/gis/data/bathy/SCX_CapSante.merc-0.tif", NULL);
+    S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
 
     // RADAR - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/radar/RADAR_imitator/out.raw", NULL);
@@ -937,8 +940,8 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
 
 
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);
 
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
@@ -969,9 +972,9 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);
     S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Standard(default) + Other)
 
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
+    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
-    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60
+    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60
 
     S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
