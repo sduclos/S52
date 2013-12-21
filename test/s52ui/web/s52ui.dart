@@ -783,15 +783,15 @@ void _watchPosition(int ownshpID) {
 //
 //void _initMain(evt) {
 void _initMain() {
-  var url = window.location.search.toString();
+  var urlparam = window.location.search.toString();
   //var url = window.
-  print('s52ui.dart:_initMain(): URL:$url');
+  print('s52ui.dart:_initMain(): URL:$urlparam');
 
 
   //var wsUri = 'ws://192.168.1.66:2950'; // laptop
-  //var wsUri = 'ws://192.168.1.67:2950'; // xoom
+  var wsUri = 'ws://192.168.1.67:2950'; // xoom
   //var wsUri = 'ws://192.168.1.69:2950'; // Nexus
-  var wsUri = 'ws://127.0.0.1:2950';   // localhost
+  //var wsUri = 'ws://127.0.0.1:2950';   // localhost
 
   s52 = new S52();
   s52.initWS(wsUri).then((ret) {

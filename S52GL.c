@@ -108,7 +108,7 @@ static GLint _uModelview  = 0;
 static GLint _uColor      = 0;
 static GLint _uPointSize  = 0;
 static GLint _uSampler2d  = 0;
- static GLint _uBlitOn     = 0;
+static GLint _uBlitOn     = 0;
 static GLint _uStipOn     = 0;
 static GLint _uGlowOn     = 0;
 
@@ -252,8 +252,7 @@ static guint   _nCall     = 0;
 static int        _doInit        = TRUE;    // initialize (but GL context --need main loop)
 static int        _ctxValidated  = FALSE;   // validate GL context
 static GPtrArray *_objPick       = NULL;    // list of object picked
-//static char       _strPick[80]   = {'\0'};  // hold temps val
-static GString   *_strPick       = NULL;  // hold temps val
+static GString   *_strPick       = NULL;    // hold temps val
 static int        _doHighlight   = FALSE;   // TRUE then _objhighlight point to the object to hightlight
 static S52_GL_mode _crnt_GL_mode = S52_GL_NONE; // failsafe - keep mode in sync between begin / end
 
@@ -282,8 +281,12 @@ typedef void (CALLBACK *fp)  (void*);
 typedef void (CALLBACK *fpp) (void*, void*);
 
 static GLUtriangulatorObj *_tobj = NULL;
+static GPtrArray          *_tmpV = NULL;  // place holder during tesssalation (GLUtriangulatorObj combineCallback)
 
-static GPtrArray          *_tmpV = NULL;  // place holder during tesssalation (GLUtriangulatorObj)
+// optimisation: merge triangles strips
+static int     _modeTess = 0;
+static GArray *_vStrips  = NULL;  // accumulate triangles strips vertex when _modeTess is GL_TRIANGLE_STRIP
+static int     _newStrip = FALSE; // TRUE a new strip is beginning
 
 // centroid
 static GLUtriangulatorObj *_tcen       = NULL;     // GLU CSG
@@ -295,8 +298,8 @@ static GLUtriangulatorObj *_tcin       = NULL;
 static GLboolean           _startEdge  = GL_TRUE;  // start inside edge --for heuristic of centroid in poly
 static int                 _inSeg      = FALSE;    // next vertex will complete an edge
 
-// display list
-static   int  _symbCreated = FALSE;  // TRUE symb display list created
+// display list / VBO
+static   int  _symbCreated = FALSE;  // TRUE if PLib symb created (DList/VBO)
 
 // transparency factor
 #ifdef S52_USE_GLES2
@@ -335,7 +338,7 @@ typedef enum _VP{   // set GL_PROJECTION matrix to
     VP_NUM          // number of coord. systems type
 }VP;
 
-// line mask plane
+// line mask plane - LC()
 #define Z_CLIP_PLANE 10000   // clipped beyon this plane
 
 #define PICA   0.351
@@ -558,7 +561,6 @@ static    GLfloat *_crntMat;          // point to active matrix
 static    int      _mvmTop = 0;       // point to stack top
 static    int      _pjmTop = 0;       // point to stack top
 
-
 #else   // S52_USE_GLES2
 
 #ifdef S52_USE_OPENGL_SAFETY_CRITICAL
@@ -692,8 +694,9 @@ static int       _findCentInside(unsigned int npt, pt3 *v)
     _dcin  = -1.0;
     _inSeg = FALSE;
 
-    g_array_set_size(_vertexs,   0);
-    g_array_set_size(_nvertex,   0);
+    g_array_set_size(_vertexs, 0);
+    g_array_set_size(_nvertex, 0);
+    _g_ptr_array_clear(_tmpV);
 
     //gluTessProperty(_tcen, GLU_TESS_BOUNDARY_ONLY, GLU_FALSE);
 
@@ -706,7 +709,7 @@ static int       _findCentInside(unsigned int npt, pt3 *v)
 
     gluTessEndPolygon(_tcin);
 
-    _g_ptr_array_clear(_tmpV);
+    //_g_ptr_array_clear(_tmpV);
 
     if (_dcin != -1.0) {
         g_array_append_val(_centroids, _pcin);
@@ -861,15 +864,32 @@ static int       _getMaxEdge(pt3 *p)
 {
     double x = p[0].x - p[1].x;
     double y = p[0].y - p[1].y;
-    double d =  sqrt(pow(x, 2) + pow(y, 2));
+    //double d =  sqrt(pow(x, 2) + pow(y, 2));
+    double d =  sqrt(x*x + y*y);
 
     if (_dcin < d) {
         _dcin = d;
-        //_pcin.x = p[0].x + (p[1].x - p[0].x) / 2.0;
-        //_pcin.y = p[0].y + (p[1].y - p[0].y) / 2.0;
         _pcin.x = (p[1].x + p[0].x) / 2.0;
         _pcin.y = (p[1].y + p[0].y) / 2.0;
     }
+
+    return TRUE;
+}
+
+static int       _donePrim(S57_prim *prim)
+// merge triangles strips to the current set of primitive
+{
+    S57_begPrim(prim, GL_TRIANGLE_STRIP);
+
+    // then move GL_TRIANGLE_STRIP vStrips vertex to prim vertex
+    for (guint i=0; i<_vStrips->len; ++i) {
+        vertex_t *data = (vertex_t *) &g_array_index(_vStrips, pt3v, i);
+        S57_addPrimVertex(prim, (vertex_t*)data);
+    }
+
+    S57_endPrim(prim);
+
+    g_array_set_size(_vStrips, 0);
 
     return TRUE;
 }
@@ -936,7 +956,7 @@ static GLvoid CALLBACK   _combineCallbackCen(void)
 }
 #endif
 
-static GLvoid CALLBACK   _glBegin(GLenum data, S57_prim *prim)
+static GLvoid CALLBACK   _glBegin(GLenum mode, S57_prim *prim)
 {
     /*
     // debug
@@ -948,7 +968,19 @@ static GLvoid CALLBACK   _glBegin(GLenum data, S57_prim *prim)
     }
     */
 
-    S57_begPrim(prim, data);
+    // debug - test speed
+    _modeTess = mode;
+    if (GL_TRIANGLE_STRIP == mode) {
+        // duplicate last vertex
+        if (0 != _vStrips->len) {
+            vertex_t *data = (vertex_t *) &g_array_index(_vStrips, pt3v, _vStrips->len-1);
+            g_array_append_vals(_vStrips, data, 1);
+        }
+        _newStrip = TRUE;
+        return;
+    }
+
+    S57_begPrim(prim, mode);
 }
 
 static GLvoid CALLBACK   _beginCen(GLenum data)
@@ -981,6 +1013,10 @@ static GLvoid CALLBACK   _glEnd(S57_prim *prim)
     }
     */
 
+    //
+    if (GL_TRIANGLE_STRIP == _modeTess)
+        return;
+
     S57_endPrim(prim);
 }
 
@@ -999,17 +1035,25 @@ static GLvoid CALLBACK   _endCin(void)
 }
 
 static GLvoid CALLBACK   _vertex3d(GLvoid *data, S57_prim *prim)
-// double
+// double - use by the tesselator
 {
-    //S57_addPrimVertex(prim, (vertex_t*)data);
-
 #ifdef S52_USE_GLES2
     // cast to float after tess (double)
     double *dptr     = (double*)data;
-    float dataf[3] = {0.0, 0.0, 0.0};
-    dataf[0] = (float) dptr[0];
-    dataf[1] = (float) dptr[1];
-    dataf[2] = (float) dptr[2];
+    float   dataf[3] = {dptr[0], dptr[1], dptr[2]};
+
+    // collect strips vertex for post processing
+    if (GL_TRIANGLE_STRIP == _modeTess) {
+        if (TRUE == _newStrip) {
+            if (0 != _vStrips->len) {
+                // duplicate first vertex
+                g_array_append_vals(_vStrips, dataf, 1);
+            }
+            _newStrip = FALSE;
+        }
+        g_array_append_vals(_vStrips, dataf, 1);
+        return;
+    }
 
     S57_addPrimVertex(prim, (float*)dataf);
 #else
@@ -1019,7 +1063,8 @@ static GLvoid CALLBACK   _vertex3d(GLvoid *data, S57_prim *prim)
 }
 
 static GLvoid CALLBACK   _vertex3f(GLvoid *data, S57_prim *prim)
-// float
+// float - use by symb from _parseHPGL() (so vertex are from the PLib and allready in float)
+// store float vertex of primitive other than AREA
 {
     S57_addPrimVertex(prim, (vertex_t*)data);
 }
@@ -1220,7 +1265,7 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
 
     qobj->cb_end(_diskPrimTmp);
 
-    //g_assert(0);
+    _donePrim(_diskPrimTmp);
 
     return TRUE;
 }
@@ -1301,6 +1346,9 @@ static GLint     _initGLU(void)
 
         // set poly in x-y plane normal is Z (for performance)
         gluTessNormal(_tobj, 0.0, 0.0, 1.0);
+
+        // accumulate triangles strips
+        _vStrips = g_array_new(FALSE, FALSE, sizeof(vertex_t)*3);
     }
 
 
@@ -1413,6 +1461,8 @@ static GLint     _freeGLU(void)
     if (_nvertex)   g_array_free(_nvertex, TRUE);
     //if (_nvertex)   g_array_unref(_nvertex);
     _nvertex = NULL;
+    if (_vStrips)   g_array_free(_vStrips, TRUE);
+    _vStrips = NULL;
 
     return TRUE;
 }
@@ -1676,25 +1726,21 @@ static GLint     _tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
     //}
 
     // assume vertex place holder existe and is empty
-    g_assert(NULL != _tmpV);
-    g_assert(0    == _tmpV->len);
+    //g_assert(NULL != _tmpV);
+    //g_assert(0    == _tmpV->len);
+    _g_ptr_array_clear(_tmpV);
 
     // debug
     //PRINTF("npt: %i\n", nr);
 
     gluTessBeginPolygon(tobj, prim);
     for (guint i=0; i<nr; ++i) {
-        guint  npt;
-        //pt3   *ppt;
-        GLdouble *ppt;
+        guint     npt = 0;
+        GLdouble *ppt = NULL;
 
-        // typecast from pt3* to double*
-        //if (TRUE==S57_getGeoData(geoData, i, &npt, (double**)&ppt)) {
-        if (TRUE==S57_getGeoData(geoData, i, &npt, &ppt)) {
+        if (TRUE == S57_getGeoData(geoData, i, &npt, &ppt)) {
             gluTessBeginContour(tobj);
-            //for (j=0; j<npt; ++j, ++ppt)
             for (guint j=0; j<npt-1; ++j, ppt+=3) {
-                //gluTessVertex(tobj, (GLdouble*)ppt, (void*)ppt);
                 gluTessVertex(tobj, ppt, ppt);
 
                 // debug
@@ -1707,7 +1753,9 @@ static GLint     _tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
     }
     gluTessEndPolygon(tobj);
 
-    _g_ptr_array_clear(_tmpV);
+    //_g_ptr_array_clear(_tmpV);
+
+    _donePrim(prim);
 
     return TRUE;
 }
@@ -1999,10 +2047,10 @@ static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GL
 {
     for (int i=0; i<4; ++i) {
         for (int j=0; j<4; ++j) {
-            r[i*4+j] = a[i*4+0]*b[0*4+j] +
-                       a[i*4+1]*b[1*4+j] +
-                       a[i*4+2]*b[2*4+j] +
-                       a[i*4+3]*b[3*4+j];
+            r[i*4+j] = a[i*4+0] * b[0*4+j] +
+                       a[i*4+1] * b[1*4+j] +
+                       a[i*4+2] * b[2*4+j] +
+                       a[i*4+3] * b[3*4+j];
         }
     }
 }
@@ -2129,8 +2177,14 @@ static GLint     _popScaletoPixel(void)
     _glMatrixMode(GL_MODELVIEW);
     _glPopMatrix();
     // send to shader previous matrix
-    //glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
+    ////glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+    /*
+    GLfloat r[16];
+    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+    */
 #else
     glMatrixMode(GL_MODELVIEW);
     glPopMatrix();
@@ -2170,7 +2224,7 @@ static GLint     _glMatrixSet(VP vpcoord)
         case VP_PRJ_ZCLIP:
             left   = pmin.u,       right = pmax.u,
             bottom = pmin.v,       top   = pmax.v,
-            near   = Z_CLIP_PLANE, far   = 1 - Z_CLIP_PLANE;
+            znear  = Z_CLIP_PLANE, zfar  = 1 - Z_CLIP_PLANE;
             break;
         */
         case VP_WIN:
@@ -2210,6 +2264,13 @@ static GLint     _glMatrixSet(VP vpcoord)
 
     glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+    /*
+    GLfloat r[16];
+    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+    */
+
 #else
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -2251,6 +2312,13 @@ static GLint     _glMatrixDel(VP vpcoord)
 
     glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+    /*
+    GLfloat r[16];
+    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+    */
+
 #else
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
@@ -2644,7 +2712,7 @@ static int       _VBODrawArrays(S57_prim *prim)
     }
 
 
-    //_checkError("_VBODrawArrays()");
+    _checkError("_VBODrawArrays()");
 
     return TRUE;
 }
@@ -2779,8 +2847,8 @@ static int       _createDList(S57_prim *prim)
         return FALSE;
 
     // no glIsList() in "OpenGL ES SC"
-    if (GL_FALSE == glIsList(DList)) {
     //if (0 == DList) {
+    if (GL_FALSE == glIsList(DList)) {
         DList = glGenLists(1);
         if (0 == DList) {
             PRINTF("ERROR: glGenLists() failed\n");
@@ -2830,7 +2898,6 @@ static int       _fillarea(S57_geo *geoData)
         _tessd(_tobj, geoData);
         prim = S57_getPrimGeo(geoData);
     }
-
 
 #ifdef S52_USE_OPENGL_VBO
     _VBODraw(prim);
@@ -2974,8 +3041,15 @@ static int       _glCallList(S52_DListData *DListData)
 
 #ifdef S52_USE_GLES2
     // set shader matrix before draw
-    //glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
+    ////glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+    /*
+    GLfloat r[16];
+    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+    */
+
 #endif
 
     GLuint     lst = DListData->vboIds[0];
@@ -3022,6 +3096,13 @@ static int       _glCallList(S52_DListData *DListData)
 #ifdef S52_USE_GLES2
                     _glTranslated(x, y, z);
                     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+                    /*
+                    GLfloat r[16];
+                    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+                    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+                    */
+
 #else
                     glTranslated(x, y, z);
 #endif
@@ -3125,8 +3206,9 @@ static int       _computeCentroid(S57_geo *geoData)
 
     // CSG - Computational Solid Geometry  (clip poly)
     {   // assume vertex place holder existe and is empty
-        g_assert(NULL != _tmpV);
-        g_assert(0    == _tmpV->len);
+        //g_assert(NULL != _tmpV);
+        //g_assert(0    == _tmpV->len);
+        _g_ptr_array_clear(_tmpV);
 
         g_array_set_size(_centroids, 0);
         g_array_set_size(_vertexs,   0);
@@ -3186,7 +3268,7 @@ static int       _computeCentroid(S57_geo *geoData)
         // finish
         gluTessEndPolygon(_tcen);
 
-        _g_ptr_array_clear(_tmpV);
+        //_g_ptr_array_clear(_tmpV);
 
         // compute centroid
         {   // debug: land here is extent of area overlap but not the area itself
@@ -4267,7 +4349,6 @@ static int       _renderSY(S52_obj *obj)
                 xmin = x;
                 ymin = y;
             }
-
         }
 
         if (INFINITY != dmin) {
@@ -4486,6 +4567,13 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
         //_glRotated(90.0-o, 0.0, 0.0, 1.0);
 
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+        /*
+        GLfloat r[16];
+        __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+        */
+
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -4518,6 +4606,13 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
         //_pushScaletoPixel(TRUE);
         _pushScaletoPixel(FALSE);
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+        /*
+        GLfloat r[16];
+        __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+        */
+
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -4552,6 +4647,13 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
         //_pushScaletoPixel(TRUE);
         _pushScaletoPixel(FALSE);
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+        /*
+        GLfloat r[16];
+        __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+        */
+
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -4582,8 +4684,6 @@ static int       _renderLS_ownshp(S52_obj *obj)
 
     if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
-
-    //glEnable(GL_BLEND);
 
     // get offset
     //GString *_ownshp_off_xstr = S57_getAttVal(geo, "_ownshp_off_x");
@@ -4618,8 +4718,15 @@ static int       _renderLS_ownshp(S52_obj *obj)
         _glRotated(orient-90.0, 0.0, 0.0, 1.0);
 
         //_glTranslated(-_ownshp_off_x, -_ownshp_off_y, 0.0);
-        //glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
+        ////glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+        /*
+        GLfloat r[16];
+        __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+        */
+
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -4655,8 +4762,15 @@ static int       _renderLS_ownshp(S52_obj *obj)
 
         //_glTranslated(-_ownshp_off_x, -_ownshp_off_y, 0.0);
 
-        //glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
+        ////glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+        /*
+        GLfloat r[16];
+        __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+        */
+
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -4695,8 +4809,15 @@ static int       _renderLS_ownshp(S52_obj *obj)
             //_glTranslated(ppt[0]+_ownshp_off_x, ppt[1], 0.0);
             _glTranslated(ppt[0], ppt[1], 0.0);
 
-            //glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
+            ////glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
             glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+            /*
+            GLfloat r[16];
+            __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+            glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+            */
+
 #else
             glMatrixMode(GL_MODELVIEW);
             glLoadIdentity();
@@ -4758,6 +4879,13 @@ static int       _renderLS_vessel(S52_obj *obj)
                 _pushScaletoPixel(FALSE);
 
                 glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+                /*
+                GLfloat r[16];
+                __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+                glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+                */
+
 #else
                 glMatrixMode(GL_MODELVIEW);
                 glLoadIdentity();
@@ -4796,6 +4924,13 @@ static int       _renderLS_vessel(S52_obj *obj)
                 _glMatrixMode(GL_MODELVIEW);
                 _glLoadIdentity();
                 glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+                /*
+                GLfloat r[16];
+                __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+                glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+                */
+
 
                 GString *vestatstr = S57_getAttVal(geo, "vestat");
                 if (NULL!=vestatstr && '3'==*vestatstr->str) {
@@ -4969,6 +5104,13 @@ static int       _renderLS_afterglow(S52_obj *obj)
     //glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+    /*
+    GLfloat r[16];
+    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+    */
+
 
     // vertex array - fill vbo arrays
     //glBindBuffer(GL_ARRAY_BUFFER, _vboIDaftglwVertID);
@@ -5176,6 +5318,13 @@ static int       _renderLS(S52_obj *obj)
                     _glMatrixMode(GL_MODELVIEW);
                     _glLoadIdentity();
                     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+                    /*
+                    GLfloat r[16];
+                    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+                    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+                    */
+
                     _d2f(_tessWorkBuf_f, npt, ppt);
 
                     if (0 == g_strcmp0("leglin", S57_getName(geoData))) {
@@ -5471,7 +5620,7 @@ static int       _renderLC(S52_obj *obj)
         {//is this segment on screen (visible)
             double x1, y1, x2, y2;
             S57_getExtPRJ(geo, &x1, &y1, &x2, &y2);
-            // BUG: line crossing the screen get regected!
+            // BUG: line crossing the screen get rejected!
             if ((_pmin.u < x1) && (_pmin.v < y1) && (_pmax.u > x2) && (_pmax.v > y2)) {
                 //PRINTF("no clip: %s\n", S57_getName(geo));
                 ;
@@ -5501,7 +5650,7 @@ static int       _renderLC(S52_obj *obj)
 
         //////////////////////////////////////////////////////
         //
-        // overlapping line supression
+        // overlapping line supression - Z_CLIP_PLANE
         //
 
         if (z1<0.0 && z2<0.0) {
@@ -5588,6 +5737,13 @@ static int       _renderLC(S52_obj *obj)
         _glMatrixMode(GL_MODELVIEW);
         _glLoadIdentity();
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+        /*
+        GLfloat r[16];
+        __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+        */
+
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -5851,6 +6007,13 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
     _glTranslated(ppt[0], ppt[1], 0.0);
 
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+    /*
+    GLfloat r[16];
+    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+    */
+
 #else
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -5949,7 +6112,21 @@ static int       _renderAC(S52_obj *obj)
     _glLoadIdentity();
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
+    /*
+    GLfloat r[16];
+    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+    */
+
+    // optimisation - stop blending when drawing poly (save 15%)
+    // BUG: WORLD is opaque
+    //glDisable(GL_BLEND);
+
     _fillarea(geo);
+
+    //if (1.0 == S52_MP_get(S52_MAR_ANTIALIAS))
+    //    glEnable(GL_BLEND);
+
 
 #else
     glMatrixMode(GL_MODELVIEW);
@@ -6286,6 +6463,12 @@ static int       _renderTile(S52_DListData *DListData)
     // set origine
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
+    /*
+    GLfloat r[16];
+    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+    */
+
     glEnableVertexAttribArray(_aPosition);
 
     for (guint i=0; i<DListData->nbr; ++i) {
@@ -6526,6 +6709,11 @@ static int       _renderAP_es2(S52_obj *obj)
             _glLoadIdentity();
             glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
+            //GLfloat r[16];
+            //__gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+            //glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+
+
             //pt3v lineW[2] = {{0.0, 0.0, 0.0}, {potW,  0.0, 0.0}};
             //pt3v lineH[2] = {{0.0, 1.0, 0.0}, {1.0,  potH, 0.0}};
             pt3v lineW[2] = {{0.0, 0.0, 0.0}, {tileWpx,     0.0, 0.0}};  // some line are pale
@@ -6603,6 +6791,12 @@ static int       _renderAP_es2(S52_obj *obj)
     _glMatrixMode(GL_MODELVIEW);
     _glLoadIdentity();
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+    /*
+    GLfloat r[16];
+    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+    */
 
     glUniform1f(_uPattOn,    1.0);
     // make no diff on MESA/gallium if it is 0.0 but not on Xoom (tegra2)
@@ -7095,6 +7289,13 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
     _glRotated   (-_north, 0.0, 0.0, 1.0);
 
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+    /*
+    GLfloat r[16];
+    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+    */
+
 
     //PRINTF("x:%f, x:%f, str:%s\n", x, y, str);
 
@@ -7683,6 +7884,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 
                 // remember first coord
                 fristCoord = data;
+                _g_ptr_array_clear(_tmpV);
 
                 gluTessBeginPolygon(_tobj, vertex);
                 gluTessBeginContour(_tobj);
@@ -7702,7 +7904,9 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 gluTessEndContour(_tobj);
                 gluTessEndPolygon(_tobj);
 
-                _g_ptr_array_clear(_tmpV);
+                //_g_ptr_array_clear(_tmpV);
+
+                _donePrim(vertex);
 
                 _checkError("_parseHPGL()");
 
@@ -8153,10 +8357,14 @@ static guint     _minPOT(guint value)
 
 static int       _newTexture(S52_GL_ras *raster)
 // copy and blend raster 'data' to alpha texture
-// FIXME: use shader to blend rather than precomputing value here
+// FIXME: test if the use of hader to blend rather than precomputing value here is faster
 {
-    guint potX = _minPOT(raster->w);
-    guint potY = _minPOT(raster->h);
+    //guint potX  = _minPOT(raster->w);
+    //guint potY  = _minPOT(raster->h);
+    guint npotX = raster->w;
+    guint npotY = raster->h;
+    //potX = npotX;
+    //potY = npotY;
 
     float min  =  INFINITY;
     float max  = -INFINITY;
@@ -8168,19 +8376,18 @@ static int       _newTexture(S52_GL_ras *raster)
     //unsigned char *datab = (unsigned char *) raster->data;
 
     guint count = raster->w * raster->h;
-    unsigned char *texAlpha = g_new0(unsigned char, potX * potY);
-    //unsigned char *texAlpha = g_new0(unsigned char, count);
-    unsigned char *texTmp   = texAlpha;
+    unsigned char *texAlpha = g_new0(unsigned char, count * 4);
+    struct rgba {unsigned char r,g,b,a;};
+    struct rgba *texTmp   = (struct rgba*) texAlpha;
 
     for (guint i=0; i<count; ++i) {
-        int Yline = i/raster->w;
-        int k     = i - Yline*raster->w;
+        //int Yline = i/raster->w;
+        //int k     = i - Yline*raster->w;
+        //int ii    = Yline*potX + k;
 
-        // FIXME: get NODATA
-        if (-9999.0 == dataf[i]) {
-            texTmp[Yline*potX + k] = 0;
-            //texTmp[Yline*w + k] = 0;
-            //texTmp[i] = 0;
+        if (raster->nodata == dataf[i]) {
+            //texTmp[ii] = 0;
+            texTmp[i].a = 0;
             continue;
         }
 
@@ -8195,31 +8402,28 @@ static int       _newTexture(S52_GL_ras *raster)
             //texTmp[Yline*potX + k] = 100;
 
             // OK
-            texTmp[Yline*potX + k] = 0;
-            //texTmp[Yline*w + k] = 0;
-            //texTmp[i] = 0;
+            //texTmp[ii] = 0;
+            texTmp[i].a = 0;
             continue;
         }
         if (safe <= dataf[i]) {
         //if (safe <= datab[i]) {
-            texTmp[Yline*potX + k] = 255;
-            //texTmp[Yline*w + k] = 255;
-            //texTmp[i] = 255;
+            //texTmp[ii] = 255;
+            texTmp[i].a = 255;
             continue;
         }
         if ((safe-2.0) <= dataf[i]) {
         //if ((safe-2.0) <= datab[i]) {
-            texTmp[Yline*potX + k] = 100;
-            //texTmp[Yline*w + k] = 100;
-            //texTmp[i] = 100;
+            //texTmp[ii] = 100;
+            texTmp[i].a = 100;
             continue;
         }
     }
 
     raster->min      = min;
     raster->max      = max;
-    raster->potX     = potX;
-    raster->potY     = potY;
+    raster->npotX    = npotX;
+    raster->npotY    = npotY;
     raster->texAlpha = texAlpha;
 
     return TRUE;
@@ -8238,13 +8442,24 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
         glGenTextures(1, &raster->texID);
         glBindTexture(GL_TEXTURE_2D, raster->texID);
 
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->potX, raster->potY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
-        //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->w, raster->h, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
+        // ALPHA fail on GLES2
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->potX, raster->potY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, raster->texAlpha);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        // test to handle float in texture
+        //glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_FLOAT, raster->data);
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_FLOAT, raster->data);
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, raster->npotX, raster->npotY, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, raster->data);
+        //dword PackValues(byte x,byte y,byte z,byte w) {
+        //    return (x<<24)+(y<<16)+(z<<8)+(w);
+        //}
+
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
         glBindTexture(GL_TEXTURE_2D, 0);
 
@@ -8261,10 +8476,17 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
     _glLoadIdentity();
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
-    float fracX = (float)raster->w/(float)raster->potX;
-    float fracY = (float)raster->h/(float)raster->potY;
-    //float fracX = 1.0;
-    //float fracY = 1.0;
+    /*
+    GLfloat r[16];
+    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
+    */
+
+
+    //float fracX = (float)raster->w/(float)raster->potX;
+    //float fracY = (float)raster->h/(float)raster->potY;
+    float fracX = 1.0;
+    float fracY = 1.0;
     vertex_t ppt[4*3 + 4*2] = {
         raster->W, raster->S, 0.0,        0.0f, 0.0f,
         raster->W, raster->N, 0.0,        0.0f,  fracY,
@@ -8695,7 +8917,6 @@ int        S52_GL_begin(S52_GL_mode mode)
 
 
     // picking or rendering cycle
-    //if (TRUE == cursorPick) {
     if (S52_GL_PICK == mode) {
         _cIdx.color.r = 0;
         _cIdx.color.g = 0;
@@ -8711,14 +8932,14 @@ int        S52_GL_begin(S52_GL_mode mode)
         //glDisable(GL_POLYGON_SMOOTH);  // NOT in "OpenGL ES SC"
         glDisable(GL_BLEND);
         //glDisable(GL_DITHER);          // NOT in "OpenGL ES SC"
-        //glDisable(GL_FOG);             // NOT in "OpenGL ES SC"
+        //glDisable(GL_FOG);             // NOT in "OpenGL ES SC", NOT in GLES2
         //glDisable(GL_LIGHTING);        // NOT in GLES2
         //glDisable(GL_TEXTURE_1D);      // NOT in "OpenGL ES SC"
         //glDisable(GL_TEXTURE_2D);      // fail on GLES2
         //glDisable(GL_TEXTURE_3D);      // NOT in "OpenGL ES SC"
         //glDisable(GL_ALPHA_TEST);      // NOT in GLES2
 
-        //glShadeModel(GL_FLAT);
+        //glShadeModel(GL_FLAT);         // NOT in GLES2
 
     } else {
         if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS)) {
@@ -8755,11 +8976,31 @@ int        S52_GL_begin(S52_GL_mode mode)
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
 
+
 #ifndef S52_USE_OPENGL_SAFETY_CRITICAL
     glDisable(GL_DITHER);                   // NOT in OpenGL ES SC
 #endif
 
 #ifdef S52_USE_GLES2
+    /* FrontFaceDirection */
+
+    // FIXME: winding of geo area and symb area are oposite
+    // but weather ON or OFF make no notable speed diff
+    //glFrontFace(GL_CW);   // geo area fail
+    //glFrontFace(GL_CCW); // symb area fail
+    //glCullFace(GL_BACK);
+    //glEnable(GL_CULL_FACE);
+    //glDisable(GL_CULL_FACE);
+
+    /* EnableCap */
+    glDisable(GL_DITHER);
+    glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_POLYGON_OFFSET_FILL);
+    glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+    glDisable(GL_SAMPLE_COVERAGE);
+
+    _checkError("S52_GL_begin() - EnableCap");
+
 #else
     glShadeModel(GL_FLAT);                       // NOT in GLES2
     // draw both side
@@ -9060,6 +9301,7 @@ static int       _init_es2(void)
     const char* vShaderStr =
         "precision mediump float;      \n"
 //        "precision highp float;        \n"
+        "                              \n"
         "uniform   mat4  uProjection;  \n"
         "uniform   mat4  uModelview;   \n"
         "                              \n"
@@ -9080,21 +9322,25 @@ static int       _init_es2(void)
         "varying   float v_pattOn;     \n"
         "varying   float v_alpha;      \n"
         "                              \n"
-        "void main(void)                   \n"
-        "{                                 \n"
-        "   v_alpha = aAlpha;              \n"
-        "                                  \n"
-        "   gl_Position  = uProjection * uModelview * aPosition;     \n"
-        "   if (1.0 == uPattOn) {                                    \n"
-//        "       v_texCoord.x  = aPosition.x / uPattW;                \n"
-//        "       v_texCoord.y  = aPosition.y / uPattH;                \n"
+        "void main(void)                                            \n"
+        "{                                                          \n"
+        "   v_alpha = aAlpha;                                       \n"
+        "                                                           \n"
+        "   gl_PointSize = uPointSize;                              \n"
+        "                                                           \n"
+        "   gl_Position = uProjection * uModelview * aPosition;     \n"
+        // test optimisation: remove one '*'
+        // FIXME: find a way to accuratly time the diff
+//        "   gl_Position = uModelview * aPosition;                   \n"
+        "                                                           \n"
+        "   if (1.0 == uPattOn) {                                   \n"
         "       v_texCoord.x = (aPosition.x - uPattGridX) / uPattW; \n"
         "       v_texCoord.y = (aPosition.y - uPattGridY) / uPattH; \n"
-        "   } else {                       \n"
-        "       v_texCoord = aUV;          \n"
-        "   }                              \n"
-        "   gl_PointSize = uPointSize;     \n"
-        "}                                 \n";
+        "   } else {                                                \n"
+        "       v_texCoord = aUV;                                   \n"
+        "   }                                                       \n"
+        "                                                           \n"
+        "}                                                          \n";
 
 
 //        "#ifdef GL_ES                  \n"
@@ -9108,7 +9354,7 @@ static int       _init_es2(void)
         "precision mediump float;      \n"
 //        "precision highp float;        \n"
         "                              \n"
-        "uniform sampler2D uSampler2d; \n"
+        "uniform lowp sampler2D uSampler2d; \n"
         "                              \n"
         "uniform float     uFlatOn;    \n"
         "uniform float     uBlitOn;    \n"
@@ -9123,6 +9369,7 @@ static int       _init_es2(void)
         "varying float     v_alpha;    \n"
         "                              \n"
 
+        // NOTE: if else if ... doesn't seem to slow things down
         "void main(void)                        \n"
         "{                                      \n"
         "                                       \n"
@@ -9838,7 +10085,7 @@ int        S52_GL_drawFBPixels(void)
 
     _glMatrixSet(VP_PRJ);
 
-    glDisable(GL_BLEND);
+    //glDisable(GL_BLEND);
 
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
@@ -9888,7 +10135,7 @@ int        S52_GL_drawFBPixels(void)
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    glEnable(GL_BLEND);
+    //glEnable(GL_BLEND);
 
 
     _glMatrixDel(VP_PRJ);
@@ -10055,7 +10302,7 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
 
     _glMatrixSet(VP_PRJ);
 
-    glDisable(GL_BLEND);
+    //glDisable(GL_BLEND);
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
     // turn ON 'sampler2d'
@@ -10104,7 +10351,7 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     glDisableVertexAttribArray(_aPosition);
 
     glBindTexture(GL_TEXTURE_2D, 0);
-    glEnable(GL_BLEND);
+    //glEnable(GL_BLEND);
 
     _glMatrixDel(VP_PRJ);
 

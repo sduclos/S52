@@ -76,7 +76,7 @@ s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_US
 # -DS52_USE_WORLD     - load world shapefile
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps` \
-                      -DS52_USE_DOTPITCH -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2 -DUSE_AIS
+                      -DS52_USE_DOTPITCH -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2 -DUSE_AIS -DS52_USE_WORLD
 
 # same as s52eglx, but "gtk+-3.0" is added
 s52gtk3egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` \

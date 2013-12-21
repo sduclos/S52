@@ -275,7 +275,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.107\n"
+      "libS52 0.108\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -363,7 +363,6 @@ static EGL_cb _eglBeg = NULL;
 static EGL_cb _eglEnd = NULL;
 static void  *_EGLctx = NULL;
 // WARNING: call BEFORE mutex
-//#define EGL_BEGIN       if (NULL != _eglBeg) _eglBeg(_EGLctx);
 #define EGL_BEGIN       if (NULL != _eglBeg) {              \
                             if (FALSE == _eglBeg(_EGLctx))  \
     							return FALSE;               \
@@ -1868,7 +1867,6 @@ static int        _linkRel2LNAM(_cell* c)
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 static int        _suppLineOverlap()
-
 // no SUPP in case manual chart correction (LC(CHCRIDnn) and LC(CHCRDELn))
 // Note: for now _suppLineOverlap() work for LC() only.
 {
@@ -2134,6 +2132,7 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 #ifdef S52_USE_OGR_FILECOLLECTOR
 // in libgdal.so
 // Note: must add 'extern "C"' to GDAL/OGR at S57.h:40
+// (is linking with g++ fix this)
 char **S57FileCollector( const char *pszDataset );
 
 #if 0
@@ -2898,7 +2897,7 @@ DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_
     }
 #endif
 
-    // debug: too slow for lake superior
+    // debug: too slow for Lake Superior
     // FIXME
     //if (0== g_strcmp0(layername, "OBSTRN", 6))
     //    return 1;
@@ -3886,11 +3885,9 @@ DLL int    STD S52_draw(void)
 
     EGL_BEGIN;
 
-    int ret = FALSE;
-
     // do not wait if an other thread is allready drawing
-    //g_static_mutex_lock(&_mp_mutex);
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
+        PRINTF("WARNING: trylock failed\n");
         goto exit;
     }
     //
@@ -3913,6 +3910,8 @@ DLL int    STD S52_draw(void)
     //PRINTF("DRAW: start ..\n");
 
     g_timer_reset(_timer);
+
+    int ret = FALSE;
 
     if (TRUE == S52_GL_begin(S52_GL_DRAW)) {
 
@@ -4090,10 +4089,10 @@ DLL int    STD S52_drawLast(void)
 
     EGL_BEGIN;
 
-    int ret = FALSE;
-
-    //g_static_mutex_lock(&_mp_mutex);
+    // do not wait if an other thread is allready drawing
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
+        PRINTF("WARNING: trylock failed\n");
+        //g_assert(0);
         goto exit;
     }
 
@@ -4132,14 +4131,13 @@ DLL int    STD S52_drawLast(void)
     ////////////////////////////////////////////////////////////////////
     // DRAW:
     //
-    //if (TRUE == S52_GL_begin(FALSE, TRUE)) {
+
+    int ret = FALSE;
     if (TRUE == S52_GL_begin(S52_GL_LAST)) {
         ret = _drawLast();
-        //S52_GL_end(TRUE);
         S52_GL_end(S52_GL_LAST);
     } else {
         PRINTF("WARNING:S52_GL_begin() failed\n");
-        ret = FALSE;
     }
 
     // debug
@@ -8524,6 +8522,7 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
 
     GError *error          = NULL;
 
+    // Note: buffer must be local because we can have more than one connection (thread)
     gchar  str_send[BLOCK] = {'\0'};
     gchar  str_read[BLOCK] = {'\0'};
     gchar  response[BLOCK] = {'\0'};

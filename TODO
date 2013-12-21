@@ -16,7 +16,7 @@ Curent focus (top priority *):
     PL:
 *   -view group or somme equivalent functionality
     -overscale (DATCVR01)
-    -experimental: supression of overlapping simple lines (LS()) (also of same disp prio AREAS/LINES)
+    -experimental: supression of overlapping simple lines (ie LS() - not LC()) (also of same disp prio AREAS/LINES)
     -fix breaker color problem in CA49995A.000
     -check/validate QUAPOS of spatial (not attribute) object
     -dump vector (same as saving display list / VBO!)
@@ -76,7 +76,7 @@ DONE
     -handle signal async (interrupt drawing, segfault, ...)
     -GPSD/AIS
     -GL: curves (in LEGLIN)
-    -(partial) supression of overlapping lines (HARD -need to tweak GDAL)
+    -(partial - only LC()) supression of overlapping lines (HARD -need to tweak GDAL)
     -thread awaire
     -handle multiple cells
     -Mariner's object

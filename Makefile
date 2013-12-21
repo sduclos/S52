@@ -194,6 +194,7 @@ s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   -DS52_USE_SOCK                 \
                   -DS52_USE_OGR_FILECOLLECTOR    \
 				  -DS52_USE_SYM_VESSEL_DNGHL     \
+ 				  -DS52_USE_WORLD                \
                   -DS52_DEBUG $(DBG)
 
 # WARNING: gdal run OK on android with android-9-toolchain
@@ -225,6 +226,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
 # -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7)
 # -DS52_USE_LOG          - log S52_* call to tmp file
 # -DG_DISABLE_ASSERT
+# -DS52_DEBUG
 
             DEFS   = -DS52_USE_GLIB2                       \
                      -DS52_USE_PROJ                        \
@@ -233,7 +235,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_USE_GLES2                       \
                      -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_FREETYPE_GL                 \
-                     -DS52_USE_ADRENO                      \
+                     -DS52_USE_TEGRA2                      \
                      -DS52_USE_ANDROID                     \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \

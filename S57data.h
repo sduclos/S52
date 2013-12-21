@@ -81,6 +81,7 @@ S57_prim *S57_donePrim     (S57_prim *prim);
 S57_prim *S57_initPrimGeo  (S57_geo  *geoData);
 S57_geo  *S57_donePrimGeo  (S57_geo  *geoData);
 int       S57_begPrim      (S57_prim *prim, int mode);
+int       S57_endPrim      (S57_prim *prim);
 
 // GLES2 need float vertex
 #ifdef S52_USE_GLES2
@@ -90,12 +91,11 @@ typedef double vertex_t;
 #endif
 int       S57_addPrimVertex(S57_prim *prim, vertex_t *ptr);
 
-int       S57_endPrim      (S57_prim *prim);
 S57_prim *S57_getPrimGeo   (S57_geo  *geoData);
 guint     S57_getPrimData  (S57_prim *prim, guint *primNbr, vertex_t **vert, guint *vertNbr, guint *vboID);
 GArray   *S57_getPrimVertex(S57_prim *prim);
 int       S57_getPrimIdx   (S57_prim *prim, unsigned int i, int *mode, int *first, int *count);
-S57_prim *S57_setPrimSize  (S57_prim *prim, int sz);
+//S57_prim *S57_setPrimSize  (S57_prim *prim, int sz);
 int       S57_setPrimDList (S57_prim *prim, guint DList);
 
 // get/set extend

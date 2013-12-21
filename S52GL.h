@@ -44,8 +44,8 @@ typedef struct S52_GL_ras {
     double S,W,N,E;           // projected extent
 
     // dst texture size
-    guint potX;
-    guint potY;
+    guint npotX;
+    guint npotY;
 
     unsigned char *texAlpha;  // size = potX * potY
     unsigned int   texID;

@@ -478,6 +478,7 @@ static int      _egl_init       (s52engine *engine)
         XFlush(display);
 
         engine->eglWindow = (EGLNativeWindowType) window;
+
     }
 #endif
 
@@ -510,6 +511,10 @@ static int      _egl_init       (s52engine *engine)
         LOGE("eglCreateContext() failed. [0x%x]\n", eglGetError());
         g_assert(0);
     }
+
+    // test - no interval - seem uneffective
+    //eglSwapInterval(eglDisplay, 0);
+
     if (EGL_FALSE == eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext))
         LOGE("Unable to eglMakeCurrent()\n");
 
@@ -549,10 +554,12 @@ static void     _egl_done       (s52engine *engine)
 static int      _egl_beg        (s52engine *engine)
 {
     // On Android, Blit x10 slower whitout
+    //*
     if (EGL_FALSE == eglWaitGL()) {
         LOGE("_egl_beg(): eglWaitGL() failed. [0x%x]\n", eglGetError());
         return FALSE;
     }
+    //*/
 
     // this prevent EGL_BAD_ACCESS on Adreno/Tegra - eglMakeCurrent:671 error 3002 (EGL_BAD_ACCESS)
     if (EGL_NO_CONTEXT == eglGetCurrentContext()) {
@@ -884,6 +891,7 @@ static int      _s52_init       (s52engine *engine)
 #else
     // Rimouski (Xoom)
     S52_loadCell(PATH "/ENC_ROOT/CA579041.000", NULL);
+    S52_loadCell(PATH "/ENC_ROOT/CA279037.000", NULL);
 
     // Portneuf
     //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
@@ -894,13 +902,17 @@ static int      _s52_init       (s52engine *engine)
 #else  // S52_USE_ANDROID
 
     // read cell location fron s52.cfg
-    S52_loadCell(NULL, NULL);
+    //S52_loadCell(NULL, NULL);
+
+
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
 
     // Ice - experimental (HACK: ice symb link to --0WORLD.shp for one shot test)
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
 
     // Bathy - experimental
+    // Portneuf
+    S52_loadCell("../../../../S57/CA_QC-TR/ENC_ROOT/CA479017.000", NULL);
     S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
 
     // RADAR - experimental
@@ -916,7 +928,7 @@ static int      _s52_init       (s52engine *engine)
 #ifdef S52_USE_WORLD
     // World data
     if (TRUE == S52_loadCell(PATH "/0WORLD/--0WORLD.shp", NULL)) {
-        //S52_setMarinerParam(S52_MAR_DISP_WORLD, 0.0);   // default
+        S52_setMarinerParam(S52_MAR_DISP_WORLD, 0.0);   // default
         //S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);     // show world
     }
 #endif
@@ -940,8 +952,8 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
 
 
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);
 
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
@@ -1024,12 +1036,12 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
 
     // debug - use for timing rendering
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
 
     //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
     S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
@@ -2470,7 +2482,9 @@ static int      _X11_handleXevent(gpointer user_data)
             unsigned int keycode = ((XKeyEvent *)&event)->keycode;
             unsigned int keysym  = XkbKeycodeToKeysym(engine->dpy, keycode, 0, 1);
 
-            // ESC
+            // FIXME: use switch on leysym
+
+            // quit
             if (XK_Escape == keysym) {
                 g_main_loop_quit(engine->state.main_loop);
                 return TRUE;

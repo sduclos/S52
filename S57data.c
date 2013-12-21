@@ -703,7 +703,7 @@ S57_geo   *S57_donePrimGeo(_S57_geo *geoData)
 
 int        S57_begPrim(_S57_prim *prim, int mode)
 {
-    struct _prim p;
+    _prim p;
 
     return_if_null(prim);
 
@@ -715,28 +715,39 @@ int        S57_begPrim(_S57_prim *prim, int mode)
     return TRUE;
 }
 
+int        S57_endPrim(_S57_prim *prim)
+{
+    return_if_null(prim);
+
+    _prim *p = &g_array_index(prim->list, _prim, prim->list->len-1);
+    if (NULL == p) {
+        PRINTF("ERROR: no primitive at index: %i\n", prim->list->len-1);
+        g_assert(0);
+        return FALSE;
+    }
+
+    p->count = prim->vertex->len - p->first;
+
+    return TRUE;
+}
+
 int        S57_addPrimVertex(_S57_prim *prim, vertex_t *ptr)
 // add one xyz coord (3 vertex_t)
 {
     return_if_null(prim);
     return_if_null(ptr);
 
+    /*
+    if (prim->mode == GL_TRIANGLE_STRIP) {
+        // add vertex to vStrip array
+        g_array_append_vals(vStrip, ptr, 1);
+    } else {
+        g_array_append_vals(prim->vertex, ptr, 1);
+    }
+    */
+
     //g_array_append_val(prim->vertex, *ptr);
     g_array_append_vals(prim->vertex, ptr, 1);
-
-    return TRUE;
-}
-
-int        S57_endPrim(_S57_prim *prim)
-{
-    return_if_null(prim);
-
-    struct _prim *p = &g_array_index(prim->list, struct _prim, prim->list->len-1);
-
-    if (NULL == p)
-        return FALSE;
-
-    p->count = prim->vertex->len - p->first;
 
     return TRUE;
 }
@@ -768,6 +779,7 @@ GArray    *S57_getPrimVertex(_S57_prim *prim)
     return prim->vertex;
 }
 
+/*
 S57_prim  *S57_setPrimSize(_S57_prim *prim, int sz)
 {
     return_if_null(prim);
@@ -777,6 +789,7 @@ S57_prim  *S57_setPrimSize(_S57_prim *prim, int sz)
 
     return prim;
 }
+*/
 
 int        S57_setPrimDList (_S57_prim *prim, guint DList)
 {
@@ -794,10 +807,10 @@ int        S57_getPrimIdx(_S57_prim *prim, unsigned int i, int *mode, int *first
     if (i>=prim->list->len)
         return FALSE;
 
-    struct _prim *p = &g_array_index(prim->list, struct _prim, i);
-
+    _prim *p = &g_array_index(prim->list, _prim, i);
     if (NULL == p) {
         PRINTF("ERROR: no primitive at index: %i\n", i);
+        g_assert(0);
         return FALSE;
     }
 
@@ -1648,11 +1661,11 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
             g_assert(0);
     }
 
-    // FIXME: push Z one to many edge
-    // move vertex to clip plane
+    // optimisation not usefull in this case since it's a one time pass
+    // FIXME: optimisation: push Z one to many edge
+    // FIXME: optimisation: check if moving vertex to clip plane (Z_CLIP_PLANE)
     for (guint j=0; j<nptEdge; ++j) {
-    //for (guint j=0; j<(nptEdge-1); ++j) {  // this seem to have no effect
-        ppt[i*3 + 2] = -10.0;
+        ppt[i*3 + 2] = -10.0; // not Z_CLIP_PLANE
         i += next;
     }
 
