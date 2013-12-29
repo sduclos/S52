@@ -64,11 +64,16 @@ typedef struct _prim {
     int mode;
     int first;
     int count;
+    //guint mode;
+    //guint first;
+    //guint count;
 } _prim;
 
 typedef struct _S57_prim {
     GArray *list;      // list of _prim in 'vertex'
-    GArray *vertex;    // geographic coordinate (bouble or float for GLES2 since some go right in the GPU - ie line)
+    // optimisation: use XY, so that the GPU move, internaly, 1/3 less data
+    // but this is useless if no LOD for ENC - zooming out will add 10x more data
+    GArray *vertex;    // XYZ geographic coordinate (bouble or float for GLES2 since some go right in the GPU - ie line)
     guint   DList;     // display list of the above
 } _S57_prim;
 
@@ -728,6 +733,11 @@ int        S57_endPrim(_S57_prim *prim)
 
     p->count = prim->vertex->len - p->first;
 
+    // debug
+    if (p->count < 0) {
+        g_assert(0);
+    }
+
     return TRUE;
 }
 
@@ -736,15 +746,6 @@ int        S57_addPrimVertex(_S57_prim *prim, vertex_t *ptr)
 {
     return_if_null(prim);
     return_if_null(ptr);
-
-    /*
-    if (prim->mode == GL_TRIANGLE_STRIP) {
-        // add vertex to vStrip array
-        g_array_append_vals(vStrip, ptr, 1);
-    } else {
-        g_array_append_vals(prim->vertex, ptr, 1);
-    }
-    */
 
     //g_array_append_val(prim->vertex, *ptr);
     g_array_append_vals(prim->vertex, ptr, 1);
@@ -801,6 +802,7 @@ int        S57_setPrimDList (_S57_prim *prim, guint DList)
 }
 
 int        S57_getPrimIdx(_S57_prim *prim, unsigned int i, int *mode, int *first, int *count)
+//int        S57_getPrimIdx(_S57_prim *prim, guint i, guint *mode, guint *first, guint *count)
 {
     return_if_null(prim);
 
@@ -1070,7 +1072,6 @@ double     S57_resetScamin(_S57_geo *geo)
 {
     return_if_null(geo);
 
-
     if (NULL == geo->attribs)
         g_datalist_init(&geo->attribs);
 
@@ -1082,6 +1083,7 @@ double     S57_resetScamin(_S57_geo *geo)
     geo->scamin = val;
 
     return geo->scamin;
+    //return geo->scamin = (NULL==S57_getAttVal(geo, "SCAMIN")) ? UNKNOWN : S52_atof(valstr->str);
 }
 
 #ifdef S52_USE_C_AGGR_C_ASSO

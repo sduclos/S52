@@ -44,8 +44,11 @@ In a day:
     -OGR: IHOOCDD.XXX
     -GL: display 'dipping distance' of light (need the height of eye and sea level)
     -GL: bearing snap to light
+    -GL: optimisation - LOD --> reduce the nbr of vertex in area/line (NP, need heuristique)
     -PL: implement vector instruction command: symbol call (SC), arc (AA)
     -PL: implement raster instruction for pattern and symbol (PBTM, SBTM)
+    -PL: SCAMAX
+    
 
 
 DONE

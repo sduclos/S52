@@ -784,7 +784,9 @@ static int      _s52_setupVRMEBL(s52droid_state_t *state)
 static int      _s52_setupPRDARE(s52droid_state_t *state)
 // test - centroid (PRDARE: wind farm)
 {
-    // AREA (CW: to center the text)
+    // Note: centroid work on both CW and CCW
+    //*
+    // AREA (CW)
     double xyzArea[6*3]  = {
         state->cLon + 0.000, state->cLat + 0.000, 0.0,
         state->cLon - 0.005, state->cLat + 0.004, 0.0,
@@ -793,6 +795,19 @@ static int      _s52_setupPRDARE(s52droid_state_t *state)
         state->cLon + 0.000, state->cLat + 0.005, 0.0,
         state->cLon + 0.000, state->cLat + 0.000, 0.0,
     };
+    //*/
+
+    /*
+    // AREA (CCW)
+    double xyzArea[6*3]  = {
+        state->cLon + 0.000, state->cLat + 0.000, 0.0,
+        state->cLon + 0.000, state->cLat + 0.005, 0.0,
+        state->cLon - 0.010, state->cLat + 0.005, 0.0,
+        state->cLon - 0.010, state->cLat + 0.000, 0.0,
+        state->cLon - 0.005, state->cLat + 0.004, 0.0,
+        state->cLon + 0.000, state->cLat + 0.000, 0.0,
+    };
+    */
 
     // PRDARE/WNDFRM51/CATPRA9
     char attVal[] = "CATPRA:9";
@@ -891,7 +906,8 @@ static int      _s52_init       (s52engine *engine)
 #else
     // Rimouski (Xoom)
     S52_loadCell(PATH "/ENC_ROOT/CA579041.000", NULL);
-    S52_loadCell(PATH "/ENC_ROOT/CA279037.000", NULL);
+    // Estuaire du St-Laurent
+    //S52_loadCell(PATH "/ENC_ROOT/CA279037.000", NULL);
 
     // Portneuf
     //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
@@ -904,21 +920,24 @@ static int      _s52_init       (s52engine *engine)
     // read cell location fron s52.cfg
     //S52_loadCell(NULL, NULL);
 
+    // Rimouski
+    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
 
-    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
+    // Estuaire du St-Laurent
+    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
 
     // Ice - experimental (HACK: ice symb link to --0WORLD.shp for one shot test)
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
 
     // Bathy - experimental
     // Portneuf
-    S52_loadCell("../../../../S57/CA_QC-TR/ENC_ROOT/CA479017.000", NULL);
-    S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
+    //S52_loadCell("../../../../S57/CA_QC-TR/ENC_ROOT/CA479017.000", NULL);
+    //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
 
     // RADAR - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/radar/RADAR_imitator/out.raw", NULL);
 
-    S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+    //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
 
     // load AIS select symb.
     //S52_loadPLib("plib-test-priv.rle");
@@ -953,7 +972,9 @@ static int      _s52_init       (s52engine *engine)
 
 
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // trigger symb ISODGR01 (ODD winding) at Rimouski
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // better for Rimouski chanel
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
 
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
@@ -1036,12 +1057,12 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
 
     // debug - use for timing rendering
-    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
-    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
-    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
-    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
-    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
 
     //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
     S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default

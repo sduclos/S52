@@ -287,6 +287,7 @@ static GPtrArray          *_tmpV = NULL;  // place holder during tesssalation (G
 static int     _modeTess = 0;
 static GArray *_vStrips  = NULL;  // accumulate triangles strips vertex when _modeTess is GL_TRIANGLE_STRIP
 static int     _newStrip = FALSE; // TRUE a new strip is beginning
+static int     _nStrips  = 0;     // debug
 
 // centroid
 static GLUtriangulatorObj *_tcen       = NULL;     // GLU CSG
@@ -582,15 +583,41 @@ static GLuint   _vboIDaftglwColrID = 0;
 static GArray  *_aftglwColorArr    = NULL;
 
 // utils
-static int       _f2d(GArray *tessWorkBuf_d, unsigned int npt, vertex_t *ppt)
+static int       _f2d(GArray *tessWorkBuf_d, guint npt, vertex_t *ppt)
 // convert array of float (vertex_t with GLES2) to array of double
 // as the tesselator work on double
 {
+    /*
+    // compute area to get winding, >0 CW, <0 CCW
+    vertex_t area = 0.0;
+    pt3v    *pt   = (pt3v*)ppt;
+    for (guint i=0, j=npt-1; i<npt; j=i++) {
+    //for (guint i=1, j=0; i<npt; j=i++) {
+        area += (pt[j].x + pt[i].x) * (pt[j].y - pt[i].y);
+    }
+    // area /= 2.0;
+    */
+
     g_array_set_size(tessWorkBuf_d, 0);
 
     for (guint i=0; i<npt; i++) {
         double d[3] = {ppt[0], ppt[1], ppt[2]};
         g_array_append_val(tessWorkBuf_d, d);
+
+        /*
+        if (0 <= area) // CW
+            g_array_append_val(tessWorkBuf_d, d);
+        else           // CCW
+            g_array_prepend_val(tessWorkBuf_d, d);
+        //*/
+
+        /*
+        if (0 > area) // CCW
+            g_array_append_val(tessWorkBuf_d, d);
+        else          // CW
+            g_array_prepend_val(tessWorkBuf_d, d);
+        //*/
+
         ppt += 3;
     }
     return TRUE;
@@ -679,7 +706,7 @@ GL_OUT_OF_MEMORY
 
 // FIXME: use GDestroyNotify() instead
 static int       _g_ptr_array_clear(GPtrArray *arr)
-// free vertex malloc'd, keep array memory allocated
+// free vertex malloc'd during tess, keep array memory allocated
 {
     for (guint i=0; i<arr->len; ++i)
         g_free(g_ptr_array_index(arr, i));
@@ -688,7 +715,7 @@ static int       _g_ptr_array_clear(GPtrArray *arr)
     return TRUE;
 }
 
-static int       _findCentInside(unsigned int npt, pt3 *v)
+static int       _findCentInside  (guint npt, pt3 *v)
 // return TRUE and centroid else FALSE
 {
     _dcin  = -1.0;
@@ -719,7 +746,7 @@ static int       _findCentInside(unsigned int npt, pt3 *v)
     return FALSE;
 }
 
-static int       _getCentroidOpen(guint npt, pt3 *v)
+static int       _getCentroidOpen (guint npt, pt3 *v)
 // Open Poly - return TRUE and centroid else FALSE
 {
     GLdouble ai   = 0.0;
@@ -849,7 +876,7 @@ static int       _getCentroidClose(guint npt, double *ppt)
             _findCentInside(npt, (pt3*)ppt);
 
             // debug
-            //PRINTF("point is outside polygone, heuristique used to find an place inside\n");
+            //PRINTF("point is outside polygone, heuristique used to find a pt inside\n");
 
             return TRUE;
         }
@@ -879,9 +906,13 @@ static int       _getMaxEdge(pt3 *p)
 static int       _donePrim(S57_prim *prim)
 // merge triangles strips to the current set of primitive
 {
+    _nStrips = 0;
+
+    if (0 == _vStrips->len)
+        return FALSE;
+
     S57_begPrim(prim, GL_TRIANGLE_STRIP);
 
-    // then move GL_TRIANGLE_STRIP vStrips vertex to prim vertex
     for (guint i=0; i<_vStrips->len; ++i) {
         vertex_t *data = (vertex_t *) &g_array_index(_vStrips, pt3v, i);
         S57_addPrimVertex(prim, (vertex_t*)data);
@@ -968,15 +999,23 @@ static GLvoid CALLBACK   _glBegin(GLenum mode, S57_prim *prim)
     }
     */
 
-    // debug - test speed
     _modeTess = mode;
-    if (GL_TRIANGLE_STRIP == mode) {
-        // duplicate last vertex
+    if (GL_TRIANGLE_STRIP == _modeTess) {
+        // debug
+        //_nStrips++;
+
+        // duplicate last vertex of last strip
         if (0 != _vStrips->len) {
-            vertex_t *data = (vertex_t *) &g_array_index(_vStrips, pt3v, _vStrips->len-1);
-            g_array_append_vals(_vStrips, data, 1);
+            pt3v data = g_array_index(_vStrips, pt3v, _vStrips->len-1);
+            g_array_append_val(_vStrips, data);
+
+            // if xxx add an other vertex
+            if (0 == _vStrips->len % 2)
+            //if (1 == _vStrips->len % 2)
+                g_array_append_val(_vStrips, data);
         }
         _newStrip = TRUE;
+
         return;
     }
 
@@ -1013,7 +1052,6 @@ static GLvoid CALLBACK   _glEnd(S57_prim *prim)
     }
     */
 
-    //
     if (GL_TRIANGLE_STRIP == _modeTess)
         return;
 
@@ -1046,12 +1084,13 @@ static GLvoid CALLBACK   _vertex3d(GLvoid *data, S57_prim *prim)
     if (GL_TRIANGLE_STRIP == _modeTess) {
         if (TRUE == _newStrip) {
             if (0 != _vStrips->len) {
-                // duplicate first vertex
-                g_array_append_vals(_vStrips, dataf, 1);
+                // duplicate first vertex of new strip
+                g_array_append_val(_vStrips, dataf);
             }
             _newStrip = FALSE;
         }
-        g_array_append_vals(_vStrips, dataf, 1);
+        g_array_append_val(_vStrips, dataf);
+
         return;
     }
 
@@ -1224,15 +1263,15 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
     //slices2 = slices + 1;
 
     GLdouble angleOffset = startAngle/180.0f*PI;
-    for (int i=0; i<=slices; i++) {
+    // CCW
+    //for (int i=0; i<=slices; i++) {
+    // CW
+    for (int i=slices; i>0; --i) {
         angle = angleOffset+((PI*sweepAngle)/180.0f)*i/slices;
 
         sinCache[i] = sin(angle);
         cosCache[i] = cos(angle);
     }
-
-    //glEnableClientState(GL_VERTEX_ARRAY);
-    //glVertexPointer(3, GL_FLOAT, 0, vertex);
 
     if (GLU_FILL == qobj->style)
         qobj->cb_begin(GL_TRIANGLE_STRIP, _diskPrimTmp);
@@ -1240,11 +1279,14 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
         qobj->cb_begin(GL_LINE_STRIP, _diskPrimTmp);
 
     for (int j=0; j<loops; j++) {
-        float deltaRadius = outerRadius-innerRadius;
-        float radiusLow   = outerRadius-deltaRadius*((GLfloat)j/loops);
-        float radiusHigh  = outerRadius-deltaRadius*((GLfloat)(j+1)/loops);
+        float deltaRadius = outerRadius - innerRadius;
+        float radiusLow   = outerRadius - deltaRadius * ((GLfloat)j/loops);
+        float radiusHigh  = outerRadius - deltaRadius * ((GLfloat)(j+1)/loops);
 
-        for (int i = 0; i <= slices; i++) {
+        // CCW
+        //for (int i=0; i<=slices; i++) {
+        // CW
+        for (int i=slices; i>0; --i) {
 
             if (GLU_FILL == qobj->style) {
                 vertex[0] = radiusLow * sinCache[i];
@@ -1253,6 +1295,7 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
                 qobj->cb_vertex(vertex, _diskPrimTmp);
                 vertex[0] = radiusHigh * sinCache[i];
                 vertex[1] = radiusHigh * cosCache[i];
+                vertex[2] = 0.0;
                 qobj->cb_vertex(vertex, _diskPrimTmp);
             } else {
                 vertex[0] = outerRadius * sinCache[i];
@@ -1271,7 +1314,7 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
 }
 
 static int       _gluDisk(_GLUquadricObj* qobj, GLfloat innerRadius,
-                            GLfloat outerRadius, GLint slices, GLint loops)
+                          GLfloat outerRadius, GLint slices, GLint loops)
 {
     _gluPartialDisk(qobj, innerRadius, outerRadius, slices, loops, 0.0, 360.0);
 
@@ -1335,17 +1378,21 @@ static GLint     _initGLU(void)
         // no GL_LINE_LOOP
         gluTessProperty(_tobj, GLU_TESS_BOUNDARY_ONLY, GLU_FALSE);
 
-        //gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_NONZERO);
         // ODD needed for symb. ISODGR01
         gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_ODD);
+        // default
+        //gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_NONZERO);
         //gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_POSITIVE);
         //gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_NEGATIVE);
+        //gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_ABS_GEQ_TWO);
 
         //gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.00001);
         //gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.1);
 
         // set poly in x-y plane normal is Z (for performance)
         gluTessNormal(_tobj, 0.0, 0.0, 1.0);
+        //gluTessNormal(_tobj, 0.0, 0.0, -1.0);  // OK for symb 5mm x 5mm square - fail all else
+        //gluTessNormal(_tobj, 0.0, 0.0, 0.0);    // default
 
         // accumulate triangles strips
         _vStrips = g_array_new(FALSE, FALSE, sizeof(vertex_t)*3);
@@ -1461,6 +1508,7 @@ static GLint     _freeGLU(void)
     if (_nvertex)   g_array_free(_nvertex, TRUE);
     //if (_nvertex)   g_array_unref(_nvertex);
     _nvertex = NULL;
+
     if (_vStrips)   g_array_free(_vStrips, TRUE);
     _vStrips = NULL;
 
@@ -1725,9 +1773,6 @@ static GLint     _tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
     //    _DEBUG = FALSE;
     //}
 
-    // assume vertex place holder existe and is empty
-    //g_assert(NULL != _tmpV);
-    //g_assert(0    == _tmpV->len);
     _g_ptr_array_clear(_tmpV);
 
     // debug
@@ -2665,6 +2710,9 @@ static int       _VBODrawArrays(S57_prim *prim)
         GLint mode  = 0;
         GLint first = 0;
         GLint count = 0;
+        //guint mode  = 0;
+        //guint first = 0;
+        //guint count = 0;
 
         S57_getPrimIdx(prim, i, &mode, &first, &count);
 
@@ -2699,8 +2747,10 @@ static int       _VBODrawArrays(S57_prim *prim)
         }
         //*/
 
+
         glDrawArrays(mode, first, count);
 
+        _checkError("_VBODrawArrays() mode prob");
 
         //
         //if (_QUADRIC_TRANSLATE == mode) {
@@ -3044,6 +3094,14 @@ static int       _glCallList(S52_DListData *DListData)
     ////glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
+    // no face culling as symbol are both CW,CCW when winding is ODD (for ISODNG)
+    glDisable(GL_CULL_FACE);
+    //glCullFace(GL_BACK);  // default
+    //glCullFace(GL_FRONT);
+
+    // but BLKADJ01 is made of 2 square, gray above black
+    glFrontFace(GL_CCW);
+
     /*
     GLfloat r[16];
     __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
@@ -3064,7 +3122,11 @@ static int       _glCallList(S52_DListData *DListData)
 
         if (FALSE == glIsBuffer(vboId)) {
             PRINTF("ERROR: invalid VBO!\n");
+
             g_assert(0);
+
+            //glFrontFace(GL_CCW);
+
             return FALSE;
         }
 
@@ -3108,11 +3170,20 @@ static int       _glCallList(S52_DListData *DListData)
 #endif
 
                 } else {
+                    //*
                     // debug - test filter at GL level instead of CmdWord level
-                    //if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_CMD_WRD_FILTER))
-                    //    ++_nFrag;
-                    //else
+                    if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_CMD_WRD_FILTER))
+                        ++_nFrag;
+                    else
                         glDrawArrays(mode, first, count);
+                    //*/
+
+                    /*
+                    // FIXME: move Face outside loop i,j
+                    glFrontFace(GL_CW);
+                    glDrawArrays(mode, first, count);
+                    glFrontFace(GL_CCW);
+                    */
                 }
                 ++j;
 
@@ -3121,11 +3192,19 @@ static int       _glCallList(S52_DListData *DListData)
 
         // switch back to normal pointer operation
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        glFrontFace(GL_CW);
+        //glEnable(GL_CULL_FACE);
+        //glCullFace(GL_FRONT);
+        glCullFace(GL_BACK);
+
 #ifdef S52_USE_GLES2
         glDisableVertexAttribArray(_aPosition);
+
 #endif
 
-#else
+#else   // S52_USE_OPENGL_VBO
+
         //glEnableClientState(GL_VERTEX_ARRAY);             // activate vertex coords array
         glVertexPointer(3, GL_DOUBLE, 0, 0);              // last param is offset, not ptr
         if (TRUE == glIsList(lst)) {
@@ -3134,7 +3213,8 @@ static int       _glCallList(S52_DListData *DListData)
             //glCallLists(1, GL_UNSIGNED_INT, &lst);
         } else
             g_assert(0);
-#endif
+
+#endif  // S52_USE_OPENGL_VBO
 
         if ('0' != trans) {
 #ifdef S52_USE_GLES2
@@ -3357,6 +3437,7 @@ static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rota
     _glLoadIdentity();
 
     _glTranslated(x, y, 0.0);
+
     _glScaled(1.0, -1.0, 1.0);
 
     //_glRotated(rotation, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
@@ -3612,7 +3693,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
     // depth unit
     if (0==g_strcmp0(attval->str, "UNITMTR1")) {
-        // S52 specs say: left corner, just inside the scalebar [what does that mean - deside]
+        // Note: S52 specs say: left corner, just beside the scalebar [what does that mean in XY]
         double x = 30;
         double y = 20;
 
@@ -3628,7 +3709,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
     }
 
     if (TRUE == S52_MP_get(S52_MAR_DISP_CALIB)) {
-        // check symbol should be 5mm by 5mm
+        // check symbol physical size, should be 5mm by 5mm
         if (0==g_strcmp0(attval->str, "CHKSYM01")) {
             // FIXME: use _dotpitch_ ..
             double      x = _vp[0] + 50;
@@ -5920,19 +6001,13 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
             //DList->colors[3] = *c;
 
 #ifdef S52_USE_OPENGL_VBO
-            //glGenBuffers(2, &DList->vboIds[0]);
-            //glBindBuffer(GL_ARRAY_BUFFER, DList->vboIds[0]);
             _diskPrimTmp = DList->prim[0];
             _gluPartialDisk(_qobj, radius, radius+4, sweep, loops, sectr1+180, sweep);
             DList->vboIds[0] = _VBOCreate(_diskPrimTmp);
 
-            //glBindBuffer(GL_ARRAY_BUFFER, DList->vboIds[1]);
             _diskPrimTmp = DList->prim[1];
             _gluPartialDisk(_qobj, radius+1, radius+3, sweep, loops, sectr1+180, sweep);
             DList->vboIds[1] = _VBOCreate(_diskPrimTmp);
-
-            // set normal mode
-            //glBindBuffer(GL_ARRAY_BUFFER, 0);
 #else
             // black sector
             DList->vboIds[0] = glGenLists(1);
@@ -6316,9 +6391,12 @@ static int       _renderAP_NODATA_layer0(void)
 
     //glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
+    glFrontFace(GL_CW);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     //glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    glFrontFace(GL_CCW);
 
     _checkError("_renderAP_NODATA_layer0 -4-");
 
@@ -6476,6 +6554,9 @@ static int       _renderTile(S52_DListData *DListData)
         GLint mode  = 0;
         GLint first = 0;
         GLint count = 0;
+        //guint mode  = 0;
+        //guint first = 0;
+        //guint count = 0;
 
         GArray *vert = S57_getPrimVertex(DListData->prim[i]);
         vertex_t *v = (vertex_t*)vert->data;
@@ -7761,6 +7842,9 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
     //if (0==strncmp("BOYLAT13", S52_PL_getVOname(vecObj), 8)) {
     //    PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
     //}
+    if (0==strncmp("CHKSYM01", S52_PL_getVOname(vecObj), 8)) {
+        PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
+    }
 
 
     // skip first token if it's S52_VC_NEW
@@ -7812,15 +7896,14 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 break;
 
             case S52_VC_CI: {  // circle --draw immediatly
-                GLdouble  radius   = S52_PL_getVOradius(vecObj);
-                GArray   *vec      = S52_PL_getVOdata(vecObj);
-                //GLdouble *d       = (GLdouble *)vec->data;
-                vertex_t *data     = (vertex_t *)vec->data;
-                GLint     slices   = 32;
-                GLint     loops    = 1;
-                GLdouble  inner    = 0.0;        // radius
+                GLdouble  radius = S52_PL_getVOradius(vecObj);
+                GArray   *vec    = S52_PL_getVOdata(vecObj);
+                vertex_t *data   = (vertex_t *)vec->data;
+                GLint     slices = 32;
+                GLint     loops  = 1;
+                GLdouble  inner  = 0.0;        // radius
 
-                GLdouble  outer    = radius;     // in 0.01mm unit
+                GLdouble  outer  = radius;     // in 0.01mm unit
 
                 // pass 'vertex' via global '_diskPrimTmp' used by _gluDisk()
                 _diskPrimTmp = vertex;
@@ -7903,8 +7986,6 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 #endif
                 gluTessEndContour(_tobj);
                 gluTessEndPolygon(_tobj);
-
-                //_g_ptr_array_clear(_tmpV);
 
                 _donePrim(vertex);
 
@@ -8503,7 +8584,11 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
     glUniform1f(_uStipOn, 1.0);
     glBindTexture(GL_TEXTURE_2D, raster->texID);
 
+    glFrontFace(GL_CW);
+
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    glFrontFace(GL_CCW);
 
     _checkError("S52_GL_drawRaster() -4-");
 
@@ -8639,7 +8724,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
             case S52_CMD_ARE_CO: _renderAC(obj); _ncmd++; break;   // AC
             case S52_CMD_ARE_PA: _renderAP(obj); _ncmd++; break;   // AP
 
-            // this is a trap call for CS that have not been resolve
+            // this is a trap for CS call that have not been resolve
             case S52_CMD_CND_SY: _traceCS(obj); break;   // CS
             case S52_CMD_OVR_PR: _traceOP(obj); break;
 
@@ -8983,12 +9068,11 @@ int        S52_GL_begin(S52_GL_mode mode)
 
 #ifdef S52_USE_GLES2
     /* FrontFaceDirection */
+    //glFrontFace(GL_CW);
+    glFrontFace(GL_CCW);  // default
 
-    // FIXME: winding of geo area and symb area are oposite
-    // but weather ON or OFF make no notable speed diff
-    //glFrontFace(GL_CW);   // geo area fail
-    //glFrontFace(GL_CCW); // symb area fail
-    //glCullFace(GL_BACK);
+    //glCullFace(GL_BACK);  // default
+
     //glEnable(GL_CULL_FACE);
     //glDisable(GL_CULL_FACE);
 
@@ -9041,8 +9125,12 @@ int        S52_GL_begin(S52_GL_mode mode)
         _doProjection(_centerLat, _centerLon, _rangeNM/60.0);
     }
 
-    // then create all symbol
+    // then create all PLib symbol
     _createSymb();
+
+    //glCullFace(GL_BACK);  // default
+    glEnable(GL_CULL_FACE);
+    //glDisable(GL_CULL_FACE);
 
     // _createSymb() might reset line width
     glLineWidth(1.0);
@@ -10125,9 +10213,12 @@ int        S52_GL_drawFBPixels(void)
     glEnableVertexAttribArray(_aPosition);
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
 
+    glFrontFace(GL_CW);
+
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-    // turn OFF 'sampler2d'
+    glFrontFace(GL_CCW);
+// turn OFF 'sampler2d'
     glUniform1f(_uBlitOn, 0.0);
 
     glDisableVertexAttribArray(_aUV);
@@ -10308,34 +10399,12 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
 
-//#ifdef S52_USE_ADRENO
-    // FIXME: Nexus 7 scroll in short axys (X or Y), is the double of touch delta!
-    //GLfloat x = (GLfloat)_vp[2] / 2048.0;
-    //GLfloat y = (GLfloat)_vp[3] / 2048.0;
-
-    /*
-    GLfloat ppt[4*3 + 4*2] = {
-        _pmin.u, _pmin.v, 0.0,   0.0 + scale_x + scale_z, 0.0 + scale_y + scale_z,
-        _pmin.u, _pmax.v, 0.0,   0.0 + scale_x + scale_z,   y + scale_y - scale_z,
-        _pmax.u, _pmax.v, 0.0,     x + scale_x - scale_z,   y + scale_y - scale_z,
-        _pmax.u, _pmin.v, 0.0,     x + scale_x - scale_z, 0.0 + scale_y + scale_z
-    };
-
-    GLfloat ppt[4*3 + 4*2] = {
-        _pmin.u, _pmin.v, 0.0,   0.0 + scale_x + scale_z, 0.0 + scale_y + scale_z,
-        _pmin.u, _pmax.v, 0.0,   0.0 + scale_x + scale_z,   1 + scale_y - scale_z,
-        _pmax.u, _pmax.v, 0.0,     1 + scale_x - scale_z,   1 + scale_y - scale_z,
-        _pmax.u, _pmin.v, 0.0,     1 + scale_x - scale_z, 0.0 + scale_y + scale_z
-    };
-    */
-//#else
     GLfloat ppt[4*3 + 4*2] = {
         _pmin.u, _pmin.v, 0.0,   0.0 + scale_x + scale_z, 0.0 + scale_y + scale_z,
         _pmin.u, _pmax.v, 0.0,   0.0 + scale_x + scale_z, 1.0 + scale_y - scale_z,
         _pmax.u, _pmax.v, 0.0,   1.0 + scale_x - scale_z, 1.0 + scale_y - scale_z,
         _pmax.u, _pmin.v, 0.0,   1.0 + scale_x - scale_z, 0.0 + scale_y + scale_z
     };
-//#endif
 
     glEnableVertexAttribArray(_aUV);
     glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
@@ -10343,7 +10412,11 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     glEnableVertexAttribArray(_aPosition);
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
 
+    glFrontFace(GL_CW);
+
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    glFrontFace(GL_CCW);
 
     // turn OFF 'sampler2d'
     glUniform1f(_uBlitOn, 0.0);

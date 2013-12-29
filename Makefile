@@ -168,9 +168,9 @@ s52clutter, s52clutter.js :                                 \
 
 s52gtk2p : CFLAGS += -pg
 
-s52glx : CFLAGS = `pkg-config  --cflags glib-2.0`\
-                  `gdal-config --cflags`         \
-                  -DS52_USE_PROJ                 \
+s52glx : CFLAGS = `pkg-config  --cflags glib-2.0` \
+                  `gdal-config --cflags`          \
+                  -DS52_USE_PROJ                  \
                   -DS52_USE_DOTPITCH $(DBG)
 
 # GL - EGL/GL 1.x broken

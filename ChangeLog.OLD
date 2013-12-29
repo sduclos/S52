@@ -3,6 +3,11 @@
 #
 
 
+2013DEC27
+    -mod join TRIANGLE_STRIP
+    -mod normalise PLib poly winding to CW
+    -mod cull face GL_BACK
+
 2013DEC09
     -add GDAL projection to Mercator for raster (bathy)
 
