@@ -203,7 +203,8 @@ s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl glesv2` \
 # --without-grib --prefix=/home/sduclos/dev/prog/Android/dev/ --enable-shared=no --without-ld-shared
 
 # using Android toolchain from NDK to cross compile for ARM (s52eglarm target)
-s52eglarm : ARMTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-9-toolchain
+#s52eglarm : ARMTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-9-toolchain
+s52eglarm : ARMTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-19-toolchain
 #s52eglarm : ARMTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-14-toolchain
 s52eglarm : ARMINCLUDE       = $(ARMTOOLCHAINROOT)/sysroot/usr/include
 s52eglarm : ARMLIBS          = $(ARMTOOLCHAINROOT)/sysroot/usr/lib
