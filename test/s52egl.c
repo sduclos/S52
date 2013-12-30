@@ -905,12 +905,12 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
 #else
     // Rimouski (Xoom)
-    S52_loadCell(PATH "/ENC_ROOT/CA579041.000", NULL);
+    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
     // Estuaire du St-Laurent
-    //S52_loadCell(PATH "/ENC_ROOT/CA279037.000", NULL);
+    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
 
     // Portneuf
-    //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
+    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA479017.000", NULL);
     //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
     //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
 #endif
