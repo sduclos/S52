@@ -52,6 +52,7 @@ public class s52ui extends Activity
             }
 		});
 
+
         Log.i(TAG, "Starting WebView ...");
 
 
@@ -71,6 +72,10 @@ public class s52ui extends Activity
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Check if the key event was the Back button and if there's history
         if (keyCode == KeyEvent.KEYCODE_BACK) {
+            webview.setSystemUiVisibility(WebView.SYSTEM_UI_FLAG_IMMERSIVE       |
+                                          WebView.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                                          WebView.SYSTEM_UI_FLAG_FULLSCREEN      );
+            //webview.setSystemUiVisibility(webview.STATUS_BAR_HIDDEN);
             webview.loadUrl("javascript:toggleUI()");
             return true;
         }

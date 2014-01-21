@@ -105,3 +105,7 @@ distclean: clean
 #ActivityManager(  186): No content provider found for permission revoke: file:///data/local/tmp/s52android-debug.apk
 #adb shell rm -r /data/dalvik-cache/*
 
+# From 'notbrodie' in XDA forum
+# Westwood for TCP, ondemand for performance/interactive for battery, readahead 512, add_random 0, zram off, swappiness 0
+# I like interactive with hispeed freq set to 1200mhz
+# I use trickster donate to set all of these

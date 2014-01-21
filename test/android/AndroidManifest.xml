@@ -33,7 +33,7 @@ android:hardwareAccelerated = "true"
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
-    <!--  NOT browser cache
+    <!--  NO browser cache
     <uses-permission android:name="android.permission.CLEAR_APP_USER_DATA"/>
     -->
 
@@ -101,6 +101,7 @@ android:hardwareAccelerated = "true"
         </activity>
 
 
+        <!--      android:theme         = "@android:style/Theme.NoTitleBar.Fullscreen"  this start the drowser in a new window-->
         <!--      android:theme         = "@android:style/Theme.Translucent.NoTitleBar" -->
         <!--      android:theme         = "@android:style/Theme.Holo.NoActionBar.TranslucentDecor" -->
         <!--      android:name          = ".BootUpReceiver"  -->
