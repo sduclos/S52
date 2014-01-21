@@ -146,7 +146,10 @@ static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_
 int            S57_ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
 {
     // check that geometric data type are in sync with OpenGL
-    g_assert(sizeof(geocoord) == sizeof(double));
+    if (sizeof(geocoord) != sizeof(double)) {
+        PRINTF("ERROR: sizeof(geocoord) != sizeof(double)\n");
+        g_assert(0);
+    }
 
     OGRRegisterAll();
 
@@ -403,19 +406,19 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
 
         case wkbGeometryCollection:
         case wkbMultiLineString: {
-            g_assert_not_reached();  // land here if GDAL/OGR was patched multi-line
+            PRINTF("WARNING: wkbGeometryCollection & wkbMultiLineString not handled \n");
+            g_assert(0);  // land here if GDAL/OGR was patched multi-line
+            break;
         }
 
         case wkbNone:
             // DSID layer get here
-            //PRINTF("FIXME: 'wkbNone' found (%s) .. should be treated as META_T internaly ?\n", objname);
-            //g_assert_not_reached();
             geoData = S57_set_META();
             break; // META_T
 
         case wkbMultiPoint:
             // ogr SPLIT_MULTIPOINT prob !!
-            PRINTF("Multi-Pass!!!\n");
+            PRINTF("DEBUG: Multi-Pass!!!\n");
             //PRINTF("ERROR: set env var OGR_S57_OPTIONS to SPLIT_MULTIPOINT:ON\n");
             //PRINTF("FIXME: or wkbMultiLineString found!\n");
             //g_assert_not_reached(); // MultiLineString (need this for line removal)
@@ -429,8 +432,8 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
         default:
             // FIXME: find a decent default (see openev/gvshapes.h)!!!
             PRINTF("WKB type not handled  = %i %0x\n", eType, eType);
+            g_assert(0); 
 
-            //g_assert_not_reached();  // wkbUnknown, wkbMultiPoint
     }
 
     // debug

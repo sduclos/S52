@@ -175,7 +175,7 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
  *
  * Return: TRUE on success, else FALSE
  */
-typedef DLL int STD (*EGL_cb)(void *EGLctx);
+typedef DLL int STD (*EGL_cb)(void *EGLctx, const char *tag);
 DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx);
 #endif
 
@@ -700,8 +700,8 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb);
 /**
  * S52_dumpS57IDPixels:
  * @toFilename: (in): PNG file (with full path) to dump pixels to
- * @S57ID: (in): internal ID of object (return via S52_getObjList() or S52_pickAt())
- * @width: (in): width of dump in pixels (max viewport width)
+ * @S57ID:  (in): internal ID of object (return via S52_getObjList() or S52_pickAt())
+ * @width:  (in): width of dump in pixels (max viewport width)
  * @height: (in): height of dump in pixels (max viewport height)
  *
  * Dump (@width x @height) pixels to PNG @toFilename centered on @S57ID of the current framebuffer

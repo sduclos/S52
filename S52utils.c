@@ -225,9 +225,6 @@ void     S52_tree_replace(GTree *tree, gpointer key, gpointer value)
 #ifdef S52_USE_GLIB2
     g_tree_replace(tree, key, value);
 #else
-    //g_assert_not_reached();
-    //g_tree_remove(tree, key);
-    // WARNING: can't load mutiple PLib
     g_tree_insert(tree, key, value);
 #endif
 }

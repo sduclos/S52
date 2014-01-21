@@ -5,7 +5,6 @@
 
 2013DEC27
     -mod join TRIANGLE_STRIP
-    -mod normalise PLib poly winding to CW
     -mod cull face GL_BACK
 
 2013DEC09
@@ -177,7 +176,7 @@
     - from https://git.kernel.org/?p=linux/kernel/git/kay/libabc.git;a=blob_plain;f=README
            "Don't put "extern" in front of your function prototypes in headers
            - It has no effect, no effect at all."
-    -remove 'extern', it has no effect, really
+    -remove 'extern', it has no effect, really .. (except in S52CS.h)
     -add world shapefile
 
 2012NOV01

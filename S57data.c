@@ -297,7 +297,7 @@ projXY     S57_prj2geo(projUV uv)
 
     uv = pj_inv(uv, _pjdst);
     if (0 != pj_errno) {
-        PRINTF("x=%f y=%f %s\n", uv.u, uv.v, pj_strerrno(pj_errno));
+        PRINTF("ERROR: x=%f y=%f %s\n", uv.u, uv.v, pj_strerrno(pj_errno));
         g_assert(0);
         return uv;
     }
@@ -517,10 +517,6 @@ int        S57_setName(_S57_geo *geoData, const char *name)
 // NOTE: this is a S57 object name .. UTF-16 or UTF-8
 // use g_string to handle that
 {
-    // debug
-    //if (NULL == name)
-    //    g_assert(0);
-
     return_if_null(geoData);
     return_if_null(name);
 
@@ -734,9 +730,9 @@ int        S57_endPrim(_S57_prim *prim)
     p->count = prim->vertex->len - p->first;
 
     // debug
-    if (p->count < 0) {
-        g_assert(0);
-    }
+    //if (p->count < 0) {
+    //    g_assert(0);
+    //}
 
     return TRUE;
 }
@@ -1494,9 +1490,18 @@ guint      S57_setGeoSize(_S57_geo *geo, guint size)
 {
     return_if_null(geo);
 
-    if ((POINT_T==geo->obj_t) && (size > 1))                  g_assert(0);
-    if ((LINES_T==geo->obj_t) && (size > geo->linexyznbr))    g_assert(0);
-    if ((AREAS_T==geo->obj_t) && (size > geo->ringxyznbr[0])) g_assert(0);
+    if ((POINT_T==geo->obj_t) && (size > 1)) {
+        PRINTF("ERROR: POINT_T size\n");
+        g_assert(0);
+    }
+    if ((LINES_T==geo->obj_t) && (size > geo->linexyznbr)) {
+        PRINTF("ERROR: LINES_T size\n");
+        g_assert(0);
+    }
+    if ((AREAS_T==geo->obj_t) && (size > geo->ringxyznbr[0])) {
+        PRINTF("ERROR: AREAS_T size\n");
+        g_assert(0);
+    }
 
     if (_META_T == geo->obj_t) {
         PRINTF("ERROR: object type invalid (%i)\n", geo->obj_t);
@@ -1562,6 +1567,7 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
     guint   npt = 0;
     double *ppt;
     if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
+        PRINTF("WARNING: S57_getGeoData() failed\n");
         g_assert(0);
         return FALSE;
     }
@@ -1654,13 +1660,17 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
 
     if (-1 == next) {
         int tmp = (i+1) - nptEdge;
-        if ( tmp < 0)
+        if ( tmp < 0) {
+            PRINTF("ERROR: tmp < 0\n");
             g_assert(0);
+        }
     }
 
     if (1 == next) {
-        if (nptEdge + i > npt)
+        if (nptEdge + i > npt) {
+            PRINTF("ERROR: nptEdge + i > npt\n");
             g_assert(0);
+        }
     }
 
     // optimisation not usefull in this case since it's a one time pass

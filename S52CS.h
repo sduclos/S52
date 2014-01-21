@@ -37,9 +37,10 @@ typedef GString *(*S52_CS_cb)(S57_geo *geoData);
 // Conditional Symbologie
 typedef struct S52_CS_condSymb {
     const char *name;         // [9] '\0' terminated !?
-    S52_CS_cb   CScb;
+    S52_CS_cb   CScb;         // end with NULL
 } S52_CS_condSymb;
 
+// Note: 'extern' keyword - publish CS jump table
 extern S52_CS_condSymb S52_CS_condTable[];
 
 

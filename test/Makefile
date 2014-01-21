@@ -38,8 +38,7 @@ LIBS52_HOME = ..
 # using Android toolchain from NDK to cross compile for ARM (s52eglarm target)
 # xoom info: Processor : ARMv7 Processor rev 0 (v7l)
 #            Features  : swp half thumb fastmult vfp edsp vfpv3 vfpv3d16
-s52eglarm : DROIDTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-9-toolchain
-#s52eglarm : DROIDTOOLCHAINROOT = $(HOME)/dev/prog/Android/dev/android-14-toolchain
+s52eglarm : DROIDTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-19-toolchain
 s52eglarm : DROIDINCLUDE       = $(DROIDTOOLCHAINROOT)/sysroot/usr/include
 s52eglarm : DROIDLIBS          = $(DROIDTOOLCHAINROOT)/sysroot/usr/lib
 s52eglarm : CC                 = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -g -fPIC -mthumb -std=c99
@@ -69,7 +68,7 @@ s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --l
 s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_USE_DOTPITCH
 
 # -DUSE_FAKE_AIS      - debug - programmaticaly faked AIS data
-# -DUSE_AIS           -
+# -DUSE_AIS           - call s52ais.c
 
 # -DS52_USE_GLES2
 # -DS52_USE_AFGLOW    - need symbole in PLAUX_00.DAI
@@ -232,7 +231,7 @@ s52eglarm: s52ais
 
 # Note: to start s52ui (the HTML UI that replace sl4agps) in android by hand
 # adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/.s52ui
-
+# adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/android.app.NativeActivity
 ############### build: Android ##############################
 
 

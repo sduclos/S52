@@ -543,10 +543,8 @@ static GTree     *_selLUP(_LUPtnm TNAM)
        case _LUP_NUM:
        default:
            PRINTF("ERROR unknown lookup table (%i)\n", TNAM);
+           g_assert(0);
    }
-
-   // shouldn't reach this !?
-   g_assert_not_reached();  // turn off via G_DISABLE_ASSERT
 
    return NULL;
 }
@@ -561,10 +559,8 @@ static GTree     *_selSMB(S52_SMBtblName name)
        case S52_SMB_COND: return _table[SMB_COND];
        default:
            PRINTF("ERROR unknown symbology table!!\n");
+           g_assert(0);
    }
-
-   // shouldn't reach this !?
-   g_assert_not_reached();  // turn off via G_DISABLE_ASSERT
 
    return NULL;
 }
@@ -731,8 +727,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
         if (NULL == LUP->ATTC)
             return LUP;
         else {
-            PRINTF("***WARNING*** PLib BUG: "
-                   "single look-up non-empty attribute, RCID:%i\n", LUPlist->RCID);
+            PRINTF("WARNING: single look-up non-empty attribute, RCID:%i\n", LUPlist->RCID);
             g_assert(0);
         }
     }
@@ -1101,7 +1096,7 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
         } else {
             // FIXME: ENC_ROOT/US3NY21M/US3NY21M.000 land here
             PRINTF("NOTE: CS for object %s expand to NULL\n", S57_getName(obj->geoData));
-            g_assert(0);
+            //g_assert(0);
             return FALSE;
         }
     } else {
@@ -1314,7 +1309,7 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
     // Note that this will occure immediatly at start-up
     // and only if a home-made PLib is used.
     if (MAX_SUBLIST < nList) {
-        PRINTF("FATAL ERROR:  **** buffer overflow about to occur .. exiting ****\n");
+        PRINTF("ERROR: buffer overflow about to occur\n");
         g_assert(0);
     }
 
@@ -1442,8 +1437,10 @@ static int        _readColor(_PL *fp, GArray *colors)
             // color ref index - 1 == array index
             int i = GPOINTER_TO_INT(idx) - 1;
 
-            if (i>=S52_COL_NUM)
+            if (i >= S52_COL_NUM) {
+                PRINTF("ERROR: color index i >= S52_COL_NUM\n");
                 g_assert(0);
+            }
 
             c.cidx = i; // optimisation
 
@@ -1506,11 +1503,7 @@ static int        _parseCOLS(_PL *fp)
         return FALSE;
     }
 
-    //_flushColors(pBuf+19);
     pct = _findColTbl(pBuf+19);
-    //if (NULL != pct)
-    //    _flushColors(pct);
-
     // NEW patelette
     if (NULL == pct) {
         _colTable  ct;
@@ -1524,40 +1517,13 @@ static int        _parseCOLS(_PL *fp)
 
         // fetch entree
         pct = _findColTbl(pBuf+19);
-        if (NULL == pct)
+        if (NULL == pct) {
+            PRINTF("ERROR: _findColTbl() failed\n");
             g_assert(0);
-        //return_if_null(pct);
+        }
     }
-    //else {
-        // do nothing - overright existing data
-        //if (NULL != pct->colors)    g_array_free(ct->colors, TRUE);
-    //}
-
 
     _readColor(fp, pct->colors);
-
-    /*
-    // Build bbtree from first colors table for fast indexing.
-    // So the index 'idx' of a color refer to the same
-    // color name for all colors tables
-    if (NULL == _colref) {
-        unsigned int i = 0;
-
-        _colIdxRef = ct.colors;
-        _colref    = g_tree_new(_cmpCOL);
-
-        for (guint i=0; i<ct.colors->len; ++i) {
-            S52_Color *c1 = &g_array_index(ct.colors, S52_Color, i);
-            c1->cidx = i;
-
-            // debug
-            //PRINTF("%s : xyL --> RGB: %f %f %f --> %i %i %i\n",
-            //       c1->colName, c1->x, c1->y, c1->L, c1->R, c1->G, c1->B);
-
-            g_tree_insert(_colref, (gpointer*)c1->colName, (gpointer*)c1);
-       }
-    }
-    */
 
     // make sure the new table is full
     if (pct->colors->len != (guint) g_tree_nnodes(_colref)) {
@@ -1665,8 +1631,10 @@ static int        _parseLUPT(_PL *fp)
                         {   // can't replace more then one LUP
                             // the compination of LUP NAME & LUP ATTC is unique for all LUP
                             // this is juste to make sure that the list is consistant
-                            if (TRUE == replace)
+                            if (TRUE == replace) {
+                                PRINTF("ERROR: TRUE == replace\n");
                                 g_assert(0);
+                            }
 
                             replace = TRUE;
 
@@ -1699,9 +1667,10 @@ static int        _parseLUPT(_PL *fp)
 
                     if (NULL==LUPtmp && NULL!=LUPprev)
                         LUPprev->OBCLnext = LUP;
-                    else
-                        // should be at the end of the list
-                        g_assert_not_reached();
+                    else {
+                        PRINTF("ERROR: should be at the end of the list\n");
+                        g_assert(0);
+                    }
                 }
             }
 
@@ -1763,20 +1732,12 @@ static int        _parseLNST(_PL *fp)
 
         FIELD(LXPO) { lnst->exposition.LXPO        = g_string_append( lnst->exposition.LXPO, pBuf+9 ); }
         FIELD(LVCT) { lnst->shape.line.vector.LVCT = g_string_append( lnst->shape.line.vector.LVCT, pBuf+9 ); }
-        FIELD(LCRF) { lnst->colRef.LCRF            = g_string_new(pBuf+9 ); }// CIDX + CTOK
+        FIELD(LCRF) { lnst->colRef.LCRF            = g_string_new(pBuf+9 ); }  // CIDX + CTOK
         FIELD(****) {
 
             // update (replace)
             //g_tree_replace(_selSMB(S52_SMB_LINE), (gpointer*)lnst->name.LINM, (gpointer*)lnst);
             S52_tree_replace(_selSMB(S52_SMB_LINE), (gpointer*)lnst->name.LINM, (gpointer*)lnst);
-
-            // insert in BTree if not already there
-            //lnstmp  = (_S52_cmdDef*)g_tree_lookup(_selSMB(S52_SMB_LINE), (gpointer*)lnst->name.LINM);
-            //if (NULL == lnstmp)
-            //    g_tree_insert(_selSMB(S52_SMB_LINE), (gpointer*)lnst->name.LINM, (gpointer*)lnst);
-            //else
-            //    g_assert_not_reached(); // key must be unique --should not reach this
-
 
             inserted = TRUE;
         }
@@ -1836,13 +1797,6 @@ static int        _parsePATT(_PL *fp)
 
             //g_tree_replace(_selSMB(S52_SMB_PATT), (gpointer*)patt->name.PANM, (gpointer*)patt);
             S52_tree_replace(_selSMB(S52_SMB_PATT), (gpointer*)patt->name.PANM, (gpointer*)patt);
-
-            // insert in BTree if not already there
-            //pattmp  = (_S52_cmdDef*)g_tree_lookup(_selSMB(S52_SMB_PATT), (gpointer*)patt->name.PANM);
-            //if (NULL == pattmp)
-            //    g_tree_insert(_selSMB(S52_SMB_PATT), (gpointer*)patt->name.PANM, (gpointer*)patt);
-            //else
-            //    g_assert_not_reached(); // key must be unique --should not reach this
 
             inserted = TRUE;
         }
@@ -1906,14 +1860,6 @@ static int        _parseSYMB(_PL *fp)
 
             //g_tree_replace(_selSMB(S52_SMB_SYMB), (gpointer*)symb->name.SYNM, (gpointer*)symb);
             S52_tree_replace(_selSMB(S52_SMB_SYMB), (gpointer*)symb->name.SYNM, (gpointer*)symb);
-
-            // insert in BTree
-            // check if key already there
-            //symbtmp = (_S52_cmdDef*)g_tree_lookup(_selSMB(S52_SMB_SYMB), (gpointer*)symb->name.SYNM);
-            //if (NULL == symbtmp)
-            //    g_tree_insert(_selSMB(S52_SMB_SYMB), (gpointer*)symb->name.SYNM, (gpointer*)symb);
-            //else
-            //    g_assert_not_reached(); // key must be unique --should not reach this
 
             inserted = TRUE;
         }
@@ -2540,19 +2486,6 @@ S52_Color  *S52_PL_getColor(const char *colorName)
 
     return_if_null(colorName);
 
-    //unsigned int idx = (unsigned int) S52_MP_get(S52_MAR_COLOR_PALETTE);
-    //if (idx>_colTables->len-1 || idx<0) {
-    //    PRINTF("FATAL ERROR: S52_MAR_COLOR_PALETTE out of range\n");
-    //    g_assert(0);
-    //    idx = 0; // NODTA
-    //}
-
-    //_colTable *ct  = &g_array_index(_colTables, _colTable, idx);
-    //if (NULL == ct) {
-    //    PRINTF("FATAL ERROR: unknown color table\n");
-    //    g_assert(0);
-    //}
-
     //S52_Color *c   = (S52_Color*) g_tree_lookup(_colref, (gpointer*)colorName);
     gpointer idx = g_tree_lookup(_colref, (gpointer*)colorName);
     if (NULL != idx) {
@@ -2563,7 +2496,7 @@ S52_Color  *S52_PL_getColor(const char *colorName)
         // IHO color index start at 1
         //int i = GPOINTER_TO_INT(idx);
         guchar i = GPOINTER_TO_INT(idx);
-        g_assert(i>0);
+
         // libS52 color index start at 0
         return S52_PL_getColorAt(i-1);
     }
@@ -2580,12 +2513,12 @@ S52_Color  *S52_PL_getColor(const char *colorName)
 S52_Color  *S52_PL_getColorAt(guchar index)
 {
     if (NULL == _colTables) {
-        PRINTF("FATAL ERROR: PL not initialized .. exiting\n");
+        PRINTF("ERROR: PL not initialized .. exiting\n");
         g_assert(0);
     }
 
     if (index > S52_COL_NUM-1) {
-        PRINTF("FATAL ERROR: color index out of bound\n");
+        PRINTF("ERROR: color index out of bound\n");
         g_assert(0);
         index = 0; // NODTA
     }
@@ -2597,15 +2530,17 @@ S52_Color  *S52_PL_getColorAt(guchar index)
     // but left for safety
     // FIXME: delete this code
     if (n > _colTables->len-1) {
-        PRINTF("FATAL ERROR: S52_MAR_COLOR_PALETTE out of range\n");
+        PRINTF("ERROR: S52_MAR_COLOR_PALETTE out of range\n");
         g_assert(0);
 
         n = 0; // failsafe --select DAY_BRIGHT
     }
 
     _colTable *ct = &g_array_index(_colTables, _colTable, n);
-    if (NULL == ct)
+    if (NULL == ct) {
+        PRINTF("ERROR: no COLOR_PALETTE (NULL == ct) \n");
         g_assert(0);
+    }
 
     S52_Color *c = &g_array_index(ct->colors, S52_Color, index);
 
@@ -2620,11 +2555,6 @@ static int        _linkLUP(_S52_obj *obj, int alt)
     GTree      *tbl     = NULL;
     _LUPtnm     tblNm   = _LUP_NUM;
     const char *objName = S57_getName(obj->geoData);
-
-    //if (NULL == objName) {
-    //    PRINTF("ERROR: S57 object with no name\n");
-    //    g_assert(0);
-    //}
 
     // find proper LUP table for this type of S57 object
     switch (S57_getObjtype(obj->geoData)) {
@@ -3053,7 +2983,10 @@ int         S52_PL_getLSdata(_S52_obj *obj, char *pen_w, char *style, S52_Color 
         return FALSE;
 
     // paranoia
-    g_assert(S52_CMD_SIM_LN == cmd->cmdWord);
+    if (S52_CMD_SIM_LN != cmd->cmdWord) {
+        PRINTF("ERROR: S52_CMD_SIM_LN != cmd->cmdWord\n");
+        g_assert(0);
+    }
 
     *pen_w = cmd->param[5];
     *style = cmd->param[2];
@@ -3406,8 +3339,8 @@ int         S52_PL_setAPcover(_S52_cmdDef *def, double dotpitch_x, double dotpit
 
     // not sure if this is true all the time
     // hence asserted
-    g_assert(0 < def->cover_w);
-    g_assert(0 < def->cover_h);
+    //g_assert(0 < def->cover_w);
+    //g_assert(0 < def->cover_h);
 
     return 1;
 }
@@ -3448,7 +3381,9 @@ gint        S52_PL_traverse(S52_SMBtblName tableNm, GTraverseFunc callBack)
         return TRUE;
     }
 
-    g_assert_not_reached();
+
+    PRINTF("WARNING: should not reach this\n");
+    g_assert(0);
 
     return FALSE;
 }
@@ -3508,7 +3443,7 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
         (S52_CMD_ARE_CO!=cmd->cmdWord) &&   // _renderAC_LIGHTS05() pass here now
         (S52_CMD_SYM_PT!=cmd->cmdWord))
     {
-        PRINTF("FATAL ERROR: this type of cmd word has no DL!\n");
+        PRINTF("ERROR: this type of cmd word has no DL!\n");
         g_assert(0);
     }
 
@@ -3528,9 +3463,8 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
     }
 
     //debug - trying to nail a curious bug
-    //if (MAX_SUBLIST < len) {
     if (MAX_SUBLIST < nbr) {
-        PRINTF("FATAL ERROR: color index out of bound\n");
+        PRINTF("ERROR: color index out of bound\n");
         g_assert(0);
     }
 
@@ -3966,10 +3900,10 @@ const char *S52_PL_getEX(S52_obj *obj, S52_Color **col,
             // FIXME: why is this needed?
             if (NULL != cmd->cmd.text) {
                 _freeTXT(cmd->cmd.text);
-                //g_assert(0);
             }
 
             cmd->cmd.text = _parseTX(obj->geoData, cmd);
+
             // debug - will return NULL
             //cmd->cmd.text = _parseTX(obj->geoData, NULL);
         }
@@ -4228,8 +4162,6 @@ S52_objSup  S52_PL_getToggleState(_S52_obj *obj)
 
         // 3.0 and above
         return S52_SUP_OFF;
-        // debug - should not reach!
-        g_assert(0);
     }
 
 
@@ -4283,28 +4215,14 @@ S52_objSup  S52_PL_getToggleState(_S52_obj *obj)
         }
     }
 
-    // debug - should not reach!
-    g_assert(0);
-
     // NOTE: this is the standard display with object added (from 'other'
     // category) or removed (from 'standard') but not from the base display.
-    //return obj->LUP->sup;
     return S52_SUP_ERR;
 }
 
 int         S52_PL_getOffset(_S52_obj *obj, double *offset_x, double *offset_y)
 {
     return_if_null(obj);
-
-    /*
-    if (NULL == obj->crntA)
-        return FALSE;
-
-    if (obj->crntAidx >= obj->crntA->len)
-        return FALSE;
-
-    _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
-    */
 
     _cmdWL *cmd = _getCrntCmd(obj);
     if ((NULL==cmd) || (NULL==cmd->cmd.def))
@@ -4455,16 +4373,6 @@ GArray     *S52_PL_getFtglBuf(S52_obj *obj, guint *vID)
 {
     return_if_null(obj);
 
-    /*
-    if (NULL == obj->crntA)
-        return NULL;
-
-    if (obj->crntAidx >= obj->crntA->len)
-        return NULL;
-
-    _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
-    */
-
     _cmdWL *cmd = _getCrntCmd(obj);
     if (NULL == cmd)
         return NULL;
@@ -4491,16 +4399,6 @@ int         S52_PL_setFtglBuf(S52_obj *obj, GArray *buf, guint vID)
 {
     return_if_null(obj);
     return_if_null(buf);
-
-    /*
-    if (NULL == obj->crntA)
-        return FALSE;
-
-    if (obj->crntAidx >= obj->crntA->len)
-        return FALSE;
-
-    _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
-    */
 
     _cmdWL *cmd = _getCrntCmd(obj);
     if (NULL == cmd)

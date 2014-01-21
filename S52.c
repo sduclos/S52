@@ -250,9 +250,11 @@ static _view_t _view = {0.0, 0.0, 0.0, 0.0};
 
 // Note: thread awarness to prenvent two threads from writing into the 'scene graph' at once
 // (ex data comming from gpsd,) so this is mostly Mariners' Object.
-// Since the main_loop already serialize the mutex never have to do work.
-// Note that DBus and socket are running from the main loop.
-// FIXME: make socket multi-thread to test mutex to kick in.
+// Note: the mutex never have to do work with the main_loop already serializing call.
+// Note that DBus and socket/WebSocket are running from the main loop but the handling is done from threads
+
+// FIXME: "Warning, g_static_mutex_lock has been deprecated since version 2.32
+//         and should not be used in newly-written code. Use g_mutex_lock()"
 static  GStaticMutex _mp_mutex = G_STATIC_MUTEX_INIT;
 
 
@@ -275,7 +277,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.109\n"
+      "libS52 0.110\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -363,16 +365,16 @@ static EGL_cb _eglBeg = NULL;
 static EGL_cb _eglEnd = NULL;
 static void  *_EGLctx = NULL;
 // WARNING: call BEFORE mutex
-#define EGL_BEGIN       if (NULL != _eglBeg) {              \
-                            if (FALSE == _eglBeg(_EGLctx))  \
-    							return FALSE;               \
+#define EGL_BEG(tag)    if (NULL != _eglBeg) {                   \
+                            if (FALSE == _eglBeg(_EGLctx,#tag))  \
+    					        return FALSE;                    \
 						}
 
 // WARNING: call AFTER mutex
-#define EGL_END         if (NULL != _eglEnd) _eglEnd(_EGLctx);
+#define EGL_END(tag)    if (NULL != _eglEnd) _eglEnd(_EGLctx,#tag);
 #else
-#define EGL_BEGIN
-#define EGL_END
+#define EGL_BEG(tag)
+#define EGL_END(tag)
 #endif
 
 
@@ -1308,6 +1310,8 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
         // continue with normal sig handling
         _old_signal_handler_SIGSEGV.sa_sigaction(sig, info, secret);
 
+        return;
+
 #endif  //S52_USE_BACKTRACE
     }
 
@@ -1733,6 +1737,7 @@ DLL int    STD S52_done(void)
         //g_ptr_array_unref(_cellList);
         _cellList = NULL;
     }
+    // FIXME: first thingh to do
     _marinerCell = NULL;
 
 
@@ -3883,7 +3888,7 @@ DLL int    STD S52_draw(void)
 
     S52_CHECK_INIT;
 
-    EGL_BEGIN;
+    EGL_BEG(DRAW);
 
     // do not wait if an other thread is allready drawing
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
@@ -4014,7 +4019,7 @@ DLL int    STD S52_draw(void)
 exit:
     g_static_mutex_unlock(&_mp_mutex);
 
-    EGL_END;
+    EGL_END(DRAW);
 
     return ret;
 }
@@ -4087,7 +4092,7 @@ DLL int    STD S52_drawLast(void)
     if (S52_MAR_DISP_LAYER_LAST_NONE == S52_MP_get(S52_MAR_DISP_LAYER_LAST))
         return TRUE;
 
-    EGL_BEGIN;
+    EGL_BEG(LAST);
 
     // do not wait if an other thread is allready drawing
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
@@ -4104,6 +4109,7 @@ DLL int    STD S52_drawLast(void)
 
     //  check if we are shuting down
     if (NULL == _marinerCell) {
+        PRINTF("Shutting down\n");
         g_assert(0);
         goto exit;
     }
@@ -4147,7 +4153,7 @@ DLL int    STD S52_drawLast(void)
 exit:
     g_static_mutex_unlock(&_mp_mutex);
 
-    EGL_END;
+    EGL_END(LAST);
 
     return ret;
 }
@@ -4269,7 +4275,7 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
     return_if_null(colorName);
     return_if_null(str);
 
-    EGL_BEGIN;
+    EGL_BEG(STR);
 
     S52_CHECK_MUTX;
 
@@ -4280,7 +4286,7 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
 
     g_static_mutex_unlock(&_mp_mutex);
 
-    EGL_END;
+    EGL_END(STR);
 
     return TRUE;
 }
@@ -4305,7 +4311,9 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
     //return TRUE;
 
     S52_CHECK_INIT;
-    EGL_BEGIN;
+    EGL_BEG(BLIT);
+
+    // FIXME: try lock skip touch - appent when broken EGL does a glFinish() in EGL swap
     S52_CHECK_MUTX;
 
     int ret = FALSE;
@@ -4354,9 +4362,8 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
 exit:
     g_static_mutex_unlock(&_mp_mutex);
 
-    EGL_END;
+    EGL_END(BLIT);
 
-    //return TRUE;
     return ret;
 }
 
@@ -4388,12 +4395,14 @@ DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
 
     // check bound
     if (FALSE == _validate_screenPos(pixels_x, pixels_y)) {
+        PRINTF("WARNING: _validate_screenPos() failed\n");
         g_static_mutex_unlock(&_mp_mutex);
         g_assert(0);
         return FALSE;
     }
 
     if (FALSE == _win2prj(pixels_x, pixels_y)) {
+        PRINTF("WARNING: _win2prj() failed\n");
         g_static_mutex_unlock(&_mp_mutex);
         g_assert(0);
         return FALSE;
@@ -4416,6 +4425,7 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude)
 
     double xyz[3] = {*longitude, *latitude, 0.0};
     if (FALSE == S57_geo2prj3dv(1, xyz)) {
+        PRINTF("WARNING: S57_geo2prj3dv() failed\n");
         g_static_mutex_unlock(&_mp_mutex);
         g_assert(0);
         return FALSE;
@@ -7085,7 +7095,7 @@ static DBusHandlerResult   _dbus_setVESSELstate     (DBusConnection *dbus, DBusM
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT64, &ret)) {
     //if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_DOUBLE, &ret)) {
     //if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_INT32, &ret)) {
-        fprintf(stderr, "Out Of Memory!\n");
+         PRINTF("Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -7103,7 +7113,7 @@ static DBusHandlerResult   _dbus_getPLibsIDList     (DBusConnection *dbus, DBusM
     dbus_error_init(&error);
 
     if (!dbus_message_get_args(message, &error, DBUS_TYPE_INVALID)) {
-        g_print("ERROR: %s\n", error.message);
+        PRINTF("ERROR: %s\n", error.message);
         dbus_error_free(&error);
 
         // debug
@@ -7115,7 +7125,7 @@ static DBusHandlerResult   _dbus_getPLibsIDList     (DBusConnection *dbus, DBusM
     // make the S52 call
     const char * str = S52_getPLibsIDList();
     if (NULL == str) {
-        g_print("FIXME: S52_getPLibsIDList() failed .. send a dbus error!\n");
+        PRINTF("FIXME: S52_getPLibsIDList() failed .. send a dbus error!\n");
         g_assert(0);
     }
 
@@ -7128,7 +7138,7 @@ static DBusHandlerResult   _dbus_getPLibsIDList     (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &str)) {
-        fprintf(stderr, "Out Of Memory!\n");
+        PRINTF("Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -7146,7 +7156,7 @@ static DBusHandlerResult   _dbus_getPalettesNameList(DBusConnection *dbus, DBusM
     dbus_error_init(&error);
 
     if (!dbus_message_get_args(message, &error, DBUS_TYPE_INVALID)) {
-        g_print("ERROR: %s\n", error.message);
+        PRINTF("ERROR: %s\n", error.message);
         dbus_error_free(&error);
 
         // debug
@@ -7158,7 +7168,7 @@ static DBusHandlerResult   _dbus_getPalettesNameList(DBusConnection *dbus, DBusM
     // make the S52 call
     const char * str = S52_getPalettesNameList();
     if (NULL == str) {
-        g_print("FIXME: S52_getPalettesNameList() failed .. send a dbus error!\n");
+        PRINTF("FIXME: S52_getPalettesNameList() failed .. send a dbus error!\n");
         g_assert(0);
     }
 
@@ -7171,7 +7181,7 @@ static DBusHandlerResult   _dbus_getPalettesNameList(DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &str)) {
-        fprintf(stderr, "Out Of Memory!\n");
+        PRINTF("Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -7190,7 +7200,7 @@ static DBusHandlerResult   _dbus_getCellNameList    (DBusConnection *dbus, DBusM
     dbus_error_init(&error);
 
     if (!dbus_message_get_args(message, &error, DBUS_TYPE_INVALID)) {
-        g_print("ERROR: %s\n", error.message);
+        PRINTF("ERROR: %s\n", error.message);
         dbus_error_free(&error);
 
         // debug
@@ -7202,7 +7212,7 @@ static DBusHandlerResult   _dbus_getCellNameList    (DBusConnection *dbus, DBusM
     // make the S52 call
     const char * str = S52_getCellNameList();
     if (NULL == str) {
-        g_print("FIXME: S52_getCellNameList() failed .. send a dbus error!\n");
+        PRINTF("FIXME: S52_getCellNameList() failed .. send a dbus error!\n");
         g_assert(0);
     }
 
@@ -7215,7 +7225,7 @@ static DBusHandlerResult   _dbus_getCellNameList    (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &str)) {
-        fprintf(stderr, "Out Of Memory!\n");
+        PRINTF("Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -7234,7 +7244,7 @@ static DBusHandlerResult   _dbus_getS57ClassList    (DBusConnection *dbus, DBusM
     dbus_error_init(&error);
 
     if (!dbus_message_get_args(message, &error, DBUS_TYPE_STRING, &cellName, DBUS_TYPE_INVALID)) {
-        g_print("ERROR: %s\n", error.message);
+        PRINTF("ERROR: %s\n", error.message);
         dbus_error_free(&error);
 
         // debug
@@ -7246,7 +7256,7 @@ static DBusHandlerResult   _dbus_getS57ClassList    (DBusConnection *dbus, DBusM
     // make the S52 call
     const char * str = S52_getS57ClassList(cellName);
     if (NULL == str) {
-        g_print("FIXME: S52_getS57ClassList() failed .. send a dbus error!\n");
+        PRINTF("FIXME: S52_getS57ClassList() failed .. send a dbus error!\n");
         g_assert(0);
     }
 
@@ -7259,7 +7269,7 @@ static DBusHandlerResult   _dbus_getS57ClassList    (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &str)) {
-        fprintf(stderr, "Out Of Memory!\n");
+        PRINTF("Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -7282,7 +7292,7 @@ static DBusHandlerResult   _dbus_getObjList         (DBusConnection *dbus, DBusM
                                DBUS_TYPE_STRING, &cellName,
                                DBUS_TYPE_STRING, &className,
                                DBUS_TYPE_INVALID)) {
-        g_print("ERROR: %s\n", error.message);
+        PRINTF("ERROR: %s\n", error.message);
         dbus_error_free(&error);
 
         // debug
@@ -7297,7 +7307,7 @@ static DBusHandlerResult   _dbus_getObjList         (DBusConnection *dbus, DBusM
     // make the S52 call
     const char *str = S52_getObjList(cellName, className);
     if (NULL == str) {
-        g_print("FIXME: S52_getObjList() failed .. send a dbus error!\n");
+        PRINTF("FIXME: S52_getObjList() failed .. send a dbus error!\n");
         g_assert(0);
     }
 
@@ -7310,7 +7320,7 @@ static DBusHandlerResult   _dbus_getObjList         (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &str)) {
-        fprintf(stderr, "Out Of Memory!\n");
+        PRINTF("Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -7332,7 +7342,7 @@ static DBusHandlerResult   _dbus_getAttList         (DBusConnection *dbus, DBusM
     if (!dbus_message_get_args(message, &error,
                                DBUS_TYPE_UINT32, &s57id,
                                DBUS_TYPE_INVALID)) {
-        g_print("ERROR: %s\n", error.message);
+        PRINTF("ERROR: %s\n", error.message);
         dbus_error_free(&error);
 
         // debug
@@ -7344,7 +7354,7 @@ static DBusHandlerResult   _dbus_getAttList         (DBusConnection *dbus, DBusM
     // make the S52 call
     const char *str = S52_getAttList(s57id);
     if (NULL == str) {
-        g_print("FIXME: S52_getAttList() failed .. send a dbus error!\n");
+        PRINTF("FIXME: S52_getAttList() failed .. send a dbus error!\n");
         g_assert(0);
     }
 
@@ -7357,7 +7367,7 @@ static DBusHandlerResult   _dbus_getAttList         (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &str)) {
-        fprintf(stderr, "Out Of Memory!\n");
+        PRINTF("Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -7378,7 +7388,7 @@ static DBusHandlerResult   _dbus_getS57ObjClassSupp (DBusConnection *dbus, DBusM
     if (!dbus_message_get_args(message, &error,
                                DBUS_TYPE_STRING, &className,
                                DBUS_TYPE_INVALID)) {
-        g_print("ERROR: %s\n", error.message);
+        PRINTF("ERROR: %s\n", error.message);
         dbus_error_free(&error);
 
         // debug
@@ -7406,7 +7416,7 @@ static DBusHandlerResult   _dbus_getS57ObjClassSupp (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_INT32, &ret)) {
-        fprintf(stderr, "Out Of Memory!\n");
+        PRINTF("Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -7429,7 +7439,7 @@ static DBusHandlerResult   _dbus_setS57ObjClassSupp (DBusConnection *dbus, DBusM
                                DBUS_TYPE_STRING, &className,
                                DBUS_TYPE_INT32,  &value,
                                DBUS_TYPE_INVALID)) {
-        g_print("ERROR: %s\n", error.message);
+        PRINTF("ERROR: %s\n", error.message);
         dbus_error_free(&error);
 
         // debug
@@ -7454,7 +7464,7 @@ static DBusHandlerResult   _dbus_setS57ObjClassSupp (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_INT32, &ret)) {
-        fprintf(stderr, "Out Of Memory!\n");
+        PRINTF("Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -7477,7 +7487,7 @@ static DBusHandlerResult   _dbus_loadCell           (DBusConnection *dbus, DBusM
                                DBUS_TYPE_STRING, &str,
                                DBUS_TYPE_INVALID))
     {
-        g_print("ERROR: %s\n", error.message);
+        PRINTF("ERROR: %s\n", error.message);
         dbus_error_free(&error);
 
         // debug
@@ -7489,7 +7499,7 @@ static DBusHandlerResult   _dbus_loadCell           (DBusConnection *dbus, DBusM
     // make the S52 call
     dbus_int64_t ret = S52_loadCell(str, NULL);
     if (FALSE == ret) {
-        g_print("FIXME: S52_loadCell() failed .. send a dbus error!\n");
+        PRINTF("FIXME: S52_loadCell() failed .. send a dbus error!\n");
         g_assert(0);
     }
 
@@ -7502,7 +7512,7 @@ static DBusHandlerResult   _dbus_loadCell           (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT64, &ret)) {
-        fprintf(stderr, "Out Of Memory!\n");
+        PRINTF("Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -7524,7 +7534,7 @@ static DBusHandlerResult   _dbus_loadPLib           (DBusConnection *dbus, DBusM
                                DBUS_TYPE_STRING, &str,
                                DBUS_TYPE_INVALID))
     {
-        g_print("ERROR: %s\n", error.message);
+        PRINTF("ERROR: %s\n", error.message);
         dbus_error_free(&error);
 
         // debug
@@ -7536,7 +7546,7 @@ static DBusHandlerResult   _dbus_loadPLib           (DBusConnection *dbus, DBusM
     // make the S52 call
     dbus_int64_t ret = S52_loadPLib(str);
     if (FALSE == ret) {
-        g_print("FIXME: S52_loadPLib() failed .. send a dbus error!\n");
+        PRINTF("FIXME: S52_loadPLib() failed .. send a dbus error!\n");
         g_assert(0);
     }
 
@@ -7549,7 +7559,7 @@ static DBusHandlerResult   _dbus_loadPLib           (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT64, &ret)) {
-        fprintf(stderr, "Out Of Memory!\n");
+        PRINTF("Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -7578,7 +7588,7 @@ static DBusHandlerResult   _dbus_dumpS57IDPixels    (DBusConnection *dbus, DBusM
                                DBUS_TYPE_UINT32, &height,
                                DBUS_TYPE_INVALID))
     {
-        g_print("ERROR: %s\n", error.message);
+        PRINTF("ERROR: %s\n", error.message);
         dbus_error_free(&error);
 
         // debug
@@ -7590,7 +7600,7 @@ static DBusHandlerResult   _dbus_dumpS57IDPixels    (DBusConnection *dbus, DBusM
     // make the S52 call
     dbus_int64_t ret = S52_dumpS57IDPixels(fname, s57id, width, height);
     if (FALSE == ret) {
-        g_print("FIXME: S52_dumpS57IDPixels() return FALSE\n");
+        PRINTF("FIXME: S52_dumpS57IDPixels() return FALSE\n");
         //g_assert(0);
     }
 
@@ -7603,7 +7613,7 @@ static DBusHandlerResult   _dbus_dumpS57IDPixels    (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT64, &ret)) {
-        fprintf(stderr, "Out Of Memory!\n");
+        PRINTF("Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -8780,17 +8790,19 @@ static int                 _initSock(void)
     GError *error = NULL;
 
     PRINTF("start to listen to socket ..\n");
-    PRINTF("FIXME: check that the glib loop is UP .. or start one\n");
+
+    //PRINTF("FIXME: check that the glib loop is UP .. or start one\n");
+    if (FALSE == g_main_loop_is_running(NULL)) {
+        PRINTF("DEBUG: main loop NOT is running ..\n");
+    }
+
 
     g_type_init();
 
     GSocketService *service        = g_socket_service_new();
 
-    //GInetAddress   *address        = g_inet_address_new_from_string("127.0.0.1");
     GInetAddress   *address        = g_inet_address_new_any(G_SOCKET_FAMILY_IPV4);
-    //GInetAddress   *address        = g_inet_address_new_from_string("192.168.1.67");
 
-    //GSocketAddress *socket_address = g_inet_socket_address_new(address, 4000);
     GSocketAddress *socket_address = g_inet_socket_address_new(address, 2950); // GPSD use 2947
 
     g_socket_listener_add_address(G_SOCKET_LISTENER(service), socket_address, G_SOCKET_TYPE_STREAM,
@@ -8798,8 +8810,9 @@ static int                 _initSock(void)
 
     g_object_unref(socket_address);
     g_object_unref(address);
+
     if (NULL != error) {
-        g_printf("ERROR: %s\n", error->message);
+        g_printf("WARNING: g_socket_listener_add_address() failed (%s)\n", error->message);
         return FALSE;
     }
 

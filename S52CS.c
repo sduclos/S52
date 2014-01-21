@@ -960,6 +960,13 @@ static GString *DEPCNT02 (S57_geo *geo)
 
     objlstr = S57_getAttVal(geo, "OBJL");
     objl    = (NULL == objlstr) ? 0 : S52_atoi(objlstr->str);
+    // debug --this should not trigger an assert since
+    // there is no object number zero
+    if (0 == objl) {
+        PRINTF("ERROR: no OBJL\n");
+        g_assert(0);
+    }
+
 
     // debug
     //if (483 == S57_getGeoID(geo)) {
@@ -972,10 +979,6 @@ static GString *DEPCNT02 (S57_geo *geo)
     // first reset original scamin
     S57_resetScamin(geo);
 
-    // debug --this should not trigger an assert since
-    // there is no object number zero
-    g_assert(objl);
-
     // DEPARE (line)
     if (DEPARE==objl && LINES_T==S57_getObjtype(geo)) {
         GString *drval1str = S57_getAttVal(geo, "DRVAL1");
@@ -985,8 +988,10 @@ static GString *DEPCNT02 (S57_geo *geo)
         double   drval2    = (NULL == drval2str) ? drval1 : S52_atof(drval2str->str);
 
         // paranoia
-        g_assert(drval1 <= drval2);
-
+        if (drval1 > drval2) {
+            PRINTF("WARNING: drval1 > drval2\n");
+            g_assert(0);
+        }
         // adjuste datum
         if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
             double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
@@ -1917,7 +1922,10 @@ static GString *OBSTRN04 (S57_geo *geo)
 
                 // debug --this should not trigger an assert since
                 // there is no object number zero
-                g_assert(objl);
+                if (0 == objl) {
+                    PRINTF("ERROR: no OBJL\n");
+                    g_assert(0);
+                }
 
                 if (UWTROC == objl) {
                     if (NULL == watlevstr) {  // default
@@ -1958,7 +1966,10 @@ static GString *OBSTRN04 (S57_geo *geo)
 
                 // debug --this should not trigger an assert since
                 // there is no object number zero
-                g_assert(objl);
+                if (0 == objl) {
+                    PRINTF("ERROR: no OBJL\n");
+                    g_assert(0);
+                }
 
                 if (UWTROC == objl) {
                     if (NULL == watlevstr)  // default
@@ -2317,7 +2328,11 @@ static GString *_QUALIN01(S57_geo *geo)
 
         // debug --this should not trigger an assert since
         // there is no object number zero
-        g_assert(objl);
+        if (0 == objl) {
+            PRINTF("ERROR: no OBJL\n");
+            g_assert(0);
+        }
+
 
         if (COALNE == objl) {
             GString *conradstr = S57_getAttVal(geo, "CONRAD");

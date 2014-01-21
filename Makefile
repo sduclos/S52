@@ -175,7 +175,6 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0` \
 
 # GL - EGL/GL 1.x broken
 #s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl gl`
-# GLES2  -DS52_USE_GLES2
 s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
@@ -209,10 +208,10 @@ s52eglarm : ARMTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-19-too
 s52eglarm : ARMINCLUDE       = $(ARMTOOLCHAINROOT)/sysroot/usr/include
 s52eglarm : ARMLIBS          = $(ARMTOOLCHAINROOT)/sysroot/usr/lib
 
-# gcc 4.4.3: -O3 switch crash, -O2 slow compile,
+# Android 4.4.2: -O2 crash activity android:name = ".s52ui"
 # -O1 -fstrict-aliasing
-s52eglarm : CC     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -g -fPIC -mthumb -std=c99
-s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -g -fPIC -mthumb
+s52eglarm : CC     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -fPIC -mthumb -std=c99
+s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -fPIC -mthumb
 s52eglarm : AR     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ar
 s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 
@@ -223,26 +222,28 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
 # -DS52_USE_BACKTRACE    - debug
 # -DS52_USE_SOCK         - socket & WebSocket
 # -DS52_USE_WORLD        - experimental - load world Shapefile
+# -DS52_USE_OPENGL_VBO   -
+# -DS52_USE_FREETYPE_GL  - need GLES2
+# -DS52_USE_GLES2        - need VBO, EGL
 # -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
 # -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7)
 # -DS52_USE_LOG          - log S52_* call to tmp file
-# -DG_DISABLE_ASSERT
-# -DS52_DEBUG
+# -DS52_DEBUG            - enable debug code, PRINTF()
+# -DG_DISABLE_ASSERT     - disable g_assert()
 
-            DEFS   = -DS52_USE_GLIB2                       \
+              DEFS = -DS52_USE_GLIB2                       \
                      -DS52_USE_PROJ                        \
                      -DS52_USE_DOTPITCH                    \
                      -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
                      -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_FREETYPE_GL                 \
-                     -DS52_USE_TEGRA2                      \
                      -DS52_USE_ANDROID                     \
+                     -DS52_USE_TEGRA2                      \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
-					 -DS52_USE_WORLD                       \
-                     -DS52_DEBUG
+                     -DG_DISABLE_ASSERT                    
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
                      -I$(S52DROIDINC)/glib-2.0             \
@@ -486,14 +487,16 @@ tags:
 err.txt: *.c *.h
 	cppcheck --enable=all $(DEFS) *.c 2> err.txt
 
-# git:
-#	git init (one time)
-#	git add <file>  (ex README)
-#	git commit -m "new"
-#	git remote add origin https://github.com/sduclos/S52.git (one time !)
-#	git push -u origin master (sync local .git with github !)
 
-# sduc-git.txt: note on working with git
+
+# git:
+#   git init (one time)
+#   git add <file>  (ex README)
+#   git commit -m "new"
+#   git remote add origin https://github.com/sduclos/S52.git (one time !)
+#   git push -u origin master (sync local .git with github !)
+
+# note on working with git
 #
 # SD 2012OCT06
 
