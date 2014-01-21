@@ -79,8 +79,8 @@ class S52 {
     _ws = new WebSocket(wsUri);
     _ws.onOpen.   listen((Event e)        {completer.complete(true);});
     _ws.onMessage.listen((MessageEvent e) {_rcvMsg(e);});
-    _ws.onClose.  listen((CloseEvent e)   {print('_ws CLOSE:$e');});
-    _ws.onError.  listen((Event e)        {print('_ws ERROR:$e');});
+    _ws.onClose.  listen((CloseEvent e)   {throw '_ws CLOSE:$e';});
+    _ws.onError.  listen((Event e)        {throw '_ws ERROR:$e';});
 
     return completer.future;
   }

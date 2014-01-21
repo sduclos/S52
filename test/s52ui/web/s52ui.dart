@@ -579,7 +579,7 @@ void _initTouch() {
     //#define DELTA          5
 
     // short tap
-    if (ticks < 6) {
+    if (ticks < 3) {
       // do nothing if object allready displayed
       if ('inline-block' == querySelector('#svg1g').style.display)
         return;
@@ -785,7 +785,7 @@ void _watchPosition(int ownshpID) {
 void _initMain() {
   var urlparam = window.location.search.toString();
   //var url = window.
-  print('s52ui.dart:_initMain(): URL:$urlparam');
+  print('s52ui.dart:_initMain(): URL:>$urlparam<');
 
 
   //var wsUri = 'ws://192.168.1.66:2950'; // laptop
@@ -793,15 +793,21 @@ void _initMain() {
   //var wsUri = 'ws://192.168.1.69:2950'; // Nexus
   var wsUri = 'ws://127.0.0.1:2950';   // localhost
 
-  s52 = new S52();
-  s52.initWS(wsUri).then((ret) {
-    // here the WebSocket init is completed - all JS loaded
-    _initTouch();
-    s52.newOWNSHP('OWNSHP').then((ret) {
-      _watchPosition(ret[0]);
-      _initUI().then((ret) {});
+  try {
+    s52 = new S52();
+    s52.initWS(wsUri).then((ret) {
+      // here the WebSocket init is completed - all JS loaded
+      _initTouch();
+      s52.newOWNSHP('OWNSHP').then((ret) {
+        _watchPosition(ret[0]);
+        _initUI().then((ret) {});
+      });
     });
-  });
+  } catch (e,s) {
+    print('ERROR: $e');
+    print('STACK: $s');
+    //exit();
+  }
 }
 
 void main() {
