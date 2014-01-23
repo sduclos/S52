@@ -277,7 +277,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.110\n"
+      "libS52 0.111\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1388,9 +1388,11 @@ static int        _initPROJ(void)
     //S52_GL_setView(cLat, cLon, rNM, north);
 
     {// debug
-        double xyz[3] = {_view.cLat, _view.cLon, 0.0};
-        //double xyz[3] = {cLat, cLon, 0.0};
-        S57_geo2prj3dv(1, xyz);
+        double xyz[3] = {_view.cLon, _view.cLat, 0.0};
+        //double xyz[3] = {cLon, cLat, 0.0};
+        if (FALSE == S57_geo2prj3dv(1, xyz)) {
+            return FALSE;
+        }
         PRINTF("PROJ CENTER: lat:%f, lon:%f, rNM:%f\n", xyz[0], xyz[1], _view.rNM);
         //PRINTF("PROJ CENTER: lat:%f, lon:%f, rNM:%f\n", xyz[0], xyz[1], rNM);
     }
@@ -2581,8 +2583,9 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 
 #ifdef S52_USE_PROJ
     {
-        _initPROJ();
-        _projectCells();
+        if (TRUE == _initPROJ())
+            _projectCells();
+
     }
 #endif
 
@@ -8791,11 +8794,11 @@ static int                 _initSock(void)
 
     PRINTF("start to listen to socket ..\n");
 
-    //PRINTF("FIXME: check that the glib loop is UP .. or start one\n");
-    if (FALSE == g_main_loop_is_running(NULL)) {
-        PRINTF("DEBUG: main loop NOT is running ..\n");
-    }
-
+    // FIXME: check that the glib loop is UP .. or start one
+    // FIXME: GLib-CRITICAL **: g_main_loop_is_running: assertion `loop != NULL' failed
+    //if (FALSE == g_main_loop_is_running(NULL)) {
+    //    PRINTF("DEBUG: main loop is NOT running ..\n");
+    //}
 
     g_type_init();
 
