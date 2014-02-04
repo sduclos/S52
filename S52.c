@@ -20,8 +20,13 @@
     along with OpENCview.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-// FIXME: split this file - 10 KLOC !
 
+// FIXME: split this file - 10 KLOC !
+// (meanwhile fold all function to get an overview)
+// possible split:
+// S52sock.c - all network code (no header needed since it implement S52.h)
+// FIXME: document JSON call to libS52
+// ..
 
 #include "S52.h"        // S52_view
 #include "S52utils.h"   // PRINTF(), CONF*, S52_getConfig(), S52_strstr()
@@ -117,7 +122,7 @@ static struct   sigaction             _old_signal_handler_SIGUSR2;
 
 // IMO Radar: 0.25, 0.5, 0.75, 1.5, 3, 6, 12 and 24nm
 //#define MIN_RANGE  0.25 // minimum range (NM)
-#define MIN_RANGE  0.01 // minimum range (NM)
+#define MIN_RANGE  0.01        // minimum range (NM)
 #define MAX_RANGE  45.0 * 60.0 // maximum range (NM) [45deg]
 
 #define SCROLL_FAC 0.1
@@ -251,11 +256,11 @@ static _view_t _view = {0.0, 0.0, 0.0, 0.0};
 // Note: thread awarness to prenvent two threads from writing into the 'scene graph' at once
 // (ex data comming from gpsd,) so this is mostly Mariners' Object.
 // Note: the mutex never have to do work with the main_loop already serializing call.
-// Note that DBus and socket/WebSocket are running from the main loop but the handling is done from threads
+// Note: that DBus and socket/WebSocket are running from the main loop but the handling is done from threads
 
 // FIXME: "Warning, g_static_mutex_lock has been deprecated since version 2.32
 //         and should not be used in newly-written code. Use g_mutex_lock()"
-static  GStaticMutex _mp_mutex = G_STATIC_MUTEX_INIT;
+static  GStaticMutex   _mp_mutex = G_STATIC_MUTEX_INIT;
 
 
 // CSYMB init scale bar, north arrow, unit, CHKSYM
@@ -277,7 +282,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.111\n"
+      "libS52 0.112\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -837,6 +842,7 @@ static gint       _cmpCell(gconstpointer a, gconstpointer b)
 }
 
 static int        _isCellLoaded(const char *baseName)
+// TRUE if cell loaded, else FALSE
 {
     for (guint i=0; i<_cellList->len; ++i) {
         _cell *c = (_cell*)g_ptr_array_index(_cellList, i);
@@ -854,20 +860,6 @@ static _cell     *_newCell(const char *filename)
 {
     if (NULL == _cellList)
         _cellList = g_ptr_array_new();
-
-    /*
-     // check if allready loaded
-    for (guint idx=0; idx<_cellList->len; ++idx) {
-        _cell *c = (_cell*)g_ptr_array_index(_cellList, idx);
-
-        if (0 == g_strcmp0(fname, c->filename->str)) {
-            PRINTF("WARNING: cell (%s) already loaded\n", fname);
-            g_free(fname);
-
-            return NULL;
-        }
-    }
-    */
 
     // strip path
     gchar *baseName = g_path_get_basename(filename);
@@ -900,7 +892,7 @@ static _cell     *_newCell(const char *filename)
 
         cell->S57ClassList = g_string_new("");
 
-        cell->projDone = FALSE;
+        cell->projDone     = FALSE;
 
         /*
         cell->DEPARElist = g_ptr_array_new();
@@ -941,7 +933,7 @@ static S52_obj   *_delObj(S52_obj *obj)
     return NULL; // NULL
 }
 
-DLL int    STD    _freeCell(_cell *c)
+static int        _freeCell(_cell *c)
 {
     if (NULL == _cellList) {
         PRINTF("WARNING: no cell\n");
@@ -1371,30 +1363,30 @@ static int        _initPROJ(void)
         return FALSE;
     }
 
-    double clat = (ext.N + ext.S) / 2.0;
-    //_mercPrjSet = S57_setMercPrj(clat);
-    _mercPrjSet = S57_setMercPrj(0.0); // test - 0 clat
+    double cLat = (ext.N + ext.S) / 2.0;
+    double cLon = (ext.W + ext.E) / 2.0;
+    //_mercPrjSet = S57_setMercPrj(cLat, cLon);
+    _mercPrjSet = S57_setMercPrj(0.0, cLon); // test - 0 cLat
 
     // while here, set default view center
     _view.cLat  =  (ext.N + ext.S) / 2.0;
-    _view.cLon  =  (ext.E + ext.W) / 2.0;
+    _view.cLon  =  (ext.W + ext.E) / 2.0;
     _view.rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
     _view.north = 0.0;
+    S52_GL_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
+
     //double cLat  =  (ext.N + ext.S) / 2.0;
     //double cLon  =  (ext.E + ext.W) / 2.0;
     //double rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
     //double north = 0.0;
-
     //S52_GL_setView(cLat, cLon, rNM, north);
 
     {// debug
         double xyz[3] = {_view.cLon, _view.cLat, 0.0};
-        //double xyz[3] = {cLon, cLat, 0.0};
         if (FALSE == S57_geo2prj3dv(1, xyz)) {
             return FALSE;
         }
         PRINTF("PROJ CENTER: lat:%f, lon:%f, rNM:%f\n", xyz[0], xyz[1], _view.rNM);
-        //PRINTF("PROJ CENTER: lat:%f, lon:%f, rNM:%f\n", xyz[0], xyz[1], rNM);
     }
 
     return TRUE;
@@ -1675,9 +1667,10 @@ DLL int    STD S52_init(void)
     // So MARINER_CELL must be checked for all chart for
     // object on layer 0-8 during draw()
     _marinerCell = _newCell(MARINER_CELL);
-    g_ptr_array_add(_cellList, _marinerCell);
+    g_ptr_array_add (_cellList, _marinerCell);
     g_ptr_array_sort(_cellList, _cmpCell);
 
+    // FIXME: what happend if a leg cross the anti-meridian
     // set extent to max
     _marinerCell->ext.S = -INFINITY;
     _marinerCell->ext.W = -INFINITY;
@@ -2043,30 +2036,31 @@ static int        _suppLineOverlap()
 
 static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
 {
-    _cell   *ch = NULL;
-    FILE    *fd = NULL;
+    _cell *ch = NULL;
+    FILE  *fd = NULL;
 
     // OGR doesn't strip blank but S57 filename can't have any
     // maybe this is to allow POSIX naming (!!)
     filename = g_strstrip(filename);
 
     // skip file not terminated by .000
-    //const char *base = g_path_get_basename(filename);
+    char *base = g_path_get_basename(filename);
     //if (0 != g_strcmp0(base+8, ".000")) {
-    //    PRINTF("WARNING: filename (%s) not a S-57 base ENC [.000 terminated]\n", filename);
-    //}
+    if ((0!=g_strcmp0(base+8, ".000")) && (0!=g_strcmp0(base+8, ".shp"))) {
+        PRINTF("WARNING: filename (%s) not a S-57 base ENC [.000 terminated]\n", filename);
+        g_free(base);
+        return NULL;
+    }
+    g_free(base);
 
     if (NULL == (fd = S52_fopen(filename, "r"))) {
         PRINTF("WARNING: cell not found (%s)\n", filename);
-        //g_free(base);
         return NULL;
     }
 
     ch = _newCell(filename);
     if (NULL == ch) {
         PRINTF("WARNING: _newCell() failed\n");
-        //g_free(base);
-
         //g_assert(0);
         return NULL;
     }
@@ -2476,9 +2470,10 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 #ifdef S52_USE_WORLD
     {   // experimental - load world shapefile
         gchar *basename = g_path_get_basename(fname);
-        if (0 == g_strcmp0(basename, WORLD_SHP))
+        if (0 == g_strcmp0(basename, WORLD_SHP)) {
+            PRINTF("loading %s\n", fname);
             ch = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
-
+        }
         g_free(basename);
     }
 #endif
@@ -3143,12 +3138,59 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
         _extent ext;
 
         S57_getExt(geoData, &ext.W, &ext.S, &ext.E, &ext.N);
-        if (_crntCell->ext.S > ext.S) _crntCell->ext.S = ext.S;
-        if (_crntCell->ext.W > ext.W) _crntCell->ext.W = ext.W;
-        if (_crntCell->ext.N < ext.N) _crntCell->ext.N = ext.N;
-        if (_crntCell->ext.E < ext.E) _crntCell->ext.E = ext.E;
-        //PRINTF("%s :: MIN: %f %f  MAX: %f %f\n", objname,  ext.w, ext.s, ext.e, ext.n);
-        //PRINTF("%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->ext.w, _crntCell->ext.s, _crntCell->ext.e, _crntCell->ext.n);
+
+        // FIXME: flag init extent
+        if (isinf(_crntCell->ext.S)) {
+            _crntCell->ext.S = ext.S;
+            _crntCell->ext.W = ext.W;
+            _crntCell->ext.N = ext.N;
+            _crntCell->ext.E = ext.E;
+        } else {
+            // lat
+            if (_crntCell->ext.N < ext.N)
+                _crntCell->ext.N = ext.N;
+            if (_crntCell->ext.S > ext.S)
+                _crntCell->ext.S = ext.S;
+
+            // init W,E limits
+            // put W-E in first quadrant [0..360]
+            //_crntCell->ext.W = ((_crntCell->ext.W + 180.0) < (ext.W + 180.0)) ? (_crntCell->ext.W + 180.0) : (ext.W + 180.0);
+            //_crntCell->ext.E = ((_crntCell->ext.E + 180.0) > (ext.E + 180.0)) ? (_crntCell->ext.E + 180.0) : (ext.E + 180.0);
+            //double W = ((_crntCell->ext.W + 180.0) < (ext.W + 180.0)) ? (_crntCell->ext.W + 180.0) : (ext.W + 180.0);
+            //double E = ((_crntCell->ext.E + 180.0) > (ext.E + 180.0)) ? (_crntCell->ext.E + 180.0) : (ext.E + 180.0);
+            if ((_crntCell->ext.W + 180.0) > (ext.W + 180.0))
+                _crntCell->ext.W = ext.W;
+            if ((_crntCell->ext.E + 180.0) < (ext.E + 180.0))
+                _crntCell->ext.E = ext.E;
+        }
+
+        /*
+        if (isinf(_crntCell->ext.W)) {
+            _crntCell->ext.W = ext.W;
+            _crntCell->ext.E = ext.E;
+        } else {
+            // lng
+            if (_crntCell->ext.W > ext.W)
+                _crntCell->ext.W = ext.W;
+            if (_crntCell->ext.E < ext.E)
+                _crntCell->ext.E = ext.E;
+        }
+        */
+
+        /*
+        // check if this cell is crossing the prime-meridian
+        if ((_crntCell->ext.W < 0.0) && (0.0 < _crntCell->ext.E)) {
+            PRINTF("DEBUG:CELL crossing prime:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->ext.W, _crntCell->ext.S, _crntCell->ext.E, _crntCell->ext.N);
+            g_assert(0);
+        }
+        */
+        // FIXME:
+        // check if this cell is crossing the anti-meridian
+        //if ((_crntCell->ext.W > -180.0) && (180.0 > _crntCell->ext.E)) {
+        //    PRINTF("DEBUG:CELL crossing anti:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->ext.W, _crntCell->ext.S, _crntCell->ext.E, _crntCell->ext.N);
+        //    g_assert(0);
+        //}
+
 
         // check M_QUAL:CATZOC
         if (0== g_strcmp0(objname, "M_QUAL"))
@@ -3254,11 +3296,34 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
 
 static int        _intersec(_extent A, _extent B)
 // TRUE if intersec, FALSE if outside
+// A - ENC ext, B - view ext
 {
+    // N-S
     if (B.N < A.S) return FALSE;
-    if (B.E < A.W) return FALSE;
     if (B.S > A.N) return FALSE;
+
+    // E-W
+    //if (_gmax.u < _gmin.u) {
+    if (B.W > B.E) {
+        // anti-meridian
+        //if ((x2 < _gmin.u) && (x1 > _gmax.u))
+        if (((A.W < B.W) || (A.W > B.E)) && ((A.E < B.W) || (A.E > B.E))) {
+        //if ((B.E > A.W) && (B.W > A.E)) {
+        //if ((A.W < B.E) && (B.W > A.E))
+            return TRUE;
+        } else
+            return FALSE;
+    } else {
+        if (B.E < A.W) return FALSE;
+        if (B.W > A.E) return FALSE;
+    }
+
+    /*
+    if (B.N < A.S) return FALSE;
+    if (B.S > A.N) return FALSE;
+    if (B.E < A.W) return FALSE;
     if (B.W > A.E) return FALSE;
+    */
 
     return TRUE;
 }
@@ -3379,40 +3444,92 @@ static int        _app()
     return TRUE;
 }
 
+static int        _cullLights(void)
+// CULL (first draw() after APP, on all cells)
+{
+    for (guint i=_cellList->len-1; i>0 ; --i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+
+        // a cell can have no lights sector
+        if (NULL == c->lights_sector) {
+            //PRINTF("DEBUG: NO lights_sector : %s\n", c->filename->str);
+            continue;
+        }
+
+        // FIXME: use for_each()
+        for (guint j=0; j<c->lights_sector->len; ++j) {
+            S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
+            S57_geo *geo = S52_PL_getGeo(obj);
+            _extent oext;
+            S57_getExt(geo, &oext.W, &oext.S, &oext.E, &oext.N);
+
+            // debug
+            //if (899 == S57_getGeoID(geo)) {
+            //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoID(geo));
+            //    //    return TRUE;
+            //}
+
+            S52_PL_resloveSMB(obj);
+
+            // traverse the cell 'above' to check if extent overlap this light
+            for (guint k=i-1; k>0 ; --k) {
+                _cell *cellAbove = (_cell*) g_ptr_array_index(_cellList, k);
+                // skip if same scale
+                if (cellAbove->filename->str[2] > c->filename->str[2]) {
+                    if (TRUE == _intersec(cellAbove->ext, oext)) {
+                        // check this: a chart above this light sector
+                        // does not have the same lights (this would be a bug in S57)
+                        S57_setSup(geo, TRUE);
+                    }
+                }
+            }
+        }
+    }
+
+    return TRUE;
+}
+
 static int        _cullObj(_cell *c)
 // one cell, cull object out side the view and object supressed
 // object culled are not inserted in the list of object to draw (journal)
 // Note: extent are taken from the obj itself
 {
     // Chart No 1 put object on layer 9 (Mariners' Objects)
+    // for each layers
     //for (int j=0; j<S52_PRIO_NUM; ++j) {
     for (int j=0; j<S52_PRIO_MARINR; ++j) {
 
-        // one layer, skip META
+        // for each object type - one layer, skip META
         for (int k=S52_AREAS; k<N_OBJ_T; ++k) {
         //for (int k=0; k<N_OBJ_T; ++k) {
             GPtrArray *rbin = c->renderBin[j][k];
 
-            // one object
+            // for each object
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                 S57_geo *geo = S52_PL_getGeo(obj);
 
                 ++_nTotal;
 
+                // debug - anti-meridian, US5HA06M/US5HA06M.000
+                //if (103 == S57_getGeoID(geo)) {
+                //    PRINTF("ISODGR01 found\n");
+                //}
+
                 // SCAMIN & PLib (disp cat)
                 if (TRUE == S52_GL_isSupp(obj)) {
-                    //S57_setSupp(geo, TRUE);
                     ++_nCull;
                     continue;
                 }
 
+                //*
                 // outside view
                 // NOTE: object can be inside 'ext' but outside the 'view' (cursor pick)
                 if (TRUE == S52_GL_isOFFscreen(obj)) {
                     ++_nCull;
                     continue;
                 }
+                //*/
 
                 // is this object supress by user
                 if (TRUE == S57_getSup(geo)) {
@@ -3478,19 +3595,23 @@ static int        _cull(_extent ext)
         g_ptr_array_set_size(c->textList,     0);
     }
 
+/*
 #ifdef S52_USE_WORLD
     // skip World if S52_MAR_DISP_WORLD off
     guint worldOff = (TRUE == S52_MP_get(S52_MAR_DISP_WORLD)) ? 1 : 0;
     guint cellIdx  = _cellList->len - 1 + worldOff;
 #else
-    //guint cellIdx  = _cellList->len - 1;
     guint cellIdx  = _cellList->len;
 #endif
-
+*/
     // all cells - larger region first (small scale)
     // Note: skip MARINERS' Object (those on layer 9)
-    for (guint i=cellIdx; i>0 ; --i) {
+    //for (guint i=cellIdx; i>0 ; --i) {
+    for (guint i=_cellList->len; i>0 ; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+
+        if ((0==g_strcmp0(WORLD_SHP, c->filename->str)) && (FALSE==S52_MP_get(S52_MAR_DISP_WORLD)))
+            continue;
 
         // is this chart visible
         if (TRUE == _intersec(c->ext, ext)) {
@@ -3515,38 +3636,6 @@ static int        _drawRADAR()
 #ifdef S52_USE_GLES2
     g_ptr_array_foreach(_rasterList, (GFunc)S52_GL_drawRaster, NULL);
 #endif
-
-    return TRUE;
-}
-
-static int        _draw()
-// draw object inside view
-// then draw object's text
-{
-    unsigned int n = _cellList->len-1;
-    for (guint i=n; i>0; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-
-        g_atomic_int_get(&_atomicAbort);
-        if (TRUE == _atomicAbort) {
-            PRINTF("abort drawing .. \n");
-            return TRUE;
-        }
-
-        // draw under radar
-        g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
-
-        // draw radar
-        if (1.0 == S52_MP_get(S52_MAR_DISP_RASTER))
-            _drawRADAR();
-
-        // draw over radar
-        g_ptr_array_foreach(c->objList_over, (GFunc)S52_GL_draw, NULL);
-
-        // draw text
-        // FIXME: implicit call to S52_PL_hasText() again
-        g_ptr_array_foreach(c->textList,     (GFunc)S52_GL_drawText, NULL);
-    }
 
     return TRUE;
 }
@@ -3593,52 +3682,6 @@ static int        _drawLayer(_extent ext, int layer)
 
     return TRUE;
 }
-
-static int        _cullLights(void)
-// CULL (first draw() after APP, on all cells)
-{
-    for (guint i=_cellList->len-1; i>0 ; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-
-        // a cell can have no lights sector
-        if (NULL == c->lights_sector) {
-            //PRINTF("DEBUG: NO lights_sector : %s\n", c->filename->str);
-            continue;
-        }
-
-        // FIXME: use for_each()
-        for (guint j=0; j<c->lights_sector->len; ++j) {
-            S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
-            S57_geo *geo = S52_PL_getGeo(obj);
-            _extent oext;
-            S57_getExt(geo,  &oext.W, &oext.S, &oext.E, &oext.N);
-
-            // debug
-            //if (899 == S57_getGeoID(geo)) {
-            //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoID(geo));
-            //    //    return TRUE;
-            //}
-
-            S52_PL_resloveSMB(obj);
-
-            // traverse the cell 'above' to check if extent overlap this light
-            for (guint k=i-1; k>0 ; --k) {
-                _cell *cellAbove = (_cell*) g_ptr_array_index(_cellList, k);
-                // skip if same scale
-                if (cellAbove->filename->str[2] > c->filename->str[2]) {
-                    if (TRUE == _intersec(cellAbove->ext, oext)) {
-                        // check this: a chart above this light sector
-                        // does not have the same lights (this would be a bug in S57)
-                        S57_setSup(geo, TRUE);
-                    }
-                }
-            }
-        }
-    }
-
-    return TRUE;
-}
-
 
 static int        _drawLights(void)
 // draw all lights of all cells outside view extend
@@ -3747,8 +3790,9 @@ static int        _drawLegend()
         double offset_x = 8.0;
         double offset_y = 8.0;
 
-        if (INFINITY==c->ext.W || -INFINITY==c->ext.W)
-            return FALSE;
+        // FIXME: isinf()
+        //if (INFINITY==c->ext.W || -INFINITY==c->ext.W)
+        //    return FALSE;
 
         if (FALSE == S57_geo2prj3dv(1, xyz))
             return FALSE;
@@ -3884,6 +3928,38 @@ static int        _drawLegend()
     return TRUE;
 }
 
+static int        _draw()
+// draw object inside view
+// then draw object's text
+{
+    unsigned int n = _cellList->len-1;
+    for (guint i=n; i>0; --i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+
+        g_atomic_int_get(&_atomicAbort);
+        if (TRUE == _atomicAbort) {
+            PRINTF("abort drawing .. \n");
+            return TRUE;
+        }
+
+        // draw under radar
+        g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
+
+        // draw radar
+        if (1.0 == S52_MP_get(S52_MAR_DISP_RASTER))
+            _drawRADAR();
+
+        // draw over radar
+        g_ptr_array_foreach(c->objList_over, (GFunc)S52_GL_draw, NULL);
+
+        // draw text
+        // FIXME: implicit call to S52_PL_hasText() again
+        g_ptr_array_foreach(c->textList,     (GFunc)S52_GL_drawText, NULL);
+    }
+
+    return TRUE;
+}
+
 DLL int    STD S52_draw(void)
 {
     // debug
@@ -3955,6 +4031,12 @@ DLL int    STD S52_draw(void)
         ext.W = uv1.u;
         ext.N = uv2.v;
         ext.E = uv2.u;
+
+
+        // debug - anti-meridian
+        //if (ext.W > ext.E) {
+        //    ext.W = ext.W - 360.0;
+        //}
 
         _cull(ext);
 #endif
@@ -4461,20 +4543,36 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     }
 
     //*
-    if (90.0 < ABS(cLat))
-        cLat = _view.cLat;
-    if (180.0 < ABS(cLon))
-        cLon = _view.cLon;
+    if (ABS(cLat) > 90.0) {
+        //cLat = _view.cLat;
+        PRINTF("WARNING: cLat > 90, call failed (%f)\n", cLat);
+        g_static_mutex_unlock(&_mp_mutex);
+        g_assert(0);
+        return FALSE;
+    }
+
+    if (ABS(cLon) > 180.0) {
+        //cLon = _view.cLon;
+        PRINTF("WARNING: cLon > -+ 180 (%f)\n", cLon);
+        //g_static_mutex_unlock(&_mp_mutex);
+        //g_assert(0);
+        //return FALSE;
+    }
     //*/
 
-    // FIXME: no warning if -1
-    if ((rNM < MIN_RANGE) || (rNM > MAX_RANGE)) {
-        PRINTF("WARNING:  rNM (%f), reset to %f\n", rNM, _view.rNM);
+    if (rNM < 0) {
         rNM = _view.rNM;
-        //g_assert(0);
+    } else {
+        if ((rNM < MIN_RANGE) || (rNM > MAX_RANGE)) {
+            PRINTF("WARNING:  rNM outside limit (%f)\n", rNM);
+            g_static_mutex_unlock(&_mp_mutex);
+            //g_assert(0);
+            return FALSE;
+        }
     }
 
     // FIXME: PROJ4 will explode here (INFINITY) for mercator
+    // Note: must validate rNM first
     if ((ABS(cLat)*60.0 + rNM) > (90.0*60)) {
         PRINTF("WARNING: rangeNM > 90*60 NM, call failed (%f)\n", rNM);
         g_static_mutex_unlock(&_mp_mutex);
@@ -4482,10 +4580,15 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
         return FALSE;
     }
 
-    if ((north>=360.0) || (north<0.0)) {
-        PRINTF("WARNING: north (%f), reset to %f\n", north, _view.north);
+    if (north < 0) {
         north = _view.north;
-        //g_assert(0);
+    } else {
+        if ((north>=360.0) || (north<0.0)) {
+            PRINTF("WARNING: north outside limit (%f)\n", north);
+            g_static_mutex_unlock(&_mp_mutex);
+            g_assert(0);
+            return FALSE;
+        }
     }
 
     // debug
@@ -4563,38 +4666,86 @@ DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int
     return TRUE;
 }
 
-static int        _getCellsExt(_extent* ext)
+static int        _getCellsExt(_extent* extSum)
 {
     int ret = FALSE;
-
-    ext->S =  INFINITY;
-    ext->W =  INFINITY;
-    ext->N = -INFINITY;
-    ext->E = -INFINITY;
-
-    // not usefull here
-    //if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
-    //    PRINTF("WARNING: no cell loaded\n");
-    //    return FALSE;
-    //}
-
     for (guint i=0; i<_cellList->len; ++i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
-        // for now just skip this pseudo cell
-        //if (0 == S52_strncmp(MARINER_CELL, c->filename->str, S57_CELL_NAME_MAX_LEN))
+        // Note: skip speudo ENC is cleaner than adjusting idx for diff config
+        // for now just skip these pseudo cells
         if (0 == g_strcmp0(MARINER_CELL, c->filename->str))
             continue;
-        //if (0 == S52_strncmp(WORLD_SHP,    c->filename->str, S57_CELL_NAME_MAX_LEN))
         if (0 == g_strcmp0(WORLD_SHP,    c->filename->str))
             continue;
 
-        ext->S = (c->ext.S < ext->S) ? c->ext.S : ext->S;
-        ext->W = (c->ext.W < ext->W) ? c->ext.W : ext->W;
-        ext->N = (c->ext.N > ext->N) ? c->ext.N : ext->N;
-        ext->E = (c->ext.E > ext->E) ? c->ext.E : ext->E;
+        // first pass init extent
+        if (FALSE == ret) {
+            extSum->S = c->ext.S;
+            extSum->W = c->ext.W;
+            extSum->N = c->ext.N;
+            extSum->E = c->ext.E;
 
-        ret = TRUE;
+            ret = TRUE;
+            continue;
+        }
+
+        // handle the rest
+
+        // N-S limits
+        if (extSum->N < c->ext.N)
+            extSum->N = c->ext.N;
+        if (extSum->S > c->ext.S)
+            extSum->S = c->ext.S;
+
+
+        //------------------- E-W limits ------------------------
+
+        // new cell allready inside ext
+        if ((extSum->W < c->ext.W) && (c->ext.E < extSum->E))
+            continue;
+
+        // new cell totaly cover ext
+        if ((c->ext.W < extSum->W) && (extSum->E < c->ext.E)) {
+            extSum->W = c->ext.W;
+            extSum->E = c->ext.E;
+            continue;
+        }
+
+        // expand to cover new cell extent
+        //
+        //                               B2
+        //                        A    w|--|e
+        //        B1           w|---|e
+        //      w|--|e
+        //                            C
+        //                     w|----------|e
+        //    |----------|-----------|..........|..........|
+        //    0         180         360        540        720
+        //       |------ d1 ----|- d2 --|
+        //
+
+        double Aw  = extSum->W + 180.0;
+        double B1w = c->ext.W  + 180.0;
+        double B2w = B1w + 360.0;
+
+        double Ae  = extSum->E + 180.0;
+        double B1e = c->ext.E  + 180.0;
+        double B2e = B1e + 360.0;
+
+
+        // dist 1  >  dist 2
+        if ((Aw - B1w) > (B2w - Aw))
+            extSum->E = c->ext.E;
+        else
+            extSum->W = c->ext.W;
+
+        // dist 1  >  dist 2
+        if ((Ae - B1e) > (B2e - Ae))
+            extSum->E = c->ext.E;
+        else
+            extSum->W = c->ext.W;
+
     }
 
 #ifdef S52_USE_WORLD
@@ -4602,10 +4753,10 @@ static int        _getCellsExt(_extent* ext)
     if (FALSE == ret) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, _cellList->len-1);
 
-        ext->S = (c->ext.S < ext->S) ? c->ext.S : ext->S;
-        ext->W = (c->ext.W < ext->W) ? c->ext.W : ext->W;
-        ext->N = (c->ext.N > ext->N) ? c->ext.N : ext->N;
-        ext->E = (c->ext.E > ext->E) ? c->ext.E : ext->E;
+        extSum->S = c->ext.S;
+        extSum->W = c->ext.W;
+        extSum->N = c->ext.N;
+        extSum->E = c->ext.E;
 
         ret = TRUE;
     }
@@ -4624,32 +4775,35 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
     }
     S52_CHECK_MUTX;
 
-
-    _extent ext;
     if (NULL == filename) {
+        _extent ext;
         _getCellsExt(&ext);
         *S = ext.S;
         *W = ext.W;
         *N = ext.N;
         *E = ext.E;
 
-        PRINTF("ALL EXT(lat/lon): %f, %f -- %f, %f\n", *S, *W, *N, *E);
+        PRINTF("ALL EXT(S,W - N,E): %f, %f -- %f, %f\n", *S, *W, *N, *E);
     } else {
-        //unsigned int idx = 0;
         gchar *fnm   = g_strdup(filename);
         gchar *fname = g_strstrip(fnm);
 
         // strip path
-        //WARNING: g_basename() deprecated use g_path_get_basename()
-        //gchar* g_path_get_basename(const gchar *file_name) G_GNUC_MALLOC;
-        //const gchar *name = g_basename(fname);
-        const gchar *name = g_path_get_basename(fname);
+        gchar *name = g_path_get_basename(fname);
+
+        // check if cell loaded
+        if (FALSE == _isCellLoaded(name)) {
+            PRINTF("WARNING: file not loaded (%s)\n", name);
+            g_free(fnm);
+            g_free(name);
+
+            g_static_mutex_unlock(&_mp_mutex);
+            return FALSE;
+        }
 
         for (guint idx=0; idx<_cellList->len; ++idx) {
             _cell *c = (_cell*)g_ptr_array_index(_cellList, idx);
 
-            // check if allready loaded
-            //if (0 == S52_strncmp(name, c->filename->str, S57_CELL_NAME_MAX_LEN)) {
             if (0 == g_strcmp0(name, c->filename->str)) {
                 *S = c->ext.S;
                 *W = c->ext.W;
@@ -4663,6 +4817,7 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
         }
 
         g_free(fnm);
+        g_free(name);
     }
 
     g_static_mutex_unlock(&_mp_mutex);
@@ -5462,8 +5617,14 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
 
 static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
 {
+    // FIXME: optimisation - cull Mariners' Object
+    return FALSE;
+
+
+    // FIXME: set a init flag in _extent
     _extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
 
+    // FIXME: crossing of anti-meridian
     for (guint i=0; i<xyznbr; ++i) {
         // longitude
         ext.W = (ext.W < *xyz) ? ext.W : *xyz;

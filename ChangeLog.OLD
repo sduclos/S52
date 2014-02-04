@@ -3,6 +3,12 @@
 #
 
 
+2014FEB04
+    -fix handle anti-meridian
+
+2014JAN23
+    -fix _initPROJ() coord switch bug
+
 2013DEC27
     -mod join TRIANGLE_STRIP
     -mod cull face GL_BACK

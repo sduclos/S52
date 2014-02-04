@@ -33,10 +33,12 @@
 
 static int        _setExtent(S57_geo *geoData, OGRGeometryH geometry)
 {
-    OGREnvelope envelope;
+    return_if_null(geoData);
+    return_if_null(geometry);
+    //if (NULL == geometry) || NULL==geoData)
+    //    return FALSE;
 
-    if (NULL==geometry || NULL==geoData)
-        return FALSE;
+    OGREnvelope envelope;
 
     OGR_G_GetEnvelope(geometry, &envelope);
 
@@ -58,7 +60,8 @@ static int        _getGeoPtCount(OGRGeometryH hGeom, int iGeo, OGRGeometryH *hGe
         /* FIXME: something is wrong in OGR if we get here
          * ie the geometry handle doesn't refer to a geometry!
          */
-      PRINTF("WARNING: got null geometry\n" );
+        PRINTF("WARNING: got null geometry\n" );
+        g_assert(0);
     }
 
     return vert_count;
@@ -450,7 +453,7 @@ S57_geo       *S57_ogrLoadObject(const char *objname, void *feature)
     // debug
     //PRINTF("DEBUG: start loading object (%s:%X)\n", objname, feature);
 
-    S57_geo *geoData = _ogrLoadObject(objname, feature, 0);
+    S57_geo *geoData = _ogrLoadObject(objname, feature, NULL);
     if (NULL == geoData)
         return NULL;
 

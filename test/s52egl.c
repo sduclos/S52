@@ -608,6 +608,8 @@ static void     _egl_done       (s52engine *engine)
 
 static int      _egl_beg        (s52engine *engine, const char *tag)
 {
+    (void)engine;
+
     //LOGE("s52egl:_egl_beg() .. \n");
     g_timer_reset(_timer);
 
@@ -662,8 +664,8 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
 
     //*
     if (_glInsertEventMarkerEXT) {
-        _glInsertEventMarkerEXT(strlen(tag), tag);
-        LOGI("s52egl:_egl_beg(): %s\n", tag);
+        _glInsertEventMarkerEXT(g_utf8_strlen(tag, -1), tag);
+        //LOGI("s52egl:_egl_beg(): %s\n", tag);
     }
     //*/
 
@@ -684,8 +686,8 @@ static int      _egl_end        (s52engine *engine)
         return FALSE;
     }
 
-    double sec = g_timer_elapsed(_timer, NULL);
-    LOGI("s52egl:_egl_end():eglSwapBuffers(): %.0f msec --------------------------------------\n", sec * 1000);
+    //double sec = g_timer_elapsed(_timer, NULL);
+    //LOGI("s52egl:_egl_end():eglSwapBuffers(): %.0f msec --------------------------------------\n", sec * 1000);
 
     return TRUE;
 }
@@ -698,9 +700,19 @@ static int      _s52_computeView(s52droid_state_t *state)
         return FALSE;
 
     state->cLat  =  (N + S) / 2.0;
-    state->cLon  =  (E + W) / 2.0;
+    state->cLon  =  (W + E) / 2.0;
     state->rNM   = ((N - S) / 2.0) * 60.0;  // FIXME: pick dominan projected N-S or E-W
     state->north = 0.0;
+
+    // crossing anti-meridian
+    if (W > E)
+        state->cLon += 180.0;
+
+#define MAX_RANGE  45.0 * 60.0 // maximum range (NM) [45deg]
+
+    // debug - max out range
+    if (state->rNM > MAX_RANGE)
+        state->rNM = MAX_RANGE;
 
     return TRUE;
 }
@@ -949,18 +961,22 @@ static int      _s52_init       (s52engine *engine)
         hmm = (int)(h / engine->dpi) * 25.4;
 #else
         // Aspire 5542G - 15.6" HD 1366 x 768 pixel resolution
-        // dual-screen: 2648 x 1024, 700 x 270 mm
+        // dual-screen: 2646 x 1024, 700 x 271 mm
         w   = XDisplayWidth   (engine->dpy, 0);
         wmm = XDisplayWidthMM (engine->dpy, 0);
         h   = XDisplayHeight  (engine->dpy, 0);
         hmm = XDisplayHeightMM(engine->dpy, 0);
         //w   = 1280;
         //h   = 1024;
-        //w   = engine->width;
-        //h   = engine->height;
         //wmm = 376;
         //hmm = 301; // wrong
         //hmm = 307;
+        //w   = engine->width;
+        //h   = engine->height;
+
+        // EGL_UNKNOWN (-1)
+        //wmm = engine->wmm;
+        //hmm = engine->hmm;
 #endif
 
         // Nexus: no root, can't do: $ su -c "setprop log.redirect-stdio true"
@@ -1014,8 +1030,12 @@ static int      _s52_init       (s52engine *engine)
     // read cell location fron s52.cfg
     //S52_loadCell(NULL, NULL);
 
+    // debug anti-meridian
+    S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US5HA06M/US5HA06M.000", NULL);
+    //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US1EEZ1M/US1EEZ1M.000", NULL);
+
     // Rimouski
-    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
+    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
 
     // Estuaire du St-Laurent
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
@@ -1126,7 +1146,7 @@ static int      _s52_init       (s52engine *engine)
 
 
     //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
-    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
+    S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
 
     S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
     //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
@@ -1146,10 +1166,18 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.2);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
 #endif
+
+#else
+    // Mesa
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 #endif
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
     S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
+
+    //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
+    S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
 
     // debug - use for timing rendering
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
@@ -1159,21 +1187,22 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
 
-    //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
-    S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
-
-    // if first start find where we are looking
+    // if first start, find where we are looking
     _s52_computeView(&engine->state);
     // then (re)position the 'camera'
     S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
+
+    // debug - anti-meridian
+    //engine->state.rNM = 2300.0;
+    //S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
 
     S52_newCSYMB();
 
     // must be first mariners' object so that the
     // rendering engine place it on top of OWNSHP/VESSEL
-    _s52_setupVRMEBL(&engine->state);
+    //_s52_setupVRMEBL(&engine->state);
 
-    _s52_setupLEGLIN();
+    //_s52_setupLEGLIN();
 
     //_s52_setupPRDARE(&engine->state);
 
@@ -2527,14 +2556,13 @@ exit:
 static int      _s52_setVwNDraw (s52engine *engine, double new_y, double new_x, double new_z, double new_r)
 // set View then call draw_cb
 {
-    /*
-    // debug - test optimisation using viewPort to draw area
-    if (engine->state.rNM == new_z) {
-        S52_setViewPort(0, 0, 200, engine->width);
+    //*
+    if (ABS(new_x) > 180.0) {
+        if (new_x > 0.0)
+            new_x = new_x - 360.0;
+        else
+            new_x = new_x + 360.0;
 
-        // FIXME: get/setView to pin/set it
-        //DLL int    STD S52_setView(double  cLat, double  cLon, double  rNM, double  north);
-        //DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *north);
     }
     //*/
 
@@ -2593,6 +2621,7 @@ static int      _X11_handleXevent(gpointer user_data)
             engine->do_S52drawLast = TRUE;
             //g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0);
             _s52_draw_cb((gpointer) engine);
+            g_print("DEBUG: Expose Event\n");
 
             break;
 
@@ -2793,7 +2822,7 @@ static int      _X11_handleXevent(gpointer user_data)
                 _s52_setVwNDraw(engine, engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
 
-            engine->do_S52draw     = TRUE;
+            engine->do_S52draw     = FALSE;
             engine->do_S52drawLast = TRUE;
         }
         break;

@@ -267,6 +267,8 @@ static int         _identity_MODELVIEW = FALSE;   // TRUE then identity matrix f
 #define CALLBACK
 #endif
 
+#define void_cb_t GLvoid CALLBACK
+
 #ifdef S52_USE_GLES2
 #include "tesselator.h"
 typedef GLUtesselator GLUtesselatorObj;
@@ -326,7 +328,7 @@ typedef struct { double u, v; } projUV;
 // projected view
 static projUV _pmin = { INFINITY,  INFINITY};
 static projUV _pmax = {-INFINITY, -INFINITY};
-// _pmin, _pmax convert to GEO
+// _pmin, _pmax convert to GEO for culling object with there extent wich is in deg
 static projUV _gmin = { INFINITY,  INFINITY};
 static projUV _gmax = {-INFINITY, -INFINITY};
 
@@ -899,7 +901,7 @@ static int       _donePrim(S57_prim *prim)
     return TRUE;
 }
 
-static GLvoid CALLBACK   _tessError(GLenum err)
+static void_cb_t _tessError(GLenum err)
 {
     //const GLubyte *str = gluErrorString(err);
     const char *str = "FIXME: no gluErrorString(err)";
@@ -909,7 +911,7 @@ static GLvoid CALLBACK   _tessError(GLenum err)
     //g_assert(0);
 }
 
-static GLvoid CALLBACK   _quadricError(GLenum err)
+static void_cb_t _quadricError(GLenum err)
 {
 
     //const GLubyte *str = gluErrorString(err);
@@ -921,13 +923,13 @@ static GLvoid CALLBACK   _quadricError(GLenum err)
     //g_assert(0);
 }
 
-static GLvoid CALLBACK   _edgeCin(GLboolean flag)
+static void_cb_t _edgeCin(GLboolean flag)
 {
     _startEdge = (GL_FALSE == flag)? GL_TRUE : GL_FALSE;
 }
 
 
-static GLvoid CALLBACK   _combineCallback(GLdouble   coords[3],
+static void_cb_t _combineCallback(GLdouble   coords[3],
                                   GLdouble  *vertex_data[4],
                                   GLfloat    weight[4],
                                   GLdouble **dataOut )
@@ -953,16 +955,13 @@ static GLvoid CALLBACK   _combineCallback(GLdouble   coords[3],
 
 }
 
-#if 0
-/* debug
-static GLvoid CALLBACK   _combineCallbackCen(void)
+static void_cb_t _combineCallbackCen(void)
+// debug
 {
     g_assert(0);
 }
-*/
-#endif
 
-static GLvoid CALLBACK   _glBegin(GLenum mode, S57_prim *prim)
+static void_cb_t _glBegin(GLenum mode, S57_prim *prim)
 {
     /*
     // debug
@@ -997,7 +996,7 @@ static GLvoid CALLBACK   _glBegin(GLenum mode, S57_prim *prim)
     S57_begPrim(prim, mode);
 }
 
-static GLvoid CALLBACK   _beginCen(GLenum data)
+static void_cb_t _beginCen(GLenum data)
 {
     // avoid "warning: unused parameter"
     (void) data;
@@ -1006,7 +1005,7 @@ static GLvoid CALLBACK   _beginCen(GLenum data)
     //PRINTF("%i\n", data);
 }
 
-static GLvoid CALLBACK   _beginCin(GLenum data)
+static void_cb_t _beginCin(GLenum data)
 {
     // avoid "warning: unused parameter"
     (void) data;
@@ -1015,7 +1014,7 @@ static GLvoid CALLBACK   _beginCin(GLenum data)
     //PRINTF("%i\n", data);
 }
 
-static GLvoid CALLBACK   _glEnd(S57_prim *prim)
+static void_cb_t _glEnd(S57_prim *prim)
 {
     /*
     // debug
@@ -1033,7 +1032,7 @@ static GLvoid CALLBACK   _glEnd(S57_prim *prim)
     S57_endPrim(prim);
 }
 
-static GLvoid CALLBACK   _endCen(void)
+static void_cb_t _endCen(void)
 {
     // debug
     //PRINTF("finish a poly\n");
@@ -1042,12 +1041,12 @@ static GLvoid CALLBACK   _endCen(void)
         g_array_append_val(_nvertex, _vertexs->len);
 }
 
-static GLvoid CALLBACK   _endCin(void)
+static void_cb_t _endCin(void)
 {
     // debug
 }
 
-static GLvoid CALLBACK   _vertex3d(GLvoid *data, S57_prim *prim)
+static void_cb_t _vertex3d(GLvoid *data, S57_prim *prim)
 // double - use by the tesselator
 {
 #ifdef S52_USE_GLES2
@@ -1076,14 +1075,14 @@ static GLvoid CALLBACK   _vertex3d(GLvoid *data, S57_prim *prim)
 
 }
 
-static GLvoid CALLBACK   _vertex3f(GLvoid *data, S57_prim *prim)
+static void_cb_t _vertex3f(GLvoid *data, S57_prim *prim)
 // float - use by symb from _parseHPGL() (so vertex are from the PLib and allready in float)
 // store float vertex of primitive other than AREA
 {
     S57_addPrimVertex(prim, (vertex_t*)data);
 }
 
-static GLvoid CALLBACK   _vertexCen(GLvoid *data)
+static void_cb_t _vertexCen(GLvoid *data)
 {
     pt3 *p = (pt3*) data;
 
@@ -1092,7 +1091,7 @@ static GLvoid CALLBACK   _vertexCen(GLvoid *data)
     g_array_append_val(_vertexs, *p);
 }
 
-static GLvoid CALLBACK   _vertexCin(GLvoid *data)
+static void_cb_t _vertexCin(GLvoid *data)
 {
     pt3 *p = (pt3*) data;
     static pt3 pt[2];
@@ -3197,7 +3196,6 @@ static int       _glCallList(S52_DListData *DListData)
 
 #else   // S52_USE_OPENGL_VBO
 
-        //glEnableClientState(GL_VERTEX_ARRAY);             // activate vertex coords array
         glVertexPointer(3, GL_DOUBLE, 0, 0);              // last param is offset, not ptr
         if (TRUE == glIsList(lst)) {
             //++_nFrag;
@@ -3218,7 +3216,6 @@ static int       _glCallList(S52_DListData *DListData)
         }
     }
 
-    //glFrontFace(GL_CCW);
     glEnable(GL_CULL_FACE);
 
 
@@ -6510,16 +6507,7 @@ static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx
 #ifdef S52_USE_GLES2
 static int       _renderTile(S52_DListData *DListData)
 {
-    // set origine
-    _glMatrixMode(GL_MODELVIEW);
-    _glLoadIdentity();
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-    /*
-    GLfloat r[16];
-    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-    */
 
     glEnableVertexAttribArray(_aPosition);
 
@@ -6584,8 +6572,13 @@ static int       _renderAP_es2(S52_obj *obj)
 
     GLuint mask_texID = S52_PL_getAPtexID(obj);
     if (0 == mask_texID) {
+        // NPOT
         int w    = ceil(tileWpx);
         int h    = ceil(tileHpx);
+
+        // POT
+        int potW = _minPOT(w);
+        int potH = _minPOT(h);
 
         glGenTextures(1, &mask_texID);
         glBindTexture(GL_TEXTURE_2D, mask_texID);
@@ -6598,13 +6591,8 @@ static int       _renderAP_es2(S52_obj *obj)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 #ifdef S52_USE_TEGRA2
-        // POT
-        int potW = _minPOT(w);
-        int potH = _minPOT(h);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW, potH, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
 #else
         // NPOT - fail on TEGRA2
@@ -6628,13 +6616,6 @@ static int       _renderAP_es2(S52_obj *obj)
             PRINTF("ERROR: glCheckFramebufferStatus() fail: %s status: %i\n", S52_PL_getOBCL(obj), status);
             g_assert(0);
         }
-        /*
-        else {
-            PRINTF("DEBUG: FRAMEBUFFER OK: glCheckFramebufferStatus(): %s, tex: %i x %i, frac: %f x %f\n",
-                   S52_PL_getOBCL(obj), potW, potH, tileWpx/(double)potW, tileHpx/(double)potH);
-            //PRINTF("pixels w/h: %f x %f, world: %f x %f\n", tileWpx, tileHpx, tileWw, tileHw);
-        }
-        */
 
         _checkError("_renderAP_es2() -0.32-");
 
@@ -6660,6 +6641,8 @@ static int       _renderAP_es2(S52_obj *obj)
 
         // render to texture -----------------------------------------
 
+        _glMatrixSet(VP_WIN);
+
         {   // set line/point width
             GLdouble dummy = 0.0;
             char     pen_w = '1';
@@ -6669,7 +6652,21 @@ static int       _renderAP_es2(S52_obj *obj)
             _glPointSize(pen_w - '0' + 1.0); // sampler + AA soften pixel, so need enhencing a bit
         }
 
-        _glMatrixSet(VP_WIN);
+        /* debug - draw X and Y axis
+        {
+            // Note: line in X / Y need to start at +1 to show up
+#ifdef S52_USE_TEGRA2
+            pt3v lineW[2] = {{1.0, 1.0, 0.0}, {potW,  1.0, 0.0}};
+            pt3v lineH[2] = {{1.0, 1.0, 0.0}, { 1.0, potH, 0.0}};
+#else
+            pt3v lineW[2] = {{1.0, 1.0, 0.0}, {tileWpx,     1.0, 0.0}};
+            pt3v lineH[2] = {{1.0, 1.0, 0.0}, {    1.0, tileHpx, 0.0}};
+#endif
+
+            _DrawArrays_LINE_STRIP(2, (vertex_t*)&lineW);
+            _DrawArrays_LINE_STRIP(2, (vertex_t*)&lineH);
+        }
+        //*/
 
         {   // translate to pivot point (symb coord are relative to pivot - see S52_PL_getVOCmd())
             double bbx = 0.0;  // BBox origine
@@ -6678,10 +6675,10 @@ static int       _renderAP_es2(S52_obj *obj)
             double py  = 0.0;  // pivot
             S52_PL_getAPTilePos(obj, &bbx, &bby, &px, &py);
             // NOTE: convert symb vector origine at pivot to bbox in pixels
-            double offsetXpx = (px - bbx) / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
-            double offsetYpx = (py - bby) / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
-            //double offsetXpx = (px - bbx) / (_dotpitch_mm_x);
-            //double offsetYpx = (py - bby) / (_dotpitch_mm_y);
+            //double offsetXpx = (px - bbx) / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
+            //double offsetYpx = (py - bby) / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
+            double offsetXpx = (px - bbx) / (_dotpitch_mm_x * 100.0);
+            double offsetYpx = (py - bby) / (_dotpitch_mm_y * 100.0);
                             
 
             /* debug
@@ -6720,59 +6717,40 @@ static int       _renderAP_es2(S52_obj *obj)
             off    :    0.0 x  500.0
             off  px:    0.0 x   19.0
             Tile px:   18.9 x   19.0
-
             */
 
 
             // move - the +-3.0 was found by trial and error
-            //_glTranslated(offsetx, offsety, 0.0);
+            _glTranslated(offsetXpx, offsetYpx, 0.0);
 
             // OK - DEPARE, DRGARE
             // WRONG - PRCARE/TSSJCT02
-            _glTranslated(offsetXpx + 3.0, offsetYpx - 3.0, 0.0);
+            //_glTranslated(offsetXpx + 3.0, offsetYpx - 3.0, 0.0);
 
             // OK - PRCARE/TSSJCT02 (traffic separation scheme crossing)
             // WRONG - DEPARE, DRGARE
             //_glTranslated(offsetXpx + 3.0, offsetYpx - tileHpx + 3.0, 0.0);
-        }
 
 
-        {
+            // scale & flip on Y
 #ifdef S52_USE_TEGRA2
             // scale to POT (Xoom)
             _glScaled(0.03/(tileWpx/potW), -0.03/(tileHpx/potH), 1.0);
+            //_glScaled(_dotpitch_mm_x/(tileWpx/potW), -_dotpitch_mm_y/(tileHpx/potH), 1.0);
 #else
-            _glScaled(_dotpitch_mm_x, -_dotpitch_mm_y, 1.0);
+            //_glScaled(_dotpitch_mm_x/10.0, -_dotpitch_mm_y/10.0, 1.0);
+            _glScaled(_dotpitch_mm_x/5.0, -_dotpitch_mm_y/5.0, 1.0);
 #endif
         }
 
+
         // debug - break if patt has stag
-        if (0.0 != stagOffsetPix) {
-            PRINTF("FIXME: stagOffsetPix not implemented for S52_USE_GLES2\n");
-            //g_assert(0);
-        }
+        //if (0.0 != stagOffsetPix) {
+        //    PRINTF("FIXME: stagOffsetPix not implemented for S52_USE_GLES2\n");
+        //    //g_assert(0);
+        //}
 
         _renderTile(DListData);
-
-        /* debug - draw X and Y axis
-        {
-            _glLoadIdentity();
-            glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-            //GLfloat r[16];
-            //__gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-            //glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-
-
-            //pt3v lineW[2] = {{0.0, 0.0, 0.0}, {potW,  0.0, 0.0}};
-            //pt3v lineH[2] = {{0.0, 1.0, 0.0}, {1.0,  potH, 0.0}};
-            pt3v lineW[2] = {{0.0, 0.0, 0.0}, {tileWpx,     0.0, 0.0}};  // some line are pale
-            pt3v lineH[2] = {{0.0, 1.0, 0.0}, {1.0,     tileHpx, 0.0}};  // draw 1 px to the left
-
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)&lineW);
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)&lineH);
-        }
-        //*/
 
         _glMatrixDel(VP_WIN);
 
@@ -6835,18 +6813,13 @@ static int       _renderAP_es2(S52_obj *obj)
 
 
     _glColor4ub(DListData->colors);
-    // debug
-    //glUniform4f(_uColor, 1.0, 0.0, 0.0, 0.0); // red
+
+    // debug - red conspic
+    //glUniform4f(_uColor, 1.0, 0.0, 0.0, 0.0);
 
     _glMatrixMode(GL_MODELVIEW);
     _glLoadIdentity();
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-    /*
-    GLfloat r[16];
-    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-    */
 
     glUniform1f(_uPattOn,    1.0);
     // make no diff on MESA/gallium if it is 0.0 but not on Xoom (tegra2)
@@ -8339,30 +8312,30 @@ int        S52_GL_isOFFscreen(S52_obj *obj)
     }
 
 
-    {   // clip all other object outside view
+    {   // geo extent _gmin/max
         double x1,y1,x2,y2;
         S57_geo *geo = S52_PL_getGeo(obj);
         S57_getExt(geo, &x1, &y1, &x2, &y2);
-        if ((x2 < _gmin.u) || (y2 < _gmin.v) || (x1 > _gmax.u) || (y1 > _gmax.v)) {
+
+        // S-N limits
+        if ((y2 < _gmin.v) || (y1 > _gmax.v)) {
             ++_oclip;
             return TRUE;
         }
 
-        /*
-        double xyz[6] = {x1, y1, 0.0, x2, y2, 0.0};
-        if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
-            return FALSE;
-
-        x1  = xyz[0];
-        y1  = xyz[1];
-        x2  = xyz[3];
-        y2  = xyz[4];
-
-        if ((x2 < _pmin.u) || (y2 < _pmin.v) || (x1 > _pmax.u) || (y1 > _pmax.v)) {
-            ++_oclip;
-            return TRUE;
+        // E-W limits
+        if (_gmax.u < _gmin.u) {
+            // anti-meridian E-W limits
+            if ((x2 < _gmin.u) && (x1 > _gmax.u)) {
+                ++_oclip;
+                return TRUE;
+            }
+        } else {
+            if ((x2 < _gmin.u) || (x1 > _gmax.u)) {
+                ++_oclip;
+                return TRUE;
+            }
         }
-        */
     }
 
     return FALSE;
@@ -8658,6 +8631,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //PRINTF("drawing geo ID: %i\n", S57_getGeoID(geo));
     //if (2184==S57_getGeoID(geo)) {
     //if (899 == S57_getGeoID(geo)) {
+    //if (103 == S57_getGeoID(geo)) {  // Hawaii ISODNG
     //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoID(geo));
     ////    return TRUE;
     //}
@@ -8690,8 +8664,9 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
             case S52_CMD_ARE_CO: _renderAC(obj); _ncmd++; break;   // AC
             case S52_CMD_ARE_PA: _renderAP(obj); _ncmd++; break;   // AP
 
-            // this is a trap for CS call that have not been resolve
+            // trap CS call that have not been resolve
             case S52_CMD_CND_SY: _traceCS(obj); break;   // CS
+            // trap CS call that Override Priority
             case S52_CMD_OVR_PR: _traceOP(obj); break;
 
             case S52_CMD_NONE: break;
@@ -8883,11 +8858,9 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
     _pmin.v = SW.y;  // bottom
     _pmax.u = NE.x;  // right
     _pmax.v = NE.y;  // top
-
-
     //PRINTF("PROJ MIN: %f %f  MAX: %f %f\n", _pmin.u, _pmin.v, _pmax.u, _pmax.v);
 
-
+    // use to cull object base on there extent and view in deg
     _gmin.u = SW.x;
     _gmin.v = SW.y;
     _gmin   = S57_prj2geo(_gmin);
@@ -8895,7 +8868,6 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
     _gmax.u = NE.x;
     _gmax.v = NE.y;
     _gmax   = S57_prj2geo(_gmax);
-
 
     return TRUE;
 }
@@ -9734,7 +9706,7 @@ int        S52_GL_setDotPitch(int w, int h, int wmm, int hmm)
     //X = 0.376281, Y = 0.470351
 
     // debug
-    PRINTF("DOTPITCH: X = %f, Y = %f\n", _dotpitch_mm_x, _dotpitch_mm_y);
+    PRINTF("DOTPITCH(mm): X = %f, Y = %f\n", _dotpitch_mm_x, _dotpitch_mm_y);
     // debug:
     // 1 screen: X = 0.293750, Y = 0.293945
     // 2 screen: X = 0.264844, Y = 0.264648
@@ -10131,8 +10103,9 @@ guchar    *S52_GL_readFBPixels(void)
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
 #ifdef S52_USE_TEGRA2
-    // TEGRA2 share MEM with CPU, so this read call is fast (1ms)
     // must be in sync with _fb_format
+
+    //
     // copy FB --> MEM
     // RGBA
     glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
@@ -10147,12 +10120,7 @@ guchar    *S52_GL_readFBPixels(void)
     //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _vp[2], _vp[3], 0, GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
     //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _vp[2], _vp[3], 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
 
-    // this flip Y on Xoom (TEGRA2)
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
-
 #else
-    // FIXME: make sure vp2 * vp3 * RGB doesn't overflow
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
 #endif
 
@@ -10848,6 +10816,10 @@ int main(int argc, char** argv)
 
 #if 0
 // Summary of functions calls to try isolated dependecys
+// possible split:
+// S52GLES.c
+// S52MATH.c
+// ..
 
 //*
 S52_GL_init

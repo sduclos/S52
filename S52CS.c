@@ -196,7 +196,7 @@ int       S52_CS_add(_localObj *local, S57_geo *geo)
     return TRUE;
 }
 
-static int      _intersec(S57_geo *A, S57_geo *B)
+static int      _intersecGEO(S57_geo *A, S57_geo *B)
 // TRUE if A instersec B, else FALSE
 {
     /*
@@ -246,7 +246,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             GString *olnam = S57_getAttVal(other, "LNAM");
 
             // skip if not at same position
-            if (FALSE == _intersec(geo, other))
+            if (FALSE == _intersecGEO(geo, other))
                 continue;
 
             // skip if it's same S57 object
@@ -275,7 +275,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             S57_geo *light = (S57_geo *) g_ptr_array_index(local->lights_list, i);
 
             // skip if this light is not at buoy's position
-            if (FALSE == _intersec(geo, light))
+            if (FALSE == _intersecGEO(geo, light))
                 continue;
 
             if (NULL == S57_getTouchLIGHTS(geo)) {
@@ -324,7 +324,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             GString *olnam = S57_getAttVal(other, "LNAM");
 
             // skip if not at same position
-            if (FALSE == _intersec(geo, other))
+            if (FALSE == _intersecGEO(geo, other))
                 continue;
 
             // skip if it's same S57 object
@@ -421,7 +421,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             // link to the area next to this one with a depth just above (shallower) this one,
             // FIXME: make list of objet that share Edge, now its only object list base
             // on extent overlap
-            if (TRUE == _intersec(geo, other)) {
+            if (TRUE == _intersecGEO(geo, other)) {
                 // debug
                 //if (551 == S57_getGeoID(other)) {
                 //    PRINTF("551 found\n");
@@ -488,7 +488,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         for (guint i=0; i<local->obstrn_list->len; ++i) {
             S57_geo *other = g_ptr_array_index(local->obstrn_list, i);
 
-            if (TRUE == _intersec(geo, other)) {
+            if (TRUE == _intersecGEO(geo, other)) {
                 S57_setTouch(geo, other);
                 return TRUE;
             }
@@ -500,7 +500,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             S57_geo *other = (S57_geo *) g_ptr_array_index(local->depare_list, i);
 
             // skip if not overlapping
-            if (FALSE == _intersec(geo, other))
+            if (FALSE == _intersecGEO(geo, other))
                 continue;
 
             // link to depthest object
@@ -530,7 +530,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->depare_list, i);
 
             // skip if not overlapping
-            if (FALSE == _intersec(geo, candidate))
+            if (FALSE == _intersecGEO(geo, candidate))
                 continue;
 
             // BUG: S57_touch() work only for point in poly not point in line
@@ -584,7 +584,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->depval_list, i);
 
             // skip if extent not overlapping
-            if (FALSE == _intersec(geo, candidate))
+            if (FALSE == _intersecGEO(geo, candidate))
                 continue;
 
             // NOTE: depval_list is a list of AREAS_T

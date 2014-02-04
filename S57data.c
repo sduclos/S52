@@ -228,7 +228,8 @@ int        S57_doneData   (_S57_geo *geoData, gpointer user_data)
 int        S57_initPROJ()
 // NOTE: corrected for PROJ 4.6.0 ("datum=WGS84")
 {
-    if (FALSE == _doInit) return _doInit;
+    if (FALSE == _doInit)
+        return FALSE;
 
     const char *pj_ver = pj_get_release();
     if (NULL != pj_ver)
@@ -265,17 +266,21 @@ int        S57_donePROJ()
     return TRUE;
 }
 
-int        S57_setMercPrj(double lat)
+int        S57_setMercPrj(double lat, double lon)
 {
-    const char  *templ = "+proj=merc +lat_ts=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
-    //const char  *templ = "+proj=merc +lat_ts=-50.0 +ellps=WGS84 +datum=WGS84 +unit=m";
+    // From: http://trac.osgeo.org/proj/wiki/GenParms (and other link from that page)
+    // Note: For merc, PROJ.4 does not support a latitude of natural origin other than the equator (lat_0=0).
+    // Note: true scale using the +lat_ts parameter, which is the latitude at which the scale is 1.
+    // Note: +lon_wrap=180.0 convert clamp [-180..180] to clamp [0..360]
 
-    gchar *pjstr = g_strdup_printf(templ, lat);
+    const char *templ = "+proj=merc +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
+    gchar      *pjstr = g_strdup_printf(templ, lat, lon);
+    PRINTF("DEBUG: lat:%f, lon:%f [%s]\n", lat, lon, pjstr);
 
     if (NULL != _pjdst)
         pj_free(_pjdst);
 
-    if (!(_pjdst = pj_init_plus(templ))) {
+    if (!(_pjdst = pj_init_plus(pjstr))) {
         PRINTF("ERROR: init pjdst PROJ4 (lat:%f) [%s]\n", lat, pj_strerrno(pj_errno));
         g_free(pjstr);
 
@@ -314,9 +319,9 @@ int        S57_geo2prj3dv(guint npt, double *data)
     return_if_null(data);
 
     pt3 *pt = (pt3*)data;
-    int ret = 0;
 
-    if (TRUE == _doInit) S57_initPROJ();
+    if (TRUE == _doInit)
+        S57_initPROJ();
 
     if (NULL == _pjdst) {
         PRINTF("ERROR: nothing to project to .. load a chart frist!\n");
@@ -341,7 +346,7 @@ int        S57_geo2prj3dv(guint npt, double *data)
     pt = (pt3*)data;
 
     // rad to cartesian  --mercator
-    ret = pj_transform(_pjsrc, _pjdst, npt, 3, &pt->x, &pt->y, &pt->z);
+    int ret = pj_transform(_pjsrc, _pjdst, npt, 3, &pt->x, &pt->y, &pt->z);
     if (0 != ret) {
         PRINTF("ERROR: in transform (%i): %s (%f,%f)\n", ret, pj_strerrno(pj_errno), pt->x, pt->y);
         g_assert(0);
@@ -354,7 +359,8 @@ int        S57_geo2prj(_S57_geo *geoData)
 {
     return_if_null(geoData);
 
-    if (TRUE == _doInit) S57_initPROJ();
+    if (TRUE == _doInit)
+        S57_initPROJ();
 
     guint nr = S57_getRingNbr(geoData);
     for (guint i=0; i<nr; ++i) {
@@ -828,13 +834,25 @@ int        S57_setExt(_S57_geo *geoData, double x1, double y1, double x2, double
     //    PRINTF("%s: %f, %f  UR: %f, %f\n", geoData->name->str, x1, y1, x2, y2);
     //}
 
-    // FIXME: use abs()
-    // check long
-    x1 = (x1 < -180.0) ? 0.0 : (x1 > 180.0) ? 0.0 : x1;
-    x2 = (x2 < -180.0) ? 0.0 : (x2 > 180.0) ? 0.0 : x2;
-    // check lat
-    y1 = (y1 < -90.0) ? 0.0 : (y1 > 90.0) ? 0.0 : y1;
-    y2 = (y2 < -90.0) ? 0.0 : (y2 > 90.0) ? 0.0 : y2;
+    // canonize lng
+    //x1 = (x1 < -180.0) ? 0.0 : (x1 > 180.0) ? 0.0 : x1;
+    //x2 = (x2 < -180.0) ? 0.0 : (x2 > 180.0) ? 0.0 : x2;
+    // canonize lat
+    //y1 = (y1 < -90.0) ? 0.0 : (y1 > 90.0) ? 0.0 : y1;
+    //y2 = (y2 < -90.0) ? 0.0 : (y2 > 90.0) ? 0.0 : y2;
+
+    /*
+    // check prime-meridian crossing
+    if ((x1 < 0.0) && (0.0 < x2)) {
+        PRINTF("DEBUG: prime-meridian crossing %s: LL: %f, %f  UR: %f, %f\n", geoData->name->str, x1, y1, x2, y2);
+        g_assert(0);
+    }
+    */
+
+    if (isinf(x1)  && isinf(x2)) {
+        PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geoData->name->str, x1, y1, x2, y2);
+        g_assert(0);
+    }
 
     geoData->rect.x1 = x1;
     geoData->rect.y1 = y1;
@@ -1083,7 +1101,7 @@ double     S57_resetScamin(_S57_geo *geo)
 }
 
 #ifdef S52_USE_C_AGGR_C_ASSO
-int       S57_setRelationship(_S57_geo *geo, _S57_geo *geoRel)
+int        S57_setRelationship(_S57_geo *geo, _S57_geo *geoRel)
 {
     return_if_null(geo);
     return_if_null(geoRel);
@@ -1100,7 +1118,7 @@ int       S57_setRelationship(_S57_geo *geo, _S57_geo *geoRel)
     return TRUE;
 }
 
-S57_geo  *S57_getRelationship(_S57_geo *geo)
+S57_geo  * S57_getRelationship(_S57_geo *geo)
 {
     return_if_null(geo);
 

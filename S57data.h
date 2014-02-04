@@ -150,7 +150,7 @@ guint     S57_getGeoID(S57_geo *geoData);
 #ifdef S52_USE_PROJ
 #include <proj_api.h>   // projXY, projUV, projPJ
 int       S57_donePROJ();
-int       S57_setMercPrj(double lat);
+int       S57_setMercPrj(double lat, double lon);
 projXY    S57_prj2geo(projUV uv);
 int       S57_geo2prj3dv(guint npt, double *data);
 int       S57_geo2prj(S57_geo *geo);

@@ -413,8 +413,8 @@ DLL int    STD S52_doneCell        (const char *encPath);
 
 /**
  * S52_setView:
- * @cLat:  (in): latitude of the center of the view (deg)
- * @cLon:  (in): longitude of the center of the view (deg)
+ * @cLat:  (in): latitude of the center of the view (deg)  [- 90 .. + 90]
+ * @cLon:  (in): longitude of the center of the view (deg) [-180 .. +180]
  * @rNM:   (in): range (radius of view (NM), <0 unchange
  * @north: (in): angle from north (deg),     <0 unchange
  *

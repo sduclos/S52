@@ -83,7 +83,7 @@ OBJS_GV  = gvS57layer.o S57gv.o
 
 OBJS_FREETYPE_GL = ./lib/freetype-gl/vector.o ./lib/freetype-gl/texture-atlas.o ./lib/freetype-gl/texture-font.o
 
-# Note: there is no GLU for ARM, the code handle tessallation by converting double->float on the fly, 
+# Note: there is no GLU for ARM, the code handle tessallation by converting double->float on the fly,
 # so the tess code is pulled from COGL.
 # (Quadric are also in GLU, but it is done by hand in S52GL.c to output float
 # for VBO in GLES2 for circle / disk / arc.)
@@ -162,9 +162,9 @@ s52clutter, s52clutter.js :                                 \
          -DS52_USE_GLIB2                                    \
          -DS52_USE_PROJ                                     \
          -DS52_USE_OGR_FILECOLLECTOR                        \
-         -DS52_DEBUG $(DBG)                                 \
          -DS52_USE_BACKTRACE                                \
-         -DS52_USE_GOBJECT
+         -DS52_USE_GOBJECT                                  \
+         -DS52_DEBUG $(DBG)
 
 s52gtk2p : CFLAGS += -pg
 
@@ -175,6 +175,7 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0` \
 
 # GL - EGL/GL 1.x broken
 #s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl gl`
+# -DS52_USE_WORLD
 s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
@@ -192,8 +193,7 @@ s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_SOCK                 \
                   -DS52_USE_OGR_FILECOLLECTOR    \
-				  -DS52_USE_SYM_VESSEL_DNGHL     \
- 				  -DS52_USE_WORLD                \
+                  -DS52_USE_SYM_VESSEL_DNGHL     \
                   -DS52_DEBUG $(DBG)
 
 # WARNING: gdal run OK on android with android-9-toolchain
@@ -203,13 +203,12 @@ s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl glesv2` \
 
 # using Android toolchain from NDK to cross compile for ARM (s52eglarm target)
 #s52eglarm : ARMTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-9-toolchain
-s52eglarm : ARMTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-19-toolchain
 #s52eglarm : ARMTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-14-toolchain
+s52eglarm : ARMTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-19-toolchain
 s52eglarm : ARMINCLUDE       = $(ARMTOOLCHAINROOT)/sysroot/usr/include
 s52eglarm : ARMLIBS          = $(ARMTOOLCHAINROOT)/sysroot/usr/lib
 
-# Android 4.4.2: -O2 crash activity android:name = ".s52ui"
-# -O1 -fstrict-aliasing
+# Android 4.4.2: -O2 -O1 crash activity android:name = ".s52ui"
 s52eglarm : CC     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -fPIC -mthumb -std=c99
 s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -fPIC -mthumb
 s52eglarm : AR     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ar
@@ -243,7 +242,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
-                     -DG_DISABLE_ASSERT                    
+                     -DG_DISABLE_ASSERT
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
                      -I$(S52DROIDINC)/glib-2.0             \

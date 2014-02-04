@@ -598,7 +598,6 @@ static int      _resetView(S52_view *view)
 
     _computeView(view);
 
-    //S52_setView(view);
     S52_setView(view->cLat, view->cLon, view->rNM, view->north);
 
     return TRUE;
