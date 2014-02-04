@@ -18,6 +18,8 @@ class S52 {
 
   // call drawLast() at interval
   Timer _timer        = null;
+  
+  // FIXME: use Queue
   bool  skipTimer     = false;
 
   // S52 color for UI element
@@ -86,6 +88,7 @@ class S52 {
   }
   
   _drawLastTimer() {
+    // FIXME: use Queue
     if (null != _timer)
       return;
 
@@ -148,21 +151,11 @@ class S52 {
     _drawLastTimer();
   }
   Future<List> _sendMsg(String str) {
-    // send S52/JSON msg to WebSocket (Cordova) in s52ui.html
     _stopwatch.reset();
     _stopwatch.start();
 
     _completer = new Completer();
 
-    // js-interop
-    //js.context['websocket'].send(str);
-    
-    // dart:js
-    //context['websocket'].callMethod('send', [str]);
-    //context.callMethod('onSend', [str]);
-
-    
-    //_ws.send(str);
     if (_ws.readyState == WebSocket.OPEN) {
       _ws.send(str);
       print('send:$str');
