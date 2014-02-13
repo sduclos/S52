@@ -1,5 +1,6 @@
 part of s52ui;
 
+
 //////////////////////////////////////////////////////
 //
 // Base Class that mimic S52 interface (S52.h)
@@ -18,14 +19,21 @@ class S52 {
 
   // call drawLast() at interval
   Timer _timer        = null;
+  bool  _skipTimer    = false;
   
   // FIXME: use Queue
-  bool  skipTimer     = false;
-
+  //Queue<String> _queue = new Queue<String>(); 
+  
   // S52 color for UI element
   List UIBCK;  // background
   List UINFF;  // text
   List UIBDR;  // border
+  
+  //var wsUri = 'ws://192.168.1.66:2950'; // laptop
+  //var wsUri = 'ws://192.168.1.67:2950'; // xoom
+  //var wsUri = 'ws://192.168.1.69:2950'; // Nexus
+  var wsUri = 'ws://127.0.0.1:2950';   // localhost
+
 
 
   static const int MAR_SHOW_TEXT              =  1;
@@ -69,17 +77,14 @@ class S52 {
   static const int CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
 
   S52() {
-
-    //js.context['websocket'].onmessage = new js.FunctionProxy(rcvMsg);
-    //context['websocket']['onmessage'] = rcvMsg;
-
     //_drawLastTimer();
   }
+
   Future<bool> initWS(var wsUri) {
     Completer completer = new Completer();
 
     _ws = new WebSocket(wsUri);
-    _ws.onOpen.   listen((Event e)        {completer.complete(true);});
+    _ws.onOpen.   listen((Event e)        {completer.complete(true);_drawLastTimer();});
     _ws.onMessage.listen((MessageEvent e) {_rcvMsg(e);});
     _ws.onClose.  listen((CloseEvent e)   {throw '_ws CLOSE:$e';});
     _ws.onError.  listen((Event e)        {throw '_ws ERROR:$e';});
@@ -89,12 +94,12 @@ class S52 {
   
   _drawLastTimer() {
     // FIXME: use Queue
-    if (null != _timer)
-      return;
+    //if (null != _timer)
+    //  return;
 
-    // call drawLast every second (2sec)
+    // call drawLast every second (1sec)
     _timer = new Timer.periodic(new Duration(milliseconds: 1000), (timer) {
-      if (false == skipTimer) {
+      if (false == _skipTimer) {
         drawLast().then((ret) {});
       
         //drawLast()
@@ -119,20 +124,23 @@ class S52 {
       data = JSON.decode(str);
     } catch(e) {
       print('rcvMsg(): malformed JSON throw the parser: $str');
-      return;
+      throw('rcvMsg(): malformed JSON throw the parser: $str');
+      //return;
     }
 
     if (null == data["error"]) {
       print('rcvMsg(): failed NO key: "error" [$data]');
-      return;
+      throw('rcvMsg(): failed NO key: "error" [$data]');
+      //return;
     }
     if ("no error" != data["error"]) {
       print("rcvMsg(): S52 call failed  [$data]");
-      return;
+      throw("rcvMsg(): S52 call failed  [$data]");
+      //return;
     }
 
-    if (_id != data["id"]) {
-      print('rcvMsg(): failed on key: _id=$_id data_id=${data["id"]} [$data]');
+    if (_id++ != data["id"]) {
+      print('rcvMsg(): failed on key: _id=${_id-1} data_id=${data["id"]} [$data]');
       throw "rcvMsg(): ID mismatch";
     }
 
@@ -144,11 +152,11 @@ class S52 {
 
     // Javascript: MAXINT overflow if (x == x + 1)
     // Dart: same; 2^53 = 9007199254740992 = 52124995687 days @ 0.5s 
-    ++_id;
+    //++_id;
     _completer.complete(data['result']);
 
     // restart timer if need be
-    _drawLastTimer();
+    //_drawLastTimer();
   }
   Future<List> _sendMsg(String str) {
     _stopwatch.reset();
@@ -167,6 +175,7 @@ class S52 {
     return _completer.future;
   }
 
+  /*
   // alternate way of calling libS52 - one call for all S52.h calls
   Future<List> send(var cmdName, var params) {
     _data["id"    ] = _id;
@@ -176,28 +185,50 @@ class S52 {
 
     return _sendMsg(jsonCmdstr);
   }
-
+  */
 
   ////////////////////// FIXME: REFACTOR use send() ///////////////////////////
   // pro: less code
   // con: lost of info .. doesn't mirror S52.h well since all call info would be
   // littered across s52ui.dart
+  Future<List> draw() {
+    _data["id"    ] = _id;
+    _data["method"] = "S52_draw";
+    _data["params"] = [];
+    String jsonCmdstr = JSON.encode(_data);
+
+    _skipTimer = false;
+    
+    return _sendMsg(jsonCmdstr);
+  }
   Future<List> drawLast() {
+    //*
     if (null!=_completer && false==_completer.isCompleted) {
       print("drawLast(): _completer NOT completed XXXXXXXXX");
-      _timer.cancel();
-      _timer = null;
+      //_timer.cancel();
+      //_timer = null;
       throw "drawLast(): _completer is busy";
       //throw new Exception('drawLast(): _completer is busy');
       //throw new AsyncError('error');
       //return _completer.future;
     }
-
+    //*/
+    
     _data["id"    ] = _id;
     _data["method"] = "S52_drawLast";
     _data["params"] = [];
     String jsonCmdstr = JSON.encode(_data);
 
+    return _sendMsg(jsonCmdstr);
+  }
+  Future<List> drawBlit(double scale_x, double scale_y, double scale_z, double north) {
+    _data["id"    ] = _id;
+    _data["method"] = "S52_drawBlit";
+    _data["params"] = [scale_x,scale_y,scale_z,north];
+    String jsonCmdstr = JSON.encode(_data);
+    
+    _skipTimer    = true;
+      
     return _sendMsg(jsonCmdstr);
   }
   Future<List> getMarinerParam(int param) {
@@ -228,16 +259,6 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_getRGB";
     _data["params"] = [colorName];
-    String jsonCmdstr = JSON.encode(_data);
-
-    return _sendMsg(jsonCmdstr);
-  }
-  // FIXME: mistery .. no call to EGL and this call still work it seem
-  // Now call to EGL is done trough callback from libS52
-  Future<List> draw() {
-    _data["id"    ] = _id;
-    _data["method"] = "S52_draw";
-    _data["params"] = [];
     String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);
@@ -326,14 +347,6 @@ class S52 {
     _data["id"    ] = _id;
     _data["method"] = "S52_loadCell";
     _data["params"] = [encPath];
-    String jsonCmdstr = JSON.encode(_data);
-
-    return _sendMsg(jsonCmdstr);
-  }
-  Future<List> drawBlit(double scale_x, double scale_y, double scale_z, double north) {
-    _data["id"    ] = _id;
-    _data["method"] = "S52_drawBlit";
-    _data["params"] = [scale_x,scale_y,scale_z,north];
     String jsonCmdstr = JSON.encode(_data);
 
     return _sendMsg(jsonCmdstr);

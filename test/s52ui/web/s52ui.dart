@@ -10,6 +10,9 @@ import 'package:js/js.dart' as js;
 
 import 'dart:convert';
 
+import 'dart:collection'; // used in s52.dart
+
+
 part 's52.dart';
 
 S52  s52;  // instance of S52 interface (using WebSocket)
@@ -463,7 +466,7 @@ void _initTouch() {
 
   querySelector('#svg1g').onTouchStart.listen((ev) { _fullList(ev); });
 
-  print('s52ui.dart:_initTouch():target');
+  //print('s52ui.dart:_initTouch():target');
   print('s52ui.dart:_initTouch():target=$target');
 
   target.onTouchStart.listen((TouchEvent event) {
@@ -475,7 +478,7 @@ void _initTouch() {
       modeZoom = false;
       zoom_fac = 0.0;
       ticks    = 0;
-      s52.skipTimer = true;
+      //s52.skipTimer = true;
     }
 
     if (1 == event.touches.length) {
@@ -687,7 +690,7 @@ void _initTouch() {
         });
       }   // if
 
-      s52.skipTimer = false;
+      //s52.skipTimer = false;
 
      });  // timer
   });     // touchEnd
@@ -787,21 +790,15 @@ void _initMain() {
   //var url = window.
   print('s52ui.dart:_initMain(): URL:>$urlparam<');
 
-
-  //var wsUri = 'ws://192.168.1.66:2950'; // laptop
-  //var wsUri = 'ws://192.168.1.67:2950'; // xoom
-  //var wsUri = 'ws://192.168.1.69:2950'; // Nexus
-  var wsUri = 'ws://127.0.0.1:2950';   // localhost
-
   try {
     s52 = new S52();
-    s52.initWS(wsUri).then((ret) {
+    s52.initWS(s52.wsUri).then((ret) {
       // here the WebSocket init is completed - all JS loaded
       _initTouch();
       s52.newOWNSHP('OWNSHP').then((ret) {
         _watchPosition(ret[0]);
         _initUI().then((ret) {});
-      });
+      }).catchError((e) {print(e);});
     });
   } catch (e,s) {
     print('ERROR: $e');
