@@ -3,6 +3,12 @@
 #
 
 
+2014FEB13
+    -add target s52eglw32, EGL/GLES2 for Win32
+    -add test/s52gtk2egl.c
+    -mod folder lib/tesselator to lib/libtess
+    -fix tess callback for win32
+    
 2014FEB04
     -fix handle anti-meridian
 

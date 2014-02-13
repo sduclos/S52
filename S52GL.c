@@ -38,15 +38,7 @@
 // compiled with -std=gnu99 instead of -std=c99 will define M_PI
 #include <math.h>         // sin(), cos(), atan2(), pow(), sqrt(), floor(), INFINITY, M_PI
 
-#include <dlfcn.h>
-
 #include <wchar.h>        // testing wide char
-
-#ifndef S52_USE_GLES2
-#define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-//#include "glext.h"
-#endif
 
 
 // debug - ATI
@@ -85,7 +77,8 @@ typedef GLfloat GLdouble;
 #ifdef S52_USE_GLES2
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
-//static GLeglImageOES test;
+
+//#include <dlfcn.h>        // dynamic linking
 
 typedef double GLdouble;
 
@@ -123,7 +116,12 @@ static GLint _aPosition    = 0;
 static GLint _aUV          = 0;
 static GLint _aAlpha       = 0;
 
-#endif // S52_USE_GLES2
+#else   // S52_USE_GLES2
+#define GL_GLEXT_PROTOTYPES
+#include <GL/gl.h>
+//#include "GL/glext.h"
+
+#endif  // S52_USE_GLES2
 
 
 ///////////////////////////////////////////////////////////////////
@@ -261,13 +259,14 @@ static int         _identity_MODELVIEW = FALSE;   // TRUE then identity matrix f
 //////////////////////////////////////////////////////
 // tessallation
 // mingw specific, with gcc APIENTRY expand to nothing
-#ifdef _MINGW
-#define CALLBACK __attribute__ ((__stdcall__))
-#else
-#define CALLBACK
-#endif
+//#ifdef _MINGW
+//#define _CALLBACK __attribute__ ((__stdcall__))
+//#define _CALLBACK
+//#else
+#define _CALLBACK
+//#endif
 
-#define void_cb_t GLvoid CALLBACK
+#define void_cb_t GLvoid _CALLBACK
 
 #ifdef S52_USE_GLES2
 #include "tesselator.h"
@@ -277,11 +276,11 @@ typedef GLUtesselator GLUtriangulatorObj;
 #include <GL/glu.h>
 #endif
 
-typedef void (CALLBACK *f) ();
-typedef void (CALLBACK *fint) (GLint);
-typedef void (CALLBACK *f2)  (GLint, void*);
-typedef void (CALLBACK *fp)  (void*);
-typedef void (CALLBACK *fpp) (void*, void*);
+typedef void (_CALLBACK *f)    ();
+typedef void (_CALLBACK *fint) (GLint);
+typedef void (_CALLBACK *f2)   (GLint, void*);
+typedef void (_CALLBACK *fp)   (void*);
+typedef void (_CALLBACK *fpp)  (void*, void*);
 
 static GLUtriangulatorObj *_tobj = NULL;
 static GPtrArray          *_tmpV = NULL;  // place holder during tesssalation (GLUtriangulatorObj combineCallback)
@@ -516,12 +515,13 @@ static int            _fb_update      = TRUE;  // TRUE flag that the FB changed
 static unsigned char *_fb_pixels      = NULL;
 static unsigned int   _fb_pixels_size = 0;
 static GLuint         _fb_texture_id  = 0;
-#define RGB           3
-#define RGBA          4
+
 #ifdef S52_USE_ADRENO
+#define RGB           3
 static int            _fb_format      = RGB;   // alpha blending done in shader
                                                // no need to read alpha from FB
 #else
+#define RGBA          4
 static int            _fb_format      = RGBA;
 //static int            _fb_format      = RGB ;  // NOTE: on TEGRA2 RGB (3) very slow
                                                  // (spend a lot of time converting)
@@ -1106,6 +1106,7 @@ static void_cb_t _vertexCin(GLvoid *data)
     _inSeg = (_startEdge)? TRUE : FALSE;
 }
 
+#if 0
 static void      _dumpATImemInfo(GLenum glenum)
 {
     GLint params[4] = {0,0,0,0};
@@ -1117,6 +1118,7 @@ static void      _dumpATImemInfo(GLenum glenum)
     PRINTF("%i Kbyte:total auxiliary memory free\n",              params[2]);
     PRINTF("%i Kbyte:largest auxiliary free block\n",             params[3]);
 }
+#endif
 
 ////////////////////////////////////////////////////
 //
@@ -1978,7 +1980,8 @@ static void      _glRotated(double angle, double x, double y, double z)
 
 static void      _glLoadIdentity(void)
 {
-    bzero(_crntMat, sizeof(GLfloat) * 16);
+    //bzero(_crntMat, sizeof(GLfloat) * 16);
+    memset(_crntMat, 0, sizeof(GLfloat) * 16);
     _crntMat[0] = _crntMat[5] = _crntMat[10] = _crntMat[15] = 1.0;
 
     // optimisation - reset flag
@@ -2991,7 +2994,7 @@ typedef union cIdx {
     guint idx;
 } cIdx;
 static cIdx _cIdx;
-static cIdx _read[8 * 8];  // buffer to collect pixels when in S52_GL_PICK mode
+static cIdx _pixelsRead[8 * 8];  // buffer to collect pixels when in S52_GL_PICK mode
 
 static int       _setBlend(int blend)
 // TRUE turn on blending if AA
@@ -8238,15 +8241,13 @@ static GLint     _createSymb(void)
     _glMatrixSet(VP_WIN);
 
     S52_PL_traverse(S52_SMB_PATT, _buildPatternDL);
-    //PRINTF("PATT symbol finish\n");
-
-    //_setBlend(TRUE);
+    PRINTF("PATT symbol finish\n");
 
     S52_PL_traverse(S52_SMB_LINE, _buildSymbDL);
-    //PRINTF("LINE symbol finish\n");
+    PRINTF("LINE symbol finish\n");
 
     S52_PL_traverse(S52_SMB_SYMB, _buildSymbDL);
-    //PRINTF("SYMB symbol finish\n");
+    PRINTF("SYMB symbol finish\n");
 
     _glMatrixDel(VP_WIN);
 
@@ -8694,10 +8695,10 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
 
 
         // WARNING: some graphic card preffer RGB / BYTE .. YMMV
-        glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGB, GL_UNSIGNED_BYTE, &_read);
+        glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGB, GL_UNSIGNED_BYTE, &_pixelsRead);
 
         for (int i=0; i<(8*8); ++i) {
-            if (_read[i].color.r == _cIdx.color.r) {
+            if (_pixelsRead[i].color.r == _cIdx.color.r) {
                 g_ptr_array_add(_objPick, obj);
 
                 // debug
@@ -8714,9 +8715,9 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
         for (int i=7; i>=0; --i) {
             int j = i*8;
             printf("%i |%X %X %X %X %X %X %X %X|\n", i,
-                   _read[j+0].color.r, _read[j+1].color.r, _read[j+2].color.r,
-                   _read[j+3].color.r, _read[j+4].color.r, _read[j+5].color.r,
-                   _read[j+6].color.r, _read[j+7].color.r;
+                   _pixelsRead[j+0].color.r, _pixelsRead[j+1].color.r, _pixelsRead[j+2].color.r,
+                   _pixelsRead[j+3].color.r, _pixelsRead[j+4].color.r, _pixelsRead[j+5].color.r,
+                   _pixelsRead[j+6].color.r, _pixelsRead[j+7].color.r;
         }
         printf("finish with object: cIdx: %X\n", _cIdx.idx);
         printf("----------------------------\n");
@@ -9347,7 +9348,6 @@ static GLuint    _loadShader(GLenum type, const char *shaderSrc)
     return shader;
 }
 
-//int        S52_GL_init_GLES2(void)
 static int       _init_es2(void)
 {
     const char* vShaderStr =
@@ -9845,6 +9845,7 @@ int        S52_GL_done(void)
 
 
 
+#ifdef S52_USE_FTGL
 #ifdef _MINGW
     if (NULL != _ftglFont[0])
         ftglDestroyFont(_ftglFont[0]);
@@ -9855,6 +9856,7 @@ int        S52_GL_done(void)
     if (NULL != _ftglFont[3])
         ftglDestroyFont(_ftglFont[3]);
     _ftglFont = {NULL, NULL, NULL, NULL};
+#endif
 #endif
 
     _diskPrimTmp = S57_donePrim(_diskPrimTmp);

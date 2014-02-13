@@ -175,7 +175,7 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
  *
  * Return: TRUE on success, else FALSE
  */
-typedef DLL int STD (*EGL_cb)(void *EGLctx, const char *tag);
+typedef int (*EGL_cb)(void *EGLctx, const char *tag);
 DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx);
 #endif
 
@@ -324,7 +324,7 @@ DLL int    STD S52_LL2xy (double *longitude, double *latitude);
  *
  * Return: TRUE on success, else FALSE
  */
-typedef DLL int STD (*S52_error_cb)(const char *err);
+typedef int (*S52_error_cb)(const char *err);
 DLL int   STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb);
 #else  // when using GTK1
 DLL int   STD S52_init(void);
@@ -383,7 +383,7 @@ DLL int   STD S52_loadObject      (const char *objname, /* OGRFeatureH */ void *
  *
  * Return: TRUE on success, else FALSE
  */
-typedef DLL int STD (*S52_loadObject_cb)(const char *objname, /* OGRFeatureH */ void *feature);
+typedef int (*S52_loadObject_cb)(const char *objname, /* OGRFeatureH */ void *feature);
 
 /**
  * S52_loadCell:
@@ -694,7 +694,7 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
  *
  * Return: TRUE on success, else FALSE
  */
-typedef DLL int STD (*S52_RADAR_cb)(void);
+typedef int (*S52_RADAR_cb)(void);
 DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb);
 
 /**

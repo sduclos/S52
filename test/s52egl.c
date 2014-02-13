@@ -70,8 +70,7 @@
 
 #define RAD_TO_DEG    57.29577951308232
 
-//#define PATH     "/data/media"         // android 4.1
-#define PATH     "/sdcard/s52droid"      // android 4.2
+#define PATH     "/sdcard/s52droid"      // Android 4.2
 #define PLIB     PATH "/PLAUX_00.DAI"
 #define COLS     PATH "/plib_COLS-3.4.1.rle"
 #define GPS      PATH "/bin/sl4agps"
@@ -158,6 +157,8 @@ typedef struct s52engine {
 
     // draw thread
     GMainLoop          *main_loop;
+
+    // debug - test with rendering thread
     //GThread            *drawThread;
     //GAsyncQueue        *queue;             // asynchronous communication between threads
     //GTimeVal            end_time;
@@ -268,9 +269,10 @@ static int      _egl_init       (s52engine *engine)
 
 
 
-    EGLDisplay eglDisplay;
-    EGLSurface eglSurface;
-    EGLContext eglContext;
+    EGLNativeWindowType eglWindow;
+    EGLDisplay          eglDisplay;
+    EGLSurface          eglSurface;
+    EGLContext          eglContext;
 
     // Here specify the attributes of the desired configuration.
     // Below, we select an EGLConfig with at least 8 bits per color
@@ -279,7 +281,7 @@ static int      _egl_init       (s52engine *engine)
 #ifdef S52_USE_TEGRA2
     const EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,        EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE,     EGL_OPENGL_ES2_BIT,  // needed?
+        EGL_RENDERABLE_TYPE,     EGL_OPENGL_ES2_BIT,
 
         EGL_RED_SIZE,            8,
         EGL_GREEN_SIZE,          8,
@@ -291,7 +293,6 @@ static int      _egl_init       (s52engine *engine)
         //EGL_BLUE_SIZE,           5,
 
         // Tegra 2 CSAA (anti-aliase)
-        EGL_RENDERABLE_TYPE,     4,  // EGL_OPENGL_ES2_BIT
         EGL_COVERAGE_BUFFERS_NV, 1,  // TRUE
         //EGL_COVERAGE_BUFFERS_NV, 0,
         //EGL_COVERAGE_SAMPLES_NV, 2,  // always 5 in practice on tegra 2
@@ -325,6 +326,8 @@ static int      _egl_init       (s52engine *engine)
     // Mesa OpenGL ES 2.x
     const EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
+        //EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
         //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
 
@@ -354,7 +357,7 @@ static int      _egl_init       (s52engine *engine)
     };
 #endif  // S52_USE_GLES2
 #endif  // S52_USE_ADRENO
-#endif
+#endif  // S52_USE_TEGRA2
 
     /*
     const EGLint eglConfigList[] = {
@@ -373,14 +376,6 @@ static int      _egl_init       (s52engine *engine)
     };
     //*/
 
-
-#ifdef S52_USE_GLES2
-    EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
-#else
-    EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
-#endif
-    if (EGL_TRUE != ret)
-        LOGE("eglBindAPI() failed. [0x%x]\n", eglGetError());
 
 #ifdef S52_USE_ANDROID
     eglDisplay  = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -451,10 +446,10 @@ static int      _egl_init       (s52engine *engine)
         LOGE("Error: eglGetConfigAttrib() failed\n");
 
 #ifdef S52_USE_ANDROID
-    // WARNING: do not use native get Width()/Height() has it break rotation
+    // WARNING: do not use native get/set Width()/Height() has it break rotation
     ANativeWindow_setBuffersGeometry(engine->app->window, 0, 0, vid);
-    engine->eglWindow = (EGLNativeWindowType) engine->app->window;
-    if (NULL == engine->eglWindow) {
+    eglWindow = (EGLNativeWindowType) engine->app->window;
+    if (NULL == eglWindow) {
         LOGE("ERROR: ANativeWindow is NULL (can't draw)\n");
         g_assert(0);
     }
@@ -500,13 +495,13 @@ static int      _egl_init       (s52engine *engine)
         XSetWMColormapWindows(display, window, &window, 1);
         XFlush(display);
 
-        engine->eglWindow = (EGLNativeWindowType) window;
+        eglWindow = (EGLNativeWindowType) window;
 
     }
 #endif
 
-    eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, (EGLNativeWindowType)engine->eglWindow, NULL);
-    //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig[5], (EGLNativeWindowType)engine->eglWindow, NULL);
+    eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, (EGLNativeWindowType) eglWindow, NULL);
+    //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig[5], (EGLNativeWindowType) eglWindow, NULL);
     if (EGL_NO_SURFACE == eglSurface || EGL_SUCCESS != eglGetError()) {
         LOGE("eglCreateWindowSurface() failed. EGL_NO_SURFACE [0x%x]\n", eglGetError());
         g_assert(0);
@@ -515,6 +510,17 @@ static int      _egl_init       (s52engine *engine)
     // when swapping Adreno clear old buffer
     // http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html
     eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
+
+
+#ifdef S52_USE_GLES2
+    EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
+    //EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
+#else
+    // OpenGL 1.x
+    EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
+#endif
+    if (EGL_TRUE != ret)
+        LOGE("eglBindAPI() failed. [0x%x]\n", eglGetError());
 
     // Then we can create the context and set it current:
     // 1 - GLES1.x, 2 - GLES2.x, 3 - GLES3.x
@@ -528,6 +534,7 @@ static int      _egl_init       (s52engine *engine)
     };
 
     eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, eglContextList);
+    //eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, NULL);
     //eglContext = eglCreateContext(eglDisplay, eglConfig[5], EGL_NO_CONTEXT, eglContextList);
     if (EGL_NO_CONTEXT == eglContext || EGL_SUCCESS != eglGetError()) {
         LOGE("eglCreateContext() failed. [0x%x]\n", eglGetError());
@@ -576,6 +583,7 @@ static int      _egl_init       (s52engine *engine)
     engine->eglDisplay = eglDisplay;
     engine->eglContext = eglContext;
     engine->eglSurface = eglSurface;
+    engine->eglWindow  = eglWindow;
 
     LOGI("s52egl:_egl_init(): end ..\n");
 
@@ -1028,10 +1036,10 @@ static int      _s52_init       (s52engine *engine)
 #else  // S52_USE_ANDROID
 
     // read cell location fron s52.cfg
-    //S52_loadCell(NULL, NULL);
+    S52_loadCell(NULL, NULL);
 
     // debug anti-meridian
-    S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US5HA06M/US5HA06M.000", NULL);
+    //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US5HA06M/US5HA06M.000", NULL);
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US1EEZ1M/US1EEZ1M.000", NULL);
 
     // Rimouski
@@ -1688,10 +1696,13 @@ static gpointer _android_display_init(gpointer user_data)
     _s52_draw_cb(user_data);
 
     g_timeout_add(500, _s52_draw_cb, user_data);  // 0.5 sec
+    // 60 fps -> 1000 / 60 = 16.666 msec
+    //g_timeout_add(1000/60, _s52_draw_cb, user_data);  // 16 msec
 
     // debug - init s52ui (HTML5) right at the start
     //_android_init_external_UI(engine);
 
+    // debug - test with rendering thread
     //GMainContext *c   = g_main_context_get_thread_default();
     //engine->main_loop = g_main_loop_new(c, FALSE);
     //engine->main_loop = g_main_loop_new(NULL, FALSE);
@@ -2857,6 +2868,7 @@ int main(int argc, char *argv[])
 
     g_timeout_add(500, _X11_handleXevent, (void*)&_engine);  // 0.5 sec
     g_timeout_add(500, _s52_draw_cb,      (void*)&_engine);  // 0.5 sec
+    //g_timeout_add(1000/60, _s52_draw_cb,      (void*)&_engine);  // 16 msec
 
     //g_mem_set_vtable(glib_mem_profiler_table);
 

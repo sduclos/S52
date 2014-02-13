@@ -34,7 +34,6 @@
 #if defined(__APPLE__)
     #include <OpenGL/gl.h>
 #else
-    //#include <GL/gl.h>
     #include <GLES2/gl2.h>
 #endif
 #include <stdio.h>

@@ -21,11 +21,16 @@
 */
 
 
-#include <gtk/gtk.h>
-#include <gdk/gdkx.h>
-
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+
+#include <gtk/gtk.h>
+
+#ifdef _MINGW
+#include <gdk/gdkwin32.h>
+#else
+#include <gdk/gdkx.h>
+#endif
 
 #include "S52.h"
 
@@ -117,7 +122,7 @@ static s52engine _engine;
 // debug - no real AIS, then fake target
 #ifdef USE_FAKE_AIS
 static S52ObjectHandle _vessel_ais        = NULL;
-#define VESSELLABEL "~~MV Non Such~~ "           // last char will be trimmed
+#define VESSELLABEL "~~MV Non Such~~ "           // bug: last char will be trimmed
 // test - ownshp
 static S52ObjectHandle _ownshp            = NULL;
 #define OWNSHPLABEL "OWNSHP\\n220 deg / 6.0 kt"
@@ -161,16 +166,16 @@ static int      _egl_init       (s52engine *engine)
 // #define EGL_CONTEXT_LOST        0x300E
 
 
-
-    EGLDisplay eglDisplay;
-    EGLSurface eglSurface;
-    EGLContext eglContext;
+    EGLNativeWindowType eglWindow = 0;
+    EGLDisplay eglDisplay = EGL_NO_DISPLAY;
+    EGLSurface eglSurface = EGL_NO_SURFACE;
+    EGLContext eglContext = EGL_NO_CONTEXT;
 
     EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
     if (EGL_TRUE != ret)
         LOGE("eglBindAPI() failed. [0x%x]\n", eglGetError());
 
-    eglDisplay = eglGetDisplay(GDK_WINDOW_XDISPLAY(gtk_widget_get_window(engine->window)));
+    eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (EGL_NO_DISPLAY == eglDisplay)
         LOGE("eglGetDisplay() failed. [0x%x]\n", eglGetError());
 
@@ -238,9 +243,16 @@ static int      _egl_init       (s52engine *engine)
     if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vid))
         LOGE("Error: eglGetConfigAttrib() failed\n");
 
-	engine->eglWindow = (EGLNativeWindowType) gtk_widget_get_window(engine->window);
+	eglWindow = (EGLNativeWindowType) gtk_widget_get_window(engine->window);
+    LOGI("DEBUG: eglWindow=%i\n", (int)eglWindow);
+    if (FALSE == eglWindow) {
+        LOGE("ERROR: EGLNativeWindowType is NULL (can't draw)\n");
+        g_assert(0);
+    }
 
-    eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, GDK_WINDOW_XID( gtk_widget_get_window(engine->window)), NULL);
+    eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, GDK_WINDOW_XID(gtk_widget_get_window(engine->window)), NULL);
+    // GCC:  note: expected (struct GdkWindow *) but argument is of type (struct GdkWindow *) !?!
+    //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, GDK_WINDOW_XID((struct GdkWindow *)eglWindow), NULL);
     if (EGL_NO_SURFACE == eglSurface || EGL_SUCCESS != eglGetError())
         LOGE("eglCreateWindowSurface() failed. EGL_NO_SURFACE [0x%x]\n", eglGetError());
 
@@ -259,6 +271,7 @@ static int      _egl_init       (s52engine *engine)
     engine->eglDisplay = eglDisplay;
     engine->eglContext = eglContext;
     engine->eglSurface = eglSurface;
+    engine->eglWindow  = eglWindow;
 
     LOGI("s52egl:_egl_init(): end ..\n");
 
@@ -860,239 +873,6 @@ exit:
 //}
 
 
-
-//----------------------------------------------
-//
-// X11 specific code
-// for testing EGL / GLES2 outside of android
-//
-/*
-
-
-static int      _X11_handleXevent(gpointer user_data)
-{
-    s52engine *engine = (s52engine *) user_data;
-
-    while (XPending(engine->dpy)) {
-        XEvent event;
-        XNextEvent(engine->dpy, &event);
-
-        switch (event.type) {
-        case ConfigureNotify:
-            engine->width  = event.xconfigure.width;
-            engine->height = event.xconfigure.height;
-            S52_setViewPort(0, 0, event.xconfigure.width, event.xconfigure.height);
-
-            break;
-
-        case Expose:
-            engine->do_S52draw     = TRUE;
-            engine->do_S52drawLast = TRUE;
-            g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0);
-            break;
-
-        case ButtonRelease:
-            {
-                XButtonReleasedEvent *mouseEvent = (XButtonReleasedEvent *)&event;
-
-                const char *name = S52_pickAt(mouseEvent->x, engine->height - mouseEvent->y);
-                if (NULL != name) {
-                    unsigned int S57ID = atoi(name+7);
-                    g_print("OBJ(%i, %i): %s\n", mouseEvent->x, engine->height - mouseEvent->y, name);
-                    g_print("AttList=%s\n", S52_getAttList(S57ID));
-
-                    {   // debug:  S52_xy2LL() --> S52_LL2xy() should be the same
-                        // NOTE:  LL (0,0) is the OpenGL origine (not GTK origine)
-                        double Xlon = 0.0;
-                        double Ylat = 0.0;
-                        S52_xy2LL(&Xlon, &Ylat);
-                        S52_LL2xy(&Xlon, &Ylat);
-                        g_print("DEBUG: xy2LL(0,0) --> LL2xy ==> Xlon: %f, Ylat: %f\n", Xlon, Ylat);
-                    }
-
-                    if (0 == g_strcmp0("vessel", name)) {
-                        g_print("vessel found\n");
-                        unsigned int S57ID = atoi(name+7);
-
-                        S52ObjectHandle vessel = S52_getMarObjH(S57ID);
-                        if (NULL != vessel) {
-                            S52_setVESSELstate(vessel, 1, 0, VESSELTURN_UNDEFINED);
-                            //g_print("AttList: %s\n", S52_getAttList(S57ID));
-                        }
-                    }
-                }
-
-            }
-            engine->do_S52draw     = TRUE;
-            engine->do_S52drawLast = TRUE;
-            g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0);
-            break;
-
-        case KeyPress:
-        case KeyRelease: {
-            // /usr/include/X11/keysymdef.h
-            unsigned int keycode = ((XKeyEvent *)&event)->keycode;
-            unsigned int keysym  = XkbKeycodeToKeysym(engine->dpy, keycode, 0, 1);
-
-            // ESC
-            if (XK_Escape == keysym) {
-                g_main_loop_quit(engine->state.main_loop);
-                return TRUE;
-            }
-            // Load Cell
-            if (XK_F1 == keysym) {
-                S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
-                //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA379035.000", NULL);
-                //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
-                engine->do_S52draw = TRUE;
-                return TRUE;
-            }
-            // Done Cell
-            if (XK_F2 == keysym) {
-                S52_doneCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000");
-                //S52_doneCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000");
-                engine->do_S52draw = TRUE;
-                return TRUE;
-            }
-            // Disp. Cat. SELECT
-            if (XK_F3 == keysym) {
-                S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT);
-                engine->do_S52draw = TRUE;
-                return TRUE;
-            }
-            // VRMEBL toggle
-            if (XK_F4 == keysym) {
-                _drawVRMEBLtxt = !_drawVRMEBLtxt;
-                if (TRUE == _drawVRMEBLtxt) {
-                    S52_toggleObjClassOFF("cursor");
-                    S52_toggleObjClassOFF("ebline");
-                    S52_toggleObjClassOFF("vrmark");
-
-                    {
-                        double brg = 0.0;
-                        double rge = 0.0;
-                        S52_setVRMEBL(_vrmeblA, 100, 100, &brg, &rge);
-                        S52_setVRMEBL(_vrmeblA, 100, 500, &brg, &rge);
-                    }
-
-                    S52_pushPosition(_cursor2, engine->state.cLat, engine->state.cLon, 0.0);
-
-                } else {
-                    S52_toggleObjClassON("cursor");
-                    S52_toggleObjClassON("ebline");
-                    S52_toggleObjClassON("vrmark");
-                }
-
-                return TRUE;
-            }
-            // Rot. Buoy Light
-            if (XK_F5 == keysym) {
-                S52_setMarinerParam(S52_MAR_ROT_BUOY_LIGHT, 180.0);
-                engine->do_S52draw = TRUE;
-                return TRUE;
-            }
-            // ENC list
-            if (XK_F6 == keysym) {
-                g_print("%s\n", S52_getCellNameList());
-                return TRUE;
-            }
-            // load AIS select symb.
-            if (XK_F7 == keysym) {
-                S52_loadPLib("plib-test-priv.rle");
-                return TRUE;
-            }
-            // debug - unicode at S57ID:552 on CA579041.000 - Rimouski
-            if (XK_F8 == keysym) {
-                const char *str = S52_getAttList(552);
-                g_print("s52eglx:F8:%s\n", str);
-
-                return TRUE;
-            }
-
-
-            // debug
-            g_print("s52egl.c:keysym: %i\n", keysym);
-
-
-            //
-            // debug - basic view movement
-            //
-
-            double delta = (engine->state.rNM / 10.0) / 60.0;
-
-            // Move left, left arrow
-            if (XK_Left      == keysym) {
-                engine->state.cLon -= delta;
-                S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
-            }
-            // Move up, up arrow
-            if (XK_Up        == keysym) {
-                engine->state.cLat += delta;
-                S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
-            }
-            // Move right, right arrow
-            if (XK_Right     == keysym) {
-                engine->state.cLon += delta;
-                S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
-            }
-            // Move down, down arrow
-            if (XK_Down      == keysym) {
-                engine->state.cLat -= delta;
-                S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
-            }
-            // zoom in
-            if (XK_Page_Up   == keysym) {
-                engine->state.rNM -= (engine->state.rNM / 10.0);
-                S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
-            }
-            // zoom out
-            if (XK_Page_Down == keysym) {
-                engine->state.rNM += (engine->state.rNM / 10.0);
-                S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
-            }
-            // rot -10.0 deg
-            if (XK_Home      == keysym) {
-#ifdef S52_USE_EGL
-                S52_drawBlit(0.0, 0.0, 0.0, -10.0);
-#else
-                _egl_beg(engine);
-                S52_drawBlit(0.0, 0.0, 0.0, -10.0);
-                _egl_end(engine);
-#endif
-                engine->state.north -= 10.0;
-                if (0.0 > engine->state.north)
-                    engine->state.north += 360.0;
-                S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
-            }
-            // rot +10.0 deg
-            if (XK_End       == keysym) {
-#ifdef S52_USE_EGL
-                S52_drawBlit(0.0, 0.0, 0.0, +10.0);
-#else
-                _egl_beg(engine);
-                S52_drawBlit(0.0, 0.0, 0.0, +10.0);
-                _egl_end(engine);
-#endif
-
-
-                engine->state.north += 10.0;  // +10.0 deg
-                if (360.0 <= engine->state.north)
-                    engine->state.north -= 360.0;
-                S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
-            }
-
-            engine->do_S52draw     = TRUE;
-            engine->do_S52drawLast = TRUE;
-        }
-        break;
-
-        }  // switch
-    }      // while
-
-    return TRUE;
-}
-*/
-
 static gboolean _scroll(GdkEventKey *event)
 {
     switch(event->keyval) {
@@ -1313,7 +1093,8 @@ static gboolean key_release_event(GtkWidget   *widget,
 
 
      //   case GDK_KEY_Escape:_resetView(&_engine.state);                break;
-        case GDK_KEY_r     : /*gtk_widget_draw(widget, NULL);*/break;
+        case GDK_KEY_r     : //gtk_widget_draw(widget, NULL);
+                              break;
      //   case GDK_KEY_h     :_doRenderHelp = !_doRenderHelp;
      //                   _usage("s52gtk2");
      //                   break;
@@ -1379,7 +1160,7 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_KEY_7     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_BASE);   break; // DISPLAYBASE
         case GDK_KEY_8     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_STD);    break; // STANDARD
         case GDK_KEY_9     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_OTHER);  break; // OTHER
-        case GDK_KEY_0     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT);  break; // OTHER (all)
+        case GDK_KEY_0     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT); break; // OTHER (all)
 
         case GDK_KEY_k     :_cpal(S52_MAR_COLOR_PALETTE,  1.0);break;
         case GDK_KEY_K     :_cpal(S52_MAR_COLOR_PALETTE, -1.0);break;
@@ -1427,10 +1208,10 @@ static gboolean step (gpointer data)
 
 int main (int argc, char** argv)
 {
-    gtk_init (&argc, &argv);
+    gtk_init(&argc, &argv);
 
     _engine.window = GTK_WIDGET(gtk_window_new(GTK_WINDOW_TOPLEVEL));
-    gtk_window_set_default_size(GTK_WINDOW(_engine.window), 500, 500);
+    gtk_window_set_default_size(GTK_WINDOW(_engine.window), 800, 600);
     gtk_window_set_title(GTK_WINDOW(_engine.window), "OpenGL ES2 in GTK3 application");
 
     gtk_widget_show_all(_engine.window);

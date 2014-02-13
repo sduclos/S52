@@ -100,6 +100,9 @@ static GTimer         *_timer   = NULL;  // debug - lap timer
 #include <sys/types.h>
 #include <signal.h>
 static volatile gint G_GNUC_MAY_ALIAS _atomicAbort;
+
+#ifdef _MINGW
+#else
 // 1) SIGHUP	 2) SIGINT	 3) SIGQUIT	 4) SIGILL	 5) SIGTRAP
 // 6) SIGABRT	 7) SIGBUS	 8) SIGFPE	 9) SIGKILL	10) SIGUSR1
 //11) SIGSEGV	12) SIGUSR2	13) SIGPIPE	14) SIGALRM	15) SIGTERM
@@ -111,6 +114,7 @@ static struct   sigaction             _old_signal_handler_SIGSEGV;
 static struct   sigaction             _old_signal_handler_SIGTERM;
 static struct   sigaction             _old_signal_handler_SIGUSR1;
 static struct   sigaction             _old_signal_handler_SIGUSR2;
+#endif
 
 // not available on win32
 #ifdef S52_USE_BACKTRACE
@@ -282,7 +286,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.112\n"
+      "libS52 0.113\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1102,7 +1106,7 @@ void              _dump_crash_report(unsigned pid)
     _UPT_destroy (ui);
 }
 
-static            _Unwind_Reason_Code trace_func(struct _Unwind_Context *ctx, void *user_data)
+static _Unwind_Reason_Code _trace_func(struct _Unwind_Context *ctx, void *user_data)
 {
     //unsigned int rawAddr = __gnu_Unwind_Find_exidx(ctx); //  _Unwind_GetIP(ctx);
     unsigned int rawAddr = _Unwind_GetIP(ctx);
@@ -1121,7 +1125,7 @@ static            _Unwind_Reason_Code trace_func(struct _Unwind_Context *ctx, vo
 }
 
 #if 0
-static unsigned int _GetLibraryAddress(const char* libraryName)
+static guint      _GetLibraryAddress(const char* libraryName)
 {
     FILE* file = fopen("/proc/self/maps", "rt");
     if (file==NULL) {
@@ -1198,20 +1202,19 @@ _URC_FAILURE                  = 9   // unspecified failure of some kind
 */
         /*
         struct callStackSaver state;
-        //state.libAdjustment = _GetLibraryAddress("libs52android.so");
+        //state.libAdjustment = _GetLibraryAddress("libs52droid.so");
         state.libAdjustment = 0;
         state.crntFrame     = 0;
         state.ptrArr[0]     = 0;
 
 
-        _Unwind_Reason_Code code = _Unwind_Backtrace(trace_func, (void*)&state);
+        _Unwind_Reason_Code code = _Unwind_Backtrace(_trace_func, (void*)&state);
         PRINTF("After _Unwind_Backtrace() .. code=%i, nFrame=%i, frame=%x\n", code, state.crntFrame, state.ptrArr[0]);
         //*/
 
        // int nptrs = _get_backtrace((void**)&buffer, 128);
 
 }
-
 #endif // S52_USE_ANDROID
 
 static int        _backtrace(void)
@@ -1236,10 +1239,33 @@ static int        _backtrace(void)
 
     return TRUE;
 }
-
 #endif // S52_USE_BACKTRACE
 
+#ifdef _MINGW
+static void       _trapSIG(int sig)
+{
+    void  *buffer[100];
+    char **strings;
 
+    if (SIGINT == sig) {
+        PRINTF("Signal SIGINT(%i) cought .. setting up atomic to abort draw()\n", sig);
+        g_atomic_int_set(&_atomicAbort, TRUE);
+        return;
+    }
+
+    if (SIGSEGV == sig) {
+        PRINTF("Segmentation violation cought (%i) ..\n", sig);
+    } else {
+        PRINTF("other signal(%i) trapped\n", sig);
+    }
+
+
+    // shouldn't reach this !?
+    g_assert_not_reached();  // turn off via G_DISABLE_ASSERT
+
+    exit(sig);
+}
+#else  // _MINGW
 // signal
 static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 {
@@ -1299,12 +1325,12 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 
         _backtrace();
 
+#endif  //S52_USE_BACKTRACE
+
         // continue with normal sig handling
         _old_signal_handler_SIGSEGV.sa_sigaction(sig, info, secret);
 
         return;
-
-#endif  //S52_USE_BACKTRACE
     }
 
     // 15 - Termination (ANSI)
@@ -1350,6 +1376,7 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 */
 
 }
+#endif  // _MINGW
 
 static int        _getCellsExt(_extent* ext);
 static int        _initPROJ(void)
@@ -1465,9 +1492,11 @@ static int        _collect_CS_touch(_cell* c)
 DLL int    STD S52_loadLayer (const char *layername, void *layer, S52_loadObject_cb loadObject_cb);  // forward decl
 
 #ifdef S52_USE_DBUS
-static int        _initDBus(void);
+static int        _initDBus(void);  // forward decl
 #endif
-static int        _initSock(void); // froward
+#ifdef S52_USE_SOCK
+static int        _initSock(void);  // forward decl
+#endif
 
 #ifdef S52_USE_DOTPITCH
 DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb)
@@ -1491,11 +1520,14 @@ DLL int    STD S52_init(void)
         S52_initLog(err_cb);
     }
 
+#ifdef _MINGW
+#else
     // check if run as root
     if (0 == getuid()) {
         PRINTF("ERROR: do NOT run as SUPERUSER (root) .. exiting\n");
         exit(0);
     }
+#endif
 
     // check if init already done
     if (!_doInit) {
@@ -1517,6 +1549,10 @@ DLL int    STD S52_init(void)
 
     //////////////////////////////////////////////////////////
     // init signal handler
+#ifdef _MINGW
+    //signal(SIGINT,  _trapSIG);  //  2 - Interrupt (ANSI).
+    //signal(SIGSEGV, _trapSIG);  // 11 - Segmentation violation (ANSI).
+#else
     {
         struct sigaction sa;
 
@@ -1547,6 +1583,7 @@ DLL int    STD S52_init(void)
         //_cell *c = 0x0;
         //c->ext.S = INFINITY;
     }
+#endif
 
     ///////////////////////////////////////////////////////////
     // init global info
@@ -2868,8 +2905,8 @@ DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_
 
 #endif
 
-    if ( (NULL==layername) || (NULL==layer) || (NULL==_cellList)) {
-        PRINTF("ERROR: layername / ogrlayer / _cellList --> NULL\n");
+    if ((NULL==layername) || (NULL==layer)) {
+        PRINTF("ERROR: layername / layer NULL\n");
         return FALSE;
     }
 
@@ -3112,8 +3149,8 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
 
     S52_CHECK_INIT;
 
-    if ( (NULL==objname) || (NULL==shape) || (NULL==_cellList)) {
-        PRINTF("ERROR: objname / shape / _cellList --> NULL\n");
+    if ((NULL==objname) || (NULL==shape)) {
+        PRINTF("ERROR: objname / shape NULL\n");
         return FALSE;
     }
 
@@ -3512,7 +3549,8 @@ static int        _cullObj(_cell *c)
                 ++_nTotal;
 
                 // debug - anti-meridian, US5HA06M/US5HA06M.000
-                //if (103 == S57_getGeoID(geo)) {
+                //if
+                //(103 == S57_getGeoID(geo)) {
                 //    PRINTF("ISODGR01 found\n");
                 //}
 
@@ -3595,20 +3633,14 @@ static int        _cull(_extent ext)
         g_ptr_array_set_size(c->textList,     0);
     }
 
-/*
-#ifdef S52_USE_WORLD
-    // skip World if S52_MAR_DISP_WORLD off
-    guint worldOff = (TRUE == S52_MP_get(S52_MAR_DISP_WORLD)) ? 1 : 0;
-    guint cellIdx  = _cellList->len - 1 + worldOff;
-#else
-    guint cellIdx  = _cellList->len;
-#endif
-*/
     // all cells - larger region first (small scale)
     // Note: skip MARINERS' Object (those on layer 9)
     //for (guint i=cellIdx; i>0 ; --i) {
-    for (guint i=_cellList->len; i>0 ; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+    guint n = _cellList->len-1;
+    //for (guint i=_cellList->len; i>0 ; --i) {
+    for (guint i=n; i>0 ; --i) {
+        //_cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         if ((0==g_strcmp0(WORLD_SHP, c->filename->str)) && (FALSE==S52_MP_get(S52_MAR_DISP_WORLD)))
             continue;
@@ -3643,9 +3675,12 @@ static int        _drawRADAR()
 static int        _drawLayer(_extent ext, int layer)
 {
     // all cells --larger region first
-    for (guint i=_cellList->len; i>0 ; --i) {
+    guint n = _cellList->len-1;
+    //for (guint i=_cellList->len; i>0 ; --i) {
+    for (guint i=n; i>0 ; --i) {
         //_cell *c = &g_array_index(_cellList, _cell, i-1);
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+        //_cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
         if (TRUE == _intersec(c->ext, ext)) {
 
             // one layer
@@ -3701,7 +3736,9 @@ static int        _drawLights(void)
     // also light are drawn last (ie after all cells)
     // so a sector is not shoped by an other cell next to it
 
-    for (guint i=_cellList->len-1; i>0 ; --i) {
+    guint n = _cellList->len-1;
+    //for (guint i=_cellList->len-1; i>0 ; --i) {
+    for (guint i=n; i>0 ; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         // a cell can have no lights sector
@@ -3932,7 +3969,7 @@ static int        _draw()
 // draw object inside view
 // then draw object's text
 {
-    unsigned int n = _cellList->len-1;
+    guint n = _cellList->len-1;
     for (guint i=n; i>0; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
@@ -4246,9 +4283,8 @@ exit:
 #ifdef S52_USE_GV
 static int        _drawObj(const char *name)
 {
-    guint n = _cellList->len;
-
     // all cells --larger region first
+    guint n = _cellList->len;
     for (guint i=0; i<n; ++i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
@@ -4535,28 +4571,28 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
 
     S52_CHECK_MUTX;
 
+    /*
     if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
         PRINTF("WARNING: call failed, no cell loaded to project view .. use S52_loadCell() first\n");
         g_static_mutex_unlock(&_mp_mutex);
         g_assert(0);
         return FALSE;
     }
+    */
 
     //*
     if (ABS(cLat) > 90.0) {
-        //cLat = _view.cLat;
-        PRINTF("WARNING: cLat > 90, call failed (%f)\n", cLat);
+        PRINTF("WARNING: cLat outside [-90..+90](%f)\n", cLat);
         g_static_mutex_unlock(&_mp_mutex);
         g_assert(0);
         return FALSE;
     }
 
     if (ABS(cLon) > 180.0) {
-        //cLon = _view.cLon;
-        PRINTF("WARNING: cLon > -+ 180 (%f)\n", cLon);
-        //g_static_mutex_unlock(&_mp_mutex);
-        //g_assert(0);
-        //return FALSE;
+        PRINTF("WARNING: cLon outside [-180..+180] (%f)\n", cLon);
+        g_static_mutex_unlock(&_mp_mutex);
+        g_assert(0);
+        return FALSE;
     }
     //*/
 
@@ -4566,7 +4602,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
         if ((rNM < MIN_RANGE) || (rNM > MAX_RANGE)) {
             PRINTF("WARNING:  rNM outside limit (%f)\n", rNM);
             g_static_mutex_unlock(&_mp_mutex);
-            //g_assert(0);
+            g_assert(0);
             return FALSE;
         }
     }
@@ -4574,7 +4610,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     // FIXME: PROJ4 will explode here (INFINITY) for mercator
     // Note: must validate rNM first
     if ((ABS(cLat)*60.0 + rNM) > (90.0*60)) {
-        PRINTF("WARNING: rangeNM > 90*60 NM, call failed (%f)\n", rNM);
+        PRINTF("WARNING: rangeNM > 90*60 NM (%f)\n", rNM);
         g_static_mutex_unlock(&_mp_mutex);
         g_assert(0);
         return FALSE;
@@ -4584,7 +4620,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
         north = _view.north;
     } else {
         if ((north>=360.0) || (north<0.0)) {
-            PRINTF("WARNING: north outside limit (%f)\n", north);
+            PRINTF("WARNING: north outside [0..360[ (%f)\n", north);
             g_static_mutex_unlock(&_mp_mutex);
             g_assert(0);
             return FALSE;
@@ -4616,13 +4652,14 @@ DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *nort
     return_if_null(north);
     S52_CHECK_MUTX;
 
+    /*
     if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
         PRINTF("WARNING: call failed, no cell loaded to project view .. use S52_loadCell() first\n");
         g_static_mutex_unlock(&_mp_mutex);
         g_assert(0);
         return FALSE;
     }
-
+    */
 
     // update local var _view
     *cLat  = _view.cLat;
@@ -5002,7 +5039,8 @@ DLL int    STD S52_loadPLib(const char *plibName)
         _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
 
         _cell n;  // new cell
-        bzero(&n, sizeof(_cell));
+        //bzero(&n, sizeof(_cell));
+        memset(&n, 0, sizeof(_cell));
 
         // init new render bin
         for (int i=0; i<S52_PRIO_NUM; ++i) {
@@ -5706,7 +5744,8 @@ static S52_obj   *_getS52obj(unsigned int S57ID)
     struct _user_data  udata;
     udata.S57ID    = S57ID;
     udata.obj      = NULL;
-    unsigned int n = _cellList->len-1;
+
+    guint n = _cellList->len-1;
     for (guint i=n; i>0; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
         g_ptr_array_foreach(c->objList_supp, (GFunc)_compS57ID, &udata);
@@ -5777,7 +5816,8 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     S52_CHECK_MUTX;
 
     // here we can load mariners' object event if no ENC are loaded yet
-    if (NULL == _cellList || 0 == _cellList->len) {
+    //if (NULL == _cellList || 0 == _cellList->len) {
+    if (NULL == _marinerCell) {
         PRINTF("WARNING: no cell loaded .. no cell to project this object to\n");
         goto exit;
     }

@@ -11,25 +11,26 @@
 # SD 2012NOV04 - add Parson lib (simple JSON parser) to handle SOCK stream
 # SD 2012NOV05 - move sduc-git.txt note inside Makefile (bottom)
 # SD 2013AUG31 - add s52gtk3egl
+# SD 2014FEB11 - add s52eglw32, s52gtk2egl
 
 
 ##### TARGETS #########
 #all: s52glx         # OGR & GLX
-#all: s52eglx        # OGR & EGL & X11 (for testing GLES2)
-#all: s52eglarm      # OGR & EGL & ARM/Android (for testing GLES2 on ARM)
+#all: s52eglx        # OGR & EGL & X11   (for testing EGL/GLES2 on X)
+#all: s52eglarm      # OGR & EGL & ARM   (for testing EGL/GLES2 on ARM/Android)
+#all: s52eglw32      # OGR & EGL & Win32 (for testing EGL/GLES2 on Win32)
 #all: s52gv          # GV  (GTK)
 #all: s52gv2         # GV2 (GTK2)
-all: s52gtk2        # OGR & GTK2
+all: s52gtk2        # OGR & GTK2 & GL 1.x (broken)
 #all: s52gtk2p       # profiling
-#all: s52gtk3egl      # GTK3 & EGL
-#all: s52qt4         # OGR & Qt4 (same as s52gtk2 but run on Qt4)
-#all: s52win32       # same as s52gtk2, run on wine/win32 (MinGW)
+#all: s52gtk2gps     # build s52gtk2 for testing with live data comming from GPSD
+#all: s52gtk2egl     # GTK2 & EGL
+#all: s52gtk3egl     # GTK3 & EGL
+#all: s52qt4         # OGR & Qt4 (build s52gtk2 to run on Qt4)
+#all: s52win32       # build s52gtk2 to run on wine/win32 (MinGW)
 #all: s52clutter     # use COGL for rendering text
 #all: s52clutter.js  # use COGL for rendering text and Javascript
-#all: s52gtk2gps     # same as s52gtk2, used for testing with live data comming from GPSD
 
-#default: s52gtk2
-#default: s52win32
 
 SHELL = /bin/sh
 
@@ -41,7 +42,7 @@ DBG1   = -O0 -g1 -Wall -pedantic -Wextra
 DBG2   = -O0 -g2 -Wall -pedantic -Wextra
 DBG3   = -O0 -g3 -Wall -pedantic -Wextra -ggdb3 -rdynamic -fstack-protector-all
 DBGOFF = -DG_DISABLE_ASSERT
-DBG    = $(DBG3)
+DBG    = $(DBG2)
 
 # from clutter
 # Compiler flags: -Werror -Wall -Wshadow -Wcast-align -Wno-uninitialized -Wempty-body -Wformat-security -Winit-self
@@ -68,11 +69,16 @@ s52win32 : CC    = $(MINGW)gcc -g -O0 -Wall -DG_DISABLE_ASSERT -D_MINGW -std=c99
 s52win32 : CXX   = $(MINGW)g++ -g -O0 -Wall -DG_DISABLE_ASSERT -D_MINGW
 #s52win32 : CC    = winegcc -g -std=c99 -O0 -Wall -DG_DISABLE_ASSERT -D_MINGW
 
+#s52eglw32: MINGW = /usr/bin/i686-w64-mingw32-
+s52eglw32: MINGW = /usr/bin/i586-mingw32msvc-
+s52eglw32: CC    = $(MINGW)gcc -g -O0 -Wall -DG_DISABLE_ASSERT -D_MINGW -m32 -std=gnu99
+s52eglw32: CXX   = $(MINGW)g++ -g -O0 -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
+
 s52win32 : CXX  = $(CC)     # hack
 s52gv    : CXX  = $(CC)     # hack
 s52gv2   : CXX  = $(CC)     # hack
 
-s52win32 : LIBWIN32PATH = ../../mingw
+s52win32 s52eglw32: LIBWIN32PATH = ../../mingw
 
 TAGS     = ctags
 
@@ -176,7 +182,8 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0` \
 # GL - EGL/GL 1.x broken
 #s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl gl`
 # -DS52_USE_WORLD
-s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl glesv2` \
+s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
+                  `pkg-config  --cflags glib-2.0 lcms egl glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
                   -I/usr/include/freetype2       \
@@ -300,11 +307,36 @@ s52win32 : CFLAGS   = -mms-bitfields                         \
                       -I$(GDALPATH)frmts/iso8211/            \
                       -DS52_USE_DOTPITCH                     \
                       -DS52_USE_FTGL                         \
+                      -DS52_USE_OPENGL_VBO                   \
                       -DS52_USE_GLIB2                        \
                       -DS52_USE_PROJ                         \
                       -DS52_USE_OGR_FILECOLLECTOR            \
                       -DS52_USE_LOG                          \
                       -DS52_DEBUG $(DBG)
+
+s52eglw32 : GDALPATH = ../../../gdal/gdal-1.7.2-mingw
+s52eglw32 : CFLAGS   = -mms-bitfields                         \
+                      -I../../mingw/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
+                      -I../../mingw/gtk+-bundle_2.16.6-20100912_win32/lib/glib-2.0/include \
+                      -I../../mingw/include                   \
+                      -I$(GDALPATH)/ogr                       \
+                      -I$(GDALPATH)/port                      \
+                      -I$(GDALPATH)/gcore                     \
+                      -I$(GDALPATH)/frmts/iso8211/            \
+                      -I$(GDALPATH)/alg                       \
+                  -I./lib/freetype-gl            \
+                  -I./lib/tesselator             \
+                  -I./lib/parson                 \
+                  -DS52_USE_PROJ                 \
+                  -DS52_USE_GLIB2                \
+                  -DS52_USE_DOTPITCH             \
+                  -DS52_USE_OPENGL_VBO           \
+                  -DS52_USE_EGL                  \
+                  -DS52_USE_GLES2                \
+                  -DS52_USE_FREETYPE_GL          \
+                  -DS52_USE_OGR_FILECOLLECTOR    \
+                  -DS52_USE_SYM_VESSEL_DNGHL     \
+                  -DS52_DEBUG $(DBG)
 
 
 ############### LIBS setup ##############################
@@ -323,8 +355,8 @@ s52glx : LIBS = `pkg-config  --libs glib-2.0 lcms` \
                 -lGL -lGLU
 
 #s52gtk3egl s52eglx: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl glu gl freetype2`
-s52gtk3egl s52eglx: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl glesv2 freetype2` \
-                           `gdal-config --libs` -lproj
+s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl glesv2 freetype2` \
+                                      `gdal-config --libs` -lproj
 
 # check this; gv use glib-1 S52 use glib-2
 s52gv  : LIBS = `glib-config --libs`               \
@@ -343,6 +375,7 @@ s52gv2 : LIBS = `pkg-config  --libs glib-2.0 lcms` \
 
 s52glx        : libS52.so    test/s52glx
 s52eglx       : libS52.so    test/s52eglx
+s52gtk2egl    : libS52.so    test/s52gtk2egl
 s52gtk3egl    : libS52.so    test/s52gtk3egl
 s52eglarm     : $(S52DROIDLIB)/libS52.a     test/s52eglarm
 s52gv         : libS52gv.so  test/s52gv
@@ -354,7 +387,7 @@ s52clutter.js : libS52.so    test/s52clutter.js
 s52qt4        : libS52.so    test/s52qt4
 s52win32      : libS52.dll   test/s52win32 s52win32fini
 #s52win32gps  : libS52.dll   test/s52win32gps s52win32fini
-#s52win32     : libS52.dll   test/s52win32
+s52eglw32     : libS52.dll   test/s52eglw32
 s52gtk2gps    : libS52.so    test/s52gtk2gps
 
 
@@ -385,20 +418,28 @@ libS52gv.so: $(OBJS_S52) $(OBJS_GV)
 
 #-static-libgcc
 #	$(LIBWIN32PATH)/libftgl.a -lfreetype6
-#s52win32  : GTKPATH = $(HOME)/dev/wine/drive_c/Ruby/lib/GTK/bin
-s52win32  : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
-s52win32  : LIBS    = $(LIBWIN32PATH)/libproj.a     \
-                      $(LIBWIN32PATH)/libftgl.a     \
-                      $(LIBWIN32PATH)/libgdal-1.dll \
-                      $(LIBWIN32PATH)/liblcms-1.dll
+s52win32 s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
+s52win32 s52eglw32 : LIBS    = $(LIBWIN32PATH)/libproj.a     \
+                               $(LIBWIN32PATH)/libftgl.a     \
+                               $(LIBWIN32PATH)/libgdal-1.dll \
+                               $(LIBWIN32PATH)/liblcms-1.dll
 
-libS52.dll: $(OBJS_S52)
-	$(MINGW)objcopy --redefine-sym S52raz=_S52raz                     \
+#libS52.dll: $(OBJS_S52)
+#	$(MINGW)objcopy --redefine-sym S52raz=_S52raz                     \
+#	--redefine-sym S52razLen=_S52razLen S52raz-3.2.rle.o S52raz-3.2.rle.o
+#	 $(MINGW)g++ -g -mms-bitfields -O0 -Wall  -shared -Wl,--add-stdcall-alias $(OBJS_S52) \
+#	 $(LIBS)                               \
+#	-L$(GTKPATH) -lglib-2.0-0 -lfreetype6  \
+#	-lopengl32 -lglu32 -o $@
+
+libS52.dll: $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
+	$(MINGW)objcopy --redefine-sym S52raz=_S52raz                         \
 	--redefine-sym S52razLen=_S52razLen S52raz-3.2.rle.o S52raz-3.2.rle.o
-	 $(MINGW)g++ -g -mms-bitfields -O0 -Wall  -shared -Wl,--add-stdcall-alias $(OBJS_S52) \
-	 $(LIBS)                               \
-	-L$(GTKPATH) -lglib-2.0-0 -lfreetype6  \
-	-lopengl32 -lglu32 -o $@
+	 $(MINGW)g++ -g -mms-bitfields -O0 -Wall  -shared -Wl,--add-stdcall-alias \
+	 $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)               \
+	 $(LIBS)                                                                  \
+	-L$(GTKPATH) -lglib-2.0-0 -lfreetype6                                     \
+	$(LIBWIN32PATH)/libEGL.lib $(LIBWIN32PATH)/libGLESv2.lib -o $@
 
 
 ############### Test ##############################
@@ -410,6 +451,9 @@ test/s52glx:
 
 test/s52eglx:
 	(cd test; make s52eglx)
+
+test/s52gtk2egl:
+	(cd test; make s52gtk2egl)
 
 test/s52gtk3egl:
 	(cd test; make s52gtk3egl)
@@ -446,6 +490,10 @@ test/s52win32:
 
 test/s52win32gps:
 	(cd test; make s52win32gps)
+
+test/s52eglw32:
+	(cd test; make s52eglw32)
+
 
 s52win32fini:
 	$(MINGW)strip libS52.dll

@@ -14,8 +14,10 @@
 #all: s52gv2        # GV2 (OpenEV2 / GTK2)  broken
 #all: s52gtk2       # GTK2 & OGR
 #all: s52gtk2p      # GTK2 & OGR (profiler)
+#all: s52gtk2egl    # GTK2 & EGL
 all: s52gtk3egl     # GTK3 & EGL
 #all: s52win32      # same as s52gtk2 but run on wine
+#all: s52eglw32     # same as s52gtk2egl but run on wine
 #all: s52clutter.js # same as s52gtk2 but use Clutter & Javascript (experimental)
 					# also used to build S52/doc/S52-0.1.gir
 
@@ -24,12 +26,18 @@ CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=gnu99
 #CC   = g++ -fPIC -O0 -g -Wall
 CXX   = g++ -O0 -g -Wall
 
-#s52win32 : CC = /usr/bin/i586-mingw32msvc-gcc -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
-s52win32 : CC = /usr/bin/i586-mingw32msvc-gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
-#s52win32 : CC = /usr/bin/i586-mingw32msvc-g++ -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
-s52win32 : CXX = /usr/bin/i586-mingw32msvc-g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
+MINGW = /usr/bin/i586-mingw32msvc-
+#MINGW = /usr/bin/i686-w64-mingw32-
+#s52win32 : CC = $(MINGW)gcc -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
+s52win32 : CC = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
+#s52win32 : CC = $(MINGW)g++ -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
+s52win32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
 s52win32 : GTKPATH   = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
 s52win32 : GTKGLPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/bin
+
+s52eglw32 : CC  = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
+s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
+s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32
 
 TAGS = ctags
 
@@ -57,7 +65,7 @@ s52eglarm : S52DROIDLIBS       = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/and
 ############### CFLAGS setup ##############################
 #
 #
-# GTK2 / WIN32
+
 CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
          -I..                                        \
          -DS52_USE_GTK2                              \
@@ -75,10 +83,13 @@ s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_US
 # -DS52_USE_WORLD     - load world shapefile
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps` \
-                      -DS52_USE_DOTPITCH -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2
+                      -DS52_USE_DOTPITCH -DS52_USE_EGL -DS52_USE_GLES2 -DS52_USE_AFGLOW -DUSE_AIS
 
+# same as s52eglx, but "gtk+-2.0" is added - no AIS
+s52gtk2egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` \
+                      -DS52_USE_DOTPITCH -DS52_USE_EGL -DS52_USE_GLES2
 # same as s52eglx, but "gtk+-3.0" is added
-s52gtk3egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` \
+s52gtk3egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-3.0 libgps` \
                       -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2
 
 # -DS52_USE_TEGRA2 (Xoom)
@@ -129,8 +140,11 @@ OGR_LIBS  = `gdal-config --libs`
 
 s52eglx   : LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS)
 
+# same as s52eglx, add "gtk+-2.0"
+s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` $(S52_LIBS)
+
 # same as s52eglx, add "gtk+-3.0"
-s52gtk3egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` $(S52_LIBS)
+s52gtk3egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-3.0 libgps` $(S52_LIBS)
 
 s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a                 \
                       $(S52DROIDLIBS)/libgobject-2.0.a             \
@@ -154,12 +168,54 @@ s52glx: s52glx.c
 s52eglx: s52egl.c s52ais.c
 	$(CC) $(CFLAGS) s52egl.c s52ais.c $(LIBS) -o $@
 
+s52gtk2egl: s52gtk2egl.c
+	$(CC) $(CFLAGS) s52gtk2egl.c $(LIBS) -o $@
+
 s52gtk3egl: s52gtk3egl.c
 	$(CC) $(CFLAGS) s52gtk3egl.c $(LIBS) -o $@
 	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
 
 
-############### DEPRECATED build: Android (Android.mk do the build) ##############################
+
+
+s52gv:  LIBS = $(S52_LIBS) $(GTK_LIBS) $(GV_LIBS) $(OGR_LIBS)
+s52gv:  s52gv.c
+	(cd $(OPENEV_HOME); make gvtest; $(CC) -shared *.o -o libgv.so)
+	$(CC) $(CFLAGS) s52gv.c $(LIBS) -o $@
+
+s52gv2: LIBS = $(S52_LIBS) $(GTK2LIBS) $(GV2LIBS) $(OGR_LIBS)
+s52gv2: s52gv.c
+	$(CC) $(CFLAGS) s52gv.c $(LIBS) -o $@
+
+testmain:
+	$(CC) $(LDFLAGS) testmain.o $(LIBS)  -o $@
+
+s52gtk2: LIBS = $(S52_LIBS) $(GTK2LIBS)  -ldl
+s52gtk2: s52gtk2.c ../S52.h
+	$(CC) $(CFLAGS) $(GL__LIBS) s52gtk2.c $(LIBS) -o $@
+
+#libs52gps.so: s52gps.h s52gps.c
+#	$(CC) $(CFLAG) -fPIC -shared -I.. s52gps.c `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1` -o $@
+libs52gps.so: s52gps.h s52gps.c
+	$(CC) $(CFLAGS) -fPIC -shared -I.. s52gps.c -o $@
+
+s52gtk2gps: LIBS = $(S52_LIBS) $(GTK2LIBS) $(OGR_LIBS) $(GL__LIBS) -Wl,-rpath . -L. -ls52gps
+s52gtk2gps: libs52gps.so s52gtk2.c ../S52.h
+	$(CC) $(CFLAGS) s52gtk2.c $(LIBS) -o $@
+
+# -unix: deprecated
+s52qt4: s52qt4.pro s52qt4.cpp ../S52.h
+	qmake -o Makefile.qt4 s52qt4.pro
+	make -f Makefile.qt4
+
+s52gtk2p: LIBS = $(GTK2LIBS) $(OGR_LIBS) $(GL__LIBS)
+s52gtk2p: s52gtk2.c ../S52.h
+	$(CC) $(CFLAGS) -pg s52gtk2.c ../*.o $(LIBS) -lproj -llcms -o $@
+
+#$(CC) $(CFLAGS) -nodefaultlibs -nostartfiles s52gtk2.c ../*.o $(LIBS) -lproj -llcms -o $@
+
+
+############### DEPRECATED build: Android (Android.mk do the build now) ##############################
 
 #s52eglarm: libs52gps.so s52egl.c ../S52.h -Wl,-allow-shlib-undefin
 # -Wl,--entry=_start -Wl,-rpath=/system/lib -nostdlib
@@ -232,50 +288,6 @@ s52eglarm: s52ais
 # Note: to start s52ui (the HTML UI that replace sl4agps) in android by hand
 # adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/.s52ui
 # adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/android.app.NativeActivity
-############### build: Android ##############################
-
-
-
-
-s52gv:  LIBS = $(S52_LIBS) $(GTK_LIBS) $(GV_LIBS) $(OGR_LIBS)
-s52gv:  s52gv.c
-	(cd $(OPENEV_HOME); make gvtest; $(CC) -shared *.o -o libgv.so)
-	$(CC) $(CFLAGS) s52gv.c $(LIBS) -o $@
-
-s52gv2: LIBS = $(S52_LIBS) $(GTK2LIBS) $(GV2LIBS) $(OGR_LIBS)
-s52gv2: s52gv.c
-	$(CC) $(CFLAGS) s52gv.c $(LIBS) -o $@
-
-testmain:
-	$(CC) $(LDFLAGS) testmain.o $(LIBS)  -o $@
-
-#s52gtk2: LIBS = $(S52_LIBS) $(GTK2LIBS) $(GL__LIBS) -ldl
-s52gtk2: LIBS = $(S52_LIBS) $(GTK2LIBS)  -ldl
-s52gtk2: s52gtk2.c ../S52.h
-	$(CC) $(CFLAGS) $(GL__LIBS) s52gtk2.c $(LIBS) -o $@
-
-#libs52gps.so: s52gps.h s52gps.c
-#	$(CC) $(CFLAG) -fPIC -shared -I.. s52gps.c `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1` -o $@
-libs52gps.so: s52gps.h s52gps.c
-	$(CC) $(CFLAGS) -fPIC -shared -I.. s52gps.c -o $@
-
-s52gtk2gps: LIBS = $(S52_LIBS) $(GTK2LIBS) $(OGR_LIBS) $(GL__LIBS) -Wl,-rpath . -L. -ls52gps
-s52gtk2gps: libs52gps.so s52gtk2.c ../S52.h
-	$(CC) $(CFLAGS) s52gtk2.c $(LIBS) -o $@
-
-# -unix: deprecated
-s52qt4: s52qt4.pro s52qt4.cpp ../S52.h
-	qmake -o Makefile.qt4 s52qt4.pro
-	make -f Makefile.qt4
-
-
-s52gtk2p: LIBS = $(GTK2LIBS) $(OGR_LIBS) $(GL__LIBS)
-s52gtk2p: s52gtk2.c ../S52.h
-	$(CC) $(CFLAGS) -pg s52gtk2.c ../*.o $(LIBS) -lproj -llcms -o $@
-
-#$(CC) $(CFLAGS) -nodefaultlibs -nostartfiles s52gtk2.c ../*.o $(LIBS) -lproj -llcms -o $@
-
-
 
 
 ############### profiling ##############################
@@ -304,6 +316,11 @@ s52win32: LIBS = $(S52_LIBS) -L$(GTKPATH) -L$(GTKGLPATH)         \
                  -lglib-2.0-0 -lgobject-2.0-0 -lglu32 -lopengl32 \
                  -lgthread-2.0-0
 
+s52eglw32: LIBS = $(S52_LIBS) -L$(GTKPATH)/bin                \
+                 -lgtk-win32-2.0-0 -lgdk-win32-2.0-0          \
+                 -lglib-2.0-0 -lgobject-2.0-0 -lgthread-2.0-0 \
+				 $(GTKPATH)/../libEGL.lib
+
 #../../../mingw/libgps.a
 
 
@@ -321,10 +338,20 @@ s52win32: CFLAGS = -DS52_USE_GTK2                                               
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/include/gtkglext-1.0              \
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/lib/gtkglext-1.0/include
 
-#s52win32: s52gtk2.c  ../S52.h
-#	$(CXX) $(CFLAGS) -I.. s52gtk2.c $(LIBS) -o s52gtk2.exe
+s52eglw32:CFLAGS = -DS52_USE_GTK2                    \
+                   -DS52_USE_GLIB2                   \
+                   -DS52_USE_DOTPITCH                \
+                   -mms-bitfields                    \
+                   -I$(GTKPATH)/../include           \
+                   -I$(GTKPATH)/include/gtk-2.0      \
+                   -I$(GTKPATH)/include/glib-2.0     \
+				   -I$(GTKPATH)/include/cairo        \
+				   -I$(GTKPATH)/include/pango-1.0    \
+				   -I$(GTKPATH)/include/atk-1.0      \
+                   -I$(GTKPATH)/lib/glib-2.0/include \
+                   -I$(GTKPATH)/lib/gtk-2.0/include
 
-s52win32: s52gtk2.c  ../S52.h
+s52win32: s52gtk2.c ../S52.h
 	$(CC) $(CFLAGS) -I.. s52gtk2.c $(LIBS) -o s52gtk2.exe
 
 s52win32gps: libs52gps.dll s52gtk2.c  ../S52.h
@@ -336,6 +363,9 @@ libs52gps.dll: s52gps.h s52gps.c
 	 s52gps.o libgps.a -L$(WIN32PATH) -lglib-2.0-0  -L/usr/lib32/wine -lws2_32 -o $@
 
 #	$(CXX) -shared -Wl,--add-stdcall-alias -Wl,--subsystem,windows -Wl,-rpath .. -L.. -lS52
+
+s52eglw32: s52gtk2egl.c ../S52.h
+	$(CC) $(CFLAGS) -I.. s52gtk2egl.c $(LIBS) -o s52eglw32.exe
 
 
 
@@ -386,7 +416,7 @@ libS52-1.0.so: ../libS52.so ../S52.h
 
 clean:
 	rm -f s52glx s52eglx s52gv s52gv2 s52gtk2 s52gtk2p s52gtk2.exe s52qt4 *.o *.so \
-    s52gtk2gps S52-1.0.* s52eglx s52ais sl4agps s52gtk3egl
+    s52gtk2gps S52-1.0.* s52eglx s52ais sl4agps s52gtk2egl s52gtk3egl s52eglw32.exe
 
 distclean: clean
 	rm -f sl4agps.cfg android/dist/sdcard/s52droid/bin/s52ais android/dist/sdcard/s52droid/bin/sl4agps

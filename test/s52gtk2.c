@@ -33,10 +33,11 @@
 gboolean update_cb(void *dummy);
 #endif
 
-#define  g_print printf     // prevent writing help / dump to log
+#define  g_print printf     // prevent writing help() / dump() to log
 
-#if _MINGW
-//#define  g_print printf     // prevent writing help / dump to log
+//#if _MINGW
+#ifdef _MINGW
+//#define  g_print printf     // prevent writing help() / dump() to log
 #define  g_sprintf sprintf
 #else
 #include <glib.h>           // g_print()
