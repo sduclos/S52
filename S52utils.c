@@ -251,14 +251,16 @@ int      S52_initLog(S52_error_cb err_cb)
 // set tmp log file
 {
     _err_cb          = err_cb;
-    _oldPrintHandler = g_set_print_handler(_S52_printf);
 
 #ifdef S52_USE_LOG
     GError *error = NULL;
     _log = g_file_open_tmp("XXXXXX", NULL, &error);
     if (-1 == _log) {
         PRINTF("g_file_open_tmp(): failed\n");
+    } else {
+        PRINTF("tmp dir:%s\n", g_get_tmp_dir());
     }
+    _oldPrintHandler = g_set_print_handler(_S52_printf);
 #else
     PRINTF("NOTE: no LOG, compiler flags 'S52_USE_LOG' not set\n");
 #endif
