@@ -20,9 +20,7 @@
     along with OpENCview.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef S52AIS_STANDALONE
 #include "s52ais.h"
-#endif
 
 #include "S52.h"            // S52_*(),
 
@@ -37,7 +35,8 @@
 #include <glib/gprintf.h>   // g_sprintf()
 #include <glib/gstdio.h>    // g_stat()
 
-static GThread *_gpsClientThread = NULL;
+static GThread   *_gpsClientThread = NULL;
+static GMainLoop *_main_loop       = NULL;
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -162,7 +161,7 @@ static GStaticMutex       _ais_list_mutex = G_STATIC_MUTEX_INIT;  // protect _ai
 
 #define AIS_SILENCE_MAX 600   // sec of silence from an AIS before deleting it
 
-//#define MAX_AFGLOW_PT (15 * 60)   // 15 min trail @ 1 pos per sec - trail too long 
+//#define MAX_AFGLOW_PT (15 * 60)   // 15 min trail @ 1 pos per sec - trail too long
 #define MAX_AFGLOW_PT (12 * 20)     // 12 min @ 1 pos per 5 sec
 //#define MAX_AFGLOW_PT 10          // debug
 //#define MAX_AFGLOW_PT 100         // debug
@@ -188,7 +187,7 @@ static struct sigaction _old_signal_handler_SIGTERM;
 #endif
 
 #ifdef S52_USE_ANDROID
-#define GPSD_HOST "192.168.1.66"  // connect to GPSD on network
+#define GPSD_HOST "192.168.1.66"  // connect to GPSD on local network
 #else
 #define GPSD_HOST "localhost"     // connect to local GPSD
 #endif
@@ -199,7 +198,7 @@ static struct sigaction _old_signal_handler_SIGTERM;
 static char _localhost[] = "127.0.0.1";
 #define S52_PORT            2950
 #include <gio/gio.h>
-static GSocketConnection  *_s52_connection = NULL;
+static GSocketConnection *_s52_connection = NULL;
 #define BUFSZ 2048
 static char  _response[BUFSZ];
 static char  _params  [BUFSZ];  // JSON
@@ -210,7 +209,7 @@ static GTimeVal _timeTick;
 
 //#define TB "\\t"  // Tabulation
 //#define NL "\\n"  // New Line
-#define NL '\n'  // New Line - break JSNON string if build with S52_USE_SOCK
+#define NL '\n'  // New Line - break JSON string if build with S52_USE_SOCK
 
 #ifdef S52_USE_DBUS
 // DBUS messaging
@@ -420,8 +419,7 @@ static int           _initDBus(void)
 #ifdef S52_USE_SOCK
 static GSocketConnection *_s52_init_sock(char *hostname, int port)
 {
-
-    //g_print("_init_s52_sock(): starting ..\n");
+    g_print("s52ais:_init_s52_sock(): starting ..\n");
 
     GSocketClient *client = g_socket_client_new();
     if (NULL == client) {
@@ -430,7 +428,7 @@ static GSocketConnection *_s52_init_sock(char *hostname, int port)
     }
 
     GSocketConnectable *connectable = g_network_address_new(hostname, port);
-    if (NULL == client) {
+    if (NULL == connectable) {
         g_print("s52ais:_s52_init_sock(): connectable NULL  ..\n");
         return NULL;
     }
@@ -478,7 +476,7 @@ static char         *_s52_send_cmd(const char *command, const char *params)
     }
     _response[n] = '\0';
 
-    //g_print("s52ais.c:_s52_send_cmd(): sending:%s", _response);
+    //g_print("s52ais:_s52_send_cmd(): sending:%s", _response);
 
     gssize szsnd = g_socket_send_with_blocking(socket, _response, n, FALSE, NULL, &error);
     if ((NULL!=error) || (0==szsnd) || (-1==szsnd)) {
@@ -494,7 +492,7 @@ static char         *_s52_send_cmd(const char *command, const char *params)
         return NULL;
     }
 
-    //g_print("s52ais.c:_s52_send_cmd(): sended:%s", _response);
+    //g_print("s52ais:_s52_send_cmd(): sended:%s", _response);
 
     // wait response - blocking socket
     int szrcv = g_socket_receive_with_blocking(socket, _response, BUFSZ, TRUE, NULL, &error);
@@ -567,6 +565,7 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
 
     {   // NEW AIS (not found hence new)
         _ais_t newais;
+        __builtin_bzero(&newais, sizeof(_ais_t));
         newais.mmsi     = mmsi;
         newais.status   = -1;     // 0 indicate that status form report is needed
         //newais.name[AIS_SHIPNAME_MAXLEN + 1] = '\0';
@@ -585,14 +584,17 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
             if (NULL != resp) {
                 sscanf(resp, "[ %lu", (long unsigned int *) &newais.vesselH);
             }
+            g_print("s52ais:_getAIS(): new ownshpH:%lu\n", (long unsigned int) newais.vesselH);
         } else {
             gchar *resp = _encodeNsend("S52_newVESSEL", "%i,\"%s\"", 2, newais.name);
             if (NULL != resp) {
                 sscanf(resp, "[ %lu", (long unsigned int *) &newais.vesselH);
             }
-            g_printf("s52ais:_getAIS(): new vesselH:%lu\n", (long unsigned int) newais.vesselH);
+            g_print("s52ais:_getAIS(): new vesselH:%lu\n", (long unsigned int) newais.vesselH);
         }
-#else
+
+#else   // S52_USE_SOCK
+
         // debug: make ferry acte as ownshp
         if (OWNSHIP == mmsi) {
             newais.vesselH = S52_newOWNSHP(newais.name);
@@ -602,7 +604,8 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
             //int vesrce = 3;  // VTS
             newais.vesselH = S52_newVESSEL(vesrce, newais.name);
         }
-#endif
+
+#endif  // S52_USE_SOCK
 
         // new AIS failed
         if (NULL == newais.vesselH) {
@@ -615,25 +618,30 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         // debug: make ferry acte as ownshp
         if (OWNSHIP == mmsi) {
             gchar *resp = _encodeNsend("S52_newMarObj", "\"%s\",%i,%i", "afgshp", S52_LINES, MAX_AFGLOW_PT);
-            if (NULL != resp)
+            if (NULL != resp) {
                 sscanf(resp, "[ %lu", (long unsigned int *) &newais.afglowH);
+            }
+            g_print("s52ais:_getAIS(): new afglowH:%lu\n", (long unsigned int) newais.afglowH);
 
         } else {
             gchar *resp = _encodeNsend("S52_newMarObj", "\"%s\",%i,%i", "afgves", S52_LINES, MAX_AFGLOW_PT);
-            if (NULL != resp)
+            if (NULL != resp) {
                 sscanf(resp, "[ %lu", (long unsigned int *) &newais.afglowH);
-
-            g_printf("s52ais:_getAIS(): new afglowH:%lu\n", (long unsigned int) newais.afglowH);
+            }
+            g_print("s52ais:_getAIS(): new afglowH:%lu\n", (long unsigned int) newais.afglowH);
 
         }
-#else
+
+#else   // S52_USE_SOCK
+
         // debug: make ferry acte as ownshp
         if (OWNSHIP == mmsi)
             newais.afglowH = S52_newMarObj("afgshp", S52_LINES, MAX_AFGLOW_PT, NULL, NULL);
         else
             newais.afglowH = S52_newMarObj("afgves", S52_LINES, MAX_AFGLOW_PT, NULL, NULL);
 
-#endif
+#endif  // S52_USE_SOCK
+
         if (NULL == newais.afglowH) {
             g_print("s52ais:_getAIS(): new afglowH fail\n");
             return NULL;
@@ -649,11 +657,6 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         _signal_newVESSEL(_dbus, newais.vesselH, newais.name);
 #endif
 
-    }
-
-    // can't be NULL
-    if (NULL == ais) {
-        g_assert(0);
     }
 
     return ais;
@@ -672,7 +675,6 @@ static int           _delAIS    (unsigned int mmsi)
     return FALSE;
 }
 
-#if 0
 static int           _setAISInfo(unsigned int mmsi, unsigned int imo, char *callsign,
                                  unsigned int shiptype,
                                  unsigned int month, unsigned int day, unsigned int hour, unsigned int minute,
@@ -689,7 +691,6 @@ static int           _setAISInfo(unsigned int mmsi, unsigned int imo, char *call
 
     return TRUE;
 }
-#endif
 
 static int           _setAISPos (unsigned int mmsi, double lat, double lon, double heading)
 {
@@ -698,7 +699,6 @@ static int           _setAISPos (unsigned int mmsi, double lat, double lon, doub
         return FALSE;
 
     g_get_current_time(&ais->lastUpdate);
-
 
 #ifdef S52_USE_SOCK
     {
@@ -945,15 +945,13 @@ static int           _dumpAIS(void)
 }
 
 static int           _updateTimeTag(void)
-// then adjust time tag of AIS
+// then update time tag of AIS
 {
     if (NULL == _ais_list)
         return FALSE;
 
     if (0 == _ais_list->len) {
         //g_print("_updateTimeTag(): no vessel - check if GPSD is on-line\nFIXME: reconnect to GPSD!!!!\n");
-        //silent = TRUE;
-        //g_static_mutex_unlock(&_ais_list_mutex);
         return FALSE;
     }
 
@@ -972,9 +970,9 @@ static int           _updateTimeTag(void)
         _dumpAIS();
 
     for (unsigned int i=0; i<_ais_list->len; ++i) {
-        gchar         str[127+1] = {'\0'};
-        GTimeVal      now;
-        _ais_t *ais = &g_array_index(_ais_list, _ais_t, i);
+        gchar    str[127+1] = {'\0'};
+        GTimeVal now;
+        _ais_t  *ais = &g_array_index(_ais_list, _ais_t, i);
 
         g_get_current_time(&now);
 
@@ -998,26 +996,8 @@ static int           _updateTimeTag(void)
 
 static void          _updateAISdata(struct gps_data_t *gpsdata)
 {
-    /*
-    {   // debug mem leak - force new/del/_doCS/redraw cycle
-        static int mmsi_n = 0;
-        double dummy[3]= {0.0, 0.0, 0.0};
-        //S52_objHandle dumb = S52_newMarObj("marfea", S52_POINT_T, 1, dummy, NULL);
-        //S52_objHandle dumb = S52_newMarObj("marfea", S52_POINT_T, 0, NULL, NULL);
-        //S52_delMarObj(dumb);
-        printf("mmsi_n: %i\n", mmsi_n++);
 
-        // force redrawn all the stuff
-        //gtk_widget_queue_draw(_win);
-
-        return;
-    }
-    */
-
-    // debug
-    //int s = gpsdata->set & AIS_SET;
-    //g_print("set = %i, ais.type = %u, tag = %s\n", s, gpsdata->ais.type, gpsdata->tag);
-
+/*
 #ifdef S52_USE_SOCK
     if (FALSE == _s52_connection) {
         _s52_connection = _s52_init_sock(_localhost, S52_PORT);
@@ -1025,181 +1005,10 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
             return;
     }
 #endif
-
-    // Types 1,2,3 - Common navigation info
-    if (1==gpsdata->ais.type || 2==gpsdata->ais.type || 3==gpsdata->ais.type) {
-        double lat     = gpsdata->ais.type1.lat    / 600000.0;
-        double lon     = gpsdata->ais.type1.lon    / 600000.0;
-        double course  = gpsdata->ais.type1.course / 10.0;
-        double speed   = gpsdata->ais.type1.speed  / 10.0;
-        double heading = gpsdata->ais.type1.heading;
-        int    turn    = gpsdata->ais.type1.turn;	          // signed (int): rate of turn
-        int    status  = gpsdata->ais.type1.status;
-
-        //printf("mmsi:%i, lat:%f, lon:%f\n", gpsdata->ais.mmsi, lat, lon);
-
-        // debug
-        //if (0 == firstmmsi)
-        //    firstmmsi = gpsdata->ais.mmsi;
-        //else
-        //    if (gpsdata->ais.mmsi != firstmmsi)
-        //        return;
-
-        // heading not available
-        if (511.0 == heading)
-            heading = course;
-        // speed not available
-        if (102.3 == speed)
-            speed = 0.0;
-
-        //Turn rate is encoded as follows:
-        //  0       - not turning
-        //  1..126  - turning right at up to 708 degrees per minute or higher
-        // -1..-126 - turning left at up to 708 degrees per minute or higher
-        //  127     - turning right at more than 5deg/30s (No TI available)
-        // -127     - turning left at more than 5deg/30s (No TI available)
-        //  128     - (80 hex) indicates no turn information available (default)
-        _setAISSta(gpsdata->ais.mmsi, status, turn);
-        _setAISPos(gpsdata->ais.mmsi, lat, lon, heading);
-        _setAISVec(gpsdata->ais.mmsi, course, speed);
-
-        return;
-    }
-
-    // Type 4 - Base Station Report & Type 11 - UTC and Date Response
-    if (4 == gpsdata->ais.type) {
-        /*
-        unsigned int year;			// UTC year
-#define AIS_YEAR_NOT_AVAILABLE	0
-	    unsigned int month;			// UTC month
-#define AIS_MONTH_NOT_AVAILABLE	0
-	    unsigned int day;			// UTC day
-#define AIS_DAY_NOT_AVAILABLE	0
-	    unsigned int hour;			// UTC hour
-#define AIS_HOUR_NOT_AVAILABLE	24
-	    unsigned int minute;		// UTC minute
-#define AIS_MINUTE_NOT_AVAILABLE	60
-	    unsigned int second;		// UTC second
-#define AIS_SECOND_NOT_AVAILABLE	60
-	    bool accuracy;		        // fix quality
-	    int lon;			        // longitude
-	    int lat;			        // latitude
-	    unsigned int epfd;		    // type of position fix device
-	    //unsigned int spare;	    // spare bits
-	    bool raim;			        // RAIM flag
-	    unsigned int radio;		    // radio status bits
-        */
-        double lat = gpsdata->ais.type4.lat / 600000.0;
-        double lon = gpsdata->ais.type4.lon / 600000.0;
-
-        // ERROR in ISO date format, can't use ':' because its a speparator in
-        // attr pair list passed to label param
-        char label[AIS_SHIPNAME_MAXLEN+1];
-        g_snprintf(label, AIS_SHIPNAME_MAXLEN, "%4i-%02i-%02iT%02i:%02i:%02iZ",
-                gpsdata->ais.type4.year, gpsdata->ais.type4.month,  gpsdata->ais.type4.day,
-                gpsdata->ais.type4.hour, gpsdata->ais.type4.minute, gpsdata->ais.type4.second);
-
-        _setAISLab(gpsdata->ais.mmsi, label);
-
-        _setAISPos(gpsdata->ais.mmsi, lat, lon, 0.0);
-
-        return;
-    }
-
-    //Type 5 - Ship static and voyage related data
-    if (5 == gpsdata->ais.type) {
-
-        /*
-        unsigned int ais_version;  // AIS version level
-        unsigned int imo;  // IMO identification
-        char callsign[8];  // callsign
-
-#define AIS_SHIPNAME_MAXLEN 20
-        char shipname[AIS_SHIPNAME_MAXLEN+1];  // vessel name
-
-        unsigned int shiptype; // ship type code
-
-        // dimension
-        unsigned int to_bow;  // dimension to bow
-        unsigned int to_stern; // dimension to stern
-        unsigned int to_port;  // dimension to port
-        unsigned int to_starboard; // dimension to starboard
-
-        unsigned int epfd; // type of position fix deviuce
-
-        // ETA ?
-        unsigned int month;// UTC month
-        unsigned int day;  // UTC day
-        unsigned int hour; // UTC hour
-        unsigned int minute;  // UTC minute
-
-        unsigned int draught;  // draft in meters
-        char destination[21];  // ship destination
-
-        unsigned int dte;  // data terminal enable
-        //unsigned int spare; // spare bits
-        */
-
-        /*
-        _setAISInfo(gpsdata->ais.mmsi,
-                    gpsdata->ais.type5.imo,
-                    gpsdata->ais.type5.callsign,
-                    gpsdata->ais.type5.shiptype,
-                    gpsdata->ais.type5.month,
-                    gpsdata->ais.type5.day,
-                    gpsdata->ais.type5.hour,
-                    gpsdata->ais.type5.minute,
-                    gpsdata->ais.type5.draught,
-                    gpsdata->ais.type5.destination);
-        */
-
-        _setAISLab(gpsdata->ais.mmsi, gpsdata->ais.type5.shipname);
-
-        _setAISDim(gpsdata->ais.mmsi,
-                   gpsdata->ais.type5.to_bow,  gpsdata->ais.type5.to_stern,
-                   gpsdata->ais.type5.to_port, gpsdata->ais.type5.to_starboard);
-
-        return;
-    }
-
-    // Type 8 - Broadcast Binary Message
-    if (8 == gpsdata->ais.type) {
-        /*
-        unsigned int dac;       	// Designated Area Code
-	    unsigned int fid;       	// Functional ID
-#define AIS_TYPE8_BINARY_MAX	952	// 952 bits
-	    size_t bitcount;		    // bit count of the data
-        */
-        // followed by:
-        //union {
-        //    char bitdata[(AIS_TYPE8_BINARY_MAX + 7) / 8];  // 119.875 bytes (!), but (MAX+8)/8 == 120 bytes
-        //    ...
-
-        // AIS MSG TYPE 8: Broadcast Binary Message [mmsi:3160026, dac:316, fid:19]
-        // DAC 316 - Canada
-        // FID  19 - ???
-        g_print("s52ais:_updateAISdata(): AIS MSG TYPE 8 - Broadcast Binary Message [mmsi:%i, dac:%i, fid:%i, bitdata:%s]\n",
-                gpsdata->ais.mmsi, gpsdata->ais.type8.dac, gpsdata->ais.type8.fid, gpsdata->ais.type8.bitdata);
+*/
 
 
-        // add a dummy entry to signal that GPSD is on-line
-        //_setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 8 - Broadcast Binary Message");
-        _setAISLab(gpsdata->ais.mmsi,   "Broadcast Bin Msg");
-
-        return;
-    }
-
-	// Type 20 - Data Link Management Message
-    if (20 == gpsdata->ais.type) {
-        // add a dummy entry to signal that GPSD is on-line
-        //_setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 20 - Data Link Management Message");
-        _setAISLab(gpsdata->ais.mmsi,   "Data Link Mng Msg");
-
-        return;
-    }
-
-/* debug
-// gpsdata->set
+/* debug - gpsdata->set
 #define ONLINE_SET      (1u<<1)
 #define TIME_SET        (1u<<2)
 #define TIMERR_SET      (1u<<3)
@@ -1233,10 +1042,185 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
 #define ERROR_SET       (1u<<31)
 */
 
+    // debug
+    //g_print("s52ais:_updateAISdata(): ERROR_SET:%u, AIS_SET:%u [error:%s]\n",
+    //        gpsdata->ais.type & ERROR_SET, gpsdata->set & AIS_SET, gpsdata->error);
+
+
+    // Types 1,2,3 - Common navigation info
+    if (1==gpsdata->ais.type || 2==gpsdata->ais.type || 3==gpsdata->ais.type) {
+        double lat     = gpsdata->ais.type1.lat    / 600000.0;
+        double lon     = gpsdata->ais.type1.lon    / 600000.0;
+        double course  = gpsdata->ais.type1.course / 10.0;
+        double speed   = gpsdata->ais.type1.speed  / 10.0;
+        double heading = gpsdata->ais.type1.heading;
+        int    turn    = gpsdata->ais.type1.turn;	          // signed (int): rate of turn
+        int    status  = gpsdata->ais.type1.status;
+
+        //g_print("mmsi:%i, lat:%f, lon:%f\n", gpsdata->ais.mmsi, lat, lon);
+
+        // debug
+        //if (0 == firstmmsi)
+        //    firstmmsi = gpsdata->ais.mmsi;
+        //else
+        //    if (gpsdata->ais.mmsi != firstmmsi)
+        //        return;
+
+        // heading not available
+        if (511.0 == heading)
+            heading = course;
+        // speed not available
+        if (102.3 == speed)
+            speed = 0.0;
+
+        //Turn rate is encoded as follows:
+        //  0       - not turning
+        //  1..126  - turning right at up to 708 degrees per minute or higher
+        // -1..-126 - turning left at up to 708 degrees per minute or higher
+        //  127     - turning right at more than 5deg/30s (No TI available)
+        // -127     - turning left at more than 5deg/30s (No TI available)
+        //  128     - (80 hex) indicates no turn information available (default)
+        _setAISSta(gpsdata->ais.mmsi, status, turn);
+        _setAISPos(gpsdata->ais.mmsi, lat, lon, heading);
+        _setAISVec(gpsdata->ais.mmsi, course, speed);
+
+        return;
+    }
+
+    // Type 4 - Base Station Report & Type 11 - UTC and Date Response
+    if (4 == gpsdata->ais.type) {
+
+/*
+        unsigned int year;			// UTC year
+#define AIS_YEAR_NOT_AVAILABLE	0
+	    unsigned int month;			// UTC month
+#define AIS_MONTH_NOT_AVAILABLE	0
+	    unsigned int day;			// UTC day
+#define AIS_DAY_NOT_AVAILABLE	0
+	    unsigned int hour;			// UTC hour
+#define AIS_HOUR_NOT_AVAILABLE	24
+	    unsigned int minute;		// UTC minute
+#define AIS_MINUTE_NOT_AVAILABLE	60
+	    unsigned int second;		// UTC second
+#define AIS_SECOND_NOT_AVAILABLE	60
+	    bool accuracy;		        // fix quality
+	    int lon;			        // longitude
+	    int lat;			        // latitude
+	    unsigned int epfd;		    // type of position fix device
+	    //unsigned int spare;	    // spare bits
+	    bool raim;			        // RAIM flag
+	    unsigned int radio;		    // radio status bits
+*/
+
+        double lat = gpsdata->ais.type4.lat / 600000.0;
+        double lon = gpsdata->ais.type4.lon / 600000.0;
+
+        char label[AIS_SHIPNAME_MAXLEN+1];
+        g_snprintf(label, AIS_SHIPNAME_MAXLEN, "%4i-%02i-%02iT%02i:%02i:%02iZ",
+                gpsdata->ais.type4.year, gpsdata->ais.type4.month,  gpsdata->ais.type4.day,
+                gpsdata->ais.type4.hour, gpsdata->ais.type4.minute, gpsdata->ais.type4.second);
+
+        _setAISLab(gpsdata->ais.mmsi, label);
+        _setAISPos(gpsdata->ais.mmsi, lat, lon, 0.0);
+
+        return;
+    }
+
+    //Type 5 - Ship static and voyage related data
+    if (5 == gpsdata->ais.type) {
+
+/*
+        unsigned int ais_version;  // AIS version level
+        unsigned int imo;  // IMO identification
+        char callsign[8];  // callsign
+
+#define AIS_SHIPNAME_MAXLEN 20
+        char shipname[AIS_SHIPNAME_MAXLEN+1];  // vessel name
+
+        unsigned int shiptype; // ship type code
+
+        // dimension
+        unsigned int to_bow;  // dimension to bow
+        unsigned int to_stern; // dimension to stern
+        unsigned int to_port;  // dimension to port
+        unsigned int to_starboard; // dimension to starboard
+
+        unsigned int epfd; // type of position fix deviuce
+
+        // ETA ?
+        unsigned int month;// UTC month
+        unsigned int day;  // UTC day
+        unsigned int hour; // UTC hour
+        unsigned int minute;  // UTC minute
+
+        unsigned int draught;  // draft in meters
+        char destination[21];  // ship destination
+
+        unsigned int dte;  // data terminal enable
+        //unsigned int spare; // spare bits
+*/
+
+        /*
+        _setAISInfo(gpsdata->ais.mmsi,
+                    gpsdata->ais.type5.imo,
+                    gpsdata->ais.type5.callsign,
+                    gpsdata->ais.type5.shiptype,
+                    gpsdata->ais.type5.month,
+                    gpsdata->ais.type5.day,
+                    gpsdata->ais.type5.hour,
+                    gpsdata->ais.type5.minute,
+                    gpsdata->ais.type5.draught,
+                    gpsdata->ais.type5.destination);
+        */
+
+        _setAISLab(gpsdata->ais.mmsi, gpsdata->ais.type5.shipname);
+        _setAISDim(gpsdata->ais.mmsi,
+                   gpsdata->ais.type5.to_bow,  gpsdata->ais.type5.to_stern,
+                   gpsdata->ais.type5.to_port, gpsdata->ais.type5.to_starboard);
+
+        return;
+    }
+
+    // Type 8 - Broadcast Binary Message
+    if (8 == gpsdata->ais.type) {
+
+/*
+        unsigned int dac;       	// Designated Area Code
+	    unsigned int fid;       	// Functional ID
+#define AIS_TYPE8_BINARY_MAX	952	// 952 bits
+	    size_t bitcount;		    // bit count of the data
+*/
+        // followed by:
+        //union {
+        //    char bitdata[(AIS_TYPE8_BINARY_MAX + 7) / 8];  // 119.875 bytes (!), but (MAX+8)/8 == 120 bytes
+        //    ...
+
+        // AIS MSG TYPE 8: Broadcast Binary Message [mmsi:3160026, dac:316, fid:19]
+        // DAC 316 - Canada
+        // FID  19 - ???
+        g_print("s52ais:_updateAISdata(): AIS MSG TYPE 8 - Broadcast Binary Message [mmsi:%i, dac:%i, fid:%i, bitdata:%s]\n",
+                gpsdata->ais.mmsi, gpsdata->ais.type8.dac, gpsdata->ais.type8.fid, gpsdata->ais.type8.bitdata);
+
+
+        // add a dummy entry to signal that GPSD is on-line
+        //_setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 8 - Broadcast Binary Message");
+        _setAISLab(gpsdata->ais.mmsi,   "Broadcast Bin Msg");
+
+        return;
+    }
+
+	// Type 20 - Data Link Management Message
+    if (20 == gpsdata->ais.type) {
+        // add a dummy entry to signal that GPSD is on-line
+        //_setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 20 - Data Link Management Message");
+        _setAISLab(gpsdata->ais.mmsi,   "Data Link Mng Msg");
+
+        return;
+    }
 
     // debug
-    int set = gpsdata->set & AIS_SET;
-    g_print("s52ais:_updateAISdata(): DEBUG - SKIP AIS MSG TYPE:%u - AIS_SET = %i [error:%s]\n", gpsdata->ais.type, set, gpsdata->error);
+    //g_print("s52ais:_updateAISdata(): DEBUG - SKIP AIS MSG TYPE:%u, AIS_SET:%i [error:%s]\n",
+    //        gpsdata->ais.type, gpsdata->set & AIS_SET, gpsdata->error);
 
     return;
 }
@@ -1248,20 +1232,16 @@ static gpointer      _gpsdClientRead(gpointer dummy)
     int nWait = 0;
 
     g_print("s52ais:_gpsdClientRead(): start looping ..\n");
+    __builtin_bzero(&_gpsdata, sizeof(_gpsdata));
 
+    //*
     while (0 != gps_open(GPSD_HOST, GPSD_PORT, &_gpsdata)) {   // android (gpsd 2.96)
         g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec: %d, %s\n", errno, gps_errstr(errno));
 
-        // Note: g_print() work on android only when the main loop is running
-        // debug - read glib events (for g_print())
-        while (g_main_context_iteration(NULL, FALSE))
-            ;
-
         // try to connect to GPSD server, bailout after 10 failed attempt
         g_static_mutex_lock(&_ais_list_mutex);
-        //if (NULL == _ais_list) {
         if ((NULL==_ais_list) || (10 <= ++nWait)) {
-            g_print("s52ais.c:_gpsdClientRead() no AIS list (main exited) or no GPSD server.. terminate _gpsClientRead thread\n");
+            g_print("s52ais:_gpsdClientRead() no AIS list (main exited) or no GPSD server.. terminate _gpsClientRead thread\n");
 
             g_static_mutex_unlock(&_ais_list_mutex);
 
@@ -1276,58 +1256,61 @@ static gpointer      _gpsdClientRead(gpointer dummy)
         g_print("s52ais:_gpsdClientRead():gps_stream() failed .. exiting\n");
         return NULL;
     }
+    //*/
+
 
     // debug
     //gps_enable_debug(3, stderr);
+    //gps_enable_debug(8, stderr);
 
     // heart of the client
     for (;;) {
-
         g_static_mutex_lock(&_ais_list_mutex);
         if (NULL == _ais_list) {
-            g_print("s52ais.c:_gpsdClientRead() no AIS list .. main exited .. terminate gpsRead thread\n");
-
-            g_static_mutex_unlock(&_ais_list_mutex);
-
-            return NULL;
+            g_print("s52ais:_gpsdClientRead() no AIS list .. main exited .. terminate gpsRead thread\n");
+            goto exit;
         }
         g_static_mutex_unlock(&_ais_list_mutex);
 
-        //if (!gps_waiting(&_gpsdata, 10000000)) {   // wait 10 sec  (10*1000*1000 uSec)
-        if (!gps_waiting(&_gpsdata,  500*1000)) {    // wait 0.5 sec     (500*1000 uSec)
+        if (FALSE == gps_waiting(&_gpsdata,  500*1000)) {    // wait 0.5 sec     (500*1000 uSec)
+            //g_print("s52ais:_gpsdClientRead():gps_waiting() timed out\n");
 
-            //g_print("s52ais.c:_gpsdClientRead():gps_waiting() timed out\n");
             g_static_mutex_lock(&_ais_list_mutex);
             _updateTimeTag();
             g_static_mutex_unlock(&_ais_list_mutex);
 
-            // read glib events
-            while (g_main_context_iteration(NULL, FALSE))
-                ;
-
         } else {
             errno = 0;
-            if (-1 != gps_read(&_gpsdata)) {
-                // no error
 
-                // read glib events
-                while(g_main_context_iteration(NULL, FALSE))
-                    ;
+            int ret = gps_read(&_gpsdata);
+            if (0 < ret) {
+                // no error
 
                 // handle AIS data
                 g_static_mutex_lock(&_ais_list_mutex);
                 _updateAISdata(&_gpsdata);
                 g_static_mutex_unlock(&_ais_list_mutex);
 
-            } else {
-                g_print("s52ais.c:_gpsdClientRead():gps_read(): socket error 4 .. GPSD died [errno=%i]\n", errno);
+                continue;
+            }
 
-                // exit thread
-                gps_close(&_gpsdata);
-                return dummy;
+            if (0 == ret) {
+                g_print("s52ais:_gpsdClientRead():gps_read(): NO DATA .. [ret=0, errno=%i]\n", errno);
+                continue;
+            } else {
+                g_print("s52ais:_gpsdClientRead():gps_read(): socket error 4 .. GPSD died [ret=%i, errno=%i]\n", ret, errno);
+
+                goto exit;
             }
         }
     }
+
+exit:
+    // exit thread
+    g_static_mutex_unlock(&_ais_list_mutex);
+
+    gps_stream(&_gpsdata, WATCH_DISABLE, NULL);
+    gps_close(&_gpsdata);
 
     return dummy;
 }
@@ -1344,8 +1327,6 @@ int            s52ais_updateTimeTag(void)
         g_static_mutex_unlock(&_ais_list_mutex);
         return TRUE;
     }
-
-    //_isMainLoopUP = TRUE;
 
     // no AIS time tag to update on chart
     //static int silent = FALSE;
@@ -1369,8 +1350,11 @@ int            s52ais_updateTimeTag(void)
 
         g_get_current_time(&now);
 
-        g_snprintf(str, 80, "%s %lis%c%03.f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), (int)NL, ais->course, ais->speed);
-        S52_setVESSELlabel(ais->vesselH, str);
+        g_snprintf(str, 80, "%s %lis%c%03.f deg / %3.1f kt",
+                   ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), (int)NL, ais->course, ais->speed);
+        g_print("s52ais:s52ais_updateTimeTag(): setVESSELlabel = %s\n", str);
+
+        //S52_setVESSELlabel(ais->vesselH, str);
     }
 
     g_static_mutex_unlock(&_ais_list_mutex);
@@ -1379,9 +1363,9 @@ int            s52ais_updateTimeTag(void)
 }
 #endif
 
-//#ifdef S52_USE_ANDROID
 #if 0
 static int           _startGPSD(void)
+// DEPRECATED: AIS data comming for GPSD on HOST (not from Android device)
 {
     /*
     <!-- Allows applications to write gpsd.sock and gpsd.pid to sdcard -->
@@ -1420,57 +1404,6 @@ static int           _startGPSD(void)
 }
 #endif
 
-int            s52ais_initAIS(void)
-{
-    //g_print("s52ais_initAIS() .. start\n");
-
-    // so all occurence of _ais_list are mutex'ed
-    // (but this one is useless - but what if android restart main()!)
-    g_static_mutex_lock(&_ais_list_mutex);
-    if (NULL == _ais_list) {
-        _ais_list = g_array_new(FALSE, TRUE, sizeof(_ais_t));
-    } else {
-        g_print("s52ais:s52ais_initAIS(): bizzard case where we are restarting a running process!!\n");
-
-        g_static_mutex_unlock(&_ais_list_mutex);
-        return TRUE;
-    }
-    g_static_mutex_unlock(&_ais_list_mutex);
-
-//#ifdef S52_USE_ANDROID
-#if 0
-    // NOTE: on Ubuntu, GPSD is started at boot-time
-    if (TRUE != _startGPSD())
-        return FALSE;
-#endif
-
-
-#ifdef WIN32
-    WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
-#endif
-
-
-#ifdef S52_USE_DBUS
-    _initDBus();
-#endif
-
-#ifdef S52_USE_SOCK
-    _s52_connection = _s52_init_sock(_localhost, S52_PORT);
-#endif
-
-// no thread needed in standalone
-#ifndef S52AIS_STANDALONE
-    // not joinable - gps done will not wait
-    _gpsClientThread = g_thread_create_full(_gpsdClientRead, NULL, 0, FALSE, TRUE, G_THREAD_PRIORITY_NORMAL, NULL);
-#endif
-
-    // setup timer
-    g_get_current_time(&_timeTick);
-
-    return TRUE;
-}
-
 static int           _flushAIS(int all)
 {
     g_static_mutex_lock(&_ais_list_mutex);
@@ -1491,12 +1424,68 @@ static int           _flushAIS(int all)
     return TRUE;
 }
 
+int            s52ais_initAIS(void)
+{
+    g_print("s52ais_initAIS() .. start\n");
+
+    // so all occurence of _ais_list are mutex'ed
+    // (but this one is useless - but what if android restart main()!)
+    g_static_mutex_lock(&_ais_list_mutex);
+    if (NULL == _ais_list) {
+        _ais_list = g_array_new(FALSE, TRUE, sizeof(_ais_t));
+    } else {
+        g_print("s52ais:s52ais_initAIS(): bizzard case where we are restarting a running process!!\n");
+
+        g_static_mutex_unlock(&_ais_list_mutex);
+        return TRUE;
+    }
+    g_static_mutex_unlock(&_ais_list_mutex);
+
+
+#if 0
+    // NOTE: on Ubuntu, GPSD is started at boot-time
+    if (TRUE != _startGPSD())
+        return FALSE;
+#endif
+
+
+#ifdef WIN32
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+#endif
+
+
+#ifdef S52_USE_DBUS
+    _initDBus();
+#endif
+
+#ifdef S52_USE_SOCK
+    _s52_connection = _s52_init_sock(_localhost, S52_PORT);
+    if (NULL == _s52_connection) {
+        g_print("s52ais_initAIS() .. _s52_init_sock() failed \n");
+
+        return FALSE;
+    }
+#endif
+
+// no thread needed in standalone
+#ifndef S52AIS_STANDALONE
+    // not joinable - gps done will not wait
+    _gpsClientThread = g_thread_create_full(_gpsdClientRead, NULL, 0, FALSE, TRUE, G_THREAD_PRIORITY_NORMAL, NULL);
+#endif
+
+    // setup timer
+    g_get_current_time(&_timeTick);
+
+    return TRUE;
+}
+
 int            s52ais_doneAIS()
 // this call flush AIS, so this signal _gpsdClientRead() to exit
 {
     _flushAIS(TRUE);
 
-    g_print("s52ais:s52gpsd_doneAIS() .. \n");
+    g_print("s52ais:s52ais_doneAIS() .. \n");
 
 #ifdef S52_USE_DBUS
     dbus_connection_unref(_dbus);
@@ -1512,6 +1501,12 @@ int            s52ais_doneAIS()
     unlink(AIS PID);
 #endif
 #endif
+
+    if (NULL != _main_loop) {
+        g_print("s52ais:s52ais_doneAIS() .. quit main loop\n");
+
+        g_main_loop_quit(_main_loop);
+    }
 
     return TRUE;
 }
@@ -1573,7 +1568,6 @@ static void          _trapSIG(int sig, siginfo_t *info, void *secret)
             _s52_connection = _s52_init_sock(_localhost, S52_PORT);
             g_print("s52ais:_trapSIG(): re-connect to libS52\n");
         }
-
         break;
 
     default:
@@ -1597,16 +1591,51 @@ static int           _initSIG(void)
     //sa.sa_flags = SA_RESTART | SA_SIGINFO;
     sa.sa_flags = SA_SIGINFO;
 
+    g_print("s52ais:_initSIG() .. start\n");
+
     //  2 - Interrupt (ANSI)
     sigaction(SIGINT,  &sa, &_old_signal_handler_SIGINT);
+    // 10
     sigaction(SIGUSR1, &sa, &_old_signal_handler_SIGUSR1);
+    // 12
     sigaction(SIGUSR2, &sa, &_old_signal_handler_SIGUSR2);
     // 11 - Segmentation violation (ANSI).
     sigaction(SIGSEGV, &sa, &_old_signal_handler_SIGSEGV);   // loop in android
+    // 15 - Termination (ANSI)
     sigaction(SIGTERM, &sa, &_old_signal_handler_SIGTERM);
 
     return TRUE;
 }
+
+#ifdef S52_USE_ANDROID
+static int           _initPID(void)
+// save pid
+{
+    // is s52ais.pid there
+    if (TRUE == g_file_test(AIS PID, (GFileTest) (G_FILE_TEST_EXISTS))) {
+        // kill old s52ais
+        GError    *error  = NULL;
+        const char done[] = "/system/bin/sh -c 'kill -SIGINT `cat " AIS PID "`'";
+        if (TRUE != g_spawn_command_line_async(done, &error)) {
+            g_print("s52ais:g_spawn_command_line_async() failed [%s]\n", AIS);
+            return FALSE;
+        }
+        unlink(AIS PID);
+        g_print("s52ais:AIS prog allready running stopped (%s)\n", AIS);
+    } else
+        g_print("s52ais:AIS prog not running (%s)\n", AIS);
+
+
+    pid_t pid = getpid();
+    FILE *fd  = fopen(AIS PID, "w");
+    if (NULL != fd) {
+        fprintf(fd, "%i\n", pid);
+        fclose(fd);
+    }
+
+    return TRUE;
+}
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -1618,43 +1647,26 @@ int main(int argc, char *argv[])
     _initSIG();
 
 #ifdef S52_USE_ANDROID
-    {   // save pid
-        // FIXME: check if an instance of s52ais is allready running
-        // an signal it somehow to reconnect to libS52
-        // -OR-
-        // kill the previous instance first!
-        if (TRUE == g_file_test(AIS PID, (GFileTest) (G_FILE_TEST_EXISTS))) {
-            GError    *error  = NULL;
-            const char done[] = "/system/bin/sh -c 'kill -SIGINT `cat " AIS PID "`'";
-            if (TRUE != g_spawn_command_line_async(done, &error)) {
-                g_print("s52ais:g_spawn_command_line_async() failed [%s]\n", AIS);
-                return FALSE;
-            }
-            unlink(AIS PID);
-            g_print("s52ais:AIS prog allready running stopped (%s)\n", AIS);
-        } else
-            g_print("s52ais:AIS prog not running (%s)\n", AIS);
-
-
-        pid_t pid = getpid();
-        FILE *fd  = fopen(AIS PID, "w");
-        if (NULL != fd) {
-            fprintf(fd, "%i\n", pid);
-            fclose(fd);
-        }
-    }
+    _initPID();
 #endif
 
-    s52ais_initAIS();
+    if (FALSE == s52ais_initAIS())
+        return FALSE;
 
     // FIXME: remove old spurious AIS
     // - S52_getObjList("--6MARIN.000", "vessel");
     // - loop
     //        - S52_getMarObjH(unsigned int S57ID)
     //        - S52_delMarObj(S52ObjectHandle objH);
+    // -OR-
+    // reconnect
+    // -OR-
+    // libS52 will delete them when they expire
+    // S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 700.0);
+
+    //_main_loop = g_main_loop_new(NULL, FALSE);
 
     _gpsdClientRead(NULL);
-
 
 #ifdef S52_USE_ANDROID
     // clean up PID
