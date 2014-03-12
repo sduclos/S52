@@ -28,14 +28,14 @@ Makefile Target:
   EGL harness for X
 
 - s52eglarm:
-  Android
+  Android (s52droid)
 
 - s52ais
   gpsd cleint to feed AIS to s52eglx and s52droid
 
 - sl4agps (s52ui will replace this eventually)
   feed android's GPS/GYRO to s52droid
-  also some libS52.so test via android UI
+  also some libS52.so test via Android UI
 
 
 ------------------------------------------------------------
@@ -75,7 +75,7 @@ Other Folder:
 
 - s52ui: HTML5/Dart UI for testing libS52 functionality
 
-- android: run libS52 on android, use s52ui
+- android: run libS52 on Android, use s52ui
 
 - ref_dump: reference .PNG to check for regression (TODO)
 
