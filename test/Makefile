@@ -273,7 +273,7 @@ sl4agps: sl4agps.c sl4agps.cfg android/dist/sdcard/s52droid/UI.xml
 
 # android 4.1
 # adb shell chmod 755 /data/media/s52droid/bin/s52ais
-#adb shell su -c 'chmod 755 /mnt/shell/emulated/0/s52droid/bin/s52ais'  
+#adb shell su -c 'chmod 755 /mnt/shell/emulated/0/s52droid/bin/s52ais'
 # /data/media/0/s52droid/bin/s52ais'
 s52ais: s52ais.c
 	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c  $(LIBS) -o s52ais
