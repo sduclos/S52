@@ -21,7 +21,7 @@ class S52 {
   Timer _timer        = null;
   bool  _skipTimer    = false;
   
-  // FIXME: use Queue
+  // FIXME: use Queue to stack S52 cmd .. what happend if returning out-of-order!
   //Queue<String> _queue = new Queue<String>(); 
   
   // S52 color for UI element
@@ -30,9 +30,9 @@ class S52 {
   List UIBDR;  // border
   
   //var wsUri = 'ws://192.168.1.66:2950'; // laptop
-  //var wsUri = 'ws://192.168.1.67:2950'; // xoom
+  var wsUri = 'ws://192.168.1.67:2950'; // xoom
   //var wsUri = 'ws://192.168.1.69:2950'; // Nexus
-  var wsUri = 'ws://127.0.0.1:2950';   // localhost
+  //var wsUri = 'ws://127.0.0.1:2950';   // localhost
 
 
 
