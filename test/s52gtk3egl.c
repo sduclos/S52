@@ -38,11 +38,9 @@
 #include "s52ais.h"       // s52ais_*()
 #endif
 
-#define  PATH "/home/sduclos/dev/gis/data"
-#define  PLIB "PLAUX_00.DAI"
-#define  COLS "plib_COLS-3.4.1.rle"
-#define  LOGI(...)   g_print(__VA_ARGS__)
-#define  LOGE(...)   g_print(__VA_ARGS__)
+#define PATH "/home/sduclos/dev/gis/data"
+#define PLIB "PLAUX_00.DAI"
+#define COLS "plib_COLS-3.4.1.rle"
 
 
 // test - St-Laurent Ice Route
@@ -141,10 +139,10 @@ static S52ObjectHandle _vessel_ais_afglow = NULL;
 
 static int      _egl_init       (s52engine *engine)
 {
-    LOGI("s52egl:_egl_init(): starting ..\n");
+    g_print("s52egl:_egl_init(): starting ..\n");
 
     if ((NULL!=engine->eglDisplay) && (EGL_NO_DISPLAY!=engine->eglDisplay)) {
-        LOGE("_egl_init(): EGL is already up .. skipped!\n");
+        g_print("_egl_init(): EGL is already up .. skipped!\n");
         return FALSE;
     }
 
@@ -173,32 +171,28 @@ static int      _egl_init       (s52engine *engine)
 
     EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
     if (EGL_TRUE != ret)
-        LOGE("eglBindAPI() failed. [0x%x]\n", eglGetError());
+        g_print("eglBindAPI() failed. [0x%x]\n", eglGetError());
 
     eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (EGL_NO_DISPLAY == eglDisplay)
-        LOGE("eglGetDisplay() failed. [0x%x]\n", eglGetError());
+        g_print("eglGetDisplay() failed. [0x%x]\n", eglGetError());
 
     EGLint major = 2;
     EGLint minor = 0;
     if (EGL_FALSE == eglInitialize(eglDisplay, &major, &minor) || EGL_SUCCESS != eglGetError())
-        LOGE("eglInitialize() failed. [0x%x]\n", eglGetError());
+        g_print("eglInitialize() failed. [0x%x]\n", eglGetError());
 
-    LOGI("EGL Version   :%s\n", eglQueryString(eglDisplay, EGL_VERSION));
-    LOGI("EGL Vendor    :%s\n", eglQueryString(eglDisplay, EGL_VENDOR));
-    LOGI("EGL Extensions:%s\n", eglQueryString(eglDisplay, EGL_EXTENSIONS));
+    g_print("EGL Version   :%s\n", eglQueryString(eglDisplay, EGL_VERSION));
+    g_print("EGL Vendor    :%s\n", eglQueryString(eglDisplay, EGL_VENDOR));
+    g_print("EGL Extensions:%s\n", eglQueryString(eglDisplay, EGL_EXTENSIONS));
 
     // Here, the application chooses the configuration it desires. In this
     // sample, we have a very simplified selection process, where we pick
     // the first EGLConfig that matches our criteria
-    //EGLint     tmp;
-    //EGLConfig  eglConfig[320];
     EGLint     eglNumConfigs = 0;
     EGLConfig  eglConfig;
-
-    //eglGetConfigs(eglDisplay, eglConfig, 320, &tmp);
     eglGetConfigs(eglDisplay, NULL, 0, &eglNumConfigs);
-    printf("eglNumConfigs = %i\n", eglNumConfigs);
+    g_print("eglNumConfigs = %i\n", eglNumConfigs);
 
     /*
     int i = 0;
@@ -231,30 +225,22 @@ static int      _egl_init       (s52engine *engine)
     };
 
     if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, &eglConfig, 1, &eglNumConfigs))
-        LOGE("eglChooseConfig() failed. [0x%x]\n", eglGetError());
+        g_print("eglChooseConfig() failed. [0x%x]\n", eglGetError());
     if (0 == eglNumConfigs)
-        LOGE("eglChooseConfig() eglNumConfigs no matching config [0x%x]\n", eglGetError());
-
-    // EGL_NATIVE_VISUAL_ID is an attribute of the EGLConfig that is
-    // guaranteed to be accepted by ANativeWindow_setBuffersGeometry().
-    // As soon as we picked a EGLConfig, we can safely reconfigure the
-    // ANativeWindow buffers to match, using EGL_NATIVE_VISUAL_ID.
-    EGLint vid;
-    if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vid))
-        LOGE("Error: eglGetConfigAttrib() failed\n");
+        g_print("eglChooseConfig() eglNumConfigs no matching config [0x%x]\n", eglGetError());
 
 	eglWindow = (EGLNativeWindowType) gtk_widget_get_window(engine->window);
-    LOGI("DEBUG: eglWindow=%i\n", (int)eglWindow);
     if (FALSE == eglWindow) {
-        LOGE("ERROR: EGLNativeWindowType is NULL (can't draw)\n");
+        g_print("ERROR: EGLNativeWindowType is NULL (can't draw)\n");
         g_assert(0);
     }
+    g_print("DEBUG: eglDisplay  =0X%X\n", (guint)eglDisplay);
+    g_print("DEBUG: eglConfig   =0X%X\n", (guint)eglConfig);
+    g_print("DEBUG: eglWindowXID=0X%X\n", (guint)GDK_WINDOW_XID(eglWindow));
 
     eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, GDK_WINDOW_XID(gtk_widget_get_window(engine->window)), NULL);
-    // GCC:  note: expected (struct GdkWindow *) but argument is of type (struct GdkWindow *) !?!
-    //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, GDK_WINDOW_XID((struct GdkWindow *)eglWindow), NULL);
     if (EGL_NO_SURFACE == eglSurface || EGL_SUCCESS != eglGetError())
-        LOGE("eglCreateWindowSurface() failed. EGL_NO_SURFACE [0x%x]\n", eglGetError());
+        g_print("eglCreateWindowSurface() failed. EGL_NO_SURFACE [0x%x]\n", eglGetError());
 
     // Then we can create the context and set it current:
     EGLint eglContextList[] = {
@@ -263,17 +249,17 @@ static int      _egl_init       (s52engine *engine)
     };
     eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, eglContextList);
     if (EGL_NO_CONTEXT == eglContext || EGL_SUCCESS != eglGetError())
-        LOGE("eglCreateContext() failed. [0x%x]\n", eglGetError());
+        g_print("eglCreateContext() failed. [0x%x]\n", eglGetError());
 
     if (EGL_FALSE == eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext))
-        LOGE("Unable to eglMakeCurrent()\n");
+        g_print("Unable to eglMakeCurrent()\n");
 
     engine->eglDisplay = eglDisplay;
     engine->eglContext = eglContext;
     engine->eglSurface = eglSurface;
     engine->eglWindow  = eglWindow;
 
-    LOGI("s52egl:_egl_init(): end ..\n");
+    g_print("s52egl:_egl_init(): end ..\n");
 
     return 1;
 }
@@ -304,12 +290,12 @@ static void     _egl_beg        (s52engine *engine)
 {
     // On Android, Blit x10 slower whitout
     if (EGL_FALSE == eglWaitGL()) {
-        LOGE("_egl_beg(): eglWaitGL() failed. [0x%x]\n", eglGetError());
+        g_print("_egl_beg(): eglWaitGL() failed. [0x%x]\n", eglGetError());
         return;
     }
 
     if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
-        LOGE("_egl_beg_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
+        g_print("_egl_beg_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
     }
 
     return;
@@ -318,7 +304,7 @@ static void     _egl_beg        (s52engine *engine)
 static void     _egl_end        (s52engine *engine)
 {
     if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
-        LOGE("_egl_end(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
+        g_print("_egl_end(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
         //return FALSE;
     }
 
@@ -493,9 +479,9 @@ static int      _s52_setupVRMEBL(s52droid_state_t *state)
 
     _cursor2 = S52_newMarObj("cursor", S52_POINT, 1, xyz, attVal);
     //int ret = S52_toggleObjClassOFF("cursor");
-    //LOGE("_s52_setupVRMEBL(): S52_toggleObjClassOFF('cursor'); ret=%i\n", ret);
+    //g_print("_s52_setupVRMEBL(): S52_toggleObjClassOFF('cursor'); ret=%i\n", ret);
     //int ret = S52_toggleObjClassON("cursor");
-    //LOGE("_s52_setupVRMEBL(): S52_toggleObjClassON('cursor'); ret=%i\n", ret);
+    //g_print("_s52_setupVRMEBL(): S52_toggleObjClassON('cursor'); ret=%i\n", ret);
 
 
     _vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, S52_VRMEBL_ebl, S52_VRMEBL_sty, S52_VRMEBL_ori);
@@ -532,7 +518,7 @@ static int      _s52_setupPRDARE(s52droid_state_t *state)
 static int      _s52_init       (s52engine *engine)
 {
     if ((NULL==engine->eglDisplay) || (EGL_NO_DISPLAY==engine->eglDisplay)) {
-        LOGE("_init_S52(): no EGL display ..\n");
+        g_print("_init_S52(): no EGL display ..\n");
         return FALSE;
     }
 
@@ -564,14 +550,14 @@ static int      _s52_init       (s52engine *engine)
         //hmm = 301; // wrong
         //hmm = 307;
 
-        //LOGE("_init_S52(): start -1- ..\n");
+        //g_print("_init_S52(): start -1- ..\n");
 
         if (FALSE == S52_init(w, h, wmm, hmm, NULL)) {
             engine->state.do_S52init = FALSE;
             return FALSE;
         }
 
-        //LOGE("_init_S52(): start -2- ..\n");
+        //g_print("_init_S52(): start -2- ..\n");
 
         S52_setViewPort(0, 0, w, h);
 
@@ -586,7 +572,12 @@ static int      _s52_init       (s52engine *engine)
 
 
     // read cell location fron s52.cfg
-    S52_loadCell(NULL, NULL);
+    //S52_loadCell(NULL, NULL);
+    S52_loadCell("CA479017.000", NULL);
+    S52_loadCell("SCX_CapSante.tif", NULL);
+    S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+
+
     //S52_loadCell("/home/vitaly/CHARTS/for_sasha/GB5X01SE.000", NULL);
 	//S52_loadCell("/home/vitaly/CHARTS/for_sasha/GB5X01NE.000", NULL);
 
@@ -787,7 +778,7 @@ static int      _s52_draw_cb(GtkWidget *widget,
     (void)event;
 
     struct s52engine *engine = (struct s52engine*)user_data;
-    //LOGI("s52egl:_s52_draw_cb(): begin .. \n");
+    //g_print("s52egl:_s52_draw_cb(): begin .. \n");
 
     /*
     GTimeVal now;  // 2 glong (at least 32 bits each - but amd64 !?
@@ -797,24 +788,24 @@ static int      _s52_draw_cb(GtkWidget *widget,
     //*/
 
     if (NULL == engine) {
-        LOGE("_s52_draw_cb(): no engine ..\n");
+        g_print("_s52_draw_cb(): no engine ..\n");
         goto exit;
     }
 
     if ((NULL==engine->eglDisplay) || (EGL_NO_DISPLAY==engine->eglDisplay)) {
-        LOGE("_s52_draw_cb(): no display ..\n");
+        g_print("_s52_draw_cb(): no display ..\n");
         goto exit;
     }
 
     // wait for libS52 to init - no use to go further - bailout
     if (TRUE == engine->state.do_S52init) {
-        LOGI("s52egl:_s52_draw_cb(): re-starting .. waiting for S52_init() to finish\n");
+        g_print("s52egl:_s52_draw_cb(): re-starting .. waiting for S52_init() to finish\n");
         goto exit;
     }
 
     // no draw at all, the window is not visible
     if ((FALSE==engine->do_S52draw) && (FALSE==engine->do_S52drawLast)) {
-        //LOGI("s52egl:_s52_draw_cb(): nothing to draw (do_S52draw & do_S52drawLast FALSE)\n");
+        //g_print("s52egl:_s52_draw_cb(): nothing to draw (do_S52draw & do_S52drawLast FALSE)\n");
         goto exit;
     }
 
@@ -854,7 +845,7 @@ static int      _s52_draw_cb(GtkWidget *widget,
 exit:
 
     // debug
-    //LOGI("s52egl:_s52_draw_cb(): end .. \n");
+    //g_print("s52egl:_s52_draw_cb(): end .. \n");
 
     return EGL_TRUE;
 }
