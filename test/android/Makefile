@@ -21,8 +21,15 @@ all: build.xml bin/$(APKNAME)
 build.xml: AndroidManifest.xml
 	android update project -p . -t "android-19" -n s52droid
 
+# NDK_DEBUG=1 APP_OPTIM=debug
+
+# FIXME: use zipalign for certificate
+# ant release install
+# pkg: /data/local/tmp/s52droid-release-unsigned.apk
+# Failure [INSTALL_PARSE_FAILED_NO_CERTIFICATES]
+# -B V=1 
 bin/$(APKNAME): dist/system/lib/libS52.a
-	ndk-build -B V=1 NDK_DEBUG=1 APP_OPTIM=debug NDK_LOG=1
+	ndk-build -B V=1 NDK_DEBUG=1
 	ant debug install
 
 clean:
@@ -43,10 +50,24 @@ distclean: clean
 
 # adb uninstall $(PACKAGE)
 #
-# then start gdb
+
+# <start ndk-gdb>
+# NOTE: AndroidManifest.xml must not have SPACE around '=' for ndk-gbd to work!
 # ndk-gdb --start --force --verbose NDK_LOG=1
 # target remote :5039
 # setprop debug.db.uid 32767
+
+#<launch gdb application manually>
+#
+#In a first terminal - device/target:
+# adb shell ps  --> look at the PID of your application
+# adb shell /data/data/nav.ecs.s52droid/lib/gdbserver :5039 --attach <pid>
+
+#In a second terminal - host:
+# cd ~/S52/test/android/
+# adb forward tcp:5039 tcp:5039
+# arm-linux-androideabi-gdb -e obj/local/armeabi-v7a/app_process  app_process -x obj/local/armeabi-v7a/gdb.setup
+
 
 # show mem - check every 10 min
 # watch -n 600 ps|grep nav.ecs.s52droid
@@ -108,3 +129,12 @@ distclean: clean
 # From 'notbrodie' in XDA forum
 # Westwood for TCP, ondemand for performance/interactive for battery, readahead 512, add_random 0, zram off, swappiness 0
 # I like interactive with hispeed freq set to 1200mhz
+
+#sh-4.1# ./ld-linux.so.3 --list ./gpsd
+#        libc.so => /system/lib/libc.so (0x40181000)
+#        libm.so => /system/lib/libm.so (0x40015000)
+#        libdl.so => /system/lib/libdl.so (0x400e5000)
+
+# mksh
+# export COLUMNS=140
+# export LINES=60
