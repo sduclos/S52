@@ -102,18 +102,20 @@ static GTimer         *_timer   = NULL;  // debug - lap timer
 static volatile gint G_GNUC_MAY_ALIAS _atomicAbort;
 
 #ifdef _MINGW
+// not available on win32
 #else
 // 1) SIGHUP	 2) SIGINT	 3) SIGQUIT	 4) SIGILL	 5) SIGTRAP
 // 6) SIGABRT	 7) SIGBUS	 8) SIGFPE	 9) SIGKILL	10) SIGUSR1
 //11) SIGSEGV	12) SIGUSR2	13) SIGPIPE	14) SIGALRM	15) SIGTERM
-static struct   sigaction             _old_signal_handler_SIGINT;
-static struct   sigaction             _old_signal_handler_SIGQUIT;
-static struct   sigaction             _old_signal_handler_SIGABRT;
-static struct   sigaction             _old_signal_handler_SIGKILL;
-static struct   sigaction             _old_signal_handler_SIGSEGV;
-static struct   sigaction             _old_signal_handler_SIGTERM;
-static struct   sigaction             _old_signal_handler_SIGUSR1;
-static struct   sigaction             _old_signal_handler_SIGUSR2;
+static struct   sigaction             _old_signal_handler_SIGINT;   //  2
+static struct   sigaction             _old_signal_handler_SIGQUIT;  //  3
+static struct   sigaction             _old_signal_handler_SIGTRAP;  //  5
+static struct   sigaction             _old_signal_handler_SIGABRT;  //  6
+static struct   sigaction             _old_signal_handler_SIGKILL;  //  9
+static struct   sigaction             _old_signal_handler_SIGUSR1;  // 10
+static struct   sigaction             _old_signal_handler_SIGSEGV;  // 11
+static struct   sigaction             _old_signal_handler_SIGUSR2;  // 12
+static struct   sigaction             _old_signal_handler_SIGTERM;  // 15
 #endif
 
 // not available on win32
@@ -206,6 +208,9 @@ typedef struct _cell {
 #endif
 
     /*
+    // optimisation - do CS only on obj affected by a change in a MP
+    // instead of resolving the CS logic at render-time.
+    // Will help to clean up the render-time code.
     // list of S52_obj that have CS in theire LUP
     GPtrArray *DEPARElist;
     GPtrArray *DEPCNTlist;
@@ -286,7 +291,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.113\n"
+      "libS52 0.114\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1265,8 +1270,9 @@ static void       _trapSIG(int sig)
 
     exit(sig);
 }
+
 #else  // _MINGW
-// signal
+
 static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 {
     // 2 -
@@ -1275,37 +1281,53 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
         g_atomic_int_set(&_atomicAbort, TRUE);
 
         // continue with normal sig handling
-        _old_signal_handler_SIGINT.sa_sigaction(sig, info, secret);
+        if (NULL != _old_signal_handler_SIGINT.sa_sigaction)
+            _old_signal_handler_SIGINT.sa_sigaction(sig, info, secret);
+
         //return;
     }
 
     //  3  - Quit (POSIX)
-    //sigaction(SIGQUIT, &sa, &_old_signal_handler_SIGQUIT);
     if (SIGQUIT == sig) {
         PRINTF("Signal SIGQUIT(%i) cought .. Quit\n", sig);
 
         // continue with normal sig handling
-        _old_signal_handler_SIGQUIT.sa_sigaction(sig, info, secret);
+        if (NULL != _old_signal_handler_SIGQUIT.sa_sigaction)
+            _old_signal_handler_SIGQUIT.sa_sigaction(sig, info, secret);
+
         //return;
     }
 
+    //  5  - Trap (ANSI)
+    if (SIGTRAP == sig) {
+        PRINTF("Signal SIGTRAP(%i) cought .. debugger\n", sig);
+
+        // continue with normal sig handling
+        if (NULL != _old_signal_handler_SIGTRAP.sa_sigaction)
+            _old_signal_handler_SIGTRAP.sa_sigaction(sig, info, secret);
+
+        return;
+    }
+
     //  6  - Abort (ANSI)
-    //sigaction(SIGABRT, &sa, &_old_signal_handler_SIGABRT);
     if (SIGABRT == sig) {
         PRINTF("Signal SIGABRT(%i) cought .. Abort\n", sig);
 
         // continue with normal sig handling
-        _old_signal_handler_SIGABRT.sa_sigaction(sig, info, secret);
-        //return;
+        if (NULL != _old_signal_handler_SIGABRT.sa_sigaction)
+            _old_signal_handler_SIGABRT.sa_sigaction(sig, info, secret);
+
+        return;
     }
 
     //  9  - Kill, unblock-able (POSIX)
-    //sigaction(SIGKILL, &sa, &_old_signal_handler_SIGKILL);
     if (SIGKILL == sig) {
         PRINTF("Signal SIGKILL(%i) cought .. Kill\n", sig);
 
         // continue with normal sig handling
-        _old_signal_handler_SIGKILL.sa_sigaction(sig, info, secret);
+        if (NULL != _old_signal_handler_SIGKILL.sa_sigaction)
+            _old_signal_handler_SIGKILL.sa_sigaction(sig, info, secret);
+
         //return;
     }
 
@@ -1328,28 +1350,32 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 #endif  //S52_USE_BACKTRACE
 
         // continue with normal sig handling
-        _old_signal_handler_SIGSEGV.sa_sigaction(sig, info, secret);
+        if (NULL != _old_signal_handler_SIGSEGV.sa_sigaction)
+            _old_signal_handler_SIGSEGV.sa_sigaction(sig, info, secret);
 
         return;
     }
 
     // 15 - Termination (ANSI)
-    //sigaction(SIGTERM, &sa, &_old_signal_handler_SIGTERM);
     if (SIGTERM == sig) {
         PRINTF("Signal SIGTERM(%i) cought .. Termination\n", sig);
 
         // continue with normal sig handling
-        _old_signal_handler_SIGTERM.sa_sigaction(sig, info, secret);
+        if (NULL != _old_signal_handler_SIGTERM.sa_sigaction)
+            _old_signal_handler_SIGTERM.sa_sigaction(sig, info, secret);
+
         //return;
     }
 
     // 10
     if (SIGUSR1 == sig) {
         PRINTF("Signal 'User-defined 1' cought - SIGUSR1(%i)\n", sig);
+        return;
     }
     // 12
     if (SIGUSR2 == sig) {
         PRINTF("Signal 'User-defined 2' cought - SIGUSR2(%i)\n", sig);
+        return;
     }
 
 
@@ -1378,6 +1404,50 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 }
 #endif  // _MINGW
 
+static int        _initSIG(void)
+// init signal handler
+{
+
+#ifdef _MINGW
+    //signal(SIGINT,  _trapSIG);  //  2 - Interrupt (ANSI).
+    //signal(SIGSEGV, _trapSIG);  // 11 - Segmentation violation (ANSI).
+#else
+    {
+        struct sigaction sa;
+
+        memset(&sa, 0, sizeof(sa));
+        sa.sa_sigaction = _trapSIG;
+        sigemptyset(&sa.sa_mask);
+        //sa.sa_flags = SA_RESTART | SA_SIGINFO;
+        sa.sa_flags = SA_SIGINFO|SA_RESETHAND;
+
+        //  2 - Interrupt (ANSI) - user press ESC to stop rendering
+        sigaction(SIGINT,  &sa, &_old_signal_handler_SIGINT);
+        //  3  - Quit (POSIX)
+        sigaction(SIGQUIT, &sa, &_old_signal_handler_SIGQUIT);
+        //  5  - Trap (ANSI)
+        sigaction(SIGTRAP, &sa, &_old_signal_handler_SIGTRAP);
+        //  6  - Abort (ANSI)
+        sigaction(SIGABRT, &sa, &_old_signal_handler_SIGABRT);
+        //  9  - Kill, unblock-able (POSIX)
+        sigaction(SIGKILL, &sa, &_old_signal_handler_SIGKILL);
+        // 11 - Segmentation violation (ANSI).
+        sigaction(SIGSEGV, &sa, &_old_signal_handler_SIGSEGV);   // loop in android
+        // 15 - Termination (ANSI)
+        //sigaction(SIGTERM, &sa, &_old_signal_handler_SIGTERM);
+
+        // 10
+        sigaction(SIGUSR1, &sa, &_old_signal_handler_SIGUSR1);
+        // 12
+        sigaction(SIGUSR2, &sa, &_old_signal_handler_SIGUSR2);
+
+        // debug - will trigger SIGSEGV for testing
+        //_cell *c = 0x0;
+        //c->ext.S = INFINITY;
+    }
+#endif
+}
+
 static int        _getCellsExt(_extent* ext);
 static int        _initPROJ(void)
 {
@@ -1392,8 +1462,9 @@ static int        _initPROJ(void)
 
     double cLat = (ext.N + ext.S) / 2.0;
     double cLon = (ext.W + ext.E) / 2.0;
-    //_mercPrjSet = S57_setMercPrj(cLat, cLon);
-    _mercPrjSet = S57_setMercPrj(0.0, cLon); // test - 0 cLat
+    _mercPrjSet = S57_setMercPrj(cLat, cLon);
+    //_mercPrjSet = S57_setMercPrj(0.0, cLon); // test - 0 cLat
+    //_mercPrjSet = S57_setMercPrj(0.0, 0.0); // test - 0 cLat
 
     // while here, set default view center
     _view.cLat  =  (ext.N + ext.S) / 2.0;
@@ -1401,12 +1472,6 @@ static int        _initPROJ(void)
     _view.rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
     _view.north = 0.0;
     S52_GL_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
-
-    //double cLat  =  (ext.N + ext.S) / 2.0;
-    //double cLon  =  (ext.E + ext.W) / 2.0;
-    //double rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
-    //double north = 0.0;
-    //S52_GL_setView(cLat, cLon, rNM, north);
 
     {// debug
         double xyz[3] = {_view.cLon, _view.cLat, 0.0};
@@ -1513,12 +1578,11 @@ DLL int    STD S52_init(void)
     if (screen_pixels_w<1 || screen_pixels_h<1 || screen_mm_w<1 || screen_mm_h<1)
         return FALSE;
 
+    // debug
     if (NULL != err_cb)
         err_cb("S52_init(): test err log\n");
 
-    if (NULL != err_cb) {
-        S52_initLog(err_cb);
-    }
+    S52_initLog(err_cb);
 
 #ifdef _MINGW
 #else
@@ -1537,6 +1601,12 @@ DLL int    STD S52_init(void)
 
     ///////////////////////////////////////////////////////////
     //
+    // init signal handler
+    //
+    _initSIG();
+
+    ///////////////////////////////////////////////////////////
+    //
     // init mem stat stuff
     //
     //GMemVTable *glib_mem_profiler_table;
@@ -1546,44 +1616,6 @@ DLL int    STD S52_init(void)
 
 
     g_atomic_int_set(&_atomicAbort, FALSE);
-
-    //////////////////////////////////////////////////////////
-    // init signal handler
-#ifdef _MINGW
-    //signal(SIGINT,  _trapSIG);  //  2 - Interrupt (ANSI).
-    //signal(SIGSEGV, _trapSIG);  // 11 - Segmentation violation (ANSI).
-#else
-    {
-        struct sigaction sa;
-
-        memset(&sa, 0, sizeof(sa));
-        sa.sa_sigaction = _trapSIG;
-        sigemptyset(&sa.sa_mask);
-        //sa.sa_flags = SA_RESTART | SA_SIGINFO;
-        sa.sa_flags = SA_SIGINFO|SA_RESETHAND;
-
-        //  2 - Interrupt (ANSI) - user press ESC to stop rendering
-        sigaction(SIGINT,  &sa, &_old_signal_handler_SIGINT);
-        //  3  - Quit (POSIX)
-        sigaction(SIGQUIT, &sa, &_old_signal_handler_SIGQUIT);
-        //  6  - Abort (ANSI)
-        sigaction(SIGABRT, &sa, &_old_signal_handler_SIGABRT);
-        //  9  - Kill, unblock-able (POSIX)
-        sigaction(SIGKILL, &sa, &_old_signal_handler_SIGKILL);
-        // 11 - Segmentation violation (ANSI).
-        sigaction(SIGSEGV, &sa, &_old_signal_handler_SIGSEGV);   // loop in android
-        // 15 - Termination (ANSI)
-        //sigaction(SIGTERM, &sa, &_old_signal_handler_SIGTERM);
-        // 10
-        sigaction(SIGUSR1, &sa, &_old_signal_handler_SIGUSR1);
-        // 12
-        sigaction(SIGUSR2, &sa, &_old_signal_handler_SIGUSR2);
-
-        // debug - will trigger SIGSEGV for testing
-        //_cell *c = 0x0;
-        //c->ext.S = INFINITY;
-    }
-#endif
 
     ///////////////////////////////////////////////////////////
     // init global info
@@ -1707,13 +1739,14 @@ DLL int    STD S52_init(void)
     g_ptr_array_add (_cellList, _marinerCell);
     g_ptr_array_sort(_cellList, _cmpCell);
 
-    // FIXME: what happend if a leg cross the anti-meridian
-    // set extent to max
+    // init extend
+    // FIXME: init struct
     _marinerCell->ext.S = -INFINITY;
     _marinerCell->ext.W = -INFINITY;
     _marinerCell->ext.N =  INFINITY;
     _marinerCell->ext.E =  INFINITY;
 
+    // FIXME: def this
     // init raster
     if (NULL == _rasterList)
         _rasterList = g_ptr_array_new();
@@ -1736,6 +1769,9 @@ DLL int    STD S52_init(void)
 #ifdef S52_USE_PIPE
     _pipeWatch(NULL);
 #endif
+    ///////////////////////////////////////////////////////////
+
+
 
     _timer =  g_timer_new();
 
@@ -2243,17 +2279,21 @@ static int        _loadCATALOG(char *filename)
 #include "ogr_srs_api.h"
 #include "gdalwarper.h"
 
-static char      *_getSRS(const char *str)
+//static char      *_getSRS(const char *str)
+static char      *_getSRS(void)
 {
-    char *ret = NULL;
+    char       *ret    = NULL;
+    const char *prjStr = S57_getPrjStr();
+
+    if (NULL == prjStr)
+        return NULL;
 
     OGRSpatialReferenceH hSRS = OSRNewSpatialReference(NULL);
-    if (OGRERR_NONE == OSRSetFromUserInput(hSRS, str))
+    //if (OGRERR_NONE == OSRSetFromUserInput(hSRS, str)) {
+    if (OGRERR_NONE == OSRSetFromUserInput(hSRS, prjStr)) {
         OSRExportToWkt(hSRS, &ret);
-    else
-    {
-        //CPLError( CE_Failure, CPLE_AppDefined, "Translating source or target SRS failed:\n%s", pszUserInput );
-        PRINTF("Translating source or target SRS failed:%s\n", str );
+    } else {
+        PRINTF("Translating source or target SRS failed:%s\n", prjStr );
         g_assert(0);
     }
 
@@ -2349,7 +2389,7 @@ static int        _warp(GDALDatasetH hSrcDS, GDALDatasetH hDstDS)
 
 int               _loadRaster(const char *fname)
 {
-    char fnameMerc[1024];
+    char fnameMerc[1024];  // MAXPATH!
     g_sprintf(fnameMerc, "%s%s", fname, ".merc");
 
     // check if allready loaded
@@ -2367,24 +2407,29 @@ int               _loadRaster(const char *fname)
         return FALSE;
     }
 
+    // FIXME: what if projected Merc tiff was made from different projection
     GDALDatasetH datasetDST = GDALOpen(fnameMerc, GA_ReadOnly);
     // no Merc on disk, then create it
     if (NULL == datasetDST) {
         GDALDatasetH datasetSRC = GDALOpen(fname, GA_ReadOnly);
         if (NULL == datasetSRC) {
-            PRINTF("WARNING: fail to read GDAL data set\n");
+            PRINTF("WARNING: fail to read raster\n");
             return FALSE;
         }
 
-        char *srs_SRC = g_strdup(GDALGetProjectionRef(datasetSRC));
-        char *srs_DST = _getSRS("+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs");
+        // FIXME: convert to Merc at draw() time, if no ENC loaded this will fail
+        //
 
-        datasetDST = _createDSTfile(datasetSRC, fnameMerc, driver, srs_SRC, srs_DST);
-        g_free((gpointer)srs_SRC);
+        //char *srs_DST = _getSRS("+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs");
+        char *srs_DST = _getSRS();
+        if (NULL != srs_DST) {
+            char *srs_SRC = g_strdup(GDALGetProjectionRef(datasetSRC));
+            datasetDST = _createDSTfile(datasetSRC, fnameMerc, driver, srs_SRC, srs_DST);
+            g_free((gpointer)srs_SRC);
 
-        // convert to Mercator
-        _warp(datasetSRC, datasetDST);
-
+            // convert to Mercator
+            _warp(datasetSRC, datasetDST);
+        }
         GDALClose(datasetSRC);
     }
 
@@ -2634,9 +2679,10 @@ DLL int    STD S52_doneCell(const char *encPath)
 // so loadCell would load a CATALOG then CM would load individual cell
 // to fill the view (and unload cell outside the view)
 {
+    S52_CHECK_INIT;
+
     return_if_null(encPath);
 
-    S52_CHECK_INIT;
     S52_CHECK_MUTX;
 
     PRINTF("%s\n", encPath);
@@ -2644,6 +2690,8 @@ DLL int    STD S52_doneCell(const char *encPath)
     gchar *fname = g_strdup(encPath);
     fname = g_strstrip(fname);
 
+    // FIXME: what if MARINER_CELL (ie: "--6MARIN.000").
+    // For example, to clear all MIO's when a socket client reconnect
     if (TRUE != g_file_test(fname, (GFileTest) (G_FILE_TEST_EXISTS))) {
         PRINTF("file not found (%s)\n", fname);
         goto exit;
@@ -4584,14 +4632,14 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     if (ABS(cLat) > 90.0) {
         PRINTF("WARNING: cLat outside [-90..+90](%f)\n", cLat);
         g_static_mutex_unlock(&_mp_mutex);
-        g_assert(0);
+        //g_assert(0);
         return FALSE;
     }
 
     if (ABS(cLon) > 180.0) {
         PRINTF("WARNING: cLon outside [-180..+180] (%f)\n", cLon);
         g_static_mutex_unlock(&_mp_mutex);
-        g_assert(0);
+        //g_assert(0);
         return FALSE;
     }
     //*/
@@ -4602,7 +4650,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
         if ((rNM < MIN_RANGE) || (rNM > MAX_RANGE)) {
             PRINTF("WARNING:  rNM outside limit (%f)\n", rNM);
             g_static_mutex_unlock(&_mp_mutex);
-            g_assert(0);
+            //g_assert(0);
             return FALSE;
         }
     }
@@ -4612,7 +4660,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     if ((ABS(cLat)*60.0 + rNM) > (90.0*60)) {
         PRINTF("WARNING: rangeNM > 90*60 NM (%f)\n", rNM);
         g_static_mutex_unlock(&_mp_mutex);
-        g_assert(0);
+        //g_assert(0);
         return FALSE;
     }
 
@@ -4622,7 +4670,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
         if ((north>=360.0) || (north<0.0)) {
             PRINTF("WARNING: north outside [0..360[ (%f)\n", north);
             g_static_mutex_unlock(&_mp_mutex);
-            g_assert(0);
+            //g_assert(0);
             return FALSE;
         }
     }
@@ -6491,7 +6539,7 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
         goto exit;
     }
 
-    // commented for debugging - clutter output in Android (logcat)
+    // commented for debugging - clutter output
     //PRINTF("label:%s\n", newLabel);
 
     if (TRUE == _isObjNameValid(objH, "ownshp") || TRUE == _isObjNameValid(objH, "vessel")) {
@@ -6501,15 +6549,11 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
         SPRINTF(attval, "[_vessel_label,%s]", newLabel);
         _setAtt(geo, attval);
 
-
-        // change of text label - text need to be reparsed
-        // BUG: glBufferData not deleted!
-        // FIX: no BufferData()
+        // FIXME:
         S52_PL_resetParseText((S52_obj *)objH);
     } else {
         PRINTF("WARNING: not a 'ownshp' or 'vessel' object\n");
         objH = FALSE;
-        //return NULL;
     }
 
 exit:
