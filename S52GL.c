@@ -2033,12 +2033,6 @@ static void      _glUniformMatrix4fv_uModelview(void)
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
         _identity_MODELVIEW = TRUE;
-
-        /*
-         GLfloat r[16];
-         __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-        */
     }
 
     return;
@@ -2235,14 +2229,7 @@ static GLint     _popScaletoPixel(void)
 #ifdef S52_USE_GLES2
     _glMatrixMode(GL_MODELVIEW);
     _glPopMatrix();
-
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-    /*
-    GLfloat r[16];
-    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-    */
 #else
     glMatrixMode(GL_MODELVIEW);
     glPopMatrix();
@@ -2323,13 +2310,6 @@ static GLint     _glMatrixSet(VP vpcoord)
     glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
-
-    /*
-    GLfloat r[16];
-    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-    */
-
 #else
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
@@ -2371,13 +2351,6 @@ static GLint     _glMatrixDel(VP vpcoord)
 
     glUniformMatrix4fv(_uProjection, 1, GL_FALSE, _pjm[_pjmTop]);
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-    /*
-    GLfloat r[16];
-    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-    */
-
 #else
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
@@ -2784,7 +2757,8 @@ static int       _VBODrawArrays(S57_prim *prim)
 }
 
 static int       _VBOCreate(S57_prim *prim)
-// create a VBO, return vboID
+// return new vboID else FALSE.
+// Note that vboID set save by the caller
 {
     guint     primNbr = 0;
     vertex_t *vert    = NULL;
@@ -2798,14 +2772,15 @@ static int       _VBOCreate(S57_prim *prim)
         glGenBuffers(1, &vboID);
 
         if (0 == vboID) {
-            PRINTF("ERROR: glGenBuffers() fail \n");
-            g_assert(0);
+            PRINTF("ERROR: glGenBuffers() fail\n");
+            //g_assert(0);
+            return FALSE;
         }
 
         // bind VBO in order to use
         glBindBuffer(GL_ARRAY_BUFFER, vboID);
 
-        // upload data to VBO
+        // upload VBO data to GPU
         glBufferData(GL_ARRAY_BUFFER, vertNbr*sizeof(vertex_t)*3, (const void *)vert, GL_STATIC_DRAW);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -2833,6 +2808,9 @@ static int       _VBODraw(S57_prim *prim)
 
     if (GL_FALSE == glIsBuffer(vboID)) {
         vboID = _VBOCreate(prim);
+        if (0 == vboID)
+            return FALSE;
+
         S57_setPrimDList(prim, vboID);
     }
 
@@ -2967,7 +2945,9 @@ static int       _fillarea(S57_geo *geoData)
     }
 
 #ifdef S52_USE_OPENGL_VBO
-    _VBODraw(prim);
+    if (FALSE == _VBODraw(prim)) {
+        PRINTF("DEBUG: _VBODraw() failed [%s]\n", S57_getName(geoData));
+    }
 #else
     _createDList(prim);
 #endif
@@ -4644,13 +4624,6 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
         //_glRotated(90.0-o, 0.0, 0.0, 1.0);
 
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-        /*
-        GLfloat r[16];
-        __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-        */
-
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -4683,13 +4656,6 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
         //_pushScaletoPixel(TRUE);
         _pushScaletoPixel(FALSE);
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-        /*
-        GLfloat r[16];
-        __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-        */
-
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -4724,13 +4690,6 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
         //_pushScaletoPixel(TRUE);
         _pushScaletoPixel(FALSE);
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-        /*
-        GLfloat r[16];
-        __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-        */
-
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -4795,13 +4754,6 @@ static int       _renderLS_ownshp(S52_obj *obj)
         _glRotated(orient-90.0, 0.0, 0.0, 1.0);
 
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-        /*
-        GLfloat r[16];
-        __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-        */
-
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -4836,13 +4788,6 @@ static int       _renderLS_ownshp(S52_obj *obj)
         _glRotated(orient, 0.0, 0.0, 1.0);
 
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-        /*
-        GLfloat r[16];
-        __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-        */
-
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -4882,13 +4827,6 @@ static int       _renderLS_ownshp(S52_obj *obj)
             _glTranslated(ppt[0], ppt[1], 0.0);
 
             glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-            /*
-            GLfloat r[16];
-            __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-            glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-            */
-
 #else
             glMatrixMode(GL_MODELVIEW);
             glLoadIdentity();
@@ -4950,13 +4888,6 @@ static int       _renderLS_vessel(S52_obj *obj)
                 _pushScaletoPixel(FALSE);
 
                 glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-                /*
-                GLfloat r[16];
-                __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-                glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-                */
-
 #else
                 glMatrixMode(GL_MODELVIEW);
                 glLoadIdentity();
@@ -4995,13 +4926,6 @@ static int       _renderLS_vessel(S52_obj *obj)
                 _glMatrixMode(GL_MODELVIEW);
                 _glLoadIdentity();
                 glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-                /*
-                GLfloat r[16];
-                __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-                glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-                */
-
 
                 GString *vestatstr = S57_getAttVal(geo, "vestat");
                 if (NULL!=vestatstr && '3'==*vestatstr->str) {
@@ -5077,13 +5001,6 @@ static int       _renderLS_afterglow(S52_obj *obj)
     _glLoadIdentity();
 
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-    /*
-    GLfloat r[16];
-    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-    */
-
 
     //glPointSize(pen_w);
     //glPointSize(10.0);
@@ -5389,12 +5306,6 @@ static int       _renderLS(S52_obj *obj)
                     _glMatrixMode(GL_MODELVIEW);
                     _glLoadIdentity();
                     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-                    /*
-                    GLfloat r[16];
-                    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-                    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-                    */
 
                     _d2f(_tessWorkBuf_f, npt, ppt);
 
@@ -5808,13 +5719,6 @@ static int       _renderLC(S52_obj *obj)
         _glMatrixMode(GL_MODELVIEW);
         _glLoadIdentity();
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-        /*
-        GLfloat r[16];
-        __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-        glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-        */
-
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
@@ -6071,13 +5975,6 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
     _glTranslated(ppt[0], ppt[1], 0.0);
 
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-    /*
-    GLfloat r[16];
-    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-    */
-
 #else
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -7233,7 +7130,7 @@ static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
     return buf;
 }
 
-static int       _sendFtglBuf(GArray *buf)
+static int       _connFtglBuf(GArray *buf)
 // connect ftgl coord data to GPU
 {
         glEnableVertexAttribArray(_aPosition);
@@ -7298,7 +7195,7 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
     if (0 == _buf->len)
         return TRUE;
 
-    _sendFtglBuf(_buf);
+    _connFtglBuf(_buf);
 
     // turn ON 'sampler2d'
     glUniform1f(_uStipOn, 1.0);
@@ -7307,22 +7204,14 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
 
     _glMatrixMode(GL_MODELVIEW);
     _glLoadIdentity();
-
-
     _glTranslated(x, y, 0.0);
 
     _pushScaletoPixel(FALSE);
 
-    _glRotated   (-_north, 0.0, 0.0, 1.0);
+    // horizontal text
+    _glRotated(-_north, 0.0, 0.0, 1.0);
 
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-    /*
-    GLfloat r[16];
-    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-    */
-
 
     //PRINTF("x:%f, x:%f, str:%s\n", x, y, str);
 
@@ -8406,7 +8295,8 @@ static int       _newTexture(S52_GL_ras *raster)
         //int k     = i - Yline*raster->w;
         //int ii    = Yline*potX + k;
 
-        if (raster->nodata == dataf[i]) {
+        //if (raster->nodata == dataf[i]) {
+        if (-9999 == dataf[i]) {
             //texTmp[ii] = 0;
             texTmp[i].a = 0;
             continue;
@@ -8497,13 +8387,6 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
     _glLoadIdentity();
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
-    /*
-    GLfloat r[16];
-    __gluMultMatricesf(_pjm[_pjmTop], _mvm[_mvmTop], r);
-    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, r);
-    */
-
-
     //float fracX = (float)raster->w/(float)raster->potX;
     //float fracY = (float)raster->h/(float)raster->potY;
     float fracX = 1.0;
@@ -8524,11 +8407,11 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
     glUniform1f(_uStipOn, 1.0);
     glBindTexture(GL_TEXTURE_2D, raster->texID);
 
-    glFrontFace(GL_CW);
+    //glFrontFace(GL_CW);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-    glFrontFace(GL_CCW);
+    //glFrontFace(GL_CCW);
 
     _checkError("S52_GL_drawRaster() -4-");
 
@@ -9311,10 +9194,9 @@ int        S52_GL_delRaster(S52_GL_ras *raster, int texOnly)
 #ifdef S52_USE_GLES2
 static GLuint    _loadShader(GLenum type, const char *shaderSrc)
 {
-    GLuint shader;
     GLint  compiled;
 
-    shader = glCreateShader(type);
+    GLuint shader = glCreateShader(type);
     if (0 == shader) {
         PRINTF("ERROR: glCreateShader() failed\n");
         _checkError("_loadShader()");
@@ -9326,21 +9208,19 @@ static GLuint    _loadShader(GLenum type, const char *shaderSrc)
     glCompileShader(shader);
     glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
 
-    // Check if compilation succeeded
-    if(0 == compiled) {
-		// An error happened, first retrieve the length of the log message
-        int logLen   = 0;
-        int writeOut = 0;
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);
+    if (GL_FALSE == compiled) {
+        int logLen = 0;
+		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);  // length include '\0'
 
-		// Allocate enough space for the message and retrieve it
-		char log[256];
-        glGetShaderInfoLog(shader, logLen, &writeOut, log);
+        PRINTF("ERROR: glCompileShader() fail\n");
 
-        PRINTF("ERROR: glCompileShader() fail: %s\n", log);
-
-        _checkError("_loadShader()");
-
+        if (0 != logLen) {
+            int  writeOut = 0;
+            char log[logLen];
+            glGetShaderInfoLog(shader, logLen, &writeOut, log);
+            _checkError("_loadShader()");
+            PRINTF("glCompileShader() log: %s\n", log);
+        }
         g_assert(0);
         return FALSE;
     }
@@ -9348,117 +9228,9 @@ static GLuint    _loadShader(GLenum type, const char *shaderSrc)
     return shader;
 }
 
+#define COMPILE_SHADER(type, src) _loadShader(type, #src)
 static int       _init_es2(void)
 {
-    const char* vShaderStr =
-        "precision lowp float;         \n"
-//        "precision mediump float;      \n"
-//        "precision highp float;        \n"
-        "                              \n"
-        "uniform   mat4  uProjection;  \n"
-        "uniform   mat4  uModelview;   \n"
-        "                              \n"
-        "uniform   float uPointSize;   \n"
-        "                              \n"
-        "uniform   float uPattOn;      \n"
-        "uniform   float uPattGridX;   \n"
-        "uniform   float uPattGridY;   \n"
-        "uniform   float uPattW;       \n"
-        "uniform   float uPattH;       \n"
-        "                              \n"
-        "attribute vec2  aUV;          \n"
-        "attribute vec4  aPosition;    \n"
-        "attribute float aAlpha;       \n"
-        "                              \n"
-        "varying   vec4  v_acolor;     \n"
-        "varying   vec2  v_texCoord;   \n"
-        "varying   float v_pattOn;     \n"
-        "varying   float v_alpha;      \n"
-        "                              \n"
-        "void main(void)                                            \n"
-        "{                                                          \n"
-        "   v_alpha = aAlpha;                                       \n"
-        "                                                           \n"
-        "   gl_PointSize = uPointSize;                              \n"
-        "                                                           \n"
-        "   gl_Position = uProjection * uModelview * aPosition;     \n"
-        // test optimisation: remove one '*'
-        // FIXME: find a way to accuratly time the diff
-//        "   gl_Position = uModelview * aPosition;                   \n"
-        "                                                           \n"
-        "   if (1.0 == uPattOn) {                                   \n"
-        "       v_texCoord.x = (aPosition.x - uPattGridX) / uPattW; \n"
-        "       v_texCoord.y = (aPosition.y - uPattGridY) / uPattH; \n"
-        "   } else {                                                \n"
-        "       v_texCoord = aUV;                                   \n"
-        "   }                                                       \n"
-        "                                                           \n"
-        "}                                                          \n";
-
-
-//        "#ifdef GL_ES                  \n"
-//        "precision highp float;        \n"
-//        "#endif                        \n"
-//        "                              \n"
-    const char* fShaderStr =
-#ifdef S52_USE_TEGRA2
-        "#pragma profilepragma blendoperation(gl_FragColor, GL_FUNC_ADD, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)\n"
-#endif
-        "precision lowp float;         \n"
-//        "precision mediump float;      \n"
-//        "precision highp float;        \n"
-        "                              \n"
-        "uniform lowp sampler2D uSampler2d; \n"
-        "                              \n"
-        "uniform float     uFlatOn;    \n"
-        "uniform float     uBlitOn;    \n"
-        "uniform float     uStipOn;    \n"
-        "uniform float     uPattOn;    \n"
-        "uniform float     uGlowOn;    \n"
-        "uniform float     uRasterOn;  \n"
-        "                              \n"
-        "uniform vec4      uColor;     \n"
-        "                              \n"
-        "varying vec2      v_texCoord; \n"
-        "varying float     v_alpha;    \n"
-        "                              \n"
-
-        // NOTE: if else if ... doesn't seem to slow things down
-        "void main(void)                        \n"
-        "{                                      \n"
-        "                                       \n"
-        "    if (1.0 == uBlitOn) {              \n"
-        "       gl_FragColor = texture2D(uSampler2d, v_texCoord); \n"
-        "    } else {                           \n"
-        "                                       \n"
-        "    if (1.0 == uStipOn) {              \n"
-        "       gl_FragColor = texture2D(uSampler2d, v_texCoord); \n"
-        "       gl_FragColor.rgb = uColor.rgb;  \n"
-        "    } else {                           \n"
-        "                                       \n"
-        "    if (1.0 == uPattOn) {              \n"
-        "       gl_FragColor = texture2D(uSampler2d, v_texCoord); \n"
-        "       gl_FragColor.rgb = uColor.rgb;  \n"
-        "    } else {                           \n"
-        "                                       \n"
-        "    if (0.0 < uGlowOn) {               \n"
-        "       if (0.5 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) + (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) {      \n"
-        "           gl_FragColor   = uColor;    \n"
-        "           gl_FragColor.a = v_alpha;   \n"
-        "       } else {                        \n"
-        "           discard;                    \n"
-        "       }                               \n"
-        "    } else {                           \n"
-        "       gl_FragColor = uColor;          \n"
-        "    }                                  \n"
-        "                                       \n"
-        "    }                                  \n"
-        "    }                                  \n"
-        "    }                                  \n"
-//        "    }                                  \n"
-        "}                                      \n";
-//*/
-
     PRINTF("begin ..\n");
 
     if (TRUE == glIsProgram(_programObject)) {
@@ -9473,10 +9245,122 @@ static int       _init_es2(void)
         PRINTF("DEBUG: re-building '_programObject'\n");
 
         _programObject  = glCreateProgram();
+
+        // ----------------------------------------------------------------------
         PRINTF("GL_VERTEX_SHADER\n");
-        _vertexShader   = _loadShader(GL_VERTEX_SHADER,   vShaderStr);
+
+        //#ifdef GL_ES
+        //precision highp float;
+        //#endif
+        _vertexShader = COMPILE_SHADER(GL_VERTEX_SHADER,
+        precision lowp float;
+//        "precision mediump float;      \n"
+//        "precision highp float;        \n"
+
+        uniform   mat4  uProjection;
+        uniform   mat4  uModelview;
+
+        uniform   float uPointSize;
+
+        uniform   float uPattOn;
+        uniform   float uPattGridX;
+        uniform   float uPattGridY;
+        uniform   float uPattW;
+        uniform   float uPattH;
+
+        attribute vec2  aUV;
+        attribute vec4  aPosition;
+        attribute float aAlpha;
+
+        varying   vec4  v_acolor;
+        varying   vec2  v_texCoord;
+        varying   float v_pattOn;
+        varying   float v_alpha;
+
+        void main(void)
+        {
+            v_alpha = aAlpha;
+
+            gl_PointSize = uPointSize;
+
+            gl_Position = uProjection * uModelview * aPosition;
+            // optimisation: uProjection * uModelview on CPU, remove one '*'
+            // FIXME: find a way to accuratly time the diff
+            // gl_Position = uModelview * aPosition;
+
+            if (1.0 == uPattOn) {
+                v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;
+                v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;
+            } else {
+                v_texCoord = aUV;
+            }
+        });
+        // ----------------------------------------------------------------------
+
+
+        // ----------------------------------------------------------------------
         PRINTF("GL_FRAGMENT_SHADER\n");
-        _fragmentShader = _loadShader(GL_FRAGMENT_SHADER, fShaderStr);
+
+#ifdef S52_USE_TEGRA2
+        // GCC say: warning: embedding a directive within macro arguments is not portable [enabled by default]
+        // die on Xoom
+        // FIXME: does this really help with blending
+#define BLENDFUNC #pragma profilepragma blendoperation(gl_FragColor, GL_FUNC_ADD, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
+#else
+#define BLENDFUNC
+#endif
+        _fragmentShader = COMPILE_SHADER(GL_FRAGMENT_SHADER,
+
+        //BLENDFUNC
+
+        precision lowp float;
+        // precision mediump float;
+        // precision highp float;
+
+        uniform lowp sampler2D uSampler2d;
+
+        uniform float     uFlatOn;
+        uniform float     uBlitOn;
+        uniform float     uStipOn;
+        uniform float     uPattOn;
+        uniform float     uGlowOn;
+        uniform float     uRasterOn;
+
+        uniform vec4      uColor;
+
+        varying vec2      v_texCoord;
+        varying float     v_alpha;
+
+
+        // NOTE: if else if ... doesn't seem to slow things down
+        void main(void)
+        {
+            if (1.0 == uBlitOn) {
+                gl_FragColor = texture2D(uSampler2d, v_texCoord);
+            } else {
+                if (1.0 == uStipOn) {
+                    gl_FragColor = texture2D(uSampler2d, v_texCoord);
+                    gl_FragColor.rgb = uColor.rgb;
+                } else {
+                    if (1.0 == uPattOn) {
+                        gl_FragColor = texture2D(uSampler2d, v_texCoord);
+                        gl_FragColor.rgb = uColor.rgb;
+                    } else {
+                        if (0.0 < uGlowOn) {
+                            if (0.5 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) + (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) {
+                                gl_FragColor   = uColor;
+                                gl_FragColor.a = v_alpha;
+                            } else {
+                                discard;
+                            }
+                        } else {
+                            gl_FragColor = uColor;
+                        }
+                    }
+                }
+            }
+        });
+        // ----------------------------------------------------------------------
 
         if ((0==_programObject) || (0==_vertexShader) || (0==_fragmentShader)) {
             PRINTF("problem loading shaders and/or creating program!");
