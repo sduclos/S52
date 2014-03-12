@@ -30,6 +30,7 @@
 #include <proj_api.h>   // projUV, projXY, projPJ
 static projPJ      _pjsrc   = NULL;   // projection source
 static projPJ      _pjdst   = NULL;   // projection destination
+static char       *_pjstr   = NULL;
 static int         _doInit  = TRUE;   // will set new src projection
 static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 //static const char *_argsdst = "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
@@ -263,6 +264,10 @@ int        S57_donePROJ()
     if (NULL != _attList)
         g_string_free(_attList, TRUE);
 
+    if (NULL != _pjstr)
+        g_free(_pjstr);
+    _pjstr = NULL;
+
     return TRUE;
 }
 
@@ -274,23 +279,30 @@ int        S57_setMercPrj(double lat, double lon)
     // Note: +lon_wrap=180.0 convert clamp [-180..180] to clamp [0..360]
 
     const char *templ = "+proj=merc +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
-    gchar      *pjstr = g_strdup_printf(templ, lat, lon);
-    PRINTF("DEBUG: lat:%f, lon:%f [%s]\n", lat, lon, pjstr);
+
+    if (NULL != _pjstr) {
+        PRINTF("WARNING: Merc projection allready set\n");
+        return FALSE;
+    }
+
+    _pjstr = g_strdup_printf(templ, lat, lon);
+    PRINTF("DEBUG: lat:%f, lon:%f [%s]\n", lat, lon, _pjstr);
 
     if (NULL != _pjdst)
         pj_free(_pjdst);
 
-    if (!(_pjdst = pj_init_plus(pjstr))) {
+    if (!(_pjdst = pj_init_plus(_pjstr))) {
         PRINTF("ERROR: init pjdst PROJ4 (lat:%f) [%s]\n", lat, pj_strerrno(pj_errno));
-        g_free(pjstr);
-
         g_assert(0);
         return FALSE;
     }
 
-    g_free(pjstr);
-
     return TRUE;
+}
+
+cchar     *S57_getPrjStr(void)
+{
+    return _pjstr;
 }
 
 projXY     S57_prj2geo(projUV uv)
