@@ -336,7 +336,7 @@ static GTree   *_table[TBL_NUM] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}
 //#define LNFMT  "%1024[^\n]"   // line format
 #define LNFMT  "%[^\n]"   // line format
 
-#define FIELD(str)    if(0==strncmp(#str, pBuf, 4))
+#define FIELD(str)    if(0==strncmp(#str, _pBuf, 4))
 
 typedef unsigned char u8;
 
@@ -345,7 +345,7 @@ typedef unsigned char u8;
 //#define MAXL       256       // max string 'str' length in buf
 //static char buffer[MAX_BUF];
 //static char *pBuf = (char *)&buffer;
-static char pBuf[MAX_BUF];
+static char _pBuf[MAX_BUF];
 
 //typedef unsigned char *PL;
 typedef struct _PL {
@@ -1326,9 +1326,9 @@ static int        _parseLBID(_PL *fp)
     if (NULL == plib)
         g_assert(0);
 
-    sscanf(pBuf+11, "%d", &plib->RCID);
-    plib->EXPP  = pBuf[16];
-    plib->ID    = g_string_new(pBuf+16);
+    sscanf(_pBuf+11, "%d", &plib->RCID);
+    plib->EXPP  = _pBuf[16];
+    plib->ID    = g_string_new(_pBuf+16);
     //PRINTF("FIXME: parse ID of PLib\n");
 
     if (NULL != _plibID)
@@ -1357,20 +1357,20 @@ static int        _cms_xyL2rgb(S52_Color *c);
 static int        _readColor(_PL *fp)
 {
 
-    _readS52Line(fp, pBuf);
-    while ( 0 != strncmp(pBuf, "****",4)) {
+    _readS52Line(fp, _pBuf);
+    while ( 0 != strncmp(_pBuf, "****",4)) {
         S52_Color c;
 
         // debug
-        //PRINTF("%s\n", pBuf);
+        //PRINTF("%s\n", _pBuf);
 
         // need mem
         memset(&c, '\0', sizeof(S52_Color));
-        _chopAtEOL(pBuf, ' ');
-        strncpy(c.colName, pBuf+9, 5);
-        c.x = S52_atof(pBuf+14);
-        c.y = S52_atof(pBuf+21);
-        c.L = S52_atof(pBuf+28);
+        _chopAtEOL(_pBuf, ' ');
+        strncpy(c.colName, _pBuf+9, 5);
+        c.x = S52_atof(_pBuf+14);
+        c.y = S52_atof(_pBuf+21);
+        c.L = S52_atof(_pBuf+28);
 
         c.trans = '0';  // default to opaque
 
@@ -1408,24 +1408,24 @@ static int        _readColor(_PL *fp)
             }
         }
 
-        _readS52Line(fp, pBuf);
+        _readS52Line(fp, _pBuf);
     }
 }
 #endif
 
 static int        _readColor(_PL *fp, GArray *colors)
 {
-    _readS52Line(fp, pBuf);
-    while ( 0 != strncmp(pBuf, "****",4)) {
+    _readS52Line(fp, _pBuf);
+    while ( 0 != strncmp(_pBuf, "****",4)) {
         S52_Color c;
 
         memset(&c, '\0', sizeof(S52_Color));
-        _chopAtEOL(pBuf, ' ');
-        strncpy(c.colName, pBuf+9, 5);
+        _chopAtEOL(_pBuf, ' ');
+        strncpy(c.colName, _pBuf+9, 5);
 
-        c.x     = S52_atof(pBuf+14);
-        c.y     = S52_atof(pBuf+21);
-        c.L     = S52_atof(pBuf+28);
+        c.x     = S52_atof(_pBuf+14);
+        c.y     = S52_atof(_pBuf+21);
+        c.L     = S52_atof(_pBuf+28);
         c.trans = '0';  // default to opaque
 
         _cms_xyL2rgb(&c);
@@ -1453,7 +1453,7 @@ static int        _readColor(_PL *fp, GArray *colors)
             g_assert(0);
         }
 
-        _readS52Line(fp, pBuf);
+        _readS52Line(fp, _pBuf);
     }
 
     return TRUE;
@@ -1492,7 +1492,7 @@ static int        _parseCOLS(_PL *fp)
     //    _flushColors();
 
     // trap color status that are not implemented
-    switch (pBuf[16]) {
+    switch (_pBuf[16]) {
     case _COL_TBL_NIL: break;  // NEW
     case _COL_TBL_ADD: ;       // TODO
     case _COL_TBL_MOD: ;       // TODO
@@ -1503,12 +1503,12 @@ static int        _parseCOLS(_PL *fp)
         return FALSE;
     }
 
-    pct = _findColTbl(pBuf+19);
+    pct = _findColTbl(_pBuf+19);
     // NEW patelette
     if (NULL == pct) {
         _colTable  ct;
         // S52 say 15 char - could be any lenght
-        ct.tableName = g_string_new(pBuf+19);
+        ct.tableName = g_string_new(_pBuf+19);
         // Note: only 63 color are loaded from PLib (#64 is TRANS)
         ct.colors    = g_array_new(FALSE, FALSE, sizeof(S52_Color));
         g_array_set_size(ct.colors, S52_COL_NUM);
@@ -1516,7 +1516,7 @@ static int        _parseCOLS(_PL *fp)
         g_array_append_val(_colTables, ct);
 
         // fetch entree
-        pct = _findColTbl(pBuf+19);
+        pct = _findColTbl(_pBuf+19);
         if (NULL == pct) {
             PRINTF("ERROR: _findColTbl() failed\n");
             g_assert(0);
@@ -1546,14 +1546,14 @@ static int        _parseLUPT(_PL *fp)
         g_assert(0);
 
 
-    sscanf(pBuf+11, "%d", &LUP->RCID);
-    //sscanf(pBuf+11, "%i", &LUP->RCID);
-    strncpy(LUP->OBCL, pBuf+19, S52_PL_NMLN);
-    LUP->FTYP = (S52_Obj_t  )  pBuf[25];
-    //LUP->FTYP = (S57_Obj_t  )  pBuf[25];
-    LUP->DPRI = (S52_disPrio) (pBuf[30] - '0');
-    LUP->RPRI = (S52_RadPrio)  pBuf[31];
-    LUP->TNAM = (   _LUPtnm )  pBuf[36];
+    sscanf(_pBuf+11, "%d", &LUP->RCID);
+    //sscanf(_pBuf+11, "%i", &LUP->RCID);
+    strncpy(LUP->OBCL, _pBuf+19, S52_PL_NMLN);
+    LUP->FTYP = (S52_Obj_t  )  _pBuf[25];
+    //LUP->FTYP = (S57_Obj_t  )  _pBuf[25];
+    LUP->DPRI = (S52_disPrio) (_pBuf[30] - '0');
+    LUP->RPRI = (S52_RadPrio)  _pBuf[31];
+    LUP->TNAM = (   _LUPtnm )  _pBuf[36];
 
     if ('O'!=LUP->RPRI && 'S'!=LUP->RPRI)
         LUP->RPRI = (S52_RadPrio) 'O';  // failsafe
@@ -1562,32 +1562,32 @@ static int        _parseLUPT(_PL *fp)
     //if (LUP->TNAM == 103)
     //    PRINTF("found LUP TNAM\n");
 
-    len = _readS52Line(fp, pBuf);
+    len = _readS52Line(fp, _pBuf);
 
     do {
         FIELD(ATTC) {                     // field do repeat
-            if (pBuf[9] != '\0') {            // could be empty!
+            if (_pBuf[9] != '\0') {            // could be empty!
                 if (NULL != LUP->ATTC) {
                     PRINTF("ERROR repeating field ATTC not implemented!\n");
                 } else {
-                    pBuf[len-1] = EOL;  // change "\0\0" to "EOL\0" for _chopS52Line()
+                    _pBuf[len-1] = EOL;  // change "\0\0" to "EOL\0" for _chopS52Line()
                     // FIXME: use g_string_new_len () in glib-2.0
-                    //LUP->ATTC = g_string_new_len(pBuf+9, len-9);
-                    LUP->ATTC = g_string_new(pBuf+9);
+                    //LUP->ATTC = g_string_new_len(_pBuf+9, len-9);
+                    LUP->ATTC = g_string_new(_pBuf+9);
                     _chopAtEOL(LUP->ATTC->str, '\0');   // rechop the line (ie "xyz\0zxy\0yzx\0\0")
                 }
             }
         }
 
-        FIELD(INST) { LUP->INST = g_string_new(pBuf+9); }
+        FIELD(INST) { LUP->INST = g_string_new(_pBuf+9); }
         FIELD(DISC) {
-            LUP->DISC = (S52_DisCat) pBuf[9];
+            LUP->DISC = (S52_DisCat) _pBuf[9];
             // check if MARINER, remap to S52_DisCat MARINER
-            if ('M' == pBuf[9])
-                LUP->DISC = (S52_DisCat) (pBuf[18] + 1);
+            if ('M' == _pBuf[9])
+                LUP->DISC = (S52_DisCat) (_pBuf[18] + 1);
         }
-        FIELD(LUCM) { sscanf(pBuf+9, "%d",&LUP->LUCM);  }
-        //FIELD(LUCM) { sscanf(pBuf+9, "%i",&LUP->LUCM);  }
+        FIELD(LUCM) { sscanf(_pBuf+9, "%d",&LUP->LUCM);  }
+        //FIELD(LUCM) { sscanf(_pBuf+9, "%i",&LUP->LUCM);  }
 
         FIELD(****) {
             GTree *LUPtype = _selLUP(LUP->TNAM);
@@ -1678,7 +1678,7 @@ static int        _parseLUPT(_PL *fp)
             inserted = TRUE;
         }
 
-        _readS52Line(fp, pBuf);
+        _readS52Line(fp, _pBuf);
 
     } while (inserted == FALSE);
 
@@ -1720,19 +1720,19 @@ static int        _parseLNST(_PL *fp)
     lnst->exposition.LXPO        = g_string_new('\0');
     lnst->shape.line.vector.LVCT = g_string_new('\0');
 
-    sscanf(pBuf+11, "%d", &lnst->RCID);
-    //sscanf(pBuf+11, "%i", &lnst->RCID);
+    sscanf(_pBuf+11, "%d", &lnst->RCID);
+    //sscanf(_pBuf+11, "%i", &lnst->RCID);
 
-    _readS52Line(fp, pBuf);
+    _readS52Line(fp, _pBuf);
     do {
         FIELD(LIND) {
-            strncpy(lnst->name.LINM, pBuf+9, S52_SMB_NMLN);
-            _parsePos(&lnst->pos.line, pBuf+17, FALSE);
+            strncpy(lnst->name.LINM, _pBuf+9, S52_SMB_NMLN);
+            _parsePos(&lnst->pos.line, _pBuf+17, FALSE);
         }
 
-        FIELD(LXPO) { lnst->exposition.LXPO        = g_string_append( lnst->exposition.LXPO, pBuf+9 ); }
-        FIELD(LVCT) { lnst->shape.line.vector.LVCT = g_string_append( lnst->shape.line.vector.LVCT, pBuf+9 ); }
-        FIELD(LCRF) { lnst->colRef.LCRF            = g_string_new(pBuf+9 ); }  // CIDX + CTOK
+        FIELD(LXPO) { lnst->exposition.LXPO        = g_string_append( lnst->exposition.LXPO, _pBuf+9 ); }
+        FIELD(LVCT) { lnst->shape.line.vector.LVCT = g_string_append( lnst->shape.line.vector.LVCT, _pBuf+9 ); }
+        FIELD(LCRF) { lnst->colRef.LCRF            = g_string_new(_pBuf+9 ); }  // CIDX + CTOK
         FIELD(****) {
 
             // update (replace)
@@ -1741,7 +1741,7 @@ static int        _parseLNST(_PL *fp)
 
             inserted = TRUE;
         }
-        _readS52Line(fp, pBuf);
+        _readS52Line(fp, _pBuf);
 
     } while (inserted == FALSE);
 
@@ -1774,25 +1774,25 @@ static int        _parsePATT(_PL *fp)
     patt->exposition.PXPO        = g_string_new('\0');   // field repeat
     patt->shape.patt.vector.PVCT = g_string_new('\0');   // field repeat
 
-    sscanf(pBuf+11, "%d", &patt->RCID);
-    //sscanf(pBuf+11, "%i", &patt->RCID);
+    sscanf(_pBuf+11, "%d", &patt->RCID);
+    //sscanf(_pBuf+11, "%i", &patt->RCID);
 
-    _readS52Line(fp, pBuf);
+    _readS52Line(fp, _pBuf);
 
     do {
         FIELD(PATD) {
-            strncpy(patt->name.PANM, pBuf+9, S52_SMB_NMLN);
+            strncpy(patt->name.PANM, _pBuf+9, S52_SMB_NMLN);
             //PRINTF("%8s ", patt->name.PANM);
-            patt->definition.PADF = pBuf[17];
-            patt->fillType.PATP   = pBuf[18];
-            patt->spacing.PASP    = pBuf[21];
-            _parsePos(&patt->pos.patt, pBuf+24, TRUE);
+            patt->definition.PADF = _pBuf[17];
+            patt->fillType.PATP   = _pBuf[18];
+            patt->spacing.PASP    = _pBuf[21];
+            _parsePos(&patt->pos.patt, _pBuf+24, TRUE);
         }
 
         FIELD(PBTM) { PRINTF("ERROR: pattern bitmap not in specs\n"); }
-        FIELD(PXPO) { patt->exposition.PXPO        = g_string_append(patt->exposition.PXPO, pBuf+9); }
-        FIELD(PVCT) { patt->shape.patt.vector.PVCT = g_string_append(patt->shape.patt.vector.PVCT, pBuf+9); }
-        FIELD(PCRF) { patt->colRef.PCRF            = g_string_new(pBuf+9); } // CIDX + CTOK
+        FIELD(PXPO) { patt->exposition.PXPO        = g_string_append(patt->exposition.PXPO, _pBuf+9); }
+        FIELD(PVCT) { patt->shape.patt.vector.PVCT = g_string_append(patt->shape.patt.vector.PVCT, _pBuf+9); }
+        FIELD(PCRF) { patt->colRef.PCRF            = g_string_new(_pBuf+9); } // CIDX + CTOK
         FIELD(****) {
 
             //g_tree_replace(_selSMB(S52_SMB_PATT), (gpointer*)patt->name.PANM, (gpointer*)patt);
@@ -1800,7 +1800,7 @@ static int        _parsePATT(_PL *fp)
 
             inserted = TRUE;
         }
-        _readS52Line(fp, pBuf);
+        _readS52Line(fp, _pBuf);
 
     } while (inserted == FALSE);
 
@@ -1830,22 +1830,22 @@ static int        _parseSYMB(_PL *fp)
     symb->exposition.SXPO        = g_string_new('\0');
     symb->shape.symb.vector.SVCT = g_string_new('\0');
 
-    sscanf(pBuf+11, "%d", &symb->RCID);
-    //sscanf(pBuf+11, "%i", &symb->RCID);
+    sscanf(_pBuf+11, "%d", &symb->RCID);
+    //sscanf(_pBuf+11, "%i", &symb->RCID);
 
-    _readS52Line(fp, pBuf);
+    _readS52Line(fp, _pBuf);
 
     do {
         FIELD(SYMD) {
-            strncpy(symb->name.SYNM, pBuf+9, S52_SMB_NMLN);
-            symb->definition.SYDF = pBuf[17];
-            _parsePos(&symb->pos.symb, pBuf+18, FALSE);
+            strncpy(symb->name.SYNM, _pBuf+9, S52_SMB_NMLN);
+            symb->definition.SYDF = _pBuf[17];
+            _parsePos(&symb->pos.symb, _pBuf+18, FALSE);
         }
 
         FIELD(SBTM) { PRINTF("ERROR: symbol bitmap not in specs\n"); }
-        FIELD(SXPO) { symb->exposition.SXPO        = g_string_append( symb->exposition.SXPO, pBuf+9); }
-        FIELD(SVCT) { symb->shape.symb.vector.SVCT = g_string_append( symb->shape.symb.vector.SVCT, pBuf+9); }
-        FIELD(SCRF) { symb->colRef.SCRF            = g_string_new(pBuf+9); } // CIDX + CTOK
+        FIELD(SXPO) { symb->exposition.SXPO        = g_string_append( symb->exposition.SXPO, _pBuf+9); }
+        FIELD(SVCT) { symb->shape.symb.vector.SVCT = g_string_append( symb->shape.symb.vector.SVCT, _pBuf+9); }
+        FIELD(SCRF) { symb->colRef.SCRF            = g_string_new(_pBuf+9); } // CIDX + CTOK
         FIELD(****) {
 
             // debug
@@ -1863,7 +1863,7 @@ static int        _parseSYMB(_PL *fp)
 
             inserted = TRUE;
         }
-        _readS52Line(fp, pBuf);
+        _readS52Line(fp, _pBuf);
 
     } while (inserted == FALSE );
 
@@ -1942,7 +1942,7 @@ static int        _loadPL(_PL *fp)
     // then flush the old one
     //_flush_Colors = TRUE;
 
-    while (-1 != _readS52Line(fp, pBuf) ) {
+    while (-1 != _readS52Line(fp, _pBuf) ) {
         // !!! order important !!!
         FIELD(LBID) { _parseLBID(fp); }
         FIELD(COLS) { _parseCOLS(fp); }
@@ -1954,7 +1954,7 @@ static int        _loadPL(_PL *fp)
         FIELD(0001) { continue; }
         FIELD(****) { continue; }
 
-        //PRINTF("read:%d %s\n", nRead,pBuf);
+        //PRINTF("read:%d %s\n", nRead,_pBuf);
     }
     //_flush_Colors = FALSE;
 
@@ -2480,7 +2480,7 @@ S52_Color  *S52_PL_getColor(const char *colorName)
 // FIXME: should save index
 {
     if (NULL == _colTables) {
-        PRINTF("FATAL ERROR: PL not initialized .. exiting\n");
+        PRINTF("ERROR: PL not initialized .. exiting\n");
         g_assert(0);
     }
 
@@ -3940,8 +3940,6 @@ int         S52_PL_resetParseText(_S52_obj *obj)
 {
     return_if_null(obj);
 
-    //_freeAllTXT(obj, 0);
-    //_freeAllTXT(obj, 1);
     _freeAllTXT(obj->cmdAfinal[0]);
     _freeAllTXT(obj->cmdAfinal[1]);
 
