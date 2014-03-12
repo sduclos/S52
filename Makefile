@@ -1,4 +1,4 @@
-# Makefile: build libS52.so for openev plugin
+# Makefile: build libS52.so and others for various scenarios (openev plugin)
 #
 # SD AUG2004
 # SD FEB2008   - clean up, fix some deps
@@ -16,12 +16,12 @@
 
 ##### TARGETS #########
 #all: s52glx         # OGR & GLX
-#all: s52eglx        # OGR & EGL & X11   (for testing EGL/GLES2 on X)
+all: s52eglx        # OGR & EGL & X11   (for testing EGL/GLES2 on X)
 #all: s52eglarm      # OGR & EGL & ARM   (for testing EGL/GLES2 on ARM/Android)
 #all: s52eglw32      # OGR & EGL & Win32 (for testing EGL/GLES2 on Win32)
 #all: s52gv          # GV  (GTK)
 #all: s52gv2         # GV2 (GTK2)
-all: s52gtk2        # OGR & GTK2 & GL 1.x (broken)
+#all: s52gtk2        # OGR & GTK2 & GL 1.x (2014FEB broken)
 #all: s52gtk2p       # profiling
 #all: s52gtk2gps     # build s52gtk2 for testing with live data comming from GPSD
 #all: s52gtk2egl     # GTK2 & EGL
@@ -63,7 +63,7 @@ CC   = gcc -std=gnu99 -fPIC # need gnu99 to get M_PI
 #CC   = g++ -fPIC
 CXX  = g++ -fPIC
 
-# win32: check this   _MINGW32_
+# win32: check this _MINGW32_
 s52win32 : MINGW = /usr/bin/i586-mingw32msvc-
 s52win32 : CC    = $(MINGW)gcc -g -O0 -Wall -DG_DISABLE_ASSERT -D_MINGW -std=c99
 s52win32 : CXX   = $(MINGW)g++ -g -O0 -Wall -DG_DISABLE_ASSERT -D_MINGW
@@ -93,11 +93,11 @@ OBJS_FREETYPE_GL = ./lib/freetype-gl/vector.o ./lib/freetype-gl/texture-atlas.o 
 # so the tess code is pulled from COGL.
 # (Quadric are also in GLU, but it is done by hand in S52GL.c to output float
 # for VBO in GLES2 for circle / disk / arc.)
-OBJS_TESS = ./lib/tesselator/dict.o      ./lib/tesselator/geom.o     \
-            ./lib/tesselator/mesh.o      ./lib/tesselator/normal.o   \
-            ./lib/tesselator/priorityq.o ./lib/tesselator/render.o   \
-            ./lib/tesselator/sweep.o     ./lib/tesselator/tessmono.o \
-            ./lib/tesselator/tess.o
+OBJS_TESS = ./lib/libtess/dict.o      ./lib/libtess/geom.o     \
+            ./lib/libtess/mesh.o      ./lib/libtess/normal.o   \
+            ./lib/libtess/priorityq.o ./lib/libtess/render.o   \
+            ./lib/libtess/sweep.o     ./lib/libtess/tessmono.o \
+            ./lib/libtess/tess.o
 
 # handle JSON in WebSocket
 OBJ_PARSON = ./lib/parson/parson.o
@@ -112,7 +112,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 #
 #
 
-# NOTE: -malign-double: for 32bits system --useless on 64its
+# NOTE: -malign-double: for 32bits system (useless on 64bits)
 
 # NOTE: GV_USE_DOUBLE_PRECISION_COORD not needed directly for S52
 #       but gvtype.h need it and it can be pulled in (somehow.)
@@ -188,7 +188,7 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -I/usr/include                 \
                   -I/usr/include/freetype2       \
                   -I./lib/freetype-gl            \
-                  -I./lib/tesselator             \
+                  -I./lib/libtess                \
                   -I./lib/parson                 \
                   -DS52_USE_PROJ                 \
                   -DS52_USE_GLIB2                \
@@ -216,8 +216,8 @@ s52eglarm : ARMINCLUDE       = $(ARMTOOLCHAINROOT)/sysroot/usr/include
 s52eglarm : ARMLIBS          = $(ARMTOOLCHAINROOT)/sysroot/usr/lib
 
 # Android 4.4.2: -O2 -O1 crash activity android:name = ".s52ui"
-s52eglarm : CC     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -fPIC -mthumb -std=c99
-s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -fPIC -mthumb
+s52eglarm : CC     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16 -std=c99
+s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
 s52eglarm : AR     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ar
 s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 
@@ -234,7 +234,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
 # -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
 # -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7)
 # -DS52_USE_LOG          - log S52_* call to tmp file
-# -DS52_DEBUG            - enable debug code, PRINTF()
+# -DS52_DEBUG            - enable debug code, glError(), PRINTF(), ..
 # -DG_DISABLE_ASSERT     - disable g_assert()
 
               DEFS = -DS52_USE_GLIB2                       \
@@ -249,14 +249,15 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
-                     -DG_DISABLE_ASSERT
+                     -DS52_DEBUG                           \
+                     $(DBG0)
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
                      -I$(S52DROIDINC)/glib-2.0             \
                      -I$(S52DROIDINC)/glib-2.0/include     \
                      -I/usr/include/freetype2              \
                      -I./lib/freetype-gl                   \
-                     -I./lib/tesselator                    \
+                     -I./lib/libtess                       \
                      -I./lib/parson                        \
                      $(DEFS)
 
@@ -324,19 +325,20 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
                       -I$(GDALPATH)/gcore                     \
                       -I$(GDALPATH)/frmts/iso8211/            \
                       -I$(GDALPATH)/alg                       \
-                  -I./lib/freetype-gl            \
-                  -I./lib/tesselator             \
-                  -I./lib/parson                 \
-                  -DS52_USE_PROJ                 \
-                  -DS52_USE_GLIB2                \
-                  -DS52_USE_DOTPITCH             \
-                  -DS52_USE_OPENGL_VBO           \
-                  -DS52_USE_EGL                  \
-                  -DS52_USE_GLES2                \
-                  -DS52_USE_FREETYPE_GL          \
-                  -DS52_USE_OGR_FILECOLLECTOR    \
-                  -DS52_USE_SYM_VESSEL_DNGHL     \
-                  -DS52_DEBUG $(DBG)
+                      -I./lib/freetype-gl            \
+                      -I./lib/libtess                \
+                      -I./lib/parson                 \
+                      -DS52_USE_PROJ                 \
+                      -DS52_USE_GLIB2                \
+                      -DS52_USE_DOTPITCH             \
+                      -DS52_USE_OPENGL_VBO           \
+                      -DS52_USE_EGL                  \
+                      -DS52_USE_GLES2                \
+                      -DS52_USE_FREETYPE_GL          \
+                      -DS52_USE_OGR_FILECOLLECTOR    \
+                      -DS52_USE_SYM_VESSEL_DNGHL     \
+                      -DS52_USE_LOG                  \
+                      -DS52_DEBUG
 
 
 ############### LIBS setup ##############################
@@ -398,7 +400,7 @@ S52raz-3.2.rle.o: S52raz.s
 %.o: %.c %.h S52.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-./lib/tesselator/%.o: ./lib/tesselator/%.c
+./lib/libtess/%.o: ./lib/libtess/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 ./lib/freetype-gl/%.o: ./lib/freetype-gl/%.c
@@ -408,7 +410,8 @@ S52raz-3.2.rle.o: S52raz.s
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(S52DROIDLIB)/libS52.a: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
-	$(AR) r   $(S52DROIDLIB)/libS52.a $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
+	$(AR) rc   $(S52DROIDLIB)/libS52.a $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
+	$(RANLIB)  $(S52DROIDLIB)/libS52.a 
 
 libS52.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 	$(CXX) -rdynamic -shared $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON) $(LIBS) -o $@
@@ -419,10 +422,12 @@ libS52gv.so: $(OBJS_S52) $(OBJS_GV)
 #-static-libgcc
 #	$(LIBWIN32PATH)/libftgl.a -lfreetype6
 s52win32 s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
-s52win32 s52eglw32 : LIBS    = $(LIBWIN32PATH)/libproj.a     \
-                               $(LIBWIN32PATH)/libftgl.a     \
-                               $(LIBWIN32PATH)/libgdal-1.dll \
-                               $(LIBWIN32PATH)/liblcms-1.dll
+s52win32 s52eglw32 : LIBS    = $(LIBWIN32PATH)/libproj.a              \
+                               $(LIBWIN32PATH)/libgdal-1.dll            \
+                               $(LIBWIN32PATH)/liblcms-1.dll          \
+                               -L$(GTKPATH) -lglib-2.0-0 -lfreetype6  \
+                               $(LIBWIN32PATH)/libEGL.lib             \
+                               $(LIBWIN32PATH)/libGLESv2.lib
 
 #libS52.dll: $(OBJS_S52)
 #	$(MINGW)objcopy --redefine-sym S52raz=_S52raz                     \
@@ -437,9 +442,8 @@ libS52.dll: $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
 	--redefine-sym S52razLen=_S52razLen S52raz-3.2.rle.o S52raz-3.2.rle.o
 	 $(MINGW)g++ -g -mms-bitfields -O0 -Wall  -shared -Wl,--add-stdcall-alias \
 	 $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)               \
-	 $(LIBS)                                                                  \
-	-L$(GTKPATH) -lglib-2.0-0 -lfreetype6                                     \
-	$(LIBWIN32PATH)/libEGL.lib $(LIBWIN32PATH)/libGLESv2.lib -o $@
+	 $(LIBS) -o $@
+
 
 
 ############### Test ##############################
@@ -459,7 +463,7 @@ test/s52gtk3egl:
 	(cd test; make s52gtk3egl)
 
 test/s52eglarm:
-	(cd test/android; make)
+	(cd test; make s52eglarm; cd android; make)
 
 test/s52gv:
 	(cd test; make s52gv)
@@ -510,7 +514,7 @@ s52win32fini:
 
 clean:
 	rm -f *.o tags openc.* *~ *.so *.dll err.txt                \
-	./lib/tesselator/*.o ./lib/freetype-gl/*.o ./lib/parson/*.o
+	./lib/libtess/*.o ./lib/freetype-gl/*.o ./lib/parson/*.o
 	(cd test; make clean)
 
 distclean: clean
