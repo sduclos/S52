@@ -436,6 +436,7 @@ static int      _egl_init       (s52engine *engine)
     //else
     //    LOGI("eglChooseConfig() eglNumConfigs = %i\n", eglNumConfigs);
 
+#ifdef S52_USE_ANDROID
     // EGL_NATIVE_VISUAL_ID is an attribute of the EGLConfig that is
     // guaranteed to be accepted by ANativeWindow_setBuffersGeometry().
     // As soon as we picked a EGLConfig, we can safely reconfigure the
@@ -445,7 +446,6 @@ static int      _egl_init       (s52engine *engine)
     //if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[5], EGL_NATIVE_VISUAL_ID, &vid))
         LOGE("Error: eglGetConfigAttrib() failed\n");
 
-#ifdef S52_USE_ANDROID
     // WARNING: do not use native get/set Width()/Height() has it break rotation
     ANativeWindow_setBuffersGeometry(engine->app->window, 0, 0, vid);
     eglWindow = (EGLNativeWindowType) engine->app->window;
@@ -453,8 +453,6 @@ static int      _egl_init       (s52engine *engine)
         LOGE("ERROR: ANativeWindow is NULL (can't draw)\n");
         g_assert(0);
     }
-    //ANativeWindow *window = ANativeWindow_fromSurface(jenv, surface);
-
 #else
     {
         XSetWindowAttributes wa;
@@ -682,10 +680,10 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
 
 static int      _egl_end        (s52engine *engine)
 {
-    //if (EGL_FALSE == eglWaitGL()) {
-    //    LOGE("_egl_end(): eglWaitGL() failed. [0x%x]\n", eglGetError());
-    //    return FALSE;
-    //}
+    if (EGL_FALSE == eglWaitGL()) {
+        LOGE("_egl_end(): eglWaitGL() failed - NO SWAP [0x%x]\n", eglGetError());
+        return FALSE;
+    }
 
     //g_timer_reset(_timer);
 
@@ -745,9 +743,9 @@ static int      _s52_setupVESSEL(s52droid_state_t *state)
     // (re) set label
     S52_setVESSELlabel(_vessel_ais, VESSELLABEL);
     int vesselSelect = 0;  // OFF
-    //int vestat       = 1; // AIS active
+    int vestat       = 1; // AIS active
     //int vestat       = 2; // AIS sleeping
-    int vestat       = 3;  // AIS red, close quarters
+    //int vestat       = 3;  // AIS red, close quarters (compile with S52_USE_SYM_VESSEL_DNGHL)
     int vesselTurn   = VESSELTURN_UNDEFINED;
     S52_setVESSELstate(_vessel_ais, vesselSelect, vestat, vesselTurn);
 
@@ -1036,14 +1034,14 @@ static int      _s52_init       (s52engine *engine)
 #else  // S52_USE_ANDROID
 
     // read cell location fron s52.cfg
-    S52_loadCell(NULL, NULL);
+    //S52_loadCell(NULL, NULL);
 
     // debug anti-meridian
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US5HA06M/US5HA06M.000", NULL);
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US1EEZ1M/US1EEZ1M.000", NULL);
 
     // Rimouski
-    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
+    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
 
     // Estuaire du St-Laurent
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
@@ -1182,7 +1180,9 @@ static int      _s52_init       (s52engine *engine)
 #endif
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
-    S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
+    //S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
+    // FIXME: check AIS mmsi when s52ais reconnect
+    S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 700.0); // older AIS - case where s52ais reconect
 
     //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
     S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
@@ -1222,6 +1222,13 @@ static int      _s52_init       (s52engine *engine)
 
 #ifdef S52_USE_EGL
     S52_setEGLcb((EGL_cb)_egl_beg, (EGL_cb)_egl_end, engine);
+#endif
+
+#ifdef USE_AIS
+    //G_BREAKPOINT();
+    //g_on_error_query(NULL);
+
+    s52ais_initAIS();
 #endif
 
     engine->do_S52draw        = TRUE;
@@ -1425,6 +1432,7 @@ exit:
 //
 
 #if 0
+// DEPRECATED
 static int      _android_init_external_gps(void)
 // start sl4agps - get GPS & Gyro from Android
 {
@@ -1452,9 +1460,11 @@ static int      _android_init_external_gps(void)
 
     return TRUE;
 }
+#endif
 
+#ifdef S52AIS_STANDALONE
 static int      _android_init_external_ais(void)
-// DEPRECATED: s52ais.c is linked to main()
+// when s52ais.c is NOT linked to s52egl.c
 // FIXME: this func is the same as _android_init_external_gps(), except SIGUSR
 {
     GError *error = NULL;
@@ -1528,6 +1538,7 @@ static int      _android_init_external_UI(s52engine *engine)
 }
 
 #if 0
+// BROKEN
 static int      _android_done_external_UI(s52engine *engine)
 // FIXME: stop UI broken
 {
@@ -2476,11 +2487,6 @@ void     android_main(struct android_app *app)
 
     _timer = g_timer_new();
 
-
-#ifdef USE_AIS
-    s52ais_initAIS();
-#endif
-
     if (NULL != _engine.app->savedState) {
         // if re-starting - the process is already up
         _engine.state = *(s52droid_state_t*)app->savedState;
@@ -2538,7 +2544,8 @@ void     android_main(struct android_app *app)
 
 exit:
 
-    //_android_done_external_sensors();
+
+    _android_done_external_sensors();
 
 #ifdef USE_AIS
     s52ais_doneAIS();
