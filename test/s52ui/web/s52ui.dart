@@ -10,7 +10,7 @@ import 'package:js/js.dart' as js;
 
 import 'dart:convert';
 
-import 'dart:collection'; // used in s52.dart
+//import 'dart:collection'; // used in s52.dart
 
 
 part 's52.dart';
