@@ -21,14 +21,12 @@ all: build.xml bin/$(APKNAME)
 build.xml: AndroidManifest.xml
 	android update project -p . -t "android-19" -n s52droid
 
-# NDK_DEBUG=1 APP_OPTIM=debug
 
 # FIXME: use zipalign for certificate
 # ant release install
 # pkg: /data/local/tmp/s52droid-release-unsigned.apk
 # Failure [INSTALL_PARSE_FAILED_NO_CERTIFICATES]
-# -B V=1 
-bin/$(APKNAME): dist/system/lib/libS52.a
+bin/$(APKNAME): dist/sysroot/lib/libS52.a
 	ndk-build -B V=1 NDK_DEBUG=1
 	ant debug install
 

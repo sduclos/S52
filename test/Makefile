@@ -46,6 +46,7 @@ LIBS52_HOME = ..
 # using Android toolchain from NDK to cross compile for ARM (s52eglarm target)
 # xoom info: Processor : ARMv7 Processor rev 0 (v7l)
 #            Features  : swp half thumb fastmult vfp edsp vfpv3 vfpv3d16
+# TEGRA: tadp: -fno-omit-frame-pointer -mno-thumb
 s52eglarm : DROIDTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-19-toolchain
 s52eglarm : DROIDINCLUDE       = $(DROIDTOOLCHAINROOT)/sysroot/usr/include
 s52eglarm : DROIDLIBS          = $(DROIDTOOLCHAINROOT)/sysroot/usr/lib
@@ -53,8 +54,8 @@ s52eglarm : CC                 = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi
 s52eglarm : CXX                = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -g -O0 -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
 s52eglarm : STRIP              = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-strip -s
 
-s52eglarm : S52DROIDINC        = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/android/dist/system/include
-s52eglarm : S52DROIDLIBS       = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/android/dist/system/lib
+s52eglarm : S52DROIDINC        = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/android/dist/sysroot/include
+s52eglarm : S52DROIDLIBS       = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/android/dist/sysroot/lib
 
 
 # NOTE: -malign-double: for 32bits system --useless on 64its
@@ -78,12 +79,13 @@ s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_US
 # -DUSE_FAKE_AIS      - debug - programmaticaly faked AIS data
 # -DUSE_AIS           - call s52ais.c
 
+# -DS52_USE_LOG       - log every S52_* in tmp file
 # -DS52_USE_GLES2
 # -DS52_USE_AFGLOW    - need symbole in PLAUX_00.DAI
 # -DS52_USE_WORLD     - load world shapefile
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
-                      -DS52_USE_DOTPITCH -DS52_USE_EGL -DS52_USE_GLES2 -DS52_USE_AFGLOW -DUSE_AIS
+                      -DS52_USE_DOTPITCH -DS52_USE_EGL -DS52_USE_GLES2 -DUSE_AIS -DS52_USE_AFGLOW
 
 # same as s52eglx, but "gtk+-2.0" is added - no AIS
 s52gtk2egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` \
@@ -274,7 +276,7 @@ sl4agps: sl4agps.c sl4agps.cfg android/dist/sdcard/s52droid/UI.xml
 # android 4.1
 # adb shell chmod 755 /data/media/s52droid/bin/s52ais
 #adb shell su -c 'chmod 755 /mnt/shell/emulated/0/s52droid/bin/s52ais'
-# /data/media/0/s52droid/bin/s52ais'
+#adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/s52ais'
 s52ais: s52ais.c
 	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c  $(LIBS) -o s52ais
 	$(STRIP)  s52ais

@@ -25,7 +25,8 @@ LOCAL_SRC_FILES  := ../../s52egl.c
 # -DS52_USE_LOG      - use S52_error_cb in init to get log send to STDOUT (usefull on non-rooted device)
 
 ARMTOOLCHAINPATH := /home/sduclos/dev/prog/Android/dev/android-19-toolchain
-S52DROIDINC      := /home/sduclos/S52/test/android/dist/system/include
+S52DROIDINC      := /home/sduclos/S52/test/android/dist/sysroot/include
+# TEGRA: tadp: -fno-omit-frame-pointer -mno-thumb
 # NDK-BUILD add this: -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
 LOCAL_CFLAGS     := -g -O0 -std=c99 -Wall -DG_LOG_DOMAIN=\"s52droid\"                 \
                     -DS52_USE_DOTPITCH -DS52_USE_ANDROID -DS52_USE_TEGRA2             \
@@ -61,7 +62,7 @@ LOCAL_STATIC_LIBRARIES :=                                                       
 
 #CYANOGENLIBS     := /home/sduclos/dev/prog/Android/xoom/cm/system/lib
 OMNILIBS         := /home/sduclos/dev/prog/Android/xoom/omni/system/lib
-S52DROIDLIBS     := /home/sduclos/S52/test/android/dist/system/lib
+S52DROIDLIBS     := /home/sduclos/S52/test/android/dist/sysroot/lib
 #LOCAL_LDLIBS     := -L$(CYANOGENLIBS)
 #LOCAL_LDLIBS     := -L$(OMNILIBS)
 #LOCAL_LDFLAGS    := -rdynamic -fexception
