@@ -194,8 +194,8 @@ static s52engine    _engine;
 // debug - lap timer
 static GTimer *_timer = NULL;
 
-// debug
-static int _doLoadRADAR = TRUE;
+// debug - exprimental
+//static int _doLoadRADAR = TRUE;
 
 #define VESSELTURN_UNDEFINED 129
 
@@ -643,8 +643,8 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     }
     //*/
 
-    /*
-    //if (engine->eglContext == eglGetCurrentContext()) {
+    //*
+    if (engine->eglContext != eglGetCurrentContext()) {
         //LOGI("s52egl:_egl_beg(): engine->eglContext ..\n");
         if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
             // eglMakeCurrent() output the same error msg:
@@ -652,6 +652,7 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
             LOGE("s52egl:_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
             return FALSE;
         }
+    }
     //*/
     /*
     } else {
@@ -929,11 +930,13 @@ static int      _s52_setupPRDARE(s52droid_state_t *state)
     return TRUE;
 }
 
+#ifdef S52_USE_LOG
 static int      _s52_error_cb   (const char *err)
 {
     LOGI("%s", err);
     return TRUE;
 }
+#endif
 
 static int      _s52_init       (s52engine *engine)
 {
@@ -985,9 +988,12 @@ static int      _s52_init       (s52engine *engine)
         //hmm = engine->hmm;
 #endif
 
+#ifdef S52_USE_LOG
         // Nexus: no root, can't do: $ su -c "setprop log.redirect-stdio true"
-        //if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb))
+        if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb))
+#else
         if (FALSE == S52_init(w, h, wmm, hmm, NULL))
+#endif
         {
             LOGE("ERROR:_init_S52():S52_init(%i,%i,%i,%i)\n", w, h, wmm, hmm);
             g_assert(0);
@@ -1139,7 +1145,7 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_DISP_CALIB,      1.0);
 
     // --- TEXT ----------------------------------------------
-    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);
+    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);  // default
     //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);
 
     S52_setTextDisp(0, 100, TRUE);                      // show all text
@@ -1208,11 +1214,11 @@ static int      _s52_init       (s52engine *engine)
 
     // must be first mariners' object so that the
     // rendering engine place it on top of OWNSHP/VESSEL
-    //_s52_setupVRMEBL(&engine->state);
+    _s52_setupVRMEBL(&engine->state);
 
-    //_s52_setupLEGLIN();
+    _s52_setupLEGLIN();
 
-    //_s52_setupPRDARE(&engine->state);
+    _s52_setupPRDARE(&engine->state);
 
 #ifdef USE_FAKE_AIS
     _s52_setupVESSEL(&engine->state);
