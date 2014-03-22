@@ -3,6 +3,14 @@
 #
 
 
+2014MAR22
+    -mod test/android/dist/system to test/android/dist/sysroot
+    -mod lib/freetype-gl/texture-atlas.c to match diff in git glDelete..()
+
+2014MAR16
+    -add GLES2 text shadow, compile with S52_USE_TXT_SHADOW
+    -mod optimisation of text rendering to STRIP instead of FAN
+
 2014MAR12
     -update GPSD client on ARM
 

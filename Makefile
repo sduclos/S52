@@ -123,10 +123,12 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 #      (GDAL/OGR/S57 need a patch to work as it max out)
 #
 # NOTE: *** experimental ***
+# Text:
 # -DS52_USE_COGL: used to test text rendering from COGL
 # -DS52_USE_FTGL: text rendering
 # -DS52_USE_GLC : text rendering
 # -DS52_USE_FREETYPE_GL: text rendering need -DS52_USE_GLES2
+# -DS52_USE_TXT_SHADOW: add 'shadow' to Text 
 # -DS52_USE_OGR_FILECOLLECTOR:
 #        - compile with g++ to use gdal/ogr s57filecollector()
 #        - add 'extern "C"' to ogr/ogrsf_frmts/s57.h:40 S57FileCollector()  -or- compile S52 with g++
@@ -201,6 +203,7 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_SOCK                 \
                   -DS52_USE_OGR_FILECOLLECTOR    \
                   -DS52_USE_SYM_VESSEL_DNGHL     \
+                  -DS52_USE_TXT_SHADOW           \
                   -DS52_DEBUG $(DBG)
 
 # WARNING: gdal run OK on android with android-9-toolchain
@@ -216,13 +219,14 @@ s52eglarm : ARMINCLUDE       = $(ARMTOOLCHAINROOT)/sysroot/usr/include
 s52eglarm : ARMLIBS          = $(ARMTOOLCHAINROOT)/sysroot/usr/lib
 
 # Android 4.4.2: -O2 -O1 crash activity android:name = ".s52ui"
+# TEGRA: tadp: -fno-omit-frame-pointer -mno-thumb
 s52eglarm : CC     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16 -std=c99
 s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
 s52eglarm : AR     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ar
 s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 
-s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/system/include
-s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
+s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/sysroot/include
+s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
 
 # -DS52_USE_SYM_AISSEL01 - experimental - symbol in plib-test-priv.rle
 # -DS52_USE_BACKTRACE    - debug
@@ -249,6 +253,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/system/lib
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
+                     -DS52_USE_TXT_SHADOW                  \
                      -DS52_DEBUG                           \
                      $(DBG0)
 
@@ -518,7 +523,7 @@ clean:
 	(cd test; make clean)
 
 distclean: clean
-	rm -f test/android/dist/system/lib/libS52.a
+	rm -f test/android/dist/sysroot/lib/libS52.a
 	(cd test; make distclean)
 
 install:
