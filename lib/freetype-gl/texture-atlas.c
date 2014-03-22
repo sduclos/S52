@@ -101,7 +101,9 @@ texture_atlas_delete( texture_atlas_t *self )
         //free( self->data );
         g_free( self->data );
     }
-    if( !self->id )
+    // SD 2014MAR22 - from diff in git
+    //if( !self->id )
+    if(0 != self->id )
     {
         glDeleteTextures( 1, &self->id );
     }

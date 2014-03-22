@@ -291,7 +291,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.114\n"
+      "libS52 0.115\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -369,6 +369,9 @@ static char _version[] = "$Revision: 1.126 $\n"
 #endif
 #ifdef S52_USE_SYM_VESSEL_DNGHL
       "S52_USE_SYM_VESSEL_DNGHL\n"
+#endif
+#ifdef S52_USE_TXT_SHADOW
+      "S52_USE_TXT_SHADOW\n"
 #endif
 ;
 
@@ -946,7 +949,7 @@ static int        _freeCell(_cell *c)
 {
     if (NULL == _cellList) {
         PRINTF("WARNING: no cell\n");
-        return TRUE;
+        return FALSE;
     }
 
     if (NULL != c->filename)
@@ -1412,40 +1415,40 @@ static int        _initSIG(void)
     //signal(SIGINT,  _trapSIG);  //  2 - Interrupt (ANSI).
     //signal(SIGSEGV, _trapSIG);  // 11 - Segmentation violation (ANSI).
 #else
-    {
-        struct sigaction sa;
+    struct sigaction sa;
 
-        memset(&sa, 0, sizeof(sa));
-        sa.sa_sigaction = _trapSIG;
-        sigemptyset(&sa.sa_mask);
-        //sa.sa_flags = SA_RESTART | SA_SIGINFO;
-        sa.sa_flags = SA_SIGINFO|SA_RESETHAND;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_sigaction = _trapSIG;
+    sigemptyset(&sa.sa_mask);
+    //sa.sa_flags = SA_RESTART | SA_SIGINFO;
+    sa.sa_flags = SA_SIGINFO|SA_RESETHAND;
 
-        //  2 - Interrupt (ANSI) - user press ESC to stop rendering
-        sigaction(SIGINT,  &sa, &_old_signal_handler_SIGINT);
-        //  3  - Quit (POSIX)
-        sigaction(SIGQUIT, &sa, &_old_signal_handler_SIGQUIT);
-        //  5  - Trap (ANSI)
-        sigaction(SIGTRAP, &sa, &_old_signal_handler_SIGTRAP);
-        //  6  - Abort (ANSI)
-        sigaction(SIGABRT, &sa, &_old_signal_handler_SIGABRT);
-        //  9  - Kill, unblock-able (POSIX)
-        sigaction(SIGKILL, &sa, &_old_signal_handler_SIGKILL);
-        // 11 - Segmentation violation (ANSI).
-        sigaction(SIGSEGV, &sa, &_old_signal_handler_SIGSEGV);   // loop in android
-        // 15 - Termination (ANSI)
-        //sigaction(SIGTERM, &sa, &_old_signal_handler_SIGTERM);
+    //  2 - Interrupt (ANSI) - user press ESC to stop rendering
+    sigaction(SIGINT,  &sa, &_old_signal_handler_SIGINT);
+    //  3  - Quit (POSIX)
+    sigaction(SIGQUIT, &sa, &_old_signal_handler_SIGQUIT);
+    //  5  - Trap (ANSI)
+    sigaction(SIGTRAP, &sa, &_old_signal_handler_SIGTRAP);
+    //  6  - Abort (ANSI)
+    sigaction(SIGABRT, &sa, &_old_signal_handler_SIGABRT);
+    //  9  - Kill, unblock-able (POSIX)
+    sigaction(SIGKILL, &sa, &_old_signal_handler_SIGKILL);
+    // 11 - Segmentation violation (ANSI).
+    sigaction(SIGSEGV, &sa, &_old_signal_handler_SIGSEGV);   // loop in android
+    // 15 - Termination (ANSI)
+    //sigaction(SIGTERM, &sa, &_old_signal_handler_SIGTERM);
 
-        // 10
-        sigaction(SIGUSR1, &sa, &_old_signal_handler_SIGUSR1);
-        // 12
-        sigaction(SIGUSR2, &sa, &_old_signal_handler_SIGUSR2);
+    // 10
+    sigaction(SIGUSR1, &sa, &_old_signal_handler_SIGUSR1);
+    // 12
+    sigaction(SIGUSR2, &sa, &_old_signal_handler_SIGUSR2);
 
-        // debug - will trigger SIGSEGV for testing
-        //_cell *c = 0x0;
-        //c->ext.S = INFINITY;
-    }
+    // debug - will trigger SIGSEGV for testing
+    //_cell *c = 0x0;
+    //c->ext.S = INFINITY;
 #endif
+
+    return TRUE;
 }
 
 static int        _getCellsExt(_extent* ext);
@@ -2690,8 +2693,7 @@ DLL int    STD S52_doneCell(const char *encPath)
     gchar *fname = g_strdup(encPath);
     fname = g_strstrip(fname);
 
-    // FIXME: what if MARINER_CELL (ie: "--6MARIN.000").
-    // For example, to clear all MIO's when a socket client reconnect
+    // Note: skip internal pseudo-cell MARINER_CELL (ie: "--6MARIN.000").
     if (TRUE != g_file_test(fname, (GFileTest) (G_FILE_TEST_EXISTS))) {
         PRINTF("file not found (%s)\n", fname);
         goto exit;
@@ -4422,7 +4424,7 @@ DLL int    STD S52_drawLayer(const char *name)
         // DRAW .. render
 
         _drawObj(name);
-        _drawText();
+        //_drawText();
 
         // done rebuilding CS
         _doCS = FALSE;
@@ -5755,10 +5757,9 @@ static S52_obj   *_isObjValid(_cell *c, S52_obj *obj)
 }
 
 static int        _isObjNameValid(S52ObjectHandle obj, const char *objName)
-// return TRUE if obj is objName else FALSE
+// return TRUE if class name obj is objName else FALSE
 {
     S57_geo *geo = S52_PL_getGeo(obj);
-    //if (0 != S52_strncmp(objName, S57_getName(geo), 6))
     if (0 != g_strcmp0(objName, S57_getName(geo)))   // better?
         return FALSE;
 

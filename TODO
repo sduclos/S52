@@ -52,6 +52,7 @@ DONE
 ====
 (put here TODO's that has been done)
 
+    -text shadow
     -WARN: chart no 1 PLib put $LINE in layer 0
     -check handling anti-meridian (need a chart that overlap the meridian to debug)
     -check user (if root warn & exit)

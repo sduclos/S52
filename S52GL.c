@@ -88,7 +88,8 @@ static GArray *_tessWorkBuf_d  = NULL;
 static GArray *_tessWorkBuf_f  = NULL;
 
 // debug
-static GArray *_buf = NULL;
+//static GArray *_buf = NULL;
+static GArray *_ftglBuf = NULL;
 
 // glsl main
 static GLint  _programObject  = 0;
@@ -132,8 +133,11 @@ static GLint _aAlpha       = 0;
 
 #define S52_MAX_FONT  4
 
+#if defined(S52_USE_FREETYPE_GL) && !defined(S52_USE_GLES2)
+#error "Need GLES2 for Freetype GL"
+#endif
+
 #ifdef S52_USE_FREETYPE_GL
-#ifdef S52_USE_GLES2
 #include "vector.h"
 #include "texture-atlas.h"
 #include "texture-font.h"
@@ -150,7 +154,7 @@ static const char      *_freetype_gl_fontfilename       =
 #endif
 
 typedef struct {
-    GLfloat x, y, z;    // position
+    GLfloat x, y, z;       // position
     GLfloat s, t;       // texture
 } _freetype_gl_vertex_t;
 
@@ -162,7 +166,6 @@ static GArray *_textWorkBuf    = NULL;
 #define TB  '\t'   // Tabulation
 #define NL  '\n'   // New Line
 
-#endif // S52_USE_GLES2
 #endif // S52_USE_FREETYPE_GL
 
 
@@ -4134,8 +4137,8 @@ static int       _renderSY_pastrk(S52_obj *obj)
 
     return TRUE;
 }
-
-static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str);
+// forward decl
+static int       _renderTXTAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str);
 static int       _renderSY_leglin(S52_obj *obj)
 {
     S57_geo  *geo = S52_PL_getGeo(obj);
@@ -4185,7 +4188,7 @@ static int       _renderSY_leglin(S52_obj *obj)
             // S52_PL_getSYbbox(S52_obj *obj, int *width, int *height);
             // FIXME: ajuste XY for rotation
             SPRINTF(str, "%3.1f kt", plnspd);
-            _drawTextAA(obj, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, str);
+            _renderTXTAA(obj, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, str);
 
 
         }
@@ -4280,11 +4283,6 @@ static int       _renderSY(S52_obj *obj)
                 S52_Color *col = DListData->colors;
                 _glColor4ub(col);
 
-                //_drawTextAA(ppt[0], ppt[1], 1, 1, str);
-
-                //PRINTF("SOUNDG: %s, %f %f\n", str, ppt[2], datum);
-
-                //_setBlend(FALSE);
                 return TRUE;
             }
         }
@@ -6579,7 +6577,7 @@ static int       _renderAP_es2(S52_obj *obj)
             //double offsetYpx = (py - bby) / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
             double offsetXpx = (px - bbx) / (_dotpitch_mm_x * 100.0);
             double offsetYpx = (py - bby) / (_dotpitch_mm_y * 100.0);
-                            
+
 
             /* debug
             double tw = 0.0;  // tile width
@@ -7064,17 +7062,21 @@ static int       _traceOP(S52_obj *obj)
 
 #ifdef S52_USE_FREETYPE_GL
 #ifdef S52_USE_GLES2
-static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
+static GArray   *_fill_ftglBuf(GArray *ftglBuf, const char *str, unsigned int weight)
+// fill buffer whit triangles strip
 // experimental: smaller text size if second line
-// could translate into a TX command word to be added in the PLib
 {
     int pen_x = 0;
     int pen_y = 0;
-    int space = FALSE;
+    int nl    = FALSE;
+    int len   = strlen(str);
 
-    g_array_set_size(buf, 0);
+    if (NULL == ftglBuf) {
+        ftglBuf = g_array_new(FALSE, FALSE, sizeof(_freetype_gl_vertex_t));
+    } else {
+        g_array_set_size(ftglBuf, 0);
+    }
 
-    int len = strlen(str);
     for (int i=0; i<len; ++i) {
         // experimental: smaller text size if second line
         if (NL == str[i]) {
@@ -7082,73 +7084,111 @@ static GArray   *_fillFtglBuf(GArray *buf, const char *str, unsigned int weight)
             texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], 'A');
             pen_x =  0;
             pen_y = (NULL!=glyph) ? -(glyph->height+5) : 10 ;
-            space = TRUE;
+            nl    = TRUE;
 
-            // Note: When S52_USE_SOCK, setVESSELlabel() in s52ais STANDALONE,
-            // JSON string need this because '\n' must be escaped ('\\n')
-            //++i;
+            continue;
         }
 
         unsigned char uc = str[i];
         texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], uc);
-        if (NULL != glyph) {
-            // experimental: augmente kerning if second line
-            if (pen_x > 0) {
-                pen_x += texture_glyph_get_kerning(glyph, uc);
-                pen_x += (TRUE==space) ? 1 : 0;
-            }
+        if (NULL == glyph)
+            continue;
 
-            GLfloat x0 = pen_x + glyph->offset_x;
-            GLfloat y0 = pen_y + glyph->offset_y;
-
-            GLfloat x1 = x0    + glyph->width;
-            GLfloat y1 = y0    - glyph->height;  // Y is down, so flip glyph
-
-            GLfloat s0 = glyph->s0;
-            GLfloat t0 = glyph->t0;
-            GLfloat s1 = glyph->s1;
-            GLfloat t1 = glyph->t1;
-
-            // debug
-            //PRINTF("CHAR: x0,y0,x1,y1: %lc: %f %f %f %f\n", str[i],x0,y0,x1,y1);
-            //PRINTF("CHAR: s0,t0,s1,t1: %lc: %f %f %f %f\n", str[i],s0,t0,s1,t1);
-
-            GLfloat z0 = 0.0;
-            _freetype_gl_vertex_t vertices[4] = {
-                {x0,y0,z0,  s0,t0},
-                {x0,y1,z0,  s0,t1},
-                {x1,y1,z0,  s1,t1},
-                {x1,y0,z0,  s1,t0}
-            };
-            buf = g_array_append_vals(buf, vertices, 4);
-
-            pen_x += glyph->advance_x;
-            pen_y += glyph->advance_y;
+        // experimental: augmente kerning if second line
+        if (TRUE == nl) {
+            pen_x += texture_glyph_get_kerning(glyph, uc);
+            pen_x++;
         }
+
+        GLfloat x0 = pen_x + glyph->offset_x;
+        GLfloat y0 = pen_y + glyph->offset_y;
+
+        GLfloat x1 = x0    + glyph->width;
+        //GLfloat y1 = y0    - glyph->height;    // Y is down, so flip glyph
+        GLfloat y1 = y0    - (glyph->height+1);  // Y is down, so flip glyph
+                                                 // +1 check this, some device clip the top row
+        GLfloat s0 = glyph->s0;
+        GLfloat t0 = glyph->t0;
+        GLfloat s1 = glyph->s1;
+        GLfloat t1 = glyph->t1;
+
+        // debug
+        //PRINTF("CHAR: x0,y0,x1,y1: %lc: %f %f %f %f\n", str[i],x0,y0,x1,y1);
+        //PRINTF("CHAR: s0,t0,s1,t1: %lc: %f %f %f %f\n", str[i],s0,t0,s1,t1);
+
+        // GL_TRIANGLE_STRIP
+        GLfloat z0 = 0.0;
+        _freetype_gl_vertex_t vertices[4] = {
+            {x0,y0,z0,  s0,t0},
+            {x0,y1,z0,  s0,t1},
+            {x1,y0,z0,  s1,t0},
+            {x1,y1,z0,  s1,t1}
+        };
+
+        // connect glyphs with degenerated triangle (GPU skip those)
+        if (0 < ftglBuf->len) {
+            // dup last vertex
+            ftglBuf = g_array_append_vals(ftglBuf, &vertices[0], 1);
+        }
+
+        // glyph strip
+        ftglBuf = g_array_append_vals(ftglBuf, &vertices[0], 4);
+        // dup 3rd vertex
+        ftglBuf = g_array_append_vals(ftglBuf, &vertices[2], 1);
+
+        pen_x += glyph->advance_x;
+        pen_y += glyph->advance_y;
     }
 
-    return buf;
+    return ftglBuf;
 }
 
-static int       _connFtglBuf(GArray *buf)
-// connect ftgl coord data to GPU
+static int       _renderTXTAA_es2(double x, double y, GArray *ftglBuf)
 {
-        glEnableVertexAttribArray(_aPosition);
-        glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), buf->data);
+    // connect ftgl buffer coord data to GPU
+    GLfloat *d = (GLfloat*)ftglBuf->data;
 
-        GLfloat *d = (GLfloat*)buf->data;
-        d += 3;
-        glEnableVertexAttribArray(_aUV);
-        glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), d);
+    glEnableVertexAttribArray(_aPosition);
+    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), d);
 
-        _checkError("_bindFtglBuf()  -fini-");
+    glEnableVertexAttribArray(_aUV);
+    glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), d+3);
 
-        return TRUE;
+    // turn ON 'sampler2d'
+    glUniform1f(_uStipOn, 1.0);
+
+    glBindTexture(GL_TEXTURE_2D, _freetype_gl_atlas->id);
+
+    _glMatrixMode(GL_MODELVIEW);
+    _glLoadIdentity();
+    _glTranslated(x, y, 0.0);
+
+    _pushScaletoPixel(FALSE);
+
+    // horizontal text
+    _glRotated(-_north, 0.0, 0.0, 1.0);
+
+    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, ftglBuf->len);
+
+    _popScaletoPixel();
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glUniform1f(_uStipOn, 0.0);
+
+    // disconnect buffer
+    glDisableVertexAttribArray(_aUV);
+    glDisableVertexAttribArray(_aPosition);
+
+    _checkError("_renderTXTAA_es2() freetype-gl");
+
+    return TRUE;
 }
 #endif
 #endif
 
-static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
+static int       _renderTXTAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
 // render text in AA if Mar Param set
 // NOTE: obj is only used if S52_USE_FREETYPE_GL is defined
 // NOTE: PLib C1 CHARS for TE() & TX() alway '15110' - ie style = 1 (alway), weigth = '5' (medium), width = 1 (alway), bsize = 10
@@ -7173,7 +7213,6 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
     // debug
     //return FALSE;
 
-
 #ifdef S52_USE_FREETYPE_GL
 #ifdef S52_USE_GLES2
     (void)obj;
@@ -7184,52 +7223,55 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
         return FALSE;
     }
 
-    if (NULL == _buf) {
-        _buf = g_array_new(FALSE, FALSE, sizeof(_freetype_gl_vertex_t));
-    }
-
     // OPTIMISATION: not all need to be refilled as only VESSEL name
     // change over time (time tag). To re-fill each time is the worst case
     // so the FIX should speed up things a bit
-    _fillFtglBuf(_buf, str, weight);
-    if (0 == _buf->len)
+    //    S52_GL_DRAW,              // normal cycle - first pass draw layer 0-8
+    //    S52_GL_LAST,              // normal cycle - last/top/repeatable draw of layer 9
+
+    _ftglBuf = _fill_ftglBuf(_ftglBuf, str, weight);
+    if (0 == _ftglBuf->len)
         return TRUE;
 
-    _connFtglBuf(_buf);
+#ifdef S52_USE_TXT_SHADOW
+    {
+        double scalex = (_pmax.u - _pmin.u) / (double)_vp[2];
+        double scaley = (_pmax.v - _pmin.v) / (double)_vp[3];
 
-    // turn ON 'sampler2d'
-    glUniform1f(_uStipOn, 1.0);
+        //S52_Color *c = S52_PL_getColor("DEPDW"); // opposite of CHBLK
+        S52_Color *c = S52_PL_getColor("UIBCK"); // opposite of CHBLK
+        _glColor4ub(c);
 
-    glBindTexture(GL_TEXTURE_2D, _freetype_gl_atlas->id);
+        // diagonal
+        //_renderTXTAA_es2(x+scalex, y+scaley, str);
+        //_renderTXTAA_es2(x-scalex, y+scaley, str);
+        //_renderTXTAA_es2(x-scalex, y-scaley, str);
+        //_renderTXTAA_es2(x+scalex, y-scaley, str);
 
-    _glMatrixMode(GL_MODELVIEW);
-    _glLoadIdentity();
-    _glTranslated(x, y, 0.0);
+        // upper right
+        //_renderTXTAA_es2(x+scalex, y, str);
+        //_renderTXTAA_es2(x+scalex, y+scaley, str);
+        //_renderTXTAA_es2(x,        y+scaley, str);
 
-    _pushScaletoPixel(FALSE);
-
-    // horizontal text
-    _glRotated(-_north, 0.0, 0.0, 1.0);
-
-    glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-
-    //PRINTF("x:%f, x:%f, str:%s\n", x, y, str);
-
-    // FIXME: check for '\n' and shorten line
-    // BETTER: at a second TX() for second text row (but 2x sock TX traffic!)
-    int len = strlen(str);
-    for (int i=0; i<len; ++i) {
-        if (NL != str[i])
-            glDrawArrays(GL_TRIANGLE_FAN, i*4, 4);
+        // lower right - OK
+        _renderTXTAA_es2(x+scalex, y,        _ftglBuf);
+        _renderTXTAA_es2(x+scalex, y-scaley, _ftglBuf);
+        _renderTXTAA_es2(x,        y-scaley, _ftglBuf);
     }
+#endif
 
-    _popScaletoPixel();
+    {   // text color (mostly CHBLK)
+        S52_Color   *c      = NULL;
+        int          xoffs  = 0;  // dummy
+        int          yoffs  = 0;  // dummy
+        unsigned int bsize  = 0;  // dummy
+        unsigned int weight = 0;  // dummy
+        int          disIdx = 0;  // dummy    // text view group
+        S52_PL_getEX(obj, &c, &xoffs, &yoffs, &bsize, &weight, &disIdx);
 
-    glBindTexture(GL_TEXTURE_2D,  0);
-    glUniform1f(_uStipOn, 0.0);
-
-    glDisableVertexAttribArray(_aUV);
-    glDisableVertexAttribArray(_aPosition);
+        _glColor4ub(c);
+        _renderTXTAA_es2(x, y, _ftglBuf);
+    }
 
     /*  huge mem usage
     if (NULL != obj) {
@@ -7242,8 +7284,6 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
         }
     }
     //*/
-
-    _checkError("_drawTextAA() freetype-gl");
 
 #endif
 #endif
@@ -7270,11 +7310,11 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
 
         _glMatrixDel(VP_WIN);
 
-        _checkError("_drawTextAA() / POINT_T");
+        _checkError("_renderTXTAA() / POINT_T");
 
         return TRUE;
     }
-    _checkError("_drawTextAA() / POINT_T");
+    _checkError("_renderTXTAA() / POINT_T");
 
 #endif
 
@@ -7369,7 +7409,7 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
 
     _glMatrixDel(VP_WIN);
 
-    _checkError("_drawTextAA() / POINT_T");
+    _checkError("_renderTXTAA() / POINT_T");
 
     _north = n;
 
@@ -7407,14 +7447,14 @@ static int       _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsiz
 
     //glCallLists(S52_strlen(str), GL_UNSIGNED_BYTE, (GLubyte*)str);
 
-    _checkError("_drawTextAA() / POINT_T");
+    _checkError("_renderTXTAA() / POINT_T");
 #endif
 
 
     return TRUE;
 }
 
-static int       _drawText(S52_obj *obj)
+static int       _renderTXT(S52_obj *obj)
 // render TE or TX
 {
     S52_Color   *c      = NULL;
@@ -7435,12 +7475,12 @@ static int       _drawText(S52_obj *obj)
     if (FALSE == S57_getGeoData(geoData, 0, &npt, &ppt))
         return FALSE;
 
+    // FIXME: move this to _renderTXTAA()
     str = S52_PL_getEX(obj, &c, &xoffs, &yoffs, &bsize, &weight, &disIdx);
 
     // debug
     //str = "X";
     //c   = S52_PL_getColor("DNGHL");
-
     // debug
     //PRINTF("xoffs/yoffs/bsize/weight: %i/%i/%i/%i:%s\n", xoffs, yoffs, bsize, weight, str);
 
@@ -7453,8 +7493,7 @@ static int       _drawText(S52_obj *obj)
         return FALSE;
     }
 
-    // Text Important / Other
-    // supress display of text above user selected level
+    // supress display of text
     if (FALSE == S52_MP_getTextDisp(disIdx))
         return FALSE;
 
@@ -7478,6 +7517,7 @@ static int       _drawText(S52_obj *obj)
     }
     */
 
+    // FIXME: move to _renderTXTAA()
     // convert offset to PRJ
     double scalex = (_pmax.u - _pmin.u) / (double)_vp[2];
     double scaley = (_pmax.v - _pmin.v) / (double)_vp[3];
@@ -7488,7 +7528,8 @@ static int       _drawText(S52_obj *obj)
 
     //PRINTF("uoffs/voffs: %f/%f %s\n", uoffs, voffs, str);
 
-#ifndef S52_USE_COGL
+#ifdef S52_USE_COGL
+#else
     // debug
     //glColor4ub(255, 0, 0, 255); // red
     //glUniform4f(_uColor, 0.0, 0.0, 1.0, 0.5); // GLES2
@@ -7497,7 +7538,7 @@ static int       _drawText(S52_obj *obj)
 #endif
 
     if (POINT_T == S57_getObjtype(geoData)) {
-        _drawTextAA(obj, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
+        _renderTXTAA(obj, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
 
         return TRUE;
     }
@@ -7506,36 +7547,14 @@ static int       _drawText(S52_obj *obj)
         if (0 == g_strcmp0("pastrk", S57_getName(geoData))) {
             // past track time
             for (guint i=0; i<npt; ++i) {
-                /*
-                struct xyt {
-                    double x;
-                    double y;
-                    GDate  d;
-                };
-                struct xyt *x = (struct xyt *) &(ppt[i*3]);
-
-                if (TRUE == g_date_valid(&x->d)) {
-                    GTimeVal datetime;
-                    GDate date;
-                    g_time_val_from_iso8601("2010-01-01T01:01:02", &datetime);
-
-                    g_date_clear(&date, 1);
-                    g_date_set_time_val(&date, &datetime);
-
-                    gchar s[80];
-                    //g_date_strftime(s, 80,"%Y%m%d %T", &x->d);
-                    g_date_strftime(s, 80,"%F %T", &date);
-
-                    _drawTextAA(x->x, x->y, bsize, weight, s);
-                }
-                */
                 gchar s[80];
                 int timeHH = ppt[i*3 + 2] / 100;
                 int timeMM = ppt[i*3 + 2] - (timeHH * 100);
                 //SPRINTF(s, "t%04.f", ppt[i*3 + 2]);     // S52 PASTRK01 say frefix a 't'
                 SPRINTF(s, "%02i:%02i", timeHH, timeMM);  // ISO say HH:MM
 
-                _drawTextAA(obj, ppt[i*3 + 0], ppt[i*3 + 1], bsize, weight, s);
+                //_renderTXTAA(obj, ppt[i*3 + 0], ppt[i*3 + 1], bsize, weight, s);
+                _renderTXTAA(obj, ppt[i*3 + 0]+uoffs, ppt[i*3 + 1]-voffs, bsize, weight, s);
 
             }
 
@@ -7553,7 +7572,8 @@ static int       _drawText(S52_obj *obj)
 
             SPRINTF(s, "%s %03.f", str, orient);
 
-            _drawTextAA(obj, x, y, bsize, weight, s);
+            //_renderTXTAA(obj, x, y, bsize, weight, s);
+            _renderTXTAA(obj, x+uoffs, y-voffs, bsize, weight, s);
 
             return TRUE;
         }
@@ -7570,7 +7590,8 @@ static int       _drawText(S52_obj *obj)
 
             SPRINTF(s, "%03.f cog", orient);
 
-            _drawTextAA(obj, x, y, bsize, weight, s);
+            //_renderTXTAA(obj, x, y, bsize, weight, s);
+            _renderTXTAA(obj, x+uoffs, y-voffs, bsize, weight, s);
 
             return TRUE;
         }
@@ -7584,7 +7605,6 @@ static int       _drawText(S52_obj *obj)
 
             // find segment's center point closess to view center
             // FIXME: clip segments to view
-            //for (i=0; i<npt-1; ++i) {
             for (guint i=0; i<npt; ++i) {
                 double x = (ppt[i*3+3] + ppt[i*3+0]) / 2.0;
                 double y = (ppt[i*3+4] + ppt[i*3+1]) / 2.0;
@@ -7598,7 +7618,7 @@ static int       _drawText(S52_obj *obj)
             }
 
             if (INFINITY != dmin) {
-                _drawTextAA(obj, xmin+uoffs, ymin-voffs, bsize, weight, str);
+                _renderTXTAA(obj, xmin+uoffs, ymin-voffs, bsize, weight, str);
             }
         }
 
@@ -7612,7 +7632,7 @@ static int       _drawText(S52_obj *obj)
         for (guint i=0; i<_centroids->len; ++i) {
             pt3 *pt = &g_array_index(_centroids, pt3, i);
 
-            _drawTextAA(obj, pt->x+uoffs, pt->y-voffs, bsize, weight, str);
+            _renderTXTAA(obj, pt->x+uoffs, pt->y-voffs, bsize, weight, str);
             //PRINTF("TEXT (%s): %f/%f\n", str, pt->x, pt->y);
 
             // only draw the first centroid
@@ -7623,7 +7643,8 @@ static int       _drawText(S52_obj *obj)
         return TRUE;
     }
 
-    PRINTF("NOTE: don't know how to draw this TEXT\n");
+    PRINTF("DEBUG: don't know how to draw this TEXT\n");
+
     g_assert(0);
 
     return FALSE;
@@ -8467,7 +8488,7 @@ int        S52_GL_drawText(S52_obj *obj, gpointer user_data)
     while (S52_CMD_NONE != cmdWrd) {
         switch (cmdWrd) {
             case S52_CMD_TXT_TX:
-            case S52_CMD_TXT_TE: _ncmd++; _drawText(obj); break;
+            case S52_CMD_TXT_TE: _ncmd++; _renderTXT(obj); break;
 
             default: break;
         }
@@ -9304,7 +9325,7 @@ static int       _init_es2(void)
 #ifdef S52_USE_TEGRA2
         // GCC say: warning: embedding a directive within macro arguments is not portable [enabled by default]
         // die on Xoom
-        // FIXME: does this really help with blending
+        // FIXME: does this really help with blending on a TEGRA2
 #define BLENDFUNC #pragma profilepragma blendoperation(gl_FragColor, GL_FUNC_ADD, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 #else
 #define BLENDFUNC
@@ -9363,17 +9384,22 @@ static int       _init_es2(void)
         // ----------------------------------------------------------------------
 
         if ((0==_programObject) || (0==_vertexShader) || (0==_fragmentShader)) {
-            PRINTF("problem loading shaders and/or creating program!");
+            PRINTF("ERROR: problem loading shaders and/or creating program\n");
             g_assert(0);
-            exit(0);
             return FALSE;
         }
         _checkError("_init_es2() -0-");
 
-        if (TRUE != glIsShader(_vertexShader))
-            exit(0);
-        if (TRUE != glIsShader(_fragmentShader))
-            exit(0);
+        if (TRUE != glIsShader(_vertexShader)) {
+            PRINTF("ERROR: glIsShader(_vertexShader) failed\n");
+            g_assert(0);
+            return FALSE;
+        }
+        if (TRUE != glIsShader(_fragmentShader)) {
+            PRINTF("ERROR: glIsShader(_fragmentShader) failed\n");
+            g_assert(0);
+            return FALSE;
+        }
 
         _checkError("_init_es2() -1-");
 
@@ -10282,18 +10308,10 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
 int        S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, unsigned int weight)
 // draw string in world coords
 {
-    // optimisation - shortcut all code
-    //if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
-    //    return TRUE;
-
     S52_Color *c = S52_PL_getColor("CHBLK");
     _glColor4ub(c);
 
-    //_glMatrixSet(VP_WIN);
-    _drawTextAA(NULL, x, y, bsize, weight, str);
-    //_glMatrixDel(VP_WIN);
-
-    _checkError("S52_GL_drawStr()");
+    _renderTXTAA(NULL, x, y, bsize, weight, str);
 
     return TRUE;
 }
@@ -10301,10 +10319,6 @@ int        S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, uns
 int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
 // draw a string in window coords
 {
-    // optimisation - shortcut all code
-    //if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
-    //    return TRUE;
-
     S52_Color *c = S52_PL_getColor(colorName);
 
     _GL_BEGIN = TRUE;
@@ -10315,11 +10329,12 @@ int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *color
     S52_GL_win2prj(&pixels_x, &pixels_y);
 
     _glMatrixSet(VP_PRJ);
-    _drawTextAA(NULL, pixels_x, pixels_y, bsize, 1, str);
+    _renderTXTAA(NULL, pixels_x, pixels_y, bsize, 1, str);
     _glMatrixDel(VP_PRJ);
 
 #else
     glRasterPos2d(pixels_x, pixels_y);
+    _checkError("S52_GL_drawStrWin()");
 #endif
 
 #ifdef S52_USE_FTGL
@@ -10332,9 +10347,6 @@ int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *color
 #endif
     }
 #endif
-
-
-    _checkError("S52_GL_drawStrWin()");
 
     _GL_BEGIN = FALSE;
 
@@ -10397,7 +10409,7 @@ int        S52_GL_drawGraticule(void)
 
         uv = S57_prj2geo(uv);
         SPRINTF(str, "%07.4f deg %c", fabs(uv.v), (0.0<lat)?'N':'S');
-        //_drawTextAA(lon, lat, 1, 1, str);
+        //_renderTXTAA(lon, lat, 1, 1, str);
 
         _DrawArrays_LINE_STRIP(2, (vertex_t *)ppt);
     }
@@ -10412,7 +10424,7 @@ int        S52_GL_drawGraticule(void)
         SPRINTF(str, "%07.4f deg %c", fabs(uv.v), (0.0<lat)?'N':'S');
 
         _DrawArrays_LINE_STRIP(2, (vertex_t *)ppt);
-        //_drawTextAA(lon, lat, 1, 1, str);
+        //_renderTXTAA(lon, lat, 1, 1, str);
     }
 
 
@@ -10426,7 +10438,7 @@ int        S52_GL_drawGraticule(void)
         SPRINTF(str, "%07.4f deg %c", fabs(uv.u), (0.0<lon)?'E':'W');
 
         _DrawArrays_LINE_STRIP(2, (vertex_t *)ppt);
-        //_drawTextAA(lon, lat, 1, 1, str);
+        //_renderTXTAA(lon, lat, 1, 1, str);
     }
 
     // ---- graticule E long
@@ -10439,7 +10451,7 @@ int        S52_GL_drawGraticule(void)
         SPRINTF(str, "%07.4f deg %c", fabs(uv.u), (0.0<lon)?'E':'W');
 
         _DrawArrays_LINE_STRIP(2, (vertex_t *)ppt);
-        //_drawTextAA(lon, lat, 1, 1, str);
+        //_renderTXTAA(lon, lat, 1, 1, str);
     }
 
 
@@ -10800,8 +10812,8 @@ S52_GL_draw(S52_obj *obj, gpointer user_data)
     S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
 
 S52_GL_drawText(S52_obj *obj, gpointer user_data)
-    _drawText(S52_obj *obj)
-        _drawTextAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
+    _renderTXT(S52_obj *obj)
+        _renderTXTAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
             _fillFtglBuf(texture_font_t *font, GArray *buf, const char *str)
             _sendFtglBuf(GArray *buf)
 
