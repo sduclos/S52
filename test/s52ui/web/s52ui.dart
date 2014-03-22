@@ -10,8 +10,8 @@ import 'package:js/js.dart' as js;
 
 import 'dart:convert';
 
-//import 'dart:collection'; // used in s52.dart
-
+//import 'dart:collection'; // Queue in s52.dart
+//import 'dart:isolate';    // handle WebSocket
 
 part 's52.dart';
 
@@ -44,7 +44,7 @@ void _handleInput(int param, double value) {
       });
       return;
 
-    case S52.MAR_SAFETY_CONTOUR       :   
+    case S52.MAR_SAFETY_CONTOUR       :
     case S52.MAR_SAFETY_DEPTH         :
     case S52.MAR_SHALLOW_CONTOUR      :
     case S52.MAR_DEEP_CONTOUR         :
@@ -54,8 +54,8 @@ void _handleInput(int param, double value) {
           s52.draw().then((ret) {});
       });
       return;
-      
-      
+
+
     case S52.MAR_DISP_CATEGORY        :  //= 14;
       //S52_MAR_DISP_CATEGORY_BASE     =        0;  //      0; 0000000
       //S52_MAR_DISP_CATEGORY_STD      =        1;  // 1 << 0; 0000001
@@ -309,7 +309,7 @@ List _checkButton = [S52.MAR_SHOW_TEXT, S52.MAR_SCAMIN, S52.MAR_ANTIALIAS,
                      S52.MAR_DISP_DRGARE_PATTERN, S52.MAR_DISP_NODATA_LAYER,
                      S52.MAR_DISP_AFTERGLOW, S52.MAR_DISP_CENTROIDS, S52.MAR_DISP_WORLD
                     ];
-List _numButton = [S52.MAR_SAFETY_CONTOUR,  S52.MAR_SAFETY_DEPTH, 
+List _numButton = [S52.MAR_SAFETY_CONTOUR,  S52.MAR_SAFETY_DEPTH,
                    S52.MAR_SHALLOW_CONTOUR, S52.MAR_DEEP_CONTOUR
                   ];
 
@@ -330,8 +330,8 @@ Future<bool> _initCheckBox(List lst, int idx, String prefix, Completer completer
   } else {
     completer.complete(true);
   }
-  
-  return completer.future; 
+
+  return completer.future;
 }
 
 //*
@@ -355,7 +355,7 @@ Future<bool> _initNumBox(List lst, int idx, String prefix, Completer completer) 
     completer.complete(true);
   }
 
-  return completer.future; 
+  return completer.future;
 }
 //*/
 
@@ -410,8 +410,8 @@ Future<bool> _initUI() {
              i.onClick.listen((ev) => print("id:'l$el'"));
              i.onClick.listen((ev) => _handleInput(S52.MAR_DISP_LAYER_LAST, el.toDouble()));
           });
-        
-          
+
+
           querySelector("#td_buttonCell1")
           ..onClick.listen((ev) => print("id:'td_buttonCell1'"))
           ..onClick.listen((ev) => _listPal(ev));
@@ -429,9 +429,9 @@ Future<bool> _initUI() {
           ..onClick.listen((ev) => _handleInput(S52.MAR_ROT_BUOY_LIGHT, 0.0));
 
           print('s52ui.dart:_checkButton() - start - ');
-        
+
           int startIdx = 0;
-          _initCheckBox(_checkButton, startIdx, "i", completer).then((ret) {          
+          _initCheckBox(_checkButton, startIdx, "i", completer).then((ret) {
             completer = new Completer();
             startIdx = 0;
             _initNumBox(_numButton, startIdx, "I", completer);
@@ -588,7 +588,7 @@ void _initTouch() {
         return;
 
       double x = start_x1 * window.devicePixelRatio;
-      double y = (window.innerHeight - start_y1) * window.devicePixelRatio;  
+      double y = (window.innerHeight - start_y1) * window.devicePixelRatio;
       s52.pickAt(x,y).then((ret) {
         TextElement svg1txt = querySelector('#svg1text');
         // set S52 UI Text Color
@@ -669,7 +669,7 @@ void _initTouch() {
           double north = ret[3];
           double x     =     new_x1 * window.devicePixelRatio;
           double y     = h - new_y1 * window.devicePixelRatio;
-          
+
           new_x1 = -1;
           new_y1 = -1;
           s52.xy2LL(x,y).then((ret) {
@@ -704,7 +704,7 @@ void _initTouch() {
 //void _toggleUIEvent(evt) {
 void _toggleUIEvent() {
   //evt.preventDefault();
-  //var tbodyL = querySelector('#tbodyL').style; 
+  //var tbodyL = querySelector('#tbodyL').style;
   //print('s52ui.dart:_toggleUIEvent(): tbodyL=$tbodyL');
 
   // FIXME: style.invisible: "visible|hidden|collapse|inherit"
@@ -744,14 +744,14 @@ void posError(PositionError error) {
 
 void _GPSpos(Geoposition position) {
   //print('GPS new pos: ...');
-  
+
   s52.pushPosition(_ownshpID, position.coords.latitude, position.coords.longitude, _devOrient).then((ret){
     s52.setVector(_ownshpID, 1, _devOrient, 16.0).then((ret){});   // 1 - ground
   });
 }
 
 void _hdg(DeviceOrientationEvent o) {
-  _devOrient = o.alpha;  
+  _devOrient = o.alpha;
   //print('s52ui.dart:_hdg():$_devOrient');
 }
 
@@ -766,10 +766,10 @@ void _watchPosition(int ownshpID) {
 
   // GYRO - TODO: test ship's head up
   window.onDeviceOrientation.listen(_hdg);
-  
+
   // GPS
   window.navigator.geolocation.getCurrentPosition().then(_GPSpos);
-  
+
   // {'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000}
   window.navigator.geolocation.watchPosition().listen(
       _GPSpos,
@@ -816,6 +816,6 @@ void main() {
   //js.context['onOpen']   = new js.FunctionProxy(_initMain);
   js.context['toggleUI'] = new js.FunctionProxy(_toggleUIEvent);
   //js.context['hdg']      = new js.FunctionProxy(_hdg);
-  
+
   _initMain();
 }

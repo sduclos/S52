@@ -12,7 +12,7 @@ class S52 {
   Completer _completer = null;
   Map       _data      = JSON.decode('{"id":1,"method":"???","params":["???"]}');
   int       _id        = 1;
-  
+
   WebSocket _ws;
 
   Stopwatch _stopwatch = new Stopwatch();
@@ -20,24 +20,24 @@ class S52 {
   // call drawLast() at interval
   Timer _timer        = null;
   bool  _skipTimer    = false;
-  
+
   // FIXME: use Queue to stack S52 cmd .. what happend if returning out-of-order!
-  //Queue<String> _queue = new Queue<String>(); 
-  
+  //Queue<String> _queue = new Queue<String>();
+
   // S52 color for UI element
   List UIBCK;  // background
   List UINFF;  // text
   List UIBDR;  // border
-  
+
   //var wsUri = 'ws://192.168.1.66:2950'; // laptop
-  var wsUri = 'ws://192.168.1.67:2950'; // xoom
+  //var wsUri = 'ws://192.168.1.67:2950'; // xoom
   //var wsUri = 'ws://192.168.1.69:2950'; // Nexus
-  //var wsUri = 'ws://127.0.0.1:2950';   // localhost
+  var wsUri = 'ws://127.0.0.1:2950';   // localhost
 
 
 
   static const int MAR_SHOW_TEXT              =  1;
-  
+
   static const int MAR_SAFETY_CONTOUR         =  3;   // S52_LINES: selected safety contour (meters) [IMO PS 3.6]
   static const int MAR_SAFETY_DEPTH           =  4;   // S52_POINT: selected safety depth (for sounding color) (meters) [IMO PS 3.7]
   static const int MAR_SHALLOW_CONTOUR        =  5;   // S52_AREAS: selected shallow water contour (meters) (optional) [OFF==S52_MAR_TWO_SHADES]
@@ -78,20 +78,30 @@ class S52 {
 
   S52() {
     //_drawLastTimer();
+    //var isolate = Isolate.spawn(process, "Start Isolate");
   }
 
   Future<bool> initWS(var wsUri) {
-    Completer completer = new Completer();
+    //Completer completer = new Completer();
+    _completer = new Completer();
 
     _ws = new WebSocket(wsUri);
-    _ws.onOpen.   listen((Event e)        {completer.complete(true);_drawLastTimer();});
+    _ws.onOpen.   listen((Event e)        {_completer.complete(true);_drawLastTimer();});
     _ws.onMessage.listen((MessageEvent e) {_rcvMsg(e);});
     _ws.onClose.  listen((CloseEvent e)   {throw '_ws CLOSE:$e';});
     _ws.onError.  listen((Event e)        {throw '_ws ERROR:$e';});
 
-    return completer.future;
+    return _completer.future;
   }
-  
+  /*
+  static void process(var str) {
+    //isolate.send("data", port.toSendPort());
+     while (true) {
+      if (true == _queue.isNotEmpty()
+    }
+
+  }
+  */
   _drawLastTimer() {
     // FIXME: use Queue
     //if (null != _timer)
@@ -101,7 +111,7 @@ class S52 {
     _timer = new Timer.periodic(new Duration(milliseconds: 1000), (timer) {
       if (false == _skipTimer) {
         drawLast().then((ret) {});
-      
+
         //drawLast()
         //  .then(      (ret) {})
         //  .catchError((err) {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');} );
@@ -145,13 +155,13 @@ class S52 {
     }
 
     _stopwatch.stop();
-    
+
     // debug
     //print("roundtrip: ${_stopwatch.elapsedMilliseconds}msec");
     //print('rcvMsg():receive JSON str from libS52: $str');
 
     // Javascript: MAXINT overflow if (x == x + 1)
-    // Dart: same; 2^53 = 9007199254740992 = 52124995687 days @ 0.5s 
+    // Dart: same; 2^53 = 9007199254740992 = 52124995687 days @ 0.5s
     //++_id;
     _completer.complete(data['result']);
 
@@ -164,13 +174,16 @@ class S52 {
 
     _completer = new Completer();
 
+    //_queue.add(str);
+
+    //*
     if (_ws.readyState == WebSocket.OPEN) {
       _ws.send(str);
       print('send:$str');
     } else {
-      //print('WebSocket not connected, message not sent:$str');
       throw 'WebSocket not connected, message not sent:$str';
     }
+    //*/
 
     return _completer.future;
   }
@@ -198,7 +211,7 @@ class S52 {
     String jsonCmdstr = JSON.encode(_data);
 
     _skipTimer = false;
-    
+
     return _sendMsg(jsonCmdstr);
   }
   Future<List> drawLast() {
@@ -213,7 +226,7 @@ class S52 {
       //return _completer.future;
     }
     //*/
-    
+
     _data["id"    ] = _id;
     _data["method"] = "S52_drawLast";
     _data["params"] = [];
@@ -226,9 +239,9 @@ class S52 {
     _data["method"] = "S52_drawBlit";
     _data["params"] = [scale_x,scale_y,scale_z,north];
     String jsonCmdstr = JSON.encode(_data);
-    
+
     _skipTimer    = true;
-      
+
     return _sendMsg(jsonCmdstr);
   }
   Future<List> getMarinerParam(int param) {
