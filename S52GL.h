@@ -51,13 +51,13 @@ typedef struct S52_GL_ras {
     unsigned int   texID;
 } S52_GL_ras;
 
-typedef enum S52_GL_mode {
+typedef enum S52_GL_cycle {
     S52_GL_NONE,
-    S52_GL_DRAW,              // normal cycle - first pass draw layer 0-8
-    S52_GL_LAST,              // normal cycle - last/top/repeatable draw of layer 9
-    S52_GL_BLIT,              // bitblit mode - blit FB of first pass
-    S52_GL_PICK               // pick    mode - cursor pick
-} S52_GL_mode;
+    S52_GL_DRAW,              // normal  cycle - first pass draw layer 0-8
+    S52_GL_LAST,              // normal  cycle - last/top/repeatable draw of layer 9
+    S52_GL_BLIT,              // bitblit cycle - blit FB of first pass
+    S52_GL_PICK               // pick    cycle - cursor pick
+} S52_GL_cycle;
 
 int   S52_GL_init(void);
 int   S52_GL_setDotPitch(int w, int h, int wmm, int hmm);
@@ -67,7 +67,7 @@ int   S52_GL_setFontDL(int fontDL);
 // init frame, save OpenGL state
 // when mode is S52_GL_LAST and previous mode was S52_GL_DRAW
 // pull the FB of Draw() from memory
-int   S52_GL_begin(S52_GL_mode mode);
+int   S52_GL_begin(S52_GL_cycle cycle);
 // render an object to framebuffer
 int   S52_GL_draw(S52_obj *obj, gpointer user_data);
 // draw lights
@@ -88,7 +88,7 @@ int   S52_GL_drawFBPixels(void);
 int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north);
 
 // done frame, restore OpenGL state
-int   S52_GL_end(S52_GL_mode mode);
+int   S52_GL_end(S52_GL_cycle cycle);
 // ----------------------------------
 
 

@@ -3,6 +3,9 @@
 #
 
 
+2014MAR24
+    -mod optimze DRAW cycle static text
+
 2014MAR22
     -mod test/android/dist/system to test/android/dist/sysroot
     -mod lib/freetype-gl/texture-atlas.c to match diff in git glDelete..()

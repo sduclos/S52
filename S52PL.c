@@ -192,8 +192,8 @@ typedef struct _cmdWL {
     _cmdDef           cmd;      // command word definition or conditional symb func call
 
 #ifdef S52_USE_FREETYPE_GL
-    GArray           *ftglbuf;  // hold freetype-gl data for cmd.text
-    guint             vID;      // ID if the OpenGL VBO text
+    //GArray           *ftglbuf;  // hold freetype-gl data for cmd.text
+    guint             vboID;      // ID if the OpenGL VBO text
 #endif
 
     struct _cmdWL *next;
@@ -4367,7 +4367,8 @@ long        S52_PL_getTimeSec(S52_obj *obj)
 }
 
 #ifdef S52_USE_FREETYPE_GL
-GArray     *S52_PL_getFtglBuf(S52_obj *obj, guint *vID)
+//GArray     *S52_PL_getFtglBuf(S52_obj *obj, guint *vID)
+guint       S52_PL_getFtglVBO(S52_obj *obj)
 {
     return_if_null(obj);
 
@@ -4388,15 +4389,17 @@ GArray     *S52_PL_getFtglBuf(S52_obj *obj, guint *vID)
     //    PRINTF("nonsuch found && vID == 0\n");
     //}
 
-    *vID = cmd->vID;
+    //*vID = cmd->vboID;
 
-    return cmd->ftglbuf;
+    //return cmd->ftglbuf;
+    return cmd->vboID;
 }
 
-int         S52_PL_setFtglBuf(S52_obj *obj, GArray *buf, guint vID)
+//int         S52_PL_setFtglBuf(S52_obj *obj, GArray *buf, guint vID)
+int         S52_PL_setFtglVBO(S52_obj *obj, guint vboID)
 {
     return_if_null(obj);
-    return_if_null(buf);
+    //return_if_null(buf);
 
     _cmdWL *cmd = _getCrntCmd(obj);
     if (NULL == cmd)
@@ -4408,8 +4411,8 @@ int         S52_PL_setFtglBuf(S52_obj *obj, GArray *buf, guint vID)
         g_assert(0);
     }
 
-    cmd->ftglbuf = buf;
-    cmd->vID     = vID;
+    //cmd->ftglbuf = buf;
+    cmd->vboID     = vboID;
 
     return TRUE;
 }

@@ -250,13 +250,13 @@ static guint   _nCall     = 0;
 
 ///////////////////////////////////////////////////////////////////
 // state
-static int         _doInit             = TRUE;    // initialize (but GL context --need main loop)
-static int         _ctxValidated       = FALSE;   // validate GL context
-static GPtrArray  *_objPick            = NULL;    // list of object picked
-static GString    *_strPick            = NULL;    // hold temps val
-static int         _doHighlight        = FALSE;   // TRUE then _objhighlight point to the object to hightlight
-static S52_GL_mode _crnt_GL_mode       = S52_GL_NONE; // failsafe - keep mode in sync between begin / end
-static int         _identity_MODELVIEW = FALSE;   // TRUE then identity matrix for modelview is on GPU (optimisation for AC())
+static int          _doInit             = TRUE;    // initialize (but GL context --need main loop)
+static int          _ctxValidated       = FALSE;   // validate GL context
+static GPtrArray   *_objPick            = NULL;    // list of object picked
+static GString     *_strPick            = NULL;    // hold temps val
+static int          _doHighlight        = FALSE;   // TRUE then _objhighlight point to the object to hightlight
+static S52_GL_cycle _crnt_GL_cycle      = S52_GL_NONE; // failsafe - keep cycle in sync between begin / end
+static int          _identity_MODELVIEW = FALSE;   // TRUE then identity matrix for modelview is on GPU (optimisation for AC())
 
 
 //////////////////////////////////////////////////////
@@ -3022,7 +3022,7 @@ static GLubyte   _glColor4ub(S52_Color *c)
 
     //_checkError("_glColor4ub() -0-");
 
-    if (S52_GL_PICK == _crnt_GL_mode) {
+    if (S52_GL_PICK == _crnt_GL_cycle) {
         // debug
         //printf("_glColor4ub: set current cIdx R to : %X\n", _cIdx.color.r);
 
@@ -4138,7 +4138,8 @@ static int       _renderSY_pastrk(S52_obj *obj)
     return TRUE;
 }
 // forward decl
-static int       _renderTXTAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str);
+//static int       _renderTXTAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str);
+static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y, unsigned int bsize, unsigned int weight, const char *str);
 static int       _renderSY_leglin(S52_obj *obj)
 {
     S57_geo  *geo = S52_PL_getGeo(obj);
@@ -4188,7 +4189,12 @@ static int       _renderSY_leglin(S52_obj *obj)
             // S52_PL_getSYbbox(S52_obj *obj, int *width, int *height);
             // FIXME: ajuste XY for rotation
             SPRINTF(str, "%3.1f kt", plnspd);
-            _renderTXTAA(obj, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, str);
+
+            // FIXME: get color from TE & TX commad word
+            S52_Color *color = S52_PL_getColor("CHBLK");
+
+            //_renderTXTAA(obj, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, str);
+            _renderTXTAA(obj, color, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, str);
 
 
         }
@@ -4442,7 +4448,7 @@ static int       _renderSY(S52_obj *obj)
         if ((0==S52_PL_cmpCmdParam(obj, "LOWACC01")) && (0.0==S52_MP_get(S52_MAR_QUAPNT01)))
             return TRUE;
 
-        if (S52_GL_PICK == _crnt_GL_mode) {
+        if (S52_GL_PICK == _crnt_GL_cycle) {
             double x;
             double y;
 
@@ -6777,13 +6783,13 @@ static int       _renderAP(S52_obj *obj)
 
     //--------------------------------------------------------
     // don't pick pattern for now
-    if (S52_GL_PICK == _crnt_GL_mode) {
+    if (S52_GL_PICK == _crnt_GL_cycle) {
         return TRUE;
     }
 
     // when in pick mode, fill the area
     /*
-    if (S52_GL_PICK == _crnt_GL_mode) {
+    if (S52_GL_PICK == _crnt_GL_cycle) {
         S57_geo *geoData = S52_PL_getGeo(obj);
         S52_Color dummy;
 
@@ -7145,14 +7151,23 @@ static GArray   *_fill_ftglBuf(GArray *ftglBuf, const char *str, unsigned int we
 
 static int       _renderTXTAA_es2(double x, double y, GArray *ftglBuf)
 {
-    // connect ftgl buffer coord data to GPU
-    GLfloat *d = (GLfloat*)ftglBuf->data;
+    if (S52_GL_DRAW == _crnt_GL_cycle) {
+#define BUFFER_OFFSET(i) ((char *)NULL + (i))
+        glEnableVertexAttribArray(_aPosition);
+        glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), BUFFER_OFFSET(0));
 
-    glEnableVertexAttribArray(_aPosition);
-    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), d);
+        glEnableVertexAttribArray(_aUV);
+        glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), BUFFER_OFFSET(sizeof(float)*3));
+    } else {
+        // connect ftgl buffer coord data to GPU
+        GLfloat *d = (GLfloat*)ftglBuf->data;
 
-    glEnableVertexAttribArray(_aUV);
-    glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), d+3);
+        glEnableVertexAttribArray(_aPosition);
+        glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), d);
+
+        glEnableVertexAttribArray(_aUV);
+        glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), d+3);
+    }
 
     // turn ON 'sampler2d'
     glUniform1f(_uStipOn, 1.0);
@@ -7188,14 +7203,17 @@ static int       _renderTXTAA_es2(double x, double y, GArray *ftglBuf)
 #endif
 #endif
 
-static int       _renderTXTAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
+//static int       _renderTXTAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
+static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
 // render text in AA if Mar Param set
-// NOTE: obj is only used if S52_USE_FREETYPE_GL is defined
-// NOTE: PLib C1 CHARS for TE() & TX() alway '15110' - ie style = 1 (alway), weigth = '5' (medium), width = 1 (alway), bsize = 10
-// NOTE: weight is already converted from '4','5','6' to int 0,1,2
+// Note: PLib C1 CHARS for TE() & TX() alway '15110' - ie style = 1 (alway), weigth = '5' (medium), width = 1 (alway), bsize = 10
+// Note: weight is already converted from '4','5','6' to int 0,1,2
+// Note: obj can be NULL
 {
     // TODO: use 'bsize'
     (void) bsize;
+
+    g_assert(NULL != color);
 
     if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
@@ -7215,7 +7233,7 @@ static int       _renderTXTAA(S52_obj *obj, double x, double y, unsigned int bsi
 
 #ifdef S52_USE_FREETYPE_GL
 #ifdef S52_USE_GLES2
-    (void)obj;
+    //(void)obj;
 
     // debug - check logic (should this be a bug!)
     if (NULL == str) {
@@ -7232,6 +7250,31 @@ static int       _renderTXTAA(S52_obj *obj, double x, double y, unsigned int bsi
     _ftglBuf = _fill_ftglBuf(_ftglBuf, str, weight);
     if (0 == _ftglBuf->len)
         return TRUE;
+
+    // FIXME: check mem usage
+    if ((S52_GL_DRAW==_crnt_GL_cycle) && (NULL!=obj)) {
+        GLuint vboID = S52_PL_getFtglVBO(obj);
+        if (GL_FALSE == glIsBuffer(vboID)) {
+            glGenBuffers(1, &vboID);
+
+            if (0 == vboID) {
+                PRINTF("ERROR: glGenBuffers() fail\n");
+                g_assert(0);
+                return FALSE;
+            }
+            S52_PL_setFtglVBO(obj, vboID);
+
+            // bind VBOs for vertex array
+            glBindBuffer(GL_ARRAY_BUFFER, vboID);      // for vertex coordinates
+            // upload ftgl data to GPU
+            glBufferData(GL_ARRAY_BUFFER, _ftglBuf->len*sizeof(_freetype_gl_vertex_t), (const void *)_ftglBuf->data, GL_STATIC_DRAW);
+
+        } else {
+            // connect to data in VBO GPU
+            glBindBuffer(GL_ARRAY_BUFFER, vboID);
+        }
+    }
+
 
 #ifdef S52_USE_TXT_SHADOW
     {
@@ -7258,35 +7301,15 @@ static int       _renderTXTAA(S52_obj *obj, double x, double y, unsigned int bsi
         _renderTXTAA_es2(x+scalex, y-scaley, _ftglBuf);
         _renderTXTAA_es2(x,        y-scaley, _ftglBuf);
     }
-#endif
+#endif  // S52_USE_TXT_SHADOW
 
-    {   // text color (mostly CHBLK)
-        S52_Color   *c      = NULL;
-        int          xoffs  = 0;  // dummy
-        int          yoffs  = 0;  // dummy
-        unsigned int bsize  = 0;  // dummy
-        unsigned int weight = 0;  // dummy
-        int          disIdx = 0;  // dummy    // text view group
-        S52_PL_getEX(obj, &c, &xoffs, &yoffs, &bsize, &weight, &disIdx);
+    _glColor4ub(color);
+    _renderTXTAA_es2(x, y, _ftglBuf);
 
-        _glColor4ub(c);
-        _renderTXTAA_es2(x, y, _ftglBuf);
-    }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    /*  huge mem usage
-    if (NULL != obj) {
-        GLuint  vID = 0;
-        GArray *buf = S52_PL_getFtglBuf(obj, &vID);
-
-        if (0 != vID) {
-            glDeleteBuffers(1, &vID);
-            S52_PL_setFtglBuf(obj, buf, 0);
-        }
-    }
-    //*/
-
-#endif
-#endif
+#endif  // S52_USE_GLES2
+#endif  // S52_USE_FREETYPE_GL
 
 #ifdef S52_USE_GLC
     _glMatrixMode(GL_MODELVIEW);
@@ -7456,27 +7479,27 @@ static int       _renderTXTAA(S52_obj *obj, double x, double y, unsigned int bsi
 
 static int       _renderTXT(S52_obj *obj)
 // render TE or TX
+// Note: all text pass here
 {
-    S52_Color   *c      = NULL;
+    if (0.0 == S52_MP_get(S52_MAR_SHOW_TEXT))
+        return FALSE;
+
+    if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
+        return TRUE;
+
+    guint      npt    = 0;
+    GLdouble  *ppt    = NULL;
+    S57_geo *geoData = S52_PL_getGeo(obj);
+    if (FALSE == S57_getGeoData(geoData, 0, &npt, &ppt))
+        return FALSE;
+
+    S52_Color   *color  = NULL;
     int          xoffs  = 0;
     int          yoffs  = 0;
     unsigned int bsize  = 0;
     unsigned int weight = 0;
     int          disIdx = 0;      // text view group
-    const char  *str    = NULL;
-
-    guint      npt    = 0;
-    GLdouble  *ppt    = NULL;
-
-    if (0.0 == S52_MP_get(S52_MAR_SHOW_TEXT))
-        return FALSE;
-
-    S57_geo *geoData = S52_PL_getGeo(obj);
-    if (FALSE == S57_getGeoData(geoData, 0, &npt, &ppt))
-        return FALSE;
-
-    // FIXME: move this to _renderTXTAA()
-    str = S52_PL_getEX(obj, &c, &xoffs, &yoffs, &bsize, &weight, &disIdx);
+    const char  *str = S52_PL_getEX(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx);
 
     // debug
     //str = "X";
@@ -7517,7 +7540,6 @@ static int       _renderTXT(S52_obj *obj)
     }
     */
 
-    // FIXME: move to _renderTXTAA()
     // convert offset to PRJ
     double scalex = (_pmax.u - _pmin.u) / (double)_vp[2];
     double scaley = (_pmax.v - _pmin.v) / (double)_vp[3];
@@ -7528,17 +7550,18 @@ static int       _renderTXT(S52_obj *obj)
 
     //PRINTF("uoffs/voffs: %f/%f %s\n", uoffs, voffs, str);
 
-#ifdef S52_USE_COGL
-#else
+//#ifdef S52_USE_COGL
+//#else
     // debug
     //glColor4ub(255, 0, 0, 255); // red
     //glUniform4f(_uColor, 0.0, 0.0, 1.0, 0.5); // GLES2
 
-    _glColor4ub(c);
-#endif
+    //_glColor4ub(c);
+//#endif
 
     if (POINT_T == S57_getObjtype(geoData)) {
-        _renderTXTAA(obj, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
+        //_renderTXTAA(obj, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
+        _renderTXTAA(obj, color, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
 
         return TRUE;
     }
@@ -7554,7 +7577,8 @@ static int       _renderTXT(S52_obj *obj)
                 SPRINTF(s, "%02i:%02i", timeHH, timeMM);  // ISO say HH:MM
 
                 //_renderTXTAA(obj, ppt[i*3 + 0], ppt[i*3 + 1], bsize, weight, s);
-                _renderTXTAA(obj, ppt[i*3 + 0]+uoffs, ppt[i*3 + 1]-voffs, bsize, weight, s);
+                //_renderTXTAA(obj, ppt[i*3 + 0]+uoffs, ppt[i*3 + 1]-voffs, bsize, weight, s);
+                _renderTXTAA(obj, color, ppt[i*3 + 0]+uoffs, ppt[i*3 + 1]-voffs, bsize, weight, s);
 
             }
 
@@ -7573,7 +7597,8 @@ static int       _renderTXT(S52_obj *obj)
             SPRINTF(s, "%s %03.f", str, orient);
 
             //_renderTXTAA(obj, x, y, bsize, weight, s);
-            _renderTXTAA(obj, x+uoffs, y-voffs, bsize, weight, s);
+            //_renderTXTAA(obj, x+uoffs, y-voffs, bsize, weight, s);
+            _renderTXTAA(obj, color, x+uoffs, y-voffs, bsize, weight, s);
 
             return TRUE;
         }
@@ -7591,7 +7616,8 @@ static int       _renderTXT(S52_obj *obj)
             SPRINTF(s, "%03.f cog", orient);
 
             //_renderTXTAA(obj, x, y, bsize, weight, s);
-            _renderTXTAA(obj, x+uoffs, y-voffs, bsize, weight, s);
+            //_renderTXTAA(obj, x+uoffs, y-voffs, bsize, weight, s);
+            _renderTXTAA(obj, color, x+uoffs, y-voffs, bsize, weight, s);
 
             return TRUE;
         }
@@ -7618,7 +7644,8 @@ static int       _renderTXT(S52_obj *obj)
             }
 
             if (INFINITY != dmin) {
-                _renderTXTAA(obj, xmin+uoffs, ymin-voffs, bsize, weight, str);
+                //_renderTXTAA(obj, xmin+uoffs, ymin-voffs, bsize, weight, str);
+                _renderTXTAA(obj, color, xmin+uoffs, ymin-voffs, bsize, weight, str);
             }
         }
 
@@ -7632,7 +7659,8 @@ static int       _renderTXT(S52_obj *obj)
         for (guint i=0; i<_centroids->len; ++i) {
             pt3 *pt = &g_array_index(_centroids, pt3, i);
 
-            _renderTXTAA(obj, pt->x+uoffs, pt->y-voffs, bsize, weight, str);
+            //_renderTXTAA(obj, pt->x+uoffs, pt->y-voffs, bsize, weight, str);
+            _renderTXTAA(obj, color, pt->x+uoffs, pt->y-voffs, bsize, weight, str);
             //PRINTF("TEXT (%s): %f/%f\n", str, pt->x, pt->y);
 
             // only draw the first centroid
@@ -8466,7 +8494,6 @@ int        S52_GL_drawLIGHTS(S52_obj *obj)
     return TRUE;
 }
 
-//int        S52_GL_drawText(S52_obj *obj)
 int        S52_GL_drawText(S52_obj *obj, gpointer user_data)
 // TE&TX
 {
@@ -8478,10 +8505,6 @@ int        S52_GL_drawText(S52_obj *obj, gpointer user_data)
     //if (2861 == S57_getGeoID(geoData)) {
     //    PRINTF("bridge found\n");
     //}
-
-    // optimisation - shortcut all code
-    //if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
-    //    return TRUE;
 
     S52_CmdWrd cmdWrd = S52_PL_iniCmd(obj);
 
@@ -8525,7 +8548,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //    PRINTF("UNSARE found\n");
     //    //return;
     //}
-    //if (S52_GL_PICK == _crnt_GL_mode) {
+    //if (S52_GL_PICK == _crnt_GL_cycle) {
     //    S57_geo *geo = S52_PL_getGeo(obj);
     //    GString *FIDNstr = S57_getAttVal(geo, "FIDN");
     //    if (0==strcmp("2135161787", FIDNstr->str)) {
@@ -8540,7 +8563,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoID(geo));
     ////    return TRUE;
     //}
-    //if (S52_GL_PICK == _crnt_GL_mode) {
+    //if (S52_GL_PICK == _crnt_GL_cycle) {
     //    if (0 == strcmp("PRDARE", S52_PL_getOBCL(obj))) {
     //        PRINTF("PRDARE found\n");
     //    }
@@ -8548,7 +8571,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //------------------------------------------------------
 
 
-    if (S52_GL_PICK == _crnt_GL_mode) {
+    if (S52_GL_PICK == _crnt_GL_cycle) {
         ++_cIdx.color.r;
     }
 
@@ -8587,7 +8610,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
 
     // Can cursor pick now use the journal in S52.c instead of the GPU?
     // NO, if extent is use then concave AREA and LINES can trigger false positive
-    if (S52_GL_PICK == _crnt_GL_mode) {
+    if (S52_GL_PICK == _crnt_GL_cycle) {
         // FIXME: optimisation - read only once all draw to get the top obj
         // FIXME: copy to texture then test pixels!
         // FB --> TEX
@@ -8777,16 +8800,16 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
     return TRUE;
 }
 
-int        S52_GL_begin(S52_GL_mode mode)
+int        S52_GL_begin(S52_GL_cycle cycle)
 {
     CHECK_GL_END;
     _GL_BEGIN = TRUE;
 
-    if (S52_GL_NONE != _crnt_GL_mode) {
-        PRINTF("WARNING: S52_GL_mode out of sync\n");
+    if (S52_GL_NONE != _crnt_GL_cycle) {
+        PRINTF("WARNING: S52_GL_cycle out of sync\n");
         g_assert(0);
     }
-    _crnt_GL_mode = mode;
+    _crnt_GL_cycle = cycle;
 
     // optimisation
     _identity_MODELVIEW = FALSE;
@@ -8861,7 +8884,7 @@ int        S52_GL_begin(S52_GL_mode mode)
 
 
     // picking or rendering cycle
-    if (S52_GL_PICK == mode) {
+    if (S52_GL_PICK == _crnt_GL_cycle) {
         _cIdx.color.r = 0;
         _cIdx.color.g = 0;
         _cIdx.color.b = 0;
@@ -8981,7 +9004,7 @@ int        S52_GL_begin(S52_GL_mode mode)
     //}
 
     // do projection if draw() since the view is the same for all other mode
-    if (S52_GL_DRAW == mode) {
+    if (S52_GL_DRAW == _crnt_GL_cycle) {
         // this will setup _pmin/_pmax, need a valide _vp
         _doProjection(_centerLat, _centerLon, _rangeNM/60.0);
     }
@@ -9038,7 +9061,7 @@ int        S52_GL_begin(S52_GL_mode mode)
 
 
     //-- update background ------------------------------------------
-    if (S52_GL_DRAW == mode) {
+    if (S52_GL_DRAW == _crnt_GL_cycle) {
         // CS DATCVR01: 2.2 - No data areas
         if (1.0 == S52_MP_get(S52_MAR_DISP_NODATA_LAYER)) {
             // fill display with 'NODTA' color
@@ -9048,7 +9071,7 @@ int        S52_GL_begin(S52_GL_mode mode)
             _renderAP_NODATA_layer0();
         }
     } else {
-        if (S52_GL_LAST == mode) {
+        if (S52_GL_LAST == _crnt_GL_cycle) {
             // user can draw on top of base
             // then call drawLast repeatdly
             if (TRUE == _fb_update) {
@@ -9069,16 +9092,16 @@ int        S52_GL_begin(S52_GL_mode mode)
     return TRUE;
 }
 
-int        S52_GL_end(S52_GL_mode mode)
+int        S52_GL_end(S52_GL_cycle cycle)
 //
 {
     CHECK_GL_BEGIN;
 
-    if (mode != _crnt_GL_mode) {
+    if (cycle != _crnt_GL_cycle) {
         PRINTF("WARNING: S52_GL_mode out of sync\n");
         g_assert(0);
     }
-    _crnt_GL_mode = mode;
+    _crnt_GL_cycle = cycle;
 
 
 #if (defined S52_USE_GLES2 || defined S52_USE_OPENGL_SAFETY_CRITICAL)
@@ -9098,13 +9121,13 @@ int        S52_GL_end(S52_GL_mode mode)
     _glMatrixDel(VP_PRJ);
 
     // texture of FB need update
-    if (S52_GL_DRAW == mode) {
+    if (S52_GL_DRAW == _crnt_GL_cycle) {
         _fb_update = TRUE;
     }
 
     /* debug - flush / finish and blit + swap
-    if (S52_GL_LAST == mode) {
-    //if (S52_GL_BLIT == mode) {
+    if (S52_GL_LAST == _crnt_GL_cycle) {
+    //if (S52_GL_BLIT == _crnt_GL_cycle) {
         glFlush();
 
         // EGL swap does a glFinish, if the call is make here
@@ -9120,14 +9143,13 @@ int        S52_GL_end(S52_GL_mode mode)
     //glFinish();
 
     // debug Raster
-    //if (S52_GL_LAST == mode) {
+    //if (S52_GL_LAST == _crnt_GL_cycle) {
     //    unsigned char pixels;
     //    S52_GL_drawRaster(&pixels);
     //}
 
     /*
     // debug - stat
-    if (S52_GL_DRAW == mode) {
         //PRINTF("TRIANGLE_STRIP = %i\n", _ntristrip);
         //PRINTF("TRIANGLE_FAN   = %i\n", _ntrifan);
         PRINTF("TRIANGLES **** = %i, _nCall = %i\n", (int)_ntris/3, _nCall);
@@ -9137,7 +9159,7 @@ int        S52_GL_end(S52_GL_mode mode)
 
     //glFinish();
 
-    _crnt_GL_mode = S52_GL_NONE;
+    _crnt_GL_cycle = S52_GL_NONE;
 
     _GL_BEGIN = FALSE;
 
@@ -10005,7 +10027,7 @@ char      *S52_GL_getNameObjPick(void)
 
 guchar    *S52_GL_readFBPixels(void)
 {
-    if (S52_GL_PICK==_crnt_GL_mode || NULL==_fb_pixels) {
+    if (S52_GL_PICK==_crnt_GL_cycle || NULL==_fb_pixels) {
         return NULL;
     }
 
@@ -10045,7 +10067,7 @@ guchar    *S52_GL_readFBPixels(void)
 
 int        S52_GL_drawFBPixels(void)
 {
-    if (S52_GL_PICK==_crnt_GL_mode || NULL==_fb_pixels) {
+    if (S52_GL_PICK==_crnt_GL_cycle || NULL==_fb_pixels) {
         return FALSE;
     }
 
@@ -10118,7 +10140,7 @@ int        S52_GL_drawFBPixels(void)
 
 int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north)
 {
-    if (S52_GL_PICK==_crnt_GL_mode || NULL==_fb_pixels) {
+    if (S52_GL_PICK==_crnt_GL_cycle || NULL==_fb_pixels) {
         return FALSE;
     }
 
@@ -10309,9 +10331,9 @@ int        S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, uns
 // draw string in world coords
 {
     S52_Color *c = S52_PL_getColor("CHBLK");
-    _glColor4ub(c);
+    //_glColor4ub(c);
 
-    _renderTXTAA(NULL, x, y, bsize, weight, str);
+    _renderTXTAA(NULL, c, x, y, bsize, weight, str);
 
     return TRUE;
 }
@@ -10323,13 +10345,12 @@ int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *color
 
     _GL_BEGIN = TRUE;
 
-    _glColor4ub(c);
-
 #ifdef S52_USE_GLES2
     S52_GL_win2prj(&pixels_x, &pixels_y);
 
     _glMatrixSet(VP_PRJ);
-    _renderTXTAA(NULL, pixels_x, pixels_y, bsize, 1, str);
+    //_renderTXTAA(NULL, pixels_x, pixels_y, bsize, 1, str);
+    _renderTXTAA(NULL, c, pixels_x, pixels_y, bsize, 1, str);
     _glMatrixDel(VP_PRJ);
 
 #else
@@ -10339,6 +10360,8 @@ int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *color
 
 #ifdef S52_USE_FTGL
     if (NULL != _ftglFont[bsize]) {
+        _glColor4ub(c);
+
 #ifdef _MINGW
         ftglRenderFont(_ftglFont[bsize], str, FTGL_RENDER_ALL);
 #else
