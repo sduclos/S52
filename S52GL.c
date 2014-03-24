@@ -7241,24 +7241,20 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
         return FALSE;
     }
 
-    // OPTIMISATION: not all need to be refilled as only VESSEL name
-    // change over time (time tag). To re-fill each time is the worst case
-    // so the FIX should speed up things a bit
-    //    S52_GL_DRAW,              // normal cycle - first pass draw layer 0-8
-    //    S52_GL_LAST,              // normal cycle - last/top/repeatable draw of layer 9
-
-    _ftglBuf = _fill_ftglBuf(_ftglBuf, str, weight);
-    if (0 == _ftglBuf->len)
-        return TRUE;
-
     // FIXME: check mem usage
+    // static text
     if ((S52_GL_DRAW==_crnt_GL_cycle) && (NULL!=obj)) {
         GLuint vboID = S52_PL_getFtglVBO(obj);
         if (GL_FALSE == glIsBuffer(vboID)) {
+
+            _ftglBuf = _fill_ftglBuf(_ftglBuf, str, weight);
+            if (0 == _ftglBuf->len)
+                return TRUE;
+
             glGenBuffers(1, &vboID);
 
             if (0 == vboID) {
-                PRINTF("ERROR: glGenBuffers() fail\n");
+                PRINTF("ERROR: static text glGenBuffers() fail\n");
                 g_assert(0);
                 return FALSE;
             }
@@ -7269,12 +7265,20 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
             // upload ftgl data to GPU
             glBufferData(GL_ARRAY_BUFFER, _ftglBuf->len*sizeof(_freetype_gl_vertex_t), (const void *)_ftglBuf->data, GL_STATIC_DRAW);
 
+            //glBindBuffer(GL_ARRAY_BUFFER, 0);
+
         } else {
             // connect to data in VBO GPU
             glBindBuffer(GL_ARRAY_BUFFER, vboID);
         }
     }
 
+    // dynamique text
+    if (S52_GL_LAST == _crnt_GL_cycle) {
+        _ftglBuf = _fill_ftglBuf(_ftglBuf, str, weight);
+        if (0 == _ftglBuf->len)
+            return TRUE;
+    }
 
 #ifdef S52_USE_TXT_SHADOW
     {
@@ -9195,7 +9199,14 @@ int        S52_GL_del(S52_obj *obj)
         S57_setPrimDList(prim, vboID);
 
         // delete text
-        // ???
+        {
+            guint vboID = S52_PL_getFtglVBO(obj);
+            if (GL_TRUE == glIsBuffer(vboID))
+                glDeleteBuffers(1, &vboID);
+
+            vboID = 0;
+            S52_PL_setFtglVBO(obj, vboID);
+        }
 #else
         // 'vboID' is in fact a DList here
         if (GL_TRUE == glIsList(vboID)) {
