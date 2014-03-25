@@ -194,6 +194,7 @@ typedef struct _cmdWL {
 #ifdef S52_USE_FREETYPE_GL
     //GArray           *ftglbuf;  // hold freetype-gl data for cmd.text
     guint             vboID;      // ID if the OpenGL VBO text
+    guint             len;        // VBO text length
 #endif
 
     struct _cmdWL *next;
@@ -4368,13 +4369,13 @@ long        S52_PL_getTimeSec(S52_obj *obj)
 
 #ifdef S52_USE_FREETYPE_GL
 //GArray     *S52_PL_getFtglBuf(S52_obj *obj, guint *vID)
-guint       S52_PL_getFtglVBO(S52_obj *obj)
+guint       S52_PL_getFtglVBO(S52_obj *obj, guint *len)
 {
     return_if_null(obj);
 
     _cmdWL *cmd = _getCrntCmd(obj);
     if (NULL == cmd)
-        return NULL;
+        return FALSE;
 
     // parano
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
@@ -4390,13 +4391,14 @@ guint       S52_PL_getFtglVBO(S52_obj *obj)
     //}
 
     //*vID = cmd->vboID;
+    *len = cmd->len;
 
     //return cmd->ftglbuf;
     return cmd->vboID;
 }
 
 //int         S52_PL_setFtglBuf(S52_obj *obj, GArray *buf, guint vID)
-int         S52_PL_setFtglVBO(S52_obj *obj, guint vboID)
+int         S52_PL_setFtglVBO(S52_obj *obj, guint vboID, guint len)
 {
     return_if_null(obj);
     //return_if_null(buf);
@@ -4412,7 +4414,8 @@ int         S52_PL_setFtglVBO(S52_obj *obj, guint vboID)
     }
 
     //cmd->ftglbuf = buf;
-    cmd->vboID     = vboID;
+    cmd->vboID = vboID;
+    cmd->len   = len;
 
     return TRUE;
 }

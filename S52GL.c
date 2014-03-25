@@ -7149,7 +7149,7 @@ static GArray   *_fill_ftglBuf(GArray *ftglBuf, const char *str, unsigned int we
     return ftglBuf;
 }
 
-static int       _renderTXTAA_es2(double x, double y, GArray *ftglBuf)
+static int       _renderTXTAA_es2(double x, double y, GArray *ftglBuf, guint len)
 {
     if (S52_GL_DRAW == _crnt_GL_cycle) {
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
@@ -7185,7 +7185,11 @@ static int       _renderTXTAA_es2(double x, double y, GArray *ftglBuf)
 
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, ftglBuf->len);
+    if (S52_GL_DRAW == _crnt_GL_cycle) {
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, len);
+    } else {
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, ftglBuf->len);
+    }
 
     _popScaletoPixel();
 
@@ -7243,13 +7247,18 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
     // FIXME: check mem usage
     // static text
+    guint len = 0;
     if ((S52_GL_DRAW==_crnt_GL_cycle) && (NULL!=obj)) {
-        GLuint vboID = S52_PL_getFtglVBO(obj);
-        if (GL_FALSE == glIsBuffer(vboID)) {
-
+        GLuint vboID = S52_PL_getFtglVBO(obj, &len);
+        if (GL_TRUE == glIsBuffer(vboID)) {
+            // connect to data in VBO GPU
+            glBindBuffer(GL_ARRAY_BUFFER, vboID);
+        } else {
             _ftglBuf = _fill_ftglBuf(_ftglBuf, str, weight);
             if (0 == _ftglBuf->len)
                 return TRUE;
+            else
+                len = _ftglBuf->len;
 
             glGenBuffers(1, &vboID);
 
@@ -7258,7 +7267,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
                 g_assert(0);
                 return FALSE;
             }
-            S52_PL_setFtglVBO(obj, vboID);
+            S52_PL_setFtglVBO(obj, vboID, _ftglBuf->len);
 
             // bind VBOs for vertex array
             glBindBuffer(GL_ARRAY_BUFFER, vboID);      // for vertex coordinates
@@ -7267,9 +7276,6 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
             //glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        } else {
-            // connect to data in VBO GPU
-            glBindBuffer(GL_ARRAY_BUFFER, vboID);
         }
     }
 
@@ -7301,14 +7307,31 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
         //_renderTXTAA_es2(x,        y+scaley, str);
 
         // lower right - OK
-        _renderTXTAA_es2(x+scalex, y,        _ftglBuf);
-        _renderTXTAA_es2(x+scalex, y-scaley, _ftglBuf);
-        _renderTXTAA_es2(x,        y-scaley, _ftglBuf);
+        if (S52_GL_LAST == _crnt_GL_cycle) {
+            _renderTXTAA_es2(x+scalex, y,        _ftglBuf, 0);
+            _renderTXTAA_es2(x+scalex, y-scaley, _ftglBuf, 0);
+            _renderTXTAA_es2(x,        y-scaley, _ftglBuf, 0);
+        } else {
+            _renderTXTAA_es2(x+scalex, y,        NULL, len);
+            _renderTXTAA_es2(x+scalex, y-scaley, NULL, len);
+            _renderTXTAA_es2(x,        y-scaley, NULL, len);
+        }
     }
 #endif  // S52_USE_TXT_SHADOW
 
+    //glFrontFace(GL_CW);
+
     _glColor4ub(color);
-    _renderTXTAA_es2(x, y, _ftglBuf);
+
+    if (S52_GL_LAST == _crnt_GL_cycle) {
+        _renderTXTAA_es2(x, y, _ftglBuf, 0);
+    } else {
+        _renderTXTAA_es2(x, y, NULL, len);
+    }
+
+    //_renderTXTAA_es2(x, y, _ftglBuf, len);
+
+    //glFrontFace(GL_CCW);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -9200,12 +9223,14 @@ int        S52_GL_del(S52_obj *obj)
 
         // delete text
         {
-            guint vboID = S52_PL_getFtglVBO(obj);
+            guint len;
+            guint vboID = S52_PL_getFtglVBO(obj, &len);
             if (GL_TRUE == glIsBuffer(vboID))
                 glDeleteBuffers(1, &vboID);
 
+            len   = 0;
             vboID = 0;
-            S52_PL_setFtglVBO(obj, vboID);
+            S52_PL_setFtglVBO(obj, vboID, len);
         }
 #else
         // 'vboID' is in fact a DList here

@@ -342,8 +342,8 @@ long           S52_PL_getTimeSec(S52_obj *obj);
 #ifdef S52_USE_FREETYPE_GL
 //GArray        *S52_PL_getFtglBuf(S52_obj *obj, guint *VID);
 //int            S52_PL_setFtglBuf(S52_obj *obj, GArray *buf, guint VID);
-guint          S52_PL_getFtglVBO(S52_obj *obj);
-int            S52_PL_setFtglVBO(S52_obj *obj, guint vboID);
+guint          S52_PL_getFtglVBO(S52_obj *obj, guint *len);
+int            S52_PL_setFtglVBO(S52_obj *obj, guint vboID, guint  len);
 #endif
 
 #endif // _S52PL_H_
