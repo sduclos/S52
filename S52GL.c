@@ -244,9 +244,9 @@ static guint   _nFrag = 0;     // number of pixel fragment (color switch)
 // tessalated area stat
 static guint   _ntris     = 0;     // area GL_TRIANGLES      count
 static guint   _ntristrip = 0;     // area GL_TRIANGLE_STRIP count
-static guint   _ntrifan   = 0;     // area GL_TRIANGLE_FAN   count
+static guint   _ntrisfan  = 0;     // area GL_TRIANGLE_FAN   count
 static guint   _nCall     = 0;
-
+static guint   _npoly     = 0;     // total polys
 
 ///////////////////////////////////////////////////////////////////
 // state
@@ -289,10 +289,10 @@ static GLUtriangulatorObj *_tobj = NULL;
 static GPtrArray          *_tmpV = NULL;  // place holder during tesssalation (GLUtriangulatorObj combineCallback)
 
 // optimisation: merge triangles strips
-static int     _modeTess = 0;
-static GArray *_vStrips  = NULL;  // accumulate triangles strips vertex when _modeTess is GL_TRIANGLE_STRIP
-static int     _newStrip = FALSE; // TRUE a new strip is beginning
-static int     _nStrips  = 0;     // debug
+//static int     _modeTess = 0;
+//static GArray *_vStrips  = NULL;  // accumulate triangles strips vertex when _modeTess is GL_TRIANGLE_STRIP
+//static int     _newStrip = FALSE; // TRUE a new strip is beginning
+//static int     _nStrips  = 0;     // debug
 
 // centroid
 static GLUtriangulatorObj *_tcen       = NULL;     // GLU CSG
@@ -567,6 +567,11 @@ static    GLfloat *_crntMat;          // point to active matrix
 static    int      _mvmTop = 0;       // point to stack top
 static    int      _pjmTop = 0;       // point to stack top
 
+// experimental: synthetic after glow
+static GArray  *_aftglwColorArr    = NULL;
+static GLuint   _vboIDaftglwVertID = 0;
+static GLuint   _vboIDaftglwColrID = 0;
+
 #else   // S52_USE_GLES2
 
 #ifdef S52_USE_OPENGL_SAFETY_CRITICAL
@@ -580,12 +585,8 @@ static    GLdouble _mvm[16];       // modelview matrix
 static    GLdouble _pjm[16];       // projection matrix
 #endif
 
-static GLuint   _vboIDaftglwVertID = 0;
-static GLuint   _vboIDaftglwColrID = 0;
-
 #endif  // S52_USE_GLES2
 
-static GArray  *_aftglwColorArr    = NULL;
 
 // utils
 static int       _f2d(GArray *tessWorkBuf_d, guint npt, vertex_t *ppt)
@@ -714,8 +715,6 @@ static int       _findCentInside  (guint npt, pt3 *v)
     gluTessEndContour(_tcin);
 
     gluTessEndPolygon(_tcin);
-
-    //_g_ptr_array_clear(_tmpV);
 
     if (_dcin != -1.0) {
         g_array_append_val(_centroids, _pcin);
@@ -882,27 +881,26 @@ static int       _getMaxEdge(pt3 *p)
     return TRUE;
 }
 
+#if 0
 static int       _donePrim(S57_prim *prim)
 // merge triangles strips to the current set of primitive
 {
-    _nStrips = 0;
+    //_nStrips = 0;
 
-    if (0 == _vStrips->len)
-        return FALSE;
-
-    S57_begPrim(prim, GL_TRIANGLE_STRIP);
-
-    for (guint i=0; i<_vStrips->len; ++i) {
-        vertex_t *data = (vertex_t *) &g_array_index(_vStrips, pt3v, i);
-        S57_addPrimVertex(prim, (vertex_t*)data);
+    //*
+    if (0 != _vStrips->len) {
+        S57_begPrim(prim, GL_TRIANGLE_STRIP);
+        for (guint i=0; i<_vStrips->len; ++i) {
+            pt3v *data = &g_array_index(_vStrips, pt3v, i);
+            S57_addPrimVertex(prim, (vertex_t*)data);
+        }
+        S57_endPrim(prim);
     }
-
-    S57_endPrim(prim);
-
-    g_array_set_size(_vStrips, 0);
+    //*/
 
     return TRUE;
 }
+#endif
 
 static void_cb_t _tessError(GLenum err)
 {
@@ -926,7 +924,7 @@ static void_cb_t _quadricError(GLenum err)
     //g_assert(0);
 }
 
-static void_cb_t _edgeCin(GLboolean flag)
+static void_cb_t _edgeFlag(GLboolean flag)
 {
     _startEdge = (GL_FALSE == flag)? GL_TRUE : GL_FALSE;
 }
@@ -967,35 +965,27 @@ static void_cb_t _combineCallbackCen(void)
 static void_cb_t _glBegin(GLenum mode, S57_prim *prim)
 {
     /*
-    // debug
-    if (_DEBUG) {
-        //PRINTF("_glBegin() mode: %i\n", data);
-        if (0 != _GLBEGIN)
-            g_assert(0);
-        _GLBEGIN = 1;
-    }
-    */
-
-    _modeTess = mode;
-    if (GL_TRIANGLE_STRIP == _modeTess) {
+    //_modeTess = mode;
+    //if (GL_TRIANGLE_STRIP == _modeTess) {
         // debug
         //_nStrips++;
 
         // duplicate last vertex of last strip
         if (0 != _vStrips->len) {
-            pt3v data = g_array_index(_vStrips, pt3v, _vStrips->len-1);
+            pt3v *data = &g_array_index(_vStrips, pt3v, _vStrips->len-1);
             g_array_append_val(_vStrips, data);
 
-            // if xxx add an other vertex
+            // if even add an other vertex
             if (0 == _vStrips->len % 2)
-            //if (1 == _vStrips->len % 2)
                 g_array_append_val(_vStrips, data);
         }
         _newStrip = TRUE;
 
-        return;
+        //return;
     }
+    */
 
+    // Note: mode=10  is _QUADRIC_TRANSLATE, defined bellow as 0x000A
     S57_begPrim(prim, mode);
 }
 
@@ -1019,20 +1009,13 @@ static void_cb_t _beginCin(GLenum data)
 
 static void_cb_t _glEnd(S57_prim *prim)
 {
-    /*
-    // debug
-    if (_DEBUG) {
-        //PRINTF("_glEnd()\n");
-        if (1 != _GLBEGIN)
-            g_assert(0);
-        _GLBEGIN = 0;
-    }
-    */
-
-    if (GL_TRIANGLE_STRIP == _modeTess)
-        return;
+    //if (GL_TRIANGLE_STRIP == _modeTess) {
+    //    return;
+    //}
 
     S57_endPrim(prim);
+
+    return;
 }
 
 static void_cb_t _endCen(void)
@@ -1052,11 +1035,13 @@ static void_cb_t _endCin(void)
 static void_cb_t _vertex3d(GLvoid *data, S57_prim *prim)
 // double - use by the tesselator
 {
+
 #ifdef S52_USE_GLES2
     // cast to float after tess (double)
     double *dptr     = (double*)data;
     float   dataf[3] = {dptr[0], dptr[1], dptr[2]};
 
+    /*
     // collect strips vertex for post processing
     if (GL_TRIANGLE_STRIP == _modeTess) {
         if (TRUE == _newStrip) {
@@ -1070,12 +1055,14 @@ static void_cb_t _vertex3d(GLvoid *data, S57_prim *prim)
 
         return;
     }
+    */
 
-    S57_addPrimVertex(prim, (float*)dataf);
+    S57_addPrimVertex(prim, (float *)dataf);
 #else
     S57_addPrimVertex(prim, (double*)data);
 #endif
 
+    return;
 }
 
 static void_cb_t _vertex3f(GLvoid *data, S57_prim *prim)
@@ -1143,8 +1130,7 @@ static void      _dumpATImemInfo(GLenum glenum)
 
 
 // experiment
-#define _QUADRIC_TRANSLATE    0x0010  // valid GLenum for glDrawArrays mode is 0-9
-                                      // GL_POLYGON_STIPPLE_BIT	is also	0x00000010
+#define _QUADRIC_TRANSLATE    0x000A  // valid GLenum for glDrawArrays mode is 0-9
                                       // This is an attempt to signal VBO drawing func
                                       // to glTranslate() (eg to put a '!' inside a circle)
 typedef struct _GLUquadricObj {
@@ -1166,8 +1152,6 @@ static S57_prim       *_diskPrimTmp = NULL;
 static _GLUquadricObj *_gluNewQuadric(void)
 {
     static _GLUquadricObj qobj;
-
-    //g_assert(0);
 
     return &qobj;
 }
@@ -1192,8 +1176,6 @@ static int       _gluQuadricCallback(_GLUquadricObj* qobj, GLenum which, f fn)
           g_assert(0);
           return FALSE;
     }
-
-    //g_assert(0);
 
     return TRUE;
 }
@@ -1252,6 +1234,8 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
         cosCache[i] = cos(angle);
     }
 
+    //g_array_set_size(_vStrips, 0);
+
     if (GLU_FILL == qobj->style)
         qobj->cb_begin(GL_TRIANGLE_STRIP, _diskPrimTmp);
     else
@@ -1283,7 +1267,7 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
 
     qobj->cb_end(_diskPrimTmp);
 
-    _donePrim(_diskPrimTmp);
+    //_donePrim(_diskPrimTmp);
 
     return TRUE;
 }
@@ -1327,17 +1311,6 @@ static GLint     _initGLU(void)
             return FALSE;
         }
 
-        /*
-        void tess_properties(GLUtesselator *tobj) {
-            gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_POSITIVE);
-            gluTessCallback(_tobj, GLU_TESS_VERTEX,     (_GLUfuncptr)glVertex3dv);
-            gluTessCallback(_tobj, GLU_TESS_BEGIN,      (_GLUfuncptr)beginCallback);
-            gluTessCallback(_tobj, GLU_TESS_END,        (_GLUfuncptr)endCallback);
-            gluTessCallback(_tobj, GLU_TESS_ERROR,      (_GLUfuncptr)errorCallback);
-            gluTessCallback(_tobj, GLU_TESS_COMBINE,    (_GLUfuncptr)combineCallback);
-            gluTessCallback(_tobj, GLU_TESS_VERTEX_DATA,(_GLUfuncptr)&vertexCallback);
-        }
-        */
         gluTessCallback(_tobj, GLU_TESS_BEGIN_DATA, (f)_glBegin);
         gluTessCallback(_tobj, GLU_TESS_END_DATA,   (f)_glEnd);
         gluTessCallback(_tobj, GLU_TESS_ERROR,      (f)_tessError);
@@ -1345,15 +1318,14 @@ static GLint     _initGLU(void)
         gluTessCallback(_tobj, GLU_TESS_COMBINE,    (f)_combineCallback);
 
         // NOTE: _*NOT*_ NULL to trigger GL_TRIANGLES tessallation
-        //gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) glEdgeFlag);
-        //gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) _glEdgeFlag);
-        gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) NULL);
+        gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) _edgeFlag);
+        //gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) NULL);
 
 
         // no GL_LINE_LOOP
         gluTessProperty(_tobj, GLU_TESS_BOUNDARY_ONLY, GLU_FALSE);
 
-        // ODD needed for symb. ISODGR01
+        // ODD needed for symb. ISODGR01 + glDisable(GL_CULL_FACE);
         gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_ODD);
         // default
         //gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_NONZERO);
@@ -1370,7 +1342,8 @@ static GLint     _initGLU(void)
         //gluTessNormal(_tobj, 0.0, 0.0, 0.0);    // default
 
         // accumulate triangles strips
-        _vStrips = g_array_new(FALSE, FALSE, sizeof(vertex_t)*3);
+        //_vStrips = g_array_new(FALSE, FALSE, sizeof(vertex_t)*3);
+        //_vFans   = g_array_new(FALSE, FALSE, sizeof(vertex_t)*3);
     }
 
 
@@ -1420,7 +1393,7 @@ static GLint     _initGLU(void)
         gluTessCallback(_tcin, GLU_TESS_VERTEX,    (f)_vertexCin);
         gluTessCallback(_tcin, GLU_TESS_ERROR,     (f)_tessError);
         gluTessCallback(_tcin, GLU_TESS_COMBINE,   (f)_combineCallback);
-        gluTessCallback(_tcin, GLU_TESS_EDGE_FLAG, (f)_edgeCin);
+        gluTessCallback(_tcin, GLU_TESS_EDGE_FLAG, (f)_edgeFlag);
 
         // set poly in x-y plane normal is Z (for performance)
         gluTessNormal(_tcin, 0.0, 0.0, 1.0);
@@ -1484,8 +1457,11 @@ static GLint     _freeGLU(void)
     //if (_nvertex)   g_array_unref(_nvertex);
     _nvertex = NULL;
 
-    if (_vStrips)   g_array_free(_vStrips, TRUE);
-    _vStrips = NULL;
+    //if (_vStrips)   g_array_free(_vStrips, TRUE);
+    //_vStrips = NULL;
+
+    //if (_vFans)   g_array_free(_vFans, TRUE);
+    //_vFans = NULL;
 
     return TRUE;
 }
@@ -1734,24 +1710,17 @@ static int       _init_freetype_gl(void)
 #endif
 #endif
 
-static GLint     _tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
+static S57_prim *_tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
 // WARNING: not re-entrant (tmpV)
 {
     guint     nr   = S57_getRingNbr(geoData);
     S57_prim *prim = S57_initPrimGeo(geoData);
 
-    // debug
-    //if (2186==S57_getGeoID(geoData)) {
-    //    S57_dumpData(geoData);
-    //    _DEBUG = TRUE;
-    //} else {
-    //    _DEBUG = FALSE;
-    //}
-
     _g_ptr_array_clear(_tmpV);
+    //g_array_set_size(_vStrips, 0);
 
-    // debug
-    //PRINTF("npt: %i\n", nr);
+    // NOTE: _*NOT*_ NULL to trigger GL_TRIANGLES tessallation
+    //gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) _edgeFlag);
 
     gluTessBeginPolygon(tobj, prim);
     for (guint i=0; i<nr; ++i) {
@@ -1773,11 +1742,11 @@ static GLint     _tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
     }
     gluTessEndPolygon(tobj);
 
-    //_g_ptr_array_clear(_tmpV);
+    //gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) NULL);
 
-    _donePrim(prim);
+    //_donePrim(prim);
 
-    return TRUE;
+    return prim;
 }
 
 static double    _computeSCAMIN(void)
@@ -2716,33 +2685,31 @@ static int       _VBODrawArrays(S57_prim *prim)
         //}
 
         // FIXME: optimisation: make stat for 'count' avrg
-        // to get a baseline before optimisation with glDrawElements
-        // FIX: glDrawElements need to send indices array (one per vertex)
-        //      glDrawArrays indices are 'count' but no overhead / code compexity
+        // to get a baseline before optimisation
+
         /*
-        switch (mode) {
-        case GL_TRIANGLE_STRIP:
-            //PRINTF("TRIANGLE_STRIP = %i\n", count);
-            _ntristrip += count;
-            break;
-        case GL_TRIANGLE_FAN:
-            //PRINTF("TRIANGLE_FAN   = %i\n", count);
-            _ntrifan += count;
-            break;
-        case GL_TRIANGLES:
-            //PRINTF("TRIANGLES **** = %i\n", count);
-            _ntris += count;
-            ++_nCall;
-            break;
-        default:
-            PRINTF("unkown: [0x%x]\n", mode);
-            g_assert(0);
+         // FIXME: AP & AC filter one another add
+        //if (S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_CMD_WRD_FILTER)) {
+        //if (S52_CMD_WRD_FILTER_AC & (int) S52_MP_get(S52_CMD_WRD_FILTER)) {
+            switch (mode) {
+            //case GL_TRIANGLE_STRIP: _ntristrip += count; break;
+            //case GL_TRIANGLE_FAN:   _ntrisfan  += count; break;
+            //case GL_TRIANGLES:      _ntris     += count; ++_nCall; break;
+            case GL_TRIANGLE_STRIP: _ntristrip++; break;
+            case GL_TRIANGLE_FAN:   _ntrisfan++;  break;
+            case GL_TRIANGLES:      _ntris++;     break;
+            default:
+                PRINTF("unkown: [0x%x]\n", mode);
+                g_assert(0);
+            }
+        } else {
+            glDrawArrays(mode, first, count);
         }
-        //*/
+        */
+
 
         glDrawArrays(mode, first, count);
 
-        _checkError("_VBODrawArrays() mode prob");
 
         //
         //if (_QUADRIC_TRANSLATE == mode) {
@@ -2939,12 +2906,12 @@ static int       _fillarea(S57_geo *geoData)
     //    PRINTF("LNDARE found!\n");
     //    return TRUE;
     //}
+    _npoly++;
 
 
     S57_prim *prim = S57_getPrimGeo(geoData);
     if (NULL == prim) {
-        _tessd(_tobj, geoData);
-        prim = S57_getPrimGeo(geoData);
+        prim = _tessd(_tobj, geoData);
     }
 
 #ifdef S52_USE_OPENGL_VBO
@@ -3095,6 +3062,7 @@ static int       _glCallList(S52_DListData *DListData)
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
     // no face culling as symbol can be both CW,CCW when winding is ODD (for ISODNG)
+    // Note: cull face is faster but on GLES2 Radeon HD, Tegra2, Adreno its not
     glDisable(GL_CULL_FACE);
 
     // Note: BLKADJ01 is made of 2 concentric square, gray above black
@@ -3261,7 +3229,6 @@ static int       _computeCentroid(S57_geo *geoData)
         _getCentroidClose(npt, ppt);
         //PRINTF("no clip: %s\n", S57_getName(geoData));
 
-        //return _centroids;
         return TRUE;
     }
 
@@ -3344,7 +3311,6 @@ static int       _computeCentroid(S57_geo *geoData)
         }
     }
 
-    //return _centroids;
     return TRUE;
 }
 
@@ -4137,8 +4103,8 @@ static int       _renderSY_pastrk(S52_obj *obj)
 
     return TRUE;
 }
+
 // forward decl
-//static int       _renderTXTAA(S52_obj *obj, double x, double y, unsigned int bsize, unsigned int weight, const char *str);
 static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y, unsigned int bsize, unsigned int weight, const char *str);
 static int       _renderSY_leglin(S52_obj *obj)
 {
@@ -4230,9 +4196,9 @@ static int       _renderSY(S52_obj *obj)
     return FALSE;
 #endif
 
-    // debug - moved to glDrawArray()
-    if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_CMD_WRD_FILTER))
-        return TRUE;
+    // debug - filter is also in glDrawArray()
+    //if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_CMD_WRD_FILTER))
+    //    return TRUE;
 
     // bebug - filter out all but ..
     //if (0 != S52_PL_cmpCmdParam(obj, "BOYLAT23") &&
@@ -4342,6 +4308,9 @@ static int       _renderSY(S52_obj *obj)
         return TRUE;
     }
 
+    //debug - skip LINES_T & AREAS_T
+    //return TRUE;
+
     // an SY command on a line object (ex light on power line)
     if (LINES_T == S57_getObjtype(geoData)) {
 
@@ -4421,6 +4390,9 @@ static int       _renderSY(S52_obj *obj)
         return TRUE;
     }
 
+    //debug - skip AREAS_T (cost 30%; from 120ms to 80ms on Estuaire du St-L CA279037.000)
+    //return TRUE;
+
     if (AREAS_T == S57_getObjtype(geoData)) {
         guint     npt = 0;
         GLdouble *ppt = NULL;
@@ -4444,14 +4416,11 @@ static int       _renderSY(S52_obj *obj)
         //}
 
         // clutter - skip rendering LOWACC01
-        // this test might be useless in real life
-        if ((0==S52_PL_cmpCmdParam(obj, "LOWACC01")) && (0.0==S52_MP_get(S52_MAR_QUAPNT01)))
-            return TRUE;
+        // FIXME: this test might be useless in real life
+        //if ((0==S52_PL_cmpCmdParam(obj, "LOWACC01")) && (0.0==S52_MP_get(S52_MAR_QUAPNT01)))
+        //    return TRUE;
 
         if (S52_GL_PICK == _crnt_GL_cycle) {
-            double x;
-            double y;
-
             // fill area, because other draw might not fill area
             // case of SY();LS(); (ie no AC() fill)
             {
@@ -4467,9 +4436,11 @@ static int       _renderSY(S52_obj *obj)
             }
 
             // centroid offset might put the symb outside the area
-            while (TRUE == S57_getNextCentroid(geoData, &x, &y))
-                _renderSY_POINT_T(obj, x, y, orient+_north);
-
+            if (TRUE == S57_hasCentroid(geoData)) {
+                double x,y;
+                while (TRUE == S57_getNextCentroid(geoData, &x, &y))
+                    _renderSY_POINT_T(obj, x, y, orient+_north);
+            }
             return TRUE;
         }
 
@@ -4477,11 +4448,28 @@ static int       _renderSY(S52_obj *obj)
         {   // normal draw, also fill centroid
             double offset_x;
             double offset_y;
-            _computeCentroid(geoData);
+
+            // corner case where scrolling set area is clipped by view
+            double x1,y1,x2,y2;
+            S57_getExt(geoData, &x1, &y1, &x2, &y2);
+            if ((y1 < _gmin.v) || (y2 > _gmax.v) || (x1 < _gmin.u) || (x2 > _gmax.u)) {
+                // reset centroid
+                S57_newCentroid(geoData);
+            }
+
+            // debug - skip centroid (cost 30% CPU and no glDraw(); from 120ms to 80ms on Estuaire du St-L CA279037.000)
+            if (TRUE == S57_hasCentroid(geoData)) {
+                double x,y;
+                while (TRUE == S57_getNextCentroid(geoData, &x, &y)) {
+                    _renderSY_POINT_T(obj, x, y, orient+_north);
+                }
+                return TRUE;
+            } else {
+                _computeCentroid(geoData);
+            }
 
             // compute offset
             if (0 < _centroids->len) {
-                //*
                 S52_PL_getOffset(obj, &offset_x, &offset_y);
 
                 // mm --> pixel
@@ -4496,13 +4484,14 @@ static int       _renderSY(S52_obj *obj)
                     offset_x *= scalex;
                     offset_y *= scaley;
                 }
-                //*/
 
                 S57_newCentroid(geoData);
             }
 
             for (guint i=0; i<_centroids->len; ++i) {
                 pt3 *pt = &g_array_index(_centroids, pt3, i);
+
+                // debug
                 //PRINTF("drawing centered at: %f/%f\n", pt->x, pt->y);
 
                 // save centroid
@@ -4523,10 +4512,8 @@ static int       _renderSY(S52_obj *obj)
         return TRUE;
     }
 
-    PRINTF("BUG: don't know how to draw this point symbol\n");
+    PRINTF("DEBUG: don't know how to draw this point symbol\n");
     //g_assert(0);
-
-    _checkError("_renderSY()");
 
     return FALSE;
 }
@@ -5028,11 +5015,12 @@ static int       _renderLS_afterglow(S52_obj *obj)
     if (0 == pti)
         return TRUE;
 
-    if (pti > npt) {
-        PRINTF("ERROR: buffer overflow\n");
-        exit(0);
-        return FALSE;
-    }
+    // debug -
+    //if (pti > npt) {
+    //    PRINTF("ERROR: buffer overflow\n");
+    //    exit(0);
+    //    return FALSE;
+    //}
 
 #ifdef S52_USE_GLES2
     //float   maxAlpha   = 1.0;   // 0.0 - 1.0
@@ -5046,15 +5034,17 @@ static int       _renderLS_afterglow(S52_obj *obj)
     float dalpha    = maxAlpha / pti;
 
 #ifdef S52_USE_GLES2
+    // FIXME: to init ES2! honor S52_USE_AFGLOW!
     if (NULL == _aftglwColorArr)
         _aftglwColorArr = g_array_sized_new(FALSE, TRUE, sizeof(GLfloat), npt);
 
+    // interpolate alpha over array lenght
     g_array_set_size(_aftglwColorArr, 0);
     for (guint i=0; i<pti; ++i) {
         g_array_append_val(_aftglwColorArr, crntAlpha);
         crntAlpha += dalpha;
     }
-    // convert geo double (3) to float (3)
+    // convert an array of geo double (3) to float (3)
     _d2f(_tessWorkBuf_f, pti, ppt);
 #else
     g_array_set_size(_aftglwColorArr, 0);
@@ -6041,6 +6031,7 @@ static int       _renderAC(S52_obj *obj)
     S52_Color *c   = S52_PL_getACdata(obj);
     S57_geo   *geo = S52_PL_getGeo(obj);
 
+    // debug - this filter also in _VBODrawArrays():glDraw()
     if (S52_CMD_WRD_FILTER_AC & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
@@ -6123,6 +6114,10 @@ static int       _renderAP_NODATA(S52_obj *obj)
 
 static int       _renderAP_NODATA_layer0(void)
 {
+    // debug - this filter also in _VBODrawArrays():glDraw()
+    if (S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_CMD_WRD_FILTER))
+        return TRUE;
+
     //_pt2 pt0, pt1, pt2, pt3, pt4;
     _pt2 pt0, pt1, pt2, pt3;
 
@@ -6556,7 +6551,7 @@ static int       _renderAP_es2(S52_obj *obj)
             _glPointSize(pen_w - '0' + 1.0); // sampler + AA soften pixel, so need enhencing a bit
         }
 
-        /* debug - draw X and Y axis
+        //* debug - draw X and Y axis
         {
             // Note: line in X / Y need to start at +1 to show up
 #ifdef S52_USE_TEGRA2
@@ -6766,6 +6761,7 @@ static int       _renderAP(S52_obj *obj)
 // Area Pattern
 // NOTE: S52 define pattern rotation but doesn't use it in PLib, so not implemented.
 {
+    // debug - this filter also in _VBODrawArrays():glDraw()
     if (S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
@@ -7149,9 +7145,11 @@ static GArray   *_fill_ftglBuf(GArray *ftglBuf, const char *str, unsigned int we
     return ftglBuf;
 }
 
-static int       _renderTXTAA_es2(double x, double y, GArray *ftglBuf, guint len)
+static int       _renderTXTAA_es2(double x, double y, GLfloat *data, guint len)
+// render VBO static text (ie no data) or dynamic text
 {
-    if (S52_GL_DRAW == _crnt_GL_cycle) {
+    //if (S52_GL_DRAW == _crnt_GL_cycle) {
+    if (NULL == data) {
 #define BUFFER_OFFSET(i) ((char *)NULL + (i))
         glEnableVertexAttribArray(_aPosition);
         glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), BUFFER_OFFSET(0));
@@ -7160,13 +7158,11 @@ static int       _renderTXTAA_es2(double x, double y, GArray *ftglBuf, guint len
         glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), BUFFER_OFFSET(sizeof(float)*3));
     } else {
         // connect ftgl buffer coord data to GPU
-        GLfloat *d = (GLfloat*)ftglBuf->data;
-
         glEnableVertexAttribArray(_aPosition);
-        glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), d);
+        glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), data+0);
 
         glEnableVertexAttribArray(_aUV);
-        glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), d+3);
+        glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, sizeof(_freetype_gl_vertex_t), data+3);
     }
 
     // turn ON 'sampler2d'
@@ -7185,11 +7181,7 @@ static int       _renderTXTAA_es2(double x, double y, GArray *ftglBuf, guint len
 
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
-    if (S52_GL_DRAW == _crnt_GL_cycle) {
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, len);
-    } else {
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, ftglBuf->len);
-    }
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, len);
 
     _popScaletoPixel();
 
@@ -7232,6 +7224,12 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     //    return FALSE;
     //}
 
+    // FIXME: cursor pick
+    if (S52_GL_PICK == _crnt_GL_cycle) {
+        PRINTF("DEBUG: picking text not handled\n");
+        return FALSE;
+    }
+
     // debug
     //return FALSE;
 
@@ -7244,8 +7242,6 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
         PRINTF("DEBUG: warning NULL str\n");
         return FALSE;
     }
-
-    // FIXME: check mem usage
     // static text
     guint len = 0;
     if ((S52_GL_DRAW==_crnt_GL_cycle) && (NULL!=obj)) {
@@ -7282,8 +7278,6 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     // dynamique text
     if (S52_GL_LAST == _crnt_GL_cycle) {
         _ftglBuf = _fill_ftglBuf(_ftglBuf, str, weight);
-        if (0 == _ftglBuf->len)
-            return TRUE;
     }
 
 #ifdef S52_USE_TXT_SHADOW
@@ -7308,9 +7302,9 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
         // lower right - OK
         if (S52_GL_LAST == _crnt_GL_cycle) {
-            _renderTXTAA_es2(x+scalex, y,        _ftglBuf, 0);
-            _renderTXTAA_es2(x+scalex, y-scaley, _ftglBuf, 0);
-            _renderTXTAA_es2(x,        y-scaley, _ftglBuf, 0);
+            _renderTXTAA_es2(x+scalex, y,        (GLfloat*)_ftglBuf->data, _ftglBuf->len);
+            _renderTXTAA_es2(x+scalex, y-scaley, (GLfloat*)_ftglBuf->data, _ftglBuf->len);
+            _renderTXTAA_es2(x,        y-scaley, (GLfloat*)_ftglBuf->data, _ftglBuf->len);
         } else {
             _renderTXTAA_es2(x+scalex, y,        NULL, len);
             _renderTXTAA_es2(x+scalex, y-scaley, NULL, len);
@@ -7324,7 +7318,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     _glColor4ub(color);
 
     if (S52_GL_LAST == _crnt_GL_cycle) {
-        _renderTXTAA_es2(x, y, _ftglBuf, 0);
+        _renderTXTAA_es2(x, y, (GLfloat*)_ftglBuf->data, _ftglBuf->len);
     } else {
         _renderTXTAA_es2(x, y, NULL, len);
     }
@@ -7872,6 +7866,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 // remember first coord
                 fristCoord = data;
                 _g_ptr_array_clear(_tmpV);
+                //g_array_set_size(_vStrips, 0);
 
                 gluTessBeginPolygon(_tobj, vertex);
                 gluTessBeginContour(_tobj);
@@ -7891,7 +7886,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 gluTessEndContour(_tobj);
                 gluTessEndPolygon(_tobj);
 
-                _donePrim(vertex);
+                //_donePrim(vertex);
 
                 _checkError("_parseHPGL()");
 
@@ -8869,10 +8864,10 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     // stat
     _ntristrip = 0;
-    _ntrifan   = 0;
+    _ntrisfan  = 0;
     _ntris     = 0;
     _nCall     = 0;
-
+    _npoly     = 0;
 
 #ifdef S52_USE_COGL
     cogl_begin_gl();
@@ -8982,8 +8977,9 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     //glCullFace(GL_BACK);  // default
 
-    // Note: Xoom (TEGRA2) Android 4.4.2 a bit slower with cull face!
-    // also make little diff on Nexus .. maybe Ortho
+    // FIXME: need to clock this more accuratly
+    // Note: Mesa RadeonHD & Xoom (TEGRA2) Android 4.4.2 a bit slower with cull face!
+    // also make little diff on Nexus with current timming method (not accurate)
     glEnable(GL_CULL_FACE);
     //glDisable(GL_CULL_FACE);
 
@@ -9153,35 +9149,35 @@ int        S52_GL_end(S52_GL_cycle cycle)
     }
 
     /* debug - flush / finish and blit + swap
-    if (S52_GL_LAST == _crnt_GL_cycle) {
+    if (S52_GL_DRAW == _crnt_GL_cycle) {
+    //if (S52_GL_LAST == _crnt_GL_cycle) {
     //if (S52_GL_BLIT == _crnt_GL_cycle) {
-        glFlush();
+        //glFlush();
 
         // EGL swap does a glFinish, if the call is make here
         // then the 80ish ms is spend here if not then sawp does the
         // Finish delay
-        glFinish();
+        //glFinish();
+
+        // EGL swap does a glFinish, if the call is make here
+        // then the 80ish ms is spend here if not then sawp does the
+        // Finish delay
+        //glFinish();
+
+        // debug Raster
+        //    unsigned char pixels;
+        //    S52_GL_drawRaster(&pixels);
+
+        // debug - statistic
+        PRINTF("TOTAL TESS STRIP = %i\n", _nStrips);
+        PRINTF("TRIANGLE_STRIP   = %i\n", _ntristrip);
+        PRINTF("TRIANGLE_FAN     = %i\n", _ntrisfan);
+        //PRINTF("TRIANGLES ****   = %i, _nCall = %i\n", (int)_ntris/3, _nCall);
+        PRINTF("TRIANGLES ****   = %i\n", _ntris);
+        PRINTF("TOTAL POLY       = %i\n", _npoly);
     }
     //*/
 
-    // EGL swap does a glFinish, if the call is make here
-    // then the 80ish ms is spend here if not then sawp does the
-    // Finish delay
-    //glFinish();
-
-    // debug Raster
-    //if (S52_GL_LAST == _crnt_GL_cycle) {
-    //    unsigned char pixels;
-    //    S52_GL_drawRaster(&pixels);
-    //}
-
-    /*
-    // debug - stat
-        //PRINTF("TRIANGLE_STRIP = %i\n", _ntristrip);
-        //PRINTF("TRIANGLE_FAN   = %i\n", _ntrifan);
-        PRINTF("TRIANGLES **** = %i, _nCall = %i\n", (int)_ntris/3, _nCall);
-    }
-    */
     //PRINTF("SKIP POIN_T glDrawArrays(): nFragment = %i\n", _nFrag);
 
     //glFinish();
@@ -9962,7 +9958,7 @@ char      *S52_GL_getNameObjPick(void)
         S57ID = S57_getGeoID(geo);
 
         PRINTF("%i  : %s\n", i, name);
-        PRINTF("LUP : %s\n", S52_PL_getCMD(obj));
+        PRINTF("LUP : %s\n", S52_PL_getCMDstr(obj));
         PRINTF("DPRI: %i\n", (int)S52_PL_getDPRI(obj));
 
         { // pull PLib exposition field: LXPO/PXPO/SXPO
@@ -10887,7 +10883,7 @@ _findCentInside(unsigned int npt, pt3 *v)
 _computeArea(int npt, pt3 *v)
 _getCentroid(int npt, double *ppt, _pt2 *pt)
 _getMaxEdge(pt3 *p)
-_edgeCin(GLboolean flag)
+_edgeFlag(GLboolean flag)
 _glBegin(GLenum data, S57_prim *prim)
 _beginCen(GLenum data)
 _beginCin(GLenum data)

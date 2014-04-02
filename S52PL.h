@@ -206,7 +206,7 @@ S52_RadPrio    S52_PL_getRPRI(S52_obj *obj);
 // return plain text info for this type (TNAM) of lookup
 const char    *S52_PL_infoLUP(S52_obj *obj);
 // debug
-const char    *S52_PL_getCMD(S52_obj *obj);
+const char    *S52_PL_getCMDstr(S52_obj *obj);
 
 // command word list handling
 S52_CmdWrd     S52_PL_iniCmd(S52_obj *obj);
@@ -340,10 +340,8 @@ long           S52_PL_getTimeSec(S52_obj *obj);
 
 
 #ifdef S52_USE_FREETYPE_GL
-//GArray        *S52_PL_getFtglBuf(S52_obj *obj, guint *VID);
-//int            S52_PL_setFtglBuf(S52_obj *obj, GArray *buf, guint VID);
 guint          S52_PL_getFtglVBO(S52_obj *obj, guint *len);
-int            S52_PL_setFtglVBO(S52_obj *obj, guint vboID, guint  len);
+int            S52_PL_setFtglVBO(S52_obj *obj, guint vboID, guint len);
 #endif
 
 #endif // _S52PL_H_

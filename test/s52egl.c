@@ -1027,9 +1027,9 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
 #else
     // Rimouski (Xoom)
-    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
+    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
     // Estuaire du St-Laurent
-    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
+    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
 
     // Portneuf
     //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA479017.000", NULL);
@@ -1047,10 +1047,10 @@ static int      _s52_init       (s52engine *engine)
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US1EEZ1M/US1EEZ1M.000", NULL);
 
     // Rimouski
-    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
+    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
 
     // Estuaire du St-Laurent
-    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
+    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
 
     // Ice - experimental (HACK: ice symb link to --0WORLD.shp for one shot test)
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
@@ -1112,6 +1112,8 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON
     // -- DEPTH COLOR ------------------------------------
 
+    S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the GPU]
+    //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 0.0);  // off
 
 
     S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);

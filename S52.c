@@ -291,7 +291,7 @@ static S52_RADAR_cb  _RADAR_cb   = NULL;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.116\n"
+      "libS52 0.117\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -2796,8 +2796,6 @@ static int        _loadEdge(const char *name, void *Edge)
             g_assert(0);
         }
 
-        //S57_geo *node_0 = g_array_index(_crntCell->ConnectedNodes, S57_geo*, name_rcid_0);
-        //S57_geo *node_0 =  (S57_geo *)g_ptr_array_index(_crntCell->ConnectedNodes, name_rcid_0 - 1);
         S57_geo *node_0 =  (S57_geo *)g_ptr_array_index(_crntCell->ConnectedNodes, (name_rcid_0 - _crntCell->baseEdgeRCID));
         if (NULL == node_0) {
             PRINTF("ERROR: got empty node_0 at name_rcid_0 = %i\n", name_rcid_0);
@@ -2815,8 +2813,6 @@ static int        _loadEdge(const char *name, void *Edge)
             g_assert(0);
         }
 
-        //S57_geo *node_1 = g_array_index(_crntCell->ConnectedNodes, S57_geo*, name_rcid_1);
-        //S57_geo *node_1 = (S57_geo *)g_ptr_array_index(_crntCell->ConnectedNodes, name_rcid_1 - 1);
         S57_geo *node_1 =  (S57_geo *)g_ptr_array_index(_crntCell->ConnectedNodes, (name_rcid_1 - _crntCell->baseEdgeRCID));
         if (NULL == node_1) {
             // if we land here it meen that there no ConnectedNodes at this index
@@ -4201,25 +4197,26 @@ static void       _delOldVessel(gpointer data, gpointer user_data)
     S52_obj *obj = (S52_obj *)data;
     S57_geo *geo = S52_PL_getGeo(obj);
 
-    if (!((0==g_strcmp0("vessel", S57_getName(geo))) ||
-          (0==g_strcmp0("afgves", S57_getName(geo))))) {
-        return;
+    if ((0==g_strcmp0("vessel", S57_getName(geo))) ||
+        (0==g_strcmp0("afgves", S57_getName(geo)))) {
+
+        GTimeVal now;
+        g_get_current_time(&now);
+        long old = S52_PL_getTimeSec(obj);
+
+        if (now.tv_sec - old > S52_MP_get(S52_MAR_DEL_VESSEL_DELAY)) {
+            GPtrArray *rbin = (GPtrArray *) user_data;
+            // queue obj for deletion in next APP() cycle
+            //g_ptr_array_add(_objToDelList, obj);
+
+            // remove obj from 'cell'
+            g_ptr_array_remove(rbin, obj);
+
+            _delObj(obj);
+        }
     }
 
-    GTimeVal now;
-    g_get_current_time(&now);
-    long old = S52_PL_getTimeSec(obj);
-
-    if (now.tv_sec - old > S52_MP_get(S52_MAR_DEL_VESSEL_DELAY)) {
-        GPtrArray *rbin = (GPtrArray *) user_data;
-        // queue obj for deletion in next APP() cycle
-        //g_ptr_array_add(_objToDelList, obj);
-
-        // remove obj from 'cell'
-        g_ptr_array_remove(rbin, obj);
-
-        _delObj(obj);
-    }
+    return;
 }
 
 static int        _drawLast(void)
@@ -5706,27 +5703,25 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
 static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
 {
     // FIXME: optimisation - cull Mariners' Object
-    return FALSE;
 
-
+    // FIXME: crossing of anti-meridian
     // FIXME: set a init flag in _extent
     _extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
 
-    // FIXME: crossing of anti-meridian
     for (guint i=0; i<xyznbr; ++i) {
-        // longitude
+        // X - longitude
         ext.W = (ext.W < *xyz) ? ext.W : *xyz;
         ext.E = (ext.E > *xyz) ? ext.E : *xyz;
 
-        // latitude
+        // Y - latitude
         ++xyz;
         ext.S = (ext.S < *xyz) ? ext.S : *xyz;
         ext.N = (ext.N > *xyz) ? ext.N : *xyz;
 
-        // Z
+        // Z - skip
         ++xyz;
 
-        // next pt
+        // next X
         ++xyz;
     }
 
@@ -5757,10 +5752,10 @@ static S52_obj   *_isObjValid(_cell *c, S52_obj *obj)
 }
 
 static int        _isObjNameValid(S52ObjectHandle obj, const char *objName)
-// return TRUE if class name obj is objName else FALSE
+// return TRUE if the class name of 'obj' is 'objName' else FALSE
 {
     S57_geo *geo = S52_PL_getGeo(obj);
-    if (0 != g_strcmp0(objName, S57_getName(geo)))   // better?
+    if (0 != g_strcmp0(objName, S57_getName(geo)))
         return FALSE;
 
     return TRUE;

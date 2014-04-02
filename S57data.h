@@ -166,6 +166,7 @@ guint     S57_setGeoSize(S57_geo *geo, guint size);
 int       S57_newCentroid(S57_geo *geo);
 int       S57_addCentroid(S57_geo *geo, double  x, double  y);
 int       S57_getNextCentroid(S57_geo *geo, double *x, double *y);
+int       S57_hasCentroid(S57_geo *geo);
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 int       S57_markOverlapGeo(S57_geo *geo, S57_geo *geoEdge);

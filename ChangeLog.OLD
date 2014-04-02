@@ -3,8 +3,15 @@
 #
 
 
+2014APR01
+    -mod optimisation tesselate into triangles only
+
+2014MAR25
+    -fix static text length
+
 2014MAR24
     -mod optimze DRAW cycle static text
+    -mod optimise centroid to recompute only those affected when view change 
 
 2014MAR22
     -mod test/android/dist/system to test/android/dist/sysroot

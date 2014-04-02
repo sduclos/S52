@@ -1543,6 +1543,7 @@ guint      S57_setGeoSize(_S57_geo *geo, guint size)
 }
 
 int        S57_newCentroid(_S57_geo *geo)
+// init or reset
 {
     return_if_null(geo);
 
@@ -1579,11 +1580,28 @@ int        S57_getNextCentroid(_S57_geo *geo, double *x, double *y)
 
         ++geo->centroidIdx;
         return TRUE;
-
     }
 
 
     return FALSE;
+}
+
+int        S57_hasCentroid(S57_geo *geo)
+{
+    return_if_null(geo);
+    //return_if_null(geo->centroid);
+
+    if (NULL == geo->centroid) {
+        S57_newCentroid(geo);
+    } else {
+        // reset idx for call S57_getNextCentroid
+        geo->centroidIdx = 0;
+    }
+
+    if (0 == geo->centroid->len)
+        return FALSE;
+
+    return TRUE;
 }
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP

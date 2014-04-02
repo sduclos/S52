@@ -2881,7 +2881,8 @@ static int        _getAlt(_S52_obj *obj)
     return alt;
 }
 
-const char *S52_PL_getCMD(_S52_obj *obj)
+const char *S52_PL_getCMDstr(_S52_obj *obj)
+// use to get info for cursor pick
 {
     return_if_null(obj);
 
@@ -2942,12 +2943,11 @@ int         S52_PL_cmpCmdParam(_S52_obj *obj, const char *name)
 
     // debug: dump command string
     if (NULL == name) {
-        PRINTF("%s\n", obj->CSinst[0]->str);
+        PRINTF("DEBUG: %s\n", obj->CSinst[0]->str);
         return FALSE;
     }
 
     _cmdWL *cmd = _getCrntCmd(obj);
-
     if (NULL == cmd)
         return FALSE;
 
