@@ -7024,9 +7024,9 @@ static GArray   *_fill_ftglBuf(GArray *ftglBuf, const char *str, unsigned int we
         //PRINTF("CHAR: x0,y0,x1,y1: %lc: %f %f %f %f\n", str[i],x0,y0,x1,y1);
         //PRINTF("CHAR: s0,t0,s1,t1: %lc: %f %f %f %f\n", str[i],s0,t0,s1,t1);
 
-        // GL_TRIANGLE_STRIP - OK
+        // GL_TRIANGLE_STRIP - some artefact
         GLfloat z0 = 0.0;
-        //*
+        /*
         _freetype_gl_vertex_t vertices[4] = {
             {x0,y0,z0,  s0,t0},
             {x0,y1,z0,  s0,t1},
@@ -7045,8 +7045,8 @@ static GArray   *_fill_ftglBuf(GArray *ftglBuf, const char *str, unsigned int we
         ftglBuf = g_array_append_vals(ftglBuf, &vertices[2], 1);
         //*/
 
-        /* test GL_TRIANGLES - not working!
-        _freetype_gl_vertex_t vertices[4] = {
+        //* GL_TRIANGLES - 6 vertex also but no artifact
+        _freetype_gl_vertex_t vertices[6] = {
             {x0,y0,z0,  s0,t0},
             {x0,y1,z0,  s0,t1},
             {x1,y1,z0,  s1,t1},
@@ -7056,9 +7056,9 @@ static GArray   *_fill_ftglBuf(GArray *ftglBuf, const char *str, unsigned int we
             {x1,y0,z0,  s1,t0}
         };
 
-        ftglBuf = g_array_append_vals(ftglBuf, &vertices[0], 3);
+        ftglBuf = g_array_append_vals(ftglBuf, &vertices, 3);
         ftglBuf = g_array_append_vals(ftglBuf, &vertices[3], 3);
-        */
+        //*/
 
         pen_x += glyph->advance_x;
         pen_y += glyph->advance_y;
@@ -7104,8 +7104,8 @@ static int       _renderTXTAA_es2(double x, double y, GLfloat *data, guint len)
 
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, len);
-    //glDrawArrays(GL_TRIANGLES, 0, len);
+    //glDrawArrays(GL_TRIANGLE_STRIP, 0, len);
+    glDrawArrays(GL_TRIANGLES, 0, len);
 
     _popScaletoPixel();
 
