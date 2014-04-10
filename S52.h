@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -50,7 +50,7 @@ typedef enum S52ObjectType {
 // global parameter for mariners' selection
 typedef enum S52MarinerParameter {
     S52_MAR_NONE                =  0,   // default
-    S52_MAR_SHOW_TEXT           =  1,   // view group 23 (on/off)
+    S52_MAR_SHOW_TEXT           =  1,   // flags to show text (see S52_setTextDisp() for details) (on/off) [default ON]
     S52_MAR_TWO_SHADES          =  2,   // flag indicating selection of two depth shades (on/off) [default ON]
     S52_MAR_SAFETY_CONTOUR      =  3,   // S52_LINES: selected safety contour (meters) [IMO PS 3.6]
     S52_MAR_SAFETY_DEPTH        =  4,   // S52_POINT: selected safety depth (for sounding color) (meters) [IMO PS 3.7]
@@ -125,6 +125,8 @@ typedef enum S52MarinerParameter {
     S52_MAR_DISP_VRMEBL_LABEL   = 44,   // display bearing / range label on VRMEBL (on/off)
 
     S52_MAR_DISP_RASTER         = 45,   // display Raster:RADAR,Bathy,... (on/off) (default off)
+
+    // FIXME: DISP TEXT SHADOW - 0-7 bit: N NE E SE S SW W NW, 0 - off
 
     S52_MAR_NUM                 = 46    // number of parameters
 } S52MarinerParameter;
@@ -691,10 +693,11 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
  *
  * Signal that libS52 is at RADAR layer in the layer's sequence in S52_draw()
  *
+ * S52_RADAR_cb return alpha texture data, rNM: radar range in NM
  *
  * Return: TRUE on success, else FALSE
  */
-typedef int (*S52_RADAR_cb)(void);
+typedef unsigned char * (*S52_RADAR_cb)(double *rNM);
 DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb);
 
 /**

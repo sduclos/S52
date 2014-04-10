@@ -33,12 +33,18 @@
 
 #include <stdio.h>        // printf()
 #include <stdlib.h>       // exit(0)
+#include <string.h>       // memset()
+
+// compiled with -std=gnu99 instead of -std=c99 will define M_PI
+#include <math.h>         // sin(), cos(), atan2(), pow(), sqrt(), floor(), INFINITY, M_PI
 
 #include <glib.h>
 #include <glib-object.h>  // signal
 #include <glib/gprintf.h> // g_sprintf(), g_ascii_strtod(), g_strrstr()
 #include <glibconfig.h>
 #include <gio/gio.h>      // mutex
+
+#define DEG_TO_RAD     0.01745329238
 
 //extern GMemVTable *glib_mem_profiler_table;
 
@@ -199,14 +205,16 @@ static GTimer *_timer = NULL;
 
 #define VESSELTURN_UNDEFINED 129
 
+// test - ownshp
+static S52ObjectHandle _ownshp            = NULL;
+#define OWNSHPLABEL "OWNSHP\n220 deg / 6.0 kt"
+
+
 //------ DEBUG ----
 // debug - no real AIS, then fake target
 #ifdef USE_FAKE_AIS
 static S52ObjectHandle _vessel_ais        = NULL;
 #define VESSELLABEL "~~MV Non Such~~ "           // last char will be trimmed
-// test - ownshp
-static S52ObjectHandle _ownshp            = NULL;
-#define OWNSHPLABEL "OWNSHP\\n220 deg / 6.0 kt"
 
 #ifdef S52_USE_AFGLOW
 #define MAX_AFGLOW_PT (12 * 20)   // 12 min @ 1 vessel pos per 5 sec
@@ -232,6 +240,129 @@ static PFNEGLGETSYSTEMTIMENVPROC          _eglGetSystemTimeNV          = NULL;
 
 //-----------------------------
 
+#ifdef S52_USE_RADAR
+#define RADARLOG "/home/sduclos/dev/gis/data/radar/RADAR_imitator/radarlog"
+
+// Description of management structures and radar images
+typedef struct {
+    unsigned int RAIN      : 1;
+    unsigned int FRUIT     : 1;
+    unsigned int SCALE     : 4;
+    unsigned int MODE_2    : 1;
+    unsigned int _Status    : 1;     // collide with symbole 'Status' !
+    unsigned int reserved1 : 8;
+    unsigned int reserved2 : 8;
+    unsigned int reserved3 : 8;
+} PSO_APMode;
+
+typedef struct {
+    unsigned int    dwHeader;
+    PSO_APMode      mrAPMode;
+    unsigned short  Td;
+    unsigned short  IPCHG;
+    unsigned short  iStringsCount;
+    unsigned short  iStringLength;
+    unsigned char   reserved[4];
+    unsigned short  iCurrentString; // number of line [0..2047]
+    unsigned char   image[1280];    // image line
+} PSO_ImageDGram;
+
+#define ANGLEmax 2048
+#define Rmax     1280
+static FILE *_fd      = NULL;
+
+typedef struct {
+    double x;
+    double y;
+} POINT;
+
+static guchar _RADARtex[Rmax*2][Rmax*2];
+static POINT  _Polar_Matrix_Of_Coords[ANGLEmax][Rmax];
+static int      _initRadar()
+{
+    if (NULL == (_fd = fopen(RADARLOG, "rb"))) {
+        LOGE("s52egl:_initRadar(): can't open file %s\n", RADARLOG);
+        g_assert(0);
+        return FALSE;
+    }
+
+    memset(_Polar_Matrix_Of_Coords, 0x00, sizeof(_Polar_Matrix_Of_Coords));
+    memset(_RADARtex, 0x00, sizeof(_RADARtex));
+
+    // calculate polar coords
+    for (int ANGLE = 0; ANGLE < ANGLEmax; ANGLE++) {
+        double ANGLE_RAD = (double)ANGLE/ANGLEmax*2*M_PI;
+        double cosinus   = cos(ANGLE_RAD);
+        double sinus     = sin(ANGLE_RAD);
+
+        for (int R = 0; R < Rmax; R++) {
+            _Polar_Matrix_Of_Coords[ANGLE][R].x = R * cosinus + Rmax;
+            _Polar_Matrix_Of_Coords[ANGLE][R].y = R * sinus   + Rmax;
+        }
+    }
+
+    return TRUE;
+}
+
+static int      _writePoint (unsigned char VALUE, int ANGLE, int R)
+// Alpha texture,
+{
+    double x = _Polar_Matrix_Of_Coords[ANGLE][R].x;
+    double y = _Polar_Matrix_Of_Coords[ANGLE][R].y;
+
+    _RADARtex[(int)y][(int)x] = VALUE;  // Alpha
+    //_RADARtex[(int)y][(int)x] = 255 - VALUE;  // Alpha reverse (more conspic)
+
+    return TRUE;
+}
+
+static int      _writeString(guchar *string, int ANGLE)
+{
+    for (int R = 0; R < Rmax; R++)
+        _writePoint(string[R], ANGLE, R);
+
+    return TRUE;
+}
+
+static int      _readRadarLog(int nLine)
+{
+    int  lineLen = sizeof(PSO_ImageDGram);
+    int  headLen = lineLen - Rmax;
+    guchar line[lineLen];
+
+    //static int numbStr = 0;
+    static int numbStr = ANGLEmax - 1;
+    while (nLine--) {
+        if (1 == fread(line, lineLen, 1, _fd)) {
+            _writeString(line + headLen, numbStr);
+
+            // CCW
+            //numbStr++;
+            //if (numbStr >= ANGLEmax)
+            //    numbStr = 0;
+
+            // CW
+            numbStr--;
+            if (numbStr <= 0)
+                numbStr = ANGLEmax - 1;
+
+        } else {
+            // return to the top of the file
+            rewind(_fd);
+            numbStr = 0;
+            LOGI("fread = 0\n");
+        }
+        if (0 != ferror(_fd)) {
+            // handle error
+            LOGI("ferror != 0\n");
+            g_assert(0);
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+#endif  // S52_USE_RADAR
 
 static int      _egl_init       (s52engine *engine)
 {
@@ -764,6 +895,7 @@ static int      _s52_setupVESSEL(s52droid_state_t *state)
 
     return TRUE;
 }
+#endif  // USE_FAKE_AIS
 
 static int      _s52_setupOWNSHP(s52droid_state_t *state)
 {
@@ -775,13 +907,12 @@ static int      _s52_setupOWNSHP(s52droid_state_t *state)
     _ownshp = S52_setDimension(_ownshp, 0.0, 100.0, 15.0, 0.0);
     //_ownshp = S52_setDimension(_ownshp, 1000.0, 50.0, 15.0, 15.0);
 
-    S52_pushPosition(_ownshp, state->cLat - 0.02, state->cLon - 0.01, 0.0);
+    S52_pushPosition(_ownshp, state->cLat + 0.01, state->cLon - 0.01, 0.0);
 
     S52_setVector(_ownshp, 0, 220.0, 6.0);  // ownship use S52_MAR_VECSTB
 
     return TRUE;
 }
-#endif  // USE_FAKE_AIS
 
 static int      _s52_setupLEGLIN(void)
 {
@@ -938,6 +1069,19 @@ static int      _s52_error_cb   (const char *err)
 }
 #endif
 
+static guchar  *_s52_radar_cb   (double *rNM)
+{
+    //g_print("_radar_cb()\n");
+    //*rNM = 12.0;  // rNM
+    *rNM = 3.0;  // rNM
+    //*rNM = 1.5;  // rNM
+#ifdef S52_USE_RADAR
+    return (unsigned char *)_RADARtex;
+#else
+    return (unsigned char *)NULL;
+#endif
+}
+
 static int      _s52_init       (s52engine *engine)
 {
     LOGI("s52egl:_s52_init(): beg ..\n");
@@ -1042,6 +1186,9 @@ static int      _s52_init       (s52engine *engine)
     // read cell location fron s52.cfg
     //S52_loadCell(NULL, NULL);
 
+    // S-64 ENC
+    S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/GB5X01SE.000", NULL);
+
     // debug anti-meridian
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US5HA06M/US5HA06M.000", NULL);
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US1EEZ1M/US1EEZ1M.000", NULL);
@@ -1050,7 +1197,7 @@ static int      _s52_init       (s52engine *engine)
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
 
     // Estuaire du St-Laurent
-    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
+    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
 
     // Ice - experimental (HACK: ice symb link to --0WORLD.shp for one shot test)
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
@@ -1108,8 +1255,8 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON
     // -- DEPTH COLOR ------------------------------------
 
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the GPU]
@@ -1222,10 +1369,10 @@ static int      _s52_init       (s52engine *engine)
 
     _s52_setupPRDARE(&engine->state);
 
+    _s52_setupOWNSHP(&engine->state);
+
 #ifdef USE_FAKE_AIS
     _s52_setupVESSEL(&engine->state);
-
-    _s52_setupOWNSHP(&engine->state);
 #endif
 
 #ifdef S52_USE_EGL
@@ -1237,6 +1384,12 @@ static int      _s52_init       (s52engine *engine)
     //g_on_error_query(NULL);
 
     s52ais_initAIS();
+#endif
+
+#ifdef S52_USE_RADAR
+    _initRadar();
+    S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+    S52_setRADARCallBack(_s52_radar_cb);
 #endif
 
     engine->do_S52draw        = TRUE;
@@ -1339,91 +1492,65 @@ static int      _s52_draw_cb    (gpointer user_data)
         goto exit;
     }
 
-    //g_get_current_time(&engine->end_time);
-    //g_time_val_add(&engine->end_time, 500 * 1000);  // 0.5 sec
 
-    //LOGI("s52egl:_s52_draw_cb(): while loop start\n");
-    //while (TRUE) {
-
-        /*
-        // FIXME: g_async_queue_timed_pop is deprecated and should not be used in newly-written code. use g_async_queue_timeout_pop().
-        //gpointer g_async_queue_timeout_pop(GAsyncQueue *queue, guint64 timeout);
-
-        g_static_mutex_unlock(&engine->mutex);
-        s52engine *eng = (s52engine *)g_async_queue_timed_pop(engine->queue, &engine->end_time);
-        g_static_mutex_lock(&engine->mutex);
-
-        // if no work set next timeout and call drawLast
-        if (NULL == eng) {
-            g_time_val_add(&engine->end_time, 500 * 1000);  // 0.5 sec
-            //engine->do_S52drawLast = TRUE;
-        }
-        */
-
-        //*
-        if (TRUE == engine->do_S52drawBlit) {
-            S52_drawBlit(engine->state.dx_pc, engine->state.dy_pc, engine->state.dz_pc, engine->state.dw_pc);
-            engine->do_S52drawBlit = FALSE;
-            goto exit;
-            //continue;
-        }
-        //*/
+    //*
+    if (TRUE == engine->do_S52drawBlit) {
+        S52_drawBlit(engine->state.dx_pc, engine->state.dy_pc, engine->state.dz_pc, engine->state.dw_pc);
+        engine->do_S52drawBlit = FALSE;
+        goto exit;
+        //continue;
+    }
+    //*/
 
 
-        //*
-        if (TRUE == engine->do_S52setViewPort) {
+    //*
+    if (TRUE == engine->do_S52setViewPort) {
 #ifdef S52_USE_ADRENO
-            // EGL viewport not updated after rotation on Nexus!
-            engine->width  = ANativeWindow_getWidth (engine->app->window);
-            engine->height = ANativeWindow_getHeight(engine->app->window);
+        // EGL viewport not updated after rotation on Nexus!
+        engine->width  = ANativeWindow_getWidth (engine->app->window);
+        engine->height = ANativeWindow_getHeight(engine->app->window);
 #else
-            eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
-            eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
+        eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
+        eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
 #endif
-            LOGI("s52egl:_s52_draw_cb(): w:%i, h:%i\n", engine->width, engine->height);
-            S52_setViewPort(0, 0, engine->width, engine->height);
-            engine->do_S52setViewPort = FALSE;
-        }
-        //*/
+        LOGI("s52egl:_s52_draw_cb(): w:%i, h:%i\n", engine->width, engine->height);
+        S52_setViewPort(0, 0, engine->width, engine->height);
+        engine->do_S52setViewPort = FALSE;
+    }
+    //*/
 
 
 #ifndef S52_USE_EGL
-        _egl_beg(engine);
+    _egl_beg(engine);
 #endif
 
-        // draw background - IHO layer 0-8
-        if (TRUE == engine->do_S52draw) {
-            S52_draw();
-            engine->do_S52draw = FALSE;
+    // draw background - IHO layer 0-8
+    if (TRUE == engine->do_S52draw) {
+        // read 10 lines (or 360 deg == 2048 lines, so 10 lines == 1.7 deg per sector per 0.1 sec)
+        _readRadarLog(10);  // seem like nice rotation speed
+        S52_draw();
 
-            /*
-             // RADAR - experimental - will be displayed at the next draw
-             if (TRUE == _doLoadRADAR) {
-             S52_loadCell("/home/sduclos/dev/gis/data/radar/RADAR_imitator/out.raw", NULL);
-             S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
-             _doLoadRADAR = FALSE;
-             }
-             */
+#if !defined(S52_USE_RADAR)
+        engine->do_S52draw = FALSE;
+#endif
 
-            // user can add stuff on top of draw()
-            _s52_draw_user(engine);
-        }
+        // user can add stuff on top of draw()
+        //_s52_draw_user(engine);
+    }
 
-        // draw AIS on last layer (IHO layer 9)
-        if (TRUE == engine->do_S52drawLast) {
+    // draw AIS on last layer (IHO layer 9)
+    if (TRUE == engine->do_S52drawLast) {
 
 #ifdef USE_FAKE_AIS
-            _s52_updTimeTag(engine);
+        _s52_updTimeTag(engine);
 #endif
 
-            S52_drawLast();
-        }
+        S52_drawLast();
+    }
 
 #ifndef S52_USE_EGL
-        _egl_end(engine);
+    _egl_end(engine);
 #endif
-
-    //}
 
 exit:
 
@@ -1914,7 +2041,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
                 engine->state.dy_pc = 0.0;
                 engine->state.dz_pc = 0.0;
                 engine->state.dw_pc = north;
-                engine->do_S52draw     = FALSE;
+                engine->do_S52draw  = FALSE;
                 engine->do_S52drawLast = FALSE;
                 engine->do_S52drawBlit = TRUE;
                 //g_async_queue_push(engine->queue, engine);
@@ -1934,7 +2061,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
                 engine->state.dy_pc = 0.0;
                 engine->state.dz_pc = (start_y - new_y) / engine->height;
                 engine->state.dw_pc = 0.0;
-                engine->do_S52draw     = FALSE;
+                engine->do_S52draw  = FALSE;
                 engine->do_S52drawLast = FALSE;
                 engine->do_S52drawBlit = TRUE;
                 //g_async_queue_push(engine->queue, engine);
@@ -1971,7 +2098,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
                 engine->state.dy_pc = -(start_y - new_y) / engine->height; // Y down
                 engine->state.dz_pc = 0.0;
                 engine->state.dw_pc = 0.0;
-                engine->do_S52draw     = FALSE;
+                engine->do_S52draw  = FALSE;
                 engine->do_S52drawLast = FALSE;
                 engine->do_S52drawBlit = TRUE;
                 //g_async_queue_push(engine->queue, engine);
@@ -2848,7 +2975,11 @@ static int      _X11_handleXevent(gpointer user_data)
                 _s52_setVwNDraw(engine, engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
 
+#ifdef S52_USE_RADAR
+            engine->do_S52draw     = TRUE;
+#else
             engine->do_S52draw     = FALSE;
+#endif
             engine->do_S52drawLast = TRUE;
         }
         break;
@@ -2868,7 +2999,6 @@ int main(int argc, char *argv[])
     _egl_init(&_engine);
     _s52_init(&_engine);
 
-
     // init thread first before any call to glib
     // event if NULL mean that glib call are more relaxe
     g_thread_init(NULL);
@@ -2880,10 +3010,14 @@ int main(int argc, char *argv[])
     s52ais_initAIS();
 #endif
 
-
     g_timeout_add(500, _X11_handleXevent, (void*)&_engine);  // 0.5 sec
-    g_timeout_add(500, _s52_draw_cb,      (void*)&_engine);  // 0.5 sec
+
+#ifdef S52_USE_RADAR
     //g_timeout_add(1000/60, _s52_draw_cb,      (void*)&_engine);  // 16 msec
+    g_timeout_add(100, _s52_draw_cb,      (void*)&_engine);  // 0.1 sec
+#else
+    g_timeout_add(500, _s52_draw_cb,      (void*)&_engine);  // 0.5 sec
+#endif
 
     //g_mem_set_vtable(glib_mem_profiler_table);
 
@@ -2899,6 +3033,11 @@ int main(int argc, char *argv[])
     _egl_done(&_engine);
 
     //g_mem_profile();
+
+#ifdef S52_USE_RADAR
+    // close radarlog
+    fclose(_fd);
+#endif
 
     g_print("%s .. done\n", argv[0]);
 

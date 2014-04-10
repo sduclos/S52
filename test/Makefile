@@ -85,7 +85,7 @@ s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_US
 # -DS52_USE_WORLD     - load world shapefile
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
-                      -DS52_USE_DOTPITCH -DS52_USE_EGL -DS52_USE_GLES2 -DUSE_AIS -DS52_USE_AFGLOW
+                      -DS52_USE_DOTPITCH -DS52_USE_EGL -DS52_USE_GLES2 -DS52_USE_AFGLOW -DS52_USE_RADAR
 
 # same as s52eglx, but "gtk+-2.0" is added - no AIS
 s52gtk2egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` \
@@ -167,6 +167,8 @@ s52glx: s52glx.c
 #s52eglx: s52egl.c
 #	$(CC) $(CFLAGS) s52egl.c $(LIBS) -o $@
 #	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
+
+#FIXME: with -DUSE_FAKE_AIS no need to build AIS
 s52eglx: s52egl.c s52ais.c
 	$(CC) $(CFLAGS) s52egl.c s52ais.c $(LIBS) -o $@
 

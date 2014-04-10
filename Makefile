@@ -139,7 +139,8 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_SYM_AISSEL01: need symbol in test/plib-test-priv.rle
 # -DS52_USE_SYM_AISVES01_RED: close quarter, need symbol in PLAUX_00.DAI
 # -DS52_USE_WORLD: need shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
-#
+# -DS52_USE_RADAR: skip swapbuffer between DRAW & LAST cycle, skip read/write FB
+
 
 
 # -DS52_DEBUG: add more info for debugging libS52 (ex _checkError() in S52GL.c)
@@ -204,6 +205,7 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_OGR_FILECOLLECTOR    \
                   -DS52_USE_SYM_VESSEL_DNGHL     \
                   -DS52_USE_TXT_SHADOW           \
+                  -DS52_USE_RADAR                \
                   -DS52_DEBUG $(DBG)
 
 # WARNING: gdal run OK on android with android-9-toolchain
@@ -238,7 +240,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
 # -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
 # -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7)
 # -DS52_USE_LOG          - log S52_* call to tmp file
-# -DS52_DEBUG            - enable debug code, glError(), PRINTF(), ..
+# -DS52_DEBUG            - enable debug code, glError(), ..
 # -DG_DISABLE_ASSERT     - disable g_assert()
 
               DEFS = -DS52_USE_GLIB2                       \
@@ -254,7 +256,6 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
                      -DS52_USE_TXT_SHADOW                  \
-                     -DS52_DEBUG                           \
                      $(DBG0)
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \

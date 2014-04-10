@@ -3,6 +3,9 @@
 #
 
 
+2014APR09
+    -add Radar, compile with S52_USE_RADAR
+
 2014APR01
     -mod optimisation tesselate into triangles only
 

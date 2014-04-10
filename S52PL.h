@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -212,6 +212,9 @@ const char    *S52_PL_getCMDstr(S52_obj *obj);
 S52_CmdWrd     S52_PL_iniCmd(S52_obj *obj);
 // get next command word in the list
 S52_CmdWrd     S52_PL_getCmdNext(S52_obj *obj);
+// not used
+S52_CmdWrd     S52_PL_getCrntCmd(S52_obj *obj);
+
 // compare name to parameter of current command word
 int            S52_PL_cmpCmdParam(S52_obj *obj, const char *name);
 // get str for the current command (PLib exposition field: LXPO/PXPO/SXPO)

@@ -114,7 +114,11 @@ distclean: clean
 #$ adb shell su -c "setprop log.redirect-stdio true"
 #$ adb shell su -c start
 
-# perfhudes
+# Tracer for OpenGL ES
+# par of android-sdk/tools/monitor (Android Device Monitor)
+# ==> trace1.gltrace
+
+# perfhudes - can't make it work
 #adb shell setprop debug.perfhudes 1
 
 # wake up GPSD

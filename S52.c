@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -289,9 +289,10 @@ static S52ObjectHandle _BLKADJ01 = FALSE;
 static S52_RADAR_cb  _RADAR_cb   = NULL;
 //static int          _doRADAR  = TRUE;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
+static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.117\n"
+      "libS52 0.119\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -372,6 +373,9 @@ static char _version[] = "$Revision: 1.126 $\n"
 #endif
 #ifdef S52_USE_TXT_SHADOW
       "S52_USE_TXT_SHADOW\n"
+#endif
+#ifdef S52_USE_RADAR
+      "S52_USE_RADAR\n"
 #endif
 ;
 
@@ -2113,26 +2117,16 @@ static int        _suppLineOverlap()
 static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
 {
     _cell *ch = NULL;
-    FILE  *fd = NULL;
-
-    // OGR doesn't strip blank but S57 filename can't have any
-    // maybe this is to allow POSIX naming (!!)
-    filename = g_strstrip(filename);
+    //FILE  *fd = NULL;
 
     // skip file not terminated by .000
     char *base = g_path_get_basename(filename);
-    //if (0 != g_strcmp0(base+8, ".000")) {
     if ((0!=g_strcmp0(base+8, ".000")) && (0!=g_strcmp0(base+8, ".shp"))) {
-        PRINTF("WARNING: filename (%s) not a S-57 base ENC [.000 terminated]\n", filename);
+        PRINTF("WARNING: filename (%s) not a S-57 base ENC [.000 terminated] or .shp\n", filename);
         g_free(base);
         return NULL;
     }
     g_free(base);
-
-    if (NULL == (fd = S52_fopen(filename, "r"))) {
-        PRINTF("WARNING: cell not found (%s)\n", filename);
-        return NULL;
-    }
 
     ch = _newCell(filename);
     if (NULL == ch) {
@@ -2170,8 +2164,6 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 #endif
 
     _collect_CS_touch(ch);
-
-    S52_fclose(fd);
 
 
     {   // failsafe - check if a PLib put an object on the NODATA layer
@@ -2589,7 +2581,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
             if (NULL != (fd2 = fopen(fname, "rb"))) {
                 if (1 == fread(data, 1280 * 2048, 1, fd2)) {
                     S52_GL_ras *ras = g_new0(S52_GL_ras, 1);
-                    ras->fname = g_string_new(fname);
+                    ras->fnameMerc = g_string_new(fname);
                     ras->w     = 1280;
                     ras->h     = 2048;
                     ras->gdtSz = 1;    // byte
@@ -2690,6 +2682,7 @@ DLL int    STD S52_doneCell(const char *encPath)
 
     PRINTF("%s\n", encPath);
 
+    int ret = FALSE;
     gchar *fname = g_strdup(encPath);
     fname = g_strstrip(fname);
 
@@ -2710,6 +2703,20 @@ DLL int    STD S52_doneCell(const char *encPath)
             if (0 == g_strcmp0(r->fnameMerc->str, fnameMerc)) {
                 S52_GL_delRaster(r, FALSE);
                 g_free(r);
+                ret = TRUE;
+                goto exit;
+            }
+        }
+    }
+
+    // unload .raw (radar)
+    if (0 != g_strcmp0(basename+8, ".raw")) {
+        for (guint i=0; i<_rasterList->len; ++i) {
+            S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
+            if (0 == g_strcmp0(r->fnameMerc->str, fname)) {
+                S52_GL_delRaster(r, FALSE);
+                g_free(r);
+                ret = TRUE;
                 goto exit;
             }
         }
@@ -2728,6 +2735,7 @@ DLL int    STD S52_doneCell(const char *encPath)
         if (0 == g_strcmp0(basename, c->filename->str)) {
             _freeCell(c);
             g_ptr_array_remove_index(_cellList, idx);
+            ret = TRUE;
             goto exit;
         }
     }
@@ -2738,7 +2746,7 @@ exit:
 
     g_static_mutex_unlock(&_mp_mutex);
 
-    return FALSE;
+    return ret;
 }
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
@@ -3706,13 +3714,29 @@ static int        _cull(_extent ext)
 static int        _drawRADAR()
 {
     if (NULL != _RADAR_cb) {
-        g_static_mutex_unlock(&_mp_mutex);
-        _RADAR_cb();
-        S52_CHECK_MUTX;
+        double rNM;
+        _raster->texAlpha = _RADAR_cb(&rNM);
+
+        S52_GL_getPRJView(&_raster->S, &_raster->W, &_raster->N, &_raster->E);
+
+        if (NULL != _OWNSHP) {
+            guint    npt = 0;
+            double  *ppt = NULL;
+            S57_geo *geo = S52_PL_getGeo(_OWNSHP);
+            S57_getGeoData(geo, 0, &npt, &ppt);
+
+            _raster->cLng = ppt[0];
+            _raster->cLat = ppt[1];
+            _raster->rNM  = rNM;
+        } else {
+            _raster->cLat = (_raster->S + _raster->N) / 2.0;
+            _raster->cLng = (_raster->W + _raster->E) / 2.0;
+            _raster->rNM  = rNM;
+        }
     }
 
 #ifdef S52_USE_GLES2
-    g_ptr_array_foreach(_rasterList, (GFunc)S52_GL_drawRaster, NULL);
+    S52_GL_drawRaster(_raster);
 #endif
 
     return TRUE;
@@ -4187,7 +4211,9 @@ DLL int    STD S52_draw(void)
 exit:
     g_static_mutex_unlock(&_mp_mutex);
 
+#if !defined(S52_USE_RADAR)
     EGL_END(DRAW);
+#endif
 
     return ret;
 }
@@ -4261,7 +4287,9 @@ DLL int    STD S52_drawLast(void)
     if (S52_MAR_DISP_LAYER_LAST_NONE == S52_MP_get(S52_MAR_DISP_LAYER_LAST))
         return TRUE;
 
+#if !defined(S52_USE_RADAR)
     EGL_BEG(LAST);
+#endif
 
     // do not wait if an other thread is allready drawing
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
@@ -5585,11 +5613,20 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
 }
 
 DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb)
+//DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int potX, unsigned int potY)
+// experimental - load raw raster RADAR via callback
 {
     // debug
-    PRINTF("cb%#lX\n", (long unsigned int)cb);
+    //PRINTF("cb%#lX\n", (long unsigned int)cb);
 
     _RADAR_cb = cb;
+
+    _raster = g_new0(S52_GL_ras, 1);
+    _raster->isRADAR   = TRUE;
+    // FIXME: get w/h from user
+    _raster->npotX     = 1280*2;
+    _raster->npotY     = 1280*2;
+    _raster->gdtSz     = 1;    // byte
 
     return TRUE;
 }

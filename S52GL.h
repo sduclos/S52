@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -27,7 +27,7 @@
 
 #include "S52PL.h"	// S52_obj
 
-// Raster (RADAR,Bathy,...)
+// Raster (RADAR, Bathy, ...)
 typedef struct S52_GL_ras {
     GString *fnameMerc;       // Mercator GeoTiff file name
 
@@ -46,6 +46,11 @@ typedef struct S52_GL_ras {
     // dst texture size
     guint npotX;
     guint npotY;
+
+    int            isRADAR;   // TRUE if texAlpha is a RADAR image
+    double         cLat;      // projected
+    double         cLng;      // projected
+    double         rNM;       // RADAR range
 
     unsigned char *texAlpha;  // size = potX * potY
     unsigned int   texID;

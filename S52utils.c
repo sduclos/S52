@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -194,11 +194,8 @@ FILE *   S52_fopen (const gchar *filename, const gchar *mode)
 
 int      S52_fclose (FILE *fd)
 {
-//#ifdef S52_USE_GLIB2
-//    return g_fclose(fd);
-//#else
+    // use same call - glib has no g_fclose()
     return fclose(fd);
-//#endif
 }
 
 gboolean S52_string_equal(const GString *v, const GString *v2)

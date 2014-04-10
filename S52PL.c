@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2013 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -2798,7 +2798,7 @@ S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
 
 #ifdef S52_DEBUG
     if ((0==dpri) && (0!=obj->LUP->INST->len)) {
-        PRINTF("WARNING: rendering object on IHO layer 0 [%s:%s]\n",
+        PRINTF("DEBUG: rendering object on IHO layer 0 [%s:%s]\n",
                S57_getName(obj->geoData), S52_PL_infoLUP(obj));
     }
 #endif
@@ -2919,9 +2919,12 @@ S52_CmdWrd  S52_PL_getCmdNext(_S52_obj *obj)
     obj->crntAidx++;
     if (obj->crntAidx < obj->crntA->len) {
         _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
-        return cmd->cmdWord;
-    } else
-        return S52_CMD_NONE;
+        // FIXME: can this array call return NULL!
+        if (NULL != cmd)
+            return cmd->cmdWord;
+    }
+
+    return S52_CMD_NONE;
 }
 
 _cmdWL           *_getCrntCmd(_S52_obj *obj)
@@ -2935,6 +2938,18 @@ _cmdWL           *_getCrntCmd(_S52_obj *obj)
     _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
 
     return cmd;
+}
+
+S52_CmdWrd  S52_PL_getCrntCmd(_S52_obj *obj)
+// not used
+{
+    return_if_null(obj);
+
+    _cmdWL *cmd = _getCrntCmd(obj);
+    if (NULL != cmd)
+        return cmd->cmdWord;
+
+    return S52_CMD_NONE;
 }
 
 int         S52_PL_cmpCmdParam(_S52_obj *obj, const char *name)
