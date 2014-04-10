@@ -310,8 +310,8 @@ static int      _writePoint (unsigned char VALUE, int ANGLE, int R)
     double x = _Polar_Matrix_Of_Coords[ANGLE][R].x;
     double y = _Polar_Matrix_Of_Coords[ANGLE][R].y;
 
-    //_RADARtex[(int)y][(int)x] = VALUE;  // Alpha
-    _RADARtex[(int)y][(int)x] = 255 - VALUE;  // Alpha reverse (more conspic)
+    _RADARtex[(int)y][(int)x] = VALUE;  // Alpha
+    //_RADARtex[(int)y][(int)x] = 255 - VALUE;  // Alpha reverse (more conspic)
 
     return TRUE;
 }
@@ -907,7 +907,8 @@ static int      _s52_setupOWNSHP(s52droid_state_t *state)
     _ownshp = S52_setDimension(_ownshp, 0.0, 100.0, 15.0, 0.0);
     //_ownshp = S52_setDimension(_ownshp, 1000.0, 50.0, 15.0, 15.0);
 
-    S52_pushPosition(_ownshp, state->cLat - 0.01, state->cLon - 0.01, 0.0);
+    S52_pushPosition(_ownshp, state->cLat + 0.01, state->cLon - 0.01, 0.0);
+    //S52_pushPosition(_ownshp, state->cLat - 0.01, state->cLon - 0.01, 0.0);
 
     S52_setVector(_ownshp, 0, 220.0, 6.0);  // ownship use S52_MAR_VECSTB
 
