@@ -263,11 +263,11 @@ typedef struct {
     unsigned short  iStringsCount;
     unsigned short  iStringLength;
     unsigned char   reserved[4];
-    unsigned short  iCurrentString; // number of line [0..2048]
+    unsigned short  iCurrentString; // number of line [0..2047]
     unsigned char   image[1280];    // image line
 } PSO_ImageDGram;
 
-#define ANGLEmax 2049
+#define ANGLEmax 2048
 #define Rmax     1280
 static FILE *_fd      = NULL;
 
