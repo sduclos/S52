@@ -263,11 +263,11 @@ typedef struct {
     unsigned short  iStringsCount;
     unsigned short  iStringLength;
     unsigned char   reserved[4];
-    unsigned short  iCurrentString; // number of line [0..2047]
+    unsigned short  iCurrentString; // number of line [0..2048]
     unsigned char   image[1280];    // image line
 } PSO_ImageDGram;
 
-#define ANGLEmax 2048
+#define ANGLEmax 2049
 #define Rmax     1280
 static FILE *_fd      = NULL;
 
@@ -310,8 +310,8 @@ static int      _writePoint (unsigned char VALUE, int ANGLE, int R)
     double x = _Polar_Matrix_Of_Coords[ANGLE][R].x;
     double y = _Polar_Matrix_Of_Coords[ANGLE][R].y;
 
-    _RADARtex[(int)y][(int)x] = VALUE;  // Alpha
-    //_RADARtex[(int)y][(int)x] = 255 - VALUE;  // Alpha reverse (more conspic)
+    //_RADARtex[(int)y][(int)x] = VALUE;  // Alpha
+    _RADARtex[(int)y][(int)x] = 255 - VALUE;  // Alpha reverse (more conspic)
 
     return TRUE;
 }
@@ -907,7 +907,7 @@ static int      _s52_setupOWNSHP(s52droid_state_t *state)
     _ownshp = S52_setDimension(_ownshp, 0.0, 100.0, 15.0, 0.0);
     //_ownshp = S52_setDimension(_ownshp, 1000.0, 50.0, 15.0, 15.0);
 
-    S52_pushPosition(_ownshp, state->cLat + 0.01, state->cLon - 0.01, 0.0);
+    S52_pushPosition(_ownshp, state->cLat - 0.01, state->cLon - 0.01, 0.0);
 
     S52_setVector(_ownshp, 0, 220.0, 6.0);  // ownship use S52_MAR_VECSTB
 
@@ -1184,10 +1184,10 @@ static int      _s52_init       (s52engine *engine)
 #else  // S52_USE_ANDROID
 
     // read cell location fron s52.cfg
-    //S52_loadCell(NULL, NULL);
+    S52_loadCell(NULL, NULL);
 
     // S-64 ENC
-    S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/GB5X01SE.000", NULL);
+    //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/GB5X01SE.000", NULL);
 
     // debug anti-meridian
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US5HA06M/US5HA06M.000", NULL);
