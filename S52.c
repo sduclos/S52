@@ -5612,8 +5612,7 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
     return TRUE;
 }
 
-DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb)
-//DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int potX, unsigned int potY)
+DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius)
 // experimental - load raw raster RADAR via callback
 {
     // debug
@@ -5624,9 +5623,11 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb)
     _raster = g_new0(S52_GL_ras, 1);
     _raster->isRADAR   = TRUE;
     // FIXME: get w/h from user
-    _raster->npotX     = 1280*2;
-    _raster->npotY     = 1280*2;
-    _raster->gdtSz     = 1;    // byte
+    //_raster->npotX     = 1280*2;
+    //_raster->npotY     = 1280*2;
+    _raster->npotX     = texRadius * 2;  // N/S
+    _raster->npotY     = texRadius * 2;  // E/W
+    _raster->gdtSz     = 1;    // 1 byte Alpha
 
     return TRUE;
 }

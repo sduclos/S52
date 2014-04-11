@@ -901,16 +901,16 @@ static int      _s52_setupOWNSHP(s52droid_state_t *state)
 {
     _ownshp = S52_newOWNSHP(OWNSHPLABEL);
     //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 0.0, 30.0);
-    //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 15.0, 15.0);
+    _ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 15.0, 15.0);
     //_ownshp = S52_setDimension(_ownshp, 100.0, 100.0, 0.0, 15.0);
     //_ownshp = S52_setDimension(_ownshp, 100.0, 0.0, 15.0, 0.0);
-    _ownshp = S52_setDimension(_ownshp, 0.0, 100.0, 15.0, 0.0);
+    //_ownshp = S52_setDimension(_ownshp, 0.0, 100.0, 15.0, 0.0);
     //_ownshp = S52_setDimension(_ownshp, 1000.0, 50.0, 15.0, 15.0);
 
-    S52_pushPosition(_ownshp, state->cLat + 0.01, state->cLon - 0.01, 0.0);
-    //S52_pushPosition(_ownshp, state->cLat - 0.01, state->cLon - 0.01, 0.0);
+    //S52_pushPosition(_ownshp, state->cLat + 0.01, state->cLon - 0.01, 0.0);
+    S52_pushPosition(_ownshp, state->cLat - 0.01, state->cLon - 0.01, 300.0);
 
-    S52_setVector(_ownshp, 0, 220.0, 6.0);  // ownship use S52_MAR_VECSTB
+    S52_setVector(_ownshp, 0, 290.0, 6.0);  // ownship use S52_MAR_VECSTB
 
     return TRUE;
 }
@@ -1286,8 +1286,8 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60
 
-    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
+    //S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
+    S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
 
     // remove QUAPNT01 symbole (black diagonal and a '?')
     S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);   // off
@@ -1307,8 +1307,8 @@ static int      _s52_init       (s52engine *engine)
     // -------------------------------------------------------
 
 
-    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
-    S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
+    S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
+    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
 
     S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
     //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
@@ -1368,7 +1368,7 @@ static int      _s52_init       (s52engine *engine)
 
     _s52_setupLEGLIN();
 
-    _s52_setupPRDARE(&engine->state);
+    //_s52_setupPRDARE(&engine->state);
 
     _s52_setupOWNSHP(&engine->state);
 
@@ -1390,7 +1390,7 @@ static int      _s52_init       (s52engine *engine)
 #ifdef S52_USE_RADAR
     _initRadar();
     S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
-    S52_setRADARCallBack(_s52_radar_cb);
+    S52_setRADARCallBack(_s52_radar_cb, Rmax);
 #endif
 
     engine->do_S52draw        = TRUE;

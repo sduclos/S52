@@ -693,12 +693,12 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
  *
  * Signal that libS52 is at RADAR layer in the layer's sequence in S52_draw()
  *
- * S52_RADAR_cb return alpha texture data, rNM: radar range in NM
+ * S52_RADAR_cb return alpha texture data, rNM: radar range in NM, texRadius: texture radius (pixels)
  *
  * Return: TRUE on success, else FALSE
  */
 typedef unsigned char * (*S52_RADAR_cb)(double *rNM);
-DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb);
+DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius);
 
 /**
  * S52_dumpS57IDPixels:
