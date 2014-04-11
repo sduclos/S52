@@ -241,7 +241,7 @@ static PFNEGLGETSYSTEMTIMENVPROC          _eglGetSystemTimeNV          = NULL;
 //-----------------------------
 
 #ifdef S52_USE_RADAR
-#define RADARLOG "/home/sduclos/dev/gis/data/radar/RADAR_imitator/radarlog"
+#define RADARLOG PATH "/radar/RADAR_imitator/radarlog"
 
 // Description of management structures and radar images
 typedef struct {
@@ -277,11 +277,12 @@ typedef struct {
 } POINT;
 
 static guchar _RADARtex[Rmax*2][Rmax*2];
+//static guchar _RADARtex[Rmax*2][Rmax*2][4];
 static POINT  _Polar_Matrix_Of_Coords[ANGLEmax][Rmax];
-static int      _initRadar()
+static int      _initRadar() /*fold00*/
 {
     if (NULL == (_fd = fopen(RADARLOG, "rb"))) {
-        LOGE("s52egl:_initRadar(): can't open file %s\n", RADARLOG);
+        g_print("s52egl:_initRadar(): can't open file %s\n", RADARLOG);
         g_assert(0);
         return FALSE;
     }
@@ -304,19 +305,24 @@ static int      _initRadar()
     return TRUE;
 }
 
-static int      _writePoint (unsigned char VALUE, int ANGLE, int R)
+static int      _writePoint (unsigned char VALUE, int ANGLE, int R) /*FOLD00*/
 // Alpha texture,
 {
     double x = _Polar_Matrix_Of_Coords[ANGLE][R].x;
     double y = _Polar_Matrix_Of_Coords[ANGLE][R].y;
 
-    _RADARtex[(int)y][(int)x] = VALUE;  // Alpha
-    //_RADARtex[(int)y][(int)x] = 255 - VALUE;  // Alpha reverse (more conspic)
+    //_RADARtex[(int)y][(int)x] = VALUE;  // Alpha
+    //_RADARtex[(int)y][(int)x][3] = VALUE;  // Alpha
+    _RADARtex[(int)y][(int)x] = 255 - VALUE;  // Alpha reverse (more conspic)
+
+    // debug
+    //_RADARtex[(int)y][(int)x] = 255;
+    //_RADARtex[(int)y][(int)x][3] = 255;
 
     return TRUE;
 }
 
-static int      _writeString(guchar *string, int ANGLE)
+static int      _writeString(guchar *string, int ANGLE) /*fold00*/
 {
     for (int R = 0; R < Rmax; R++)
         _writePoint(string[R], ANGLE, R);
@@ -324,12 +330,13 @@ static int      _writeString(guchar *string, int ANGLE)
     return TRUE;
 }
 
-static int      _readRadarLog(int nLine)
+static int      _readRadarLog(int nLine) /*fold00*/
 {
     int  lineLen = sizeof(PSO_ImageDGram);
     int  headLen = lineLen - Rmax;
     guchar line[lineLen];
 
+    //LOGE("_readRadarLog()\n");
     //static int numbStr = 0;
     static int numbStr = ANGLEmax - 1;
     while (nLine--) {
@@ -350,11 +357,11 @@ static int      _readRadarLog(int nLine)
             // return to the top of the file
             rewind(_fd);
             numbStr = 0;
-            LOGI("fread = 0\n");
+            g_print("fread = 0\n");
         }
         if (0 != ferror(_fd)) {
             // handle error
-            LOGI("ferror != 0\n");
+            g_print("ferror != 0\n");
             g_assert(0);
             return FALSE;
         }
@@ -364,7 +371,7 @@ static int      _readRadarLog(int nLine)
 }
 #endif  // S52_USE_RADAR
 
-static int      _egl_init       (s52engine *engine)
+static int      _egl_init       (s52engine *engine) /*fold00*/
 {
     LOGI("s52egl:_egl_init(): beg ..\n");
 
@@ -719,7 +726,7 @@ static int      _egl_init       (s52engine *engine)
     return EGL_TRUE;
 }
 
-static void     _egl_done       (s52engine *engine)
+static void     _egl_done       (s52engine *engine) /*fold00*/
 // Tear down the EGL context currently associated with the display.
 {
     if (engine->eglDisplay != EGL_NO_DISPLAY) {
@@ -743,7 +750,7 @@ static void     _egl_done       (s52engine *engine)
     return;
 }
 
-static int      _egl_beg        (s52engine *engine, const char *tag)
+static int      _egl_beg        (s52engine *engine, const char *tag) /*fold00*/
 {
     (void)engine;
 
@@ -759,9 +766,16 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     }
     //*/
 
-    /*
+    /* Xoom no diff
     if (EGL_FALSE == eglWaitClient()) {
         LOGE("s52egl:_egl_beg():eglWaitClient() failed. [0x%x]\n", eglGetError());
+        return FALSE;
+    }
+    //*/
+
+    /* make sure Android is finish - Xoom no diff
+    if (EGL_FALSE == eglWaitNative(EGL_CORE_NATIVE_ENGINE)) {
+        LOGE("s52egl:_egl_beg():eglWaitNative() failed. [0x%x]\n", eglGetError());
         return FALSE;
     }
     //*/
@@ -792,14 +806,6 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     }
     */
 
-
-    /* make sure Android is finish
-    if (EGL_FALSE == eglWaitNative(EGL_CORE_NATIVE_ENGINE)) {
-        LOGE("s52egl:_egl_beg():eglWaitNative() failed. [0x%x]\n", eglGetError());
-        return FALSE;
-    }
-    //*/
-
     //*
     if (_glInsertEventMarkerEXT) {
         _glInsertEventMarkerEXT(g_utf8_strlen(tag, -1), tag);
@@ -810,7 +816,7 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     return TRUE;
 }
 
-static int      _egl_end        (s52engine *engine)
+static int      _egl_end        (s52engine *engine) /*fold00*/
 {
     if (EGL_FALSE == eglWaitGL()) {
         LOGE("_egl_end(): eglWaitGL() failed - NO SWAP [0x%x]\n", eglGetError());
@@ -830,7 +836,7 @@ static int      _egl_end        (s52engine *engine)
     return TRUE;
 }
 
-static int      _s52_computeView(s52droid_state_t *state)
+static int      _s52_computeView(s52droid_state_t *state) /*fold00*/
 {
     double S,W,N,E;
 
@@ -856,7 +862,7 @@ static int      _s52_computeView(s52droid_state_t *state)
 }
 
 #ifdef USE_FAKE_AIS
-static int      _s52_setupVESSEL(s52droid_state_t *state)
+static int      _s52_setupVESSEL(s52droid_state_t *state) /*fold00*/
 {
     // ARPA
     //_vessel_arpa = S52_newVESSEL(1, dummy, "ARPA label");
@@ -897,7 +903,7 @@ static int      _s52_setupVESSEL(s52droid_state_t *state)
 }
 #endif  // USE_FAKE_AIS
 
-static int      _s52_setupOWNSHP(s52droid_state_t *state)
+static int      _s52_setupOWNSHP(s52droid_state_t *state) /*FOLD00*/
 {
     _ownshp = S52_newOWNSHP(OWNSHPLABEL);
     //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 0.0, 30.0);
@@ -907,15 +913,15 @@ static int      _s52_setupOWNSHP(s52droid_state_t *state)
     //_ownshp = S52_setDimension(_ownshp, 0.0, 100.0, 15.0, 0.0);
     //_ownshp = S52_setDimension(_ownshp, 1000.0, 50.0, 15.0, 15.0);
 
-    //S52_pushPosition(_ownshp, state->cLat + 0.01, state->cLon - 0.01, 0.0);
-    S52_pushPosition(_ownshp, state->cLat - 0.01, state->cLon - 0.01, 300.0);
+    S52_pushPosition(_ownshp, state->cLat + 0.01, state->cLon - 0.01, 0.0);
+    //S52_pushPosition(_ownshp, state->cLat - 0.01, state->cLon - 0.01, 300.0);
 
     S52_setVector(_ownshp, 0, 290.0, 6.0);  // ownship use S52_MAR_VECSTB
 
     return TRUE;
 }
 
-static int      _s52_setupLEGLIN(void)
+static int      _s52_setupLEGLIN(void) /*fold00*/
 {
 /*
 
@@ -999,7 +1005,7 @@ route normale de navigation.
     return TRUE;
 }
 
-static int      _s52_setupVRMEBL(s52droid_state_t *state)
+static int      _s52_setupVRMEBL(s52droid_state_t *state) /*fold00*/
 {
     //char *attVal   = NULL;      // ordinary cursor
     char  attVal[] = "cursty:2,_cursor_label:0.0N 0.0W";  // open cursor
@@ -1027,7 +1033,7 @@ static int      _s52_setupVRMEBL(s52droid_state_t *state)
     return TRUE;
 }
 
-static int      _s52_setupPRDARE(s52droid_state_t *state)
+static int      _s52_setupPRDARE(s52droid_state_t *state) /*fold00*/
 // test - centroid (PRDARE: wind farm)
 {
     // Note: centroid work on both CW and CCW
@@ -1063,19 +1069,22 @@ static int      _s52_setupPRDARE(s52droid_state_t *state)
 }
 
 #ifdef S52_USE_LOG
-static int      _s52_error_cb   (const char *err)
+static int      _s52_error_cb   (const char *err) /*fold00*/
 {
     LOGI("%s", err);
     return TRUE;
 }
 #endif
 
-static guchar  *_s52_radar_cb   (double *rNM)
+static guchar  *_s52_radar_cb1  (double *cLat, double *cLng, double *rNM) /*FOLD00*/
 {
-    //g_print("_radar_cb()\n");
+    *cLat = _engine.state.cLat + 0.01;
+    *cLng = _engine.state.cLon - 0.01;
+
     //*rNM = 12.0;  // rNM
     *rNM = 3.0;  // rNM
     //*rNM = 1.5;  // rNM
+
 #ifdef S52_USE_RADAR
     return (unsigned char *)_RADARtex;
 #else
@@ -1083,7 +1092,23 @@ static guchar  *_s52_radar_cb   (double *rNM)
 #endif
 }
 
-static int      _s52_init       (s52engine *engine)
+static guchar  *_s52_radar_cb2  (double *cLat, double *cLng, double *rNM)
+{
+    *cLat = _engine.state.cLat - 0.01;
+    *cLng = _engine.state.cLon + 0.01;
+
+    //*rNM = 12.0;  // rNM
+    //*rNM = 3.0;  // rNM
+    *rNM = 1.5;  // rNM
+
+#ifdef S52_USE_RADAR
+    return (unsigned char *)_RADARtex;
+#else
+    return (unsigned char *)NULL;
+#endif
+}
+
+static int      _s52_init       (s52engine *engine) /*FOLD00*/
 {
     LOGI("s52egl:_s52_init(): beg ..\n");
 
@@ -1172,9 +1197,9 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
 #else
     // Rimouski (Xoom)
-    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
+    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
     // Estuaire du St-Laurent
-    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
+    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
 
     // Portneuf
     //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA479017.000", NULL);
@@ -1286,8 +1311,8 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60
 
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
-    S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
+    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
+    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
 
     // remove QUAPNT01 symbole (black diagonal and a '?')
     S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);   // off
@@ -1390,7 +1415,8 @@ static int      _s52_init       (s52engine *engine)
 #ifdef S52_USE_RADAR
     _initRadar();
     S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
-    S52_setRADARCallBack(_s52_radar_cb, Rmax);
+    S52_setRADARCallBack(_s52_radar_cb1, Rmax);
+    S52_setRADARCallBack(_s52_radar_cb2, Rmax);
 #endif
 
     engine->do_S52draw        = TRUE;
@@ -1404,7 +1430,7 @@ static int      _s52_init       (s52engine *engine)
     return EGL_TRUE;
 }
 
-static int      _s52_done       (s52engine *engine)
+static int      _s52_done       (s52engine *engine) /*fold00*/
 {
     (void)engine;
 
@@ -1414,7 +1440,7 @@ static int      _s52_done       (s52engine *engine)
 }
 
 #ifdef USE_FAKE_AIS
-static int      _s52_updTimeTag (s52engine *engine)
+static int      _s52_updTimeTag (s52engine *engine) /*fold00*/
 {
     (void)engine;
 
@@ -1443,7 +1469,7 @@ static int      _s52_updTimeTag (s52engine *engine)
 }
 #endif
 
-static int      _s52_draw_user  (s52engine *engine)
+static int      _s52_draw_user  (s52engine *engine) /*fold00*/
 {
     (void) engine; // quiet compiler
 
@@ -1466,7 +1492,7 @@ static int      _s52_draw_user  (s52engine *engine)
     return TRUE;
 }
 
-static int      _s52_draw_cb    (gpointer user_data)
+static int      _s52_draw_cb    (gpointer user_data) /*fold00*/
 {
     s52engine *engine = (s52engine*)user_data;
 
@@ -1528,7 +1554,8 @@ static int      _s52_draw_cb    (gpointer user_data)
     // draw background - IHO layer 0-8
     if (TRUE == engine->do_S52draw) {
         // read 10 lines (or 360 deg == 2048 lines, so 10 lines == 1.7 deg per sector per 0.1 sec)
-        _readRadarLog(10);  // seem like nice rotation speed
+        //_readRadarLog(10);  // seem like nice rotation speed
+        _readRadarLog(20);  // seem like nice rotation speed
         S52_draw();
 
 #if !defined(S52_USE_RADAR)
@@ -1566,10 +1593,10 @@ exit:
 //
 // android specific code
 //
-
+ /*fold00*/
 #if 0
 // DEPRECATED
-static int      _android_init_external_gps(void)
+static int      _android_init_external_gps(void) /*fold00*/
 // start sl4agps - get GPS & Gyro from Android
 {
     GError *error = NULL;
@@ -1599,7 +1626,7 @@ static int      _android_init_external_gps(void)
 #endif
 
 #ifdef S52AIS_STANDALONE
-static int      _android_init_external_ais(void)
+static int      _android_init_external_ais(void) /*fold00*/
 // when s52ais.c is NOT linked to s52egl.c
 // FIXME: this func is the same as _android_init_external_gps(), except SIGUSR
 {
@@ -1628,7 +1655,7 @@ static int      _android_init_external_ais(void)
     return TRUE;
 }
 
-static int      _android_done_external_sensors(void)
+static int      _android_done_external_sensors(void) /*fold00*/
 // DEPRECATED:
 {
     GError *error = NULL;
@@ -1649,7 +1676,7 @@ static int      _android_done_external_sensors(void)
 }
 #endif
 
-static int      _android_init_external_UI(s52engine *engine)
+static int      _android_init_external_UI(s52engine *engine) /*fold00*/
 // start Android HTML5 UI - also get GPS & Gyro from Android
 {
     const gchar cmd[] =
@@ -1672,10 +1699,10 @@ static int      _android_init_external_UI(s52engine *engine)
 
     return TRUE;
 }
-
+ /*fold00*/
 #if 0
 // BROKEN
-static int      _android_done_external_UI(s52engine *engine)
+static int      _android_done_external_UI(s52engine *engine) /*fold00*/
 // FIXME: stop UI broken
 {
     // this start the UI
@@ -1704,7 +1731,7 @@ static int      _android_done_external_UI(s52engine *engine)
 #endif
 
 #if 0
-static int      _android_sensors_gyro(gpointer user_data)
+static int      _android_sensors_gyro(gpointer user_data) /*fold00*/
 // Android Native poll event
 {
     s52engine* engine = (s52engine*)user_data;
@@ -1793,7 +1820,7 @@ static int      _android_sensors_gyro(gpointer user_data)
     return TRUE;
 }
 
-static int      _android_sensorsList_dump(ASensorManager *sensorManager)
+static int      _android_sensorsList_dump(ASensorManager *sensorManager) /*fold00*/
 {
 /*
 I/s52droid( 2683): 0 - sensor name: KXTF9 3-axis Accelerometer
@@ -1822,7 +1849,7 @@ I/s52droid( 2683): 9 - sensor name: Corrected Gyroscope Sensor
 #endif
 
 //static int      _android_display_init(s52engine *engine)
-static gpointer _android_display_init(gpointer user_data)
+static gpointer _android_display_init(gpointer user_data) /*fold00*/
 {
     s52engine *engine = (s52engine*)user_data;
 
@@ -1863,7 +1890,7 @@ static gpointer _android_display_init(gpointer user_data)
     return NULL;
 }
 
-static int      _android_signalDraw  (s52engine *engine, double new_y, double new_x, double new_z, double new_r)
+static int      _android_signalDraw  (s52engine *engine, double new_y, double new_x, double new_z, double new_r) /*fold00*/
 {
     /*
     // debug - test optimisation using viewPort to draw area
@@ -1911,7 +1938,7 @@ static int      _android_signalDraw  (s52engine *engine, double new_y, double ne
 }
 //#endif
 
-static void     _android_config_dump(AConfiguration *config)
+static void     _android_config_dump(AConfiguration *config) /*fold00*/
 // the code is in android-git-master/development/ndk/sources/android/native_app_glue/android_native_app_glue.c:63
 // static void print_cur_config(struct android_app* android_app)
 {
@@ -1939,7 +1966,7 @@ static void     _android_config_dump(AConfiguration *config)
             AConfiguration_getUiModeNight(config));
 }
 
-static int      _android_motion_event(s52engine *engine, AInputEvent *event)
+static int      _android_motion_event(s52engine *engine, AInputEvent *event) /*fold00*/
 {
     static int    ticks           = 0;
 
@@ -2224,14 +2251,19 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
 
     }
 
+#ifdef S52_USE_RADAR
+    engine->do_S52draw     = TRUE;
+#else
     // normal mode
     engine->do_S52draw     = FALSE;
+#endif
+
     engine->do_S52drawLast = TRUE;
 
     return TRUE;
 }
 
-static int32_t  _android_handle_input(struct android_app *app, AInputEvent *event)
+static int32_t  _android_handle_input(struct android_app *app, AInputEvent *event) /*fold00*/
 // Process the next input event.
 // Return 1 the event was handled, 0 for any default dispatching.
 {
@@ -2306,7 +2338,7 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
     return EGL_TRUE;
 }
 
-static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
+static void     _android_handle_cmd(struct android_app *app, int32_t cmd) /*fold00*/
 // process the next main command.
 {
     s52engine* engine = (s52engine*)app->userData;
@@ -2493,7 +2525,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
     }
 }
 
-static void     _onConfigurationChanged(ANativeActivity *activity)
+static void     _onConfigurationChanged(ANativeActivity *activity) /*fold00*/
 {
     LOGI("s52egl:_onConfigurationChanged(): beg ..\n");
 
@@ -2525,7 +2557,7 @@ static void     _onConfigurationChanged(ANativeActivity *activity)
 }
 
 #if 0
-static void     _onNativeWindowResized(ANativeActivity* activity, ANativeWindow* window)
+static void     _onNativeWindowResized(ANativeActivity* activity, ANativeWindow* window) /*fold00*/
 {
     //LOGI("s52egl:_onNativeWindowResized(): beg ..\n");
 
@@ -2541,7 +2573,7 @@ static void     _onNativeWindowResized(ANativeActivity* activity, ANativeWindow*
 }
 #endif
 
-void     android_main(struct android_app *app)
+void     android_main(struct android_app *app) /*fold00*/
 // This is the main entry point of a native application that is using
 // android_native_app_glue.  It runs in its own thread, with its own
 // event loop for receiving input events and doing other things.
@@ -2707,7 +2739,7 @@ exit:
 //
 
 #include </usr/include/X11/XKBlib.h>  // XkbKeycodeToKeysym()
-static int      _s52_setVwNDraw (s52engine *engine, double new_y, double new_x, double new_z, double new_r)
+static int      _s52_setVwNDraw (s52engine *engine, double new_y, double new_x, double new_z, double new_r) /*fold00*/
 // set View then call draw_cb
 {
     //*
@@ -2737,7 +2769,7 @@ static int      _s52_setVwNDraw (s52engine *engine, double new_y, double new_x, 
     return FALSE;
 }
 
-static int      _X11_error(Display *display, XErrorEvent *err)
+static int      _X11_error(Display *display, XErrorEvent *err) /*fold00*/
 {
     char buf[80];
     XGetErrorText(display, err->error_code, buf, 80);
@@ -2754,7 +2786,7 @@ static int      _X11_error(Display *display, XErrorEvent *err)
     return 1;
 }
 
-static int      _X11_handleXevent(gpointer user_data)
+static int      _X11_handleXevent(gpointer user_data) /*fold00*/
 {
     s52engine *engine = (s52engine *) user_data;
 
@@ -2991,7 +3023,7 @@ static int      _X11_handleXevent(gpointer user_data)
     return TRUE;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[]) /*fold00*/
 {
     g_print("main():starting: argc=%i, argv[0]=%s\n", argc, argv[0]);
 

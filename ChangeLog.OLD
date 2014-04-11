@@ -3,6 +3,13 @@
 #
 
 
+2014APR11
+    -add lat/lng to radar_cb, 
+    -mod handle more than one radar
+
+2014APR10
+    -fix text artifact using TRIANGLES instead of STRIP
+
 2014APR09
     -add Radar, compile with S52_USE_RADAR
 

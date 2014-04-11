@@ -286,13 +286,13 @@ static S52ObjectHandle _UNITMTR1 = FALSE;
 static S52ObjectHandle _CHKSYM01 = FALSE;
 static S52ObjectHandle _BLKADJ01 = FALSE;
 
-static S52_RADAR_cb  _RADAR_cb   = NULL;
+//static S52_RADAR_cb  _RADAR_cb   = NULL;
 //static int          _doRADAR  = TRUE;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
-static S52_GL_ras   *_raster     = NULL;
+//static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.119\n"
+      "libS52 0.120\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -3713,12 +3713,44 @@ static int        _cull(_extent ext)
 
 static int        _drawRADAR()
 {
-    if (NULL != _RADAR_cb) {
-        double rNM;
-        _raster->texAlpha = _RADAR_cb(&rNM);
+    for (guint i=0; i<_rasterList->len; ++i) {
+        double cLat = 0.0;
+        double cLng = 0.0;
+        double rNM  = 0.0;
 
-        S52_GL_getPRJView(&_raster->S, &_raster->W, &_raster->N, &_raster->E);
 
+        S52_GL_ras *raster = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
+        if (FALSE == raster->isRADAR)
+            continue;
+
+        //_raster->texAlpha = _RADAR_cb(&rNM);
+        raster->texAlpha = raster->RADAR_cb(&cLat, &cLng, &rNM);
+
+        double xyz[3] = {cLng, cLat, 0.0};
+        if (FALSE == S57_geo2prj3dv(1, xyz)) {
+            PRINTF("WARNING: S57_geo2prj3dv() failed\n");
+            return FALSE;
+        }
+
+        //S52_GL_getPRJView(&_raster->S, &_raster->W, &_raster->N, &_raster->E);
+        S52_GL_getPRJView(&raster->S, &raster->W, &raster->N, &raster->E);
+
+
+        raster->cLng = xyz[0];
+        raster->cLat = xyz[1];
+        raster->rNM  = rNM;
+
+#ifdef S52_USE_GLES2
+        S52_GL_drawRaster(raster);
+#endif
+
+    }
+
+    //_raster->cLat = (_raster->S + _raster->N) / 2.0;
+    //_raster->cLng = (_raster->W + _raster->E) / 2.0;
+    //_raster->rNM  = rNM;
+
+    /*
         if (NULL != _OWNSHP) {
             guint    npt = 0;
             double  *ppt = NULL;
@@ -3733,11 +3765,7 @@ static int        _drawRADAR()
             _raster->cLng = (_raster->W + _raster->E) / 2.0;
             _raster->rNM  = rNM;
         }
-    }
-
-#ifdef S52_USE_GLES2
-    S52_GL_drawRaster(_raster);
-#endif
+        */
 
     return TRUE;
 }
@@ -5618,16 +5646,14 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius)
     // debug
     //PRINTF("cb%#lX\n", (long unsigned int)cb);
 
-    _RADAR_cb = cb;
+    S52_GL_ras *raster = g_new0(S52_GL_ras, 1);
+    raster->isRADAR    = TRUE;
+    raster->RADAR_cb   = cb;
+    raster->npotX      = texRadius * 2;  // N/S
+    raster->npotY      = texRadius * 2;  // E/W
+    raster->gdtSz      = 1;    // 1 byte Alpha
 
-    _raster = g_new0(S52_GL_ras, 1);
-    _raster->isRADAR   = TRUE;
-    // FIXME: get w/h from user
-    //_raster->npotX     = 1280*2;
-    //_raster->npotY     = 1280*2;
-    _raster->npotX     = texRadius * 2;  // N/S
-    _raster->npotY     = texRadius * 2;  // E/W
-    _raster->gdtSz     = 1;    // 1 byte Alpha
+    g_ptr_array_add(_rasterList, raster);
 
     return TRUE;
 }

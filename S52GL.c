@@ -8324,11 +8324,8 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
             glGenTextures(1, &raster->texID);
             glBindTexture(GL_TEXTURE_2D, raster->texID);
 
-            // ALPHA fail on GLES2
-            // glPixelTransfer(4);
-            //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->potX, raster->potY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
+            // GLES2/XOOM ALPHA fail and if not POT
             glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->npotX, raster->npotY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
-            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, raster->texAlpha);
 
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
@@ -8345,12 +8342,10 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
             glGenTextures(1, &raster->texID);
             glBindTexture(GL_TEXTURE_2D, raster->texID);
 
-            // ALPHA fail on GLES2
+            // GLES2/XOOM ALPHA fail and if not POT
             //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->potX, raster->potY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, raster->texAlpha);
 
-            // test to handle float in texture
-            //glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
             //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_FLOAT, raster->data);
             //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_FLOAT, raster->data);
             //glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, raster->npotX, raster->npotY, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, raster->data);
@@ -8365,7 +8360,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
             glBindTexture(GL_TEXTURE_2D, 0);
 
-            _checkError("S52_GL_drawRaster() -1.0-");
+            _checkError("S52_GL_drawRaster() -2.0-");
 
             // debug
             PRINTF("DEBUG: MIN=%f MAX=%f\n", raster->min, raster->max);
@@ -8375,24 +8370,20 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
         if (TRUE == raster->isRADAR) {
             glBindTexture(GL_TEXTURE_2D, raster->texID);
 
-            // ALPHA fail on GLES2 if not POT
-            //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->potX, raster->potY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->npotX, raster->npotY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
-            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, raster->texAlpha);
+            // GLES2/XOOM ALPHA fail and if not POT
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
+
+            _checkError("S52_GL_drawRaster() -3.0-");
         }
     }
 
-    //*
     // set radar extent
     if (TRUE == raster->isRADAR) {
-        //raster->cLng = (_pmin.u + _pmax.u) / 2.0;
-        //raster->cLat = (_pmin.v + _pmax.v) / 2.0;
         raster->S = raster->cLat - raster->rNM * 1852.0;
         raster->W = raster->cLng - raster->rNM * 1852.0;
         raster->N = raster->cLat + raster->rNM * 1852.0;
         raster->E = raster->cLng + raster->rNM * 1852.0;
     }
-    //*/
 
     // set colour
     if (TRUE == raster->isRADAR) {
@@ -8406,6 +8397,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
     _glUniformMatrix4fv_uModelview();
 
+    // to fit an image in a POT texture
     //float fracX = (float)raster->w/(float)raster->potX;
     //float fracY = (float)raster->h/(float)raster->potY;
     float fracX = 1.0;
@@ -8432,7 +8424,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
     _checkError("S52_GL_drawRaster() -4-");
 
-    //glBindTexture(GL_TEXTURE_2D,  0);
+    glBindTexture(GL_TEXTURE_2D,  0);
 
     glUniform1f(_uStipOn, 0.0);
 
@@ -9203,18 +9195,21 @@ int        S52_GL_del(S52_obj *obj)
 int        S52_GL_delRaster(S52_GL_ras *raster, int texOnly)
 {
     // texture
-    g_free(raster->texAlpha);
-    raster->texAlpha = NULL;
+    if (FALSE == raster->isRADAR) {
+        g_free(raster->texAlpha);
+        raster->texAlpha = NULL;
+
+        // src data
+        if (TRUE != texOnly) {
+            g_string_free(raster->fnameMerc, TRUE);
+            raster->fnameMerc = NULL;
+            g_free(raster->data);
+            raster->data = NULL;
+        }
+    }
+
     glDeleteTextures(1, &raster->texID);
     raster->texID = 0;
-
-    // src data
-    if (TRUE != texOnly) {
-        g_string_free(raster->fnameMerc, TRUE);
-        raster->fnameMerc = NULL;
-        g_free(raster->data);
-        raster->data = NULL;
-    }
 
     _checkError("S52_GL_delRaster()");
 

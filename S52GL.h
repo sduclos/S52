@@ -51,6 +51,7 @@ typedef struct S52_GL_ras {
     double         cLat;      // projected
     double         cLng;      // projected
     double         rNM;       // RADAR range
+    S52_RADAR_cb   RADAR_cb;  //
 
     unsigned char *texAlpha;  // size = potX * potY
     unsigned int   texID;
