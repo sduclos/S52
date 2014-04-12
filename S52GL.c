@@ -5720,10 +5720,14 @@ static int       _renderAC_NODATA_layer0(void)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     //glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
 
+#ifdef S52_USE_RADAR
+    glClearColor(0.0, 0.0, 0.0, 1.0);  // black
+#else
     glClearColor(c->R/255.0, c->G/255.0, c->B/255.0, 1.0);
     //glClearColor(c->R/255.0, c->G/255.0, c->B/255.0, 0.0); // debug Nexus/Adreno draw() frame
     //glClearColor(c->R/255.0, 0.0, c->B/255.0, 0.0);
     //glClearColor(1.0, 0.0, 0.0, 1.0);
+#endif
 
 #ifdef S52_USE_TEGRA2
     // xoom specific - clear FB to reset Tegra 2 CSAA (anti-aliase)
@@ -9036,8 +9040,15 @@ int        S52_GL_begin(S52_GL_cycle cycle)
             // fill with NODATA03 pattern
             _renderAP_NODATA_layer0();
         }
-    } else {
+#ifdef S52_USE_RADAR
+        if (0.0 == S52_MP_get(S52_MAR_DISP_NODATA_LAYER)) {
+            // fill display with black color in RADAR mode
+            _renderAC_NODATA_layer0();
+        }
+#endif
+
 #if !defined(S52_USE_RADAR)
+    } else {
         if (S52_GL_LAST == _crnt_GL_cycle) {
             // user can draw on top of base
             // then call drawLast repeatdly
@@ -9471,8 +9482,9 @@ static int       _init_es2(void)
 
     //clear FB ALPHA before use, also put blue but doen't show up unless startup bug
     //glClearColor(0, 0, 1, 1);     // blue
-    glClearColor(1.0, 0.0, 0.0, 1.0);     // red
+    //glClearColor(1.0, 0.0, 0.0, 1.0);     // red
     //glClearColor(1.0, 0.0, 0.0, 0.0);     // red
+    glClearColor(0.0, 0.0, 0.0, 0.0);     // red
 
 #ifdef S52_USE_TEGRA2
     // xoom specific - clear FB to reset Tegra 2 CSAA (anti-aliase), define in gl2ext.h
