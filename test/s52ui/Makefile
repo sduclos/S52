@@ -16,7 +16,8 @@ web/s52ui.dart.js: web/s52ui.dart web/s52.dart
 clean:
 	rm -f web/s52ui.dart.js.deps web/s52ui.dart.js.map  web/s52ui.dart.precompiled.js
 
-#distclean: clean
+distclean: clean
+	rm -rf build
 
 # copy to Android sdcard (s52ui.java must loadURL html for sdcard - not asset/www)
 install: web/s52ui.dart.js

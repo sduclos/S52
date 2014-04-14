@@ -690,7 +690,7 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
 /**
  * S52_setRADARCallBack:
  * @cb: (scope call) (allow-none):
- * @texRadius: (in): texture radius (pixels)
+ * @texRadius: (in): texture radius (pixels), if 0 free cb
  *
  * Signal that libS52 is at RADAR layer in the layer's sequence in S52_draw()
  *

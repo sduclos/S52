@@ -305,19 +305,20 @@ static int      _initRadar() /*fold00*/
     return TRUE;
 }
 
-static int      _writePoint (unsigned char VALUE, int ANGLE, int R) /*FOLD00*/
+static int      _writePoint (unsigned char VALUE, int ANGLE, int R) /*fold00*/
 // Alpha texture,
 {
     double x = _Polar_Matrix_Of_Coords[ANGLE][R].x;
     double y = _Polar_Matrix_Of_Coords[ANGLE][R].y;
 
-    //_RADARtex[(int)y][(int)x] = VALUE;  // Alpha
-    //_RADARtex[(int)y][(int)x][3] = VALUE;  // Alpha
-    _RADARtex[(int)y][(int)x] = 255 - VALUE;  // Alpha reverse (more conspic)
 
-    // debug
-    //_RADARtex[(int)y][(int)x] = 255;
-    //_RADARtex[(int)y][(int)x][3] = 255;
+    //_RADARtex[(int)y][(int)x] = VALUE;  // Alpha
+    //_RADARtex[(int)(y+0.5)][(int)(x+0.5)] = VALUE;  // Alpha
+    //_RADARtex[(int)y][(int)x][3] = VALUE;  // Alpha
+
+    // debug - rounding x\y+.5 make no diff
+    _RADARtex[(int)y][(int)x] = 255 - VALUE;  // Alpha reverse (more conspic)
+    //_RADARtex[(int)(y+0.5)][(int)(x+0.5)] = 255 - VALUE;
 
     return TRUE;
 }
@@ -332,31 +333,15 @@ static int      _writeString(guchar *string, int ANGLE) /*fold00*/
 
 static int      _readRadarLog(int nLine) /*fold00*/
 {
-    int  lineLen = sizeof(PSO_ImageDGram);
-    int  headLen = lineLen - Rmax;
-    guchar line[lineLen];
+    //LOGI("_readRadarLog()\n");
 
-    //LOGE("_readRadarLog()\n");
-    //static int numbStr = 0;
-    static int numbStr = ANGLEmax - 1;
+    PSO_ImageDGram img;
     while (nLine--) {
-        if (1 == fread(line, lineLen, 1, _fd)) {
-            _writeString(line + headLen, numbStr);
-
-            // CCW
-            //numbStr++;
-            //if (numbStr >= ANGLEmax)
-            //    numbStr = 0;
-
-            // CW
-            numbStr--;
-            if (numbStr <= 0)
-                numbStr = ANGLEmax - 1;
-
+        if (1 == fread(&img, sizeof(PSO_ImageDGram), 1, _fd)) {
+            _writeString(img.image, img.iCurrentString);
         } else {
             // return to the top of the file
             rewind(_fd);
-            numbStr = 0;
             g_print("fread = 0\n");
         }
         if (0 != ferror(_fd)) {
@@ -880,7 +865,8 @@ static int      _s52_setupVESSEL(s52droid_state_t *state) /*fold00*/
 
     // (re) set label
     S52_setVESSELlabel(_vessel_ais, VESSELLABEL);
-    int vesselSelect = 0;  // OFF
+    //int vesselSelect = 0;  // OFF
+    int vesselSelect = 1;  // ON
     int vestat       = 1; // AIS active
     //int vestat       = 2; // AIS sleeping
     //int vestat       = 3;  // AIS red, close quarters (compile with S52_USE_SYM_VESSEL_DNGHL)
@@ -903,7 +889,7 @@ static int      _s52_setupVESSEL(s52droid_state_t *state) /*fold00*/
 }
 #endif  // USE_FAKE_AIS
 
-static int      _s52_setupOWNSHP(s52droid_state_t *state) /*FOLD00*/
+static int      _s52_setupOWNSHP(s52droid_state_t *state) /*fold00*/
 {
     _ownshp = S52_newOWNSHP(OWNSHPLABEL);
     //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 0.0, 30.0);
@@ -987,12 +973,6 @@ route normale de navigation.
     _leglin2 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[1].y, WPxyz[1].x, WPxyz[2].y, WPxyz[2].x, _leglin1);
     _leglin3 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[2].y, WPxyz[2].x, WPxyz[3].y, WPxyz[3].x, _leglin2);
     //_leglin4  = S52_newLEGLIN(1, 0.0, 0.0, WPxyz[3].y, WPxyz[3].x, WPxyz[4].y, WPxyz[4].x, _leglin3);
-
-    //_route[0] = _leglin1;
-    //_route[1] = _leglin2;
-    //_route[2] = _leglin3;
-    //_route[3] = _leglin3;
-    //S52_setRoute(4, _route);
 
     /*
     {// test wholin
@@ -1081,6 +1061,10 @@ static guchar  *_s52_radar_cb1  (double *cLat, double *cLng, double *rNM) /*FOLD
     *cLat = _engine.state.cLat + 0.01;
     *cLng = _engine.state.cLon - 0.01;
 
+    // Cap Sante
+    *cLat = 46.65;
+    *cLng = -71.7;
+
     //*rNM = 12.0;  // rNM
     *rNM = 3.0;  // rNM
     //*rNM = 1.5;  // rNM
@@ -1092,10 +1076,10 @@ static guchar  *_s52_radar_cb1  (double *cLat, double *cLng, double *rNM) /*FOLD
 #endif
 }
 
-static guchar  *_s52_radar_cb2  (double *cLat, double *cLng, double *rNM)
+static guchar  *_s52_radar_cb2  (double *cLat, double *cLng, double *rNM) /*FOLD00*/
 {
     *cLat = _engine.state.cLat - 0.01;
-    *cLng = _engine.state.cLon + 0.01;
+    *cLng = _engine.state.cLon - 0.02;
 
     //*rNM = 12.0;  // rNM
     //*rNM = 3.0;  // rNM
@@ -1228,18 +1212,14 @@ static int      _s52_init       (s52engine *engine) /*FOLD00*/
     // Ice - experimental (HACK: ice symb link to --0WORLD.shp for one shot test)
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
 
-    // Bathy - experimental
-    // Portneuf
-    //S52_loadCell("../../../../S57/CA_QC-TR/ENC_ROOT/CA479017.000", NULL);
+    // Bathy - experimental Cap Sante / Portneuf
+    //S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479017.000", NULL);
     //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
 
     // RADAR - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/radar/RADAR_imitator/out.raw", NULL);
 
     //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
-
-    // load AIS select symb.
-    //S52_loadPLib("plib-test-priv.rle");
 
 #endif  // S52_USE_ANDROID
 
@@ -1260,6 +1240,9 @@ static int      _s52_init       (s52engine *engine) /*FOLD00*/
 
     S52_loadPLib(PLIB);
     S52_loadPLib(COLS);
+
+    // load PLib in s52.cfg
+    S52_loadPLib(NULL);
 
     // -- DEPTH COLOR ------------------------------------
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
@@ -1287,7 +1270,6 @@ static int      _s52_init       (s52engine *engine) /*FOLD00*/
 
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the GPU]
     //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 0.0);  // off
-
 
     S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);
     S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);
@@ -1391,8 +1373,10 @@ static int      _s52_init       (s52engine *engine) /*FOLD00*/
     // rendering engine place it on top of OWNSHP/VESSEL
     _s52_setupVRMEBL(&engine->state);
 
+    // set route
     _s52_setupLEGLIN();
 
+    // wind farme for testing centroids in a concave poly
     //_s52_setupPRDARE(&engine->state);
 
     _s52_setupOWNSHP(&engine->state);
@@ -1553,14 +1537,13 @@ static int      _s52_draw_cb    (gpointer user_data) /*fold00*/
 
     // draw background - IHO layer 0-8
     if (TRUE == engine->do_S52draw) {
+#ifdef S52_USE_RADAR
         // read 10 lines (or 360 deg == 2048 lines, so 10 lines == 1.7 deg per sector per 0.1 sec)
-        //_readRadarLog(10);  // seem like nice rotation speed
-        _readRadarLog(20);  // seem like nice rotation speed
-        S52_draw();
-
-#if !defined(S52_USE_RADAR)
+        _readRadarLog(10);  // seem like nice rotation speed
+#else
         engine->do_S52draw = FALSE;
 #endif
+        S52_draw();
 
         // user can add stuff on top of draw()
         //_s52_draw_user(engine);
@@ -2919,15 +2902,24 @@ static int      _X11_handleXevent(gpointer user_data) /*fold00*/
                 g_print("%s\n", S52_getCellNameList());
                 return TRUE;
             }
-            // load AIS select symb.
+            // load PLib in s52.cfg
             if (XK_F7 == keysym) {
-                S52_loadPLib("plib-test-priv.rle");
+                S52_loadPLib(NULL);
                 return TRUE;
             }
             // debug - unicode at S57ID:552 on CA579041.000 - Rimouski
             if (XK_F8 == keysym) {
                 const char *str = S52_getAttList(552);
                 g_print("s52eglx:F8:%s\n", str);
+
+                return TRUE;
+            }
+            // dispose
+            if (XK_F9 == keysym) {
+                if (TRUE == S52_setRADARCallBack(_s52_radar_cb2, 0))
+                    g_print("s52eglx:F9: done _s52_radar_cb2\n");
+                else
+                    g_print("s52eglx:F9: FAIL _s52_radar_cb2\n");
 
                 return TRUE;
             }

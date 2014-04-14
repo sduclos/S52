@@ -3,6 +3,13 @@
 #
 
 
+2014APR13
+    -mod stabilize the radar image
+    -mob free S52_RADAR_cb if texRadius is 0
+
+2014APR12
+    -add black background in RADAR mode when and NODATA is off
+
 2014APR11
     -add lat/lng to radar_cb, 
     -mod handle more than one radar

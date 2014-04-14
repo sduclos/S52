@@ -84,8 +84,9 @@ s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_US
 # -DS52_USE_AFGLOW    - need symbole in PLAUX_00.DAI
 # -DS52_USE_WORLD     - load world shapefile
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
+# -DS52_USE_RADAR     - when in RADAR mode
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
-                      -DS52_USE_DOTPITCH -DS52_USE_EGL -DS52_USE_GLES2 -DS52_USE_AFGLOW -DS52_USE_RADAR
+                      -DS52_USE_DOTPITCH -DS52_USE_EGL -DS52_USE_GLES2 -DS52_USE_AFGLOW
 
 # same as s52eglx, but "gtk+-2.0" is added - no AIS
 s52gtk2egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` \
@@ -140,6 +141,7 @@ GL__LIBS    = -lGL
 
 OGR_LIBS  = `gdal-config --libs`
 
+# Ubuntu 13 need -lX11 -lm 
 s52eglx   : LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS)
 
 # same as s52eglx, add "gtk+-2.0"
@@ -425,4 +427,5 @@ clean:
 
 distclean: clean
 	rm -f sl4agps.cfg android/dist/sdcard/s52droid/bin/s52ais android/dist/sdcard/s52droid/bin/sl4agps
+	make -C s52ui   distclean
 	make -C android distclean

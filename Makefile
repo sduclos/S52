@@ -137,10 +137,8 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 #                              --see S52 manual p. 45 doc/pslb03_2.pdf
 # -DS52_USE_C_AGGR_C_ASSO: return info C_AGGR C_ASSO on cursor pick (OGR patch in doc/ogrfeature.cpp.diff)
 # -DS52_USE_SYM_AISSEL01: need symbol in test/plib-test-priv.rle
-# -DS52_USE_SYM_AISVES01_RED: close quarter, need symbol in PLAUX_00.DAI
 # -DS52_USE_WORLD: need shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
 # -DS52_USE_RADAR: skip swapbuffer between DRAW & LAST cycle, skip read/write FB
-
 
 
 # -DS52_DEBUG: add more info for debugging libS52 (ex _checkError() in S52GL.c)
@@ -205,7 +203,6 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_OGR_FILECOLLECTOR    \
                   -DS52_USE_SYM_VESSEL_DNGHL     \
                   -DS52_USE_TXT_SHADOW           \
-                  -DS52_USE_RADAR                \
                   -DS52_DEBUG $(DBG)
 
 # WARNING: gdal run OK on android with android-9-toolchain

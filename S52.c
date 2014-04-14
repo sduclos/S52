@@ -292,7 +292,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.120\n"
+      "libS52 0.121\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1469,8 +1469,11 @@ static int        _initPROJ(void)
 
     double cLat = (ext.N + ext.S) / 2.0;
     double cLon = (ext.W + ext.E) / 2.0;
-    _mercPrjSet = S57_setMercPrj(cLat, cLon);
-    //_mercPrjSet = S57_setMercPrj(0.0, cLon); // test - 0 cLat
+
+    // FIXME: cLng break bathy projection
+    // anti-meridian trick: use cLng, but this break bathy
+    //_mercPrjSet = S57_setMercPrj(cLat, cLon);
+    _mercPrjSet = S57_setMercPrj(0.0, cLon); // test - 0 cLat
     //_mercPrjSet = S57_setMercPrj(0.0, 0.0); // test - 0 cLat
 
     // while here, set default view center
@@ -1798,12 +1801,16 @@ DLL cchar *STD S52_version(void)
 }
 
 DLL int    STD S52_done(void)
-// clear all --shutingdown libS52
+// clear all - shutdown libS52
 {
     S52_CHECK_INIT;
+    // FIXME: check if we are in the middle of draw() call
+    // (ie user call done() via RADAR_cb)
+    // the client must let the draw() finish before exiting!
     S52_CHECK_MUTX;
 
     if (NULL != _cellList) {
+        // FIXME: check if foreach() work here
         for (guint i=0; i<_cellList->len; ++i) {
             _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
             _freeCell(c);
@@ -1848,6 +1855,7 @@ DLL int    STD S52_done(void)
     g_ptr_array_free(_objToDelList, TRUE); _objToDelList = NULL;
 
     // flush raster
+    // FIXME: foreach
     for (guint i=0; i<_rasterList->len; ++i) {
         S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
         S52_GL_delRaster(r, FALSE);
@@ -2280,11 +2288,13 @@ static char      *_getSRS(void)
     char       *ret    = NULL;
     const char *prjStr = S57_getPrjStr();
 
-    if (NULL == prjStr)
+    if (NULL == prjStr) {
+        g_assert(0);
         return NULL;
+    }
 
+    // FIXME: cLng break bathy projection
     OGRSpatialReferenceH hSRS = OSRNewSpatialReference(NULL);
-    //if (OGRERR_NONE == OSRSetFromUserInput(hSRS, str)) {
     if (OGRERR_NONE == OSRSetFromUserInput(hSRS, prjStr)) {
         OSRExportToWkt(hSRS, &ret);
     } else {
@@ -3718,12 +3728,13 @@ static int        _drawRADAR()
         double cLng = 0.0;
         double rNM  = 0.0;
 
-
         S52_GL_ras *raster = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
-        if (FALSE == raster->isRADAR)
+        if (FALSE == raster->isRADAR) {
+            // bathy
+            S52_GL_drawRaster(raster);
             continue;
+        }
 
-        //_raster->texAlpha = _RADAR_cb(&rNM);
         raster->texAlpha = raster->RADAR_cb(&cLat, &cLng, &rNM);
 
         double xyz[3] = {cLng, cLat, 0.0};
@@ -3731,41 +3742,16 @@ static int        _drawRADAR()
             PRINTF("WARNING: S57_geo2prj3dv() failed\n");
             return FALSE;
         }
-
-        //S52_GL_getPRJView(&_raster->S, &_raster->W, &_raster->N, &_raster->E);
-        S52_GL_getPRJView(&raster->S, &raster->W, &raster->N, &raster->E);
-
-
         raster->cLng = xyz[0];
         raster->cLat = xyz[1];
         raster->rNM  = rNM;
 
-#ifdef S52_USE_GLES2
+        // set extent for filter in drawRaster()
+        S52_GL_getPRJView(&raster->S, &raster->W, &raster->N, &raster->E);
+
         S52_GL_drawRaster(raster);
-#endif
 
     }
-
-    //_raster->cLat = (_raster->S + _raster->N) / 2.0;
-    //_raster->cLng = (_raster->W + _raster->E) / 2.0;
-    //_raster->rNM  = rNM;
-
-    /*
-        if (NULL != _OWNSHP) {
-            guint    npt = 0;
-            double  *ppt = NULL;
-            S57_geo *geo = S52_PL_getGeo(_OWNSHP);
-            S57_getGeoData(geo, 0, &npt, &ppt);
-
-            _raster->cLng = ppt[0];
-            _raster->cLat = ppt[1];
-            _raster->rNM  = rNM;
-        } else {
-            _raster->cLat = (_raster->S + _raster->N) / 2.0;
-            _raster->cLng = (_raster->W + _raster->E) / 2.0;
-            _raster->rNM  = rNM;
-        }
-        */
 
     return TRUE;
 }
@@ -4080,9 +4066,11 @@ static int        _draw()
         // draw under radar
         g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
 
+#ifdef S52_USE_GLES2
         // draw radar
         if (1.0 == S52_MP_get(S52_MAR_DISP_RASTER))
             _drawRADAR();
+#endif
 
         // draw over radar
         g_ptr_array_foreach(c->objList_over, (GFunc)S52_GL_draw, NULL);
@@ -5643,18 +5631,41 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
 DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius)
 // experimental - load raw raster RADAR via callback
 {
-    // debug
-    //PRINTF("cb%#lX\n", (long unsigned int)cb);
+    S52_CHECK_INIT;
 
+    return_if_null(cb);
+
+    S52_CHECK_MUTX;
+
+    PRINTF("cb:#lX, texRadius:%u\n", (long unsigned int)cb, texRadius);
+
+    // prevent dup or dispose
+    for (guint i=0; i<_rasterList->len; ++i) {
+        S52_GL_ras *raster = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
+        if (cb == raster->RADAR_cb) {
+            if (0 == texRadius) {
+                S52_GL_delRaster(raster, TRUE);
+                g_ptr_array_remove_index_fast(_rasterList, i);
+                g_free(raster);
+                g_static_mutex_unlock(&_mp_mutex);
+                return TRUE;
+            } else {
+                g_static_mutex_unlock(&_mp_mutex);
+                return FALSE;
+            }
+        }
+    }
+
+    // not found - create new
     S52_GL_ras *raster = g_new0(S52_GL_ras, 1);
     raster->isRADAR    = TRUE;
     raster->RADAR_cb   = cb;
     raster->npotX      = texRadius * 2;  // N/S
     raster->npotY      = texRadius * 2;  // E/W
     raster->gdtSz      = 1;    // 1 byte Alpha
-
     g_ptr_array_add(_rasterList, raster);
 
+    g_static_mutex_unlock(&_mp_mutex);
     return TRUE;
 }
 

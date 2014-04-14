@@ -5721,7 +5721,11 @@ static int       _renderAC_NODATA_layer0(void)
     //glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
 
 #ifdef S52_USE_RADAR
-    glClearColor(0.0, 0.0, 0.0, 1.0);  // black
+    if (1.0 == S52_MP_get(S52_MAR_DISP_NODATA_LAYER)) {
+        glClearColor(c->R/255.0, c->G/255.0, c->B/255.0, 1.0);
+    } else {
+        glClearColor(0.0, 0.0, 0.0, 1.0);  // black
+    }
 #else
     glClearColor(c->R/255.0, c->G/255.0, c->B/255.0, 1.0);
     //glClearColor(c->R/255.0, c->G/255.0, c->B/255.0, 0.0); // debug Nexus/Adreno draw() frame
@@ -8413,7 +8417,8 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
         raster->W, raster->N, 0.0,        0.0f,  fracY
     };
 
-    //glDisable(GL_CULL_FACE);
+    // FIXME: need this for bathy
+    glDisable(GL_CULL_FACE);
 
     glEnableVertexAttribArray(_aUV);
     glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
@@ -8435,7 +8440,8 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
 
-    //glEnable(GL_CULL_FACE);
+    // FIXME: need this for bathy
+    glEnable(GL_CULL_FACE);
 
     return TRUE;
 }

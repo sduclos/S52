@@ -23,6 +23,7 @@ LOCAL_SRC_FILES  := ../../s52egl.c
 # -DS52_USE_WORLD    - experimental - load world Shapefile
 # -DS52_USE_SOCK     - send call to S52_*() via socket
 # -DS52_USE_LOG      - use S52_error_cb in init to get log send to STDOUT (usefull on non-rooted device)
+# -DS52_USE_RADAR    - 
 
 ARMTOOLCHAINPATH := /home/sduclos/dev/prog/Android/dev/android-19-toolchain
 S52DROIDINC      := /home/sduclos/S52/test/android/dist/sysroot/include
