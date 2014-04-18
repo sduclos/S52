@@ -292,7 +292,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.121\n"
+      "libS52 0.122\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1472,8 +1472,8 @@ static int        _initPROJ(void)
 
     // FIXME: cLng break bathy projection
     // anti-meridian trick: use cLng, but this break bathy
-    //_mercPrjSet = S57_setMercPrj(cLat, cLon);
-    _mercPrjSet = S57_setMercPrj(0.0, cLon); // test - 0 cLat
+    _mercPrjSet = S57_setMercPrj(cLat, cLon);
+    //_mercPrjSet = S57_setMercPrj(0.0, cLon); // test - 0 cLat
     //_mercPrjSet = S57_setMercPrj(0.0, 0.0); // test - 0 cLat
 
     // while here, set default view center
@@ -2422,10 +2422,11 @@ int               _loadRaster(const char *fname)
             return FALSE;
         }
 
+        //
         // FIXME: convert to Merc at draw() time, if no ENC loaded this will fail
         //
 
-        //char *srs_DST = _getSRS("+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs");
+        // FIXME: check if SRS of merc is same srs_DST if not convert again
         char *srs_DST = _getSRS();
         if (NULL != srs_DST) {
             char *srs_SRC = g_strdup(GDALGetProjectionRef(datasetSRC));

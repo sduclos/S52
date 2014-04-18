@@ -7,6 +7,11 @@ The idea is to put here everything that is not handled as
 part of the core S52.
 
 
+TIP:
+
+    - xmap: X11 magnify parts of the screen
+
+
 ------------------------------------------------------------
 
 Makefile Target:

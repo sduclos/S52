@@ -1203,8 +1203,8 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
     GLdouble vertex[3];
 
     // debug
-    //if (NULL == _diskPrimTmp)
-    //    g_assert(0);
+    return TRUE;
+
 
     if (slices < 2) slices = 2;
 
@@ -1238,8 +1238,6 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
         cosCache[i] = cos(angle);
     }
 
-    //g_array_set_size(_vStrips, 0);
-
     if (GLU_FILL == qobj->style)
         qobj->cb_begin(GL_TRIANGLE_STRIP, _diskPrimTmp);
     else
@@ -1270,8 +1268,6 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
     }
 
     qobj->cb_end(_diskPrimTmp);
-
-    //_donePrim(_diskPrimTmp);
 
     return TRUE;
 }
@@ -2947,6 +2943,7 @@ typedef union cIdx {
 static cIdx _cIdx;
 static cIdx _pixelsRead[8 * 8];  // buffer to collect pixels when in S52_GL_PICK mode
 
+#if 0
 static int       _setBlend(int blend)
 // TRUE turn on blending if AA
 {
@@ -2975,6 +2972,7 @@ static int       _setBlend(int blend)
 
     return TRUE;
 }
+#endif
 
 static GLubyte   _glColor4ub(S52_Color *c)
 // return transparancy
@@ -3023,6 +3021,7 @@ static GLubyte   _glColor4ub(S52_Color *c)
     } else {
 #ifdef S52_USE_GLES2
         glUniform4f(_uColor, c->R/255.0, c->G/255.0, c->B/255.0, (4 - (c->trans - '0')) * TRNSP_FAC_GLES2);
+        //glUniform4f(_uColor, c->R/255.0, c->G/255.0, c->B/255.0, 0.75);
 #else
         glColor4ub(c->R, c->G, c->B, (4 - (c->trans - '0'))*TRNSP_FAC);
         //glColor4ub(255, 0, 0, 255);
@@ -3099,11 +3098,22 @@ static int       _glCallList(S52_DListData *DListData)
 
                 } else {
                     // debug - test filter at GL level instead of CmdWord level
-                    if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_CMD_WRD_FILTER))
+                    if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_CMD_WRD_FILTER)) {
                         ++_nFrag;
-                    else
-                        glDrawArrays(mode, first, count);
+                    } else {
+                        /*
+                        if (mode = GL_LINES) {
+                            glLineWidth(col->pen_w - '0' + 1.0);
+                            glUniform4f(_uColor, col->R/255.0, col->G/255.0, col->B/255.0, 0.5);
+                            glDrawArrays(mode, first, count);
+                            glLineWidth(col->pen_w - '0');
+                            glUniform4f(_uColor, col->R/255.0, col->G/255.0, col->B/255.0, (4 - (col->trans - '0')) * TRNSP_FAC_GLES2);
+                        }
+                        //*/
 
+                        // normal draw
+                        glDrawArrays(mode, first, count);
+                    }
                 }
                 ++j;
 
@@ -5125,33 +5135,27 @@ static int       _renderLS(S52_obj *obj)
     char       style;   // L/S/T
     char       pen_w;
     S52_PL_getLSdata(obj, &pen_w, &style, &col);
+    _glColor4ub(col);
+
     glLineWidth(pen_w - '0');
     //glLineWidth(pen_w - '0' + 0.1);  // WARNING: THIS +0.1 SLOW DOWN EVERYTHING
     //glLineWidth(pen_w - '0' + 0.5);
     //glLineWidth(pen_w - '0' + 0.375);
     //glLineWidth(pen_w - '0' - 0.5);
-    //glLineWidth(1.0);
 
-    //glColor4ub(col->R, col->G, col->B, 255);
-    //glColor4ub(col->R, col->G, col->B, (4 - (col->trans - '0'))*TRNSP_FAC);
-    //GLubyte trans = _glColor4ub(col);
-
-    _glColor4ub(col);
+    // debug
+    //glLineWidth(3.5);
 
     //_setBlend(TRUE);
 
 
-    // debug
-    //glLineWidth(5);
-    //glColor3ub(255, 0, 0);
-    //S57_geo   *geoData = S52_PL_getGeo(obj);
-    //PRINTF("%s\n", S57_getName(geoData));
 
     // Assuming pixel size at 0.3 mm.
     // Note: we can draw coded depth line because
     // pattern start is not reset a each new lines in a strip.
     //glEnable(GL_LINE_STIPPLE);
     //glEnable(GL_LINE_SMOOTH);  // antialiase needed for line stippled
+
     switch (style) {
 
         case 'L': // SOLD --correct
@@ -5255,7 +5259,16 @@ static int       _renderLS(S52_obj *obj)
                         glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
                     }
 
+                    /*
+                    glLineWidth(pen_w - '0' + 1.0);
+                    glUniform4f(_uColor, col->R/255.0, col->G/255.0, col->B/255.0, 0.5);
                     _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
+                    glLineWidth(pen_w - '0');
+                    glUniform4f(_uColor, col->R/255.0, col->G/255.0, col->B/255.0, (4 - (col->trans - '0')) * TRNSP_FAC_GLES2);
+                    //*/
+                    _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
+
+
 #else
                     glMatrixMode(GL_MODELVIEW);
                     glLoadIdentity();
@@ -5634,8 +5647,13 @@ static int       _renderLC(S52_obj *obj)
         }
 
 
-        // FIXME: need this because some 'Display List' reset blending (why/how)
-        _setBlend(TRUE);
+        // FIXME: need this because some 'Display List' reset blending
+        // FIXME: some symbol allway use blending (ie transparancy)
+        // but now with GLES2 AA its all or nothing
+        //_setBlend(TRUE);
+        if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS)) {
+            glEnable(GL_BLEND);
+        }
 
 #ifdef S52_USE_GLES2
         _glUniformMatrix4fv_uModelview();
@@ -7637,18 +7655,16 @@ static int       _renderTXT(S52_obj *obj)
 //static S52_vCmd  _parseHPGL(S52_vec *vecObj)
 static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 // Display List generator - use for VBO also
+// VBO: collect all vectors for 1 colour
 {
-    // Select pen Width unit = 0.32 mm.
     // Assume: a width of 1 unit is 1 pixel.
     // WARNING: offet might need adjustment since bounding box
-    // doesn't include line tickness but moment all pattern,
-    // upto PLib 3.2, use a line width of 1.
+    // doesn't include line tickness.
+    // Note: Pattern upto PLib 3.2, use a line width of 1.
+    // Note: transparency: 0=0%(opaque), 1=25%, 2=50%, 3=75%
 
-    // BUG: instruction EP (Edge Polygon), AA (Arc Angle) and SC (Symbol Call)
-    //      are not used in current PLib/Chart-1, so not implemented.
-
-    // NOTE: transparency: 0=0%(opaque), 1=25%, 2=50%, 3=75%
-
+    // FIXME: instruction EP (Edge Polygon), AA (Arc Angle) and SC (Symbol Call)
+    //        are not used in current PLib/Chart-1, so not implemented.
 
     GLenum    fillMode = GLU_SILHOUETTE;
     //GLenum    fillMode = GLU_FILL;
@@ -7664,19 +7680,18 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
     //if (0==strncmp("BOYLAT13", S52_PL_getVOname(vecObj), 8)) {
     //    PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
     //}
-    if (0==strncmp("CHKSYM01", S52_PL_getVOname(vecObj), 8)) {
-        PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
-    }
-
+    //if (0==strncmp("CHKSYM01", S52_PL_getVOname(vecObj), 8)) {
+    //    PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
+    //}
 
     // skip first token if it's S52_VC_NEW
     //if (S52_VC_NEW == vcmd)
-    while (S52_VC_NEW == vcmd)
-        vcmd = S52_PL_getVOCmd(vecObj);
 
     // debug - check if more than one NEW token
-    //if (S52_VC_NEW == vcmd)
-    //    g_assert(0);
+    while (S52_VC_NEW == vcmd) {
+        vcmd = S52_PL_getVOCmd(vecObj);
+        g_assert(0);
+    }
 
     while ((S52_VC_NONE!=vcmd) && (S52_VC_NEW!=vcmd)) {
 
@@ -7698,12 +7713,13 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 #else
                     _DrawArrays(vertex);
                     S57_initPrim(vertex); //reset
+
+                    glLineWidth(pen_w - '0');
+                    //glLineWidth(pen_w - '0' - 0.5);
+                    _glPointSize(pen_w - '0');
+
 #endif
                 }
-
-                glLineWidth(pen_w - '0');
-                //glLineWidth(pen_w - '0' - 0.5);
-                _glPointSize(pen_w - '0');
 
                 //continue;
                 break;
@@ -7714,6 +7730,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
             case S52_VC_PM: // poly mode PM0/PM2, fill disk when not in PM
                 fillMode = (GLU_FILL==fillMode) ? GLU_SILHOUETTE : GLU_FILL;
                 //fillMode = GLU_FILL;
+
                 //continue;
                 break;
 
@@ -7790,7 +7807,6 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 // remember first coord
                 fristCoord = data;
                 _g_ptr_array_clear(_tmpV);
-                //g_array_set_size(_vStrips, 0);
 
                 gluTessBeginPolygon(_tobj, vertex);
                 gluTessBeginContour(_tobj);
@@ -7809,8 +7825,6 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 #endif
                 gluTessEndContour(_tobj);
                 gluTessEndPolygon(_tobj);
-
-                //_donePrim(vertex);
 
                 _checkError("_parseHPGL()");
 
@@ -7839,10 +7853,41 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 GArray   *vec  = S52_PL_getVOdata(vecObj);
                 vertex_t *data = (vertex_t *)vec->data;
 
+                // accumulate LINES segment
+                if (2 == vec->len) {
+                    _glBegin(GL_LINES, vertex);
+
+                    _vertex3f(data, vertex);
+                    data+=3;
+                    _vertex3f(data, vertex);
+
+                    vcmd = S52_PL_getVOCmd(vecObj);
+                    while ((S52_VC_PD==vcmd) || (S52_VC_PU==vcmd)) {
+                        GArray   *vec  = S52_PL_getVOdata(vecObj);
+                        vertex_t *data = (vertex_t *)vec->data;
+
+                        // LINES
+                        if (2 == vec->len) {
+                            _vertex3f(data, vertex);
+                            data+=3;
+                            _vertex3f(data, vertex);
+                            vcmd = S52_PL_getVOCmd(vecObj);
+                        } else {
+                            break;  // not LINES, break out of the inner while
+                        }
+                    }
+                    _glEnd(vertex);
+
+                    // vcmd is set, go to the outer while
+                    continue;
+                }
+
+
                 if (1 == vec->len) {
                     _glBegin(GL_POINTS,     vertex);
-                } else
+                } else {
                     _glBegin(GL_LINE_STRIP, vertex);
+                }
 
 #ifdef  S52_USE_GLES2
                 for (guint i=0; i<vec->len; ++i, data+=3) {
@@ -8051,7 +8096,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
 
     // reset line
     glLineWidth(1.0);
-    _glPointSize(1.0);
+    //_glPointSize(1.0);
 
     S52_vec *vecObj  = S52_PL_initVOCmd(cmdDef);
 
@@ -8834,8 +8879,15 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     // check if this context (grahic card) can draw all of S52
     _contextValid();
 
+    glEnable(GL_BLEND);
+
+    // GL_FUNC_ADD, GL_FUNC_SUBTRACT, or GL_FUNC_REVERSE_SUBTRACT
+    //glBlendEquation(GL_FUNC_ADD);
+
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // transparency
     //glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    //glSampleCoverage(1,  GL_FALSE);
 
     //glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
     //glHint(GL_POINT_SMOOTH_HINT, GL_DONT_CARE);
@@ -9373,7 +9425,6 @@ static int       _init_es2(void)
         varying vec2      v_texCoord;
         varying float     v_alpha;
 
-
         // NOTE: if else if ... doesn't seem to slow things down
         void main(void)
         {
@@ -9397,6 +9448,8 @@ static int       _init_es2(void)
                             }
                         } else {
                             gl_FragColor = uColor;
+                            //gl_FragColor.a = 0.5;
+                            //gl_PrimitiveID;  // glsl-1.5
                         }
                     }
                 }
@@ -10911,7 +10964,6 @@ _VBOvalidate(S52_DListData *DListData)
 _VBOLoadBuffer(S57_prim *prim)
 _DrawArrays(S57_prim *prim)
 _createDList(S57_prim *prim)
-_setBlend(int blend)
 _glCallList(S52_DListData *DListData)
 _parseTEX(S52_obj *obj)
 _computeCentroid(S57_geo *geoData)

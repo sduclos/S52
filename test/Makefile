@@ -285,7 +285,7 @@ s52ais: s52ais.c
 	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c  $(LIBS) -o s52ais
 	$(STRIP)  s52ais
 	cp        s52ais    android/dist/sdcard/s52droid/bin
-	adb push  s52ais    /sdcard/s52droid/bin
+	#adb push  s52ais    /sdcard/s52droid/bin
 
 s52eglarm: s52ais
 #s52eglarm: s52ais sl4agps

@@ -3777,8 +3777,6 @@ const char *S52_PL_getVOname(S52_vec *vecObj)
 static _Text     *_parseTX(S57_geo *geoData, _cmdWL *cmd)
 {
     return_if_null(cmd);
-    //if (NULL == cmd)
-    //    return NULL;
 
     char buf[MAXL] = {'\0'};   // output string
     char *str = _getParamVal(geoData, cmd->param, buf, MAXL);   // STRING
@@ -3817,11 +3815,13 @@ static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
     if (NULL == cmd)
         return NULL;
 
-    str = _getParamVal(geoData, cmd->param, fmt, MAXL);   // get FORMAT
+    // get FORMAT
+    str = _getParamVal(geoData, cmd->param, fmt, MAXL);
     if (NULL == str)
         return NULL;   // abort this command word if mandatory param absent
 
-    str = _getParamVal(geoData, str, arg, MAXL);   // get ATTRIB list
+    // get ATTRIB list
+    str = _getParamVal(geoData, str, arg, MAXL);
     if (NULL == str)
         return NULL;   // abort this command word if mandatory param absent
 
@@ -3848,13 +3848,6 @@ static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
             do {
                 *++t = *++pf;   // fill conver spec
 
-                //switch (*pf) {
-                //    case 'c':
-                //    case 's': b += sprintf(b, tmp, val);           cc = 1; break;
-                //    case 'f': b += sprintf(b, tmp, S52_atof(val)); cc = 1; break;
-                //    case 'd':
-                //    case 'i': b += sprintf(b, tmp, S52_atoi(val)); cc = 1; break;
-                //}
                 switch (*pf) {
                     case 'c':
                     case 's': b += SPRINTF(b, tmp, val);           cc = 1; break;
@@ -3987,7 +3980,7 @@ int         S52_PL_setTextParsed(S52_obj *obj)
 
 int         S52_PL_hasText(_S52_obj *obj)
 // return TRUE if there is at least one TEXT command word
-// NOTE: the text itself could be unvaivable yet!
+// NOTE: the text itself could be unvailable yet!
 {
     return_if_null(obj);
 

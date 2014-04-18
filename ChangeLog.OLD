@@ -3,6 +3,9 @@
 #
 
 
+2014APR17
+    -add optimisation of symbol with GL_LINES
+
 2014APR13
     -mod stabilize the radar image
     -mob free S52_RADAR_cb if texRadius is 0
