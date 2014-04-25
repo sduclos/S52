@@ -27,6 +27,10 @@
 #include "S52.h"
 
 #include <X11/Xlib.h>   // X*()
+
+//#include <X11/keysym.h>
+//#include <GL/gl.h>
+
 #include <GL/glx.h>     // glX*()
 
 // FIXME: S52 use glib-2.0, but this g_print could link to glib-1.0
@@ -81,16 +85,14 @@ static Display*     _getXdis()
     // open a connection to the X server
     Display *dpy = XOpenDisplay(NULL);
     if (NULL == dpy) {
-        //g_print("could not open display");
         printf("could not open display");
-        g_assert(0);
     }
 
     return dpy;
 }
 
-/*
-static XVisualInfo* _getXinfo(Display *dpy, int *attr)
+//*
+static XVisualInfo* _getXvis(Display *dpy, int *attr)
 {
     // find an OpenGL-capable RGBA visual
     XVisualInfo *vis = glXChooseVisual(dpy, DefaultScreen(dpy), attr);
@@ -104,7 +106,7 @@ static XVisualInfo* _getXinfo(Display *dpy, int *attr)
 
     return vis;
 }
-*/
+//*/
 
 
 static Window       _setXwin(Display *dpy, XVisualInfo *visInfo)
@@ -136,7 +138,7 @@ static Window       _setXwin(Display *dpy, XVisualInfo *visInfo)
     return win;
 }
 
-/*
+//*
 static GLXContext   _getGLXctx(Display *dpy, XVisualInfo *visInfo)
 {
     int dummy;
@@ -155,7 +157,7 @@ static GLXContext   _getGLXctx(Display *dpy, XVisualInfo *visInfo)
 
     return ctx;
 }
-*/
+//*/
 
 /*
 static int          _setFont(Display *dpy)
@@ -176,9 +178,14 @@ static int          _setFont(Display *dpy)
 
 int main(int argc, char* argv[])
 {
+    (void)argc;
+    (void)argv;
+
+
     //*
     Display     *dpy = _getXdis  ();
-    /*
+
+    //*
     XVisualInfo *vis = _getXvis  (dpy, _attr);
     Window       win = _setXwin  (dpy, vis);
     GLXContext   ctx = _getGLXctx(dpy, vis);
@@ -189,7 +196,7 @@ int main(int argc, char* argv[])
         printf("ERROR: glXMakeCurrent() fail\n");
         exit(0);
     }
-    */
+    //*/
 
 #ifdef S52_USE_DOTPITCH
     {   // init S52 lib (Screen No 0)
@@ -222,7 +229,8 @@ int main(int argc, char* argv[])
             XNextEvent(dpy, &event);
             switch (event.type) {
                 case ConfigureNotify:
-                    glViewport(0, 0, event.xconfigure.width, event.xconfigure.height);
+                    //glViewport(0, 0, event.xconfigure.width, event.xconfigure.height);
+                    S52_setViewPort(0, 0, event.xconfigure.width, event.xconfigure.height);
                 //case ...
 
             }
@@ -230,7 +238,7 @@ int main(int argc, char* argv[])
 
         S52_draw();
 
-        //glXSwapBuffers(dpy,  win);
+        glXSwapBuffers(dpy,  win);
     }
     //*/
 

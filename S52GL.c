@@ -239,6 +239,7 @@ static guint   _nobj  = 0;     // number of object drawn during lap
 static guint   _ncmd  = 0;     // number of command drawn during lap
 static guint   _oclip = 0;     // number of object clipped
 static guint   _nFrag = 0;     // number of pixel fragment (color switch)
+static int     _drgare = 0;    // DRGARE
 //static int     _debug = 0;
 
 // tessalated area stat
@@ -287,12 +288,6 @@ typedef void (_CALLBACK *fpp)  (void*, void*);
 
 static GLUtriangulatorObj *_tobj = NULL;
 static GPtrArray          *_tmpV = NULL;  // place holder during tesssalation (GLUtriangulatorObj combineCallback)
-
-// optimisation: merge triangles strips
-//static int     _modeTess = 0;
-//static GArray *_vStrips  = NULL;  // accumulate triangles strips vertex when _modeTess is GL_TRIANGLE_STRIP
-//static int     _newStrip = FALSE; // TRUE a new strip is beginning
-//static int     _nStrips  = 0;     // debug
 
 // centroid
 static GLUtriangulatorObj *_tcen       = NULL;     // GLU CSG
@@ -394,16 +389,7 @@ static double _rangeNM   = 0.0;
 static double _centerLat = 0.0;
 static double _centerLon = 0.0;
 
-//
-//---- PATTERN -----------------------------------------------------------
-//
-// NOTE: 4 mask are drawn to fill the square made of 2 triangles (fan)
-// NOTE: MSB 0x01, LSB 0xE0 - so it left most pixels is at 0x01
-// and the right most pixel in a byte is at 0xE0
-// 1 bit in _nodata_mask is 4 bytes (RGBA) in _rgba_nodata_mask (s0 x 8 bits x 4 )
-
-//DRGARE01
-static int           _drgare = 0;  // debug
+// DRGARE01
 static const GLubyte _drgare_mask[4*32] = {
     0x80, 0x80, 0x80, 0x80, // 1
     0x00, 0x00, 0x00, 0x00, // 2
@@ -439,6 +425,16 @@ static const GLubyte _drgare_mask[4*32] = {
     0x00, 0x00, 0x00, 0x00  // 8
 };
 
+
+//
+//---- PATTERN GLES2 -----------------------------------------------------------
+#ifdef S52_USE_GLES2
+//
+// NOTE: 4 mask are drawn to fill the square made of 2 triangles (fan)
+// NOTE: MSB 0x01, LSB 0xE0 - so it left most pixels is at 0x01
+// and the right most pixel in a byte is at 0xE0
+// 1 bit in _nodata_mask is 4 bytes (RGBA) in _rgba_nodata_mask (s0 x 8 bits x 4 )
+
 // NODATA03
 static GLuint        _nodata_mask_texID = 0;
 static GLubyte       _nodata_mask_rgba[4*32*8*4]; // 32 * 32 * 4   // 8bits * 4col * 32row * 4rgba
@@ -456,7 +452,6 @@ static const GLubyte _nodata_mask_bits[4*32] = {
     0x00, 0x00, 0x00, 0x00, // 3
     0x00, 0x00, 0x00, 0x00, // 4
     0x00, 0x00, 0x00, 0x00, // 5
-
     0x00, 0x00, 0x00, 0x00, // 6
     0x00, 0x00, 0x00, 0x00, // 7
     0xFE, 0x00, 0x00, 0x00, // 8
@@ -490,28 +485,37 @@ static const GLubyte _dottpa_mask_bits[4] = {     // 4 x 8 bits = 32 bits
 //    0x00, 0x00, 0x00, 0x00
 };
 
+// DASH pattern
 static GLuint        _dashpa_mask_texID = 0;
 static GLubyte       _dashpa_mask_rgba[8*4*4];    // 32 * 4rgba = 8bits * 4col * 1row * 4rgba
 static const GLubyte _dashpa_mask_bits[4] = {     // 4 x 8 bits = 32 bits
     0xFF, 0xF0, 0xFF, 0xF0
 };
 
+// MSAA
+static GLuint        _aa_mask_texID    = 0;
+//static GLubyte       _aa_mask_alpha[8] = {
+static GLubyte       _aa_mask_alpha[16] = {
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+};
 
 // OVERSC01
 // vertical line at each 400 units (4 mm)
 // 0.15mm dotpitch then 27 pixels == 4mm  (26.666..)
 // 0.30mm dotpitch then 13 pixels == 4mm  (13.333..)
-static GLuint        _oversc_mask_texID = 0;
-static GLubyte       _oversc_mask_rgba[8*4*4];    // 32 * 4rgba = 8bits * 4col * 1row * 4rgba
+//static GLuint        _oversc_mask_texID = 0;
+//static GLubyte       _oversc_mask_rgba[8*4*4];    // 32 * 4rgba = 8bits * 4col * 1row * 4rgba
 //static const GLubyte _oversc_mask_bits[16] = {  // 4 x 8 bits = 32 bits
-static const GLubyte _oversc_mask_bits[4] = {     // 4 x 8 bits = 32 bits
-    0x01, 0x00, 0x00, 0x00
-};
+//static const GLubyte _oversc_mask_bits[4] = {     // 4 x 8 bits = 32 bits
+//    0x01, 0x00, 0x00, 0x00
+//};
 
 // other pattern are created using FBO
 static GLuint        _fboID = 0;
 
-//---- PATTERN -----------------------------------------------------------
+#endif  // S52_USE_GLES2
+//---- PATTERN GLES2 -----------------------------------------------------------
 
 
 
@@ -571,11 +575,6 @@ static    GLfloat *_crntMat;          // point to active matrix
 static    int      _mvmTop = 0;       // point to stack top
 static    int      _pjmTop = 0;       // point to stack top
 
-// experimental: synthetic after glow
-static GArray  *_aftglwColorArr    = NULL;
-static GLuint   _vboIDaftglwVertID = 0;
-static GLuint   _vboIDaftglwColrID = 0;
-
 #else   // S52_USE_GLES2
 
 #ifdef S52_USE_OPENGL_SAFETY_CRITICAL
@@ -591,8 +590,14 @@ static    GLdouble _pjm[16];       // projection matrix
 
 #endif  // S52_USE_GLES2
 
+// experimental: synthetic after glow
+static GArray  *_aftglwColorArr    = NULL;
+static GLuint   _vboIDaftglwVertID = 0;
+static GLuint   _vboIDaftglwColrID = 0;
+
 
 // utils
+#ifdef S52_USE_GLES2
 static int       _f2d(GArray *tessWorkBuf_d, guint npt, vertex_t *ppt)
 // convert array of float (vertex_t with GLES2) to array of double
 // as the tesselator work on double for OGR with has coord. in double
@@ -621,6 +626,7 @@ static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt)
     }
     return TRUE;
 }
+#endif  // S52_USE_GLES2
 
 
 //-----------------------------------
@@ -885,27 +891,6 @@ static int       _getMaxEdge(pt3 *p)
     return TRUE;
 }
 
-#if 0
-static int       _donePrim(S57_prim *prim)
-// merge triangles strips to the current set of primitive
-{
-    //_nStrips = 0;
-
-    //*
-    if (0 != _vStrips->len) {
-        S57_begPrim(prim, GL_TRIANGLE_STRIP);
-        for (guint i=0; i<_vStrips->len; ++i) {
-            pt3v *data = &g_array_index(_vStrips, pt3v, i);
-            S57_addPrimVertex(prim, (vertex_t*)data);
-        }
-        S57_endPrim(prim);
-    }
-    //*/
-
-    return TRUE;
-}
-#endif
-
 static void_cb_t _tessError(GLenum err)
 {
     //const GLubyte *str = gluErrorString(err);
@@ -960,35 +945,16 @@ static void_cb_t _combineCallback(GLdouble   coords[3],
 
 }
 
+#if 0
 static void_cb_t _combineCallbackCen(void)
 // debug
 {
     g_assert(0);
 }
+#endif
 
 static void_cb_t _glBegin(GLenum mode, S57_prim *prim)
 {
-    /*
-    //_modeTess = mode;
-    //if (GL_TRIANGLE_STRIP == _modeTess) {
-        // debug
-        //_nStrips++;
-
-        // duplicate last vertex of last strip
-        if (0 != _vStrips->len) {
-            pt3v *data = &g_array_index(_vStrips, pt3v, _vStrips->len-1);
-            g_array_append_val(_vStrips, data);
-
-            // if even add an other vertex
-            if (0 == _vStrips->len % 2)
-                g_array_append_val(_vStrips, data);
-        }
-        _newStrip = TRUE;
-
-        //return;
-    }
-    */
-
     // Note: mode=10  is _QUADRIC_TRANSLATE, defined bellow as 0x000A
     S57_begPrim(prim, mode);
 }
@@ -1013,10 +979,6 @@ static void_cb_t _beginCin(GLenum data)
 
 static void_cb_t _glEnd(S57_prim *prim)
 {
-    //if (GL_TRIANGLE_STRIP == _modeTess) {
-    //    return;
-    //}
-
     S57_endPrim(prim);
 
     return;
@@ -1044,22 +1006,6 @@ static void_cb_t _vertex3d(GLvoid *data, S57_prim *prim)
     // cast to float after tess (double)
     double *dptr     = (double*)data;
     float   dataf[3] = {dptr[0], dptr[1], dptr[2]};
-
-    /*
-    // collect strips vertex for post processing
-    if (GL_TRIANGLE_STRIP == _modeTess) {
-        if (TRUE == _newStrip) {
-            if (0 != _vStrips->len) {
-                // duplicate first vertex of new strip
-                g_array_append_val(_vStrips, dataf);
-            }
-            _newStrip = FALSE;
-        }
-        g_array_append_val(_vStrips, dataf);
-
-        return;
-    }
-    */
 
     S57_addPrimVertex(prim, (float *)dataf);
 #else
@@ -1201,10 +1147,6 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
     GLdouble cosCache[CACHE_SIZE];
     GLdouble angle;
     GLdouble vertex[3];
-
-    // debug
-    return TRUE;
-
 
     if (slices < 2) slices = 2;
 
@@ -1656,7 +1598,6 @@ static int       _init_freetype_gl(void)
                                 L"èàé";
 
     if (NULL == _freetype_gl_atlas) {
-        //_freetype_gl_atlas = texture_atlas_new(512, 512, 3);  // RGB
         _freetype_gl_atlas = texture_atlas_new(512, 512, 1);    // alpha only
     }
 
@@ -1672,11 +1613,11 @@ static int       _init_freetype_gl(void)
     }
 
 #ifdef S52_USE_ADRENO
-    // bigger font on Nexus 7
-    _freetype_gl_font[0]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 16);
-    _freetype_gl_font[1]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 22);
-    _freetype_gl_font[2]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 28);
-    _freetype_gl_font[3]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 34);
+    // bigger font on Nexus 7 (size + 8)
+    _freetype_gl_font[0]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 20);
+    _freetype_gl_font[1]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 26);
+    _freetype_gl_font[2]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 32);
+    _freetype_gl_font[3]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 38);
 #else
     _freetype_gl_font[0]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 12);
     _freetype_gl_font[1]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 18);
@@ -1725,7 +1666,6 @@ static S57_prim *_tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
     S57_prim *prim = S57_initPrimGeo(geoData);
 
     _g_ptr_array_clear(_tmpV);
-    //g_array_set_size(_vStrips, 0);
 
     // NOTE: _*NOT*_ NULL to trigger GL_TRIANGLES tessallation
     //gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) _edgeFlag);
@@ -1751,8 +1691,6 @@ static S57_prim *_tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
     gluTessEndPolygon(tobj);
 
     //gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) NULL);
-
-    //_donePrim(prim);
 
     return prim;
 }
@@ -3048,13 +2986,13 @@ static int       _glCallList(S52_DListData *DListData)
 #ifdef S52_USE_GLES2
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
-    // no face culling as symbol can be both CW,CCW when winding is ODD (for ISODNG)
-    // Note: cull face is faster but on GLES2 Radeon HD, Tegra2, Adreno its not
-    glDisable(GL_CULL_FACE);
-
     glEnableVertexAttribArray(_aPosition);
 
 #endif
+
+    // no face culling as symbol can be both CW,CCW when winding is ODD (for ISODNG)
+    // Note: cull face is faster but on GLES2 Radeon HD, Tegra2, Adreno its not
+    glDisable(GL_CULL_FACE);
 
     GLuint     lst = DListData->vboIds[0];
     S52_Color *col = DListData->colors;
@@ -3471,7 +3409,7 @@ static int       _renderSY_silhoutte(S52_obj *obj)
         glScaled(1.0, -1.0, 1.0);
         glRotated(orient, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
-        //_glTranslated(-_ownshp_off_x, -_ownshp_off_y, 0.0);
+        //glTranslated(-_ownshp_off_x, -_ownshp_off_y, 0.0);
         glTranslated(0.0, -shp_off_y, 0.0);
 
         _pushScaletoPixel(TRUE);
@@ -5137,10 +5075,10 @@ static int       _renderLS(S52_obj *obj)
     S52_PL_getLSdata(obj, &pen_w, &style, &col);
     _glColor4ub(col);
 
-    glLineWidth(pen_w - '0');
+    //glLineWidth(pen_w - '0');
     //glLineWidth(pen_w - '0' + 0.1);  // WARNING: THIS +0.1 SLOW DOWN EVERYTHING
     //glLineWidth(pen_w - '0' + 0.5);
-    //glLineWidth(pen_w - '0' + 0.375);
+    glLineWidth(pen_w - '0' + 0.375);
     //glLineWidth(pen_w - '0' - 0.5);
 
     // debug
@@ -5249,7 +5187,8 @@ static int       _renderLS(S52_obj *obj)
                         float dy       = ppt[1] - ppt[4];
                         float leglen_m = sqrt(dx*dx + dy*dy);   // leg length in meter
                         float leglen_px= leglen_m  / _scalex;   // leg length in pixel
-                        float sym_n    = leglen_px / 32.0;      // 32 pixels (rgba)
+                        float sym_n    = leglen_px / 32.0;      // number of symbol - 32 pixels (rgba)
+
                         float ptr[4] = {
                             0.0,   0.0,
                             sym_n, 1.0
@@ -5257,18 +5196,18 @@ static int       _renderLS(S52_obj *obj)
 
                         glEnableVertexAttribArray(_aUV);
                         glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
+
+                        _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
+
+                        glDisableVertexAttribArray(_aUV);
+
+                        // turn OFF stippling
+                        glBindTexture(GL_TEXTURE_2D,  0);
+                        glUniform1f(_uStipOn, 0.0);
+
+                    } else {
+                        _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
                     }
-
-                    /*
-                    glLineWidth(pen_w - '0' + 1.0);
-                    glUniform4f(_uColor, col->R/255.0, col->G/255.0, col->B/255.0, 0.5);
-                    _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
-                    glLineWidth(pen_w - '0');
-                    glUniform4f(_uColor, col->R/255.0, col->G/255.0, col->B/255.0, (4 - (col->trans - '0')) * TRNSP_FAC_GLES2);
-                    //*/
-                    _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
-
-
 #else
                     glMatrixMode(GL_MODELVIEW);
                     glLoadIdentity();
@@ -5301,13 +5240,8 @@ static int       _renderLS(S52_obj *obj)
 
 
 #ifdef S52_USE_GLES2
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindTexture(GL_TEXTURE_2D,  0);
-    // turn OFF stippling
-    glUniform1f(_uStipOn, 0.0);
-
-    glDisableVertexAttribArray(_aUV);
-    glDisableVertexAttribArray(_aPosition);
+    //glBindBuffer(GL_ARRAY_BUFFER, 0);
+    //glDisableVertexAttribArray(_aPosition);
 
 #else
     if ('S'==style || 'T'==style)
@@ -5674,6 +5608,7 @@ static int       _renderLC(S52_obj *obj)
     return TRUE;
 }
 
+#ifdef S52_USE_GLES2
 static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
 // make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
 {
@@ -5682,9 +5617,9 @@ static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
     for (int i=0; i<(4*32); ++i) {
         if (0 != mask[i]) {
             if (mask[i] & (1<<0)) {
-                //rgba_mask[(i*4*8)+0] = 255;  // R
-                //rgba_mask[(i*4*8)+1] = 255;  // G
-                //rgba_mask[(i*4*8)+2] = 255;  // B
+                //rgba_mask[(i*4*8)+0] = 0;  // R
+                //rgba_mask[(i*4*8)+1] = 0;  // G
+                //rgba_mask[(i*4*8)+2] = 0;  // B
                 rgba_mask[(i*4*8)+3] = 255;   // A
             }
             if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
@@ -5701,19 +5636,16 @@ static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
 }
 
 static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
-//static int       _64bitMask2RGBAText(const GLubyte *mask, GLubyte *rgba_mask)
 // make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
 {
-    //bzero(rgba_mask, 8*4*4);      // 32
-    //bzero(rgba_mask, 4*8*4*2);  // 64 * 4 (rgba)
-    memset(rgba_mask, 0, 8*4*4);
-    for (int i=0; i<(8*1); ++i) {
-    //for (i=0; i<(8*1*2); ++i) { // 16 bytes * 8 = 64 bits
+    memset(rgba_mask, 0x00, 8*4*4);
+    //for (int i=0; i<8; ++i) {
+    for (int i=0; i<4; ++i) {    // 4 bytes
         if (0 != mask[i]) {
             if (mask[i] & (1<<0)) {
-                //rgba_mask[(i*4*8)+0] = 255;  // R
-                //rgba_mask[(i*4*8)+1] = 255;  // G
-                //rgba_mask[(i*4*8)+2] = 255;  // B
+                //rgba_mask[(i*4*8)+0] = 0;   // R
+                //rgba_mask[(i*4*8)+1] = 0;   // G
+                //rgba_mask[(i*4*8)+2] = 0;   // B
                 rgba_mask[(i*4*8)+3] = 255;   // A
             }
             if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
@@ -5728,6 +5660,7 @@ static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
 
     return TRUE;
 }
+#endif  // S52_USE_GLES2
 
 static int       _renderAC_NODATA_layer0(void)
 // clear all buffer so that no artefact from S52_drawLast remain
@@ -5855,7 +5788,8 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
             glNewList(DList->vboIds[0], GL_COMPILE);
 
             _diskPrimTmp = DList->prim[0];
-            gluPartialDisk(_qobj, radius, radius+4, slice, loops, sectr1+180, sweep);
+            //gluPartialDisk(_qobj, radius, radius+4, slice, loops, sectr1+180, sweep);
+            gluPartialDisk(_qobj, radius, radius+4, sweep/2.0, loops, sectr1+180, sweep);
             _DrawArrays(_diskPrimTmp);
             glEndList();
 
@@ -5864,7 +5798,8 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
             glNewList(DList->vboIds[1], GL_COMPILE);
 
             _diskPrimTmp = DList->prim[1];
-            gluPartialDisk(_qobj, radius+1, radius+3, slice, loops, sectr1+180, sweep);
+            //gluPartialDisk(_qobj, radius+1, radius+3, slice, loops, sectr1+180, sweep);
+            gluPartialDisk(_qobj, radius+1, radius+3, sweep/2.0, loops, sectr1+180, sweep);
             _DrawArrays(_diskPrimTmp);
             glEndList();
 #endif
@@ -6022,6 +5957,7 @@ static int       _renderAC(S52_obj *obj)
     return TRUE;
 }
 
+#ifndef S52_USE_GLES2
 static int       _renderAP_NODATA(S52_obj *obj)
 {
     S57_geo       *geoData   = S52_PL_getGeo(obj);
@@ -6033,24 +5969,19 @@ static int       _renderAP_NODATA(S52_obj *obj)
 
         _glColor4ub(col);
 
-#ifdef S52_USE_GLES2
-#else
         glEnable(GL_POLYGON_STIPPLE);
         //glPolygonStipple(_nodata_mask);
-#endif
 
         _fillarea(geoData);
 
-#ifdef S52_USE_GLES2
         //glBindBuffer(GL_ARRAY_BUFFER, 0);
-#else
         glDisable(GL_POLYGON_STIPPLE);
-#endif
         return TRUE;
     }
 
     return FALSE;
 }
+#endif
 
 static int       _renderAP_NODATA_layer0(void)
 {
@@ -6104,6 +6035,7 @@ static int       _renderAP_NODATA_layer0(void)
         glGenTextures(1, &_nodata_mask_texID);
         glGenTextures(1, &_dottpa_mask_texID);
         glGenTextures(1, &_dashpa_mask_texID);
+        glGenTextures(1,     &_aa_mask_texID);
 
         _checkError("_renderAP_NODATA_layer0 -0-");
 
@@ -6143,6 +6075,22 @@ static int       _renderAP_NODATA_layer0(void)
 
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
 
+        // ------------
+        // AA
+        glBindTexture(GL_TEXTURE_2D, _aa_mask_texID);
+                                       
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 1, 8, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _aa_mask_alpha);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 2, 8, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _aa_mask_alpha);
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 8, 1, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _aa_mask_alpha);
 
         glBindTexture(GL_TEXTURE_2D, 0);
         _checkError("_renderAP_NODATA_layer0 -0.1-");
@@ -6236,6 +6184,7 @@ static int       _renderAP_NODATA_layer0(void)
     return FALSE;
 }
 
+#ifndef S52_USE_GLES2
 static int       _renderAP_DRGARE(S52_obj *obj)
 {
     if (TRUE != (int) S52_MP_get(S52_MAR_DISP_DRGARE_PATTERN))
@@ -6250,23 +6199,18 @@ static int       _renderAP_DRGARE(S52_obj *obj)
 
         _glColor4ub(col);
 
-#ifdef S52_USE_GLES2
-#else
         glEnable(GL_POLYGON_STIPPLE);
         glPolygonStipple(_drgare_mask);
-#endif
 
         _fillarea(geoData);
 
-#ifdef S52_USE_GLES2
-#else
         glDisable(GL_POLYGON_STIPPLE);
-#endif
         return TRUE;
     }
 
     return FALSE;
 }
+#endif
 
 static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx, double *URy, double *tileW, double *tileH)
 {
@@ -6373,7 +6317,10 @@ static int       _renderTile(S52_DListData *DListData)
     return TRUE;
 }
 
+#ifdef S52_USE_TEGRA2
 static guint     _minPOT(guint value);  // forward dec
+#endif
+
 static int       _renderAP_es2(S52_obj *obj)
 {
     S52_DListData *DListData = S52_PL_getDListData(obj);
@@ -6385,7 +6332,8 @@ static int       _renderAP_es2(S52_obj *obj)
     double x2, y2;   // UR of region of area in world
     double tileWpx;
     double tileHpx;
-    double stagOffsetPix = _getGridRef(obj, &x1, &y1, &x2, &y2, &tileWpx, &tileHpx);
+    //double stagOffsetPix =
+    _getGridRef(obj, &x1, &y1, &x2, &y2, &tileWpx, &tileHpx);
     double tileWw = tileWpx * _scalex;
     double tileHw = tileHpx * _scaley;
 
@@ -6409,10 +6357,6 @@ static int       _renderAP_es2(S52_obj *obj)
         int w    = ceil(tileWpx);
         int h    = ceil(tileHpx);
 
-        // POT
-        int potW = _minPOT(w);
-        int potH = _minPOT(h);
-
         glGenTextures(1, &mask_texID);
         glBindTexture(GL_TEXTURE_2D, mask_texID);
 
@@ -6426,6 +6370,9 @@ static int       _renderAP_es2(S52_obj *obj)
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 #ifdef S52_USE_TEGRA2
+        // POT
+        int potW = _minPOT(w);
+        int potH = _minPOT(h);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW, potH, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
 #else
         // NPOT - fail on TEGRA2
@@ -7146,8 +7093,8 @@ static int       _renderTXTAA_es2(double x, double y, GLfloat *data, guint len)
 
     return TRUE;
 }
-#endif
-#endif
+#endif  // S52_USE_GLES2
+#endif  // S52_USE_FREETYPE_GL
 
 static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
 // render text in AA if Mar Param set
@@ -7668,10 +7615,10 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 
     GLenum    fillMode = GLU_SILHOUETTE;
     //GLenum    fillMode = GLU_FILL;
-    S52_vCmd  vcmd     = S52_PL_getVOCmd(vecObj);
+    S52_vCmd  vcmd     = S52_PL_getNextVOCmd(vecObj);
     int       CI       = FALSE;
 
-    vertex_t *fristCoord = NULL;
+    //vertex_t *fristCoord = NULL;
 
     // debug
     //if (0==strncmp("TSSJCT02", S52_PL_getVOname(vecObj), 8)) {
@@ -7687,10 +7634,10 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
     // skip first token if it's S52_VC_NEW
     //if (S52_VC_NEW == vcmd)
 
-    // debug - check if more than one NEW token
+    // debug - check if more than one NEW token - YES
     while (S52_VC_NEW == vcmd) {
-        vcmd = S52_PL_getVOCmd(vecObj);
-        g_assert(0);
+        vcmd = S52_PL_getNextVOCmd(vecObj);
+        //g_assert(0);
     }
 
     while ((S52_VC_NONE!=vcmd) && (S52_VC_NEW!=vcmd)) {
@@ -7702,8 +7649,6 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
             case S52_VC_NEW:  break;
 
             case S52_VC_SW: { // this mean there is a change in pen width
-                char pen_w = S52_PL_getVOwidth(vecObj);
-
                 // draw vertex with previous pen width
                 GArray *v = S57_getPrimVertex(vertex);
                 if (0 < v->len) {
@@ -7711,9 +7656,9 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                     //_loadVBObuffer(vertex);
                     //S57_initPrim(vertex); //reset
 #else
+                    char pen_w = S52_PL_getVOwidth(vecObj);
                     _DrawArrays(vertex);
                     S57_initPrim(vertex); //reset
-
                     glLineWidth(pen_w - '0');
                     //glLineWidth(pen_w - '0' - 0.5);
                     _glPointSize(pen_w - '0');
@@ -7754,9 +7699,12 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 _vertex3f(data, vertex);
                 _glEnd(vertex);
 #else
-                _glMatrixMode(GL_MODELVIEW);
-                _glPushMatrix();
-                _glTranslated(data[0], data[1], data[2]);
+                //_glMatrixMode(GL_MODELVIEW);
+                //_glPushMatrix();
+                //_glTranslated(data[0], data[1], data[2]);
+                glMatrixMode(GL_MODELVIEW);
+                glPushMatrix();
+                glTranslated(data[0], data[1], data[2]);
 #endif
 
 #ifdef  S52_USE_OPENGL_VBO
@@ -7785,7 +7733,8 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 gluQuadricDrawStyle(_qobj, GLU_SILHOUETTE);
                 //gluQuadricDrawStyle(_qobj, GLU_LINE);
                 gluDisk(_qobj, inner, outer, slices, loops);
-                _glPopMatrix();
+                //_glPopMatrix();
+                glPopMatrix();
 #endif
 
                 CI = TRUE;
@@ -7805,7 +7754,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 }
 
                 // remember first coord
-                fristCoord = data;
+                //fristCoord = data;
                 _g_ptr_array_clear(_tmpV);
 
                 gluTessBeginPolygon(_tobj, vertex);
@@ -7851,8 +7800,66 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
             case S52_VC_PD:    // pen down
             case S52_VC_PU: {  // pen up
                 GArray   *vec  = S52_PL_getVOdata(vecObj);
-                vertex_t *data = (vertex_t *)vec->data;
+                //vertex_t *data = (vertex_t *)vec->data;
 
+                // paranoi
+                if (0 == vec->len) {
+                    PRINTF("Vector Object Name: %s  Command: %c - NO VECTOR!\n", S52_PL_getVOname(vecObj), vcmd);
+                    g_assert(0);
+                    break;
+                }
+
+                //*
+                // split STRIP into LINES
+                if (1 < vec->len) {
+                    _glBegin(GL_LINES,  vertex);
+                    while ((S52_VC_PD==vcmd) || (S52_VC_PU==vcmd)) {
+                        GArray   *vec  = S52_PL_getVOdata(vecObj);
+                        vertex_t *data = (vertex_t *)vec->data;
+
+                        // POINTS
+                        if (1 == vec->len)
+                            break;
+
+                        // LINES
+                        if (2 == vec->len) {
+                            _vertex3f(data, vertex);
+                            data+=3;
+                            _vertex3f(data, vertex);
+                            vcmd = S52_PL_getNextVOCmd(vecObj);
+                            continue;
+                        }
+
+                        // split STRIP into LINES
+                        for (guint i=0; i<vec->len-1; ++i, data+=3) {
+                            _vertex3f(data+0, vertex);
+                            _vertex3f(data+3, vertex);
+                        }
+                        vcmd = S52_PL_getNextVOCmd(vecObj);
+                    }
+                    _glEnd(vertex);
+
+                    // vcmd is set, go to the outer while
+                    continue;
+                } else {
+                    _glBegin(GL_POINTS, vertex);
+                    while ((S52_VC_PD==vcmd) || (S52_VC_PU==vcmd)) {
+                        GArray   *vec  = S52_PL_getVOdata(vecObj);
+                        vertex_t *data = (vertex_t *)vec->data;
+
+                        // not POINTS
+                        if (1 != vec->len)
+                            break;
+
+                        _vertex3f(data, vertex);
+                        vcmd = S52_PL_getNextVOCmd(vecObj);
+                    }
+                    _glEnd(vertex);
+                    continue;
+                }
+                //*/
+
+                /*
                 // accumulate LINES segment
                 if (2 == vec->len) {
                     _glBegin(GL_LINES, vertex);
@@ -7861,7 +7868,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                     data+=3;
                     _vertex3f(data, vertex);
 
-                    vcmd = S52_PL_getVOCmd(vecObj);
+                    vcmd = S52_PL_getNextVOCmd(vecObj);
                     while ((S52_VC_PD==vcmd) || (S52_VC_PU==vcmd)) {
                         GArray   *vec  = S52_PL_getVOdata(vecObj);
                         vertex_t *data = (vertex_t *)vec->data;
@@ -7871,7 +7878,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                             _vertex3f(data, vertex);
                             data+=3;
                             _vertex3f(data, vertex);
-                            vcmd = S52_PL_getVOCmd(vecObj);
+                            vcmd = S52_PL_getNextVOCmd(vecObj);
                         } else {
                             break;  // not LINES, break out of the inner while
                         }
@@ -7881,14 +7888,17 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                     // vcmd is set, go to the outer while
                     continue;
                 }
+                //*/
 
-
+                /*
                 if (1 == vec->len) {
                     _glBegin(GL_POINTS,     vertex);
                 } else {
                     _glBegin(GL_LINE_STRIP, vertex);
                 }
+                //*/
 
+/*
 #ifdef  S52_USE_GLES2
                 for (guint i=0; i<vec->len; ++i, data+=3) {
                     _vertex3f(data, vertex);
@@ -7918,6 +7928,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 //S57_initPrim(vertex); //reset
                 //continue;
                 break;
+*/
             }
 
             // should not get here since these command
@@ -7934,7 +7945,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 g_assert(0);
         }
 
-        vcmd = S52_PL_getVOCmd(vecObj);
+        vcmd = S52_PL_getNextVOCmd(vecObj);
 
     } /* while */
 
@@ -8257,8 +8268,8 @@ int        S52_GL_isOFFscreen(S52_obj *obj)
 }
 
 #if 0
-// FIXME: use this instead of _minPOT to reduce the texture size
 static guint     _nearestPOT(guint value)
+// FIXME: use this instead of _minPOT to reduce the texture size
 // nearest POT:
 {
     int i = 1;
@@ -8275,6 +8286,7 @@ static guint     _nearestPOT(guint value)
 #endif
 
 #ifdef S52_USE_GLES2
+#ifdef S52_USE_TEGRA2
 static guint     _minPOT(guint value)
 // min POT greater than 'value' - simplyfie texture handling
 // compare to _nearestPOT() but use more GPU memory
@@ -8289,6 +8301,7 @@ static guint     _minPOT(guint value)
         i *= 2;
     }
 }
+#endif  // S52_USE_TEGRA2
 
 static int       _newTexture(S52_GL_ras *raster)
 // copy and blend raster 'data' to alpha texture
@@ -8638,7 +8651,10 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
 
 
         // WARNING: some graphic card preffer RGB / BYTE .. YMMV
-        glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGB, GL_UNSIGNED_BYTE, &_pixelsRead);
+        //glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGB, GL_UNSIGNED_BYTE, &_pixelsRead);
+        glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
+
+        _checkError("S52_GL_draw():glReadPixels()");
 
         for (int i=0; i<(8*8); ++i) {
             if (_pixelsRead[i].color.r == _cIdx.color.r) {
@@ -8649,9 +8665,6 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
                 break;
             }
         }
-
-        _checkError("S52_GL_draw():glReadPixels()");
-
 
         // debug - dump pixel
         /*
@@ -8681,6 +8694,8 @@ static int       _contextValid(void)
     GLint r=0,g=0,b=0,a=0,s=0,p=0;
     //GLboolean m=0;
 
+    _checkError("_contextValid() -0-");
+
     //glGetBooleanv(GL_RGBA_MODE,    &m);    // not in "OpenGL ES SC" / GLES2
     glGetIntegerv(GL_RED_BITS,     &r);
     glGetIntegerv(GL_GREEN_BITS,   &g);
@@ -8691,19 +8706,6 @@ static int       _contextValid(void)
     PRINTF("BITS:r,g,b,a,stencil,depth: %d %d %d %d %d %d\n",r,g,b,a,s,p);
     // 16 bits:mode,r,g,b,a,s: 1 5 6 5 0 8
     // 24 bits:mode,r,g,b,a,s: 1 8 8 8 0 8
-
-#ifdef S52_USE_GLES2
-    // shader replace the need for a stencil buffer
-#else
-    if (s <= 0)
-        PRINTF("WARNING: no stencil buffer for pattern!\n");
-
-    // not in GLES2
-    GLboolean d = FALSE;;
-    glGetBooleanv(GL_DOUBLEBUFFER, &d);
-    PRINTF("double buffer: %s\n", ((TRUE==d) ? "TRUE" : "FALSE"));
-#endif
-
 
 #ifdef S52_USE_GLES2
     {
@@ -8729,6 +8731,7 @@ static int       _contextValid(void)
         else
             PRINTF("DEBUG: GL_OES_texture_npot FAILED\n");
 
+
         // marker
         if (NULL != g_strrstr((const char *)extensions, "GL_EXT_debug_marker"))
             PRINTF("DEBUG: GL_EXT_debug_marker OK\n");
@@ -8736,6 +8739,14 @@ static int       _contextValid(void)
             PRINTF("DEBUG: GL_EXT_debug_marker FAILED\n");
 
     }
+#else
+    if (s <= 0)
+        PRINTF("WARNING: no stencil buffer for pattern!\n");
+
+    // not in GLES2
+    GLboolean d = FALSE;;
+    glGetBooleanv(GL_DOUBLEBUFFER, &d);
+    PRINTF("double buffer: %s\n", ((TRUE==d) ? "TRUE" : "FALSE"));
 #endif
 
     _checkError("_contextValid()");
@@ -8836,24 +8847,12 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     //static int saveAttrib;
 
-    //_checkError("S52_GL_begin() -0-");
+    _checkError("S52_GL_begin() -0-");
 
     // ATI
     //_dumpATImemInfo(VBO_FREE_MEMORY_ATI);          // 0x87FB
     //_dumpATImemInfo(TEXTURE_FREE_MEMORY_ATI);      // 0x87FC
     //_dumpATImemInfo(RENDERBUFFER_FREE_MEMORY_ATI); // 0x87FD
-
-    // debug - apitrace
-    //glInsertEventMarkerEXT(6, "marker");
-
-#ifdef S52_USE_TEGRA2
-    // Nvidia - GetIntegerv
-    // GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX          0x9047
-    // GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX    0x9048
-    // GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX  0x9049
-    // GPU_MEMORY_INFO_EVICTION_COUNT_NVX            0x904A
-    // GPU_MEMORY_INFO_EVICTED_MEMORY_NVX            0x904B
-#endif
 
     // debug
     _drgare = 0;
@@ -8866,6 +8865,16 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     _ntris     = 0;
     _nCall     = 0;
     _npoly     = 0;
+
+
+#ifdef S52_USE_TEGRA2
+    // Nvidia - GetIntegerv
+    // GPU_MEMORY_INFO_DEDICATED_VIDMEM_NVX          0x9047
+    // GPU_MEMORY_INFO_TOTAL_AVAILABLE_MEMORY_NVX    0x9048
+    // GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX  0x9049
+    // GPU_MEMORY_INFO_EVICTION_COUNT_NVX            0x904A
+    // GPU_MEMORY_INFO_EVICTED_MEMORY_NVX            0x904B
+#endif
 
 #ifdef S52_USE_COGL
     cogl_begin_gl();
@@ -8888,6 +8897,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     //glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
     //glSampleCoverage(1,  GL_FALSE);
+
 
     //glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
     //glHint(GL_POINT_SMOOTH_HINT, GL_DONT_CARE);

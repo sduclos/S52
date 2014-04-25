@@ -267,9 +267,15 @@ static _view_t _view = {0.0, 0.0, 0.0, 0.0};
 // Note: the mutex never have to do work with the main_loop already serializing call.
 // Note: that DBus and socket/WebSocket are running from the main loop but the handling is done from threads
 
-// FIXME: "Warning, g_static_mutex_lock has been deprecated since version 2.32
-//         and should not be used in newly-written code. Use g_mutex_lock()"
-static  GStaticMutex   _mp_mutex = G_STATIC_MUTEX_INIT;
+#ifdef S52_USE_ANDROID
+static GStaticMutex       _mp_mutex = G_STATIC_MUTEX_INIT;  // protect _ais_list
+#define GMUTEXLOCK   g_static_mutex_lock
+#define GMUTEXUNLOCK g_static_mutex_unlock
+#else
+static GMutex             _mp_mutex; // protect _ais_list
+#define GMUTEXLOCK   g_mutex_lock
+#define GMUTEXUNLOCK g_mutex_unlock
+#endif
 
 
 // CSYMB init scale bar, north arrow, unit, CHKSYM
@@ -292,7 +298,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.122\n"
+      "libS52 0.123\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -406,13 +412,13 @@ static void  *_EGLctx = NULL;
                         }
 
 // check if we are shuting down
-#define S52_CHECK_MUTX  g_static_mutex_lock(&_mp_mutex);       \
-                        if (NULL == _marinerCell) {            \
-                           g_static_mutex_unlock(&_mp_mutex);  \
-                           PRINTF("ERROR: mutex lock\n");      \
-                           g_assert(0);                        \
-                           exit(0);                            \
-                           return FALSE;                       \
+#define S52_CHECK_MUTX  GMUTEXLOCK(&_mp_mutex);           \
+                        if (NULL == _marinerCell) {       \
+                           GMUTEXUNLOCK(&_mp_mutex);      \
+                           PRINTF("ERROR: mutex lock\n"); \
+                           g_assert(0);                   \
+                           exit(0);                       \
+                           return FALSE;                  \
                         }
 
 
@@ -662,7 +668,7 @@ DLL double STD S52_getMarinerParam(S52MarinerParameter paramID)
 
     PRINTF("paramID:%i, val:%f\n", paramID, val);
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return val;
 }
@@ -746,7 +752,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
         default:
             PRINTF("WARNING: unknown Mariner's Parameter type (%i)\n", paramID);
 
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
 
             return FALSE;
     }
@@ -798,7 +804,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
     // OWNSHP02; MP
     // VESSEL01; MP
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return ret;
 }
@@ -1704,7 +1710,7 @@ DLL int    STD S52_init(void)
 #include <stdlib.h>
     //int setenv(const char *name, const char *value, int overwrite);
     setenv(name, value, 1);
-    env = g_getenv("OGR_S57_OPTIONS");
+     const char *env = g_getenv("OGR_S57_OPTIONS");
     PRINTF("%s\n", env);
 #endif
 
@@ -1870,7 +1876,7 @@ DLL int    STD S52_done(void)
     _EGLctx = NULL;
 #endif
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     PRINTF("libS52 done\n");
 
@@ -2538,7 +2544,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         // FIXME: refactor to return "const char *"
         if (FALSE == S52_getConfig(CONF_CHART, &chartPath)) {
             PRINTF("S57 file not found!\n");
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
             return FALSE;
         }
         fname = g_strdup(chartPath);
@@ -2551,7 +2557,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     if (TRUE != g_file_test(fname, (GFileTest) (G_FILE_TEST_EXISTS | G_FILE_TEST_IS_DIR))) {
         PRINTF("file or DIR not found (%s)\n", fname);
         g_free(fname);
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         return FALSE;
     }
 
@@ -2575,7 +2581,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 
             g_free(basename);
             g_free(fname);
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
 
             return TRUE;
         }
@@ -2615,7 +2621,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 
             g_free(basename);
             g_free(fname);
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
 
             return TRUE;
         }
@@ -2659,7 +2665,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 
     if (NULL == ch) {
         g_free(fname);
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         return FALSE;
     }
     ch->encPath = fname;
@@ -2675,7 +2681,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     // _app() specific to sector light
     _doCullLights = TRUE;
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
 }
@@ -2755,7 +2761,7 @@ exit:
     g_free(basename);
     g_free(fname);
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return ret;
 }
@@ -3722,6 +3728,7 @@ static int        _cull(_extent ext)
     return TRUE;
 }
 
+#ifdef S52_USE_GLES2
 static int        _drawRADAR()
 {
     for (guint i=0; i<_rasterList->len; ++i) {
@@ -3756,6 +3763,7 @@ static int        _drawRADAR()
 
     return TRUE;
 }
+#endif  // S52_USE_GLES2
 
 static int        _drawLayer(_extent ext, int layer)
 {
@@ -4093,11 +4101,17 @@ DLL int    STD S52_draw(void)
 
     EGL_BEG(DRAW);
 
+
+#ifdef S52_USE_ANDROID
     // do not wait if an other thread is allready drawing
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
+#else
+    if (FALSE == g_mutex_trylock(&_mp_mutex)) {
+#endif
         PRINTF("WARNING: trylock failed\n");
         goto exit;
     }
+
     //
     if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
         PRINTF("WARNING: no cell loaded\n");
@@ -4226,7 +4240,7 @@ DLL int    STD S52_draw(void)
     PRINTF("    DRAW: %.0f msec --------------------------------------\n", sec * 1000);
 
 exit:
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
 #if !defined(S52_USE_RADAR)
     EGL_END(DRAW);
@@ -4308,8 +4322,12 @@ DLL int    STD S52_drawLast(void)
     EGL_BEG(LAST);
 #endif
 
+#ifdef S52_USE_ANDROID
     // do not wait if an other thread is allready drawing
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
+#else
+    if (FALSE == g_mutex_trylock(&_mp_mutex)) {
+#endif
         PRINTF("WARNING: trylock failed\n");
         //g_assert(0);
         goto exit;
@@ -4365,7 +4383,7 @@ DLL int    STD S52_drawLast(void)
     PRINTF("DRAWLAST: %.0f msec\n", sec * 1000);
 
 exit:
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     EGL_END(LAST);
 
@@ -4418,7 +4436,7 @@ DLL int    STD S52_drawLayer(const char *name)
 
     if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
         PRINTF("WARNING: no cell loaded\n");
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         g_assert(0);
         return FALSE;
     }
@@ -4474,7 +4492,7 @@ DLL int    STD S52_drawLayer(const char *name)
         S52_GL_end(S52_GL_DRAW);
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
 }
@@ -4497,7 +4515,7 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
     // FIXME: check x,y
     S52_GL_drawStrWin(pixels_x, pixels_y, colorName, bsize, str);
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     EGL_END(STR);
 
@@ -4573,7 +4591,7 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
 
 
 exit:
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     EGL_END(BLIT);
 
@@ -4609,14 +4627,14 @@ DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
     // check bound
     if (FALSE == _validate_screenPos(pixels_x, pixels_y)) {
         PRINTF("WARNING: _validate_screenPos() failed\n");
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         g_assert(0);
         return FALSE;
     }
 
     if (FALSE == _win2prj(pixels_x, pixels_y)) {
         PRINTF("WARNING: _win2prj() failed\n");
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         g_assert(0);
         return FALSE;
     }
@@ -4626,7 +4644,7 @@ DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
     *pixels_x = uv.u;
     *pixels_y = uv.v;
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
 }
@@ -4639,7 +4657,7 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude)
     double xyz[3] = {*longitude, *latitude, 0.0};
     if (FALSE == S57_geo2prj3dv(1, xyz)) {
         PRINTF("WARNING: S57_geo2prj3dv() failed\n");
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         g_assert(0);
         return FALSE;
     }
@@ -4649,7 +4667,7 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude)
     *longitude = xyz[0];
     *latitude  = xyz[1];
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
 }
@@ -4666,7 +4684,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     /*
     if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
         PRINTF("WARNING: call failed, no cell loaded to project view .. use S52_loadCell() first\n");
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         g_assert(0);
         return FALSE;
     }
@@ -4675,14 +4693,14 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     //*
     if (ABS(cLat) > 90.0) {
         PRINTF("WARNING: cLat outside [-90..+90](%f)\n", cLat);
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         //g_assert(0);
         return FALSE;
     }
 
     if (ABS(cLon) > 180.0) {
         PRINTF("WARNING: cLon outside [-180..+180] (%f)\n", cLon);
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         //g_assert(0);
         return FALSE;
     }
@@ -4693,7 +4711,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     } else {
         if ((rNM < MIN_RANGE) || (rNM > MAX_RANGE)) {
             PRINTF("WARNING:  rNM outside limit (%f)\n", rNM);
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
             //g_assert(0);
             return FALSE;
         }
@@ -4703,7 +4721,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     // Note: must validate rNM first
     if ((ABS(cLat)*60.0 + rNM) > (90.0*60)) {
         PRINTF("WARNING: rangeNM > 90*60 NM (%f)\n", rNM);
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         //g_assert(0);
         return FALSE;
     }
@@ -4713,7 +4731,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     } else {
         if ((north>=360.0) || (north<0.0)) {
             PRINTF("WARNING: north outside [0..360[ (%f)\n", north);
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
             //g_assert(0);
             return FALSE;
         }
@@ -4730,7 +4748,7 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     _view.rNM   = rNM;
     _view.north = north;
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
 }
@@ -4747,7 +4765,7 @@ DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *nort
     /*
     if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
         PRINTF("WARNING: call failed, no cell loaded to project view .. use S52_loadCell() first\n");
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         g_assert(0);
         return FALSE;
     }
@@ -4774,7 +4792,7 @@ DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *nort
     // debug
     PRINTF("lat:%f, long:%f, range:%f north:%f\n", *cLat, *cLon, *rNM, *north);
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
 }
@@ -4790,7 +4808,7 @@ DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int
 
     S52_GL_setViewPort(pixels_x, pixels_y, pixels_width, pixels_height);
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
 }
@@ -4926,7 +4944,7 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
             g_free(fnm);
             g_free(name);
 
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
             return FALSE;
         }
 
@@ -4949,7 +4967,7 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
         g_free(name);
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
 }
@@ -4973,11 +4991,11 @@ DLL int    STD S52_toggleObjClass(const char *className)
     S52_objSup ret = S52_PL_toggleObjClass(className);
     if (S52_SUP_ERR == ret) {
         PRINTF("WARNING: can't toggle object: %s\n", className);
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         return FALSE;
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     if (S52_SUP_ON  == ret)
         PRINTF("Supressing display of object: %s\n", className);
@@ -4998,11 +5016,11 @@ DLL int    STD S52_toggleObjClassON (const char *className)
     S52_objSup supState = S52_PL_getObjClassState(className);
     if (S52_SUP_ERR == supState) {
         PRINTF("WARNING: can't toggle %s\n", className);
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         return -1;
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     if (S52_SUP_OFF == supState) {
         S52_toggleObjClass(className);
@@ -5024,11 +5042,11 @@ DLL int    STD S52_toggleObjClassOFF(const char *className)
     S52_objSup supState = S52_PL_getObjClassState(className);
     if (S52_SUP_ERR == supState) {
         PRINTF("WARNING: can't toggle %s\n", className);
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         return -1;
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     if (S52_SUP_ON == supState) {
         S52_toggleObjClass(className);
@@ -5050,11 +5068,11 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className)
     S52_objSup supState = S52_PL_getObjClassState(className);
     if (S52_SUP_ERR == supState) {
         PRINTF("WARNING: can't toggle %s\n", className);
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         return -1;
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     if (S52_SUP_ON == supState)
         return TRUE;
@@ -5073,20 +5091,20 @@ DLL int    STD S52_setS57ObjClassSupp(const char *className, int value)
     S52_objSup supState = S52_PL_getObjClassState(className);
     if (S52_SUP_ERR == supState) {
         PRINTF("WARNING: can't toggle %s\n", className);
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         return -1;
     }
 
     if (TRUE==value  && S52_SUP_ON  == supState) {
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         return FALSE;
     }
     if (FALSE==value && S52_SUP_OFF == supState) {
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         return FALSE;
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     S52_toggleObjClass(className);
 
@@ -5107,13 +5125,13 @@ DLL int    STD S52_loadPLib(const char *plibName)
     if (NULL == plibName) {
         if (0 == S52_getConfig(CONF_PLIB, &PLibPath)) {
             PRINTF("default PLIB not found in .cfg (%s)\n", CONF_PLIB);
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
             return FALSE;
         } else {
             if (TRUE == S52_PL_load(PLibPath)) {
                 g_string_append_printf(_plibNameList, ",%s", PLibPath);
             } else {
-                g_static_mutex_unlock(&_mp_mutex);
+                GMUTEXUNLOCK(&_mp_mutex);
                 return FALSE;
             }
         }
@@ -5121,7 +5139,7 @@ DLL int    STD S52_loadPLib(const char *plibName)
         if (TRUE == S52_PL_load(plibName)) {
             g_string_append_printf(_plibNameList, ",%s", plibName);
         } else {
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
             return FALSE;
         }
     }
@@ -5177,7 +5195,7 @@ DLL int    STD S52_loadPLib(const char *plibName)
     // signal to rebuild all cmd
     _doCS = TRUE;
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
 }
@@ -5207,7 +5225,7 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 
     if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
         PRINTF("WARNING: no cell loaded\n");
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         g_assert(0);
         return FALSE;
     }
@@ -5215,7 +5233,7 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     // check bound
     if (FALSE == _validate_screenPos(&pixels_x, &pixels_y)) {
         PRINTF("WARNING: coord out of scteen\n");
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         g_assert(0);
         return FALSE;
     }
@@ -5317,7 +5335,7 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     gdouble sec = g_timer_elapsed(_timer, NULL);
     PRINTF("     PICKAT: %.0f msec\n", sec * 1000);
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     //return NULL; // debug
     return name;
@@ -5330,7 +5348,7 @@ DLL cchar *STD S52_getPLibNameList(void)
 
     const char * str = _plibNameList->str;
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return str;
 }
@@ -5353,7 +5371,7 @@ DLL cchar *STD S52_getPalettesNameList(void)
 
     str = _paltNameList->str;
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return str;
 }
@@ -5408,7 +5426,7 @@ DLL cchar *STD S52_getS57ClassList(const char *cellName)
 
                     str = _S57ClassList->str;
 
-                    g_static_mutex_unlock(&_mp_mutex);
+                    GMUTEXUNLOCK(&_mp_mutex);
 
                     return str;
                 }
@@ -5418,7 +5436,7 @@ DLL cchar *STD S52_getS57ClassList(const char *cellName)
 
                     str = _S57ClassList->str;
 
-                    g_static_mutex_unlock(&_mp_mutex);
+                    GMUTEXUNLOCK(&_mp_mutex);
 
                     return str;
                 }
@@ -5429,7 +5447,7 @@ DLL cchar *STD S52_getS57ClassList(const char *cellName)
     if (0 != _S57ClassList->len)
         str = _S57ClassList->str;
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return str;
 }
@@ -5484,13 +5502,13 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
             //str = _S57ClassList->str;
             PRINTF("%s\n", _S52ObjNmList->str);
             str = _S52ObjNmList->str;
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
 
             return str;
         }
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return NULL;
 }
@@ -5523,7 +5541,7 @@ DLL cchar *STD S52_getAttList(unsigned int S57ID)
     }
 
 exit:
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return str;
 }
@@ -5582,7 +5600,7 @@ DLL cchar *STD S52_getCellNameList(void)
     if (0 != _cellNameList->len)
         str = _cellNameList->str;
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return str;
 }
@@ -5603,7 +5621,7 @@ DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char
 
     S52_PL_setRGB(colorName, R, G, B);
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
 }
@@ -5624,7 +5642,7 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
 
     S52_PL_getRGB(colorName, R, G, B);
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
 }
@@ -5648,10 +5666,10 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius)
                 S52_GL_delRaster(raster, TRUE);
                 g_ptr_array_remove_index_fast(_rasterList, i);
                 g_free(raster);
-                g_static_mutex_unlock(&_mp_mutex);
+                GMUTEXUNLOCK(&_mp_mutex);
                 return TRUE;
             } else {
-                g_static_mutex_unlock(&_mp_mutex);
+                GMUTEXUNLOCK(&_mp_mutex);
                 return FALSE;
             }
         }
@@ -5666,7 +5684,7 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius)
     raster->gdtSz      = 1;    // 1 byte Alpha
     g_ptr_array_add(_rasterList, raster);
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
     return TRUE;
 }
 
@@ -5917,7 +5935,7 @@ DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, u
             ret = S52_GL_dumpS57IDPixels(toFilename, obj, width, height);
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return ret;
 }
@@ -6075,7 +6093,7 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     //       (NULL==listAttVal)?"NULL":listAttVal);
 
 exit:
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return (S52ObjectHandle)obj;
 }
@@ -6087,7 +6105,7 @@ DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
 
     if (0 == S57ID) {
         PRINTF("WARNING: invalid S57ID [%i]\n", S57ID);
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         return NULL;
     }
 
@@ -6098,14 +6116,14 @@ DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                 S57_geo *geo = S52_PL_getGeo(obj);
                 if (S57ID == S57_getGeoID(geo)) {
-                    g_static_mutex_unlock(&_mp_mutex);
+                    GMUTEXUNLOCK(&_mp_mutex);
                     return (S52ObjectHandle)obj;
                 }
             }
         }
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return NULL;
 }
@@ -6152,7 +6170,7 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
     S52_obj *obj = (S52_obj *)objH;
     if (NULL == _removeObj(_marinerCell, obj)) {
         PRINTF("WARNING: couldn't delete .. objH not in Mariners' Object List\n");
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
 
         return objH;  // contrairy to other call return objH when fail
     }                 // so caller can further process it
@@ -6160,7 +6178,7 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
     // queue obj for deletion in next APP() cycle
     g_ptr_array_add(_objToDelList, obj);
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return (S52ObjectHandle)NULL;
 }
@@ -6185,7 +6203,7 @@ DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH)
         objH = FALSE;
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return objH;
 }
@@ -6256,7 +6274,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         // check if same point
         if (latBegin==latEnd  && lonBegin==lonEnd) {
             PRINTF("WARNING: rejecting this leglin (same point)\n");
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
             return FALSE;
         }
 
@@ -6280,7 +6298,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
 
         }
 
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
 
         return leglin;
     }
@@ -6355,7 +6373,7 @@ DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double 
     }
 
 exit:
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return objH;
 }
@@ -6400,7 +6418,7 @@ DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH,  int vecstb, double 
     }
 
 exit:
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     // debug
     //PRINTF("fini\n");
@@ -6478,7 +6496,7 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
     S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)objH);
     if (NULL == obj) {
         objH = FALSE;
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         return objH;
     }
 
@@ -6520,7 +6538,7 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
         double  *ppt    = NULL;
 
         if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
             return FALSE;
         }
 
@@ -6528,7 +6546,7 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
         if (FALSE == S57_geo2prj3dv(1, xyz)) {
             PRINTF("WARNING: S57_geo2prj3dv() fail\n");
 
-            g_static_mutex_unlock(&_mp_mutex);
+            GMUTEXUNLOCK(&_mp_mutex);
             return FALSE;
         }
 #endif
@@ -6547,7 +6565,7 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
         }
     }
 
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     //PRINTF("-1- objH:%#lX, latitude:%f, longitude:%f, data:%f\n", (long unsigned int)objH, latitude, longitude, data);
 
@@ -6629,7 +6647,7 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
     }
 
 exit:
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return objH;
 
@@ -6672,11 +6690,11 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
             double  *ppt    = NULL;
 
             if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
-                g_static_mutex_unlock(&_mp_mutex);
+                GMUTEXUNLOCK(&_mp_mutex);
                 return FALSE;
             }
             if (1 != npt) {
-                g_static_mutex_unlock(&_mp_mutex);
+                GMUTEXUNLOCK(&_mp_mutex);
                 return FALSE;
             }
             */
@@ -6711,7 +6729,7 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
     }
 
 exit:
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     /*
     if (_SELECTED == objH) {
@@ -6832,7 +6850,7 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
 
     if (TRUE != _isObjNameValid(objH, "ebline") && TRUE != _isObjNameValid(objH, "vrmark")) {
         PRINTF("WARNING: not a 'ebline' or 'vrmark' object\n");
-        g_static_mutex_unlock(&_mp_mutex);
+        GMUTEXUNLOCK(&_mp_mutex);
         return FALSE;
     }
 
@@ -6904,7 +6922,7 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
     }
 
 exit:
-    g_static_mutex_unlock(&_mp_mutex);
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return objH;
 }
@@ -9117,7 +9135,8 @@ static int                 _initSock(void)
     //    PRINTF("DEBUG: main loop is NOT running ..\n");
     //}
 
-    g_type_init();
+    // DEPRECATED
+    //g_type_init();
 
     GSocketService *service        = g_socket_service_new();
 

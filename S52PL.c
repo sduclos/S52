@@ -3566,12 +3566,10 @@ int         S52_PL_doneVOCmd(S52_vec *vecObj)
 }
 
 
-S52_vCmd    S52_PL_getVOCmd(S52_vec *vecObj)
+S52_vCmd    S52_PL_getNextVOCmd(S52_vec *vecObj)
 // return S52_VC_* (Vector Command)
 //
 {
-    // FIXME: polygone mode 'outline' not implemented (not used)
-
     //int pm = 0;  // polygon mode
     return_if_null(vecObj);
 

@@ -3,8 +3,16 @@
 #
 
 
+2014APR25
+    -fix build of s52glx
+
+2014APR19
+    -fix compiler warning (static mutex deprecated) 
+    -fix mem corruption
+
 2014APR17
     -add optimisation of symbol with GL_LINES
+    -mod optimisation collecte all GL_POINTS of a symbol (eg. OBSTRN11)
 
 2014APR13
     -mod stabilize the radar image

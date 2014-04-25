@@ -74,7 +74,8 @@ CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
          -DS52_USE_DOTPITCH
 
 s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1`
-s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_USE_DOTPITCH
+
+s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_DOTPITCH
 
 # -DUSE_FAKE_AIS      - debug - programmaticaly faked AIS data
 # -DUSE_AIS           - call s52ais.c
@@ -86,7 +87,7 @@ s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_GTK2 -DS52_US
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 # -DS52_USE_RADAR     - when in RADAR mode
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
-                      -DS52_USE_DOTPITCH -DS52_USE_EGL -DS52_USE_GLES2 -DS52_USE_AFGLOW
+                      -DS52_USE_DOTPITCH -DS52_USE_GLES2 -DS52_USE_EGL -DS52_USE_AFGLOW -DUSE_AIS
 
 # same as s52eglx, but "gtk+-2.0" is added - no AIS
 s52gtk2egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` \
@@ -114,7 +115,7 @@ s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`     \
                       -I$(OPENEV_HOME) -DGV_USE_DOUBLE_PRECISION_COORD \
                       -I.. -DS52_USE_GV
 
-s52gv2:     CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0`      \
+s52gv2:     CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0`       \
                       -D_REENTRANT  -DGV_USE_DOUBLE_PRECISION_COORD    \
                       -I$(OPENEV2HOME) -I..  -DS52_USE_GV -DS52_USE_GTK2
 
@@ -142,7 +143,7 @@ GL__LIBS    = -lGL
 OGR_LIBS  = `gdal-config --libs`
 
 # Ubuntu 13 need -lX11 -lm 
-s52eglx   : LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS)
+s52eglx   : LIBS    = `pkg-config --libs egl wayland-egl wayland-client x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS)
 
 # same as s52eglx, add "gtk+-2.0"
 s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` $(S52_LIBS)
@@ -150,13 +151,13 @@ s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobjec
 # same as s52eglx, add "gtk+-3.0"
 s52gtk3egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-3.0` $(S52_LIBS)
 
-s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a                 \
-                      $(S52DROIDLIBS)/libgobject-2.0.a             \
-                      $(S52DROIDLIBS)/libgmodule-2.0.a             \
-                      $(S52DROIDLIBS)/libglib-2.0.a                \
-                      $(S52DROIDLIBS)/libgthread-2.0.a             \
-                      $(S52DROIDLIBS)/libiconv.a                   \
-                      $(S52DROIDLIBS)/libgps.a                     \
+s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a      \
+                      $(S52DROIDLIBS)/libgobject-2.0.a  \
+                      $(S52DROIDLIBS)/libgmodule-2.0.a  \
+                      $(S52DROIDLIBS)/libglib-2.0.a     \
+                      $(S52DROIDLIBS)/libgthread-2.0.a  \
+                      $(S52DROIDLIBS)/libiconv.a        \
+                      $(S52DROIDLIBS)/libgps.a          \
                        -L$(DROIDLIBS) -llog -lm
 
 
@@ -164,7 +165,7 @@ s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a                 \
 #
 #
 s52glx: s52glx.c
-	$(CC) $(CFLAGS) s52glx.c $(S52_LIBS) -o $@
+	$(CC) $(CFLAGS) s52glx.c $(S52_LIBS) -lGL -lX11  -o $@
 
 #s52eglx: s52egl.c
 #	$(CC) $(CFLAGS) s52egl.c $(LIBS) -o $@

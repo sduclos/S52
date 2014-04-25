@@ -576,10 +576,7 @@ static int      _s52_init       (s52engine *engine)
 #endif
 
     // read cell location fron s52.cfg
-    //S52_loadCell(NULL, NULL);
-    S52_loadCell("CA479017.000", NULL);
-    S52_loadCell("SCX_CapSante.tif", NULL);
-    S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+    S52_loadCell(NULL, NULL);
 
     // Rimouski
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);

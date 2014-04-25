@@ -158,7 +158,17 @@ typedef struct _ais_t {
 static struct gps_data_t  _gpsdata;
 
 static GArray            *_ais_list       = NULL;
+
+#ifdef S52_USE_ANDROID
 static GStaticMutex       _ais_list_mutex = G_STATIC_MUTEX_INIT;  // protect _ais_list
+//#define g_mutex_lock g_static_mutex_lock
+#define GMUTEXLOCK   g_static_mutex_lock
+#define GMUTEXUNLOCK g_static_mutex_unlock
+#else
+static GMutex             _ais_list_mutex; // protect _ais_list
+#define GMUTEXLOCK   g_mutex_lock
+#define GMUTEXUNLOCK g_mutex_unlock
+#endif
 
 #define AIS_SILENCE_MAX 600   // sec of silence from an AIS before deleting it
 
@@ -682,6 +692,7 @@ static int           _delAIS    (unsigned int mmsi)
     return FALSE;
 }
 
+#if 0
 static int           _setAISInfo(unsigned int mmsi, unsigned int imo, char *callsign,
                                  unsigned int shiptype,
                                  unsigned int month, unsigned int day, unsigned int hour, unsigned int minute,
@@ -698,6 +709,7 @@ static int           _setAISInfo(unsigned int mmsi, unsigned int imo, char *call
 
     return TRUE;
 }
+#endif
 
 static int           _setAISPos (unsigned int mmsi, double lat, double lon, double heading)
 {
@@ -1253,15 +1265,20 @@ static gpointer      _gpsdClientRead(gpointer dummy)
         g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec: %d, %s\n", errno, gps_errstr(errno));
 
         // try to connect to GPSD server, bailout after 10 failed attempt
-        g_static_mutex_lock(&_ais_list_mutex);
+        //g_static_mutex_lock(&_ais_list_mutex);
+        //g_mutex_lock(&_ais_list_mutex);
+        GMUTEXLOCK(&_ais_list_mutex);
+
         if ((NULL==_ais_list) || (10 <= ++nWait)) {
             g_print("s52ais:_gpsdClientRead() no AIS list (main exited) or no GPSD server.. terminate _gpsClientRead thread\n");
 
-            g_static_mutex_unlock(&_ais_list_mutex);
+            //g_static_mutex_unlock(&_ais_list_mutex);
+            GMUTEXUNLOCK(&_ais_list_mutex);
 
             return NULL;
         }
-        g_static_mutex_unlock(&_ais_list_mutex);
+        //g_static_mutex_unlock(&_ais_list_mutex);
+        GMUTEXUNLOCK(&_ais_list_mutex);
 
         g_usleep(1000 * 1000); // 1.0 sec
     }
@@ -1279,19 +1296,23 @@ static gpointer      _gpsdClientRead(gpointer dummy)
 
     // heart of the client
     for (;;) {
-        g_static_mutex_lock(&_ais_list_mutex);
+        //g_static_mutex_lock(&_ais_list_mutex);
+        GMUTEXLOCK(&_ais_list_mutex);
         if (NULL == _ais_list) {
             g_print("s52ais:_gpsdClientRead() no AIS list .. main exited .. terminate gpsRead thread\n");
             goto exit;
         }
-        g_static_mutex_unlock(&_ais_list_mutex);
+        //g_static_mutex_unlock(&_ais_list_mutex);
+        GMUTEXUNLOCK(&_ais_list_mutex);
 
         if (FALSE == gps_waiting(&_gpsdata,  500*1000)) {    // wait 0.5 sec     (500*1000 uSec)
             //g_print("s52ais:_gpsdClientRead():gps_waiting() timed out\n");
 
-            g_static_mutex_lock(&_ais_list_mutex);
+            //g_static_mutex_lock(&_ais_list_mutex);
+            GMUTEXLOCK(&_ais_list_mutex);
             _updateTimeTag();
-            g_static_mutex_unlock(&_ais_list_mutex);
+            //g_static_mutex_unlock(&_ais_list_mutex);
+            GMUTEXUNLOCK(&_ais_list_mutex);
 
         } else {
             errno = 0;
@@ -1302,9 +1323,11 @@ static gpointer      _gpsdClientRead(gpointer dummy)
                 //g_print("s52ais:_gpsdClientRead():gps_read() ..\n");
 
                 // handle AIS data
-                g_static_mutex_lock(&_ais_list_mutex);
+                //g_static_mutex_lock(&_ais_list_mutex);
+                GMUTEXLOCK(&_ais_list_mutex);
                 _updateAISdata(&_gpsdata);
-                g_static_mutex_unlock(&_ais_list_mutex);
+                //g_static_mutex_unlock(&_ais_list_mutex);
+                GMUTEXUNLOCK(&_ais_list_mutex);
 
                 continue;
             }
@@ -1322,7 +1345,8 @@ static gpointer      _gpsdClientRead(gpointer dummy)
 
 exit:
     // exit thread
-    g_static_mutex_unlock(&_ais_list_mutex);
+    //g_static_mutex_unlock(&_ais_list_mutex);
+    GMUTEXUNLOCK(&_ais_list_mutex);
 
     gps_stream(&_gpsdata, WATCH_DISABLE, NULL);
     gps_close(&_gpsdata);
@@ -1373,7 +1397,8 @@ static int           _startGPSD(void)
 
 static int           _flushAIS(int all)
 {
-    g_static_mutex_lock(&_ais_list_mutex);
+    //g_static_mutex_lock(&_ais_list_mutex);
+    GMUTEXLOCK(&_ais_list_mutex);
     if (NULL != _ais_list) {
         unsigned int i = 0;
         for (i=0; i<_ais_list->len; ++i) {
@@ -1386,7 +1411,8 @@ static int           _flushAIS(int all)
             _ais_list = NULL;
         }
     }
-    g_static_mutex_unlock(&_ais_list_mutex);
+    //g_static_mutex_unlock(&_ais_list_mutex);
+    GMUTEXUNLOCK(&_ais_list_mutex);
 
     return TRUE;
 }
@@ -1397,16 +1423,19 @@ int            s52ais_initAIS(void)
 
     // so all occurence of _ais_list are mutex'ed
     // (but this one is useless - but what if android restart main()!)
-    g_static_mutex_lock(&_ais_list_mutex);
+    //g_static_mutex_lock(&_ais_list_mutex);
+    GMUTEXLOCK(&_ais_list_mutex);
     if (NULL == _ais_list) {
         _ais_list = g_array_new(FALSE, TRUE, sizeof(_ais_t));
     } else {
         g_print("s52ais:s52ais_initAIS(): bizzard case where we are restarting a running process!!\n");
 
-        g_static_mutex_unlock(&_ais_list_mutex);
+        //g_static_mutex_unlock(&_ais_list_mutex);
+        GMUTEXUNLOCK(&_ais_list_mutex);
         return TRUE;
     }
-    g_static_mutex_unlock(&_ais_list_mutex);
+    //g_static_mutex_unlock(&_ais_list_mutex);
+    GMUTEXUNLOCK(&_ais_list_mutex);
 
 
 #if 0
@@ -1438,7 +1467,11 @@ int            s52ais_initAIS(void)
 // no thread needed in standalone
 #ifndef S52AIS_STANDALONE
     // not joinable - gps done will not wait
+#ifdef S52_USE_ANDROID
     _gpsClientThread = g_thread_create_full(_gpsdClientRead, NULL, 0, FALSE, TRUE, G_THREAD_PRIORITY_NORMAL, NULL);
+#else
+    _gpsClientThread = g_thread_new("threadName", _gpsdClientRead, NULL);
+#endif
 #endif
 
     // setup timer
@@ -1608,8 +1641,9 @@ int main(int argc, char *argv[])
 {
     g_print("main():starting: argc=%i, argv[0]=%s\n", argc, argv[0]);
 
-    g_thread_init(NULL);
-    g_type_init();
+    // deprecated
+    //g_thread_init(NULL);
+    //g_type_init();
 
     _initSIG();
 

@@ -48,16 +48,10 @@
 
 void _printf(const char *file, int line, const char *function, const char *frmt, ...);
 #define PRINTF(...) _printf(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__)
-
-
-#else
-
+#else    // S52_DEBUG
 #define PRINTF(...)
-//NOOP
-//static inline void NOOP(char *str, ...) {}
-
-#endif
-#endif
+#endif  // S52_DEBUG
+#endif  // SOLARIS
 
 #ifdef S52_USE_GLIB2
 #define SPRINTF g_sprintf

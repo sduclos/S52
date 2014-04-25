@@ -3,9 +3,10 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE     := s52droid
-#LOCAL_SRC_FILES  := ../../s52egl.c ../../s52ais.c
-# when S52AIS_STANDALONE 
-LOCAL_SRC_FILES  := ../../s52egl.c
+# -DUSE_AIS
+LOCAL_SRC_FILES  := ../../s52egl.c ../../s52ais.c
+# -DS52AIS_STANDALONE 
+#LOCAL_SRC_FILES  := ../../s52egl.c
 
 
 # CHECK THIS: include $(BUILD_EXECUTABLE)
@@ -30,9 +31,9 @@ S52DROIDINC      := /home/sduclos/S52/test/android/dist/sysroot/include
 # TEGRA: tadp: -fno-omit-frame-pointer -mno-thumb
 # NDK-BUILD add this: -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
 LOCAL_CFLAGS     := -g -O0 -std=c99 -Wall -DG_LOG_DOMAIN=\"s52droid\"                 \
-                    -DS52_USE_DOTPITCH -DS52_USE_ANDROID -DS52_USE_TEGRA2             \
+                    -DS52_USE_DOTPITCH -DS52_USE_ANDROID -DS52_USE_ADRENO             \
                     -DS52_USE_EGL -DS52_USE_GLES2                                     \
-                    -DS52AIS_STANDALONE                                               \
+                    -DUSE_AIS                                                         \
                     -I../..                                                           \
                     -I$(S52DROIDINC)                                                  \
                     -I$(S52DROIDINC)/glib-2.0                                         \

@@ -205,9 +205,6 @@ static GTimer *_timer = NULL;
 
 #define VESSELTURN_UNDEFINED 129
 
-// test - ownshp
-static S52ObjectHandle _ownshp            = NULL;
-#define OWNSHPLABEL "OWNSHP\n220 deg / 6.0 kt"
 
 
 //------ DEBUG ----
@@ -216,20 +213,24 @@ static S52ObjectHandle _ownshp            = NULL;
 static S52ObjectHandle _vessel_ais        = NULL;
 #define VESSELLABEL "~~MV Non Such~~ "           // last char will be trimmed
 
+// test synthetic after glow on VESSEL
 #ifdef S52_USE_AFGLOW
 #define MAX_AFGLOW_PT (12 * 20)   // 12 min @ 1 vessel pos per 5 sec
 //#define MAX_AFGLOW_PT 10        // debug
 static S52ObjectHandle _vessel_ais_afglow = NULL;
-
 #endif
 
-#endif
+// test - ownshp
+static S52ObjectHandle _ownshp            = NULL;
+#define OWNSHPLABEL "OWNSHP\n220 deg / 6.0 kt"
 
-typedef void (*PFNGLINSERTEVENTMARKEREXT)(int length, const char *marker);
+#endif  // USE_FAKE_AIS
+
+//typedef void (*PFNGLINSERTEVENTMARKEREXT)(int length, const char *marker);
 //typedef void (GL_APIENTRY *PFNGLPUSHGROUPMARKEREXT)  (GLsizei length, const char *marker);
 //typedef void (GL_APIENTRY *PFNGLPOPGROUPMARKEREXT)   (void);
 
-static PFNGLINSERTEVENTMARKEREXT _glInsertEventMarkerEXT = NULL;
+//static PFNGLINSERTEVENTMARKEREXT _glInsertEventMarkerEXT = NULL;
 //static PFNGLPUSHGROUPMARKEREXT   _glPushGroupMarkerEXT   = NULL;
 //static PFNGLPOPGROUPMARKEREXT    _glPopGroupMarkerEXT    = NULL;
 
@@ -411,31 +412,30 @@ static int      _egl_init       (s52engine *engine)
         EGL_BLUE_SIZE,           8,
         //EGL_ALPHA_SIZE,          8,
 
-        //EGL_RED_SIZE,            5,
-        //EGL_GREEN_SIZE,          6,
-        //EGL_BLUE_SIZE,           5,
-
         // Tegra 2 CSAA (anti-aliase)
         EGL_COVERAGE_BUFFERS_NV, 1,  // TRUE
         //EGL_COVERAGE_BUFFERS_NV, 0,
-        //EGL_COVERAGE_SAMPLES_NV, 2,  // always 5 in practice on tegra 2
+
+        EGL_COVERAGE_SAMPLES_NV, 2,  // always 5 in practice on tegra 2
 
         EGL_NONE
     };
 #else
 
 #ifdef S52_USE_ADRENO
-#define EGL_OPENGL_ES3_BIT_KHR				    0x00000040
+//#define EGL_OPENGL_ES3_BIT_KHR				    0x00000040
     EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
-        //EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
-        // this bit opens access to ES3 functions on QCOM hardware pre-Android support for ES3
-        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT_KHR,
+
+        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
+        // this bit open access to ES3 functions on QCOM hardware pre-Android support for ES3
+        // WARNING: this break MSAA on Android 4.4.2 - Kit-Kat
+        //EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT_KHR,
 
 
         // Note: MSAA work on Andreno in: setting > developer > MSAA
-        //EGL_SAMPLES,             1,  // fail on Adreno
-        //EGL_SAMPLE_BUFFERS,      4,  // fail on Adreno
+        //EGL_SAMPLES,            1,  // fail on Adreno
+        //EGL_SAMPLE_BUFFERS,     4,  // fail on Adreno
 
         EGL_RED_SIZE,           8,
         EGL_GREEN_SIZE,         8,
@@ -446,32 +446,32 @@ static int      _egl_init       (s52engine *engine)
 #else
 
 #ifdef S52_USE_GLES2
-    // Mesa OpenGL ES 2.x
+    // Mesa OpenGL ES 2.x, 3.x
     const EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
 
-        //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-        //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,
+        //EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
 
         EGL_RED_SIZE,        8,
         EGL_GREEN_SIZE,      8,
         EGL_BLUE_SIZE,       8,
         //EGL_ALPHA_SIZE,      8,
 
-        //EGL_RED_SIZE,        5,
-        //EGL_GREEN_SIZE,      6,
-        //EGL_BLUE_SIZE,       5,
+        //EGL_BUFFER_SIZE,        16,
+        //EGL_BUFFER_SIZE,        24,
 
         //EGL_DEPTH_SIZE,         16,
         //EGL_DEPTH_SIZE,         24,
 
         //EGL_STENCIL_SIZE,        8,
 
-        // fail on Mesa
+        // fail on Mesa (MSAA)
         //EGL_SAMPLES,             1,
         //EGL_SAMPLE_BUFFERS,      1,
         //EGL_SAMPLE_BUFFERS,      4,
+        //EGL_SAMPLE_BUFFERS,      8,
 
         EGL_NONE
     };
@@ -491,23 +491,6 @@ static int      _egl_init       (s52engine *engine)
 #endif  // S52_USE_GLES2
 #endif  // S52_USE_ADRENO
 #endif  // S52_USE_TEGRA2
-
-    /*
-    const EGLint eglConfigList[] = {
-        EGL_SAMPLES,             0,   // > 0, fail on xoom
-        EGL_SAMPLE_BUFFERS,      1,   // 0 - MSAA fail (anti-aliassing)
-        EGL_RED_SIZE,            5,   // exact
-        EGL_GREEN_SIZE,          6,   // exact
-        EGL_BLUE_SIZE,           5,   // exact
-        EGL_ALPHA_SIZE,          0,   // exact
-        //EGL_BUFFER_SIZE,        16,     // any
-        //EGL_DEPTH_SIZE,         16,     // any
-        EGL_STENCIL_SIZE,        0,
-        EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,      // exact
-        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,  // exact
-        EGL_NONE
-    };
-    //*/
 
 
 #ifdef S52_USE_ANDROID
@@ -535,10 +518,10 @@ static int      _egl_init       (s52engine *engine)
     //EGLint     tmp;
     //EGLConfig  eglConfig[320];
     //EGLConfig  eglConfig[27];
+    //EGLConfig  eglConfig[780];
     EGLConfig  eglConfig;
     EGLint     eglNumConfigs = 0;
 
-    //eglGetConfigs(eglDisplay, eglConfig, 320, &tmp);
     eglGetConfigs(eglDisplay, NULL, 0, &eglNumConfigs);
     LOGI("eglNumConfigs = %i\n", eglNumConfigs);
 
@@ -558,11 +541,11 @@ static int      _egl_init       (s52engine *engine)
 
     if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, &eglConfig, 1, &eglNumConfigs)) {
     //if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, eglConfig, 27, &eglNumConfigs))
-        LOGI("eglChooseConfig(): failed, exiting .. [0x%x]\n", eglGetError());
-        exit(0);
+        LOGI("eglChooseConfig(): call failed [0x%x]\n", eglGetError());
+        g_assert(0);
     }
     if (0 == eglNumConfigs) {
-        LOGI("eglChooseConfig(): eglNumConfigs no matching config [0x%x]\n", eglGetError());
+        LOGI("eglChooseConfig(): eglNumConfigs zero matching config [0x%x]\n", eglGetError());
         g_assert(0);
     }
     // debug
@@ -608,15 +591,20 @@ static int      _egl_init       (s52engine *engine)
         eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vID);
         tmplt.visualid = vID;
         visual = XGetVisualInfo(display, VisualIDMask, &tmplt, &n);
-
+        if (NULL == visual) {
+            LOGE("XGetVisualInfo() failed.\n");
+            g_assert(0);
+        }
         screen = DefaultScreen(display);
         wa.colormap         = XCreateColormap(display, RootWindow(display, screen), visual->visual, AllocNone);
+        //wa.colormap         = XCreateColormap(display, RootWindow(display, screen), NULL, AllocNone);
         wa.background_pixel = 0xFFFFFFFF;
         wa.border_pixel     = 0;
         wa.event_mask       = ExposureMask | StructureNotifyMask | KeyPressMask | ButtonPressMask | ButtonReleaseMask;
 
         window = XCreateWindow(display, RootWindow(display, screen), 0, 0, 1280, 1024,
                                0, visual->depth, InputOutput, visual->visual, mask, &wa);
+                               //0, 0, InputOutput, NULL, mask, &wa);
 
         sh.flags = USPosition;
         sh.x = 0;
@@ -685,10 +673,10 @@ static int      _egl_init       (s52engine *engine)
 
     //--------------------------------------------------------------------------------------------------
     // get EGL Marker & Timer
-    _glInsertEventMarkerEXT = (PFNGLINSERTEVENTMARKEREXT) eglGetProcAddress("glInsertEventMarkerEXT");
-    if (!_glInsertEventMarkerEXT) {
-        LOGE("error: eglGetProcAddress() returned NULL\n");
-    }
+    //_glInsertEventMarkerEXT = (PFNGLINSERTEVENTMARKEREXT) eglGetProcAddress("glInsertEventMarkerEXT");
+    //if (!_glInsertEventMarkerEXT) {
+    //    LOGE("error: eglGetProcAddress() returned NULL\n");
+    //}
 
     // get GPU driver timer - EGL_NV_system_time
     const char *extstr = eglQueryString(eglDisplay, EGL_EXTENSIONS);
@@ -747,6 +735,7 @@ static void     _egl_done       (s52engine *engine)
 static int      _egl_beg        (s52engine *engine, const char *tag)
 {
     (void)engine;
+    (void)tag;
 
     //LOGE("s52egl:_egl_beg() .. \n");
     g_timer_reset(_timer);
@@ -800,9 +789,10 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     }
     */
 
-    //*
-    if (_glInsertEventMarkerEXT) {
-        _glInsertEventMarkerEXT(g_utf8_strlen(tag, -1), tag);
+    /*
+    if (NULL != _glInsertEventMarkerEXT) {
+        //_glInsertEventMarkerEXT(g_utf8_strlen(tag, -1), tag);
+        _glInsertEventMarkerEXT(strlen(tag), tag);
         //LOGI("s52egl:_egl_beg(): %s\n", tag);
     }
     //*/
@@ -896,7 +886,6 @@ static int      _s52_setupVESSEL(s52droid_state_t *state)
 
     return TRUE;
 }
-#endif  // USE_FAKE_AIS
 
 static int      _s52_setupOWNSHP(s52droid_state_t *state)
 {
@@ -915,6 +904,7 @@ static int      _s52_setupOWNSHP(s52droid_state_t *state)
 
     return TRUE;
 }
+#endif  // USE_FAKE_AIS
 
 static int      _s52_setupLEGLIN(void)
 {
@@ -958,6 +948,9 @@ route normale de navigation.
         {-68.5,     48.78333, 0.0},  // WP2 - BRAVO
         {-68.0,     49.00,    0.0},  // WP3 - CHARLIE
         {-66.5,     49.5,     0.0}   // WP4 - DELTA
+
+        //{-66.5,     49.0,     0.0}   // WP4 - test horizontal dot
+        //{-66.0,     49.5,     0.0}   // WP4 - test vertical dot
     };
     //*/
     /*
@@ -981,7 +974,7 @@ route normale de navigation.
     _leglin1 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[0].y, WPxyz[0].x, WPxyz[1].y, WPxyz[1].x, NULL);
     _leglin2 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[1].y, WPxyz[1].x, WPxyz[2].y, WPxyz[2].x, _leglin1);
     _leglin3 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[2].y, WPxyz[2].x, WPxyz[3].y, WPxyz[3].x, _leglin2);
-    //_leglin4  = S52_newLEGLIN(1, 0.0, 0.0, WPxyz[3].y, WPxyz[3].x, WPxyz[4].y, WPxyz[4].x, _leglin3);
+    //_leglin4 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[3].y, WPxyz[3].x, WPxyz[4].y, WPxyz[4].x, _leglin3);
 
     /*
     {// test wholin
@@ -1029,12 +1022,12 @@ static int      _s52_setupPRDARE(s52droid_state_t *state)
     //*
     // AREA (CW)
     double xyzArea[6*3]  = {
-        state->cLon + 0.000, state->cLat + 0.000, 0.0,
-        state->cLon - 0.005, state->cLat + 0.004, 0.0,
-        state->cLon - 0.010, state->cLat + 0.000, 0.0,
-        state->cLon - 0.010, state->cLat + 0.005, 0.0,
-        state->cLon + 0.000, state->cLat + 0.005, 0.0,
-        state->cLon + 0.000, state->cLat + 0.000, 0.0,
+        state->cLon + 0.000, state->cLat + 0.000, 0.0,  // SE
+        state->cLon - 0.005, state->cLat + 0.004, 0.0,  // center
+        state->cLon - 0.010, state->cLat + 0.000, 0.0,  // SW
+        state->cLon - 0.010, state->cLat + 0.005, 0.0,  // NW
+        state->cLon + 0.000, state->cLat + 0.005, 0.0,  // NE
+        state->cLon + 0.000, state->cLat + 0.000, 0.0,  // SE
     };
     //*/
 
@@ -1065,6 +1058,7 @@ static int      _s52_error_cb   (const char *err)
 }
 #endif
 
+#ifdef S52_USE_RADAR
 static guchar  *_s52_radar_cb1  (double *cLat, double *cLng, double *rNM)
 {
     *cLat = _engine.state.cLat + 0.01;
@@ -1078,11 +1072,8 @@ static guchar  *_s52_radar_cb1  (double *cLat, double *cLng, double *rNM)
     *rNM = 3.0;  // rNM
     //*rNM = 1.5;  // rNM
 
-#ifdef S52_USE_RADAR
     return (unsigned char *)_RADARtex;
-#else
-    return (unsigned char *)NULL;
-#endif
+    //return (unsigned char *)NULL;
 }
 
 static guchar  *_s52_radar_cb2  (double *cLat, double *cLng, double *rNM)
@@ -1094,12 +1085,10 @@ static guchar  *_s52_radar_cb2  (double *cLat, double *cLng, double *rNM)
     //*rNM = 3.0;  // rNM
     *rNM = 1.5;  // rNM
 
-#ifdef S52_USE_RADAR
     return (unsigned char *)_RADARtex;
-#else
-    return (unsigned char *)NULL;
-#endif
+    //return (unsigned char *)NULL;
 }
+#endif
 
 static int      _s52_init       (s52engine *engine)
 {
@@ -1138,13 +1127,18 @@ static int      _s52_init       (s52engine *engine)
         wmm = XDisplayWidthMM (engine->dpy, 0);
         h   = XDisplayHeight  (engine->dpy, 0);
         hmm = XDisplayHeightMM(engine->dpy, 0);
+
         //w   = 1280;
         //h   = 1024;
-        //wmm = 376;
         //hmm = 301; // wrong
-        //hmm = 307;
-        //w   = engine->width;
-        //h   = engine->height;
+
+        wmm = engine->wmm    =  376;
+        //hmm = engine->hmm    =  307;
+        hmm = engine->hmm    =  200;
+        //w   = engine->width  = 1366;
+        w   = engine->width  = 1280;
+        //h   = engine->height =  768;
+        h   = engine->height =  693;
 
         // EGL_UNKNOWN (-1)
         //wmm = engine->wmm;
@@ -1347,8 +1341,8 @@ static int      _s52_init       (s52engine *engine)
 
 #else
     // Mesa
-    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
+    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
+    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 #endif
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
@@ -1386,7 +1380,7 @@ static int      _s52_init       (s52engine *engine)
     _s52_setupLEGLIN();
 
     // wind farme for testing centroids in a concave poly
-    //_s52_setupPRDARE(&engine->state);
+    _s52_setupPRDARE(&engine->state);
 
 
 #ifdef USE_FAKE_AIS
@@ -1541,7 +1535,7 @@ static int      _s52_draw_cb    (gpointer user_data)
 
 
 #ifndef S52_USE_EGL
-    _egl_beg(engine);
+    _egl_beg(engine, "tes");
 #endif
 
     // draw background - IHO layer 0-8
@@ -1555,7 +1549,7 @@ static int      _s52_draw_cb    (gpointer user_data)
         S52_draw();
 
         // user can add stuff on top of draw()
-        //_s52_draw_user(engine);
+        _s52_draw_user(engine);
     }
 
     // draw AIS on last layer (IHO layer 9)
@@ -1915,7 +1909,7 @@ static int      _android_signalDraw  (s52engine *engine, double new_y, double ne
         //_s52_draw_user(engine); // add stuff on top of darwLast()
         //*/
 #else
-        _egl_beg(engine);
+        _egl_beg(engine, "tes");
         //S52_draw();
         //_s52_draw_user(engine);
         //S52_drawLast();
@@ -2043,7 +2037,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
 
             // blit start
 #ifndef S52_USE_EGL
-            _egl_beg(engine);
+            _egl_beg(engine, "tes");
 #endif
 
             //g_static_mutex_lock(&engine->mutex);
@@ -2705,7 +2699,7 @@ void     android_main(struct android_app *app)
 exit:
 
 
-    _android_done_external_sensors();
+    //_android_done_external_sensors();
 
 #ifdef USE_AIS
     s52ais_doneAIS();
@@ -2763,7 +2757,7 @@ static int      _s52_setVwNDraw (s52engine *engine, double new_y, double new_x, 
 
 static int      _X11_error(Display *display, XErrorEvent *err)
 {
-    char buf[80];
+    char buf[80] = {'\0'};
     XGetErrorText(display, err->error_code, buf, 80);
 
     printf("*** X error *** %d 0x%x %ld %d %d\n",
@@ -2923,6 +2917,8 @@ static int      _X11_handleXevent(gpointer user_data)
 
                 return TRUE;
             }
+
+#ifdef S52_USE_RADAR
             // dispose
             if (XK_F9 == keysym) {
                 if (TRUE == S52_setRADARCallBack(_s52_radar_cb2, 0))
@@ -2932,7 +2928,7 @@ static int      _X11_handleXevent(gpointer user_data)
 
                 return TRUE;
             }
-
+#endif
 
             // debug
             g_print("s52egl.c:keysym: %i\n", keysym);
@@ -2983,7 +2979,7 @@ static int      _X11_handleXevent(gpointer user_data)
 #ifdef S52_USE_EGL
                 S52_drawBlit(0.0, 0.0, 0.0, -10.0);
 #else
-                _egl_beg(engine);
+                _egl_beg(engine, "tes");
                 S52_drawBlit(0.0, 0.0, 0.0, -10.0);
                 _egl_end(engine);
 #endif
@@ -2997,7 +2993,7 @@ static int      _X11_handleXevent(gpointer user_data)
 #ifdef S52_USE_EGL
                 S52_drawBlit(0.0, 0.0, 0.0, +10.0);
 #else
-                _egl_beg(engine);
+                _egl_beg(engine, "tes");
                 S52_drawBlit(0.0, 0.0, 0.0, +10.0);
                 _egl_end(engine);
 #endif
@@ -3035,8 +3031,9 @@ int main(int argc, char *argv[])
 
     // init thread first before any call to glib
     // event if NULL mean that glib call are more relaxe
-    g_thread_init(NULL);
-    g_type_init();
+    // deprecated
+    //g_thread_init(NULL);
+    //g_type_init();
 
     _timer = g_timer_new();
 
