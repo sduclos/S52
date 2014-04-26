@@ -103,8 +103,8 @@ static S52ObjectHandle _wholin      = NULL;
 
 static S52ObjectHandle _clrlin      = NULL;
 
-static S52ObjectHandle _marfea_area = NULL;
-static S52ObjectHandle _marfea_line = NULL;
+//static S52ObjectHandle _marfea_area = NULL;
+//static S52ObjectHandle _marfea_line = NULL;
 static S52ObjectHandle _marfea_point= NULL;
 
 static int _doRenderHelp = FALSE;
@@ -384,6 +384,7 @@ static int      _renderHelp(GtkWidget *widget)
     return TRUE;
 }
 
+#if 0
 static int      _renderCrsrPos(GtkWidget *widget, double x, double y, double _brg, double _rge)
 {
     // debug
@@ -436,6 +437,7 @@ static int      _renderCrsrPos(GtkWidget *widget, double x, double y, double _br
 
     return TRUE;
 }
+#endif
 
 static int      _S52_init()
 {
@@ -604,6 +606,7 @@ static int      _resetView(S52_view *view)
     return TRUE;
 }
 
+#if 0
 GdkCursor      *_cursor_new(GdkCursorType ctype)
 {
     // This data is in X bitmap format, and can be created with the 'bitmap'utility.
@@ -671,7 +674,9 @@ GdkCursor      *_cursor_new(GdkCursorType ctype)
 
     return cursor;
 }
+#endif
 
+#ifdef USE_AIS
 static gboolean _draw(gpointer data)
 {
     //g_print("start _draw()\n");
@@ -682,6 +687,7 @@ static gboolean _draw(gpointer data)
 
     return TRUE;
 }
+#endif
 
 static gint     _execOption()
 {
@@ -700,15 +706,17 @@ static gint     _execOption()
     return TRUE;
 }
 
-static void     realize(GtkWidget *widget, gpointer   data)
+static void     realize(GtkWidget *widget, gpointer data)
 {
+    (void)widget;
+    (void)data;
 
 #ifdef USE_AIS
     // Note: data form AIS start too fast for the main loop
     s52ais_initAIS(update_cb);
 
     // for continuous drawing
-    //g_idle_add(_draw, widget);
+    g_idle_add(_draw, widget);
     //g_idle_add(update_cb, widget);
 
     //g_print("install hook to loop on gtk_widget_draw when idle\n");
@@ -720,6 +728,9 @@ static gboolean configure_event(GtkWidget         *widget,
                                 GdkEventConfigure *event,
                                 gpointer           data)
 {
+    (void)event;
+    (void)data;
+
     GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
     GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
 
@@ -746,6 +757,9 @@ static gboolean expose_event(GtkWidget      *widget,
                              GdkEventExpose *event,
                              gpointer        data)
 {
+    (void)event;
+    (void)data;
+
     GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
     GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
 
@@ -802,7 +816,7 @@ static gboolean expose_event(GtkWidget      *widget,
     if (TRUE == _doRenderHelp)
         _renderHelp(widget);
 
-    _renderCrsrPos(widget, _x, _y, _brg, _rge);
+    //_renderCrsrPos(widget, _x, _y, _brg, _rge);
 
     if (gdk_gl_drawable_is_double_buffered(gldrawable))
         gdk_gl_drawable_swap_buffers(gldrawable);
@@ -824,6 +838,8 @@ static gboolean expose_event(GtkWidget      *widget,
 
 static gboolean _scroll(GtkWidget *widget, GdkEventKey *event)
 {
+    (void)widget;
+
     switch(event->keyval) {
         case GDK_Left : _view.cLon -= _view.rNM/(60.0*10.0); S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north); break;
         case GDK_Right: _view.cLon += _view.rNM/(60.0*10.0); S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north); break;
@@ -836,6 +852,8 @@ static gboolean _scroll(GtkWidget *widget, GdkEventKey *event)
 
 static gboolean _zoom(GtkWidget *widget, GdkEventKey *event)
 {
+    (void)widget;
+
     switch(event->keyval) {
         // zoom in
     	case GDK_Page_Up  : _view.rNM /= 2.0; S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north); break;
@@ -848,6 +866,8 @@ static gboolean _zoom(GtkWidget *widget, GdkEventKey *event)
 
 static gboolean _rotation(GtkWidget *widget, GdkEventKey *event)
 {
+    (void)widget;
+
     //S52_getView(&_view);
 
     switch(event->keyval) {
@@ -995,6 +1015,8 @@ static gboolean key_release_event(GtkWidget   *widget,
                                   GdkEventKey *event,
                                   gpointer     data)
 {
+    (void)data;
+
     switch(event->keyval) {
         case GDK_Left  :
         case GDK_Right :
@@ -1117,6 +1139,7 @@ static gboolean button_release_event(GtkWidget      *widget,
                                      GdkEventButton *event,
                                      gpointer        data)
 {
+    (void)data;
 
     // Ctl + left click: set origine for 'freely movable' VRMEBL
     if ((GDK_CONTROL_MASK & event->state) && (1==event->button)) {
@@ -1187,6 +1210,8 @@ static gboolean motion_notify_event(GtkWidget      *widget,
                                     GdkEventMotion *event,
                                     gpointer        data)
 {
+    (void)data;
+
     GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
     GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
 
@@ -1207,12 +1232,14 @@ static gboolean motion_notify_event(GtkWidget      *widget,
     if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
         return FALSE;
 
-    _brg = 0.0;
-    _rge = 0.0;
-    S52_setVRMEBL(_vrmeblA, _x, _y, &_brg, &_rge);
+    if (NULL != _vrmeblA) {
+        _brg = 0.0;
+        _rge = 0.0;
+        S52_setVRMEBL(_vrmeblA, _x, _y, &_brg, &_rge);
 
-    if (TRUE == _originIsSet) {
-        S52_setVRMEBL(_vrmeblB, _x, _y, &_brg, &_rge);
+        if (TRUE == _originIsSet) {
+            S52_setVRMEBL(_vrmeblB, _x, _y, &_brg, &_rge);
+        }
     }
 
     //*
@@ -1221,7 +1248,7 @@ static gboolean motion_notify_event(GtkWidget      *widget,
         if (TRUE == _doRenderHelp)
             _renderHelp(widget);
 
-        _renderCrsrPos(widget, _x, _y, _brg, _rge);
+        //_renderCrsrPos(widget, _x, _y, _brg, _rge);
 
         if (gdk_gl_drawable_is_double_buffered(gldrawable))
             gdk_gl_drawable_swap_buffers(gldrawable);
@@ -1520,13 +1547,18 @@ static int      _setCLRLIN()
     return TRUE;
 }
 
-static int      _radar_cb()
+static unsigned char *_radar_cb(double *cLat, double *cLng, double *rNM)
 {
+    (void)cLat;
+    (void)cLng;
+    (void)rNM;
+
     //g_print("_radar_cb()\n");
 
-    return TRUE;
+    return NULL;
 }
 
+#if 0
 static int      _my_S52_loadObject_cb(const char *objname,   void *shape)
 {
     //
@@ -1541,7 +1573,6 @@ static int      _my_S52_loadObject_cb(const char *objname,   void *shape)
     //return TRUE;
 }
 
-#if 0
 static int      _my_S52_loadLayer_cb (const char *layername, void *layer, S52_loadObject_cb loadObject_cb)
 {
     //
@@ -1582,10 +1613,10 @@ static int      _setMarFeature()
     */
 
     // LINE
-    double xyzLine[2*3]  = {
-        _view.cLon + 0.00, _view.cLat + 0.000, 0.0,
-        _view.cLon + 0.02, _view.cLat - 0.005, 0.0
-    };
+    //double xyzLine[2*3]  = {
+    //    _view.cLon + 0.00, _view.cLat + 0.000, 0.0,
+    //    _view.cLon + 0.02, _view.cLat - 0.005, 0.0
+    //};
 
     // debug
     //double xyzLine[2*3]  = {
@@ -1618,7 +1649,7 @@ static int      _setMarFeature()
 static int      _setupS52()
 // setup some decent setting for testing
 {
-    int ret = FALSE;
+    //int ret = FALSE;
 
     _S52_init();
 
@@ -1789,10 +1820,6 @@ static int      _setupS52()
 
     // debug - turn off rendering of last layer
     // very slow on some machine
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, 0.0);  // none
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, 1.0);  // Mariner Standard
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, 2.0);  // Mariner Other (EBL VRN)
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, 3.0);    // All Mariner (Standard + Other)
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE);  // none
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD);  // Mariner Standard
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);  // Mariner Other (EBL VRN)
@@ -1811,7 +1838,7 @@ static int      _setupS52()
     // init decoration (scale bar, North arrow, unit)
     S52_newCSYMB();
 
-    _setVRMEBL();
+    //_setVRMEBL();
 
     _setVESSEL();
 
@@ -1821,12 +1848,12 @@ static int      _setupS52()
 
     _setCLRLIN();
 
-    S52_setRADARCallBack(_radar_cb);
+    S52_setRADARCallBack(_radar_cb, 1280);
 
     _setMarFeature();
 
 
-    g_print("PLibList    : %s\n", S52_getPLibsIDList());
+    g_print("PLibList    : %s\n", S52_getPLibNameList());
     g_print("PalettesList: %s\n", S52_getPalettesNameList());
     g_print("CellNameList: %s\n", S52_getCellNameList());
     g_print("ObjClassList: %s\n", S52_getS57ClassList("CA579016.000"));
@@ -1840,14 +1867,14 @@ static int      _setupS52()
     return TRUE;
 }
 
-//#if 0
+#if 0
 static int      _err_cb(const char *err)
 {
     printf("%s\n", err);
 
     return TRUE;
 }
-//#endif
+#endif
 
 #ifdef USE_AIS
 //static
@@ -1924,7 +1951,7 @@ int main(int argc, char **argv)
     //gtk_init(NULL, NULL);
 
     //g_thread_init(&vtable);
-    g_thread_init(NULL);
+    //g_thread_init(NULL);
 
 
     gtk_gl_init(&argc, &argv);
@@ -2033,12 +2060,12 @@ int main(int argc, char **argv)
 
     gtk_widget_show_all(_win);
 
-    GdkCursor* cursor = _cursor_new(GDK_CROSS);
+    //GdkCursor* cursor = _cursor_new(GDK_CROSS);
     //GdkColor color;
     //gdk_color_parse ("red", &color);
     //gtk_widget_modify_fg(win, GTK_STATE_NORMAL, &color);
 
-    gdk_window_set_cursor(_win->window, cursor);
+    //gdk_window_set_cursor(_win->window, cursor);
     //gdk_cursor_destroy(cursor);   // deprecated
 
     // start main loop

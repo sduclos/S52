@@ -107,8 +107,10 @@ int       S57_getExt   (S57_geo *geoData, double *x1, double *y1, double *x2, do
 
 // get geo type (P,L,A) of this object
 // Note: return the same thing as a call to S52_PL_getFTYP()
+// Note: S52_Obj_t vs S57_Obj_t
 S52_Obj_t S57_getObjtype(S57_geo *geoData);
 //S57_Obj_t S57_getObjtype(S57_geo *geoData);
+
 // return TRUE if same point
 //int       S57_samePtPos(S57_geo *geoA, S57_geo *geoB);
 // return S57 attribute value of the attribute name

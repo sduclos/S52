@@ -21,7 +21,7 @@ all: s52eglx        # OGR & EGL & X11   (for testing EGL/GLES2 on X)
 #all: s52eglw32      # OGR & EGL & Win32 (for testing EGL/GLES2 on Win32)
 #all: s52gv          # GV  (GTK)
 #all: s52gv2         # GV2 (GTK2)
-#all: s52gtk2        # OGR & GTK2 & GL 1.x (2014FEB broken)
+#all: s52gtk2        # OGR & GTK2 & GL 1.x
 #all: s52gtk2p       # profiling
 #all: s52gtk2gps     # build s52gtk2 for testing with live data comming from GPSD
 #all: s52gtk2egl     # GTK2 & EGL
@@ -152,13 +152,13 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_GOBJECT
 # -DS52_USE_BACKTRACE
 
-CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl gl`  \
+CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl glu gl`  \
          `gdal-config --cflags`                        \
-         -DS52_USE_DOTPITCH                            \
-         -DS52_USE_FTGL                                \
-         -DS52_USE_GLIB2                               \
          -DS52_USE_PROJ                                \
+         -DS52_USE_DOTPITCH                            \
+         -DS52_USE_GLIB2                               \
          -DS52_USE_OPENGL_VBO                          \
+         -DS52_USE_FTGL                                \
          -DS52_DEBUG $(DBG)
 
 s52clutter, s52clutter.js :                                 \
@@ -175,10 +175,12 @@ s52clutter, s52clutter.js :                                 \
 
 s52gtk2p : CFLAGS += -pg
 
-s52glx : CFLAGS = `pkg-config  --cflags glib-2.0` \
+s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl` \
                   `gdal-config --cflags`          \
                   -DS52_USE_PROJ                  \
                   -DS52_USE_DOTPITCH              \
+                  -DS52_USE_GLIB2                 \
+                  -DS52_USE_OPENGL_VBO            \
                   -DS52_DEBUG $(DBG)
 
 # GL - EGL/GL 1.x broken
@@ -230,9 +232,9 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
 
 # -DS52_USE_SYM_AISSEL01 - experimental - symbol in plib-test-priv.rle
 # -DS52_USE_BACKTRACE    - debug
-# -DS52_USE_SOCK         - socket & WebSocket
+# -DS52_USE_SOCK         - socket & WebSocket - need ./lib/parson
 # -DS52_USE_WORLD        - experimental - load world Shapefile
-# -DS52_USE_OPENGL_VBO   -
+# -DS52_USE_OPENGL_VBO   - GL 1.x, GLES2
 # -DS52_USE_FREETYPE_GL  - need GLES2
 # -DS52_USE_GLES2        - need VBO, EGL
 # -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
@@ -352,21 +354,17 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
 LIBS = `pkg-config  --libs glib-2.0 lcms ftgl glu gl` \
        `gdal-config --libs` -lproj
 
-OBJS = $(OBJS_S52) $(OBJ_PARSON)
 
-s52clutter, s52clutter.js : LIBS = `pkg-config  --libs glib-2.0 lcms` \
-                                   `gdal-config --libs`   -lGL -lGLU
+s52clutter, s52clutter.js : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl` \
+                                   `gdal-config --libs` -lproj
 
 
-s52glx : LIBS = `pkg-config  --libs glib-2.0 lcms` \
-                `gdal-config --libs`               \
-                -lGL -lGLU -lproj
+s52glx : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl` \
+                `gdal-config --libs` -lproj
 
 #s52gtk3egl s52eglx: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl glu gl freetype2`
 s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl glesv2 freetype2` \
                                       `gdal-config --libs` -lproj
-#s52eglx s52gtk2egl s52gtk3egl: 
-OBJS = $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
 
 
 
@@ -382,9 +380,9 @@ s52gv2 : LIBS = `pkg-config  --libs glib-2.0 lcms` \
 
 
 s52glx        : libS52.so    test/s52glx
-s52eglx       : libS52.so    test/s52eglx
-s52gtk2egl    : libS52.so    test/s52gtk2egl
-s52gtk3egl    : libS52.so    test/s52gtk3egl
+s52eglx       : libS52egl.so    test/s52eglx
+s52gtk2egl    : libS52egl.so    test/s52gtk2egl
+s52gtk3egl    : libS52egl.so    test/s52gtk3egl
 s52eglarm     : $(S52DROIDLIB)/libS52.a     test/s52eglarm
 s52gv         : libS52gv.so  test/s52gv
 s52gv2        : libS52gv.so  test/s52gv2
@@ -418,10 +416,12 @@ $(S52DROIDLIB)/libS52.a: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARS
 	$(AR) rc   $(S52DROIDLIB)/libS52.a $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
 	$(RANLIB)  $(S52DROIDLIB)/libS52.a
 
-#libS52.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
-#	$(CXX) -rdynamic -shared $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON) $(LIBS) -o $@
-libS52.so: $(OBJS) tags
-	$(CXX) -rdynamic -shared $(OBJS) $(LIBS) -o $@
+libS52.so:  $(OBJS_S52) $(OBJ_PARSON) tags
+	$(CXX) -rdynamic -shared  $(OBJS_S52) $(OBJ_PARSON) $(LIBS) -o $@
+
+libS52egl.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
+	$(CXX) -rdynamic -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
+	ln -s libS52egl.so libS52.so
 
 libS52gv.so: $(OBJS_S52) $(OBJS_GV)
 	$(CXX) -shared $(OBJS_S52) $(OBJS_GV) $(LIBS) -o libS52.so

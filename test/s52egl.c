@@ -420,7 +420,7 @@ static int      _egl_init       (s52engine *engine)
 
         EGL_NONE
     };
-#else
+#else  // S52_USE_TEGRA2
 
 #ifdef S52_USE_ADRENO
 //#define EGL_OPENGL_ES3_BIT_KHR				    0x00000040
@@ -443,7 +443,7 @@ static int      _egl_init       (s52engine *engine)
 
         EGL_NONE
     };
-#else
+#else  // S52_USE_ADRENO
 
 #ifdef S52_USE_GLES2
     // Mesa OpenGL ES 2.x, 3.x
@@ -476,6 +476,7 @@ static int      _egl_init       (s52engine *engine)
         EGL_NONE
     };
 #else   // S52_USE_GLES2
+
     // Mesa OpenGL 1.x
     const EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,

@@ -142,8 +142,8 @@ GL__LIBS    = -lGL
 
 OGR_LIBS  = `gdal-config --libs`
 
-# Ubuntu 13 need -lX11 -lm 
-s52eglx   : LIBS    = `pkg-config --libs egl wayland-egl wayland-client x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS)
+# Ubuntu 13+ need -lX11
+s52eglx   : LIBS    = `pkg-config --libs wayland-egl wayland-client egl x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS)
 
 # same as s52eglx, add "gtk+-2.0"
 s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` $(S52_LIBS)

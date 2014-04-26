@@ -588,12 +588,14 @@ static    GLdouble _mvm[16];       // modelview matrix
 static    GLdouble _pjm[16];       // projection matrix
 #endif
 
+// experimental: synthetic after glow
+static GLuint   _vboIDaftglwVertID = 0;
+static GLuint   _vboIDaftglwColrID = 0;
+
 #endif  // S52_USE_GLES2
 
 // experimental: synthetic after glow
 static GArray  *_aftglwColorArr    = NULL;
-static GLuint   _vboIDaftglwVertID = 0;
-static GLuint   _vboIDaftglwColrID = 0;
 
 
 // utils
@@ -2468,7 +2470,6 @@ static void      _glPointSize(GLfloat size)
 
 #ifdef S52_USE_GLES2
 #if 0
-//*
 static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
 // not used
 {
@@ -2487,9 +2488,8 @@ static GLvoid    _DrawArrays_TRIANGLE_FAN(guint npt, vertex_t *ppt)
 
     return;
 }
-//*/
-#endif
-#else
+#endif // 0
+#else  // S52_USE_GLES2
 
 static GLvoid    _DrawArrays_QUADS(guint npt, vertex_t *ppt)
 {
@@ -3057,6 +3057,7 @@ static int       _glCallList(S52_DListData *DListData)
 
             }
         }
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 #else   // S52_USE_OPENGL_VBO
 
@@ -3082,7 +3083,6 @@ static int       _glCallList(S52_DListData *DListData)
 
 #ifdef S52_USE_GLES2
     glDisableVertexAttribArray(_aPosition);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 #endif
 
     glEnable(GL_CULL_FACE);
@@ -4521,7 +4521,7 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
 #endif
         {
             pt3v pt[2] = {{0.0, 0.0, 0.0}, {-leglenpix, 0.0, 0.0}};
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)&pt);
+            _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
         }
         _popScaletoPixel();
 
@@ -4553,7 +4553,7 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
 #endif
         {
             pt3v pt[2] = {{0.0, 0.0, 0.0}, {-leglenpix, 0.0, 0.0}};
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)&pt);
+            _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
         }
         _popScaletoPixel();
 
@@ -4587,7 +4587,7 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
 #endif
         {
             pt3v pt[2] = {{0.0, 0.0, 0.0}, {-leglenpix, 0.0, 0.0}};
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)&pt);
+            _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
         }
         _popScaletoPixel();
 
@@ -4655,7 +4655,7 @@ static int       _renderLS_ownshp(S52_obj *obj)
         // FIXME: coord. sys. must be in meter
         {
             pt3v pt[2] = {{0.0, 0.0, 0.0}, {_rangeNM * NM_METER * 2.0, 0.0, 0.0}};
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)&pt);
+            _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
         }
     }
 
@@ -4685,11 +4685,11 @@ static int       _renderLS_ownshp(S52_obj *obj)
 #endif
         {   // port
             pt3v pt[2] = {{0.0, 0.0, 0.0}, { beambrgNM * NM_METER, 0.0, 0.0}};
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)&pt);
+            _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
         }
         {   // starboard
             pt3v pt[2] = {{0.0, 0.0, 0.0}, {-beambrgNM * NM_METER, 0.0, 0.0}};
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)&pt);
+            _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
         }
     }
 
@@ -4721,7 +4721,7 @@ static int       _renderLS_ownshp(S52_obj *obj)
             glTranslated(ppt[0], ppt[1], 0.0);
 #endif
 
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)&pt);
+            _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
         }
     }
 
@@ -5075,10 +5075,10 @@ static int       _renderLS(S52_obj *obj)
     S52_PL_getLSdata(obj, &pen_w, &style, &col);
     _glColor4ub(col);
 
-    //glLineWidth(pen_w - '0');
+    glLineWidth(pen_w - '0');
     //glLineWidth(pen_w - '0' + 0.1);  // WARNING: THIS +0.1 SLOW DOWN EVERYTHING
     //glLineWidth(pen_w - '0' + 0.5);
-    glLineWidth(pen_w - '0' + 0.375);
+    //glLineWidth(pen_w - '0' + 0.375);
     //glLineWidth(pen_w - '0' - 0.5);
 
     // debug
@@ -5240,9 +5240,6 @@ static int       _renderLS(S52_obj *obj)
 
 
 #ifdef S52_USE_GLES2
-    //glBindBuffer(GL_ARRAY_BUFFER, 0);
-    //glDisableVertexAttribArray(_aPosition);
-
 #else
     if ('S'==style || 'T'==style)
         glDisable(GL_LINE_STIPPLE);
@@ -5361,6 +5358,7 @@ static int       _renderLC(S52_obj *obj)
     GLdouble       symlen_pixl = 0.0;
     GLdouble       symlen_wrld = 0.0;
     GLdouble       x1,y1,z1,  x2,y2,z2;
+    //double       x1,y1,z1,  x2,y2,z2;
     S57_geo       *geo = S52_PL_getGeo(obj);
     //double         scalex = (_pmax.u - _pmin.u) / (double)_vp[2];
     //double         scaley = (_pmax.v - _pmin.v) / (double)_vp[3];
@@ -5395,9 +5393,6 @@ static int       _renderLC(S52_obj *obj)
     // set pen color & size here because values might not
     // be set via call list --short line
     S52_DListData *DListData = S52_PL_getDListData(obj);
-    //if ((NULL==DListData) || (FALSE==_VBOvalidate(DListData)))
-    //    return FALSE;
-
     S52_Color *c = DListData->colors;
     _glColor4ub(c);
 
@@ -5406,7 +5401,6 @@ static int       _renderLC(S52_obj *obj)
     S52_PL_getLCdata(obj, &symlen, &pen_w);
     glLineWidth(pen_w - '0');
     //glLineWidth(pen_w - '0' - 0.5);
-    //glLineWidth(1);
 
     //symlen_pixl = symlen / (_dotpitch_mm_x * 100.0);
     symlen_pixl = symlen / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0);
@@ -5416,11 +5410,6 @@ static int       _renderLC(S52_obj *obj)
     //    char  *name = S57_getName(geo);
     //    PRINTF("%s: _dotpitch_mm_x=%f, symlen_pixl=%f, symlen_wrld=%f\n", name, _dotpitch_mm_x, symlen_pixl, symlen_wrld);
     //}
-
-    double off_x = ppt[0];
-    double off_y = ppt[1];
-    //double run   = 0.0;
-
     // debug
     //if (0 == g_strcmp0("HRBARE", S57_getName(geo))) {
     //    PRINTF("DEBUG: found HRBARE\n");
@@ -5429,6 +5418,8 @@ static int       _renderLC(S52_obj *obj)
     //    PRINTF("DEBUG: found PILBOP\n");
     //}
 
+    double off_x = ppt[0];
+    double off_y = ppt[1];
     for (guint i=0; i<npt-1; ++i) {
         // set coordinate
         x1 = ppt[0];
@@ -5597,7 +5588,7 @@ static int       _renderLC(S52_obj *obj)
 #endif
         {   // complete the rest of the line
             pt3v pt[2] = {{x1+offset_wrld_x, y1+offset_wrld_y, 0.0}, {x2, y2, 0.0}};
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)&pt);
+            _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
         }
     }
 
@@ -6443,8 +6434,8 @@ static int       _renderAP_es2(S52_obj *obj)
             pt3v lineH[2] = {{1.0, 1.0, 0.0}, {    1.0, tileHpx, 0.0}};
 #endif
 
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)&lineW);
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)&lineH);
+            _DrawArrays_LINE_STRIP(2, (vertex_t*)lineW);
+            _DrawArrays_LINE_STRIP(2, (vertex_t*)lineH);
         }
         //*/
 
@@ -7126,6 +7117,8 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
         return FALSE;
     }
 
+    _glColor4ub(color);
+
     // debug
     //return FALSE;
 
@@ -7413,6 +7406,7 @@ static int       _renderTXT(S52_obj *obj)
     unsigned int weight = 0;
     int          disIdx = 0;      // text view group
     const char  *str = S52_PL_getEX(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx);
+
 
     // debug
     //str = "X";
@@ -9241,6 +9235,7 @@ int        S52_GL_del(S52_obj *obj)
         vboID = 0;
         S57_setPrimDList(prim, vboID);
 
+#ifdef S52_USE_FREETYPE_GL
         // delete text
         {
             guint len;
@@ -9252,7 +9247,9 @@ int        S52_GL_del(S52_obj *obj)
             vboID = 0;
             S52_PL_setFtglVBO(obj, vboID, len);
         }
-#else
+#endif
+
+#else  // S52_USE_OPENGL_VBO
         // 'vboID' is in fact a DList here
         if (GL_TRUE == glIsList(vboID)) {
             glDeleteLists(vboID, 1);
@@ -9260,11 +9257,11 @@ int        S52_GL_del(S52_obj *obj)
             PRINTF("WARNING: ivalid DL\n");
             g_assert(0);
         }
-#endif
+#endif  // S52_USE_OPENGL_VBO
 
 
     }
-#endif
+#endif  // S52_USE_OPENGL_SAFETY_CRITICAL
 
     _checkError("S52_GL_del()");
 

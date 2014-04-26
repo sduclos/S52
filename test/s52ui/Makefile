@@ -1,6 +1,7 @@
 # Makefile: make HTML5/Dart(JS) UI for testing libS52 functionality
 #
-# 2013FEB25
+# SD 2013FEB25
+# SD 2014APR25 - update Dart build file layout
 
 
 all:build/web/s52ui.dart.js
@@ -14,7 +15,7 @@ build/web/s52ui.dart.js: web/s52ui.dart web/s52.dart
 	$(DARTSDKPATH)/dart2js --checked web/s52ui.dart -obuild/web/s52ui.dart.js
 
 clean:
-	rm -rf build/*
+	rm -rf build/web/*
 
 distclean: clean
 
