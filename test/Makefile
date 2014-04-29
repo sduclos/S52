@@ -67,11 +67,19 @@ s52eglarm : S52DROIDLIBS       = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/and
 #
 #
 
-CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
-         -I..                                        \
+CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` \
          -DS52_USE_GTK2                              \
          -DS52_USE_GLIB2                             \
-         -DS52_USE_DOTPITCH
+         -DS52_USE_DOTPITCH                          \
+         -I..
+
+# same as above but skip GL1.x call in _renderHelp()
+s52gtk2gl2 : CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
+         -DS52_USE_GTK2                              \
+         -DS52_USE_GLIB2                             \
+         -DS52_USE_DOTPITCH                          \
+         -DS52_USE_GLES2                             \
+         -I..
 
 s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1`
 
@@ -87,7 +95,7 @@ s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_DOTPITCH
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 # -DS52_USE_RADAR     - when in RADAR mode
 s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
-                      -DS52_USE_DOTPITCH -DS52_USE_GLES2 -DS52_USE_EGL -DS52_USE_AFGLOW -DUSE_AIS
+                      -DS52_USE_DOTPITCH -DS52_USE_GLES2 -DS52_USE_EGL -DUSE_AIS
 
 # same as s52eglx, but "gtk+-2.0" is added - no AIS
 s52gtk2egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` \
@@ -136,9 +144,11 @@ GLIB_LIBS   = `glib-config --libs`
 GLIB2LIBS   = `pkg-config  --libs glib-2.0`
 
 GTK_LIBS    = `gtk-config  --libs` -lgtkgl
-GTK2LIBS    = `pkg-config  --libs gtk+-2.0 gtkglext-1.0 gthread-2.0 ftgl lcms`
-GL__LIBS    = -lGL
-#GL__LIBS  = /usr/lib/fglrx/libGL.so.1.2
+GTK2LIBS    = `pkg-config  --libs gtk+-2.0 gtkglext-1.0 gthread-2.0 gl`
+
+# GL2 can't use GL1 stuff like glBegin/glEnd
+# FIXME: use VBO instead
+s52gtk2gl2 : GTK2LIBS = `pkg-config --libs gtk+-2.0 gtkglext-1.0 gthread-2.0`
 
 OGR_LIBS  = `gdal-config --libs`
 
@@ -182,9 +192,6 @@ s52gtk3egl: s52gtk3egl.c s52ais.c
 	$(CC) $(CFLAGS) s52gtk3egl.c $(LIBS) -o $@
 	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) `pkg-config --cflags --libs libgps` -o s52ais
 
-
-
-
 s52gv:  LIBS = $(S52_LIBS) $(GTK_LIBS) $(GV_LIBS) $(OGR_LIBS)
 s52gv:  s52gv.c
 	(cd $(OPENEV_HOME); make gvtest; $(CC) -shared *.o -o libgv.so)
@@ -197,16 +204,15 @@ s52gv2: s52gv.c
 testmain:
 	$(CC) $(LDFLAGS) testmain.o $(LIBS)  -o $@
 
-s52gtk2: LIBS = $(S52_LIBS) $(GTK2LIBS)  -ldl
-s52gtk2: s52gtk2.c ../S52.h
-	$(CC) $(CFLAGS) $(GL__LIBS) s52gtk2.c $(LIBS) -o $@
+s52gtk2 s52gtk2gl2: s52gtk2.c ../S52.h
+	$(CC) $(CFLAGS) s52gtk2.c $(S52_LIBS) $(GTK2LIBS) -o $@
 
 #libs52gps.so: s52gps.h s52gps.c
 #	$(CC) $(CFLAG) -fPIC -shared -I.. s52gps.c `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1` -o $@
 libs52gps.so: s52gps.h s52gps.c
 	$(CC) $(CFLAGS) -fPIC -shared -I.. s52gps.c -o $@
 
-s52gtk2gps: LIBS = $(S52_LIBS) $(GTK2LIBS) $(OGR_LIBS) $(GL__LIBS) -Wl,-rpath . -L. -ls52gps
+s52gtk2gps: LIBS = $(S52_LIBS) $(GTK2LIBS) $(OGR_LIBS) -Wl,-rpath . -L. -ls52gps
 s52gtk2gps: libs52gps.so s52gtk2.c ../S52.h
 	$(CC) $(CFLAGS) s52gtk2.c $(LIBS) -o $@
 
@@ -215,7 +221,7 @@ s52qt4: s52qt4.pro s52qt4.cpp ../S52.h
 	qmake -o Makefile.qt4 s52qt4.pro
 	make -f Makefile.qt4
 
-s52gtk2p: LIBS = $(GTK2LIBS) $(OGR_LIBS) $(GL__LIBS)
+s52gtk2p: LIBS = $(GTK2LIBS) $(OGR_LIBS)
 s52gtk2p: s52gtk2.c ../S52.h
 	$(CC) $(CFLAGS) -pg s52gtk2.c ../*.o $(LIBS) -lproj -llcms -o $@
 
@@ -423,7 +429,7 @@ libS52-1.0.so: ../libS52.so ../S52.h
 #
 
 clean:
-	rm -f s52glx s52eglx s52gv s52gv2 s52gtk2 s52gtk2p s52gtk2.exe s52qt4 *.o *.so \
+	rm -f s52glx s52eglx s52gv s52gv2 s52gtk2 s52gtk2gl2 s52gtk2p s52gtk2.exe s52qt4 *.o *.so \
     s52gtk2gps S52-1.0.* s52eglx s52ais sl4agps s52gtk2egl s52gtk3egl s52eglw32.exe
 
 distclean: clean

@@ -73,7 +73,6 @@ typedef GLfloat GLdouble;
 // NOTE: rubber band in GL 1.x
 // glEnable(GL_COLOR_LOGIC_OP); glLogicOp(GL_XOR);
 
-
 #ifdef S52_USE_GLES2
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
@@ -118,9 +117,10 @@ static GLint _aUV          = 0;
 static GLint _aAlpha       = 0;
 
 #else   // S52_USE_GLES2
+
 #define GL_GLEXT_PROTOTYPES
 #include <GL/gl.h>
-//#include "GL/glext.h"
+#include "GL/glext.h"
 
 #endif  // S52_USE_GLES2
 
@@ -597,6 +597,20 @@ static GLuint   _vboIDaftglwColrID = 0;
 // experimental: synthetic after glow
 static GArray  *_aftglwColorArr    = NULL;
 
+/*
+// This is C!
+static void(*findProcAddress(size_t n))()
+// And this would not be the same!
+//static void *findProcAddress(size_t n)
+{
+for (uint32_t i=0 ; i<n ; i++) {
+// bla!
+;
+}
+
+return NULL;
+}
+*/
 
 // utils
 #ifdef S52_USE_GLES2
@@ -5170,7 +5184,8 @@ static int       _renderLS(S52_obj *obj)
                 if ((0 == g_strcmp0("afgves", S57_getName(geoData))) ||
                     (0 == g_strcmp0("afgshp", S57_getName(geoData)))
                    ) {
-                    _renderLS_afterglow(obj);
+                    //_renderLS_afterglow(obj);
+                    ;
                 } else {
 
 #ifdef S52_USE_GLES2
@@ -5682,6 +5697,7 @@ static int       _renderAC_NODATA_layer0(void)
     glClear(GL_COVERAGE_BUFFER_BIT_NV | GL_COLOR_BUFFER_BIT);
 #else
     glClear(GL_COLOR_BUFFER_BIT);
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 #endif
 
     _checkError("_renderAC_NODATA_layer0()");
@@ -6388,9 +6404,47 @@ static int       _renderAP_es2(S52_obj *obj)
             g_assert(0);
         }
 
+        /*
+        switch(status)
+        {
+        case GL_FRAMEBUFFER_COMPLETE_EXT:
+            break;
+        case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
+            //Choose different formats
+            strcpy(errorMessage, "Framebuffer object format is unsupported by the video hardware. (GL_FRAMEBUFFER_UNSUPPORTED_EXT)(FBO - 820)");
+            return -1;
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT:
+            strcpy(errorMessage, "Incomplete attachment. (GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT)(FBO - 820)");
+            return -1;
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT:
+            strcpy(errorMessage, "Incomplete missing attachment. (GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT)(FBO - 820)");
+            return -1;
+        case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+            strcpy(errorMessage, "Incomplete dimensions. (GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT)(FBO - 820)");
+            return -1;
+        case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
+            strcpy(errorMessage, "Incomplete formats. (GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT)(FBO - 820)");
+            return -1;
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT:
+            strcpy(errorMessage, "Incomplete draw buffer. (GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT)(FBO - 820)");
+            return -1;
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT:
+            strcpy(errorMessage, "Incomplete read buffer. (GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT)(FBO - 820)");
+            return -1;
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT:
+            strcpy(errorMessage, "Incomplete multisample buffer. (GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT)(FBO - 820)");
+            return -1;
+        default:
+            //Programming error; will fail on all hardware
+            strcpy(errorMessage, "Some video driver error or programming error occured. Framebuffer object status is invalid. (FBO - 823)");
+            return -2;
+        }
+        */
+
+
         _checkError("_renderAP_es2() -0.32-");
 
-        // save texture mask ID whem everythings check ok
+        // save texture mask ID when everythings check ok
         S52_PL_setAPtexID(obj, mask_texID);
 
         // Clear Color ------------------------------------------------
@@ -6403,6 +6457,7 @@ static int       _renderAP_es2(S52_obj *obj)
         glClear(GL_COLOR_BUFFER_BIT | GL_COVERAGE_BUFFER_BIT_NV);
 #else
         glClear(GL_COLOR_BUFFER_BIT);
+        //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 #endif
 
         // set color alpha
@@ -8839,6 +8894,8 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     // optimisation
     _identity_MODELVIEW = FALSE;
 
+    S52_GL_init();
+
     //static int saveAttrib;
 
     _checkError("S52_GL_begin() -0-");
@@ -9339,7 +9396,6 @@ static int       _init_es2(void)
         return TRUE;
     }
 
-
     if (FALSE == glIsProgram(_programObject)) {
         GLint  linked;
 
@@ -9354,7 +9410,7 @@ static int       _init_es2(void)
         //precision highp float;
         //#endif
         _vertexShader = COMPILE_SHADER(GL_VERTEX_SHADER,
-        precision lowp float;
+//        precision lowp float;
 //        "precision mediump float;      \n"
 //        "precision highp float;        \n"
 
@@ -9386,6 +9442,7 @@ static int       _init_es2(void)
 
             gl_Position = uProjection * uModelview * aPosition;
             // optimisation: uProjection * uModelview on CPU, remove one '*'
+            // and also remove one glUniformMatrix4fv call 
             // FIXME: find a way to accuratly time the diff
             // gl_Position = uModelview * aPosition;
 
@@ -9414,11 +9471,12 @@ static int       _init_es2(void)
 
         //BLENDFUNC
 
-        precision lowp float;
+        //precision lowp float;
         // precision mediump float;
         // precision highp float;
 
-        uniform lowp sampler2D uSampler2d;
+        //uniform lowp sampler2D uSampler2d;
+        uniform sampler2D uSampler2d;
 
         uniform float     uFlatOn;
         uniform float     uBlitOn;
@@ -9447,12 +9505,14 @@ static int       _init_es2(void)
                         gl_FragColor.rgb = uColor.rgb;
                     } else {
                         if (0.0 < uGlowOn) {
+                            /*
                             if (0.5 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) + (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) {
                                 gl_FragColor   = uColor;
                                 gl_FragColor.a = v_alpha;
                             } else {
                                 discard;
                             }
+                            */
                         } else {
                             gl_FragColor = uColor;
                             //gl_FragColor.a = 0.5;
@@ -9550,7 +9610,7 @@ static int       _init_es2(void)
     //glClearColor(0, 0, 1, 1);     // blue
     //glClearColor(1.0, 0.0, 0.0, 1.0);     // red
     //glClearColor(1.0, 0.0, 0.0, 0.0);     // red
-    glClearColor(0.0, 0.0, 0.0, 0.0);     // red
+    glClearColor(0.0, 0.0, 0.0, 0.0);
 
 #ifdef S52_USE_TEGRA2
     // xoom specific - clear FB to reset Tegra 2 CSAA (anti-aliase), define in gl2ext.h
@@ -9558,6 +9618,7 @@ static int       _init_es2(void)
     glClear(GL_COLOR_BUFFER_BIT | GL_COVERAGE_BUFFER_BIT_NV);
 #else
     glClear(GL_COLOR_BUFFER_BIT);
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 #endif
 
     // FIXME: case of Android restarting - maybe useless (new GLcontext)
@@ -9606,12 +9667,12 @@ int        S52_GL_init(void)
 // return TRUE on success
 {
     if (!_doInit) {
-        PRINTF("WARNING: S52 GL allready initialize!\n");
+        //PRINTF("WARNING: S52 GL allready initialize!\n");
         return _doInit;
     }
 
     // debug
-    //_contextValid();
+    _contextValid();
 
     // juste checking
     if (sizeof(double) != sizeof(GLdouble)) {
@@ -10798,7 +10859,6 @@ S52_GL_init
 
     // GLES2
     _init_freetype_gl(void)
-    S52_GL_init_GLES2(void)
         _loadShader(GLenum type, const char *shaderSrc)
     _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
     _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)

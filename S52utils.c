@@ -50,12 +50,12 @@
 #define NaN         (1.0/0.0)
 
 #ifdef S52_USE_LOG
-static gint _log = 0;
+static gint     _log = 0;
+static GTimeVal _now;
 #endif
 
 typedef void (*GPrintFunc)(const gchar *string);
 static GPrintFunc   _oldPrintHandler = NULL;
-static GTimeVal     _now;
 static S52_error_cb _err_cb = NULL;
 
 void g_get_current_time(GTimeVal *result);
@@ -226,6 +226,7 @@ void     S52_tree_replace(GTree *tree, gpointer key, gpointer value)
 #endif
 }
 
+#ifdef S52_USE_LOG
 static void     _S52_printf(const gchar *string)
 {
     char str[MAXL];
@@ -237,11 +238,10 @@ static void     _S52_printf(const gchar *string)
     if (NULL != _err_cb) {
         _err_cb(str);
     }
-#ifdef S52_USE_LOG
     // log to file
     write(_log, str, strlen(str));
-#endif
 }
+#endif
 
 int      S52_initLog(S52_error_cb err_cb)
 // set print handler
@@ -259,7 +259,7 @@ int      S52_initLog(S52_error_cb err_cb)
     }
     _oldPrintHandler = g_set_print_handler(_S52_printf);
 #else
-    PRINTF("NOTE: no LOG, compiler flags 'S52_USE_LOG' not set\n");
+    PRINTF("DEBUG: no LOG, compiler flags 'S52_USE_LOG' not set\n");
 #endif
 
     return TRUE;

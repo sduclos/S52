@@ -21,6 +21,15 @@
 */
 
 
+// Summary
+// - static def
+// - call from main loop
+// - call available fater S52_init()
+// -- call to camera movement
+// -- call to PLib state
+// -- call for MIO's
+// -- call made over socket (also WebSocket)
+// --- JSON Grammar (see ./test/s52ui)
 
 #ifndef _S52_H_
 #define _S52_H_
@@ -335,7 +344,9 @@ DLL int   STD S52_init(void);
 /**
  * S52_version:
  *
- * Internal Version
+ * Internal Version.
+ *
+ * Note: can be called before S52_init()
  *
  *
  * Return: (transfer none): String with the version of libS52 and the '#define' used to build it
@@ -396,7 +407,8 @@ typedef int (*S52_loadObject_cb)(const char *objname, /* OGRFeatureH */ void *fe
  * if @encPath is a path load all S57 base cell + update
  * if @loadObject_cb is NULL then S52_loadObject() is executed
  *
- * Note: the first ENCs to load will set the Mercator Projection Latitude
+ * Note: the first call to S52_loadCell() will set the Mercator Projection Latitude
+ *       and Longitude of any futher S52_loadCell() call(s)
  *
  * Return: TRUE on success, else FALSE
  */
@@ -406,7 +418,7 @@ DLL int    STD S52_loadCell        (const char *encPath,  S52_loadObject_cb load
  * S52_doneCell:
  * @encPath: (in):
  *
- * Free up all ressources used by a cell
+ * Free up all ressources used by @encPath
  *
  *
  * Return: TRUE on success, else FALSE
@@ -761,7 +773,7 @@ typedef guint64 S52ObjectHandle;
 
 // NOTE: gjs doesn't seem to understand 'gpointer', so send the
 // handle as a 64 bits unsigned integer (guint64)
-// (trying gdouble that is also 64bits on 32 and 64 bits machine!)
+// FIXME: try gdouble that is also 64bits on 32 and 64 bits machine
 
 #else
 
@@ -1068,7 +1080,7 @@ DLL int    STD S52_newCSYMB(void);
 
 
 // FIXME: use GDBus instead
-// or socket as DBus as to handle system-wide msg that slow bus
+// or socket as DBus as to handle system-wide msg that slow the bus
 #ifdef  S52_USE_DBUS
 #define S52_DBUS_OBJ_NAME  "nav.ecs.dbus"
 #define S52_DBUS_OBJ_PATH  "/nav/ecs/dbus"
@@ -1081,4 +1093,4 @@ DLL int    STD S52_newCSYMB(void);
 #endif
 
 
-#endif //_S52_H_
+#endif  // _S52_H_

@@ -4384,8 +4384,8 @@ guint       S52_PL_getFtglVBO(S52_obj *obj, guint *len)
 
     // parano
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
-        PRINTF("ERROR: logic bug, not a text command\n");
-        g_assert(0);
+        PRINTF("DEBUG: logic bug, not a text command\n");
+        //g_assert(0);
     }
 
     // debug
@@ -4410,8 +4410,8 @@ int         S52_PL_setFtglVBO(S52_obj *obj, guint vboID, guint len)
 
     // parano
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
-        PRINTF("ERROR: logic bug, not a text command\n");
-        g_assert(0);
+        PRINTF("DEBUG: logic bug, not a text command\n");
+        //g_assert(0);
     }
 
     cmd->vboID = vboID;

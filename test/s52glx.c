@@ -159,23 +159,6 @@ static GLXContext   _getGLXctx(Display *dpy, XVisualInfo *visInfo)
 }
 //*/
 
-/*
-static int          _setFont(Display *dpy)
-{
-    int  i;
-    Font font;
-    int  fontDL = 0;
-
-    for (i=0; i<3; ++i) {
-        font = XLoadFont(dpy, _fontName[i]);
-        glXUseXFont(font, 0, 256, fontDL);
-        S52_setFont(fontDL);
-    }
-
-    return 1;
-}
-*/
-
 int main(int argc, char* argv[])
 {
     (void)argc;

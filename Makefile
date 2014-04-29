@@ -22,6 +22,7 @@ all: s52eglx        # OGR & EGL & X11   (for testing EGL/GLES2 on X)
 #all: s52gv          # GV  (GTK)
 #all: s52gv2         # GV2 (GTK2)
 #all: s52gtk2        # OGR & GTK2 & GL 1.x
+#all: s52gtk2gl2     # OGR & GTK2 & GL 2.x need GLES2
 #all: s52gtk2p       # profiling
 #all: s52gtk2gps     # build s52gtk2 for testing with live data comming from GPSD
 #all: s52gtk2egl     # GTK2 & EGL
@@ -161,6 +162,19 @@ CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl glu gl`  \
          -DS52_USE_FTGL                                \
          -DS52_DEBUG $(DBG)
 
+s52gtk2gl2 : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glesv2 freetype2`  \
+         `gdal-config --cflags`                        \
+         -I./lib/freetype-gl            \
+         -I./lib/libtess                \
+         -I./lib/parson                 \
+	     -DS52_USE_GLES2                \
+         -DS52_USE_FREETYPE_GL          \
+         -DS52_USE_PROJ                                \
+         -DS52_USE_DOTPITCH                            \
+         -DS52_USE_GLIB2                               \
+         -DS52_USE_OPENGL_VBO                          \
+         -DS52_DEBUG $(DBG)
+
 s52clutter, s52clutter.js :                                 \
          CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl` \
          `gdal-config --cflags`                             \
@@ -296,13 +310,6 @@ s52gtk2gps:  CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl dbus-1 dbus-glib-
                       -DS52_USE_BACKTRACE               \
                       -DS52_DEBUG $(DBG)
 
-#  -I../../../../graphic/cms/lcms-1.17-mingw/include
-#  -DS52_DEBUG $(DBG)
-#  -DS52_USE_LOG
-#  -DS52_USE_SUPP_LINE_OVERLAP
-#s52win32 : CFLAGS = `pkg-config  --cflags glib-2.0 lcms`
-#s52win32  : GDALPATH = ../../../gdal/gdal-1.6.0-mingw/
-#        -I../../../proj4/proj-4.6.1-mingw/src
 s52win32 : GDALPATH = ../../../gdal/gdal-1.7.2-mingw/
 s52win32 : CFLAGS   = -mms-bitfields                         \
                       -I../../mingw/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
@@ -354,6 +361,9 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
 LIBS = `pkg-config  --libs glib-2.0 lcms ftgl glu gl` \
        `gdal-config --libs` -lproj
 
+s52gtk2gl2 : LIBS = `pkg-config  --libs glib-2.0 lcms glesv2 freetype2` \
+                    `gdal-config --libs` -lproj
+
 
 s52clutter, s52clutter.js : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl` \
                                    `gdal-config --libs` -lproj
@@ -362,7 +372,6 @@ s52clutter, s52clutter.js : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl` \
 s52glx : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl` \
                 `gdal-config --libs` -lproj
 
-#s52gtk3egl s52eglx: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl glu gl freetype2`
 s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl glesv2 freetype2` \
                                       `gdal-config --libs` -lproj
 
@@ -380,13 +389,14 @@ s52gv2 : LIBS = `pkg-config  --libs glib-2.0 lcms` \
 
 
 s52glx        : libS52.so    test/s52glx
-s52eglx       : libS52egl.so    test/s52eglx
-s52gtk2egl    : libS52egl.so    test/s52gtk2egl
-s52gtk3egl    : libS52egl.so    test/s52gtk3egl
+s52eglx       : libS52egl.so test/s52eglx
+s52gtk2egl    : libS52egl.so test/s52gtk2egl
+s52gtk3egl    : libS52egl.so test/s52gtk3egl
 s52eglarm     : $(S52DROIDLIB)/libS52.a     test/s52eglarm
 s52gv         : libS52gv.so  test/s52gv
 s52gv2        : libS52gv.so  test/s52gv2
 s52gtk2       : libS52.so    test/s52gtk2
+s52gtk2gl2    : libS52gl2.so test/s52gtk2gl2
 s52gtk2p      : $(OBJS_S52)  test/s52gtk2p  # static link
 s52clutter    : libS52.so    test/s52clutter
 s52clutter.js : libS52.so    test/s52clutter.js
@@ -419,9 +429,13 @@ $(S52DROIDLIB)/libS52.a: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARS
 libS52.so:  $(OBJS_S52) $(OBJ_PARSON) tags
 	$(CXX) -rdynamic -shared  $(OBJS_S52) $(OBJ_PARSON) $(LIBS) -o $@
 
+libS52gl2.so:  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
+	$(CXX) -rdynamic -shared  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
+	-ln -s libS52gl2.so libS52.so
+
 libS52egl.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 	$(CXX) -rdynamic -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
-	ln -s libS52egl.so libS52.so
+	-ln -s libS52egl.so libS52.so
 
 libS52gv.so: $(OBJS_S52) $(OBJS_GV)
 	$(CXX) -shared $(OBJS_S52) $(OBJS_GV) $(LIBS) -o libS52.so
@@ -481,6 +495,9 @@ test/s52gv2:
 test/s52gtk2:
 	(cd test; make s52gtk2)
 
+test/s52gtk2gl2:
+	(cd test; make s52gtk2gl2)
+
 test/s52gtk2gps:
 	(cd test; make s52gtk2gps)
 
@@ -520,8 +537,7 @@ s52win32fini:
 #
 
 clean:
-	rm -f *.o tags openc.* *~ *.so *.dll err.txt                \
-	./lib/libtess/*.o ./lib/freetype-gl/*.o ./lib/parson/*.o
+	rm -f *.o tags *~ *.so *.dll err.txt ./lib/libtess/*.o ./lib/freetype-gl/*.o ./lib/parson/*.o
 	(cd test; make clean)
 
 distclean: clean
@@ -536,8 +552,8 @@ uninstall:
 
 tar: backup
 backup: clean
-	(cd ..; tar cvf openc.tar S52)
-	bzip2 openc.tar
+	(cd ..; tar cvf S52.tar S52)
+	bzip2 S52.tar
 
 tags:
 	$(TAGS) *.c *.h

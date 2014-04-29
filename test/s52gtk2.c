@@ -25,8 +25,16 @@
 #include "S52.h"            // S52_init(), S52_loadCell(), ..
 #include <gtk/gtk.h>        // gtk_init(), ..
 #include <gdk/gdkkeysyms.h> // GDK_left, ..  (key syms)
-#include <GL/gl.h>          // glGenLists() for font and testing GL drwing
+#include <gtk/gtkgl.h>      // gtk_gl_*(), gdk_gl_*()
+#include <gdk/gdkgl.h>      // gtk_gl_*(), gdk_gl_*()
+
+#if !defined(S52_USE_GLES2)
+#include <GL/gl.h>          // gl*() in _renderHelp()
+#endif
+
 #include <string.h>         // strcmp(), memcpy()
+#include <signal.h>         // raise() - abort drawing
+
 
 #ifdef USE_AIS
 #include "s52ais.h"
@@ -43,11 +51,6 @@ gboolean update_cb(void *dummy);
 #include <glib.h>           // g_print()
 #include <glib/gprintf.h>   // g_sprintf()
 #endif
-
-#include <gtk/gtkgl.h>      // gtk_gl_*(), gdk_gl_*()
-#include <gdk/gdkgl.h>      // gtk_gl_*(), gdk_gl_*()
-
-#include <signal.h>         // raise() - abort drawing
 
 
 typedef struct S52_extent {
@@ -107,7 +110,9 @@ static S52ObjectHandle _clrlin      = NULL;
 //static S52ObjectHandle _marfea_line = NULL;
 static S52ObjectHandle _marfea_point= NULL;
 
+#if !defined(S52_USE_GLES2)
 static int _doRenderHelp = FALSE;
+#endif
 
 static GtkWidget    *_win         = NULL;
 static GtkWidget    *_winArea     = NULL;
@@ -120,7 +125,6 @@ static gchar   *_version = NULL;
 static gchar   *_outpng  = NULL;
 static gint     _s57id   = 0;
 static gchar   *_encnm   = NULL;
-
 
 
 static int      _usage(const char *arg)
@@ -200,6 +204,7 @@ static int      _usage(const char *arg)
     return 1;
 }
 
+#if !defined(S52_USE_GLES2)
 static int      _renderHelp(GtkWidget *widget)
 {
     gchar str[80] = {'\0'};
@@ -383,6 +388,7 @@ static int      _renderHelp(GtkWidget *widget)
 
     return TRUE;
 }
+#endif  // !S52_USE_GLES2
 
 #if 0
 static int      _renderCrsrPos(GtkWidget *widget, double x, double y, double _brg, double _rge)
@@ -390,45 +396,6 @@ static int      _renderCrsrPos(GtkWidget *widget, double x, double y, double _br
     // debug
     //if (FALSE == S52_getMarinerParam(S52_MAR_DISP_CRSR_POS))
     //    return FALSE;
-
-    //gint width  = widget->allocation.width;
-    //gint height = widget->allocation.height;
-
-    //gint dy     = 18;
-    //gint y      = height-100;
-
-    /*
-    glViewport(0, 0, _width, _height);
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    //glOrtho(0, _width, 0, _height, 1, -1);
-    glOrtho(0, _width, _height, 0, 1, -1);
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    {
-        unsigned char R, G, B;
-        S52_getRGB("UIBCK", &R, &G, &B);
-        glColor4ub(R, G, B, 200);
-    }
-    //x = 100.0;
-    //y = 100.0;
-
-    //glBegin(GL_TRIANGLES);
-    glBegin(GL_POLYGON);
-    glVertex2i(x,           y);
-    glVertex2i(x,           y + 18);
-    glVertex2i(x +  8 * 18, y + 18);
-    glVertex2i(x +  8 * 18, y);
-    glEnd();
-
-    glDisable(GL_BLEND);
-    */
 
     char str[80] = {'\0'};
     sprintf(str, "%05.1f° / %.1f m", _brg, _rge);
@@ -439,74 +406,8 @@ static int      _renderCrsrPos(GtkWidget *widget, double x, double y, double _br
 }
 #endif
 
-static int      _S52_init()
-{
-    // FIXME: broken on some monitor
-    GdkScreen    *screen   = NULL;
-    gint         w,h;
-    gint         wmm,hmm;
-
-    screen = gdk_screen_get_default();
-    w      = gdk_screen_get_width    (screen);
-    h      = gdk_screen_get_height   (screen);
-    wmm    = gdk_screen_get_width_mm (screen);
-    hmm    = gdk_screen_get_height_mm(screen);
-
-    // return -1 (not avaible)
-    //gint hmm0 = gdk_screen_get_monitor_height_mm(screen, 0);
-    //gint hmm1 = gdk_screen_get_monitor_height_mm(screen, 1);
-    //gint wmm0 = gdk_screen_get_monitor_width_mm(screen, 0);
-    //gint wmm1 = gdk_screen_get_monitor_width_mm(screen, 1);
-    //printf("screen monitor 0: (w/h): %i / %i\n", wmm0, hmm0);  // 338 / 270
-    //printf("screen monitor 1: (w/h): %i / %i\n", wmm1, hmm1);  // 376 / 301
-    //return 0;
-    //GdkRectangle dest;
-    //gdk_screen_get_monitor_geometry(screen, 0, &dest);
-    //gdk_screen_get_monitor_geometry(screen, 0, &dest);
-
-    // debug --info from xrandr
-    //w      = 1280;
-    //h      = 1024;
-    //wmm    = 376;
-    //hmm    = 301; // wrong
-    //hmm    = 307;
-
-    printf("screen (w/h/wmm/hmm): %i / %i / %i / %i\n", w, h, wmm, hmm);
-
-    // this will trigger:
-    // GLib-CRITICAL **: g_string_append: assertion `string != NULL' failed
-    //g_string_append(NULL, "test");
-
-    //S52_init(w, h, wmm, hmm);
-    //S52_init(w, h, wmm, hmm, _err_cb);
-    S52_init(w, h, wmm, hmm, NULL);
-    //S52_init(10, 10, 30, 30);
-
-    return TRUE;
-}
-
 static char   **_option(int argc, char **argv)
 {
-    /*
-    char *prgnm = *argv;
-
-    argc--;  argv++;
-    while (argc--) {
-
-        if (NULL == *argv)
-            break;
-
-        if (0 == strcmp(*argv, "-h"))
-            _usage(prgnm);
-
-        if (0 == strcmp(*argv, "-f"))
-            ;
-
-        ++argv;
-    }
-    */
-
-
     GOptionEntry entries[] =
     {
         { "version",  'v', 0, G_OPTION_ARG_NONE,   &_version, "libS52 version",             NULL },
@@ -536,6 +437,7 @@ static char   **_option(int argc, char **argv)
     return argv;
 }
 
+#if 0
 static int      _dumpENV()
 {
     {
@@ -569,6 +471,7 @@ static int      _dumpENV()
 
     return 1;
 }
+#endif
 
 static int      _computeView(S52_view *view)
 {
@@ -605,76 +508,6 @@ static int      _resetView(S52_view *view)
 
     return TRUE;
 }
-
-#if 0
-GdkCursor      *_cursor_new(GdkCursorType ctype)
-{
-    // This data is in X bitmap format, and can be created with the 'bitmap'utility.
-#define cursor1_width  16
-#define cursor1_height 16
-    /*
-    static char cursor1_bits[] = {
-        0x80, 0x01, 0x40, 0x02, 0x20, 0x04, 0x10, 0x08, 0x08, 0x10, 0x04, 0x20,
-        0x82, 0x41, 0x41, 0x82, 0x41, 0x82, 0x82, 0x41, 0x04, 0x20, 0x08, 0x10,
-        0x10, 0x08, 0x20, 0x04, 0x40, 0x02, 0x80, 0x01};
- 
-    static char cursor1mask_bits[] = {
-        0x80, 0x01, 0xc0, 0x03, 0x60, 0x06, 0x30, 0x0c, 0x18, 0x18, 0x8c, 0x31,
-        0xc6, 0x63, 0x63, 0xc6, 0x63, 0xc6, 0xc6, 0x63, 0x8c, 0x31, 0x18, 0x18,
-        0x30, 0x0c, 0x60, 0x06, 0xc0, 0x03, 0x80, 0x01};
-    */
-    //GdkPixmap *source, *mask;
-
-    //GdkColor fg = { 0, 65535, 0, 0 }; /* Red. */
-    //GdkColor bg = { 0, 0, 0, 65535 }; /* Blue. */
-    //source = gdk_bitmap_create_from_data(NULL, cursor1_bits,     cursor1_width, cursor1_height);
-    //mask   = gdk_bitmap_create_from_data(NULL, cursor1mask_bits, cursor1_width, cursor1_height);
-    //cursor = gdk_cursor_new_from_pixmap(source, mask, &fg, &bg, 8, 8);
-
-    //gdk_pixmap_unref(source);
-    //gdk_pixmap_unref(mask);
-
-    GdkCursor*  cursor  = gdk_cursor_new(GDK_CROSS);
-    //GdkCursor* cursor = gdk_cursor_new(GDK_CROSSHAIR);
-    //GdkCursor* cursor = gdk_cursor_new(GDK_CROSS_REVERSE);
-
-    /*
-    GdkPixbuf* pixelCursor = gdk_cursor_get_image(cursor);
-
-    int width, height, rowstride, n_channels;
-    guchar *pixels, *p;
-
-    n_channels = gdk_pixbuf_get_n_channels(pixelCursor);
-
-    g_assert(gdk_pixbuf_get_colorspace(pixelCursor) == GDK_COLORSPACE_RGB);
-    g_assert(gdk_pixbuf_get_bits_per_sample(pixelCursor) == 8);
-    g_assert(gdk_pixbuf_get_has_alpha(pixelCursor));
-    g_assert(n_channels == 4);
-
-    width     = gdk_pixbuf_get_width    (pixelCursor);
-    height    = gdk_pixbuf_get_height   (pixelCursor);
-    rowstride = gdk_pixbuf_get_rowstride(pixelCursor);
-    pixels    = gdk_pixbuf_get_pixels   (pixelCursor);
-
-    //p = pixels + (height/4 * rowstride) + (width/4 * n_channels);
-    //p = pixels + ((height-1) * rowstride) + ((width-1) * n_channels);
-    p = pixels;
-
-    p[0] =   0; // R
-    p[1] = 255; // G
-    p[2] =   0; // B
-    p[3] = 255; // A
-
-    GdkDisplay *display = gdk_cursor_get_display(cursor);
-    GdkCursor  *c       = gdk_cursor_new_from_pixbuf(display, pixelCursor, width/2, height/2);
-
-    return c;
-    */
-
-
-    return cursor;
-}
-#endif
 
 #ifdef USE_AIS
 static gboolean _draw(gpointer data)
@@ -724,6 +557,7 @@ static void     realize(GtkWidget *widget, gpointer data)
 
 }
 
+static int      _initS52();  // foward decl
 static gboolean configure_event(GtkWidget         *widget,
                                 GdkEventConfigure *event,
                                 gpointer           data)
@@ -750,9 +584,6 @@ static gboolean configure_event(GtkWidget         *widget,
     return TRUE;
 }
 
-
-//extern void cogl_begin_gl(void);
-//extern void cogl_end_gl(void);
 static gboolean expose_event(GtkWidget      *widget,
                              GdkEventExpose *event,
                              gpointer        data)
@@ -812,9 +643,11 @@ static gboolean expose_event(GtkWidget      *widget,
     // draw reste
     S52_drawLast();
 
+#if !defined(S52_USE_GLES2)
     // this draw help 'above' drawLast()
     if (TRUE == _doRenderHelp)
         _renderHelp(widget);
+#endif
 
     //_renderCrsrPos(widget, _x, _y, _brg, _rge);
 
@@ -1033,9 +866,12 @@ static gboolean key_release_event(GtkWidget   *widget,
 
         case GDK_Escape:_resetView(&_view);                break;
         case GDK_r     : /*gtk_widget_draw(widget, NULL);*/break;
-        case GDK_h     :_doRenderHelp = !_doRenderHelp;
-                        _usage("s52gtk2");
-                        break;
+        case GDK_h     :
+#if !defined(S52_USE_GLES2)
+            _doRenderHelp = !_doRenderHelp;
+#endif
+            _usage("s52gtk2");
+            break;
         case GDK_v     :g_print("%s\n", S52_version());    break;
         case GDK_x     :_dumpParam();                      break;
         case GDK_q     :gtk_main_quit();                   break;
@@ -1051,7 +887,6 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_i     :_toggle(S52_MAR_ANTIALIAS);        break;
         case GDK_j     :_toggle(S52_MAR_QUAPNT01);         break;
         case GDK_z     :_toggle(S52_MAR_DISP_OVERLAP);     break;
-        //case GDK_1     :_toggle(S52_MAR_DISP_LAYER_LAST);  break;
         case GDK_1     :_meterInc(S52_MAR_DISP_LAYER_LAST);break;
         case GDK_exclam:_meterDec(S52_MAR_DISP_LAYER_LAST);break;
 
@@ -1066,8 +901,6 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_4     :_toggle(S52_MAR_DISP_GRATICULE);   break;
         case GDK_5     :_toggle(S52_MAR_HEADNG_LINE);      break;
 
-        //case GDK_t     :_meterInc(S52_MAR_SHOW_TEXT);      break;
-        //case GDK_T     :_meterDec(S52_MAR_SHOW_TEXT);      break;
         case GDK_t     :
         case GDK_T     :_toggle  (S52_MAR_SHOW_TEXT);      break;
         case GDK_c     :_meterInc(S52_MAR_SAFETY_CONTOUR); break;
@@ -1087,18 +920,10 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_m     :_meterInc(S52_MAR_DATUM_OFFSET);   break;
         case GDK_M     :_meterDec(S52_MAR_DATUM_OFFSET);   break;
 
-        //case GDK_7     :_disp(S52_MAR_DISP_CATEGORY, 'D'); break; // DISPLAYBASE
-        //case GDK_8     :_disp(S52_MAR_DISP_CATEGORY, 'S'); break; // STANDARD
-        //case GDK_9     :_disp(S52_MAR_DISP_CATEGORY, 'O'); break; // OTHER
-        //case GDK_0     :_disp(S52_MAR_DISP_CATEGORY, 'A'); break; // OTHER (all)
-        //case GDK_7     :_disp(S52_MAR_DISP_CATEGORY, 0);   break; // DISPLAYBASE
-        //case GDK_8     :_disp(S52_MAR_DISP_CATEGORY, 1);   break; // STANDARD
-        //case GDK_9     :_disp(S52_MAR_DISP_CATEGORY, 2);   break; // OTHER
-        //case GDK_0     :_disp(S52_MAR_DISP_CATEGORY, 3);   break; // OTHER (all)
         case GDK_7     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_BASE);   break; // DISPLAYBASE
         case GDK_8     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_STD);    break; // STANDARD
         case GDK_9     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_OTHER);  break; // OTHER
-        case GDK_0     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT);  break; // OTHER (all)
+        case GDK_0     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT); break; // OTHER (all)
 
         case GDK_k     :_cpal(S52_MAR_COLOR_PALETTE,  1.0);break;
         case GDK_K     :_cpal(S52_MAR_COLOR_PALETTE, -1.0);break;
@@ -1107,11 +932,6 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_asciicircum:
         case GDK_question:
         case GDK_caret :_meterDec(S52_MAR_DISP_WHOLIN);    break;
-
-
-        //case GDK_3     :_cpal("S52_MAR_COLOR_PALETTE", 2.0); break; // DAY_WHITEBACK
-        //case GDK_4     :_cpal("S52_MAR_COLOR_PALETTE", 3.0); break; // DUSK
-        //case GDK_5     :_cpal("S52_MAR_COLOR_PALETTE", 4.0); break; // NIGHT
 
         case GDK_F1    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY); break;
         case GDK_F2    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS); break;
@@ -1244,10 +1064,10 @@ static gboolean motion_notify_event(GtkWidget      *widget,
 
     //*
     if (TRUE == S52_drawLast()) {
-
+#if !defined(S52_USE_GLES2)
         if (TRUE == _doRenderHelp)
             _renderHelp(widget);
-
+#endif
         //_renderCrsrPos(widget, _x, _y, _brg, _rge);
 
         if (gdk_gl_drawable_is_double_buffered(gldrawable))
@@ -1543,11 +1363,11 @@ static int      _setCLRLIN()
 
     _clrlin = S52_newCLRLIN(1, _view.cLat - 0.02, _view.cLon - 0.02, _view.cLat - 0.02, _view.cLon + 0.01);
 
-
     return TRUE;
 }
 
-static unsigned char *_radar_cb(double *cLat, double *cLng, double *rNM)
+#ifdef S52_USE_RADAR
+static guchar  *_radar_cb(double *cLat, double *cLng, double *rNM)
 {
     (void)cLat;
     (void)cLng;
@@ -1557,6 +1377,7 @@ static unsigned char *_radar_cb(double *cLat, double *cLng, double *rNM)
 
     return NULL;
 }
+#endif
 
 #if 0
 static int      _my_S52_loadObject_cb(const char *objname,   void *shape)
@@ -1646,15 +1467,51 @@ static int      _setMarFeature()
     return TRUE;
 }
 
-static int      _setupS52()
+static int      _initS52()
 // setup some decent setting for testing
 {
-    //int ret = FALSE;
+    // FIXME: broken on some monitor
+    GdkScreen    *screen   = NULL;
+    gint         w,h;
+    gint         wmm,hmm;
 
-    _S52_init();
+    screen = gdk_screen_get_default();
+    w      = gdk_screen_get_width    (screen);
+    h      = gdk_screen_get_height   (screen);
+    wmm    = gdk_screen_get_width_mm (screen);
+    hmm    = gdk_screen_get_height_mm(screen);
 
+    // return -1 (not avaible)
+    //gint hmm0 = gdk_screen_get_monitor_height_mm(screen, 0);
+    //gint hmm1 = gdk_screen_get_monitor_height_mm(screen, 1);
+    //gint wmm0 = gdk_screen_get_monitor_width_mm(screen, 0);
+    //gint wmm1 = gdk_screen_get_monitor_width_mm(screen, 1);
+    //printf("screen monitor 0: (w/h): %i / %i\n", wmm0, hmm0);  // 338 / 270
+    //printf("screen monitor 1: (w/h): %i / %i\n", wmm1, hmm1);  // 376 / 301
+    //return 0;
+    //GdkRectangle dest;
+    //gdk_screen_get_monitor_geometry(screen, 0, &dest);
+    //gdk_screen_get_monitor_geometry(screen, 0, &dest);
 
-    // load default cell (in s52.cfg)
+    // debug --info from xrandr
+    //w      = 1280;
+    //h      = 1024;
+    //wmm    = 376;
+    //hmm    = 301; // wrong
+    //hmm    = 307;
+
+    printf("screen (w/h/wmm/hmm): %i / %i / %i / %i\n", w, h, wmm, hmm);
+
+    // can be used before S52_init()
+    S52_version();
+
+#ifdef S52_USE_LOG
+    S52_init(w, h, wmm, hmm, _err_cb);
+#else
+    S52_init(w, h, wmm, hmm, NULL);
+#endif
+
+    // load default cell in s52.cfg
     //S52_loadCell(NULL, _my_S52_loadObject_cb);
     S52_loadCell(NULL, NULL);
 
@@ -1848,7 +1705,9 @@ static int      _setupS52()
 
     _setCLRLIN();
 
+#ifdef S52_USE_RADAR
     S52_setRADARCallBack(_radar_cb, 1280);
+#endif
 
     _setMarFeature();
 
@@ -1867,7 +1726,7 @@ static int      _setupS52()
     return TRUE;
 }
 
-#if 0
+#ifdef S52_USE_LOG
 static int      _err_cb(const char *err)
 {
     printf("%s\n", err);
@@ -1877,7 +1736,6 @@ static int      _err_cb(const char *err)
 #endif
 
 #ifdef USE_AIS
-//static
 gboolean update_cb(void *dummy)
 {
     GdkGLContext  *glcontext  = gtk_widget_get_gl_context (_winArea);
@@ -1895,9 +1753,10 @@ gboolean update_cb(void *dummy)
 
 
     if (TRUE == S52_drawLast()) {
-
+#if !defined(S52_USE_GLES2)
         if (TRUE == _doRenderHelp)
             _renderHelp(_winArea);
+#endif
 
         if (gdk_gl_drawable_is_double_buffered(gldrawable))
             gdk_gl_drawable_swap_buffers(gldrawable);
@@ -1927,19 +1786,9 @@ gboolean update_cb(void *dummy)
 }
 #endif
 
-
-
 int main(int argc, char **argv)
 {
-    //GtkWidget    *win      = NULL;
-    //GtkWidget    *_winArea  = NULL;
-    GdkGLConfig  *glconfig = NULL;
-    //GdkGLConfigMode mode  = GDK_GL_MODE_RGBA | GDK_GL_MODE_DEPTH | GDK_GL_MODE_STENCIL | GDK_GL_MODE_DOUBLE;
-    GdkGLConfigMode mode;
     //GThreadFunctions vtable;
-    //int mode = 0;
-    //const char  *filename = NULL;
-
     // export G_SLICE=always-malloc
     // export G_DEBUG=gc-friendly
     //g_mem_set_vtable(glib_mem_profiler_table);
@@ -1948,63 +1797,49 @@ int main(int argc, char **argv)
     //return 1;
 
     gtk_init(&argc, &argv);
-    //gtk_init(NULL, NULL);
 
     //g_thread_init(&vtable);
-    //g_thread_init(NULL);
-
 
     gtk_gl_init(&argc, &argv);
-    //gdk_gl_init(&argc, &argv);
-    //gtk_gl_init(NULL, NULL);
-
 
     gtk_set_locale();
 
-
-    ///////////////////////////////////////
     // setup S52 display
-    //
-    S52_version();
-
-#ifdef USE_AIS
-    //when running with GPSD use hard coded setup
-    _setupS52();
-#else
-    {
-        // when testing libS52 use setup from command-line option
-        // easyer for testing from script
-        _S52_init();
-        char **argvret = _option(argc, argv);
-        if (NULL == argvret[1]) {
-            //S52_done();
-            _setupS52();
-
-            //return 0;
-            ;
-        }
-        _dumpENV();
-    }
-#endif
-    ///////////////////////////////////////
-
+    _initS52();
 
     _timer = g_timer_new();
 
 
     // Drawing Area
     _winArea = gtk_drawing_area_new();
-    mode    = (GdkGLConfigMode) (GDK_GL_MODE_RGBA | GDK_GL_MODE_STENCIL | GDK_GL_MODE_DOUBLE);
-    //mode = (GdkGLConfigMode) (GDK_GL_MODE_RGBA | GDK_GL_MODE_STENCIL);
-    //mode    = (GdkGLConfigMode) (GDK_GL_MODE_RGB | GDK_GL_MODE_STENCIL | GDK_GL_MODE_DOUBLE);
-    glconfig = gdk_gl_config_new_by_mode(mode);
+
+    int attList[] = {
+        GDK_GL_USE_GL,       1,
+        GDK_GL_RGBA,         1,
+        GDK_GL_DOUBLEBUFFER, 1,
+        GDK_GL_RED_SIZE,     8,
+        GDK_GL_GREEN_SIZE,   8,
+        GDK_GL_BLUE_SIZE,    8,
+        GDK_GL_ALPHA_SIZE,   8,
+
+        //GDK_GL_BUFFER_SIZE, GDK_GL_LEVEL,
+        //GDK_GL_STEREO, GDK_GL_AUX_BUFFERS,
+        //GDK_GL_DEPTH_SIZE, GDK_GL_STENCIL_SIZE, GDK_GL_ACCUM_RED_SIZE, GDK_GL_ACCUM_GREEN_SIZE,
+        //GDK_GL_ACCUM_BLUE_SIZE, GDK_GL_ACCUM_ALPHA_SIZE.
+
+        GDK_GL_ATTRIB_LIST_NONE
+    };
+
+    GdkGLConfig *glconfig = gdk_gl_config_new(attList);
+
     gtk_widget_set_gl_capability(_winArea, glconfig, NULL, TRUE, GDK_GL_RGBA_TYPE);
+    if (TRUE != gtk_widget_is_gl_capable(_winArea)) {
+        g_print("Not GL capable\n");
+        goto exit;
+    }
 
     gtk_widget_set_events(_winArea, GDK_POINTER_MOTION_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);
     //gtk_widget_set_events(_winArea, GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);
-    GTK_WIDGET_UNSET_FLAGS(_winArea, GTK_DOUBLE_BUFFERED);
-
-
 
 #if S52_USE_GLIB2
     g_signal_connect_after(G_OBJECT(_winArea), "realize",             G_CALLBACK(realize),         NULL);
@@ -2018,24 +1853,11 @@ int main(int argc, char **argv)
     gtk_signal_connect(      GTK_OBJECT(_winArea), "expose_event",    GTK_SIGNAL_FUNC(expose_event),    NULL);
 #endif
 
-    /*
-    g_signal_connect_after(G_OBJECT(winClutter), "realize",             G_CALLBACK(realize),         NULL);
-    g_signal_connect(      G_OBJECT(winClutter), "configure_event",     G_CALLBACK(configure_event), NULL);
-    g_signal_connect(      G_OBJECT(winClutter), "expose_event",        G_CALLBACK(expose_event),    NULL);
-    //g_signal_connect(      G_OBJECT(winClutter), "motion_notify_event", G_CALLBACK(motion_notify_event),  NULL);
-    //g_signal_connect(      G_OBJECT(winClutter), "button_release_event",G_CALLBACK(button_release_event), NULL);
-
-    //g_signal_connect(      G_OBJECT(winClutter), "paint",               G_CALLBACK(button_release_event), NULL);
-    //g_signal_connect ((ClutterActor*) viewport, "paint", (GCallback) _clutter_actor_paint, NULL);
-    g_signal_connect ((ClutterActor*) rect, "paint", (GCallback) _clutter_actor_paint, NULL);
-    //g_signal_connect ((ClutterActor*) stage, "paint", (GCallback) _clutter_actor_paint, NULL);
-
-    //gtk_widget_set_events(winClutter, GDK_POINTER_MOTION_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);
-    //GTK_WIDGET_UNSET_FLAGS(winClutter, GTK_DOUBLE_BUFFERED);
-    */
-
     // Main Window
     _win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    g_signal_connect_after(G_OBJECT(_win), "key_release_event",   G_CALLBACK(key_release_event),    NULL);
+    g_signal_connect(      G_OBJECT(_win), "delete_event",        G_CALLBACK(gtk_main_quit),        NULL);
+    //g_signal_connect(      G_OBJECT(_win), "button_release_event",G_CALLBACK(button_release_event), NULL);
 
     // normal
     //gtk_window_fullscreen(GTK_WINDOW(_win));
@@ -2044,34 +1866,16 @@ int main(int argc, char **argv)
 
     // debug
     gtk_window_set_default_size(GTK_WINDOW(_win), 800, 600 );
-    // 1 screen
-    //gtk_window_set_default_size(GTK_WINDOW(_win), 1280, 1024);
-    // 2 screen
-    //gtk_window_set_default_size(GTK_WINDOW(_win), 2560, 1024);
-
-    //gtk_widget_set_events(win, GDK_POINTER_MOTION_MASK|GDK_BUTTON_PRESS_MASK|GDK_BUTTON_RELEASE_MASK);
-    GTK_WIDGET_UNSET_FLAGS(_win, GTK_DOUBLE_BUFFERED);
-                                    
-    g_signal_connect_after(G_OBJECT(_win), "key_release_event",   G_CALLBACK(key_release_event),    NULL);
-    g_signal_connect(      G_OBJECT(_win), "delete_event",        G_CALLBACK(gtk_main_quit),        NULL);
-    //g_signal_connect(      G_OBJECT(_win), "button_release_event",G_CALLBACK(button_release_event), NULL);
 
     gtk_container_add(GTK_CONTAINER(_win), _winArea);
 
     gtk_widget_show_all(_win);
 
-    //GdkCursor* cursor = _cursor_new(GDK_CROSS);
-    //GdkColor color;
-    //gdk_color_parse ("red", &color);
-    //gtk_widget_modify_fg(win, GTK_STATE_NORMAL, &color);
-
-    //gdk_window_set_cursor(_win->window, cursor);
-    //gdk_cursor_destroy(cursor);   // deprecated
-
     // start main loop
     gtk_main();
 
 
+exit:
     // S52 cleanup
     _ownshp      = S52_delMarObj(_ownshp);
     _vrmeblA     = S52_delMarObj(_vrmeblA);

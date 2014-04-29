@@ -239,6 +239,23 @@ typedef EGLuint64NV (*PFNEGLGETSYSTEMTIMENVPROC)          (void);
 static PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC _eglGetSystemTimeFrequencyNV = NULL;
 static PFNEGLGETSYSTEMTIMENVPROC          _eglGetSystemTimeNV          = NULL;
 
+/*
+// GL not GLES2-3 When GL_EXT_framebuffer_multisample is supported, GL_EXT_framebuffer_object and GL_EXT_framebuffer_blit are also supported.
+#ifndef GL_EXT_multisampled_render_to_texture
+#define GL_EXT_multisampled_render_to_texture 1
+#define GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_SAMPLES_EXT 0x8D6C
+#define GL_RENDERBUFFER_SAMPLES_EXT       0x8CAB
+#define GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT 0x8D56
+#define GL_MAX_SAMPLES_EXT                0x8D57
+typedef void (GL_APIENTRYP PFNGLRENDERBUFFERSTORAGEMULTISAMPLEEXTPROC)  (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height);
+typedef void (GL_APIENTRYP PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEEXTPROC) (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level, GLsizei samples);
+#ifdef GL_GLEXT_PROTOTYPES
+GL_APICALL void GL_APIENTRY glRenderbufferStorageMultisampleEXT  (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height);
+GL_APICALL void GL_APIENTRY glFramebufferTexture2DMultisampleEXT (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level, GLsizei samples);
+#endif
+#endif // GL_EXT_multisampled_render_to_texture
+*/
+
 //-----------------------------
 
 #ifdef S52_USE_RADAR
@@ -420,7 +437,7 @@ static int      _egl_init       (s52engine *engine)
 
         EGL_NONE
     };
-#else  // S52_USE_TEGRA2
+#endif  // S52_USE_TEGRA2
 
 #ifdef S52_USE_ADRENO
 //#define EGL_OPENGL_ES3_BIT_KHR				    0x00000040
@@ -443,15 +460,16 @@ static int      _egl_init       (s52engine *engine)
 
         EGL_NONE
     };
-#else  // S52_USE_ADRENO
+#endif  // S52_USE_ADRENO
 
 #ifdef S52_USE_GLES2
     // Mesa OpenGL ES 2.x, 3.x
+    // MSAA: RGBA8, depth24, stencil8 - fail on Ubuntu 14.04 (Wayland!)
     const EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
 
-        //EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+        //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
         //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
 
         EGL_RED_SIZE,        8,
@@ -462,14 +480,16 @@ static int      _egl_init       (s52engine *engine)
         //EGL_BUFFER_SIZE,        16,
         //EGL_BUFFER_SIZE,        24,
 
+        //EGL_DEPTH_SIZE,         1,
         //EGL_DEPTH_SIZE,         16,
         //EGL_DEPTH_SIZE,         24,
 
         //EGL_STENCIL_SIZE,        8,
 
         // fail on Mesa (MSAA)
-        //EGL_SAMPLES,             1,
-        //EGL_SAMPLE_BUFFERS,      1,
+        //EGL_SAMPLES,             1,   // say EGL_SUCCESS, but 0 config num
+        //EGL_SAMPLE_BUFFERS,      1,   // say EGL_SUCCESS, but 0 config num
+        //EGL_SAMPLE_BUFFERS,      2,
         //EGL_SAMPLE_BUFFERS,      4,
         //EGL_SAMPLE_BUFFERS,      8,
 
@@ -490,8 +510,6 @@ static int      _egl_init       (s52engine *engine)
         EGL_NONE
     };
 #endif  // S52_USE_GLES2
-#endif  // S52_USE_ADRENO
-#endif  // S52_USE_TEGRA2
 
 
 #ifdef S52_USE_ANDROID
@@ -633,7 +651,8 @@ static int      _egl_init       (s52engine *engine)
 
 
 #ifdef S52_USE_GLES2
-    EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
+    //EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
+    EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
 #else
     // OpenGL 1.x
     EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
@@ -652,8 +671,10 @@ static int      _egl_init       (s52engine *engine)
         EGL_NONE
     };
 
-    eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, eglContextList);
-    //eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, NULL);
+    // GLES
+    //eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, eglContextList);
+    // GL
+    eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, NULL);
     //eglContext = eglCreateContext(eglDisplay, eglConfig[5], EGL_NO_CONTEXT, eglContextList);
     if (EGL_NO_CONTEXT == eglContext || EGL_SUCCESS != eglGetError()) {
         LOGE("eglCreateContext() failed. [0x%x]\n", eglGetError());

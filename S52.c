@@ -298,7 +298,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.123\n"
+      "libS52 0.124\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -1736,10 +1736,12 @@ DLL int    STD S52_init(void)
     // load basic def (ex color, CS, ...)
     S52_PL_init();
 
+    /*
     if (FALSE == S52_GL_init()) {
         PRINTF("S52_GL_init() failed\n");
         //return FALSE;
     }
+    */
 
     // put an error No in S52_MAR_NONE
     S52_MP_set(S52_MAR_NONE, INFINITY);

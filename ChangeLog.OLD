@@ -3,8 +3,11 @@
 #
 
 
+2014APR29
+    -add target s52gtk2gl2, run on GLES2 (a subset of GL2.x)
+
 2014APR26
-    -fix build of s2gtk2
+    -fix build of s52gtk2
 
 2014APR25
     -fix build of s52glx
