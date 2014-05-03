@@ -120,66 +120,72 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # NOTE: 'gdal-config --cflags': need with mingw
 # NOTE: -D_REENTRANT add this if threading
 # NOTE: signal is handled by glib-2.0 as of gtk+-2.0
-# NOTE: -DS52_USE_SUPP_LINE_OVERLAP, experiment in progresse to suppress overlapping lines
-#      (GDAL/OGR/S57 need a patch to work as it max out)
 #
-# NOTE: *** experimental ***
+# *** experimental ***
 # Text:
-# -DS52_USE_COGL: used to test text rendering from COGL
-# -DS52_USE_FTGL: text rendering
-# -DS52_USE_GLC : text rendering
-# -DS52_USE_FREETYPE_GL: text rendering need -DS52_USE_GLES2
-# -DS52_USE_TXT_SHADOW: add 'shadow' to Text
+# -DS52_USE_COGL         - used to test text rendering from COGL
+# -DS52_USE_FTGL         - text rendering
+# -DS52_USE_GLC          - text rendering
+# -DS52_USE_FREETYPE_GL  - text rendering need -DS52_USE_GLES2
+# -DS52_USE_TXT_SHADOW   - add 'shadow' to Text
+#
 # -DS52_USE_OGR_FILECOLLECTOR:
 #        - compile with g++ to use gdal/ogr s57filecollector()
 #        - add 'extern "C"' to ogr/ogrsf_frmts/s57.h:40 S57FileCollector()  -or- compile S52 with g++
 #        - for Windows file path in CATALOG to work on unix apply patch in doc/s57filecollector.cpp.diff
-# -DS52_USE_SUPP_LINE_OVERLAP: supress display of overlapping line  (OGR patch in doc/ogrfeature.cpp.diff)
+# -DS52_USE_SUPP_LINE_OVERLAP - supress display of overlapping line  (OGR patch in doc/ogrfeature.cpp.diff)
 #                              --see S52 manual p. 45 doc/pslb03_2.pdf
-# -DS52_USE_C_AGGR_C_ASSO: return info C_AGGR C_ASSO on cursor pick (OGR patch in doc/ogrfeature.cpp.diff)
-# -DS52_USE_SYM_AISSEL01: need symbol in test/plib-test-priv.rle
-# -DS52_USE_WORLD: need shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
-# -DS52_USE_RADAR: skip swapbuffer between DRAW & LAST cycle, skip read/write FB
-
-
-# -DS52_DEBUG: add more info for debugging libS52 (ex _checkError() in S52GL.c)
-# -DS52_USE_LOG: log every S52_* in tmp file
+# -DS52_USE_C_AGGR_C_ASSO - return info C_AGGR C_ASSO on cursor pick (OGR patch in doc/ogrfeature.cpp.diff)
+# -DS52_USE_SYM_AISSEL01 - need symbol in test/plib-test-priv.rle
+# -DS52_USE_WORLD        - need shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
+# -DS52_USE_RADAR        - skip swapbuffer between DRAW & LAST cycle, skip read/write FB
 #
-# -DS52_USE_OPENGL_VBO: GL version 1.5 or greater.
-# -DS52_USE_EGL:  for GLES2
-# -DS52_USE_DBUS: mimic S52.h
-# -DS52_USE_SOCK: same as DBus
-# -DS52_USE_PIPE: same as DBus, in a day
-# -DS52_USE_GOBJECT
-# -DS52_USE_BACKTRACE
+# -DS52_DEBUG            - add more info for debugging libS52 (ex _checkError() in S52GL.c)
+# -DS52_USE_LOG          - log every S52_* in tmp file
+# -DG_DISABLE_ASSERT     - disable g_assert()
+#
+# -DS52_USE_OPENGL_VBO   - GL version 1.5 or greater.
+# -DS52_USE_EGL          - for GLES2
+# -DS52_USE_DBUS         - mimic S52.h
+# -DS52_USE_SOCK         - same as DBus - socket & WebSocket - need ./lib/parson
+# -DS52_USE_PIPE         - same as DBus, in a day
+# -DS52_USE_GOBJECT      - make S52objH an int64 for gjs (Javascript compiler)
+# -DS52_USE_SYM_AISSEL01 - experimental - symbol in plib-test-priv.rle
+# -DS52_USE_BACKTRACE    - debug
+# -DS52_USE_GL           - GL only stuff
+# -DS52_USE_GLES2        - need VBO
+# -DS52_USE_ANDROID      - build for Android/ARM 
+# -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
+# -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7 (2013))
 
+
+# default CFLAGS for default target
 CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl glu gl`  \
          `gdal-config --cflags`                        \
          -DS52_USE_PROJ                                \
-         -DS52_USE_DOTPITCH                            \
          -DS52_USE_GLIB2                               \
          -DS52_USE_OPENGL_VBO                          \
          -DS52_USE_FTGL                                \
          -DS52_DEBUG $(DBG)
 
-s52gtk2gl2 : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glesv2 freetype2`  \
+s52gtk2gl2 : CFLAGS = `pkg-config  --cflags glib-2.0 lcms gl freetype2`  \
          `gdal-config --cflags`                        \
-         -I./lib/freetype-gl            \
-         -I./lib/libtess                \
-         -I./lib/parson                 \
-	     -DS52_USE_GLES2                \
-         -DS52_USE_FREETYPE_GL          \
+         -I./lib/freetype-gl                           \
+         -I./lib/libtess                               \
+         -I./lib/parson                                \
          -DS52_USE_PROJ                                \
-         -DS52_USE_DOTPITCH                            \
          -DS52_USE_GLIB2                               \
          -DS52_USE_OPENGL_VBO                          \
+         -DS52_USE_GLES2                               \
+         -DS52_USE_GL2                                 \
+         -DS52_USE_FREETYPE_GL                         \
+         -DS52_USE_TXT_SHADOW                          \
          -DS52_DEBUG $(DBG)
 
 s52clutter, s52clutter.js :                                 \
          CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl` \
          `gdal-config --cflags`                             \
          -I/home/sduclos/dev/gis/gdal/gdal/frmts/iso8211/   \
-         -DS52_USE_DOTPITCH                                 \
          -DS52_USE_GLIB2                                    \
          -DS52_USE_PROJ                                     \
          -DS52_USE_OGR_FILECOLLECTOR                        \
@@ -192,16 +198,15 @@ s52gtk2p : CFLAGS += -pg
 s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl` \
                   `gdal-config --cflags`          \
                   -DS52_USE_PROJ                  \
-                  -DS52_USE_DOTPITCH              \
                   -DS52_USE_GLIB2                 \
                   -DS52_USE_OPENGL_VBO            \
                   -DS52_DEBUG $(DBG)
 
-# GL - EGL/GL 1.x broken
-#s52gtk3egl s52eglx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms egl gl`
-# -DS52_USE_WORLD
+# EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
+#                  `pkg-config  --cflags glib-2.0 lcms egl glesv2` 
+#                  `pkg-config  --cflags glib-2.0 lcms egl gl` 
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
-                  `pkg-config  --cflags glib-2.0 lcms egl glesv2` \
+                  `pkg-config  --cflags glib-2.0 lcms glesv2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
                   -I/usr/include/freetype2       \
@@ -210,7 +215,6 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -I./lib/parson                 \
                   -DS52_USE_PROJ                 \
                   -DS52_USE_GLIB2                \
-                  -DS52_USE_DOTPITCH             \
                   -DS52_USE_BACKTRACE            \
                   -DS52_USE_OPENGL_VBO           \
                   -DS52_USE_EGL                  \
@@ -244,22 +248,9 @@ s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/sysroot/include
 s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
 
-# -DS52_USE_SYM_AISSEL01 - experimental - symbol in plib-test-priv.rle
-# -DS52_USE_BACKTRACE    - debug
-# -DS52_USE_SOCK         - socket & WebSocket - need ./lib/parson
-# -DS52_USE_WORLD        - experimental - load world Shapefile
-# -DS52_USE_OPENGL_VBO   - GL 1.x, GLES2
-# -DS52_USE_FREETYPE_GL  - need GLES2
-# -DS52_USE_GLES2        - need VBO, EGL
-# -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
-# -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7)
-# -DS52_USE_LOG          - log S52_* call to tmp file
-# -DS52_DEBUG            - enable debug code, glError(), ..
-# -DG_DISABLE_ASSERT     - disable g_assert()
 
               DEFS = -DS52_USE_GLIB2                       \
                      -DS52_USE_PROJ                        \
-                     -DS52_USE_DOTPITCH                    \
                      -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
                      -DS52_USE_OPENGL_VBO                  \
@@ -294,12 +285,10 @@ s52gv2 : CFLAGS = `pkg-config  --cflags glib-2.0 lcms`  \
                   -DS52_USE_GV                          \
                   -DS52_USE_GLIB2                       \
                   -DGV_USE_DOUBLE_PRECISION_COORD       \
-                  -DS52_USE_DOTPITCH $(DBG)             \
                   -I$(OPENEV2_HOME)
 
 s52gtk2gps:  CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl dbus-1 dbus-glib-1`   \
                       `gdal-config --cflags`            \
-                      -DS52_USE_DOTPITCH                \
                       -DS52_USE_FTGL                    \
                       -DS52_USE_GLIB2                   \
                       -DS52_USE_PROJ                    \
@@ -319,7 +308,6 @@ s52win32 : CFLAGS   = -mms-bitfields                         \
                       -I$(GDALPATH)port                      \
                       -I$(GDALPATH)gcore                     \
                       -I$(GDALPATH)frmts/iso8211/            \
-                      -DS52_USE_DOTPITCH                     \
                       -DS52_USE_FTGL                         \
                       -DS52_USE_OPENGL_VBO                   \
                       -DS52_USE_GLIB2                        \
@@ -343,7 +331,6 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
                       -I./lib/parson                 \
                       -DS52_USE_PROJ                 \
                       -DS52_USE_GLIB2                \
-                      -DS52_USE_DOTPITCH             \
                       -DS52_USE_OPENGL_VBO           \
                       -DS52_USE_EGL                  \
                       -DS52_USE_GLES2                \
@@ -358,10 +345,11 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
 #
 #
 
+# default LIBS for default target
 LIBS = `pkg-config  --libs glib-2.0 lcms ftgl glu gl` \
        `gdal-config --libs` -lproj
 
-s52gtk2gl2 : LIBS = `pkg-config  --libs glib-2.0 lcms glesv2 freetype2` \
+s52gtk2gl2 : LIBS = `pkg-config  --libs glib-2.0 lcms gl freetype2` \
                     `gdal-config --libs` -lproj
 
 
@@ -372,7 +360,10 @@ s52clutter, s52clutter.js : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl` \
 s52glx : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl` \
                 `gdal-config --libs` -lproj
 
-s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl glesv2 freetype2` \
+# EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
+#s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl gl freetype2` \
+#                                      `gdal-config --libs` -lproj
+s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                                       `gdal-config --libs` -lproj
 
 

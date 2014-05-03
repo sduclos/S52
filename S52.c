@@ -298,7 +298,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.124\n"
+      "libS52 0.125\n"
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -307,9 +307,6 @@ static char _version[] = "$Revision: 1.126 $\n"
 #endif
 #ifdef S52_USE_GLIB2
       "S52_USE_GLIB2\n"
-#endif
-#ifdef S52_USE_DOTPITCH
-      "S52_USE_DOTPITCH\n"
 #endif
 #ifdef S52_USE_OGR_FILECOLLECTOR
       "S52_USE_OGR_FILECOLLECTOR\n"
@@ -346,6 +343,9 @@ static char _version[] = "$Revision: 1.126 $\n"
 #endif
 #ifdef S52_USE_EGL
       "S52_USE_EGL\n"
+#endif 
+#ifdef S52_USE_GL2
+      "S52_USE_GL2\n"
 #endif
 #ifdef S52_USE_GLES2
       "S52_USE_GLES2\n"
@@ -399,10 +399,13 @@ static void  *_EGLctx = NULL;
 
 // WARNING: call AFTER mutex
 #define EGL_END(tag)    if (NULL != _eglEnd) _eglEnd(_EGLctx,#tag);
-#else
+
+#else  // S52_USE_EGL
+
 #define EGL_BEG(tag)
 #define EGL_END(tag)
-#endif
+
+#endif  // S52_USE_EGL
 
 
 // check basic init
@@ -1579,11 +1582,7 @@ static int        _initDBus(void);  // forward decl
 static int        _initSock(void);  // forward decl
 #endif
 
-#ifdef S52_USE_DOTPITCH
 DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb)
-#else
-DLL int    STD S52_init(void)
-#endif
 // init basic stuff (outside of the main loop)
 {
     //libS52Zdso();
@@ -1666,7 +1665,6 @@ DLL int    STD S52_init(void)
 #endif
 
 
-#ifdef S52_USE_DOTPITCH
     // FIXME: validate
     if (0==screen_pixels_w || 0==screen_pixels_h || 0==screen_mm_w || 0==screen_mm_h) {
         PRINTF("ERROR: invalid screen size\n");
@@ -1674,7 +1672,6 @@ DLL int    STD S52_init(void)
     }
 
     S52_GL_setDotPitch(screen_pixels_w, screen_pixels_h, screen_mm_w, screen_mm_h);
-#endif
 
 
 
@@ -1688,6 +1685,12 @@ DLL int    STD S52_init(void)
     //g_setenv("CPL_DEBUG", "ON", 1);
 
 #ifdef S52_USE_GLIB2
+
+#ifdef S52_USE_ANDROID
+    g_setenv("S57_CSV", "/sdcard/s52droid/gdal_data", 1);
+#endif
+
+
 #ifdef S52_USE_SUPP_LINE_OVERLAP
     // make OGR return primitive and linkage
     g_setenv("OGR_S57_OPTIONS",
@@ -1701,7 +1704,8 @@ DLL int    STD S52_init(void)
 
 #endif // S52_USE_SUPP_LINE_OVERLAP
 
-#else
+#else  // S52_USE_GLIB2
+
     const char *name = "OGR_S57_OPTIONS";
     //const char *value= "LNAM_REFS:ON,UPDATES:ON,SPLIT_MULTIPOINT:ON,PRESERVE_EMPTY_NUMBERS:ON,RETURN_LINKAGES:ON";
     const char *value= "LNAM_REFS:ON,UPDATES:ON,SPLIT_MULTIPOINT:ON,PRESERVE_EMPTY_NUMBERS:ON";
@@ -1712,22 +1716,10 @@ DLL int    STD S52_init(void)
     setenv(name, value, 1);
      const char *env = g_getenv("OGR_S57_OPTIONS");
     PRINTF("%s\n", env);
-#endif
+#endif  // S52_USE_GLIB2
 
-#ifdef S52_USE_ANDROID
-    g_setenv("S57_CSV", "/sdcard/s52droid/gdal_data", 1);
-#else
-    //if (NULL == g_getenv("S57_CSV")) {
-    //    PRINTF("env. var. 'S57_CSV' not found .. aborting\n");
-    //    exit(0);
-    //}
-#endif
 
     _intl = setlocale(LC_ALL, "C");
-    //_intl = setlocale(LC_ALL, "");
-    //_intl = setlocale(LC_ALL, "fr_CA.utf8");
-    //_intl = setlocale(LC_ALL, "POSIX");
-
 
 
     ///////////////////////////////////////////////////////////
@@ -1735,13 +1727,6 @@ DLL int    STD S52_init(void)
     //
     // load basic def (ex color, CS, ...)
     S52_PL_init();
-
-    /*
-    if (FALSE == S52_GL_init()) {
-        PRINTF("S52_GL_init() failed\n");
-        //return FALSE;
-    }
-    */
 
     // put an error No in S52_MAR_NONE
     S52_MP_set(S52_MAR_NONE, INFINITY);

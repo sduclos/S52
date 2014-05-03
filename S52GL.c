@@ -74,8 +74,13 @@ typedef GLfloat GLdouble;
 // glEnable(GL_COLOR_LOGIC_OP); glLogicOp(GL_XOR);
 
 #ifdef S52_USE_GLES2
+#ifdef S52_USE_GL2
+#include <GL/gl.h>
+#include <GL/glext.h>
+#else   // S52_USE_GL2
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#endif  // S52_USE_GL2
 
 //#include <dlfcn.h>        // dynamic linking
 
@@ -4893,6 +4898,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
 
     //_setBlend(TRUE);
 
+    _checkError("_renderLS_afterglow() .. beg");
 
 #ifdef S52_USE_GLES2
     _glUniformMatrix4fv_uModelview();
@@ -4910,8 +4916,8 @@ static int       _renderLS_afterglow(S52_obj *obj)
     //glPointSize(pen_w);
     //glPointSize(10.0);
     //glPointSize(8.0);
-    //glPointSize(7.0);
-    glPointSize(4.0);
+    glPointSize(7.0);
+    //glPointSize(4.0);
 #endif
 
     // fill color (alpha) array
@@ -4964,7 +4970,6 @@ static int       _renderLS_afterglow(S52_obj *obj)
 
 #ifdef S52_USE_GLES2
     // init VBO
-    // useless since geo change all the time
     /*
     if (0 == _vboIDaftglwVertID) {
         glGenBuffers(1, &_vboIDaftglwVertID);
@@ -4991,19 +4996,28 @@ static int       _renderLS_afterglow(S52_obj *obj)
         PRINTF("pti == 229\n");
     }
 
+    _checkError("_renderLS_afterglow() .. -0-");
+
     // vertex array - fill vbo arrays
     //glBindBuffer(GL_ARRAY_BUFFER, _vboIDaftglwVertID);
     glEnableVertexAttribArray(_aPosition);
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 0,  _tessWorkBuf_f->data);
 
+
     // turn ON after glow in shader
     glUniform1f(_uGlowOn, 1.0);
+
+    _checkError("_renderLS_afterglow() .. -0.1-");
 
     // fill array with alpha
     //glBindBuffer(GL_ARRAY_BUFFER, _vboIDaftglwColrID);
     glEnableVertexAttribArray(_aAlpha);
     glVertexAttribPointer    (_aAlpha, 1, GL_FLOAT, GL_FALSE, 0, _aftglwColorArr->data);
-#else
+
+    _checkError("_renderLS_afterglow() .. -1-");
+
+#else  // S52_USE_GLES2
+
     // init vbo for color
     if (0 == _vboIDaftglwColrID)
         glGenBuffers(1, &_vboIDaftglwColrID);
@@ -5044,6 +5058,8 @@ static int       _renderLS_afterglow(S52_obj *obj)
     // FIXME: when pti = 229, this call fail
     glDrawArrays(GL_POINTS, 0, pti);
 
+    _checkError("_renderLS_afterglow() .. -2-");
+
     // 4 - done
     // turn OFF after glow
     glUniform1f(_uGlowOn, 0.0);
@@ -5056,9 +5072,10 @@ static int       _renderLS_afterglow(S52_obj *obj)
 
     // bind with 0 - switch back to normal pointer operation
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 #endif
 
-    _checkError("_renderLS_afterglow()");
+    _checkError("_renderLS_afterglow() .. end");
 
     return TRUE;
 }
@@ -5184,7 +5201,7 @@ static int       _renderLS(S52_obj *obj)
                 if ((0 == g_strcmp0("afgves", S57_getName(geoData))) ||
                     (0 == g_strcmp0("afgshp", S57_getName(geoData)))
                    ) {
-                    //_renderLS_afterglow(obj);
+                    _renderLS_afterglow(obj);
                     ;
                 } else {
 
@@ -7203,7 +7220,6 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
             glGenBuffers(1, &vboID);
 
             // glIsBuffer() fail!
-            //if (GL_FALSE == glIsBuffer(vboID)) {
             if (0 == vboID) {
                 PRINTF("ERROR: glGenBuffers() fail\n");
                 g_assert(0);
@@ -7226,14 +7242,10 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
 #ifdef S52_USE_TXT_SHADOW
     {
-        //double scalex = (_pmax.u - _pmin.u) / (double)_vp[2];
-        //double scaley = (_pmax.v - _pmin.v) / (double)_vp[3];
-
-        //S52_Color *c = S52_PL_getColor("DEPDW"); // opposite of CHBLK
-        S52_Color *c = S52_PL_getColor("UIBCK"); // opposite of CHBLK
+        S52_Color *c = S52_PL_getColor("UIBCK");   // opposite of CHBLK
         _glColor4ub(c);
 
-        // diagonal
+        // diagonal 4 corners
         //_renderTXTAA_es2(x+scalex, y+scaley, str);
         //_renderTXTAA_es2(x-scalex, y+scaley, str);
         //_renderTXTAA_es2(x-scalex, y-scaley, str);
@@ -7246,13 +7258,10 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
         // lower right - OK
         if (S52_GL_LAST == _crnt_GL_cycle) {
-            //_renderTXTAA_es2(x+_scalex, y,         (GLfloat*)_ftglBuf->data, _ftglBuf->len);
+            // some MIO change age of target - need to resend the string
             _renderTXTAA_es2(x+_scalex, y-_scaley, (GLfloat*)_ftglBuf->data, _ftglBuf->len);
-            //_renderTXTAA_es2(x,         y-_scaley, (GLfloat*)_ftglBuf->data, _ftglBuf->len);
         } else {
-            //_renderTXTAA_es2(x+_scalex, y,         NULL, len);
             _renderTXTAA_es2(x+_scalex, y-_scaley, NULL, len);
-            //_renderTXTAA_es2(x,         y-_scaley, NULL, len);
         }
     }
 #endif  // S52_USE_TXT_SHADOW
@@ -8885,6 +8894,8 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     CHECK_GL_END;
     _GL_BEGIN = TRUE;
 
+    _checkError("S52_GL_begin() -0-");
+
     if (S52_GL_NONE != _crnt_GL_cycle) {
         PRINTF("WARNING: S52_GL_cycle out of sync\n");
         g_assert(0);
@@ -8896,9 +8907,10 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     S52_GL_init();
 
-    //static int saveAttrib;
-
-    _checkError("S52_GL_begin() -0-");
+#ifdef S52_USE_GL2
+    // FALSE: enable GLSL gl_PointCood
+    //glEnable(GL_POINT_SPRITE);
+#endif
 
     // ATI
     //_dumpATImemInfo(VBO_FREE_MEMORY_ATI);          // 0x87FB
@@ -9401,19 +9413,23 @@ static int       _init_es2(void)
 
         PRINTF("DEBUG: re-building '_programObject'\n");
 
+#ifdef S52_USE_FREETYPE_GL
+        _text_textureID = 0;
+        _init_freetype_gl();
+#endif
+
         _programObject  = glCreateProgram();
 
         // ----------------------------------------------------------------------
         PRINTF("GL_VERTEX_SHADER\n");
 
-        //#ifdef GL_ES
-        //precision highp float;
-        //#endif
         _vertexShader = COMPILE_SHADER(GL_VERTEX_SHADER,
-//        precision lowp float;
-//        "precision mediump float;      \n"
-//        "precision highp float;        \n"
 
+#if !defined(S52_USE_GL2)
+        precision lowp float;
+        //precision mediump float;
+        //precision highp   float;
+#endif
         uniform   mat4  uProjection;
         uniform   mat4  uModelview;
 
@@ -9467,17 +9483,20 @@ static int       _init_es2(void)
 #else
 #define BLENDFUNC
 #endif
+
+
         _fragmentShader = COMPILE_SHADER(GL_FRAGMENT_SHADER,
 
-        //BLENDFUNC
-
-        //precision lowp float;
-        // precision mediump float;
-        // precision highp float;
-
-        //uniform lowp sampler2D uSampler2d;
+#ifdef S52_USE_GL2
         uniform sampler2D uSampler2d;
+#else
+        precision lowp float;
+        //precision mediump float;
+        //precision highp float;
 
+        uniform lowp sampler2D uSampler2d;
+        //uniform mediump sampler2D uSampler2d;
+#endif
         uniform float     uFlatOn;
         uniform float     uBlitOn;
         uniform float     uStipOn;
@@ -9504,19 +9523,21 @@ static int       _init_es2(void)
                         gl_FragColor = texture2D(uSampler2d, v_texCoord);
                         gl_FragColor.rgb = uColor.rgb;
                     } else {
+#if !defined(S52_USE_GL2)
+                        //* FIXME: gl_PointCoord NOT in GL, but is in GLES !
                         if (0.0 < uGlowOn) {
-                            /*
                             if (0.5 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) + (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) {
                                 gl_FragColor   = uColor;
                                 gl_FragColor.a = v_alpha;
                             } else {
                                 discard;
                             }
-                            */
-                        } else {
+
+                        } else
+                        //*/
+#endif
+                        {
                             gl_FragColor = uColor;
-                            //gl_FragColor.a = 0.5;
-                            //gl_PrimitiveID;  // glsl-1.5
                         }
                     }
                 }
@@ -9566,11 +9587,6 @@ static int       _init_es2(void)
         //use the program
         glUseProgram(_programObject);
 
-
-#ifdef S52_USE_FREETYPE_GL
-        _text_textureID = 0;
-        _init_freetype_gl();
-#endif
 
         _checkError("_init_es2() -3-");
     }

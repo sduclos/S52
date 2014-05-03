@@ -294,8 +294,8 @@ typedef struct {
     double y;
 } POINT;
 
-static guchar _RADARtex[Rmax*2][Rmax*2];
-//static guchar _RADARtex[Rmax*2][Rmax*2][4];
+static guchar _RADARtex[Rmax*2][Rmax*2];  // Alpha
+//static guchar _RADARtex[Rmax*2][Rmax*2][4];  // RGBA
 static POINT  _Polar_Matrix_Of_Coords[ANGLEmax][Rmax];
 static int      _radar_init()
 {
@@ -419,6 +419,7 @@ static int      _egl_init       (s52engine *engine)
     // Below, we select an EGLConfig with at least 8 bits per color
     // component compatible with on-screen windows
 
+#ifdef S52_USE_ANDROID
 #ifdef S52_USE_TEGRA2
     const EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,        EGL_WINDOW_BIT,
@@ -440,11 +441,12 @@ static int      _egl_init       (s52engine *engine)
 #endif  // S52_USE_TEGRA2
 
 #ifdef S52_USE_ADRENO
-//#define EGL_OPENGL_ES3_BIT_KHR				    0x00000040
+#define EGL_OPENGL_ES3_BIT_KHR				    0x00000040
     EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
 
         EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
+
         // this bit open access to ES3 functions on QCOM hardware pre-Android support for ES3
         // WARNING: this break MSAA on Android 4.4.2 - Kit-Kat
         //EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT_KHR,
@@ -462,14 +464,18 @@ static int      _egl_init       (s52engine *engine)
     };
 #endif  // S52_USE_ADRENO
 
+#else   // S52_USE_ANDROID
+
 #ifdef S52_USE_GLES2
-    // Mesa OpenGL ES 2.x, 3.x
+    // Mesa GL, GLES 2.x, 3.x
     // MSAA: RGBA8, depth24, stencil8 - fail on Ubuntu 14.04 (Wayland!)
     const EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
 
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-        //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        // EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
+        //EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
+
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
         //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
 
         EGL_RED_SIZE,        8,
@@ -510,6 +516,8 @@ static int      _egl_init       (s52engine *engine)
         EGL_NONE
     };
 #endif  // S52_USE_GLES2
+
+#endif  // S52_USE_ANDROID
 
 
 #ifdef S52_USE_ANDROID
@@ -651,8 +659,10 @@ static int      _egl_init       (s52engine *engine)
 
 
 #ifdef S52_USE_GLES2
-    //EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
-    EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
+    EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
+
+    //EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
+    //EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
 #else
     // OpenGL 1.x
     EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
@@ -671,11 +681,18 @@ static int      _egl_init       (s52engine *engine)
         EGL_NONE
     };
 
+#ifdef S52_USE_GLES2
     // GLES
-    //eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, eglContextList);
+    eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, eglContextList);
+    //eglContext = eglCreateContext(eglDisplay, eglConfig[5], EGL_NO_CONTEXT, eglContextList);
+
+    // EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
+    //eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, NULL);
+#else
     // GL
     eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, NULL);
-    //eglContext = eglCreateContext(eglDisplay, eglConfig[5], EGL_NO_CONTEXT, eglContextList);
+#endif
+
     if (EGL_NO_CONTEXT == eglContext || EGL_SUCCESS != eglGetError()) {
         LOGE("eglCreateContext() failed. [0x%x]\n", eglGetError());
         g_assert(0);
@@ -685,12 +702,13 @@ static int      _egl_init       (s52engine *engine)
     // http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html
     eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
 
-    // test - no interval, "non-sync" mode - seem uneffective
-    //eglSwapInterval(eglDisplay, 0);
-    eglSwapInterval(eglDisplay, 1);  // default
-
     if (EGL_FALSE == eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext))
         LOGE("Unable to eglMakeCurrent()\n");
+
+    // test - no interval, "non-sync" mode - seem uneffective
+    // Note: must be called after MakeCurrent()
+    //eglSwapInterval(eglDisplay, 0);  // bad - make blit jurky
+    eglSwapInterval(eglDisplay, 1);  // default
 
 
     //--------------------------------------------------------------------------------------------------
@@ -1199,12 +1217,17 @@ static int      _s52_init       (s52engine *engine)
 #ifdef S52_USE_ADRENO
     //S52_loadCell(NULL, NULL);
     // Rimouski (Nexus)
-    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
+    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
+    // Estuaire du St-Laurent
+    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
+
     // Portneuf
     //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
     //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
     //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
-#else
+#endif
+
+#ifdef S52_USE_TEGRA2
     // Rimouski (Xoom)
     S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
     // Estuaire du St-Laurent
@@ -1313,10 +1336,10 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);
     S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Standard(default) + Other)
 
-    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
+    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60
+    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60 - need plib_COLS-3.4.1.rle
+    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60 - need plib_COLS-3.4.1.rle
 
     S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
     //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
@@ -1527,7 +1550,6 @@ static int      _s52_draw_cb    (gpointer user_data)
         LOGE("_s52_draw_cb(): no display ..\n");
         goto exit;
     }
-
 
     //*
     if (TRUE == engine->do_S52drawBlit) {
@@ -2125,8 +2147,8 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             */
 
             if (TRUE==mode_scroll && FALSE==mode_zoom && FALSE==mode_rot && FALSE==mode_vrmebl) {
-                double dx_pc =  (start_x - new_x) / engine->width;  //
-                double dy_pc = -(start_y - new_y) / engine->height; // Y down
+                //double dx_pc =  (start_x - new_x) / engine->width;  //
+                //double dy_pc = -(start_y - new_y) / engine->height; // Y down
                 //S52_drawBlit(dx_pc, dy_pc, 0.0, 0.0);
 
                 //*
@@ -3063,6 +3085,14 @@ int main(int argc, char *argv[])
     s52ais_initAIS();
 #endif
 
+#ifdef S52_USE_MESA
+    // Mesa3D env - signal no vSync
+    g_setenv("vblank_mode", "0", 1);
+    // Mesa3D env - MSAA = 4
+    g_setenv("GALLIUM_MSAA", "4", 1);
+#endif
+
+
     g_timeout_add(500, _X11_handleXevent, (void*)&_engine);  // 0.5 sec
 
 #ifdef S52_USE_RADAR
@@ -3091,6 +3121,13 @@ int main(int argc, char *argv[])
     // close radarlog
     fclose(_fd);
 #endif
+
+#ifdef S52_USE_MESA
+    // Mesa3D env - remove from env (not stictly needed - env destroy at exit)
+    g_unsetenv("vblank_mode");
+    g_unsetenv("GALLIUM_MSAA");
+#endif
+
 
     g_print("%s .. done\n", argv[0]);
 

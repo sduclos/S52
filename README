@@ -155,7 +155,6 @@ MAKEFILE BUILD FLAGS:
 # -DS52_USE_BACKTRACE        : stack unwinding
 # -DS52_USE_PROJ             : use PROJ4
 # -DS52_USE_GLIB2            : use glib-2.0
-# -DS52_USE_DOTPITCH         : use dotpitch from user
 # -DS52_USE_OPENGL_VBO       : GL VBO v1.x and up
 # -DS52_USE_EGL              : handle host window manager connection
 # -DS52_USE_GLES2            : OpenGL ES 2.0, need -DS52_USE_EGL and -DS52_USE_OPENGL_VBO

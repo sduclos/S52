@@ -217,12 +217,7 @@ static int  _gv_loadLayer_cb(const char *filename, void *data)
 static void _loadCell(const char *filename)
 {
     // S52_init() is done via gv_shapes_layer_new()
-#ifdef S52_USE_DOTPITCH
-    S52_init(10,10,30,30);
-#else
-    S52_init();
-#endif
-
+    S52_init(10, 10, 30, 30, NULL);
 
     S52_loadCell(filename, _gv_loadLayer_cb);
 

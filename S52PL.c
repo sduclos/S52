@@ -174,13 +174,13 @@ typedef struct _Text {
 typedef union _cmdDef {
     _S52_cmdDef     *def;
 
-    _Text           *text;        // after parsing this could de NULL
+    _Text           *text;      // after parsing this could de NULL
 
     S52_CS_condSymb *CS;
 
     // because there is no cmdDef for light sector
     // so put VBO here
-    S52_DListData   *DList;      // for pattern in GLES2 this DL will create a texture
+    S52_DListData   *DList;     // for pattern in GLES2 this DL will create a texture
 
 } _cmdDef;
 
@@ -192,9 +192,8 @@ typedef struct _cmdWL {
     _cmdDef           cmd;      // command word definition or conditional symb func call
 
 #ifdef S52_USE_FREETYPE_GL
-    //GArray           *ftglbuf;  // hold freetype-gl data for cmd.text
-    guint             vboID;      // ID if the OpenGL VBO text
-    guint             len;        // VBO text length
+    guint             vboID;    // ID if the OpenGL VBO text
+    guint             len;      // VBO text length
 #endif
 
     struct _cmdWL *next;
@@ -3568,9 +3567,7 @@ int         S52_PL_doneVOCmd(S52_vec *vecObj)
 
 S52_vCmd    S52_PL_getNextVOCmd(S52_vec *vecObj)
 // return S52_VC_* (Vector Command)
-//
 {
-    //int pm = 0;  // polygon mode
     return_if_null(vecObj);
 
     if (NULL==vecObj->str)
@@ -4384,7 +4381,8 @@ guint       S52_PL_getFtglVBO(S52_obj *obj, guint *len)
 
     // parano
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
-        PRINTF("DEBUG: logic bug, not a text command\n");
+        // S52_CMD_SYM_PT pass here - speed text on leg
+        PRINTF("DEBUG: logic bug, not a text command [cmdWord:%i]\n", cmd->cmdWord);
         //g_assert(0);
     }
 

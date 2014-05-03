@@ -33,23 +33,8 @@
 
 #include <GL/glx.h>     // glX*()
 
-// FIXME: S52 use glib-2.0, but this g_print could link to glib-1.0
-// from makefile instruction and then all hell break loose
-//#ifdef S52_USE_GLIB2
-//#include <glib/gprintf.h>   // g_print()
-//#else
-//#include <glib.h>           // g_print()
-//#endif
-
 #include <stdio.h>        // printf()
 #include <stdlib.h>       // exit(0)
-
-
-//static char *_fontName[] = {
-//    "-*-helvetica-medium-r-normal-*-10-*-*-*-*-*-iso8859-*",
-//    "-*-helvetica-medium-r-normal-*-12-*-*-*-*-*-iso8859-*",
-//    "-*-helvetica-medium-r-normal-*-14-*-*-*-*-*-iso8859-*",
-//};
 
 static int _attr[] = {
     GLX_RGBA,
@@ -181,7 +166,6 @@ int main(int argc, char* argv[])
     }
     //*/
 
-#ifdef S52_USE_DOTPITCH
     {   // init S52 lib (Screen No 0)
         //int h   = XDisplayHeight  (dpy, 0);
         //int hmm = XDisplayHeightMM(dpy, 0);
@@ -195,9 +179,6 @@ int main(int argc, char* argv[])
 
         S52_init(w, h, wmm, hmm, NULL);
     }
-#else
-    S52_init();
-#endif
 
     S52_loadCell(NULL, NULL);
 

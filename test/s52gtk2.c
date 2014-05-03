@@ -111,6 +111,7 @@ static S52ObjectHandle _clrlin      = NULL;
 static S52ObjectHandle _marfea_point= NULL;
 
 #if !defined(S52_USE_GLES2)
+// FIXME: work on GL1.x only
 static int _doRenderHelp = FALSE;
 #endif
 
@@ -206,6 +207,7 @@ static int      _usage(const char *arg)
 
 #if !defined(S52_USE_GLES2)
 static int      _renderHelp(GtkWidget *widget)
+// FIXME: work on GL1.x only
 {
     gchar str[80] = {'\0'};
 
@@ -419,9 +421,7 @@ static char   **_option(int argc, char **argv)
 
     {
         GError         *error   = NULL;
-        GOptionContext *context = NULL;
-
-        context = g_option_context_new("- test S52 rendering");
+        GOptionContext *context = g_option_context_new("- test S52 rendering");
         g_option_context_add_main_entries(context, entries, NULL);
         if (FALSE == g_option_context_parse(context, &argc, &argv, &error)) {
             printf("option parsing failed: %s\n", error->message);
@@ -594,7 +594,7 @@ static gboolean expose_event(GtkWidget      *widget,
     GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
     GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
 
-    // test - swith symbol
+    // test - toggle symbol suppresion
     //S52_toggleObjSUP(_waypnt1);
     //S52_toggleObjSUP(_waypnt2);
 
@@ -972,7 +972,8 @@ static gboolean button_release_event(GtkWidget      *widget,
 
         double brg = 0.0;
         double rge = 0.0;
-        S52_setVRMEBL(_vrmeblB, x, y, &brg, &rge);
+        //S52_setVRMEBL(_vrmeblB, x, y, &brg, &rge);
+        S52_setVRMEBL(_vrmeblA, x, y, &brg, &rge);
         _originIsSet = TRUE;
 
         return TRUE;
@@ -1058,7 +1059,7 @@ static gboolean motion_notify_event(GtkWidget      *widget,
         S52_setVRMEBL(_vrmeblA, _x, _y, &_brg, &_rge);
 
         if (TRUE == _originIsSet) {
-            S52_setVRMEBL(_vrmeblB, _x, _y, &_brg, &_rge);
+            S52_setVRMEBL(_vrmeblA, _x, _y, &_brg, &_rge);
         }
     }
 
@@ -1652,7 +1653,6 @@ static int      _initS52()
     */
     //-------------------------------------------------------
 
-    // showing off (OpenGL blending)
     S52_setMarinerParam(S52_MAR_ANTIALIAS,        1.0);
 
 
@@ -1695,7 +1695,7 @@ static int      _initS52()
     // init decoration (scale bar, North arrow, unit)
     S52_newCSYMB();
 
-    //_setVRMEBL();
+    _setVRMEBL();
 
     _setVESSEL();
 
@@ -1802,39 +1802,40 @@ int main(int argc, char **argv)
 
     gtk_gl_init(&argc, &argv);
 
+    _option(argc, argv);
+
     gtk_set_locale();
+
+#ifdef S52_USE_MESA
+    // Mesa3D env - signal no vSync
+    g_setenv("vblank_mode", "0", 1);
+    // Mesa3D env - MSAA = 4
+    g_setenv("GALLIUM_MSAA", "4", 1);
+#endif
 
     // setup S52 display
     _initS52();
 
     _timer = g_timer_new();
 
-
     // Drawing Area
     _winArea = gtk_drawing_area_new();
 
-    int attList[] = {
-        GDK_GL_USE_GL,       1,
-        GDK_GL_RGBA,         1,
-        GDK_GL_DOUBLEBUFFER, 1,
-        GDK_GL_RED_SIZE,     8,
-        GDK_GL_GREEN_SIZE,   8,
-        GDK_GL_BLUE_SIZE,    8,
-        GDK_GL_ALPHA_SIZE,   8,
+#ifdef S52_USE_GLES2
+    int mode = (GdkGLConfigMode) (GDK_GL_MODE_RGBA | GDK_GL_MODE_DOUBLE);
+#else
+    int mode = (GdkGLConfigMode) (GDK_GL_MODE_RGBA | GDK_GL_MODE_STENCIL | GDK_GL_MODE_DOUBLE);
+#endif
 
-        //GDK_GL_BUFFER_SIZE, GDK_GL_LEVEL,
-        //GDK_GL_STEREO, GDK_GL_AUX_BUFFERS,
-        //GDK_GL_DEPTH_SIZE, GDK_GL_STENCIL_SIZE, GDK_GL_ACCUM_RED_SIZE, GDK_GL_ACCUM_GREEN_SIZE,
-        //GDK_GL_ACCUM_BLUE_SIZE, GDK_GL_ACCUM_ALPHA_SIZE.
-
-        GDK_GL_ATTRIB_LIST_NONE
-    };
-
-    GdkGLConfig *glconfig = gdk_gl_config_new(attList);
+    GdkGLConfig *glconfig = gdk_gl_config_new_by_mode(mode);
+    if (NULL == glconfig) {
+        g_print("gdk_gl_config_new_by_mode() failed .. exit\n");
+        goto exit;
+    }
 
     gtk_widget_set_gl_capability(_winArea, glconfig, NULL, TRUE, GDK_GL_RGBA_TYPE);
     if (TRUE != gtk_widget_is_gl_capable(_winArea)) {
-        g_print("Not GL capable\n");
+        g_print("Not GL capable .. exit\n");
         goto exit;
     }
 
@@ -1897,6 +1898,12 @@ exit:
     g_timer_destroy(_timer);
 
     //g_mem_profile();
+
+#ifdef S52_USE_MESA
+    // Mesa3D env - remove from env (not stictly needed - env destroy at exit)
+    g_unsetenv("vblank_mode");
+    g_unsetenv("GALLIUM_MSAA");
+#endif
 
     return 0;
 }

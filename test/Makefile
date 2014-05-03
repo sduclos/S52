@@ -3,9 +3,9 @@
 # SD JUN2008
 # SD NOV2009 -add s52glx minimal
 # SD 2011MAR -add s52clutter.js
-# SD 2011NOV -add s52eglx s52eglarm
-# SD 2013SEP -add s52gtk3egl
-
+# SD 2011NOV -add s52eglx s52eglarm  - EGL/GLES2
+# SD 2013SEP -add s52gtk3egl         - EGL/GLES2
+# SD 2014APR -add s52gtk2gl2         - GL2
 
 #all: s52glx        # GLX & OGR
 #all: s52eglx       # EGL & GLX & OGR
@@ -19,7 +19,7 @@ all: s52gtk3egl     # GTK3 & EGL
 #all: s52win32      # same as s52gtk2 but run on wine
 #all: s52eglw32     # same as s52gtk2egl but run on wine
 #all: s52clutter.js # same as s52gtk2 but use Clutter & Javascript (experimental)
-					# also used to build S52/doc/S52-0.1.gir
+                    # also used to build S52/doc/S52-0.1.gir
 
 #CC   = tcc -fPIC
 CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=gnu99
@@ -39,12 +39,8 @@ s52eglw32 : CC  = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32
 
-TAGS = ctags
-
-LIBS52_HOME = ..
-
 # using Android toolchain from NDK to cross compile for ARM (s52eglarm target)
-# xoom info: Processor : ARMv7 Processor rev 0 (v7l)
+# Xoom info: Processor : ARMv7 Processor rev 0 (v7l)
 #            Features  : swp half thumb fastmult vfp edsp vfpv3 vfpv3d16
 # TEGRA: tadp: -fno-omit-frame-pointer -mno-thumb
 s52eglarm : DROIDTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-19-toolchain
@@ -67,57 +63,54 @@ s52eglarm : S52DROIDLIBS       = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/and
 #
 #
 
-CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` \
-         -DS52_USE_GTK2                              \
-         -DS52_USE_GLIB2                             \
-         -DS52_USE_DOTPITCH                          \
-         -I..
-
-# same as above but skip GL1.x call in _renderHelp()
-s52gtk2gl2 : CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
-         -DS52_USE_GTK2                              \
-         -DS52_USE_GLIB2                             \
-         -DS52_USE_DOTPITCH                          \
-         -DS52_USE_GLES2                             \
-         -I..
-
-s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1`
-
-s52glx:     CFLAGS = `pkg-config --cflags glib-2.0` -I.. -DS52_USE_DOTPITCH
-
 # -DUSE_FAKE_AIS      - debug - programmaticaly faked AIS data
 # -DUSE_AIS           - call s52ais.c
 
+# -DS52_USE_GLIB2
 # -DS52_USE_LOG       - log every S52_* in tmp file
-# -DS52_USE_GLES2
+# -DS52_USE_MESA      - set ENV for Mesa3D MSAA and vblank_mode
+# -DS52_USE_GLES2     - GLES2
+# -DS52_USE_ANDROID   - then set TREGRA2 or ADRENO
+# -DS52_USE_TEGRA2    - Xoom
+# -DS52_USE_ADRENO    - Nexus 7 (2013)
 # -DS52_USE_AFGLOW    - need symbole in PLAUX_00.DAI
 # -DS52_USE_WORLD     - load world shapefile
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 # -DS52_USE_RADAR     - when in RADAR mode
-s52eglx:    CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
-                      -DS52_USE_DOTPITCH -DS52_USE_GLES2 -DS52_USE_EGL -DUSE_AIS
+
+
+CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2
+
+# same as above - but skip GL1.x call in _renderHelp()
+s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
+                      -DS52_USE_GLIB2                             \
+                      -DS52_USE_GLES2                             \
+                      -DS52_USE_MESA
+
+s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1`
+
+s52glx:     CFLAGS = -I.. `pkg-config --cflags glib-2.0`
+
+s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
+                     -DS52_USE_GLES2 -DS52_USE_EGL -DS52_USE_AFGLOW -DUSE_AIS -DS52_USE_MESA
 
 # same as s52eglx, but "gtk+-2.0" is added - no AIS
-s52gtk2egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` \
-                      -DS52_USE_DOTPITCH -DS52_USE_EGL -DS52_USE_GLES2
+s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` \
+                     -DS52_USE_EGL -DS52_USE_GLES2
 # same as s52eglx, but "gtk+-3.0" is added
-s52gtk3egl: CFLAGS =  -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-3.0` \
-                      -DS52_USE_DOTPITCH -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2
+s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-3.0` \
+                     -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2
 
-# -DS52_USE_TEGRA2 (Xoom)
-# -DS52_USE_ADRENO (Nexus 7)
-# -DS52_USE_WORLD
-s52eglarm:  CFLAGS =  -DS52_USE_DOTPITCH                 \
-                      -DS52_USE_EGL                      \
-                      -DS52_USE_GLES2                    \
-                      -DS52_USE_TEGRA2                   \
-                      -DS52_USE_ANDROID                  \
-                      -DS52_USE_AFGLOW                   \
-                      -DS52_USE_SOCK                     \
-                      -I..                               \
-                      -I$(DROIDINCLUDE)                  \
-                      -I$(S52DROIDINC)                   \
-                      -I$(S52DROIDINC)/glib-2.0
+s52eglarm:  CFLAGS = -DS52_USE_EGL                      \
+                     -DS52_USE_GLES2                    \
+                     -DS52_USE_ANDROID                  \
+                     -DS52_USE_TEGRA2                   \
+                     -DS52_USE_AFGLOW                   \
+                     -DS52_USE_SOCK                     \
+                     -I..                               \
+                     -I$(DROIDINCLUDE)                  \
+                     -I$(S52DROIDINC)                   \
+                     -I$(S52DROIDINC)/glib-2.0
 
 s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`     \
                       -I$(OPENEV_HOME) -DGV_USE_DOUBLE_PRECISION_COORD \
@@ -125,7 +118,7 @@ s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`     \
 
 s52gv2:     CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0`       \
                       -D_REENTRANT  -DGV_USE_DOUBLE_PRECISION_COORD    \
-                      -I$(OPENEV2HOME) -I..  -DS52_USE_GV -DS52_USE_GTK2
+                      -I$(OPENEV2HOME) -I..  -DS52_USE_GV
 
 
 ############### LIBS setup ##############################
@@ -153,7 +146,7 @@ s52gtk2gl2 : GTK2LIBS = `pkg-config --libs gtk+-2.0 gtkglext-1.0 gthread-2.0`
 OGR_LIBS  = `gdal-config --libs`
 
 # Ubuntu 13+ need -lX11
-s52eglx   : LIBS    = `pkg-config --libs wayland-egl wayland-client egl x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS)
+s52eglx   : LIBS    = `pkg-config --libs egl x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS)
 
 # same as s52eglx, add "gtk+-2.0"
 s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` $(S52_LIBS)
@@ -340,7 +333,6 @@ s52eglw32: LIBS = $(S52_LIBS) -L$(GTKPATH)/bin                \
 
 s52win32: CFLAGS = -DS52_USE_GTK2                                                                            \
                    -DS52_USE_GLIB2                                                                           \
-                   -DS52_USE_DOTPITCH                                                                        \
                    -mms-bitfields                                                                            \
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/include/gtk-2.0      \
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
@@ -354,7 +346,6 @@ s52win32: CFLAGS = -DS52_USE_GTK2                                               
 
 s52eglw32:CFLAGS = -DS52_USE_GTK2                    \
                    -DS52_USE_GLIB2                   \
-                   -DS52_USE_DOTPITCH                \
                    -mms-bitfields                    \
                    -I$(GTKPATH)/../include           \
                    -I$(GTKPATH)/include/gtk-2.0      \
@@ -399,7 +390,6 @@ S52-1.0.h: ../S52.h libS52-1.0.so
 
 S52-1.0.gir: S52-1.0.h libS52-1.0.so
 	$(GNOME3_SHELL_RUN) g-ir-scanner           \
-        -DS52_USE_DOTPITCH                     \
         -DS52_USE_FTGL                         \
         -DS52_USE_GLIB2                        \
         -DS52_USE_PROJ                         \

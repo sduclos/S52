@@ -319,27 +319,25 @@ DLL int    STD S52_LL2xy (double *longitude, double *latitude);
 
 //----- NO GL context (can work outside main loop) ----------
 
-#ifdef S52_USE_DOTPITCH
 /**
  * S52_init:
- * @screen_pixels_w: (in):
- * @screen_pixels_h: (in):
- * @screen_mm_w:     (in):
- * @screen_mm_h:     (in):
+ * @screen_pixels_w: (in): use to compute DOTPITCH X
+ * @screen_pixels_h: (in): use to compute DOTPITCH Y
+ * @screen_mm_w:     (in): use to compute DOTPITCH X
+ * @screen_mm_h:     (in): use to compute DOTPITCH Y
  * @err_cb:          (scope call) (allow-none): callback
  *
  * Initialize libS52, install SIGINT handler to abort drawing (Ctrl-C)
- * set physical dimension of screen (used in dotpitch)
  * xrandr can be used if framework doesn't do it (ie Clutter)
+ * Note: the ratio screen mmw/h and screen mmw/h is used to compute initial DOTPITCH
+ *       any number will do if system screen size call can't handle it
+ *       overide with S52_MAR_DOTPITCH_MM_X / Y after init()
  *
  *
  * Return: TRUE on success, else FALSE
  */
 typedef int (*S52_error_cb)(const char *err);
 DLL int   STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb);
-#else  // when using GTK1
-DLL int   STD S52_init(void);
-#endif
 
 /**
  * S52_version:

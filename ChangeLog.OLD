@@ -3,8 +3,15 @@
 #
 
 
+2014MAY03
+    -add def S52_USE_GL2 for reusing GLES2 code but skip some
+
+2014MAY01
+    -del def S52_USE_DOTPITCH - not used
+
 2014APR29
     -add target s52gtk2gl2, run on GLES2 (a subset of GL2.x)
+    -add signal Mesa3d no vSync for faster drawLast() call
 
 2014APR26
     -fix build of s52gtk2
