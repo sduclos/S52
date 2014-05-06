@@ -3,15 +3,24 @@
 #
 
 
+2014MAY09
+    -fix UTF-8 text handling in GLES2 (freetype_gl)
+
+2014MAY04
+    -del #ifdef in S52.h, move to S52.c
+    -mod S52_MAR_NONE to S52_MAR_ERROR
+    -add #version 120 in frag shader to get gl_PointCoord (Mesa3D specific)
+
 2014MAY03
     -add def S52_USE_GL2 for reusing GLES2 code but skip some
+    -add optimisation of simple line ending in an LC command
 
 2014MAY01
-    -del def S52_USE_DOTPITCH - not used
+    -del def S52_USE_DOTPITCH - not used anymore
 
 2014APR29
-    -add target s52gtk2gl2, run on GLES2 (a subset of GL2.x)
-    -add signal Mesa3d no vSync for faster drawLast() call
+    -add target s52gtk2gl2, GL2 use the code path of GLES2 (a subset of GL2.x)
+    -add signal Mesa3D no vSync for faster drawLast() call
 
 2014APR26
     -fix build of s52gtk2
@@ -21,7 +30,7 @@
 
 2014APR19
     -fix compiler warning (static mutex deprecated) 
-    -fix mem corruption
+    -fix mem corruption in GL mask of pattern
 
 2014APR17
     -add optimisation of symbol with GL_LINES

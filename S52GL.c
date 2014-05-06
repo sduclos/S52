@@ -91,10 +91,6 @@ static GArray *_tessWorkBuf_d  = NULL;
 // for converting geo double to VBO float
 static GArray *_tessWorkBuf_f  = NULL;
 
-// debug
-//static GArray *_buf = NULL;
-static GArray *_ftglBuf = NULL;
-
 // glsl main
 static GLint  _programObject  = 0;
 static GLuint _vertexShader   = 0;
@@ -154,8 +150,9 @@ static const char      *_freetype_gl_fontfilename       =
     //"/system/fonts/Roboto-Regular.ttf";   // not official, could change place
     "/system/fonts/DroidSans.ttf";
 #else
-"./Roboto-Regular.ttf";
-//"./Waree.ttf";
+//"./Roboto-Regular.ttf";
+//"./Waree.ttf";  // Thai glyph
+"./13947.ttf";  // Russian glyph
 #endif
 
 typedef struct {
@@ -165,7 +162,7 @@ typedef struct {
 
 // legend has no S52_obj, so this a place holder
 static GLuint  _text_textureID = 0;
-static GArray *_textWorkBuf    = NULL;
+static GArray *_ftglBuf        = NULL;
 
 #define LF  '\r'   // Line Feed
 #define TB  '\t'   // Tabulation
@@ -348,12 +345,6 @@ typedef enum _VP{   // set GL_PROJECTION matrix to
 #define Z_CLIP_PLANE 10000   // clipped beyon this plane
 
 #define PICA   0.351
-
-// DEPRECATED - Display List for font
-//#define S52_MAX_FONT  3        // total number of font
-//static gint _fontDList[S52_MAX_FONT];
-//static gint _fontDListIdx = 0;
-
 
 // NOTE: S52 pixels for symb are 0.3 mm
 // this is the real dotpitch of the device
@@ -1613,6 +1604,7 @@ static int       _initA3D(void)
 #ifdef S52_USE_GLES2
 static int       _init_freetype_gl(void)
 {
+    // FIXME: gunichar
     const wchar_t   *cache    = L" !\"#$%&'()*+,-./0123456789:;<=>?"
                                 L"@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
                                 L"`abcdefghijklmnopqrstuvwxyz{|}~"
@@ -1620,6 +1612,10 @@ static int       _init_freetype_gl(void)
 
     if (NULL == _freetype_gl_atlas) {
         _freetype_gl_atlas = texture_atlas_new(512, 512, 1);    // alpha only
+    } else {
+        PRINTF("WARNING: _init_freetype_gl() allready initialize\n");
+        g_assert(0);
+        return FALSE;
     }
 
     if (NULL != _freetype_gl_font[0]) {
@@ -1635,16 +1631,18 @@ static int       _init_freetype_gl(void)
 
 #ifdef S52_USE_ADRENO
     // bigger font on Nexus 7 (size + 8)
-    _freetype_gl_font[0]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 20);
-    _freetype_gl_font[1]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 26);
-    _freetype_gl_font[2]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 32);
-    _freetype_gl_font[3]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 38);
+    int basePtSz = 20;
 #else
-    _freetype_gl_font[0]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 12);
-    _freetype_gl_font[1]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 18);
-    _freetype_gl_font[2]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 24);
-    _freetype_gl_font[3]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 30);
+    int basePtSz = 12;
 #endif
+    //_freetype_gl_font[0]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 20);
+    //_freetype_gl_font[1]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 26);
+    //_freetype_gl_font[2]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 32);
+    //_freetype_gl_font[3]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 38);
+    _freetype_gl_font[0]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz +  0);
+    _freetype_gl_font[1]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz +  6);
+    _freetype_gl_font[2]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz + 12);
+    _freetype_gl_font[3]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz + 18);
 
     if (NULL == _freetype_gl_font[0]) {
         PRINTF("WARNING: texture_font_new() failed\n");
@@ -1664,7 +1662,7 @@ static int       _init_freetype_gl(void)
     if (0 == _text_textureID)
         glGenBuffers(1, &_text_textureID);
 
-    // glIsBuffer fail here
+    // FIXME: glIsBuffer fail here
     //if (GL_FALSE == glIsBuffer(_text_textureID)) {
     if (0 == _text_textureID) {
         PRINTF("ERROR: glGenBuffers() fail\n");
@@ -1672,8 +1670,9 @@ static int       _init_freetype_gl(void)
         return FALSE;
     }
 
-    if (NULL == _textWorkBuf)
-        _textWorkBuf = g_array_new(FALSE, FALSE, sizeof(_freetype_gl_vertex_t));
+    if (NULL == _ftglBuf) {
+        _ftglBuf = g_array_new(FALSE, FALSE, sizeof(_freetype_gl_vertex_t));
+    }
 
     return TRUE;
 }
@@ -2568,6 +2567,11 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
 // this is used when VRM line style is aternate line style
 // ie _normallinestyle == 'N'
 {
+    if (0 != (npt % 2)) {
+        PRINTF("FIXME: found LINES not modulo 2\n");
+        g_assert(0);
+    }
+
     if (npt < 2)
         return;
 
@@ -2581,7 +2585,6 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
     glVertexPointer(3, GL_DBL_FLT, 0, ppt);
     glDrawArrays(GL_LINES, 0, npt);
 #endif
-
 
     _checkError("_DrawArrays_LINES() .. end");
 
@@ -5390,10 +5393,7 @@ static int       _renderLC(S52_obj *obj)
     GLdouble       symlen_pixl = 0.0;
     GLdouble       symlen_wrld = 0.0;
     GLdouble       x1,y1,z1,  x2,y2,z2;
-    //double       x1,y1,z1,  x2,y2,z2;
     S57_geo       *geo = S52_PL_getGeo(obj);
-    //double         scalex = (_pmax.u - _pmin.u) / (double)_vp[2];
-    //double         scaley = (_pmax.v - _pmin.v) / (double)_vp[3];
 
 #ifdef S52_USE_GV
     // FIXME
@@ -5442,13 +5442,14 @@ static int       _renderLC(S52_obj *obj)
     //    char  *name = S57_getName(geo);
     //    PRINTF("%s: _dotpitch_mm_x=%f, symlen_pixl=%f, symlen_wrld=%f\n", name, _dotpitch_mm_x, symlen_pixl, symlen_wrld);
     //}
-    // debug
     //if (0 == g_strcmp0("HRBARE", S57_getName(geo))) {
     //    PRINTF("DEBUG: found HRBARE\n");
     //}
     //if (0 == g_strcmp0("PILBOP", S57_getName(geo))) {
     //    PRINTF("DEBUG: found PILBOP\n");
     //}
+
+    g_array_set_size(_tessWorkBuf_f, 0);
 
     double off_x = ppt[0];
     double off_y = ppt[1];
@@ -5611,18 +5612,34 @@ static int       _renderLC(S52_obj *obj)
         if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS)) {
             glEnable(GL_BLEND);
         }
-
+/*
 #ifdef S52_USE_GLES2
         _glUniformMatrix4fv_uModelview();
 #else
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 #endif
+*/
+        // FIXME: optimise by adding add LINE and then draw them at exit
         {   // complete the rest of the line
             pt3v pt[2] = {{x1+offset_wrld_x, y1+offset_wrld_y, 0.0}, {x2, y2, 0.0}};
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
+            //_DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
+            g_array_append_val(_tessWorkBuf_f, pt[0]);
+            g_array_append_val(_tessWorkBuf_f, pt[1]);
+
         }
     }
+
+
+    // complete the rest of the line
+#ifdef S52_USE_GLES2
+    _glUniformMatrix4fv_uModelview();
+#else
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+#endif
+
+    _DrawArrays_LINES(_tessWorkBuf_f->len, (vertex_t*)_tessWorkBuf_f->data);
 
     //_setBlend(FALSE);
 
@@ -7010,20 +7027,23 @@ static GArray   *_fill_ftglBuf(GArray *ftglBuf, const char *str, unsigned int we
 // fill buffer whit triangles strip
 // experimental: smaller text size if second line
 {
-    int pen_x = 0;
-    int pen_y = 0;
-    int nl    = FALSE;
-    int len   = strlen(str);
+    int   pen_x = 0;
+    int   pen_y = 0;
+    int   nl    = FALSE;
+    glong len   = g_utf8_strlen(str, -1);
 
-    if (NULL == ftglBuf) {
-        ftglBuf = g_array_new(FALSE, FALSE, sizeof(_freetype_gl_vertex_t));
-    } else {
-        g_array_set_size(ftglBuf, 0);
-    }
+    g_array_set_size(ftglBuf, 0);
 
-    for (int i=0; i<len; ++i) {
+    for (glong i=0; i<len; ++i) {
+        gchar           *utfc  = g_utf8_offset_to_pointer(str, i);
+        gunichar         unic  = g_utf8_get_char(utfc);
+        texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], unic);
+        if (NULL == glyph) {
+            continue;
+        }
+
         // experimental: smaller text size if second line
-        if (NL == str[i]) {
+        if (NL == unic) {
             weight = (0<weight) ? weight-1 : weight;
             texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], 'A');
             pen_x =  0;
@@ -7033,14 +7053,9 @@ static GArray   *_fill_ftglBuf(GArray *ftglBuf, const char *str, unsigned int we
             continue;
         }
 
-        unsigned char uc = str[i];
-        texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], uc);
-        if (NULL == glyph)
-            continue;
-
         // experimental: augmente kerning if second line
         if (TRUE == nl) {
-            pen_x += texture_glyph_get_kerning(glyph, uc);
+            pen_x += texture_glyph_get_kerning(glyph, unic);
             pen_x++;
         }
 
@@ -7048,8 +7063,8 @@ static GArray   *_fill_ftglBuf(GArray *ftglBuf, const char *str, unsigned int we
         GLfloat y0 = pen_y + glyph->offset_y;
 
         GLfloat x1 = x0    + glyph->width;
-        //GLfloat y1 = y0    - glyph->height;    // Y is down, so flip glyph
-        GLfloat y1 = y0    - (glyph->height+1);  // Y is down, so flip glyph
+        GLfloat y1 = y0    - glyph->height;    // Y is down, so flip glyph
+        //GLfloat y1 = y0    - (glyph->height+1);  // Y is down, so flip glyph
                                                  // +1 check this, some device clip the top row
         GLfloat s0 = glyph->s0;
         GLfloat t0 = glyph->t0;
@@ -7060,28 +7075,7 @@ static GArray   *_fill_ftglBuf(GArray *ftglBuf, const char *str, unsigned int we
         //PRINTF("CHAR: x0,y0,x1,y1: %lc: %f %f %f %f\n", str[i],x0,y0,x1,y1);
         //PRINTF("CHAR: s0,t0,s1,t1: %lc: %f %f %f %f\n", str[i],s0,t0,s1,t1);
 
-        // GL_TRIANGLE_STRIP - some artefact
         GLfloat z0 = 0.0;
-        /*
-        _freetype_gl_vertex_t vertices[4] = {
-            {x0,y0,z0,  s0,t0},
-            {x0,y1,z0,  s0,t1},
-            {x1,y0,z0,  s1,t0},
-            {x1,y1,z0,  s1,t1}
-        };
-        // connect glyphs with degenerated triangle (GPU skip those)
-        if (0 < ftglBuf->len) {
-            // dup last vertex
-            ftglBuf = g_array_append_vals(ftglBuf, &vertices[0], 1);
-        }
-
-        // glyph strip
-        ftglBuf = g_array_append_vals(ftglBuf, &vertices[0], 4);
-        // dup 3rd vertex
-        ftglBuf = g_array_append_vals(ftglBuf, &vertices[2], 1);
-        //*/
-
-        //* GL_TRIANGLES - 6 vertex also but no artifact
         _freetype_gl_vertex_t vertices[6] = {
             {x0,y0,z0,  s0,t0},
             {x0,y1,z0,  s0,t1},
@@ -7092,9 +7086,8 @@ static GArray   *_fill_ftglBuf(GArray *ftglBuf, const char *str, unsigned int we
             {x1,y0,z0,  s1,t0}
         };
 
-        ftglBuf = g_array_append_vals(ftglBuf, &vertices, 3);
+        ftglBuf = g_array_append_vals(ftglBuf, &vertices[0], 3);
         ftglBuf = g_array_append_vals(ftglBuf, &vertices[3], 3);
-        //*/
 
         pen_x += glyph->advance_x;
         pen_y += glyph->advance_y;
@@ -7189,10 +7182,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
         return FALSE;
     }
 
-    _glColor4ub(color);
-
-    // debug
-    //return FALSE;
+    //_glColor4ub(color);
 
 #ifdef S52_USE_FREETYPE_GL
 #ifdef S52_USE_GLES2
@@ -7240,6 +7230,11 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
         _ftglBuf = _fill_ftglBuf(_ftglBuf, str, weight);
     }
 
+    // lone text
+    if (S52_GL_NONE == _crnt_GL_cycle) {
+        _ftglBuf = _fill_ftglBuf(_ftglBuf, str, weight);
+    }
+
 #ifdef S52_USE_TXT_SHADOW
     {
         S52_Color *c = S52_PL_getColor("UIBCK");   // opposite of CHBLK
@@ -7257,7 +7252,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
         //_renderTXTAA_es2(x,        y+scaley, str);
 
         // lower right - OK
-        if (S52_GL_LAST == _crnt_GL_cycle) {
+        if ((S52_GL_LAST==_crnt_GL_cycle) || (S52_GL_NONE==_crnt_GL_cycle)) {
             // some MIO change age of target - need to resend the string
             _renderTXTAA_es2(x+_scalex, y-_scaley, (GLfloat*)_ftglBuf->data, _ftglBuf->len);
         } else {
@@ -7270,7 +7265,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
     _glColor4ub(color);
 
-    if (S52_GL_LAST == _crnt_GL_cycle) {
+    if ((S52_GL_LAST==_crnt_GL_cycle) || (S52_GL_NONE==_crnt_GL_cycle)) {
         _renderTXTAA_es2(x, y, (GLfloat*)_ftglBuf->data, _ftglBuf->len);
     } else {
         _renderTXTAA_es2(x, y, NULL, len);
@@ -9398,7 +9393,6 @@ static GLuint    _loadShader(GLenum type, const char *shaderSrc)
     return shader;
 }
 
-#define COMPILE_SHADER(type, src) _loadShader(type, #src)
 static int       _init_es2(void)
 {
     PRINTF("begin ..\n");
@@ -9411,68 +9405,63 @@ static int       _init_es2(void)
     if (FALSE == glIsProgram(_programObject)) {
         GLint  linked;
 
-        PRINTF("DEBUG: re-building '_programObject'\n");
-
 #ifdef S52_USE_FREETYPE_GL
-        _text_textureID = 0;
         _init_freetype_gl();
 #endif
 
+        // ----------------------------------------------------------------------
+
+        PRINTF("DEBUG: re-building '_programObject'\n");
         _programObject  = glCreateProgram();
 
         // ----------------------------------------------------------------------
         PRINTF("GL_VERTEX_SHADER\n");
 
-        _vertexShader = COMPILE_SHADER(GL_VERTEX_SHADER,
-
+        static const char vertSrc[] =
 #if !defined(S52_USE_GL2)
-        precision lowp float;
-        //precision mediump float;
-        //precision highp   float;
+        "precision lowp float;                                          \n"
+        //"precision mediump float;                                     \n"
+        //"precision highp   float;                                     \n"
 #endif
-        uniform   mat4  uProjection;
-        uniform   mat4  uModelview;
+        "uniform   mat4  uProjection;                                   \n"
+        "uniform   mat4  uModelview;                                    \n"
+        "uniform   float uPointSize;                                    \n"
+        "uniform   float uPattOn;                                       \n"
+        "uniform   float uPattGridX;                                    \n"
+        "uniform   float uPattGridY;                                    \n"
+        "uniform   float uPattW;                                        \n"
+        "uniform   float uPattH;                                        \n"
 
-        uniform   float uPointSize;
+        "attribute vec2  aUV;                                           \n"
+        "attribute vec4  aPosition;                                     \n"
+        "attribute float aAlpha;                                        \n"
 
-        uniform   float uPattOn;
-        uniform   float uPattGridX;
-        uniform   float uPattGridY;
-        uniform   float uPattW;
-        uniform   float uPattH;
+        "varying   vec4  v_acolor;                                      \n"
+        "varying   vec2  v_texCoord;                                    \n"
+        "varying   float v_pattOn;                                      \n"
+        "varying   float v_alpha;                                       \n"
 
-        attribute vec2  aUV;
-        attribute vec4  aPosition;
-        attribute float aAlpha;
-
-        varying   vec4  v_acolor;
-        varying   vec2  v_texCoord;
-        varying   float v_pattOn;
-        varying   float v_alpha;
-
-        void main(void)
-        {
-            v_alpha = aAlpha;
-
-            gl_PointSize = uPointSize;
-
-            gl_Position = uProjection * uModelview * aPosition;
+        "void main(void)                                                \n"
+        "{                                                              \n"
+        "    v_alpha = aAlpha;                                          \n"
+        "    gl_PointSize = uPointSize;                                 \n"
+        "    gl_Position = uProjection * uModelview * aPosition;        \n"
             // optimisation: uProjection * uModelview on CPU, remove one '*'
             // and also remove one glUniformMatrix4fv call 
             // FIXME: find a way to accuratly time the diff
             // gl_Position = uModelview * aPosition;
+        "    if (1.0 == uPattOn) {                                      \n"
+        "        v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;    \n"
+        "        v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;    \n"
+        "    } else {                                                   \n"
+        "        v_texCoord = aUV;                                      \n"
+        "    }                                                          \n"
+        "}                                                              \n";
 
-            if (1.0 == uPattOn) {
-                v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;
-                v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;
-            } else {
-                v_texCoord = aUV;
-            }
-        });
+        _vertexShader = _loadShader(GL_VERTEX_SHADER, vertSrc);
+
         // ----------------------------------------------------------------------
 
-
-        // ----------------------------------------------------------------------
         PRINTF("GL_FRAGMENT_SHADER\n");
 
 #ifdef S52_USE_TEGRA2
@@ -9485,64 +9474,64 @@ static int       _init_es2(void)
 #endif
 
 
-        _fragmentShader = COMPILE_SHADER(GL_FRAGMENT_SHADER,
+
+        static const char fragSrc[] = "#version 120 \n"
 
 #ifdef S52_USE_GL2
-        uniform sampler2D uSampler2d;
+        "uniform sampler2D uSampler2d;              \n"
 #else
-        precision lowp float;
-        //precision mediump float;
-        //precision highp float;
+        "precision lowp float;                      \n"
+        //"precision mediump float;                 \n"
+        //"precision highp float;                   \n"
 
-        uniform lowp sampler2D uSampler2d;
-        //uniform mediump sampler2D uSampler2d;
+        "uniform lowp sampler2D uSampler2d;         \n"
+        //"uniform mediump sampler2D uSampler2d;    \n"
 #endif
-        uniform float     uFlatOn;
-        uniform float     uBlitOn;
-        uniform float     uStipOn;
-        uniform float     uPattOn;
-        uniform float     uGlowOn;
-        uniform float     uRasterOn;
+        "uniform float     uFlatOn;                 \n"
+        "uniform float     uBlitOn;                 \n"
+        "uniform float     uStipOn;                 \n"
+        "uniform float     uPattOn;                 \n"
+        "uniform float     uGlowOn;                 \n"
+        "uniform float     uRasterOn;               \n"
 
-        uniform vec4      uColor;
+        "uniform vec4      uColor;                  \n"
 
-        varying vec2      v_texCoord;
-        varying float     v_alpha;
+        "varying vec2      v_texCoord;              \n"
+        "varying float     v_alpha;                 \n"
 
         // NOTE: if else if ... doesn't seem to slow things down
-        void main(void)
-        {
-            if (1.0 == uBlitOn) {
-                gl_FragColor = texture2D(uSampler2d, v_texCoord);
-            } else {
-                if (1.0 == uStipOn) {
-                    gl_FragColor = texture2D(uSampler2d, v_texCoord);
-                    gl_FragColor.rgb = uColor.rgb;
-                } else {
-                    if (1.0 == uPattOn) {
-                        gl_FragColor = texture2D(uSampler2d, v_texCoord);
-                        gl_FragColor.rgb = uColor.rgb;
-                    } else {
-#if !defined(S52_USE_GL2)
-                        //* FIXME: gl_PointCoord NOT in GL, but is in GLES !
-                        if (0.0 < uGlowOn) {
-                            if (0.5 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) + (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) {
-                                gl_FragColor   = uColor;
-                                gl_FragColor.a = v_alpha;
-                            } else {
-                                discard;
-                            }
+        "void main(void)                            \n"
+        "{                                          \n"
+        "    if (1.0 == uBlitOn) {                  \n"
+        "        gl_FragColor = texture2D(uSampler2d, v_texCoord);               \n"
+        "    } else {                                                            \n"
+        "        if (1.0 == uStipOn) {                                           \n"
+        "            gl_FragColor = texture2D(uSampler2d, v_texCoord);           \n"
+        "            gl_FragColor.rgb = uColor.rgb;                              \n"
+        "        } else {                                                        \n"
+        "            if (1.0 == uPattOn) {                                       \n"
+        "                gl_FragColor = texture2D(uSampler2d, v_texCoord);       \n"
+        "                gl_FragColor.rgb = uColor.rgb;                          \n"
+        "            } else {                                                    \n"
+        "                if (0.0 < uGlowOn) {                                    \n"
+        "                    if (0.5 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) + (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) { \n"
+        "                        gl_FragColor   = uColor;                        \n"
+        "                        gl_FragColor.a = v_alpha;                       \n"
+        "                    } else {                                            \n"
+        "                        discard;                                        \n"
+        "                    }                                                   \n"
+        "                } else                                                  \n"
+        "                {                          \n"
+        "                    gl_FragColor = uColor; \n"
+        "                }                          \n"
+        "            }                              \n"
+        "        }                                  \n"
+        "    }                                      \n"
+        "}                                          \n";
 
-                        } else
-                        //*/
-#endif
-                        {
-                            gl_FragColor = uColor;
-                        }
-                    }
-                }
-            }
-        });
+        _fragmentShader = _loadShader(GL_FRAGMENT_SHADER, fragSrc);
+
+
         // ----------------------------------------------------------------------
 
         if ((0==_programObject) || (0==_vertexShader) || (0==_fragmentShader)) {
@@ -9904,9 +9893,9 @@ int        S52_GL_done(void)
         glDeleteBuffers(1, &_text_textureID);
         _text_textureID = 0;
     }
-    if (NULL != _textWorkBuf) {
-        g_array_free(_textWorkBuf, TRUE);
-        _textWorkBuf = NULL;
+    if (NULL != _ftglBuf) {
+        g_array_free(_ftglBuf, TRUE);
+        _ftglBuf = NULL;
     }
 #endif
 
@@ -10550,6 +10539,15 @@ int        S52_GL_drawGraticule(void)
     glLineWidth(1.0);
     glColor4ub(black->R, black->G, black->B, (4 - (black->trans - '0'))*TRNSP_FAC);
 #endif
+
+    //
+    // FIXME: optimisation: collecte all segment THEN call a draw
+    //
+
+    //
+    // FIXME: use S52_MAR_DISP_GRATICULE to get the user choice
+    //
+
 
     // ----  graticule S lat
     {

@@ -82,7 +82,7 @@ gboolean SYMBOLIZED_BND  = TRUE;     // symbolized area boundaries
 // WARNING: must be in sync with S52MarinerParameter
 // WARNING: must be in sync with S52_MARparamName
 static double _MARparamVal[] = {
-    0.0,      // 0 - NONE
+    0.0,      // 0 - ERROR: 0 - no error,
 
     //0.0,     // 1 - SHOW_TEXT  (0 - off)
     1.0,     // 1 - SHOW_TEXT (default)
@@ -204,13 +204,13 @@ static double _MARparamVal[] = {
 };
 
 double S52_MP_get(S52MarinerParameter param)
-// return Mariner parameter or S52_MAR_NONE if fail
+// return Mariner parameter or S52_MAR_ERROR if fail
 // FIXME: check mariner param against groups selection
 {
-    if (S52_MAR_NONE<param && param<S52_MAR_NUM)
+    if (S52_MAR_ERROR<param && param<S52_MAR_NUM)
         return _MARparamVal[param];
 
-    return _MARparamVal[S52_MAR_NONE];
+    return _MARparamVal[S52_MAR_ERROR];
 }
 
 int    S52_MP_set(S52MarinerParameter param, double val)

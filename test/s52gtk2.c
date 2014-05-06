@@ -634,6 +634,16 @@ static gboolean expose_event(GtkWidget      *widget,
     }
     */
 
+    // debug - UTF need font file that support the language
+    // Japanese: ???
+    //S52_drawStr(50,  50, "UINFF", 1, "Japanese Hiragana: (Iroha) " "いろはにほへとちりぬるを");
+    // Thai: Waree.ttf
+    //S52_drawStr(50, 100, "UINFF", 1, "Thai: " "๏ เป็นมนุษย์สุดประเสริฐเลิศคุณค่า  กว่าบรรดาฝูงสัตว์เดรัจฉาน");
+    // Russian: 13947.ttf (accent missing)
+    S52_drawStr(50, 200, "UINFF", 1, "Russian: " "Большо́му кораблю́ — большо́е пла́вание.");
+    //Translation: For a big ship, a big voyage.
+
+
     // this draw on chart and drawLast() will draw 'above' that
     //if (TRUE == _doRenderHelp)
     //    _renderHelp(widget);
@@ -1689,11 +1699,11 @@ static int      _initS52()
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 
-    // init OWNSHP
-    _setOWNSHP();
-
     // init decoration (scale bar, North arrow, unit)
     S52_newCSYMB();
+
+    //*
+    _setOWNSHP();
 
     _setVRMEBL();
 
@@ -1705,12 +1715,12 @@ static int      _initS52()
 
     _setCLRLIN();
 
+    _setMarFeature();
+    //*/
+
 #ifdef S52_USE_RADAR
     S52_setRADARCallBack(_radar_cb, 1280);
 #endif
-
-    _setMarFeature();
-
 
     g_print("PLibList    : %s\n", S52_getPLibNameList());
     g_print("PalettesList: %s\n", S52_getPalettesNameList());

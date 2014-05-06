@@ -28,7 +28,7 @@
 // -- call to camera movement
 // -- call to PLib state
 // -- call for MIO's
-// -- call made over socket (also WebSocket)
+// -- call made over DBUS, Socket, WebSocket
 // --- JSON Grammar (see ./test/s52ui)
 
 #ifndef _S52_H_
@@ -58,7 +58,7 @@ typedef enum S52ObjectType {
 
 // global parameter for mariners' selection
 typedef enum S52MarinerParameter {
-    S52_MAR_NONE                =  0,   // default
+    S52_MAR_ERROR               =  0,   // default to 0
     S52_MAR_SHOW_TEXT           =  1,   // flags to show text (see S52_setTextDisp() for details) (on/off) [default ON]
     S52_MAR_TWO_SHADES          =  2,   // flag indicating selection of two depth shades (on/off) [default ON]
     S52_MAR_SAFETY_CONTOUR      =  3,   // S52_LINES: selected safety contour (meters) [IMO PS 3.6]
@@ -176,7 +176,6 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
 
 //-----need a GL context (main loop) ------------------------
 
-#ifdef S52_USE_EGL
 /**
  * S52_setEGLcb: register callback use by draw(), drawLast(), drawStr() and drawBlit()
  * @eglBeg: (in): callback to EGL begin (makecurrent)
@@ -188,7 +187,6 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
  */
 typedef int (*EGL_cb)(void *EGLctx, const char *tag);
 DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx);
-#endif
 
 /**
  * S52_draw:
@@ -211,9 +209,8 @@ DLL int    STD S52_draw(void);
 DLL int    STD S52_drawLast(void);
 
 
-#ifdef S52_USE_GV
+// deprecated
 DLL int    STD S52_drawLayer(const char *name);
-#endif
 
 
 /**
@@ -730,7 +727,6 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius);
  *
  * Return: TRUE on success, else FALSE
  */
-
 DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height);
 
 
@@ -753,33 +749,13 @@ DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, u
 // NOTE: Mariners' Object *not* on layer 9
 // need a call to S52_draw() to be drawn
 
-
-#ifdef S52_USE_GOBJECT
-// Not really using GObect for now but this emphasize that the
-// opaque pointer is typedef'ed to something that 'gjs' can understand
-
-#include <glib.h>   // guint64
-
 /**
  * S52ObjectHandle:
  *
  * Type used for storing references to S52 objects, the S52ObjectHandle
  * is a fully opaque type without any public data members.
  */
-typedef guint64 S52ObjectHandle;
-//typedef gdouble S52ObjectHandle;
-
-// NOTE: gjs doesn't seem to understand 'gpointer', so send the
-// handle as a 64 bits unsigned integer (guint64)
-// FIXME: try gdouble that is also 64bits on 32 and 64 bits machine
-
-#else
-
-// in real life S52ObjectHandle is juste a ordinary opaque pointer
-typedef void*   S52ObjectHandle;
-
-#endif /* S52_USE_GOBJECT */
-
+typedef void* S52ObjectHandle;
 
 // ---- Basic Call (all other call are a specialisation of these) ----
 

@@ -3780,16 +3780,18 @@ static _Text     *_parseTX(S57_geo *geoData, _cmdWL *cmd)
     }
 
     _Text *text = _parseTEXT(geoData, str);
+
+#ifdef S52_USE_ANDROID
+    // no g_convert() on android
     if (NULL != text)
         text->frmtd = g_string_new(buf);
-
-    /*
+#else
     if (NULL != text) {
         gchar *gstr = g_convert(buf, -1, "UTF-8", "ISO-8859-1", NULL, NULL, NULL);
         text->frmtd = g_string_new(gstr);
         g_free(gstr);
     }
-    */
+#endif
 
     return text;
 }
@@ -3860,8 +3862,8 @@ static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
 
     text = _parseTEXT(geoData, str);
 
-    // FIXME: g_convert() fail on android
 #ifdef S52_USE_ANDROID
+    // no g_convert() on android
     if (NULL != text)
         text->frmtd = g_string_new(buf);
 #else
@@ -3890,20 +3892,14 @@ const char *S52_PL_getEX(S52_obj *obj, S52_Color **col,
         g_assert(0);
     }
 
-    // FIXME FIXME FIXME: on Ubuntu X86_64 this work
-    // but not on android!!
-    // check g_convert() not in Android (should allready be fixed)
-
-    // FIXME: find a way to not reparse to NULL
-    // might need to be (re)parsed
     if (FALSE == obj->textParsed[_getAlt(obj)]) {
 
         if (S52_CMD_TXT_TX == cmd->cmdWord) {
 
-            // debug - this should not be needed!
-            // FIXME: why is this needed?
+            // FIXME: this should not be needed!
             if (NULL != cmd->cmd.text) {
                 _freeTXT(cmd->cmd.text);
+                //g_assert(0);
             }
 
             cmd->cmd.text = _parseTX(obj->geoData, cmd);
@@ -3914,14 +3910,14 @@ const char *S52_PL_getEX(S52_obj *obj, S52_Color **col,
 
         if (S52_CMD_TXT_TE == cmd->cmdWord) {
 
-            // debug - this should not occur!
-            // FIXME: why is this needed?
+            // FIXME: this should not occur!
             if (NULL != cmd->cmd.text) {
                 _freeTXT(cmd->cmd.text);
                 //g_assert(0);
             }
 
             cmd->cmd.text = _parseTE(obj->geoData, cmd);
+
             // debug - will return NULL
             //cmd->cmd.text = _parseTE(obj->geoData, NULL);
         }
@@ -4380,18 +4376,11 @@ guint       S52_PL_getFtglVBO(S52_obj *obj, guint *len)
         return FALSE;
 
     // parano
-    if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
-        // S52_CMD_SYM_PT pass here - speed text on leg
+    // Note: S52_CMD_SYM_PT pass here - speed text on leg
+    if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord) && (S52_CMD_SYM_PT!=cmd->cmdWord)) {
         PRINTF("DEBUG: logic bug, not a text command [cmdWord:%i]\n", cmd->cmdWord);
         //g_assert(0);
     }
-
-    // debug
-    //S57_geo *geo    = S52_PL_getGeo(obj);
-    //unsigned int id = S57_getGeoID(geo);
-    //if (861==id && 0==cmd->vID) {
-    //    PRINTF("nonsuch found && vID == 0\n");
-    //}
 
     *len = cmd->len;
 
@@ -4407,7 +4396,8 @@ int         S52_PL_setFtglVBO(S52_obj *obj, guint vboID, guint len)
         return FALSE;
 
     // parano
-    if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
+    // Note: S52_CMD_SYM_PT pass here - speed text on leg
+    if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord) && (S52_CMD_SYM_PT!=cmd->cmdWord)) {
         PRINTF("DEBUG: logic bug, not a text command\n");
         //g_assert(0);
     }

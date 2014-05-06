@@ -582,7 +582,7 @@ texture_font_get_glyph( texture_font_t * self, wchar_t charcode )
             return glyph;
         }
     }
-    // SD 2012MAY04
+    // SD 2012MAY04 - test
     //return NULL;
 
 
@@ -617,6 +617,7 @@ texture_font_get_glyph( texture_font_t * self, wchar_t charcode )
     /* Glyph has not been already loaded */
     if( !buffer)
     {
+        // SD 2012MAY04
         //buffer = (wchar_t *) calloc( 2, sizeof(wchar_t) );
         buffer = (wchar_t *) g_malloc0( 2 * sizeof(wchar_t) );
     }

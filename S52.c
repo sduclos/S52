@@ -43,7 +43,7 @@
 #endif
 
 #include <string.h>     // memmove(), memcpy()
-#include <glib.h>       // GString, GArray, GPtrArray, ..
+#include <glib.h>       // GString, GArray, GPtrArray, guint64, ..
 #include <math.h>       // INFINITY
 
 // mkfifo
@@ -54,6 +54,23 @@
 #define PIPENAME "/tmp/S52_pipe_01"
 
 #include "gdal.h"       // to handle Raster
+
+#ifdef S52_USE_GOBJECT
+// Not really using GObect for now but this emphasize that the
+// opaque pointer is typedef'ed to something that 'gjs' can understand
+
+typedef guint64 _S52ObjectHandle;
+
+// NOTE: gjs doesn't seem to understand 'gpointer', so send the
+// handle as a 64 bits unsigned integer (guint64)
+// FIXME: try gdouble that is also 64bits on 32 and 64 bits machine
+
+#else   // S52_USE_GOBJECT
+
+// in real life S52ObjectHandle is juste a ordinary opaque pointer
+//typedef S52_obj* _S52ObjectHandle;
+
+#endif  // S52_USE_GOBJECT
 
 
 #ifndef S52_USE_PROJ
@@ -298,7 +315,10 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.125\n"
+      "libS52 0.126\n"
+#ifdef _MINGW
+      "_MINGW\n"
+#endif
 #ifdef S52_USE_GV
       "S52_USE_GV\n"
 #endif
@@ -319,9 +339,6 @@ static char _version[] = "$Revision: 1.126 $\n"
 #endif
 #ifdef S52_DEBUG
       "S52_DEBUG\n"
-#endif
-#ifdef _MINGW
-      "_MINGW\n"
 #endif
 #ifdef S52_USE_LOG
       "S52_USE_LOG\n"
@@ -661,7 +678,7 @@ static int        _fixme(S52MarinerParameter paramName)
 }
 
 DLL double STD S52_getMarinerParam(S52MarinerParameter paramID)
-// return Mariner parameter or S52_MAR_NONE if fail
+// return Mariner parameter or the value in S52_MAR_ERROR if fail
 // FIXME: check mariner param against groups selection
 {
     S52_CHECK_INIT;
@@ -685,7 +702,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
     PRINTF("paramID:%i, val:%f\n", paramID, val);
 
     switch (paramID) {
-        case S52_MAR_NONE                : break;
+        case S52_MAR_ERROR               : break;
         case S52_MAR_SHOW_TEXT           : val = _validate_bool(val);                   break;
         // _SEABED01->DEPARE01;
         case S52_MAR_TWO_SHADES          : val = _validate_bool(val);  _doCS = TRUE;    break;
@@ -1586,21 +1603,30 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 // init basic stuff (outside of the main loop)
 {
     //libS52Zdso();
-
-    PRINTF("screen_pixels_w: %i, screen_pixels_h: %i, screen_mm_w: %i, screen_mm_h: %i\n",
-            screen_pixels_w,     screen_pixels_h,     screen_mm_w,     screen_mm_h);
-
-    if (screen_pixels_w<1 || screen_pixels_h<1 || screen_mm_w<1 || screen_mm_h<1)
-        return FALSE;
-
     // debug
     if (NULL != err_cb)
         err_cb("S52_init(): test err log\n");
 
     S52_initLog(err_cb);
 
-#ifdef _MINGW
-#else
+    PRINTF("screen_pixels_w: %i, screen_pixels_h: %i, screen_mm_w: %i, screen_mm_h: %i\n",
+            screen_pixels_w,     screen_pixels_h,     screen_mm_w,     screen_mm_h);
+
+    if (screen_pixels_w<1 || screen_pixels_h<1 || screen_mm_w<1 || screen_mm_h<1) {
+        PRINTF("ERROR: screen dim < 1\n");
+        return FALSE;
+    }
+
+#if !defined(S52_USE_ANDROID) && defined(S52_USE_GOBJECT)
+    // check size of S52ObjectHandle == guint64 = unsigned long long int
+    // when S52_USE_GOBJECT is defined
+    if (sizeof(guint64) != sizeof(unsigned long long int)) {
+        PRINTF("sizeof(guint64) != sizeof(unsigned long long int)\n");
+        g_assert(0);
+    }
+#endif
+
+#if !defined(_MINGW)
     // check if run as root
     if (0 == getuid()) {
         PRINTF("ERROR: do NOT run as SUPERUSER (root) .. exiting\n");
@@ -1728,8 +1754,9 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     // load basic def (ex color, CS, ...)
     S52_PL_init();
 
-    // put an error No in S52_MAR_NONE
-    S52_MP_set(S52_MAR_NONE, INFINITY);
+    // put an error No in S52_MAR_ERROR
+    //S52_MP_set(S52_MAR_ERROR, INFINITY);
+    S52_MP_set(S52_MAR_ERROR, 0.0);
 
     // setup the virtual cell that will hold mariner's objects
     // NOTE: there is no IHO cell at scale '6', this garanty that
@@ -4089,8 +4116,8 @@ DLL int    STD S52_draw(void)
     EGL_BEG(DRAW);
 
 
-#ifdef S52_USE_ANDROID
     // do not wait if an other thread is allready drawing
+#ifdef S52_USE_ANDROID
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
 #else
     if (FALSE == g_mutex_trylock(&_mp_mutex)) {
@@ -4197,12 +4224,6 @@ DLL int    STD S52_draw(void)
         if (TRUE == S52_MP_get(S52_MAR_DISP_LEGEND))
             _drawLegend();
 
-        // debug UTF - this string is rendered just above Becancour
-        //S52_GL_drawStr(-5567198.0, 4019200.0,"Japanese Hiragana: (Iroha)"
-	    //		     "いろはにほへとちりぬるを");
-        //S52_GL_drawStr(-5567198.0, 4019200.0,"Thai:"
-		//"๏ เป็นมนุษย์สุดประเสริฐเลิศคุณค่า  กว่าบรรดาฝูงสัตว์เดรัจฉาน");
-
         S52_GL_end(S52_GL_DRAW);
 
         // for each cell, not after all cell,
@@ -4210,6 +4231,7 @@ DLL int    STD S52_draw(void)
         // FIXME: cull object of overlapping region of cell of DIFFERENT nav pourpose
         // NOTE: no culling of object of overlapping region of cell of SAME nav pourpose
         // display priority 8
+        // FIX: it's seem like a HO could handle this, but when zoomig-out it's a S52 overlapping symb. probleme
 
         //PRINTF("S52_draw() .. -2-\n");
 
@@ -4415,9 +4437,14 @@ static int        _drawObj(const char *name)
 
     return TRUE;
 }
+#endif  // S52_USE_GV
 
 DLL int    STD S52_drawLayer(const char *name)
 {
+    PRINTF("name: %s\n", name);
+
+#ifdef S52_USE_GV
+
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
 
@@ -4428,7 +4455,6 @@ DLL int    STD S52_drawLayer(const char *name)
         return FALSE;
     }
 
-    PRINTF("name: %s\n", name);
 
     // debug filter out some layer comming from OpenEV
     /*
@@ -4480,11 +4506,10 @@ DLL int    STD S52_drawLayer(const char *name)
     }
 
     GMUTEXUNLOCK(&_mp_mutex);
+#endif
 
     return TRUE;
 }
-
-#endif
 
 DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
 {
@@ -4509,25 +4534,22 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
     return TRUE;
 }
 
-#ifdef S52_USE_EGL
 DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx)
 {
+#ifdef S52_USE_EGL
     PRINTF("set EGL_cb .. \n");
 
     _eglBeg = eglBeg;
     _eglEnd = eglEnd;
     _EGLctx = EGLctx;
 
+#endif
+
     return TRUE;
 }
-#endif
 
 DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north)
 {
-    // debug
-    //PRINTF("BLIT start ..\n"):
-    //return TRUE;
-
     S52_CHECK_INIT;
     EGL_BEG(BLIT);
 
@@ -5815,6 +5837,13 @@ static S52_obj   *_isObjValid(_cell *c, S52_obj *obj)
 // return  obj if the oject is in cell else NULL
 // Used to validate User Mariners' Object
 {
+    // FIXME: refactor - objH could be an index into a GPtrArray of the real struct
+    // what happend if array is full !
+    // if del_fast(array) is used then the last objH in the array has now
+    // the index of the deleted one
+    // else let the array grow upto guint (at least 2^32 objH - if 64bits system then 2^64)
+    // and signal ARRAY_FULL in
+
     for (int i=0; i<S52_PRIO_NUM; ++i) {
         for (int j=0; j<N_OBJ_T; ++j) {
             GPtrArray *rbin = c->renderBin[i][j];
