@@ -144,20 +144,20 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_LOG          - log every S52_* in tmp file
 # -DG_DISABLE_ASSERT     - disable g_assert()
 #
-# -DS52_USE_OPENGL_VBO   - GL version 1.5 or greater.
-# -DS52_USE_EGL          - for GLES2
 # -DS52_USE_DBUS         - mimic S52.h
 # -DS52_USE_SOCK         - same as DBus - socket & WebSocket - need ./lib/parson
 # -DS52_USE_PIPE         - same as DBus, in a day
 # -DS52_USE_GOBJECT      - make S52objH an int64 for gjs (Javascript compiler)
 # -DS52_USE_SYM_AISSEL01 - experimental - symbol in plib-test-priv.rle
 # -DS52_USE_BACKTRACE    - debug
-# -DS52_USE_GL           - GL only stuff
+# -DS52_USE_OPENGL_VBO   - GL version 1.5 or greater.
+# -DS52_USE_EGL          - for GLES2
+# -DS52_USE_GL2          - GL only stuff
 # -DS52_USE_GLES2        - need VBO
 # -DS52_USE_ANDROID      - build for Android/ARM 
 # -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
 # -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7 (2013))
-
+# -DS52_USE_MESA3D       - use Mesa drive
 
 # default CFLAGS for default target
 CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl glu gl`  \
@@ -179,6 +179,7 @@ s52gtk2gl2 : CFLAGS = `pkg-config  --cflags glib-2.0 lcms gl freetype2`  \
          -DS52_USE_EGL                                 \
          -DS52_USE_GLES2                               \
          -DS52_USE_GL2                                 \
+         -DS52_USE_MESA3D                              \
          -DS52_USE_FREETYPE_GL                         \
          -DS52_USE_TXT_SHADOW                          \
          -DS52_DEBUG $(DBG)

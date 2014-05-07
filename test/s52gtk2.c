@@ -1127,7 +1127,7 @@ static int      _setVRMEBL()
     //_vrmebl = S52_newVRMEBL(TRUE, TRUE, FALSE);
 
     // alternate VRM/EBL, freely moveable
-    //_vrmeblB = S52_iniVRMEBL(TRUE, TRUE, FALSE, TRUE);
+    //_vrmeblB = S52_newVRMEBL(TRUE, TRUE, FALSE, TRUE);
     // alternate VRM, freely moveable
     //_vrmeblB = S52_newVRMEBL(TRUE, FALSE, FALSE, TRUE);
 

@@ -137,11 +137,8 @@ typedef struct _S52_cmdDef {
     union    {GString   *LCRF,   *PCRF,   *SCRF;   } colRef;
 
     // ---- not a S52 fields ------------------------------------
-    S52_SMBtblName symType; // debug
-    S52_DListData  DListData;
-    //guint      startDList;  // start of display list (in fact its a GLuint)
-    //guint      nDList;      // number of display list (form 'start')
-    //colorIdx   colList[MAX_SUBLIST];
+    S52_SMBtblName symType;     // debug
+    S52_DListData  DListData;   // GL Display List / VBO
 
     S52_Color     *col;         // LC: color of last pen
     char           pen_w;       // LC: width in pixel of last pen in (ASCII)

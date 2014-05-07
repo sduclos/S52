@@ -315,7 +315,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.126\n"
+      "libS52 0.127\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -399,6 +399,9 @@ static char _version[] = "$Revision: 1.126 $\n"
 #endif
 #ifdef S52_USE_RADAR
       "S52_USE_RADAR\n"
+#endif
+#ifdef S52_USE_MESA3D
+      "S52_USE_MESA3D\n"
 #endif
 ;
 
@@ -4366,8 +4369,10 @@ DLL int    STD S52_drawLast(void)
 
     // check stray vessel (occur when s52ais restart)
     if (0.0 != S52_MP_get(S52_MAR_DEL_VESSEL_DELAY)) {
-        GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][S52_POINT];
-        g_ptr_array_foreach(rbin, _delOldVessel, rbin);
+        GPtrArray *rbinPT = _marinerCell->renderBin[S52_PRIO_MARINR][S52_POINT];
+        g_ptr_array_foreach(rbinPT, _delOldVessel, rbinPT);
+        GPtrArray *rbinLN = _marinerCell->renderBin[S52_PRIO_MARINR][S52_LINES];
+        g_ptr_array_foreach(rbinLN, _delOldVessel, rbinLN);
     }
 
     ////////////////////////////////////////////////////////////////////

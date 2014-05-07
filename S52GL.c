@@ -143,16 +143,16 @@ static GLint _aAlpha       = 0;
 #include "texture-atlas.h"
 #include "texture-font.h"
 
-static texture_font_t  *_freetype_gl_font[S52_MAX_FONT] = {NULL,NULL,NULL,NULL};
 static texture_atlas_t *_freetype_gl_atlas              = NULL;
+static texture_font_t  *_freetype_gl_font[S52_MAX_FONT] = {NULL,NULL,NULL,NULL};
 static const char      *_freetype_gl_fontfilename       =
 #ifdef S52_USE_ANDROID
     //"/system/fonts/Roboto-Regular.ttf";   // not official, could change place
     "/system/fonts/DroidSans.ttf";
 #else
-//"./Roboto-Regular.ttf";
+"./Roboto-Regular.ttf";
 //"./Waree.ttf";  // Thai glyph
-"./13947.ttf";  // Russian glyph
+//"../../ttf/13947.ttf";  // Russian glyph
 #endif
 
 typedef struct {
@@ -161,7 +161,7 @@ typedef struct {
 } _freetype_gl_vertex_t;
 
 // legend has no S52_obj, so this a place holder
-static GLuint  _text_textureID = 0;
+static GLuint  _ftgl_textureID = 0;
 static GArray *_ftglBuf        = NULL;
 
 #define LF  '\r'   // Line Feed
@@ -593,20 +593,10 @@ static GLuint   _vboIDaftglwColrID = 0;
 // experimental: synthetic after glow
 static GArray  *_aftglwColorArr    = NULL;
 
-/*
 // This is C!
-static void(*findProcAddress(size_t n))()
+//static void(*findProcAddress(size_t n))() {}
 // And this would not be the same!
-//static void *findProcAddress(size_t n)
-{
-for (uint32_t i=0 ; i<n ; i++) {
-// bla!
-;
-}
-
-return NULL;
-}
-*/
+//static void *findProcAddress(size_t n) {}
 
 // utils
 #ifdef S52_USE_GLES2
@@ -1549,27 +1539,26 @@ static GLint     _initFTGL(void)
 #ifdef S52_USE_COGL
 static int       _initCOGL(void)
 {
-    /* Setup a Pango font map and context */
+    // Setup a Pango font map and context
     _PangoFontMap = cogl_pango_font_map_new();
-    //_PangoFontMap = cogl_pango_font_map_new();
 
-    cogl_pango_font_map_set_use_mipmapping (COGL_PANGO_FONT_MAP(_PangoFontMap), TRUE);
+    cogl_pango_font_map_set_use_mipmapping(COGL_PANGO_FONT_MAP(_PangoFontMap), TRUE);
 
-    _PangoCtx = cogl_pango_font_map_create_context (COGL_PANGO_FONT_MAP(_PangoFontMap));
+    _PangoCtx = cogl_pango_font_map_create_context(COGL_PANGO_FONT_MAP(_PangoFontMap));
 
-    _PangoFontDesc = pango_font_description_new ();
-    pango_font_description_set_family (_PangoFontDesc, "DroidSans");
-    pango_font_description_set_size (_PangoFontDesc, 30 * PANGO_SCALE);
+    _PangoFontDesc = pango_font_description_new();
+    pango_font_description_set_family(_PangoFontDesc, "DroidSans");
+    pango_font_description_set_size(_PangoFontDesc, 30 * PANGO_SCALE);
 
-    /* Setup the "Hello Cogl" text */
-    _PangoLayout = pango_layout_new (_PangoCtx);
-    pango_layout_set_font_description (_PangoLayout, _PangoFontDesc);
-    pango_layout_set_text (_PangoLayout, "Hello Cogl", -1);
+    // Setup the "Hello Cogl" text
+    _PangoLayout = pango_layout_new(_PangoCtx);
+    pango_layout_set_font_description(_PangoLayout, _PangoFontDesc);
+    pango_layout_set_text(_PangoLayout, "Hello Cogl", -1);
 
     PangoRectangle hello_label_size;
-    pango_layout_get_extents (_PangoLayout, NULL, &hello_label_size);
-    int hello_label_width  = PANGO_PIXELS (hello_label_size.width);
-    int hello_label_height = PANGO_PIXELS (hello_label_size.height);
+    pango_layout_get_extents(_PangoLayout, NULL, &hello_label_size);
+    int hello_label_width  = PANGO_PIXELS(hello_label_size.width);
+    int hello_label_height = PANGO_PIXELS(hello_label_size.height);
 
     return TRUE;
 }
@@ -1604,7 +1593,6 @@ static int       _initA3D(void)
 #ifdef S52_USE_GLES2
 static int       _init_freetype_gl(void)
 {
-    // FIXME: gunichar
     const wchar_t   *cache    = L" !\"#$%&'()*+,-./0123456789:;<=>?"
                                 L"@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
                                 L"`abcdefghijklmnopqrstuvwxyz{|}~"
@@ -1612,6 +1600,7 @@ static int       _init_freetype_gl(void)
 
     if (NULL == _freetype_gl_atlas) {
         _freetype_gl_atlas = texture_atlas_new(512, 512, 1);    // alpha only
+        //_freetype_gl_atlas = texture_atlas_new(1024, 1024, 1);    // alpha only
     } else {
         PRINTF("WARNING: _init_freetype_gl() allready initialize\n");
         g_assert(0);
@@ -1629,16 +1618,24 @@ static int       _init_freetype_gl(void)
         _freetype_gl_font[3] = NULL;
     }
 
+    valueBuf TTFPath = {'\0'};
+    if (FALSE == S52_getConfig(CONF_TTF, &TTFPath)) {
+        PRINTF("default TTF not found in s52.cfg\n");
+        PRINTF("using hard-coded TTF filename: %s\n", _freetype_gl_fontfilename);
+    } else {
+        GStatBuf buf;
+        if (0 == g_stat(TTFPath, &buf)) {
+            _freetype_gl_fontfilename = TTFPath;
+            PRINTF("default TTF found in s52.cfg (%s)\n", TTFPath);
+        }
+    }
+
 #ifdef S52_USE_ADRENO
     // bigger font on Nexus 7 (size + 8)
     int basePtSz = 20;
 #else
     int basePtSz = 12;
 #endif
-    //_freetype_gl_font[0]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 20);
-    //_freetype_gl_font[1]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 26);
-    //_freetype_gl_font[2]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 32);
-    //_freetype_gl_font[3]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, 38);
     _freetype_gl_font[0]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz +  0);
     _freetype_gl_font[1]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz +  6);
     _freetype_gl_font[2]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz + 12);
@@ -1659,12 +1656,12 @@ static int       _init_freetype_gl(void)
     // this check document that
     //g_assert(sizeof(GLuint) == sizeof(unsigned int));
 
-    if (0 == _text_textureID)
-        glGenBuffers(1, &_text_textureID);
+    if (0 == _ftgl_textureID)
+        glGenBuffers(1, &_ftgl_textureID);
 
     // FIXME: glIsBuffer fail here
-    //if (GL_FALSE == glIsBuffer(_text_textureID)) {
-    if (0 == _text_textureID) {
+    //if (GL_FALSE == glIsBuffer(_ftgl_textureID)) {
+    if (0 == _ftgl_textureID) {
         PRINTF("ERROR: glGenBuffers() fail\n");
         g_assert(0);
         return FALSE;
@@ -9419,44 +9416,44 @@ static int       _init_es2(void)
 
         static const char vertSrc[] =
 #if !defined(S52_USE_GL2)
-        "precision lowp float;                                          \n"
-        //"precision mediump float;                                     \n"
-        //"precision highp   float;                                     \n"
+            "precision lowp float;                                          \n"
+            //"precision mediump float;                                     \n"
+            //"precision highp   float;                                     \n"
 #endif
-        "uniform   mat4  uProjection;                                   \n"
-        "uniform   mat4  uModelview;                                    \n"
-        "uniform   float uPointSize;                                    \n"
-        "uniform   float uPattOn;                                       \n"
-        "uniform   float uPattGridX;                                    \n"
-        "uniform   float uPattGridY;                                    \n"
-        "uniform   float uPattW;                                        \n"
-        "uniform   float uPattH;                                        \n"
+            "uniform   mat4  uProjection;                                   \n"
+            "uniform   mat4  uModelview;                                    \n"
+            "uniform   float uPointSize;                                    \n"
+            "uniform   float uPattOn;                                       \n"
+            "uniform   float uPattGridX;                                    \n"
+            "uniform   float uPattGridY;                                    \n"
+            "uniform   float uPattW;                                        \n"
+            "uniform   float uPattH;                                        \n"
 
-        "attribute vec2  aUV;                                           \n"
-        "attribute vec4  aPosition;                                     \n"
-        "attribute float aAlpha;                                        \n"
+            "attribute vec2  aUV;                                           \n"
+            "attribute vec4  aPosition;                                     \n"
+            "attribute float aAlpha;                                        \n"
 
-        "varying   vec4  v_acolor;                                      \n"
-        "varying   vec2  v_texCoord;                                    \n"
-        "varying   float v_pattOn;                                      \n"
-        "varying   float v_alpha;                                       \n"
+            "varying   vec4  v_acolor;                                      \n"
+            "varying   vec2  v_texCoord;                                    \n"
+            "varying   float v_pattOn;                                      \n"
+            "varying   float v_alpha;                                       \n"
 
-        "void main(void)                                                \n"
-        "{                                                              \n"
-        "    v_alpha = aAlpha;                                          \n"
-        "    gl_PointSize = uPointSize;                                 \n"
-        "    gl_Position = uProjection * uModelview * aPosition;        \n"
+            "void main(void)                                                \n"
+            "{                                                              \n"
+            "    v_alpha = aAlpha;                                          \n"
+            "    gl_PointSize = uPointSize;                                 \n"
+            "    gl_Position = uProjection * uModelview * aPosition;        \n"
             // optimisation: uProjection * uModelview on CPU, remove one '*'
-            // and also remove one glUniformMatrix4fv call 
+            // and also remove one glUniformMatrix4fv call
             // FIXME: find a way to accuratly time the diff
             // gl_Position = uModelview * aPosition;
-        "    if (1.0 == uPattOn) {                                      \n"
-        "        v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;    \n"
-        "        v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;    \n"
-        "    } else {                                                   \n"
-        "        v_texCoord = aUV;                                      \n"
-        "    }                                                          \n"
-        "}                                                              \n";
+            "    if (1.0 == uPattOn) {                                      \n"
+            "        v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;    \n"
+            "        v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;    \n"
+            "    } else {                                                   \n"
+            "        v_texCoord = aUV;                                      \n"
+            "    }                                                          \n"
+            "}                                                              \n";
 
         _vertexShader = _loadShader(GL_VERTEX_SHADER, vertSrc);
 
@@ -9475,59 +9472,62 @@ static int       _init_es2(void)
 
 
 
-        static const char fragSrc[] = "#version 120 \n"
+        static const char fragSrc[] =
+#ifdef S52_USE_MESA3D
+            "#version 120 \n"
+#endif
 
 #ifdef S52_USE_GL2
-        "uniform sampler2D uSampler2d;              \n"
+            "uniform sampler2D uSampler2d;              \n"
 #else
-        "precision lowp float;                      \n"
-        //"precision mediump float;                 \n"
-        //"precision highp float;                   \n"
+            "precision lowp float;                      \n"
+            //"precision mediump float;                 \n"
+            //"precision highp float;                   \n"
 
-        "uniform lowp sampler2D uSampler2d;         \n"
-        //"uniform mediump sampler2D uSampler2d;    \n"
+            "uniform lowp sampler2D uSampler2d;         \n"
+            //"uniform mediump sampler2D uSampler2d;    \n"
 #endif
-        "uniform float     uFlatOn;                 \n"
-        "uniform float     uBlitOn;                 \n"
-        "uniform float     uStipOn;                 \n"
-        "uniform float     uPattOn;                 \n"
-        "uniform float     uGlowOn;                 \n"
-        "uniform float     uRasterOn;               \n"
+            "uniform float     uFlatOn;                 \n"
+            "uniform float     uBlitOn;                 \n"
+            "uniform float     uStipOn;                 \n"
+            "uniform float     uPattOn;                 \n"
+            "uniform float     uGlowOn;                 \n"
+            "uniform float     uRasterOn;               \n"
 
-        "uniform vec4      uColor;                  \n"
+            "uniform vec4      uColor;                  \n"
 
-        "varying vec2      v_texCoord;              \n"
-        "varying float     v_alpha;                 \n"
+            "varying vec2      v_texCoord;              \n"
+            "varying float     v_alpha;                 \n"
 
-        // NOTE: if else if ... doesn't seem to slow things down
-        "void main(void)                            \n"
-        "{                                          \n"
-        "    if (1.0 == uBlitOn) {                  \n"
-        "        gl_FragColor = texture2D(uSampler2d, v_texCoord);               \n"
-        "    } else {                                                            \n"
-        "        if (1.0 == uStipOn) {                                           \n"
-        "            gl_FragColor = texture2D(uSampler2d, v_texCoord);           \n"
-        "            gl_FragColor.rgb = uColor.rgb;                              \n"
-        "        } else {                                                        \n"
-        "            if (1.0 == uPattOn) {                                       \n"
-        "                gl_FragColor = texture2D(uSampler2d, v_texCoord);       \n"
-        "                gl_FragColor.rgb = uColor.rgb;                          \n"
-        "            } else {                                                    \n"
-        "                if (0.0 < uGlowOn) {                                    \n"
-        "                    if (0.5 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) + (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) { \n"
-        "                        gl_FragColor   = uColor;                        \n"
-        "                        gl_FragColor.a = v_alpha;                       \n"
-        "                    } else {                                            \n"
-        "                        discard;                                        \n"
-        "                    }                                                   \n"
-        "                } else                                                  \n"
-        "                {                          \n"
-        "                    gl_FragColor = uColor; \n"
-        "                }                          \n"
-        "            }                              \n"
-        "        }                                  \n"
-        "    }                                      \n"
-        "}                                          \n";
+            // NOTE: if else if ... doesn't seem to slow things down
+            "void main(void)                            \n"
+            "{                                          \n"
+            "    if (1.0 == uBlitOn) {                  \n"
+            "        gl_FragColor = texture2D(uSampler2d, v_texCoord);               \n"
+            "    } else {                                                            \n"
+            "        if (1.0 == uStipOn) {                                           \n"
+            "            gl_FragColor = texture2D(uSampler2d, v_texCoord);           \n"
+            "            gl_FragColor.rgb = uColor.rgb;                              \n"
+            "        } else {                                                        \n"
+            "            if (1.0 == uPattOn) {                                       \n"
+            "                gl_FragColor = texture2D(uSampler2d, v_texCoord);       \n"
+            "                gl_FragColor.rgb = uColor.rgb;                          \n"
+            "            } else {                                                    \n"
+            "                if (0.0 < uGlowOn) {                                    \n"
+            "                    if (0.5 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) + (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) { \n"
+            "                        gl_FragColor   = uColor;                        \n"
+            "                        gl_FragColor.a = v_alpha;                       \n"
+            "                    } else {                                            \n"
+            "                        discard;                                        \n"
+            "                    }                                                   \n"
+            "                } else                                                  \n"
+            "                {                          \n"
+            "                    gl_FragColor = uColor; \n"
+            "                }                          \n"
+            "            }                              \n"
+            "        }                                  \n"
+            "    }                                      \n"
+            "}                                          \n";
 
         _fragmentShader = _loadShader(GL_FRAGMENT_SHADER, fragSrc);
 
@@ -9889,9 +9889,9 @@ int        S52_GL_done(void)
     _freetype_gl_font[2] = NULL;
     _freetype_gl_font[3] = NULL;
 
-    if (0 != _text_textureID) {
-        glDeleteBuffers(1, &_text_textureID);
-        _text_textureID = 0;
+    if (0 != _ftgl_textureID) {
+        glDeleteBuffers(1, &_ftgl_textureID);
+        _ftgl_textureID = 0;
     }
     if (NULL != _ftglBuf) {
         g_array_free(_ftglBuf, TRUE);

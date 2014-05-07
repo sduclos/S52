@@ -82,6 +82,7 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
 #define CONF_PLIB     "PLIB"
 #define CONF_CHART    "CHART"
 #define CONF_WORLD    "WORLD"
+#define CONF_TTF      "TTF"
 
 #define MAXL 1024    // MAX lenght of buffer _including_ '\0'
 typedef char    valueBuf[MAXL];

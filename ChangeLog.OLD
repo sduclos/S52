@@ -3,8 +3,13 @@
 #
 
 
-2014MAY09
+2014MAY07
+    -add -DS52_USE_MESA3D to get specific Mesa3D glsl version
+    -add TTF label to ./test/s52.cfg file for testing
+
+2014MAY06
     -fix UTF-8 text handling in GLES2 (freetype_gl)
+    -fix delete AIS lines when delay expire
 
 2014MAY04
     -del #ifdef in S52.h, move to S52.c
