@@ -3,6 +3,13 @@
 #
 
 
+2014MAY09
+    -mod refactor GL2/GLES2
+
+2014MAY08
+    -fix pattern for GLES2 (no stag)
+    -add optimisation merge point symbol to line as short line
+
 2014MAY07
     -add -DS52_USE_MESA3D to get specific Mesa3D glsl version
     -add TTF label to ./test/s52.cfg file for testing

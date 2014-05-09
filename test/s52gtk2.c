@@ -108,17 +108,17 @@ static S52ObjectHandle _clrlin      = NULL;
 
 //static S52ObjectHandle _marfea_area = NULL;
 //static S52ObjectHandle _marfea_line = NULL;
-static S52ObjectHandle _marfea_point= NULL;
+static S52ObjectHandle _marfea_point = NULL;
 
 #if !defined(S52_USE_GLES2)
 // FIXME: work on GL1.x only
 static int _doRenderHelp = FALSE;
 #endif
 
-static GtkWidget    *_win         = NULL;
-static GtkWidget    *_winArea     = NULL;
+static GtkWidget    *_win     = NULL;
+static GtkWidget    *_winArea = NULL;
 
-static GTimer       *_timer       = NULL;
+static GTimer       *_timer   = NULL;
 
 // debug - command-line options for test
 static gint     _execOpt = FALSE;
@@ -640,7 +640,7 @@ static gboolean expose_event(GtkWidget      *widget,
     // Thai: Waree.ttf
     //S52_drawStr(50, 100, "UINFF", 1, "Thai: " "๏ เป็นมนุษย์สุดประเสริฐเลิศคุณค่า  กว่าบรรดาฝูงสัตว์เดรัจฉาน");
     // Russian: 13947.ttf (accent missing)
-    S52_drawStr(50, 200, "UINFF", 1, "Russian: " "Большо́му кораблю́ — большо́е пла́вание.");
+    //S52_drawStr(50, 200, "UINFF", 1, "Russian: " "Большо́му кораблю́ — большо́е пла́вание.");
     //Translation: For a big ship, a big voyage.
 
 
@@ -1599,15 +1599,18 @@ static int      _initS52()
     //S52_setTextDisp(21, 1, FALSE);                      // BOYLAT
 
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR, 10.0);
+    // sounding color
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,   10.0);
-    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
-    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
 
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  4.0);
+    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
+    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
+
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);
 
     S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);
+
     //S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   1.0);
     S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   0.0);
     S52_setMarinerParam(S52_MAR_TIME_TAGS,       0.0);
@@ -1699,10 +1702,12 @@ static int      _initS52()
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 
-    // init decoration (scale bar, North arrow, unit)
+    S52_setMarinerParam(S52_MAR_DISP_CALIB, 1.0);
+
+    // init decoration (scale bar, North arrow, unit, calib.)
     S52_newCSYMB();
 
-    //*
+    /*
     _setOWNSHP();
 
     _setVRMEBL();

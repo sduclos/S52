@@ -226,11 +226,11 @@ static S52ObjectHandle _ownshp            = NULL;
 
 #endif  // USE_FAKE_AIS
 
-//typedef void (*PFNGLINSERTEVENTMARKEREXT)(int length, const char *marker);
+typedef void (*PFNGLINSERTEVENTMARKEREXT)(int length, const char *marker);
 //typedef void (GL_APIENTRY *PFNGLPUSHGROUPMARKEREXT)  (GLsizei length, const char *marker);
 //typedef void (GL_APIENTRY *PFNGLPOPGROUPMARKEREXT)   (void);
 
-//static PFNGLINSERTEVENTMARKEREXT _glInsertEventMarkerEXT = NULL;
+static PFNGLINSERTEVENTMARKEREXT _glInsertEventMarkerEXT = NULL;
 //static PFNGLPUSHGROUPMARKEREXT   _glPushGroupMarkerEXT   = NULL;
 //static PFNGLPOPGROUPMARKEREXT    _glPopGroupMarkerEXT    = NULL;
 
@@ -713,10 +713,10 @@ static int      _egl_init       (s52engine *engine)
 
     //--------------------------------------------------------------------------------------------------
     // get EGL Marker & Timer
-    //_glInsertEventMarkerEXT = (PFNGLINSERTEVENTMARKEREXT) eglGetProcAddress("glInsertEventMarkerEXT");
-    //if (!_glInsertEventMarkerEXT) {
-    //    LOGE("error: eglGetProcAddress() returned NULL\n");
-    //}
+    _glInsertEventMarkerEXT = (PFNGLINSERTEVENTMARKEREXT) eglGetProcAddress("glInsertEventMarkerEXT");
+    if (NULL == _glInsertEventMarkerEXT) {
+        LOGE("WARNING: eglGetProcAddress() returned NULL\n");
+    }
 
     // get GPU driver timer - EGL_NV_system_time
     const char *extstr = eglQueryString(eglDisplay, EGL_EXTENSIONS);
@@ -829,7 +829,7 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     }
     */
 
-    /*
+    //*
     if (NULL != _glInsertEventMarkerEXT) {
         //_glInsertEventMarkerEXT(g_utf8_strlen(tag, -1), tag);
         _glInsertEventMarkerEXT(strlen(tag), tag);
@@ -1578,8 +1578,8 @@ static int      _s52_draw_cb    (gpointer user_data)
     //*/
 
 
-#ifndef S52_USE_EGL
-    _egl_beg(engine, "tes");
+#if !defined(S52_USE_EGL)
+    _egl_beg(engine, "test");
 #endif
 
     // draw background - IHO layer 0-8
@@ -1606,7 +1606,7 @@ static int      _s52_draw_cb    (gpointer user_data)
         S52_drawLast();
     }
 
-#ifndef S52_USE_EGL
+#if !defined(S52_USE_EGL)
     _egl_end(engine);
 #endif
 
@@ -1953,7 +1953,7 @@ static int      _android_signalDraw  (s52engine *engine, double new_y, double ne
         //_s52_draw_user(engine); // add stuff on top of darwLast()
         //*/
 #else
-        _egl_beg(engine, "tes");
+        _egl_beg(engine, "test");
         //S52_draw();
         //_s52_draw_user(engine);
         //S52_drawLast();
@@ -2080,8 +2080,8 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             }
 
             // blit start
-#ifndef S52_USE_EGL
-            _egl_beg(engine, "tes");
+#if !defined(S52_USE_EGL)
+            _egl_beg(engine, "test");
 #endif
 
             //g_static_mutex_lock(&engine->mutex);
@@ -2167,7 +2167,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             //g_static_mutex_unlock(&engine->mutex);
 
             // blit end
-#ifndef S52_USE_EGL
+#if !defined(S52_USE_EGL)
             _egl_end(engine);
 #endif
             return TRUE;
@@ -3023,7 +3023,7 @@ static int      _X11_handleXevent(gpointer user_data)
 #ifdef S52_USE_EGL
                 S52_drawBlit(0.0, 0.0, 0.0, -10.0);
 #else
-                _egl_beg(engine, "tes");
+                _egl_beg(engine, "test");
                 S52_drawBlit(0.0, 0.0, 0.0, -10.0);
                 _egl_end(engine);
 #endif
@@ -3037,7 +3037,7 @@ static int      _X11_handleXevent(gpointer user_data)
 #ifdef S52_USE_EGL
                 S52_drawBlit(0.0, 0.0, 0.0, +10.0);
 #else
-                _egl_beg(engine, "tes");
+                _egl_beg(engine, "test");
                 S52_drawBlit(0.0, 0.0, 0.0, +10.0);
                 _egl_end(engine);
 #endif

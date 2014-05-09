@@ -1465,7 +1465,7 @@ int            s52ais_initAIS(void)
 #endif
 
 // no thread needed in standalone
-#ifndef S52AIS_STANDALONE
+#if !defined(S52AIS_STANDALONE)
     // not joinable - gps done will not wait
 #ifdef S52_USE_ANDROID
     _gpsClientThread = g_thread_create_full(_gpsdClientRead, NULL, 0, FALSE, TRUE, G_THREAD_PRIORITY_NORMAL, NULL);

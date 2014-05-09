@@ -186,7 +186,8 @@ static double _MARparamVal[] = {
 
     600.0,    // 39 - S52_MAR_DEL_VESSEL_DELAY (sec)
 
-    1.0,      // 40 - S52_MAR_DISP_AFTERGLOW (default on)
+    0.0,      // 40 - S52_MAR_DISP_AFTERGLOW (default off)
+    //1.0,      // 40 - S52_MAR_DISP_AFTERGLOW (on)
 
     //0.0,      // 41 - S52_MAR_DISP_CENTROIDS display all centered symb of one area (on/off) (default off)
     1.0,      // 41 - S52_MAR_DISP_CENTROIDS display all centered symb of one area (on/off) (default off)

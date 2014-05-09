@@ -139,6 +139,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_SYM_AISSEL01 - need symbol in test/plib-test-priv.rle
 # -DS52_USE_WORLD        - need shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
 # -DS52_USE_RADAR        - skip swapbuffer between DRAW & LAST cycle, skip read/write FB
+# -DS52_USE_AFGLOW       - experimental synthetic after glow
 #
 # -DS52_DEBUG            - add more info for debugging libS52 (ex _checkError() in S52GL.c)
 # -DS52_USE_LOG          - log every S52_* in tmp file
@@ -181,6 +182,7 @@ s52gtk2gl2 : CFLAGS = `pkg-config  --cflags glib-2.0 lcms gl freetype2`  \
          -DS52_USE_GL2                                 \
          -DS52_USE_MESA3D                              \
          -DS52_USE_FREETYPE_GL                         \
+         -DS52_USE_SUPP_LINE_OVERLAP                   \
          -DS52_USE_TXT_SHADOW                          \
          -DS52_DEBUG $(DBG)
 

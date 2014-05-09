@@ -292,8 +292,10 @@ static void     _egl_done       (s52engine *engine)
     return;
 }
 
-static void     _egl_beg        (s52engine *engine)
+static void     _egl_beg        (s52engine *engine, const char *tag)
 {
+    (void)tag;
+
     // On Android, Blit x10 slower whitout
     if (EGL_FALSE == eglWaitGL()) {
         g_print("_egl_beg(): eglWaitGL() failed. [0x%x]\n", eglGetError());
@@ -802,8 +804,8 @@ static int      _s52_draw_cb    (gpointer user_data)
         goto exit;
     }
 
-#ifndef S52_USE_EGL
-    _egl_beg(engine);
+#if !defined(S52_USE_EGL)
+    _egl_beg(engine, "test");
 #endif
 
     // draw background
@@ -830,7 +832,7 @@ static int      _s52_draw_cb    (gpointer user_data)
         S52_drawLast();
     }
 
-#ifndef S52_USE_EGL
+#if !defined(S52_USE_EGL)
     _egl_end(engine);
 #endif
 
