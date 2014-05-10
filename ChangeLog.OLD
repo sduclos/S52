@@ -3,6 +3,9 @@
 #
 
 
+2014MAY10
+    -fix target s52glx, s52gtk2 - GL1.x
+
 2014MAY09
     -mod refactor GL2/GLES2
 

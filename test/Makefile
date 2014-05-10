@@ -89,7 +89,7 @@ s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
 
 s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1`
 
-s52glx:     CFLAGS = -I.. `pkg-config --cflags glib-2.0`
+s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 
 s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
                      -DS52_USE_GLES2 -DS52_USE_EGL -DS52_USE_AFGLOW -DUSE_AIS -DS52_USE_MESA
@@ -168,7 +168,7 @@ s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a      \
 #
 #
 s52glx: s52glx.c
-	$(CC) $(CFLAGS) s52glx.c $(S52_LIBS) -lGL -lX11  -o $@
+	$(CC) $(CFLAGS) s52glx.c $(S52_LIBS) -lGL -lX11 -o $@
 
 #s52eglx: s52egl.c
 #	$(CC) $(CFLAGS) s52egl.c $(LIBS) -o $@

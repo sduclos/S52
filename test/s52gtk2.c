@@ -1606,8 +1606,8 @@ static int      _initS52()
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);
 
     S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);
 
@@ -1704,10 +1704,18 @@ static int      _initS52()
 
     S52_setMarinerParam(S52_MAR_DISP_CALIB, 1.0);
 
+    // debug - use for timing rendering
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);   // broken on GL1
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
+
     // init decoration (scale bar, North arrow, unit, calib.)
     S52_newCSYMB();
 
-    /*
+    //*
     _setOWNSHP();
 
     _setVRMEBL();

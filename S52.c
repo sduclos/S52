@@ -315,7 +315,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.128\n"
+      "libS52 0.129\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -1703,7 +1703,6 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     S52_GL_setDotPitch(screen_pixels_w, screen_pixels_h, screen_mm_w, screen_mm_h);
 
 
-
     ///////////////////////////////////////////////////////////
     // init env stuff for GDAL/OGR/S57
     //
@@ -1760,6 +1759,9 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     // put an error No in S52_MAR_ERROR
     //S52_MP_set(S52_MAR_ERROR, INFINITY);
     S52_MP_set(S52_MAR_ERROR, 0.0);
+
+    // set default to show all text
+    S52_MP_setTextDisp(0, 100, TRUE);
 
     // setup the virtual cell that will hold mariner's objects
     // NOTE: there is no IHO cell at scale '6', this garanty that
@@ -4541,6 +4543,10 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
 
 DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx)
 {
+    (void)eglBeg;
+    (void)eglEnd;
+    (void)EGLctx;
+
 #ifdef S52_USE_EGL
     PRINTF("set EGL_cb .. \n");
 

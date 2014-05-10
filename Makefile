@@ -16,12 +16,12 @@
 
 ##### TARGETS #########
 #all: s52glx         # OGR & GLX & GL 1.x
-all: s52eglx        # OGR & EGL & X11   (for testing EGL/GLES2 on X)
+#all: s52eglx        # OGR & EGL & X11   (for testing EGL/GLES2 on X)
 #all: s52eglarm      # OGR & EGL & ARM   (for testing EGL/GLES2 on ARM/Android)
 #all: s52eglw32      # OGR & EGL & Win32 (for testing EGL/GLES2 on Win32)
 #all: s52gv          # GV  (GTK)
 #all: s52gv2         # GV2 (GTK2)
-#all: s52gtk2        # OGR & GTK2 & GL 1.x
+all: s52gtk2        # OGR & GTK2 & GL 1.x
 #all: s52gtk2gl2     # OGR & GTK2 & GL 2.x need GLES2
 #all: s52gtk2p       # profiling
 #all: s52gtk2gps     # build s52gtk2 for testing with live data comming from GPSD
@@ -161,7 +161,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_MESA3D       - use Mesa drive
 
 # default CFLAGS for default target
-CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl glu gl`  \
+CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl`  \
          `gdal-config --cflags`                        \
          -DS52_USE_PROJ                                \
          -DS52_USE_GLIB2                               \
@@ -169,7 +169,8 @@ CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl glu gl`  \
          -DS52_USE_FTGL                                \
          -DS52_DEBUG $(DBG)
 
-s52gtk2gl2 : CFLAGS = `pkg-config  --cflags glib-2.0 lcms gl freetype2`  \
+s52gtk2gl2 : CFLAGS =                                  \
+         `pkg-config  --cflags glib-2.0 lcms gl freetype2`  \
          `gdal-config --cflags`                        \
          -I./lib/freetype-gl                           \
          -I./lib/libtess                               \
@@ -186,8 +187,8 @@ s52gtk2gl2 : CFLAGS = `pkg-config  --cflags glib-2.0 lcms gl freetype2`  \
          -DS52_USE_TXT_SHADOW                          \
          -DS52_DEBUG $(DBG)
 
-s52clutter, s52clutter.js :                                 \
-         CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl` \
+s52clutter, s52clutter.js : CFLAGS =                        \
+         `pkg-config  --cflags glib-2.0 lcms ftgl`          \
          `gdal-config --cflags`                             \
          -I/home/sduclos/dev/gis/gdal/gdal/frmts/iso8211/   \
          -DS52_USE_GLIB2                                    \
@@ -199,11 +200,12 @@ s52clutter, s52clutter.js :                                 \
 
 s52gtk2p : CFLAGS += -pg
 
-s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl` \
+s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
                   `gdal-config --cflags`          \
                   -DS52_USE_PROJ                  \
                   -DS52_USE_GLIB2                 \
                   -DS52_USE_OPENGL_VBO            \
+                  -DS52_USE_FTGL                  \
                   -DS52_DEBUG $(DBG)
 
 # EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
@@ -230,14 +232,9 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_TXT_SHADOW           \
                   -DS52_DEBUG $(DBG)
 
-# WARNING: gdal run OK on android with android-9-toolchain
-# NOT android-14-toolchain (libsupc++ missing)
 # CFLAGS="-mthumb" CXXFLAGS="-mthumb" LIBS="-lstdc++" ./configure --host=arm-eabi \
 # --without-grib --prefix=/home/sduclos/dev/prog/Android/dev/ --enable-shared=no --without-ld-shared
-
 # using Android toolchain from NDK to cross compile for ARM (s52eglarm target)
-#s52eglarm : ARMTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-9-toolchain
-#s52eglarm : ARMTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-14-toolchain
 s52eglarm : ARMTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-19-toolchain
 s52eglarm : ARMINCLUDE       = $(ARMTOOLCHAINROOT)/sysroot/usr/include
 s52eglarm : ARMLIBS          = $(ARMTOOLCHAINROOT)/sysroot/usr/lib
@@ -251,7 +248,6 @@ s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 
 s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/sysroot/include
 s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
-
 
               DEFS = -DS52_USE_GLIB2                       \
                      -DS52_USE_PROJ                        \
@@ -351,7 +347,7 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
 #
 
 # default LIBS for default target
-LIBS = `pkg-config  --libs glib-2.0 lcms ftgl glu gl` \
+LIBS = `pkg-config  --libs glib-2.0 lcms glu gl ftgl` \
        `gdal-config --libs` -lproj
 
 s52gtk2gl2 : LIBS = `pkg-config  --libs glib-2.0 lcms gl freetype2` \
@@ -362,10 +358,10 @@ s52clutter, s52clutter.js : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl` \
                                    `gdal-config --libs` -lproj
 
 
-s52glx : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl` \
+s52glx : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl ftgl` \
                 `gdal-config --libs` -lproj
 
-# EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
+# EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord need "#version 120\n"
 #s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl gl freetype2` \
 #                                      `gdal-config --libs` -lproj
 s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms glesv2 freetype2` \

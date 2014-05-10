@@ -262,6 +262,7 @@ static int          _doHighlight        = FALSE;   // TRUE then _objhighlight po
 static S52_GL_cycle _crnt_GL_cycle      = S52_GL_NONE; // failsafe - keep cycle in sync between begin / end
 static int          _identity_MODELVIEW = FALSE;   // TRUE then identity matrix for modelview is on GPU (optimisation for AC())
 static int          _identity_MODELVIEW_cnt = 0;   // count saving
+static GArray      *_tmpWorkBuffer      = NULL;    // tmp buffer
 
 //////////////////////////////////////////////////////
 // tessallation
@@ -585,14 +586,14 @@ static    GLdouble _mvm[16];       // modelview matrix
 static    GLdouble _pjm[16];       // projection matrix
 #endif
 
-// experimental: synthetic after glow
-static GLuint   _vboIDaftglwVertID = 0;
-static GLuint   _vboIDaftglwColrID = 0;
-
 #endif  // S52_USE_GLES2
 
+#ifdef S52_USE_AFGLOW
 // experimental: synthetic after glow
 static GArray  *_aftglwColorArr    = NULL;
+static GLuint   _vboIDaftglwVertID = 0;
+static GLuint   _vboIDaftglwColrID = 0;
+#endif
 
 // This is C!
 //static void(*findProcAddress(size_t n))() {}
@@ -1724,7 +1725,7 @@ static double    _computeSCAMIN(void)
 // gles2 float Matrix stuff (by hand)
 //
 
-//#ifdef S52_USE_GLES2
+#ifdef S52_USE_GLES2
 static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m)
 {
    float c = cos(angle * M_PI / 180.0);
@@ -1791,6 +1792,7 @@ static void      _multiply(GLfloat *m, GLfloat *n)
    }
    memcpy(m, &tmp, sizeof tmp);
 }
+#endif
 
 static void      _glMatrixMode(GLenum  mode)
 {
@@ -2012,6 +2014,7 @@ static void      _glUniformMatrix4fv_uModelview(void)
     return;
 }
 
+#ifdef S52_USE_GLES2
 static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[4], GLfloat out[4])
 {
     for (int i=0; i<4; i++) {
@@ -2168,7 +2171,7 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
     return GL_TRUE;
 }
 
-//#endif
+#endif
 //-----------------------------------------
 
 
@@ -2560,10 +2563,6 @@ static int       _VBODrawArrays(S57_prim *prim)
     if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
         return FALSE;
 
-#ifdef S52_USE_GL2
-    glVertexPointer(3, GL_DBL_FLT,  0, 0);
-#endif
-
     for (guint i=0; i<primNbr; ++i) {
         GLint mode  = 0;
         GLint first = 0;
@@ -2669,17 +2668,13 @@ static int       _VBODraw(S57_prim *prim)
     if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
         return FALSE;
 
-    //if (GL_FALSE == glIsBuffer(vboID)) {
     if (0 == vboID) {
         vboID = _VBOCreate(prim);
-        if (0 == vboID)
-            return FALSE;
-
         S57_setPrimDList(prim, vboID);
     }
 
-    // bind VBOs for vertex array
-    glBindBuffer(GL_ARRAY_BUFFER, vboID);      // for vertex coordinates
+    // bind VBOs for vertex array of vertex coordinates
+    glBindBuffer(GL_ARRAY_BUFFER, vboID);
 
 #ifdef S52_USE_GLES2
     glEnableVertexAttribArray(_aPosition);
@@ -2687,7 +2682,8 @@ static int       _VBODraw(S57_prim *prim)
     _VBODrawArrays(prim);
     glDisableVertexAttribArray(_aPosition);
 #else
-    //glVertexPointer(3, GL_DOUBLE, 0, 0);          // need to reset offset in VBO (maybe a fglrx quirk)
+    // set VertPtr to VBO
+    glVertexPointer(3, GL_DOUBLE, 0, 0);
     _VBODrawArrays(prim);
 #endif
 
@@ -2773,20 +2769,8 @@ static int       _createDList(S57_prim *prim)
 
 static int       _fillarea(S57_geo *geoData)
 {
-    // debug
-    //return 1;
-    //if (2186 == S57_getGeoID(geoData)) {
-    //    PRINTF("found!\n");
-    //    return TRUE;
-    //}
-    // LNDARE
-    //if (557 == S57_getGeoID(geoData)) {
-    //    PRINTF("LNDARE found!\n");
-    //    return TRUE;
-    //}
     _S57ID = S57_getGeoID(geoData);
     _npoly++;
-
 
     S57_prim *prim = S57_getPrimGeo(geoData);
     if (NULL == prim) {
@@ -4607,10 +4591,6 @@ static int       _renderLS_afterglow(S52_obj *obj)
     float dalpha    = maxAlpha / pti;
 
 #ifdef S52_USE_GLES2
-    // FIXME: to init ES2! honor S52_USE_AFGLOW!
-    if (NULL == _aftglwColorArr)
-        _aftglwColorArr = g_array_sized_new(FALSE, TRUE, sizeof(GLfloat), npt);
-
     // interpolate alpha over array lenght
     g_array_set_size(_aftglwColorArr, 0);
     for (guint i=0; i<pti; ++i) {
@@ -4909,8 +4889,7 @@ static int       _renderLS(S52_obj *obj)
     }
 
 
-#ifdef S52_USE_GLES2
-#else
+#if !defined(S52_USE_GLES2)
     if ('S'==style || 'T'==style)
         glDisable(GL_LINE_STIPPLE);
 #endif
@@ -5021,7 +5000,7 @@ int        S52_GL_movePoint(double *x, double *y, double angle, double dist_m)
     return TRUE;
 }
 
-static int       _drawArc(S52_obj *objA, S52_obj *objB);
+static int       _drawArc(S52_obj *objA, S52_obj *objB);  // forward decl
 static int       _renderLC(S52_obj *obj)
 // Line Complex (AREA, LINE)
 {
@@ -5073,7 +5052,12 @@ static int       _renderLC(S52_obj *obj)
     symlen_pixl = symlen / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0);
     symlen_wrld = symlen_pixl * _scalex;
 
-    g_array_set_size(_tessWorkBuf_f, 0);
+    // tmp buffer
+    if (NULL == _tmpWorkBuffer)
+        _tmpWorkBuffer = g_array_new(FALSE, FALSE, sizeof(vertex_t));
+
+
+    g_array_set_size(_tmpWorkBuffer, 0);
 
     double off_x = ppt[0];
     double off_y = ppt[1];
@@ -5229,8 +5213,8 @@ static int       _renderLC(S52_obj *obj)
 
         {   // complete the rest of the line
             pt3v pt[2] = {{x1+offset_wrld_x, y1+offset_wrld_y, 0.0}, {x2, y2, 0.0}};
-            g_array_append_val(_tessWorkBuf_f, pt[0]);
-            g_array_append_val(_tessWorkBuf_f, pt[1]);
+            g_array_append_val(_tmpWorkBuffer, pt[0]);
+            g_array_append_val(_tmpWorkBuffer, pt[1]);
 
         }
     }
@@ -5239,7 +5223,7 @@ static int       _renderLC(S52_obj *obj)
     _glUniformMatrix4fv_uModelview();
 
     // render all lines ending
-    _DrawArrays_LINES(_tessWorkBuf_f->len, (vertex_t*)_tessWorkBuf_f->data);
+    _DrawArrays_LINES(_tmpWorkBuffer->len, (vertex_t*)_tmpWorkBuffer->data);
 
     //_setBlend(FALSE);
 
@@ -5781,7 +5765,7 @@ static int       _renderAP_NODATA_layer0(void)
     {
         vertex_t ppt[4*3] = {pt0.x, pt0.y, 0.0, pt1.x, pt1.y, 0.0, pt2.x, pt2.y, 0.0, pt3.x, pt3.y, 0.0};
         glVertexPointer(3, GL_DBL_FLT, 0, ppt);
-        glDrawArrays(GL_QUADS, 0, npt);
+        glDrawArrays(GL_QUADS, 0, 4);
     }
 
     glDisable(GL_POLYGON_STIPPLE);
@@ -5889,7 +5873,6 @@ static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx
     *tileW = tileWidthPix;
     *tileH = tileHeightPix;
 
-    //return TRUE;
     return stagOffsetPix;
 }
 
@@ -6460,7 +6443,7 @@ static int       _renderAP(S52_obj *obj)
     double x2, y2;   // UR of region of area
     double tileWidthPix;
     double tileHeightPix;
-    _getGridRef(obj, &x1, &y1, &x2, &y2, &tileWidthPix, &tileHeightPix);
+    double stagOffsetPix = _getGridRef(obj, &x1, &y1, &x2, &y2, &tileWidthPix, &tileHeightPix);
 
 
     //PRINTF("PIXEL: tileW:%f tileH:%f\n", tileWidthPix, tileHeightPix);
@@ -6497,19 +6480,24 @@ static int       _renderAP(S52_obj *obj)
 
     glMatrixMode(GL_MODELVIEW);
 
+    //
+    // FIXME: GL1.5 texture
+    //
+
     int npatt = 0;  // stat
     int stag  = 0;  // 0-1 true/false add dx for stagged pattern
-    double d  = tileWidthPix / 2.0;
-    for (double y=y1; y<=y2; y+=tileHeightPix) {
+    double ww = tileWidthPix  * _scalex;  // pattern width in world
+    double hw = tileHeightPix * _scaley;  // pattern height in world
+    double d  = stagOffsetPix * _scalex;  // stag offset in world
+    for (double y=y1; y<=y2; y+=ww) {
         glLoadIdentity();   // reset to screen origin
         glTranslated(x1 + (d*stag), y, 0.0);
         glScaled(1.0, -1.0, 1.0);
 
         _pushScaletoPixel(TRUE);
-        for (double x=x1; x<x2; x+=tileWidthPix) {
+        for (double x=x1; x<x2; x+=hw) {
             _glCallList(DListData);
-            //glTranslated(tw/(100.0*_dotpitch_mm_x), 0.0, 0.0);
-            glTranslated(tileWidthPix, 0.0, 0.0);
+            glTranslated(ww, 0.0, 0.0);
             ++npatt;
         }
         _popScaletoPixel();
@@ -6528,10 +6516,9 @@ static int       _renderAP(S52_obj *obj)
 
     _checkError("_renderAP()");
 
-    return TRUE;
-
 #endif  // S52_USE_GLES2
 
+    return TRUE;
 }
 
 static int       _traceCS(S52_obj *obj)
@@ -6722,8 +6709,6 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
         return FALSE;
     }
 
-    //_glColor4ub(color);
-
 #ifdef S52_USE_FREETYPE_GL
 #ifdef S52_USE_GLES2
     // debug - check logic (should this be a bug!)
@@ -6819,12 +6804,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     _glLoadIdentity();
 
     if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS)) {
-
-        // WIN coord. for raster (bitmap and pixmap)
-
-        projUV p = {0.0, 0.0};
-        p.u = x;
-        p.v = y;
+        projUV p = {x, y};
         p = _prj2win(p);
 
         _glMatrixSet(VP_WIN);
@@ -6840,8 +6820,6 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
         return TRUE;
     }
-    _checkError("_renderTXTAA() / POINT_T");
-
 #endif
 
 #ifdef S52_USE_COGL
@@ -6903,9 +6881,10 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 #ifdef S52_USE_FTGL
     (void)obj;
 
-    // FIXME: why the need to un-rotate here !
     double n = _north;
     _north = 0.0;
+
+    _glColor4ub(color);
 
     //_setBlend(FALSE);
     _glMatrixSet(VP_WIN);
@@ -6913,68 +6892,20 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     projUV p = {x, y};
     p = _prj2win(p);
 
-    //glRasterPos2d(p.u, p.v);
     glRasterPos2i(p.u, p.v);
-    //glRasterPos3i(p.u, p.v, _north);
 
     // debug
     //PRINTF("ftgl:%s\n", str);
 
-    if (NULL != _ftglFont[weight]) {
-#ifdef _MINGW
+    if (NULL != _ftglFont[weight])
         ftglRenderFont(_ftglFont[weight], str, FTGL_RENDER_ALL);
-#else
-        ftglRenderFont(_ftglFont[weight], str, FTGL_RENDER_ALL);
-        //_ftglFont[weight]->Render(str);
-        //if (_ftglFont[weight]->Error())
-        //    g_assert(0);
-#endif
-    }
-    //else
-    //    g_assert(0);
 
     _glMatrixDel(VP_WIN);
 
     _checkError("_renderTXTAA() / POINT_T");
 
     _north = n;
-
-#else // S52_USE_FTGL
-
-
-    // fallback on bitmap font
-
-    //glPushAttrib(GL_LIST_BIT);
-
-    //_glMatrixMode(GL_MODELVIEW);
-    //_glLoadIdentity();
-
-
-    //glListBase(_fontDList[weight]);
-    //glListBase(_fontDList[2]);
-
-    //glRasterPos3f(ppt[0]+uoffs, ppt[1]-voffs, 0.0);
-    //glRasterPos2d(ppt[0]+uoffs, ppt[1]-voffs);
-
-    //glCallLists(S52_strlen(str), GL_UNSIGNED_BYTE, (GLubyte*)str);
-    //PRINTF("%i: %s\n", S52_PL_getLUCM(obj), str);
-
-    //glListBase(_fontDList[1]);
-
-    //_glMatrixMode(GL_TEXTURE);
-    //_glLoadIdentity();
-
-
-    //_glTranslated(ppt[0], ppt[1], 0.0);
-    //glRasterPos3f(ppt[0]+uoffs, ppt[1]-voffs, 0.0);
-
-    //glRasterPos2d(x, y);
-    //_glScaled(100.0, 100.0, 0.0);
-
-    //glCallLists(S52_strlen(str), GL_UNSIGNED_BYTE, (GLubyte*)str);
-
-    _checkError("_renderTXTAA() / POINT_T");
-#endif
+#endif // S52_USE_FTGL
 
 
     return TRUE;
@@ -7004,10 +6935,6 @@ static int       _renderTXT(S52_obj *obj)
     int          disIdx = 0;      // text view group
     const char  *str = S52_PL_getEX(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx);
 
-
-    // debug
-    //str = "X";
-    //c   = S52_PL_getColor("DNGHL");
     // debug
     //PRINTF("xoffs/yoffs/bsize/weight: %i/%i/%i/%i:%s\n", xoffs, yoffs, bsize, weight, str);
 
@@ -7023,26 +6950,6 @@ static int       _renderTXT(S52_obj *obj)
     // supress display of text
     if (FALSE == S52_MP_getTextDisp(disIdx))
         return FALSE;
-
-    // debug
-    /*
-    GString *FIDNstr = S57_getAttVal(geoData, "FIDN");
-    PRINTF("NAME:%s FIDN:%s\n", S57_getName(geoData), FIDNstr->str);
-    if (0==strcmp("84740", FIDNstr->str)) {
-        PRINTF("%s\n",FIDNstr->str);
-    }
-    //*/
-
-    /*
-    {   // hack: more than one text at CA579016.000 (lower left range)
-        // supress this text if NOT related to an other object
-        // BUG: this hack doen't work since buoy 'touch' lights
-        if (NULL != S57_getTouchLIGHTS(geoData)) {
-            PRINTF("--- %s\n", S57_getName(geoData));
-            //return FALSE;
-        }
-    }
-    */
 
     // convert offset to PRJ
     double uoffs  = ((10 * PICA * xoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_X)) * _scalex;
@@ -7069,7 +6976,6 @@ static int       _renderTXT(S52_obj *obj)
                 //_renderTXTAA(obj, ppt[i*3 + 0], ppt[i*3 + 1], bsize, weight, s);
                 //_renderTXTAA(obj, ppt[i*3 + 0]+uoffs, ppt[i*3 + 1]-voffs, bsize, weight, s);
                 _renderTXTAA(obj, color, ppt[i*3 + 0]+uoffs, ppt[i*3 + 1]-voffs, bsize, weight, s);
-
             }
 
             return TRUE;
@@ -8780,9 +8686,11 @@ int        S52_GL_end(S52_GL_cycle cycle)
     }
     //*/
 
+#ifdef S52_USE_GLES2
     //PRINTF("SKIP POIN_T glDrawArrays(): nFragment = %i\n", _nFrag);
     PRINTF("SKIP identity = %i\n", _identity_MODELVIEW_cnt);
-                           
+#endif
+
     //glFinish();
 
     _crnt_GL_cycle = S52_GL_NONE;
@@ -9256,12 +9164,18 @@ int        S52_GL_init(void)
 
     //_DEBUG = TRUE;
 
+    // tmp buffer
+    if (NULL == _tmpWorkBuffer)
+        _tmpWorkBuffer = g_array_new(FALSE, FALSE, sizeof(vertex_t));
+
 #ifdef S52_USE_GLES2
     if (NULL == _tessWorkBuf_d)
         _tessWorkBuf_d = g_array_new(FALSE, FALSE, sizeof(double)*3);
     if (NULL == _tessWorkBuf_f)
         _tessWorkBuf_f = g_array_new(FALSE, FALSE, sizeof(float)*3);
-#else
+#endif
+
+#ifdef S52_USE_AFGLOW
     if (NULL == _aftglwColorArr)
         _aftglwColorArr = g_array_new(FALSE, FALSE, sizeof(unsigned char));
 #endif
@@ -9300,13 +9214,27 @@ int        S52_GL_done(void)
 
     if (NULL != _objPick) {
         g_ptr_array_free(_objPick, TRUE);
-        //g_ptr_array_unref(_objPick);
         _objPick = NULL;
     }
 
+#ifdef S52_USE_AFGLOW
     if (NULL != _aftglwColorArr) {
         g_array_free(_aftglwColorArr, TRUE);
         _aftglwColorArr = NULL;
+    }
+    if (0 != _vboIDaftglwVertID) {
+        glDeleteBuffers(1, &_vboIDaftglwVertID);
+        _vboIDaftglwVertID = 0;
+    }
+    if (0 != _vboIDaftglwVertID) {
+        glDeleteBuffers(1, &_vboIDaftglwVertID);
+        _vboIDaftglwVertID = 0;
+    }
+#endif
+
+    if (NULL != _tmpWorkBuffer) {
+        g_array_free(_tmpWorkBuffer, TRUE);
+        _tmpWorkBuffer = NULL;
     }
 
 #ifdef S52_USE_GLES2
@@ -9348,18 +9276,6 @@ int        S52_GL_done(void)
         _ftglBuf = NULL;
     }
 #endif
-
-#else   // S52_USE_GLES2
-    //*
-    if (0 != _vboIDaftglwVertID) {
-        glDeleteBuffers(1, &_vboIDaftglwVertID);
-        _vboIDaftglwVertID = 0;
-    }
-    if (0 != _vboIDaftglwVertID) {
-        glDeleteBuffers(1, &_vboIDaftglwVertID);
-        _vboIDaftglwVertID = 0;
-    }
-    //*/
 #endif  // S52_USE_GLES2
 
 

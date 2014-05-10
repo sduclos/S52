@@ -1,33 +1,34 @@
 # OpENCview_project.txt: projet goals / features / brain dump
-# 
+#
 # SD 02NOV2009
 
-* Open Source code 
+
+* Open Source code
     - lib S52
     - lib S52 deps
     - specs
-        + S52 / S57 
+        + S52 / S57
         + OpenGL
         + GIS (WKT format)
         + projection (WGS84)
         + color (CEIxyL -> RGB)
-        
+
 * Platform Neutral (GTK+ framework)
     - Linux (Unix)
     - OSX   (Unix)
     - Win32 (Windows)
-    
-* Architecture Neutral 
+
+* Architecture Neutral
     - X86    32 bits (Linux, Win32, OSX)
     - X86_64 64 bits (Linux)
     - ARM            (Linux, OSX)
-    
+
 * Open Cross-Compiling Developpement Framework
     - use Open Source dev tool
 	- create binairies on one platform targetted for an other platfrom
     - allow interpreted language to drive the lib (ex: Ruby for driving libS52.dll and the UI)
-    
-* OpenGL 
+
+* OpenGL
     - V1.4 (VBO - Vertex Buffer Object live on GPU)
     - hardware accelerated graphic (GPU)
         * super fast chart rendering (<10 ms)
@@ -41,12 +42,12 @@
     - EGL / GLES2
         * OpenGL for Embeded System V2.0 (Android)
         * EGL is an interface to OpenGL ES and the underlying native platform windowing system.
-        
+
 * Workbench / Experimenting
     - depth / height adjustement
     - cursor pick via GPU (possible to handle alarm the same way)
     - centroid of clipped concave poly
-    - hardware accelerated anti-aliase (OpenGL) 
+    - hardware accelerated anti-aliase (OpenGL)
         * cleaner symbol
         * cleaner overall look
     - hardware accelereted (OpenGL) anti-aliase international (UTF-8) font rendering
