@@ -1116,18 +1116,25 @@ static int      _setOWNSHP()
 }
 
 static int      _setVRMEBL()
+// FIXME: broken
 {
+    //int vrm             = TRUE;
+    //int ebl             = FALSE;
+    //int normalLineStyle = FALSE;
+    //int setOrigin       = FALSE;
+
     // normal VRM/EBL
     //_vrmeblA = S52_newVRMEBL(TRUE, TRUE, TRUE, FALSE);
 
     // normal VRM (vrmark)
-    _vrmeblA = S52_newVRMEBL(TRUE, FALSE, FALSE, FALSE);
+    //--> _vrmeblA = S52_newVRMEBL(vrm, ebl, normalLineStyle, setOrigin);
 
     // alterned VRM/EBL line style
     //_vrmebl = S52_newVRMEBL(TRUE, TRUE, FALSE);
 
     // alternate VRM/EBL, freely moveable
     //_vrmeblB = S52_newVRMEBL(TRUE, TRUE, FALSE, TRUE);
+
     // alternate VRM, freely moveable
     //_vrmeblB = S52_newVRMEBL(TRUE, FALSE, FALSE, TRUE);
 
@@ -1606,8 +1613,8 @@ static int      _initS52()
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);
 
     S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);
 
@@ -1709,7 +1716,7 @@ static int      _initS52()
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
-    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);   // broken on GL1
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
 
     // init decoration (scale bar, North arrow, unit, calib.)
@@ -1719,6 +1726,7 @@ static int      _initS52()
     _setOWNSHP();
 
     _setVRMEBL();
+    // FIXME: broken
 
     _setVESSEL();
 

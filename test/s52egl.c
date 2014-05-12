@@ -1302,8 +1302,8 @@ static int      _s52_init       (s52engine *engine)
 
 
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // trigger symb ISODGR01 (ODD winding) at Rimouski
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // better for Rimouski chanel
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // for triggering symb ISODGR01 (ODD winding) at Rimouski
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
 
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
@@ -1312,8 +1312,8 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON
     // -- DEPTH COLOR ------------------------------------
 
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the GPU]
@@ -1362,13 +1362,12 @@ static int      _s52_init       (s52engine *engine)
     // -------------------------------------------------------
 
 
-    S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
-    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
+    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
+    S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
 
     S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
     //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
 
-#ifdef S52_USE_ANDROID
     // trick to force symbole size
 #ifdef S52_USE_TEGRA2
     // smaller on xoom so that proportion look the same
@@ -1378,14 +1377,15 @@ static int      _s52_init       (s52engine *engine)
 #endif
 
 #ifdef S52_USE_ADRENO
+    // Nexus 7 (2013) [~323 ppi]
     //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
     //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
+
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.2);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
 #endif
 
-#else
-    // Mesa
+#ifdef S52_USE_MESA
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 #endif
@@ -1499,7 +1499,7 @@ static int      _s52_updTimeTag (s52engine *engine)
 
     return TRUE;
 }
-#endif
+#endif  // USE_FAKE_AIS
 
 static int      _s52_draw_user  (s52engine *engine)
 {

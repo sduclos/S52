@@ -315,7 +315,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.129\n"
+      "libS52 0.130\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -1763,6 +1763,12 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     // set default to show all text
     S52_MP_setTextDisp(0, 100, TRUE);
 
+#if !defined(S52_USE_GLES2)
+    // broken on GL1 (it use stencil)
+    S52_MP_set(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
+#endif
+
+
     // setup the virtual cell that will hold mariner's objects
     // NOTE: there is no IHO cell at scale '6', this garanty that
     // objects of this 'cell' will be drawn last (ie on top)
@@ -1785,8 +1791,6 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     // init raster
     if (NULL == _rasterList)
         _rasterList = g_ptr_array_new();
-
-
 
 
     ///////////////////////////////////////////////////////////

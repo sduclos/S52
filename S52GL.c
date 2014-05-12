@@ -24,7 +24,11 @@
 // FIXME: split this file - 10 KLOC !
 // (meanwhile fold all function to get an overview)
 // Summary of functions calls to try isolated dependecys are at the end of this file.
-
+// Possible split:
+// S52GLU.c: matrix stuff, tess, quad, Text, ..
+// S52GLES.c
+// S52MATH.c
+// ..
 
 #include "S52GL.h"
 #include "S52MP.h"        // S52_MP_get/set()
@@ -174,12 +178,7 @@ static GArray *_ftglBuf        = NULL;
 
 #ifdef S52_USE_FTGL
 #include <FTGL/ftgl.h>
-#ifdef _MINGW
 static FTGLfont *_ftglFont[S52_MAX_FONT];
-#else
-//static FTFont   *_ftglFont[S52_MAX_FONT];
-static FTGLfont *_ftglFont[S52_MAX_FONT];
-#endif
 #endif // S52_USE_FTGL
 
 
@@ -237,7 +236,9 @@ static a3d_texstring_t *_a3d_str       = NULL;
 
 
 ///////////////////////////////////////////////////////////////////
+//
 // statistique
+//
 static guint   _nobj  = 0;     // number of object drawn during lap
 static guint   _ncmd  = 0;     // number of command drawn during lap
 static guint   _oclip = 0;     // number of object clipped
@@ -365,15 +366,9 @@ static double _scaley             = 1.0;
 
 // symbol twice as big (see _pushScaletoPixel())
 #define STRETCH_SYM_FAC 2.0
-//static double _scalePixelX = 1.0;
-//static double _scalePixelY = 1.0;
 
-//typedef GLdouble coor3d[3];
-//typedef struct  pt3 { GLdouble x,y,z; }  pt3;
-//typedef struct _pt2 { GLdouble x,y;   } _pt2;
-typedef struct  pt3  { double   x,y,z; }  pt3;
-typedef struct  pt3v { vertex_t x,y,z; }  pt3v;
-typedef struct _pt2  { vertex_t x,y;   } _pt2;
+typedef struct  pt3  { double   x,y,z; } pt3;
+typedef struct  pt3v { vertex_t x,y,z; } pt3v;
 
 // for centroid inside poly heuristic
 static double _dcin;
@@ -491,12 +486,11 @@ static const GLubyte _dashpa_mask_bits[4] = {     // 4 x 8 bits = 32 bits
 };
 
 // MSAA
-static GLuint        _aa_mask_texID    = 0;
-//static GLubyte       _aa_mask_alpha[8] = {
-static GLubyte       _aa_mask_alpha[16] = {
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-};
+//static GLuint        _aa_mask_texID    = 0;
+//static GLubyte       _aa_mask_alpha[16] = {
+//    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+//    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+//};
 
 // OVERSC01
 // vertical line at each 400 units (4 mm)
@@ -5232,60 +5226,6 @@ static int       _renderLC(S52_obj *obj)
     return TRUE;
 }
 
-#ifdef S52_USE_GLES2
-static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
-// make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
-{
-    //bzero(rgba_mask, 4*32*8*4);
-    memset(rgba_mask, 0, 4*32*8*4);
-    for (int i=0; i<(4*32); ++i) {
-        if (0 != mask[i]) {
-            if (mask[i] & (1<<0)) {
-                //rgba_mask[(i*4*8)+0] = 0;  // R
-                //rgba_mask[(i*4*8)+1] = 0;  // G
-                //rgba_mask[(i*4*8)+2] = 0;  // B
-                rgba_mask[(i*4*8)+3] = 255;   // A
-            }
-            if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
-            if (mask[i] & (1<<2)) rgba_mask[(i*4*8)+11] = 255;  // A
-            if (mask[i] & (1<<3)) rgba_mask[(i*4*8)+15] = 255;  // A
-            if (mask[i] & (1<<4)) rgba_mask[(i*4*8)+19] = 255;  // A
-            if (mask[i] & (1<<5)) rgba_mask[(i*4*8)+23] = 255;  // A
-            if (mask[i] & (1<<6)) rgba_mask[(i*4*8)+27] = 255;  // A
-            if (mask[i] & (1<<7)) rgba_mask[(i*4*8)+31] = 255;  // A
-        }
-    }
-
-    return TRUE;
-}
-
-static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
-// make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
-{
-    memset(rgba_mask, 0x00, 8*4*4);
-    //for (int i=0; i<8; ++i) {
-    for (int i=0; i<4; ++i) {    // 4 bytes
-        if (0 != mask[i]) {
-            if (mask[i] & (1<<0)) {
-                //rgba_mask[(i*4*8)+0] = 0;   // R
-                //rgba_mask[(i*4*8)+1] = 0;   // G
-                //rgba_mask[(i*4*8)+2] = 0;   // B
-                rgba_mask[(i*4*8)+3] = 255;   // A
-            }
-            if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
-            if (mask[i] & (1<<2)) rgba_mask[(i*4*8)+11] = 255;  // A
-            if (mask[i] & (1<<3)) rgba_mask[(i*4*8)+15] = 255;  // A
-            if (mask[i] & (1<<4)) rgba_mask[(i*4*8)+19] = 255;  // A
-            if (mask[i] & (1<<5)) rgba_mask[(i*4*8)+23] = 255;  // A
-            if (mask[i] & (1<<6)) rgba_mask[(i*4*8)+27] = 255;  // A
-            if (mask[i] & (1<<7)) rgba_mask[(i*4*8)+31] = 255;  // A
-        }
-    }
-
-    return TRUE;
-}
-#endif  // S52_USE_GLES2
-
 static int       _renderAC_NODATA_layer0(void)
 // clear all buffer so that no artefact from S52_drawLast remain
 {
@@ -5581,8 +5521,8 @@ static int       _renderAP_NODATA_layer0(void)
     if (S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
-    //_pt2 pt0, pt1, pt2, pt3, pt4;
-    _pt2 pt0, pt1, pt2, pt3;
+    typedef struct {vertex_t x,y;} pt2v;
+    pt2v pt0, pt1, pt2, pt3;
 
     // double --> float
     pt0.x = _pmin.u;
@@ -5597,103 +5537,18 @@ static int       _renderAP_NODATA_layer0(void)
     pt3.x = _pmax.u;
     pt3.y = _pmin.v;
 
-    S52_Color *chgrd = S52_PL_getColor("CHGRD");
-
+    S52_Color *chgrd = S52_PL_getColor("CHGRD");  // grey, conspic
 
 #ifdef S52_USE_GLES2
     glUniform4f(_uColor, chgrd->R/255.0, chgrd->G/255.0, chgrd->B/255.0, (4 - (chgrd->trans - '0'))*TRNSP_FAC_GLES2);
 
-    vertex_t tile_x = 32 * _scalex;
-    vertex_t tile_y = 32 * _scaley;
-
-    int      n_tile_x = (_pmin.u - _pmax.u) / tile_x;
-    //vertex_t remain_x = (_pmin.u - _pmax.u) - (tile_x * n_tile_x);
-    int      n_tile_y = (_pmin.v - _pmax.v) / tile_y;
-    //vertex_t remain_y = (_pmin.v - _pmax.v) - (tile_y * n_tile_y);
-
-
-    // FIXME: this code fail to render dotted line (solid line only) if move to S52_GL_init_es2()
-    if (0 == _nodata_mask_texID) {
-
-        // load texture on GPU ----------------------------------
-
-        // fill _rgba_nodata_mask - expand bitmask to a RGBA buffer
-        // that will acte as a stencil in the fragment shader
-        _1024bitMask2RGBATex(_nodata_mask_bits, _nodata_mask_rgba);
-        //_64bitMask2RGBATex  (_dottpa_mask_bits, _dottpa_mask_rgba);
-        _32bitMask2RGBATex  (_dottpa_mask_bits, _dottpa_mask_rgba);
-        _32bitMask2RGBATex  (_dashpa_mask_bits, _dashpa_mask_rgba);
-
-        glGenTextures(1, &_nodata_mask_texID);
-        glGenTextures(1, &_dottpa_mask_texID);
-        glGenTextures(1, &_dashpa_mask_texID);
-        glGenTextures(1,     &_aa_mask_texID);
-
-        _checkError("_renderAP_NODATA_layer0 -0-");
-
-        // ------------
-        // nodata pattern
-        glBindTexture(GL_TEXTURE_2D, _nodata_mask_texID);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, _nodata_mask_rgba);
-
-        // ------------
-        // dott pattern
-        glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dottpa_mask_rgba);
-
-        // ------------
-        // dash pattern
-        glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
-
-        // ------------
-        // AA
-        glBindTexture(GL_TEXTURE_2D, _aa_mask_texID);
-                                       
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-        //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 1, 8, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _aa_mask_alpha);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 2, 8, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _aa_mask_alpha);
-        //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 8, 1, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _aa_mask_alpha);
-
-        glBindTexture(GL_TEXTURE_2D, 0);
-        _checkError("_renderAP_NODATA_layer0 -0.1-");
-    }
-
-
-    _checkError("_renderAP_NODATA_layer0 -1-");
-
-    glBindTexture(GL_TEXTURE_2D, _nodata_mask_texID);
-
     // draw using texture as a stencil -------------------
+
+    vertex_t tile_x   = 32 * _scalex;
+    vertex_t tile_y   = 32 * _scaley;
+    int      n_tile_x = (_pmin.u - _pmax.u) / tile_x;
+    int      n_tile_y = (_pmin.v - _pmax.v) / tile_y;
+
     //*
     vertex_t ppt[4*3 + 4*2] = {
         pt0.x, pt0.y, 0.0,        0.0f,     0.0f,
@@ -5735,6 +5590,8 @@ static int       _renderAP_NODATA_layer0(void)
     glUniform1f(_uPattW,     tile_x);
     glUniform1f(_uPattH,     tile_y);
 
+    glBindTexture(GL_TEXTURE_2D, _nodata_mask_texID);
+
     glFrontFace(GL_CW);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -5755,7 +5612,8 @@ static int       _renderAP_NODATA_layer0(void)
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
 
-#else
+#else  // S52_USE_GLES2
+
     glEnable(GL_POLYGON_STIPPLE);
     glColor4ub(chgrd->R, chgrd->G, chgrd->B, (4 - (chgrd->trans - '0'))*TRNSP_FAC);
 
@@ -5770,7 +5628,7 @@ static int       _renderAP_NODATA_layer0(void)
 
     glDisable(GL_POLYGON_STIPPLE);
 
-#endif
+#endif  // S52_USE_GLES2
 
     _checkError("_renderAP_NODATA_layer0 -end-");
 
@@ -5822,13 +5680,12 @@ static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx
     S52_PL_getAPTileDim(obj, &tw,  &th,  &dx);
 
     // convert tile unit (0.01mm) to pixel
-    // FIXME: 100.0 * _dotpitch_mm_x / y
-    //double tileWidthPix  = tw  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
-    //double tileHeightPix = th  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
-    //double stagOffsetPix = dx  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
-    double tileWidthPix  = tw  / (100.0 * _dotpitch_mm_x);
-    double tileHeightPix = th  / (100.0 * _dotpitch_mm_y);
-    double stagOffsetPix = dx  / (100.0 * _dotpitch_mm_x);
+    double tileWidthPix  = tw  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
+    double tileHeightPix = th  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
+    double stagOffsetPix = dx  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
+    //double tileWidthPix  = tw  / (100.0 * _dotpitch_mm_x);
+    //double tileHeightPix = th  / (100.0 * _dotpitch_mm_y);
+    //double stagOffsetPix = dx  / (100.0 * _dotpitch_mm_x);
 
     // convert tile in pixel to world
     //double d0 = stagOffsetPix * _scalex;
@@ -5928,20 +5785,6 @@ static int       _renderAP_es2(S52_obj *obj)
     double stagOffsetPix = _getGridRef(obj, &x1, &y1, &x2, &y2, &tileWpx, &tileHpx);
     double tileWw = tileWpx * _scalex;
     double tileHw = tileHpx * _scaley;
-
-    // GLES2 on TEGRA2 (xoom), tile are POT (power-of-two) and so are the pattern after scaling.
-    /*
-     int w = 0;
-     int h = 0;
-
-     if (0.0 == stagOffsetPix) {
-     w = ceil(tileWidthPix );
-     h = ceil(tileHeightPix);
-     } else {
-     w = ceil(tileWidthPix  + stagOffsetPix);
-     h = ceil(tileHeightPix * 2);
-     }
-     */
 
     GLuint mask_texID = S52_PL_getAPtexID(obj);
     if (0 == mask_texID) {
@@ -6117,7 +5960,14 @@ static int       _renderAP_es2(S52_obj *obj)
 
 
             // move - the -6 was found by trial and error
-            _glTranslated(tileWpx/2.0 - 6.0, tileHpx/2.0 - 6.0, 0.0);
+            //_glTranslated(tileWpx/2.0 - 6.0, tileHpx/2.0 - 6.0, 0.0);
+            //_glTranslated(tileWpx/2.0, tileHpx/2.0, 0.0);
+
+            // Nexus 7 - landscape
+            _glTranslated(tileWpx/2.0 - 0.0, tileHpx/2.0 - 0.0, 0.0);
+            //_glTranslated(tileWpx/2.0 - 3.0, tileHpx/2.0 - 3.0, 0.0);
+            //_glTranslated(tileWpx/2.0 - 5.0, tileHpx/2.0 - 5.0, 0.0);
+            //_glTranslated(tileWpx/2.0 - 10.0, tileHpx/2.0 - 10.0, 0.0);
 
             // scale & flip on Y
             // found by trial and error
@@ -6128,8 +5978,17 @@ static int       _renderAP_es2(S52_obj *obj)
 #else
             //_glScaled(_dotpitch_mm_x/10.0, -_dotpitch_mm_y/10.0, 1.0);
             //_glScaled(_dotpitch_mm_x/8.0, -_dotpitch_mm_y/8.0, 1.0);
-            _glScaled(_dotpitch_mm_x/6.0, -_dotpitch_mm_y/6.0, 1.0);
+            //_glScaled(_dotpitch_mm_x/6.0, -_dotpitch_mm_y/6.0, 1.0);
             //_glScaled(_dotpitch_mm_x/5.0, -_dotpitch_mm_y/5.0, 1.0);
+            //_glScaled(_dotpitch_mm_x, -_dotpitch_mm_y, 1.0);
+
+            // Nexus 7 - landscape
+            //_glScaled(_dotpitch_mm_y * 1.0, -_dotpitch_mm_x * 1.0, 1.0);
+            //_glScaled(_dotpitch_mm_y * 2.0, -_dotpitch_mm_x * 2.0, 1.0);
+            _glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/4.0, S52_MP_get(S52_MAR_DOTPITCH_MM_X)/-4.0, 1.0);
+            //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/5.0, S52_MP_get(S52_MAR_DOTPITCH_MM_X)/-5.0, 1.0);
+            //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/6.0, S52_MP_get(S52_MAR_DOTPITCH_MM_X)/-6.0, 1.0);
+            //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/8.0, S52_MP_get(S52_MAR_DOTPITCH_MM_X)/-8.0, 1.0);
 #endif
         }
 
@@ -8369,9 +8228,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     glPushAttrib(GL_ALL_ATTRIB_BITS);
 #endif
 
-    // check if this context (grahic card) can draw all of S52
-    _contextValid();
-
     glEnable(GL_BLEND);
 
     // GL_FUNC_ADD, GL_FUNC_SUBTRACT, or GL_FUNC_REVERSE_SUBTRACT
@@ -8822,6 +8678,140 @@ static GLuint    _loadShader(GLenum type, const char *shaderSrc)
     return shader;
 }
 
+static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
+// make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
+{
+    memset(rgba_mask, 0, 4*32*8*4);
+
+    for (int i=0; i<(4*32); ++i) {
+        if (0 != mask[i]) {
+            if (mask[i] & (1<<0)) {
+                //rgba_mask[(i*4*8)+0] = 0;  // R
+                //rgba_mask[(i*4*8)+1] = 0;  // G
+                //rgba_mask[(i*4*8)+2] = 0;  // B
+                rgba_mask[(i*4*8)+3] = 255;   // A
+            }
+            if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
+            if (mask[i] & (1<<2)) rgba_mask[(i*4*8)+11] = 255;  // A
+            if (mask[i] & (1<<3)) rgba_mask[(i*4*8)+15] = 255;  // A
+            if (mask[i] & (1<<4)) rgba_mask[(i*4*8)+19] = 255;  // A
+            if (mask[i] & (1<<5)) rgba_mask[(i*4*8)+23] = 255;  // A
+            if (mask[i] & (1<<6)) rgba_mask[(i*4*8)+27] = 255;  // A
+            if (mask[i] & (1<<7)) rgba_mask[(i*4*8)+31] = 255;  // A
+        }
+    }
+
+    return TRUE;
+}
+
+static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
+// make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
+{
+    memset(rgba_mask, 0x00, 8*4*4);
+    //for (int i=0; i<8; ++i) {
+    for (int i=0; i<4; ++i) {    // 4 bytes
+        if (0 != mask[i]) {
+            if (mask[i] & (1<<0)) {
+                //rgba_mask[(i*4*8)+0] = 0;   // R
+                //rgba_mask[(i*4*8)+1] = 0;   // G
+                //rgba_mask[(i*4*8)+2] = 0;   // B
+                rgba_mask[(i*4*8)+3] = 255;   // A
+            }
+            if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
+            if (mask[i] & (1<<2)) rgba_mask[(i*4*8)+11] = 255;  // A
+            if (mask[i] & (1<<3)) rgba_mask[(i*4*8)+15] = 255;  // A
+            if (mask[i] & (1<<4)) rgba_mask[(i*4*8)+19] = 255;  // A
+            if (mask[i] & (1<<5)) rgba_mask[(i*4*8)+23] = 255;  // A
+            if (mask[i] & (1<<6)) rgba_mask[(i*4*8)+27] = 255;  // A
+            if (mask[i] & (1<<7)) rgba_mask[(i*4*8)+31] = 255;  // A
+        }
+    }
+
+    return TRUE;
+}
+
+static int       _initTexture(void)
+{
+    if (0 != _nodata_mask_texID)
+        return TRUE;
+
+    // load texture on GPU ----------------------------------
+
+    // fill _rgba_nodata_mask - expand bitmask to a RGBA buffer
+    // that will acte as a stencil in the fragment shader
+    _1024bitMask2RGBATex(_nodata_mask_bits, _nodata_mask_rgba);
+    _32bitMask2RGBATex  (_dottpa_mask_bits, _dottpa_mask_rgba);
+    _32bitMask2RGBATex  (_dashpa_mask_bits, _dashpa_mask_rgba);
+
+    glGenTextures(1, &_nodata_mask_texID);
+    glGenTextures(1, &_dottpa_mask_texID);
+    glGenTextures(1, &_dashpa_mask_texID);
+    //glGenTextures(1,     &_aa_mask_texID);
+
+    _checkError("_renderAP_NODATA_layer0 -0-");
+
+    // ------------
+    // nodata pattern
+    glBindTexture(GL_TEXTURE_2D, _nodata_mask_texID);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, _nodata_mask_rgba);
+
+    // ------------
+    // dott pattern
+    glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dottpa_mask_rgba);
+
+    // ------------
+    // dash pattern
+    glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
+
+    // ------------
+    // AA
+    /*
+     glBindTexture(GL_TEXTURE_2D, _aa_mask_texID);
+
+     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+
+     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+     //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 1, 8, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _aa_mask_alpha);
+     glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 2, 8, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _aa_mask_alpha);
+     //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 8, 1, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _aa_mask_alpha);
+
+     glBindTexture(GL_TEXTURE_2D, 0);
+     */
+
+    _checkError("_renderAP_NODATA_layer0 -1-");
+
+    return TRUE;
+}
+
 static int       _init_es2(void)
 {
     PRINTF("begin ..\n");
@@ -8837,6 +8827,8 @@ static int       _init_es2(void)
 #ifdef S52_USE_FREETYPE_GL
         _init_freetype_gl();
 #endif
+
+        _initTexture();
 
         // ----------------------------------------------------------------------
 
@@ -9108,16 +9100,16 @@ int        S52_GL_init(void)
         return _doInit;
     }
 
-    // debug
-    _contextValid();
-
     // juste checking
     if (sizeof(double) != sizeof(GLdouble)) {
         PRINTF("ERROR: sizeof(double) != sizeof(GLdouble)\n");
         g_assert(0);
     }
-    // GL sanity check
+    // GL sanity check before start of init
     _checkError("S52_GL_init() -0-");
+
+    // check if this context (grahic card) can draw all of S52
+    _contextValid();
 
     _initGLU();
 

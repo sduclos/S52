@@ -155,7 +155,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_EGL          - for GLES2
 # -DS52_USE_GL2          - GL only stuff
 # -DS52_USE_GLES2        - need VBO
-# -DS52_USE_ANDROID      - build for Android/ARM 
+# -DS52_USE_ANDROID      - build for Android/ARM
 # -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
 # -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7 (2013))
 # -DS52_USE_MESA3D       - use Mesa drive
@@ -209,8 +209,8 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
                   -DS52_DEBUG $(DBG)
 
 # EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
-#                  `pkg-config  --cflags glib-2.0 lcms egl glesv2` 
-#                  `pkg-config  --cflags glib-2.0 lcms egl gl` 
+#                  `pkg-config  --cflags glib-2.0 lcms egl glesv2`
+#                  `pkg-config  --cflags glib-2.0 lcms egl gl`
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   `pkg-config  --cflags glib-2.0 lcms glesv2` \
                   `gdal-config --cflags`         \
@@ -260,9 +260,10 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
-                     -DS52_USE_TXT_SHADOW                  \
-                     -DS52_USE_LOG                         \
-                     -DS52_DEBUG $(DBG)
+                     -DS52_USE_TXT_SHADOW
+
+#-DS52_USE_LOG
+#-DS52_DEBUG $(DBG)
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
                      -I$(S52DROIDINC)/glib-2.0             \
@@ -436,11 +437,11 @@ libS52gv.so: $(OBJS_S52) $(OBJS_GV)
 #	$(LIBWIN32PATH)/libftgl.a -lfreetype6
 s52win32 s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
 s52win32 s52eglw32 : LIBS    = $(LIBWIN32PATH)/libproj.a              \
-                               $(LIBWIN32PATH)/libgdal-1.dll            \
+                               $(LIBWIN32PATH)/libgdal-1.dll          \
                                $(LIBWIN32PATH)/liblcms-1.dll          \
-                               -L$(GTKPATH) -lglib-2.0-0 -lfreetype6  \
                                $(LIBWIN32PATH)/libEGL.lib             \
-                               $(LIBWIN32PATH)/libGLESv2.lib
+                               $(LIBWIN32PATH)/libGLESv2.lib          \
+                               -L$(GTKPATH) -lglib-2.0-0 -lfreetype6
 
 #libS52.dll: $(OBJS_S52)
 #	$(MINGW)objcopy --redefine-sym S52raz=_S52raz                     \
@@ -475,8 +476,10 @@ test/s52gtk2egl:
 test/s52gtk3egl:
 	(cd test; make s52gtk3egl)
 
+# FIXME: remove DEPRECATED step to cd in test
+#	(cd test; make s52eglarm; cd android; make)
 test/s52eglarm:
-	(cd test; make s52eglarm; cd android; make)
+	(cd test/android; make)
 
 test/s52gv:
 	(cd test; make s52gv)

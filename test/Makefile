@@ -9,7 +9,7 @@
 
 #all: s52glx        # GLX & OGR
 #all: s52eglx       # EGL & GLX & OGR
-#all: s52eglarm     # EGL & GLES2 & ARM/Android & OGR - S52_USE_ADRENO for Nexus / S52_USE_TEGRA2 for Xoom
+#DEPRECATED: all: s52eglarm     # EGL & GLES2 & ARM/Android & OGR - S52_USE_ADRENO for Nexus / S52_USE_TEGRA2 for Xoom
 #all: s52gv         # GV  (OpenEV  / GTK )
 #all: s52gv2        # GV2 (OpenEV2 / GTK2)  broken
 #all: s52gtk2       # GTK2 & OGR
@@ -43,15 +43,15 @@ s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-201009
 # Xoom info: Processor : ARMv7 Processor rev 0 (v7l)
 #            Features  : swp half thumb fastmult vfp edsp vfpv3 vfpv3d16
 # TEGRA: tadp: -fno-omit-frame-pointer -mno-thumb
-s52eglarm : DROIDTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-19-toolchain
-s52eglarm : DROIDINCLUDE       = $(DROIDTOOLCHAINROOT)/sysroot/usr/include
-s52eglarm : DROIDLIBS          = $(DROIDTOOLCHAINROOT)/sysroot/usr/lib
-s52eglarm : CC                 = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -g -O0 -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16 -std=c99
-s52eglarm : CXX                = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -g -O0 -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
-s52eglarm : STRIP              = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-strip -s
+#s52eglarm : DROIDTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-19-toolchain
+#s52eglarm : DROIDINCLUDE       = $(DROIDTOOLCHAINROOT)/sysroot/usr/include
+#s52eglarm : DROIDLIBS          = $(DROIDTOOLCHAINROOT)/sysroot/usr/lib
+#s52eglarm : CC                 = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -g -O0 -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16 -std=c99
+#s52eglarm : CXX                = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -g -O0 -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
+#s52eglarm : STRIP              = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-strip -s
 
-s52eglarm : S52DROIDINC        = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/android/dist/sysroot/include
-s52eglarm : S52DROIDLIBS       = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/android/dist/sysroot/lib
+#s52eglarm : S52DROIDINC        = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/android/dist/sysroot/include
+#s52eglarm : S52DROIDLIBS       = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/android/dist/sysroot/lib
 
 
 # NOTE: -malign-double: for 32bits system --useless on 64its
@@ -101,16 +101,16 @@ s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
 s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-3.0` \
                      -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2
 
-s52eglarm:  CFLAGS = -DS52_USE_EGL                      \
-                     -DS52_USE_GLES2                    \
-                     -DS52_USE_ANDROID                  \
-                     -DS52_USE_TEGRA2                   \
-                     -DS52_USE_AFGLOW                   \
-                     -DS52_USE_SOCK                     \
-                     -I..                               \
-                     -I$(DROIDINCLUDE)                  \
-                     -I$(S52DROIDINC)                   \
-                     -I$(S52DROIDINC)/glib-2.0
+#s52eglarm:  CFLAGS = -DS52_USE_EGL                      \
+#                     -DS52_USE_GLES2                    \
+#                     -DS52_USE_ANDROID                  \
+#                     -DS52_USE_TEGRA2                   \
+#                     -DS52_USE_AFGLOW                   \
+#                     -DS52_USE_SOCK                     \
+#                     -I..                               \
+#                     -I$(DROIDINCLUDE)                  \
+#                     -I$(S52DROIDINC)                   \
+#                     -I$(S52DROIDINC)/glib-2.0
 
 s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`     \
                       -I$(OPENEV_HOME) -DGV_USE_DOUBLE_PRECISION_COORD \
@@ -154,14 +154,14 @@ s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobjec
 # same as s52eglx, add "gtk+-3.0"
 s52gtk3egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-3.0` $(S52_LIBS)
 
-s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a      \
-                      $(S52DROIDLIBS)/libgobject-2.0.a  \
-                      $(S52DROIDLIBS)/libgmodule-2.0.a  \
-                      $(S52DROIDLIBS)/libglib-2.0.a     \
-                      $(S52DROIDLIBS)/libgthread-2.0.a  \
-                      $(S52DROIDLIBS)/libiconv.a        \
-                      $(S52DROIDLIBS)/libgps.a          \
-                       -L$(DROIDLIBS) -llog -lm
+#s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a      \
+#                      $(S52DROIDLIBS)/libgobject-2.0.a  \
+#                      $(S52DROIDLIBS)/libgmodule-2.0.a  \
+#                      $(S52DROIDLIBS)/libglib-2.0.a     \
+#                      $(S52DROIDLIBS)/libgthread-2.0.a  \
+#                      $(S52DROIDLIBS)/libiconv.a        \
+#                      $(S52DROIDLIBS)/libgps.a          \
+#                       -L$(DROIDLIBS) -llog -lm
 
 
 ############### build ##############################
@@ -270,24 +270,24 @@ sl4agps.cfg:
 
 # android 4.1
 # adb shell chmod 755 /data/media/s52droid/bin/sl4agps
-sl4agps: sl4agps.c sl4agps.cfg android/dist/sdcard/s52droid/UI.xml
-	$(CC)  $(CFLAGS)    sl4agps.c $(LIBS) -o sl4agps
-	$(STRIP)  sl4agps
-	cp        sl4agps   android/dist/sdcard/s52droid/bin
-	adb push  sl4agps   /sdcard/s52droid/bin
-	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/sl4agps'
+#sl4agps: sl4agps.c sl4agps.cfg android/dist/sdcard/s52droid/UI.xml
+#	$(CC)  $(CFLAGS)    sl4agps.c $(LIBS) -o sl4agps
+#	$(STRIP)  sl4agps
+#	cp        sl4agps   android/dist/sdcard/s52droid/bin
+#	adb push  sl4agps   /sdcard/s52droid/bin
+#	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/sl4agps'
 
 # android 4.1
 # adb shell chmod 755 /data/media/s52droid/bin/s52ais
 #adb shell su -c 'chmod 755 /mnt/shell/emulated/0/s52droid/bin/s52ais'
 #adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/s52ais'
-s52ais: s52ais.c
-	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c  $(LIBS) -o s52ais
-	$(STRIP)  s52ais
-	cp        s52ais    android/dist/sdcard/s52droid/bin
+#s52ais: s52ais.c
+#	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c  $(LIBS) -o s52ais
+#	$(STRIP)  s52ais
+#	cp        s52ais    android/dist/sdcard/s52droid/bin
 	#adb push  s52ais    /sdcard/s52droid/bin
 
-s52eglarm: s52ais
+#s52eglarm: s52ais
 #s52eglarm: s52ais sl4agps
 #	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/*.sh'
 #	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/gpsd'
