@@ -48,10 +48,14 @@ typedef struct S52_GL_ras {
     guint npotY;
 
     int            isRADAR;   // TRUE if texAlpha is a RADAR image
+
     double         cLat;      // projected
     double         cLng;      // projected
     double         rNM;       // RADAR range
+
+#ifdef S52_USE_RADAR
     S52_RADAR_cb   RADAR_cb;  //
+#endif
 
     unsigned char *texAlpha;  // size = potX * potY
     unsigned int   texID;

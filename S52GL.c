@@ -5003,6 +5003,27 @@ static int       _renderLC(S52_obj *obj)
     GLdouble       x1,y1,z1,  x2,y2,z2;
     S57_geo       *geo = S52_PL_getGeo(obj);
 
+    /*
+        // FIXME: check invariant
+        {   // invariant: just to be sure that things don't explode
+            // the number of tile in pixel is proportional to the number
+            // of tile visible in world coordinate
+            GLdouble tileNbrX = (_vp[2] - _vp[0]) / tileWidthPix;
+            GLdouble tileNbrY = (_vp[3] - _vp[1]) / tileHeightPix;
+            GLdouble tileNbrU = (x2-x1) / w;
+            GLdouble tileNbrV = (y2-y1) / h;
+            // debug
+            //PRINTF("TX: %f TY: %f TU: %f TV: %f\n", tileNbrX,tileNbrY,tileNbrU,tileNbrV);
+            //PRINTF("WORLD: widht: %f height: %f tileW: %f tileH: %f\n", (x2-x1), (y2-y1), w, h);
+            //PRINTF("PIXEL: widht: %i height: %i tileW: %f tileH: %f\n", (_vp[2] - _vp[0]), (_vp[3] - _vp[1]), tileWidthPix, tileHeightPix);
+            if (tileNbrX + 4 < tileNbrU)
+                g_assert(0);
+            if (tileNbrY + 4 < tileNbrV)
+                g_assert(0);
+        }
+    */
+
+
 #ifdef S52_USE_GV
     // FIXME
     return FALSE;
@@ -5027,9 +5048,6 @@ static int       _renderLC(S52_obj *obj)
     if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
-    // debug - Mariner
-    //npt = S57_getGeoSize(geo);
-
     // set pen color & size here because values might not
     // be set via call list --short line
     S52_DListData *DListData = S52_PL_getDListData(obj);
@@ -5040,21 +5058,16 @@ static int       _renderLC(S52_obj *obj)
     char     pen_w  = 0;
     S52_PL_getLCdata(obj, &symlen, &pen_w);
     glLineWidth(pen_w - '0');
-    //glLineWidth(pen_w - '0' - 0.5);
+    //glLineWidth(pen_w - '0' + 0.375);
 
-    //symlen_pixl = symlen / (_dotpitch_mm_x * 100.0);
-    symlen_pixl = symlen / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0);
+    symlen_pixl = symlen / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
     symlen_wrld = symlen_pixl * _scalex;
-
-    // tmp buffer
-    if (NULL == _tmpWorkBuffer)
-        _tmpWorkBuffer = g_array_new(FALSE, FALSE, sizeof(vertex_t));
-
 
     g_array_set_size(_tmpWorkBuffer, 0);
 
     double off_x = ppt[0];
     double off_y = ppt[1];
+    // Note: npt can't be 0 - no rollover
     for (guint i=0; i<npt-1; ++i) {
         // set coordinate
         x1 = ppt[0];
@@ -5093,30 +5106,15 @@ static int       _renderLC(S52_obj *obj)
         }
         //*/
 
-        /*
-        {//is this segment on screen (visible)
-            double x1, y1, x2, y2;
-            S57_getExtPRJ(geo, &x1, &y1, &x2, &y2);
-            // BUG: line crossing the screen get rejected!
-            if ((_pmin.u < x1) && (_pmin.v < y1) && (_pmax.u > x2) && (_pmax.v > y2)) {
-                //PRINTF("no clip: %s\n", S57_getName(geo));
-                ;
-            } else {
-                // PRINTF("outside view shouldn't get here (%s)\n", S57_getName(geo));
-                continue;
-            }
-        }
-        */
-
         // FIXME: symbol aligned to border (window coordinate),
         //        should be aligned to a 'grid' (geo coordinate)
         if (FALSE == _clipToView(&x1, &y1, &x2, &y2))
             continue;
 
         /*
-        {//debug: this segment should be on screen (visible)
-            //double x1, y1, x2, y2;
-            //S57_getExtPRJ(geo, &x1, &y1, &x2, &y2);
+        {   //debug: this segment should be on screen (visible)
+            double x1, y1, x2, y2;
+            S57_getExtPRJ(geo, &x1, &y1, &x2, &y2);
             if ((x1 < _pmin.u) || (y1 < _pmin.v) || (_pmax.u < x2) || ( _pmax.v < y2)) {
                 PRINTF("outside view, shouldn't get here (%s)\n", S57_getName(geo));
                 g_assert(0);
@@ -5127,9 +5125,8 @@ static int       _renderLC(S52_obj *obj)
 
         //////////////////////////////////////////////////////
         //
-        // overlapping line supression - Z_CLIP_PLANE
+        // overlapping line supression
         //
-
         if (z1<0.0 && z2<0.0) {
             //PRINTF("NOTE: this line segment (%s) overlap a line segment with higher prioritity (Z=%f)\n", S57_getName(geo), z1);
             continue;
@@ -5137,44 +5134,22 @@ static int       _renderLC(S52_obj *obj)
         /////////////////////////////////////////////////////
 
 
-        GLdouble seglen_wrld = sqrt(pow((x1-off_x)-(x2-off_x), 2)  + pow((y1-off_y)-(y2-off_y), 2));
-        GLdouble segang = atan2(y2-y1, x2-x1);
+        GLdouble seglen_wrld   = sqrt(pow((x1-off_x)-(x2-off_x), 2)  + pow((y1-off_y)-(y2-off_y), 2));
+        GLdouble segang        = atan2(y2-y1, x2-x1);
+        GLdouble symlen_wrld_x = cos(segang) * symlen_wrld;
+        GLdouble symlen_wrld_y = sin(segang) * symlen_wrld;
+        int      nsym          = (int) (seglen_wrld / symlen_wrld);
+        float    rest          = seglen_wrld - nsym;
+        segang *= RAD_TO_DEG;
 
         //PRINTF("segang: %f seglen: %f symlen:%f\n", segang, seglen, symlen);
         //PRINTF(">> x1: %f y1: %f \n",x1, y1);
         //PRINTF(">> x2: %f y2: %f \n",x2, y2);
 
-        GLdouble symlen_wrld_x = cos(segang) * symlen_wrld;
-        GLdouble symlen_wrld_y = sin(segang) * symlen_wrld;
-
-        int nsym = (int) (seglen_wrld / symlen_wrld);
-        segang *= RAD_TO_DEG;
-
-        /*
-        // FIXME: check invariant
-        {   // invariant: just to be sure that things don't explode
-            // the number of tile in pixel is proportional to the number
-            // of tile visible in world coordinate
-            GLdouble tileNbrX = (_vp[2] - _vp[0]) / tileWidthPix;
-            GLdouble tileNbrY = (_vp[3] - _vp[1]) / tileHeightPix;
-            GLdouble tileNbrU = (x2-x1) / w;
-            GLdouble tileNbrV = (y2-y1) / h;
-            // debug
-            //PRINTF("TX: %f TY: %f TU: %f TV: %f\n", tileNbrX,tileNbrY,tileNbrU,tileNbrV);
-            //PRINTF("WORLD: widht: %f height: %f tileW: %f tileH: %f\n", (x2-x1), (y2-y1), w, h);
-            //PRINTF("PIXEL: widht: %i height: %i tileW: %f tileH: %f\n", (_vp[2] - _vp[0]), (_vp[3] - _vp[1]), tileWidthPix, tileHeightPix);
-            if (tileNbrX + 4 < tileNbrU)
-                g_assert(0);
-            if (tileNbrY + 4 < tileNbrV)
-                g_assert(0);
-        }
-        */
-
-        //_setBlend(TRUE);
-
         GLdouble offset_wrld_x = 0.0;
         GLdouble offset_wrld_y = 0.0;
 
+        //*
         // draw symb's as long as it fit the line length
         for (int j=0; j<nsym; ++j) {
 
@@ -5195,28 +5170,32 @@ static int       _renderLC(S52_obj *obj)
             offset_wrld_x += symlen_wrld_x;
             offset_wrld_y += symlen_wrld_y;
         }
-
+        //*/
 
         // FIXME: need this because some 'Display List' reset blending
-        // FIXME: some symbol allway use blending (ie transparancy)
+        // FIXME: some Complex Line (LC) symbol allway use blending (ie transparancy)
         // but now with GLES2 AA its all or nothing
         //_setBlend(TRUE);
-        if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS)) {
-            glEnable(GL_BLEND);
-        }
+        //if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS)) {
+        //    glEnable(GL_BLEND);
+        //}
 
-        {   // complete the rest of the line
+        // complete the rest of the line
+        if (0.0 < rest)
+        {
             pt3v pt[2] = {{x1+offset_wrld_x, y1+offset_wrld_y, 0.0}, {x2, y2, 0.0}};
             g_array_append_val(_tmpWorkBuffer, pt[0]);
             g_array_append_val(_tmpWorkBuffer, pt[1]);
 
+            //_DrawArrays_LINES(2, (vertex_t*)pt);
         }
     }
 
-
+    // set identity matrix
     _glUniformMatrix4fv_uModelview();
 
     // render all lines ending
+    // FIXME: fail to draw LS only (ie no LC)
     _DrawArrays_LINES(_tmpWorkBuffer->len, (vertex_t*)_tmpWorkBuffer->data);
 
     //_setBlend(FALSE);
@@ -5958,16 +5937,12 @@ static int       _renderAP_es2(S52_obj *obj)
             Tile px :   13.2 x   13.3
             */
 
-
-            // move - the -6 was found by trial and error
-            //_glTranslated(tileWpx/2.0 - 6.0, tileHpx/2.0 - 6.0, 0.0);
-            //_glTranslated(tileWpx/2.0, tileHpx/2.0, 0.0);
-
             // Nexus 7 - landscape
             _glTranslated(tileWpx/2.0 - 0.0, tileHpx/2.0 - 0.0, 0.0);
             //_glTranslated(tileWpx/2.0 - 3.0, tileHpx/2.0 - 3.0, 0.0);
             //_glTranslated(tileWpx/2.0 - 5.0, tileHpx/2.0 - 5.0, 0.0);
             //_glTranslated(tileWpx/2.0 - 10.0, tileHpx/2.0 - 10.0, 0.0);
+
 
             // scale & flip on Y
             // found by trial and error
@@ -5975,23 +5950,21 @@ static int       _renderAP_es2(S52_obj *obj)
             // scale to POT (Xoom)
             _glScaled(0.03/(tileWpx/potW), -0.03/(tileHpx/potH), 1.0);
             //_glScaled(_dotpitch_mm_x/(tileWpx/potW), -_dotpitch_mm_y/(tileHpx/potH), 1.0);
-#else
-            //_glScaled(_dotpitch_mm_x/10.0, -_dotpitch_mm_y/10.0, 1.0);
-            //_glScaled(_dotpitch_mm_x/8.0, -_dotpitch_mm_y/8.0, 1.0);
-            //_glScaled(_dotpitch_mm_x/6.0, -_dotpitch_mm_y/6.0, 1.0);
-            //_glScaled(_dotpitch_mm_x/5.0, -_dotpitch_mm_y/5.0, 1.0);
-            //_glScaled(_dotpitch_mm_x, -_dotpitch_mm_y, 1.0);
+#endif
 
-            // Nexus 7 - landscape
-            //_glScaled(_dotpitch_mm_y * 1.0, -_dotpitch_mm_x * 1.0, 1.0);
-            //_glScaled(_dotpitch_mm_y * 2.0, -_dotpitch_mm_x * 2.0, 1.0);
+#ifdef S52_USE_ADRENO
+            // Nexus 7 - landscape (need S52_MAR_DOTPITCH_MM set to 0.2)
             _glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/4.0, S52_MP_get(S52_MAR_DOTPITCH_MM_X)/-4.0, 1.0);
             //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/5.0, S52_MP_get(S52_MAR_DOTPITCH_MM_X)/-5.0, 1.0);
             //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/6.0, S52_MP_get(S52_MAR_DOTPITCH_MM_X)/-6.0, 1.0);
             //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/8.0, S52_MP_get(S52_MAR_DOTPITCH_MM_X)/-8.0, 1.0);
 #endif
-        }
 
+#ifdef S52_USE_MESA3D
+            _glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/8.0, S52_MP_get(S52_MAR_DOTPITCH_MM_X)/-8.0, 1.0);
+#endif
+
+        }
 
         // debug - break if patt has stag
         if (0.0 != stagOffsetPix) {
@@ -7147,6 +7120,10 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                         GArray   *vec  = S52_PL_getVOdata(vecObj);
                         vertex_t *data = (vertex_t *)vec->data;
 
+                        // failsafe
+                        if (0 == vec->len)
+                            continue;
+
                         // POINTS
                         //if (1 == vec->len)
                         //    break;
@@ -7170,7 +7147,8 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                         }
 
                         // split STRIP into LINES
-                        for (guint i=0; i<vec->len-1; ++i, data+=3) {
+                        //for (guint i=0; i<vec->len-1; ++i, data+=3) {
+                        for (guint i=0; (i+1)<vec->len; ++i, data+=3) {
                             _vertex3f(data+0, vertex);
                             _vertex3f(data+3, vertex);
                         }
@@ -9158,7 +9136,7 @@ int        S52_GL_init(void)
 
     // tmp buffer
     if (NULL == _tmpWorkBuffer)
-        _tmpWorkBuffer = g_array_new(FALSE, FALSE, sizeof(vertex_t));
+        _tmpWorkBuffer = g_array_new(FALSE, FALSE, sizeof(vertex_t)*3);
 
 #ifdef S52_USE_GLES2
     if (NULL == _tessWorkBuf_d)
@@ -9515,7 +9493,7 @@ char      *S52_GL_getNameObjPick(void)
 
         g_strfreev(topRefs);
     }
-#endif
+#endif  // S52_USE_C_AGGR_C_ASSO
 
     return (const char *)_strPick->str;
 }

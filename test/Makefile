@@ -68,7 +68,7 @@ s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-201009
 
 # -DS52_USE_GLIB2
 # -DS52_USE_LOG       - log every S52_* in tmp file
-# -DS52_USE_MESA      - set ENV for Mesa3D MSAA and vblank_mode
+# -DS52_USE_MESA3D    - set ENV for Mesa3D MSAA and vblank_mode
 # -DS52_USE_GLES2     - GLES2
 # -DS52_USE_ANDROID   - then set TREGRA2 or ADRENO
 # -DS52_USE_TEGRA2    - Xoom

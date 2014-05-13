@@ -59,15 +59,6 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
 #define SPRINTF sprintf
 #endif
 
-//                                 g_assert(0);
-// GCC only (used in Linux kernel)
-//#define likely(x)       __builtin_expect((x),1)
-//#define unlikely(x)     __builtin_expect((x),0)
-// they don't apply __builtin_expect to (x), but to !!(x).
-// C considers any non-zero value as true in a conditional,
-// but __builtin_expect specifies an exact value of 1; !! negates the value twice, forcing any non-zero value to become 1.
-// The option -fguess-branch-probability offers the sa thing
-// more at: http://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html#C-Extensions
 #define return_if_null(ptr) if (NULL==ptr) {                             \
                                 PRINTF("WARNING: '%s' is NULL\n", #ptr); \
                                 return FALSE;                            \

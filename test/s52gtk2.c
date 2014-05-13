@@ -1706,8 +1706,8 @@ static int      _initS52()
     //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
     S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);     // hide
 
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 
     S52_setMarinerParam(S52_MAR_DISP_CALIB, 1.0);
 
@@ -1722,7 +1722,7 @@ static int      _initS52()
     // init decoration (scale bar, North arrow, unit, calib.)
     S52_newCSYMB();
 
-    //*
+    /*
     _setOWNSHP();
 
     _setVRMEBL();
@@ -1837,7 +1837,7 @@ int main(int argc, char **argv)
 
     gtk_set_locale();
 
-#ifdef S52_USE_MESA
+#ifdef S52_USE_MESA3D
     // Mesa3D env - signal no vSync
     g_setenv("vblank_mode", "0", 1);
     // Mesa3D env - MSAA = 4
@@ -1930,7 +1930,7 @@ exit:
 
     //g_mem_profile();
 
-#ifdef S52_USE_MESA
+#ifdef S52_USE_MESA3D
     // Mesa3D env - remove from env (not stictly needed - env destroy at exit)
     g_unsetenv("vblank_mode");
     g_unsetenv("GALLIUM_MSAA");

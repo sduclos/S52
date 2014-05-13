@@ -49,8 +49,6 @@ static unsigned int _id = 1;  // start at 1, the number of object loaded
 
 typedef struct _pt3 { double x,y,z; } pt3;
 typedef struct _pt2 { double x,y;   } pt2;
-//struct _pt3{ double x,y,z; } pt3;
-//struct pt3 { double x,y,z; };
 
 // assume: extent canonical: x1 < x2, y1 < y2
 typedef struct _rect {
@@ -72,7 +70,7 @@ typedef struct _prim {
 
 typedef struct _S57_prim {
     GArray *list;      // list of _prim in 'vertex'
-    // optimisation: use XY, so that the GPU move, internaly, 1/3 less data
+    // FIXME: optimisation: use XY, so that the GPU move, internaly, 1/3 less data -OR- not GPU make no diff of moving 2D or 3D
     // but this is useless if no LOD for ENC - zooming out will add 10x more data
     GArray *vertex;    // XYZ geographic coordinate (bouble or float for GLES2 since some go right in the GPU - ie line)
     guint   DList;     // display list of the above
@@ -300,7 +298,7 @@ int        S57_setMercPrj(double lat, double lon)
     return TRUE;
 }
 
-cchar     *S57_getPrjStr(void)
+GCPTR      S57_getPrjStr(void)
 {
     return _pjstr;
 }
@@ -543,7 +541,7 @@ int        S57_setName(_S57_geo *geoData, const char *name)
     return TRUE;
 }
 
-cchar     *S57_getName(_S57_geo *geoData)
+GCPTR      S57_getName(_S57_geo *geoData)
 {
     return_if_null(geoData);
     return_if_null(geoData->name);
@@ -1136,7 +1134,7 @@ S57_geo  * S57_getRelationship(_S57_geo *geo)
 
     return geo->relation;
 }
-#endif
+#endif  // S52_USE_C_AGGR_C_ASSO
 
 static void   _printAtt(GQuark key_id, gpointer data, gpointer user_data)
 {
@@ -1258,7 +1256,7 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     return;
 }
 
-cchar     *S57_getAtt(_S57_geo *geoData)
+GCPTR      S57_getAtt(_S57_geo *geoData)
 {
     return_if_null(geoData);
 
@@ -1450,6 +1448,9 @@ int        S57_isPtInside(int npt, double *xyz, double x, double y, int close)
     pt3 *v = (pt3 *)xyz;
 
     return_if_null(xyz);
+
+    if (0 == npt)
+        return FALSE;
 
     if (TRUE == close) {
         for (int i=0; i<npt-1; ++i) {

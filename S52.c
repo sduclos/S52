@@ -315,7 +315,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.130\n"
+      "libS52 0.131\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -402,6 +402,9 @@ static char _version[] = "$Revision: 1.126 $\n"
 #endif
 #ifdef S52_USE_MESA3D
       "S52_USE_MESA3D\n"
+#endif
+#ifdef S52_USE_C_AGGR_C_ASSO
+      "S52_USE_C_AGGR_C_ASSO\n"
 #endif
 ;
 
@@ -1980,7 +1983,7 @@ static int        _linkRel2LNAM(_cell* c)
 
     return TRUE;
 }
-#endif
+#endif  // S52_USE_C_AGGR_C_ASSO
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 static int        _suppLineOverlap()
@@ -3578,6 +3581,7 @@ static int        _app()
 static int        _cullLights(void)
 // CULL (first draw() after APP, on all cells)
 {
+    // FIXME: this compare to cell 'above', but len-1 could rollover
     for (guint i=_cellList->len-1; i>0 ; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
@@ -3594,15 +3598,10 @@ static int        _cullLights(void)
             _extent oext;
             S57_getExt(geo, &oext.W, &oext.S, &oext.E, &oext.N);
 
-            // debug
-            //if (899 == S57_getGeoID(geo)) {
-            //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoID(geo));
-            //    //    return TRUE;
-            //}
-
             S52_PL_resloveSMB(obj);
 
             // traverse the cell 'above' to check if extent overlap this light
+            // FIXME: this compare to cell 'above', but len-1 could rollover
             for (guint k=i-1; k>0 ; --k) {
                 _cell *cellAbove = (_cell*) g_ptr_array_index(_cellList, k);
                 // skip if same scale
@@ -3729,12 +3728,11 @@ static int        _cull(_extent ext)
 
     // all cells - larger region first (small scale)
     // Note: skip MARINERS' Object (those on layer 9)
-    //for (guint i=cellIdx; i>0 ; --i) {
-    guint n = _cellList->len-1;
-    //for (guint i=_cellList->len; i>0 ; --i) {
-    for (guint i=n; i>0 ; --i) {
-        //_cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+    //guint n = _cellList->len-1;
+    //for (guint i=n; i>0 ; --i) {
+    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+    for (guint i=_cellList->len; i>0 ; --i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
 
         if ((0==g_strcmp0(WORLD_SHP, c->filename->str)) && (FALSE==S52_MP_get(S52_MAR_DISP_WORLD)))
             continue;
@@ -3752,19 +3750,20 @@ static int        _cull(_extent ext)
 }
 
 #ifdef S52_USE_GLES2
-static int        _drawRADAR()
+static int        _drawRaster()
 {
     for (guint i=0; i<_rasterList->len; ++i) {
-        double cLat = 0.0;
-        double cLng = 0.0;
-        double rNM  = 0.0;
-
         S52_GL_ras *raster = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
         if (FALSE == raster->isRADAR) {
             // bathy
             S52_GL_drawRaster(raster);
             continue;
         }
+
+#ifdef S52_USE_RADAR
+        double cLat = 0.0;
+        double cLng = 0.0;
+        double rNM  = 0.0;
 
         raster->texAlpha = raster->RADAR_cb(&cLat, &cLng, &rNM);
 
@@ -3781,7 +3780,7 @@ static int        _drawRADAR()
         S52_GL_getPRJView(&raster->S, &raster->W, &raster->N, &raster->E);
 
         S52_GL_drawRaster(raster);
-
+#endif
     }
 
     return TRUE;
@@ -3791,12 +3790,13 @@ static int        _drawRADAR()
 static int        _drawLayer(_extent ext, int layer)
 {
     // all cells --larger region first
-    guint n = _cellList->len-1;
-    //for (guint i=_cellList->len; i>0 ; --i) {
-    for (guint i=n; i>0 ; --i) {
-        //_cell *c = &g_array_index(_cellList, _cell, i-1);
-        //_cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+    for (guint i=_cellList->len; i>0 ; --i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+
+    //guint n = _cellList->len-1;
+    //for (guint i=n; i>0 ; --i) {
+    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+
         if (TRUE == _intersec(c->ext, ext)) {
 
             // one layer
@@ -3852,10 +3852,12 @@ static int        _drawLights(void)
     // also light are drawn last (ie after all cells)
     // so a sector is not shoped by an other cell next to it
 
-    guint n = _cellList->len-1;
-    //for (guint i=_cellList->len-1; i>0 ; --i) {
-    for (guint i=n; i>0 ; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+    for (guint i=_cellList->len; i>0 ; --i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+
+    //guint n = _cellList->len-1;
+    //for (guint i=n; i>0 ; --i) {
+    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         // a cell can have no lights sector
         if (NULL == c->lights_sector)
@@ -4085,9 +4087,11 @@ static int        _draw()
 // draw object inside view
 // then draw object's text
 {
-    guint n = _cellList->len-1;
-    for (guint i=n; i>0; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+    for (guint i=_cellList->len; i>0; --i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+    //guint n = _cellList->len-1;
+    //for (guint i=n; i>0; --i) {
+    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         g_atomic_int_get(&_atomicAbort);
         if (TRUE == _atomicAbort) {
@@ -4099,9 +4103,9 @@ static int        _draw()
         g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
 
 #ifdef S52_USE_GLES2
-        // draw radar
+        // draw radar (raster)
         if (1.0 == S52_MP_get(S52_MAR_DISP_RASTER))
-            _drawRADAR();
+            _drawRaster();
 #endif
 
         // draw over radar
@@ -5674,6 +5678,10 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
 DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius)
 // experimental - load raw raster RADAR via callback
 {
+    (void)cb;
+    (void)texRadius;
+#ifdef S52_USE_RADAR
+
     S52_CHECK_INIT;
 
     return_if_null(cb);
@@ -5709,6 +5717,9 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius)
     g_ptr_array_add(_rasterList, raster);
 
     GMUTEXUNLOCK(&_mp_mutex);
+
+#endif
+
     return TRUE;
 }
 
@@ -5914,9 +5925,11 @@ static S52_obj   *_getS52obj(unsigned int S57ID)
     udata.S57ID    = S57ID;
     udata.obj      = NULL;
 
-    guint n = _cellList->len-1;
-    for (guint i=n; i>0; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+    //guint n = _cellList->len-1;
+    //for (guint i=n; i>0; --i) {
+    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+    for (guint i=_cellList->len; i>0; --i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
         g_ptr_array_foreach(c->objList_supp, (GFunc)_compS57ID, &udata);
         g_ptr_array_foreach(c->objList_over, (GFunc)_compS57ID, &udata);
 
@@ -9194,103 +9207,3 @@ static int                 _initSock(void)
     return TRUE;
 }
 #endif
-
-
-
-// ================================= J U N K =======================================================
-
-
-// light are allway drawn - event if outside view (sector might be inside)
-
-    // assume: cellList is sorted, big to small scale (small to large region)
-
-    // CULL: filter out cells that are outside the view
-
-    // BUG: traversing order differ from drawing this cause to cull
-    // object that should be drawn
-    // this can happen where 2 cells of same scale overlap
-    /*
-    {
-        //int i = 0;
-        //int j = 0;
-        for (guint i=0; i<_cellList->len; ++i) {
-        //for (i=_cellList->len-1; i>=0 ; --i) {
-            _cell *ci = &g_array_index(_cellList, _cell, i);
-            PRINTF("cell name i(%i): %s\n", i, ci->filename->str);
-            if (TRUE == _intersec(ci->ext, ext)) {
-                //int j = 0;
-                for (guint j=i+1; j<_cellList->len; ++j) {
-                    _cell *cj = &g_array_index(_cellList, _cell, j);
-                    PRINTF("\tcell name j(%i): %s\n", j, cj->filename->str);
-                    if (TRUE == _intersec(ci->ext, cj->ext)) {
-                        // supress display of object that are 'under' a cell
-                        _suppObject(ci->ext, cj);
-                    }
-                }
-            } else {
-                // cell outside view
-            }
-        }
-    }
-    */
-
-    /*
-    // mark object for drawing
-    // A - initialy all object of every cell are not culled
-    // B - current  cell is 'this' cell
-    // C - following cell is 'other' cells
-    // for all cell do
-    //   1 - show all object in 'this' cell that are not culled allready
-    //   2 - cull all object in 'other' cells within 'this' cell
-    {
-        int i = 0;
-        int j = 0;
-        while (i < cellList->len) {
-            // show object in the current cell
-            // that have not been remove allready
-            // SCANMIN fit here
-            _showObject(cellList[i]);
-
-
-            j = i;
-            while (j < cellList->len) {
-                // remove object in rectangle of current cell
-                // for all the following cells
-                _cullObject(cellList[j], cellList[i].rect);
-                ++j;
-            }
-        }
-    }
-    */
-
-
-    /*  // BUG: sector outside view must show sector leg inside view
-    {   // cull lights outside view
-        // light outside the view are shown
-        //unsigned int i = 0;
-        // --6MARIN.000 doesn't have lights so no need to look at it
-        //for (i=0; i<_cellList->len; ++i) {
-        for (guint i=_cellList->len-1; i>0 ; --i) {
-            //_cell *c = &g_array_index(_cellList, _cell, i);
-            _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
-            //if (FALSE == _intersec(c->ext, ext)) {
-                //unsigned int j = 0;
-                for (guint j=0; j<c->lights_sector->len; ++j) {
-                    S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
-                    S57_geo *geo = S52_PL_getGeo(obj);
-
-                    // here we hit lights in view that we're allready
-                    // processed in the first part of the cull() .. not optimal
-                    S57_setSupp(geo, FALSE);
-
-                    // SCAMIN & PLib
-                    if (TRUE == S52_GL_isSupp(obj)) {
-                        S57_geo *geo = S52_PL_getGeo(obj);
-                        S57_setSupp(geo, TRUE);
-                        ++_nCull;
-                    }
-                }
-            //}
-        }
-    }
-    */

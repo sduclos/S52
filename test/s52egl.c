@@ -1385,7 +1385,7 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
 #endif
 
-#ifdef S52_USE_MESA
+#ifdef S52_USE_MESA3D
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 #endif
@@ -1425,7 +1425,7 @@ static int      _s52_init       (s52engine *engine)
     _s52_setupLEGLIN();
 
     // wind farme for testing centroids in a concave poly
-    _s52_setupPRDARE(&engine->state);
+    //_s52_setupPRDARE(&engine->state);
 
 
 #ifdef USE_FAKE_AIS
@@ -3085,7 +3085,7 @@ int main(int argc, char *argv[])
     s52ais_initAIS();
 #endif
 
-#ifdef S52_USE_MESA
+#ifdef S52_USE_MESA3D
     // Mesa3D env - signal no vSync
     g_setenv("vblank_mode", "0", 1);
     // Mesa3D env - MSAA = 4
@@ -3122,7 +3122,7 @@ int main(int argc, char *argv[])
     fclose(_fd);
 #endif
 
-#ifdef S52_USE_MESA
+#ifdef S52_USE_MESA3D
     // Mesa3D env - remove from env (not stictly needed - env destroy at exit)
     g_unsetenv("vblank_mode");
     g_unsetenv("GALLIUM_MSAA");

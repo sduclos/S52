@@ -246,7 +246,6 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 linexyz = g_new(geocoord, 3*count);
 
             for (int node=0; node<count; ++node) {
-            //for (idx=0, node=count-1; node>=0; --node) {
                 linexyz[node*3+0] = OGR_G_GetX(hGeom, node);
                 linexyz[node*3+1] = OGR_G_GetY(hGeom, node);
                 linexyz[node*3+2] = OGR_G_GetZ(hGeom, node);
@@ -296,8 +295,8 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 //}
 
                 double area = 0;
-                //for (i=0; i<vert_count; i++) {
-                for (guint i=0; i<vert_count-1; i++) {
+                //for (guint i=0; i<vert_count-1; i++) {
+                for (guint i=0; (i+1)<vert_count; i++) {
                     double x1 = OGR_G_GetX(hRing, i);
                     double y1 = OGR_G_GetY(hRing, i);
                     double x2 = OGR_G_GetX(hRing, i+1);

@@ -25,9 +25,8 @@
 #ifndef _S57DATA_H_
 #define _S57DATA_H_
 
-#include "S52utils.h"
-
-#include <glib.h>       // guint, GArray, GData, GString
+#include <glib.h>       // guint, GArray, GData, GString, gconstpointer
+#define gconstpointer GCPTR
 
 // internal geo enum used to link S52 to S57 geo
 // S57 object type have a PLib enum: P,L,A
@@ -64,7 +63,7 @@ S57_geo  *S57_delNextPoly(S57_geo *geoData);
 #endif
 
 int       S57_setName  (S57_geo *geoData, const char *name);
-cchar    *S57_getName  (S57_geo *geoData);
+GCPTR     S57_getName  (S57_geo *geoData);
 
 // debug:
 //int       S57_setOGRGeo(S57_geo *geoData, void *hGeom);
@@ -118,7 +117,7 @@ GString  *S57_getAttVal(S57_geo *geoData, const char *name);
 // set attribute name and value
 GData    *S57_setAtt(S57_geo *geoData, const char *name, const char *val);
 // get str of the form ",KEY1:VAL1,KEY2:VAL2, ..." of S57 attribute only (not OGR)
-cchar    *S57_getAtt(S57_geo *geoData);
+GCPTR     S57_getAtt(S57_geo *geoData);
 
 int       S57_setTouchTOPMAR(S57_geo *geo, S57_geo *touch);
 S57_geo  *S57_getTouchTOPMAR(S57_geo *geo);
@@ -153,7 +152,7 @@ guint     S57_getGeoID(S57_geo *geoData);
 #include <proj_api.h>   // projXY, projUV, projPJ
 int       S57_donePROJ();
 int       S57_setMercPrj(double lat, double lon);
-cchar    *S57_getPrjStr(void);
+GCPTR     S57_getPrjStr(void);
 projXY    S57_prj2geo(projUV uv);
 int       S57_geo2prj3dv(guint npt, double *data);
 int       S57_geo2prj(S57_geo *geo);

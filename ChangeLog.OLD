@@ -3,6 +3,9 @@
 #
 
 
+2014MAY13
+    -fix LC completion
+
 2014MAY10
     -fix target s52glx, s52gtk2 - GL1.x
 
