@@ -26,7 +26,7 @@
 #define _S57DATA_H_
 
 #include <glib.h>       // guint, GArray, GData, GString, gconstpointer
-#define gconstpointer GCPTR
+#define GCPTR gconstpointer 
 
 // internal geo enum used to link S52 to S57 geo
 // S57 object type have a PLib enum: P,L,A
