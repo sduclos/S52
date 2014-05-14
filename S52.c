@@ -4087,8 +4087,11 @@ static int        _draw()
 // draw object inside view
 // then draw object's text
 {
-    for (guint i=_cellList->len; i>0; --i) {
+    //for (guint i=_cellList->len; i>0; --i) {
+    for (guint i=_cellList->len; i>1; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+
+    // FIXME: assume that len > 0 because of MARINER
     //guint n = _cellList->len-1;
     //for (guint i=n; i>0; --i) {
     //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
@@ -4099,6 +4102,8 @@ static int        _draw()
             return TRUE;
         }
 
+        // FIXME: GOURD 1 - face of earth - sort and then glDraw() on a whole surface
+        // APP/CURL must reset sort if color change by user
         // draw under radar
         g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
 

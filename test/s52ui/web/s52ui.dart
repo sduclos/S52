@@ -792,7 +792,8 @@ void _initMain() {
 
   try {
     s52 = new S52();
-    s52.initWS(s52.wsUri).then((ret) {
+    //s52.initWS(s52.wsUri).then((ret) {
+    s52.initWS(js.context['wsUri']).then((ret) {
       // here the WebSocket init is completed - all JS loaded
       _initTouch();
       s52.newOWNSHP('OWNSHP').then((ret) {

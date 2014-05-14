@@ -29,13 +29,8 @@ class S52 {
   List UINFF;  // text
   List UIBDR;  // border
 
-  //var wsUri = 'ws://192.168.1.66:2950'; // laptop
-  //var wsUri = 'ws://192.168.1.67:2950'; // xoom
-  //var wsUri = 'ws://192.168.1.69:2950'; // Nexus
-  var wsUri = 'ws://127.0.0.1:2950';   // localhost
 
-
-
+  static const int MAR_SHOW_ERROR             =  0;
   static const int MAR_SHOW_TEXT              =  1;
 
   static const int MAR_SAFETY_CONTOUR         =  3;   // S52_LINES: selected safety contour (meters) [IMO PS 3.6]
@@ -125,9 +120,7 @@ class S52 {
   }
 
   _rcvMsg(MessageEvent evt) {
-  //rcvMsg(var evt) {
-    // receive S52/JSON msg from WebSocket (Cordova) in s52ui.html
-    //print('............................str:${evt.data}');
+    print('_rcvMsg:${evt.data}');
     var str = evt.data;
     Map data;
     try {
@@ -179,7 +172,7 @@ class S52 {
     //*
     if (_ws.readyState == WebSocket.OPEN) {
       _ws.send(str);
-      print('send:$str');
+      print('_sendMsg:$str');
     } else {
       throw 'WebSocket not connected, message not sent:$str';
     }
