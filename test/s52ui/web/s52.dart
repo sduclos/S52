@@ -142,8 +142,8 @@ class S52 {
       //return;
     }
 
-    if (_id++ != data["id"]) {
-      print('rcvMsg(): failed on key: _id=${_id-1} data_id=${data["id"]} [$data]');
+    if (_id != data["id"]) {
+      print('rcvMsg(): failed on key: _id=$_id data_id=${data["id"]} [$data]');
       throw "rcvMsg(): ID mismatch";
     }
 
@@ -155,11 +155,9 @@ class S52 {
 
     // Javascript: MAXINT overflow if (x == x + 1)
     // Dart: same; 2^53 = 9007199254740992 = 52124995687 days @ 0.5s
-    //++_id;
     _completer.complete(data['result']);
-
-    // restart timer if need be
-    //_drawLastTimer();
+    _skipTimer = false;
+    ++_id;
   }
   Future<List> _sendMsg(String str) {
     _stopwatch.reset();
@@ -171,8 +169,9 @@ class S52 {
 
     //*
     if (_ws.readyState == WebSocket.OPEN) {
+      _skipTimer = true;
       _ws.send(str);
-      print('_sendMsg:$str');
+      print('_sndMsg:$str');
     } else {
       throw 'WebSocket not connected, message not sent:$str';
     }
