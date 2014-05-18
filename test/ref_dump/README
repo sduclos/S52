@@ -1,0 +1,20 @@
+# README: note to apitrace OpenGL
+#
+# SD 21014MAY14
+
+
+0 - git clone apitrace and build
+
+1 - Create trace (EGL)
+    $ LD_PRELOAD=/home/sduclos/dev/prog/graphic/opengl/apitrace/build2/wrappers/egltrace.so ./s52eglx
+
+2 - Find DRAW tag using qapitrace
+    $ ./qapitrace s52glx.trace
+
+3 - Trim the trace file to a specific frame (here frame 9 is send to file trimed9.trace)
+    $ ./apitrace trim --auto --frames=9 -o trimed9.trace  ~/S52/test/s52eglx.2.trace 
+    $ ./qapitrace trimed9.trace
+    
+4 - Dump frame to clear text
+    $ ./apitrace dump trimed9.trace > trimed9.trace.txt
+
