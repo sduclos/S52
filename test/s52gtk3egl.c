@@ -574,10 +574,10 @@ static int      _s52_init       (s52engine *engine)
 
 
     // read cell location fron s52.cfg
-    //S52_loadCell(NULL, NULL);
-    S52_loadCell("CA479017.000", NULL);
-    S52_loadCell("SCX_CapSante.tif", NULL);
-    S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+    S52_loadCell(NULL, NULL);
+    //S52_loadCell("CA479017.000", NULL);
+    //S52_loadCell("SCX_CapSante.tif", NULL);
+    //S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
 
 
     //S52_loadCell("/home/vitaly/CHARTS/for_sasha/GB5X01SE.000", NULL);
@@ -589,7 +589,7 @@ static int      _s52_init       (s52engine *engine)
     // Bathy - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/bathy/2009_HD_BATHY_TRIALS/46307260_LOD2.merc.tif", NULL);
     //S52_loadCell("/home/sduclos/dev/gis/data/bathy/2009_HD_BATHY_TRIALS/46307250_LOD2.merc.tif", NULL);
-    //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+    //S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
 
     // load AIS select symb.
     //S52_loadPLib("plib-test-priv.rle");
@@ -631,8 +631,8 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON
     // -- DEPTH COLOR ------------------------------------
 
 
@@ -686,6 +686,8 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
     //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
 
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
     //S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);

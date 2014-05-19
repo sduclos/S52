@@ -1489,15 +1489,11 @@ static int      _initS52()
 // setup some decent setting for testing
 {
     // FIXME: broken on some monitor
-    GdkScreen    *screen   = NULL;
-    gint         w,h;
-    gint         wmm,hmm;
-
-    screen = gdk_screen_get_default();
-    w      = gdk_screen_get_width    (screen);
-    h      = gdk_screen_get_height   (screen);
-    wmm    = gdk_screen_get_width_mm (screen);
-    hmm    = gdk_screen_get_height_mm(screen);
+    GdkScreen *screen = gdk_screen_get_default();
+    gint       w      = gdk_screen_get_width    (screen);
+    gint       h      = gdk_screen_get_height   (screen);
+    gint       wmm    = gdk_screen_get_width_mm (screen);
+    gint       hmm    = gdk_screen_get_height_mm(screen);
 
     // return -1 (not avaible)
     //gint hmm0 = gdk_screen_get_monitor_height_mm(screen, 0);
@@ -1706,8 +1702,8 @@ static int      _initS52()
     //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
     S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);     // hide
 
-    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
+    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
+    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 
     S52_setMarinerParam(S52_MAR_DISP_CALIB, 1.0);
 

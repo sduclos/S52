@@ -65,8 +65,9 @@ s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-201009
 
 # -DUSE_FAKE_AIS      - debug - programmaticaly faked AIS data
 # -DUSE_AIS           - call s52ais.c
+# -DSET_SCREEN_SIZE   - set screen size be hand (hard coded as dual-screen seem to confused the setup)
 
-# -DS52_USE_GLIB2
+# -DS52_USE_GLIB2     -
 # -DS52_USE_LOG       - log every S52_* in tmp file
 # -DS52_USE_MESA3D    - set ENV for Mesa3D MSAA and vblank_mode
 # -DS52_USE_GLES2     - GLES2
@@ -78,21 +79,20 @@ s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-201009
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 # -DS52_USE_RADAR     - when in RADAR mode
 
-
 CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2
 
 # same as above - but skip GL1.x call in _renderHelp()
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
                       -DS52_USE_GLIB2                             \
                       -DS52_USE_GLES2                             \
-                      -DS52_USE_MESA
+                      -DS52_USE_MESA3D
 
 s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1`
 
 s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 
 s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
-                     -DS52_USE_GLES2 -DS52_USE_EGL -DS52_USE_AFGLOW -DUSE_AIS -DS52_USE_MESA
+                     -DS52_USE_GLES2 -DS52_USE_EGL -DS52_USE_AFGLOW -DUSE_AIS -DS52_USE_MESA3D -DSET_SCREEN_SIZE
 
 # same as s52eglx, but "gtk+-2.0" is added - no AIS
 s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` \
@@ -100,17 +100,6 @@ s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
 # same as s52eglx, but "gtk+-3.0" is added
 s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-3.0` \
                      -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2
-
-#s52eglarm:  CFLAGS = -DS52_USE_EGL                      \
-#                     -DS52_USE_GLES2                    \
-#                     -DS52_USE_ANDROID                  \
-#                     -DS52_USE_TEGRA2                   \
-#                     -DS52_USE_AFGLOW                   \
-#                     -DS52_USE_SOCK                     \
-#                     -I..                               \
-#                     -I$(DROIDINCLUDE)                  \
-#                     -I$(S52DROIDINC)                   \
-#                     -I$(S52DROIDINC)/glib-2.0
 
 s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`     \
                       -I$(OPENEV_HOME) -DGV_USE_DOUBLE_PRECISION_COORD \
@@ -146,7 +135,7 @@ s52gtk2gl2 : GTK2LIBS = `pkg-config --libs gtk+-2.0 gtkglext-1.0 gthread-2.0`
 OGR_LIBS  = `gdal-config --libs`
 
 # Ubuntu 13+ need -lX11
-s52eglx   : LIBS    = `pkg-config --libs egl x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS)
+s52eglx   : LIBS    = `pkg-config --libs egl x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS) -lm
 
 # same as s52eglx, add "gtk+-2.0"
 s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` $(S52_LIBS)
@@ -223,17 +212,6 @@ s52gtk2p: s52gtk2.c ../S52.h
 
 ############### DEPRECATED build: Android (Android.mk do the build now) ##############################
 
-#s52eglarm: libs52gps.so s52egl.c ../S52.h -Wl,-allow-shlib-undefin
-# -Wl,--entry=_start -Wl,-rpath=/system/lib -nostdlib
-# -Wl,-rpath=$(ARMLIBS) -nostdlib
-# -Wl,-rpath=$(TIAMATLIBS)
-# -Wl,--dynamic-linker=/data/local/bin/ld-linux.so.3
-#s52eglarm: s52egl.c ../S52.h s52gps.c
-#	$(CXX) $(CFLAGS) -shared s52egl.c $(LIBS)          \
-#	-Wl,-rpath=/system/lib -Wl,-rpath-link=/system/lib \
-#	-o $@
-# $(CC) $(CFLAGS) $(S52DROIDLIBS)/libS52.a $(LIBS) s52egl.c  -o s52droid
-
 android/dist/sdcard/s52droid/UI.xml: android/dist/sdcard/s52droid/UI.tmpl.xml
 	awk 'BEGIN { count_text    = 0;                                             \
                  count_border  = 0;                                             \
@@ -268,34 +246,6 @@ android/dist/sdcard/s52droid/UI.xml: android/dist/sdcard/s52droid/UI.tmpl.xml
 sl4agps.cfg:
 	-rm android/dist/sdcard/s52droid/UI.xml
 
-# android 4.1
-# adb shell chmod 755 /data/media/s52droid/bin/sl4agps
-#sl4agps: sl4agps.c sl4agps.cfg android/dist/sdcard/s52droid/UI.xml
-#	$(CC)  $(CFLAGS)    sl4agps.c $(LIBS) -o sl4agps
-#	$(STRIP)  sl4agps
-#	cp        sl4agps   android/dist/sdcard/s52droid/bin
-#	adb push  sl4agps   /sdcard/s52droid/bin
-#	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/sl4agps'
-
-# android 4.1
-# adb shell chmod 755 /data/media/s52droid/bin/s52ais
-#adb shell su -c 'chmod 755 /mnt/shell/emulated/0/s52droid/bin/s52ais'
-#adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/s52ais'
-#s52ais: s52ais.c
-#	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c  $(LIBS) -o s52ais
-#	$(STRIP)  s52ais
-#	cp        s52ais    android/dist/sdcard/s52droid/bin
-	#adb push  s52ais    /sdcard/s52droid/bin
-
-#s52eglarm: s52ais
-#s52eglarm: s52ais sl4agps
-#	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/*.sh'
-#	adb shell su -c 'chmod 755 /data/media/0/s52droid/bin/gpsd'
-
-# Note: to start s52ui (the HTML UI that replace sl4agps) in android by hand
-# adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/.s52ui
-# adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/android.app.NativeActivity
-
 
 ############### profiling ##############################
 #
@@ -309,9 +259,9 @@ run: s52gtk2
    --leak-resolution=high --num-callers=20 --log-file=s52-valgrind.dump-10  \
    --suppressions=gtk.suppression  ./s52gtk2
 
-#watch ps -C s52gtk2 -o pid,ppid,rss,vsize,pcpu,pmem,time,cmd
-#watch ps -C s52gps  -o pid,ppid,rss,vsize,pcpu,pmem,time,cmd
-# watch -d ps -C s52eglx  -o pid,ppid,rss,vsize,pcpu,pmem,time,cmd
+# watch ps -C s52gtk2 -o pid,ppid,rss,vsize,pcpu,pmem,time,cmd
+# watch ps -C s52gps  -o pid,ppid,rss,vsize,pcpu,pmem,time,cmd
+# watch ps -C s52eglx  -o pid,ppid,rss,vsize,pcpu,pmem,time,cmd
 
 
 ########### WIN32 STUFF ####################################

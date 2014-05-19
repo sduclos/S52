@@ -713,9 +713,10 @@ static int      _egl_init       (s52engine *engine)
 
     //--------------------------------------------------------------------------------------------------
     // get EGL Marker & Timer
+    // Note: on Mesa3D eglGetProcAddress() return an invalid address
     _glInsertEventMarkerEXT = (PFNGLINSERTEVENTMARKEREXT) eglGetProcAddress("glInsertEventMarkerEXT");
     if (NULL == _glInsertEventMarkerEXT) {
-        LOGE("WARNING: eglGetProcAddress() returned NULL\n");
+        LOGE("DEBUG: eglGetProcAddress(glInsertEventMarkerEXT()) FAILED\n");
     }
 
     // get GPU driver timer - EGL_NV_system_time
@@ -728,7 +729,7 @@ static int      _egl_init       (s52engine *engine)
             LOGI("DEBUG: eglGetSystemTimeFrequencyNV(): freg:%u\n", (guint)freq);
         }
         _eglGetSystemTimeNV = (PFNEGLGETSYSTEMTIMENVPROC) eglGetProcAddress("eglGetSystemTimeNV");
-        if (_eglGetSystemTimeNV) {
+        if (NULL != _eglGetSystemTimeNV) {
             EGLuint64NV time = _eglGetSystemTimeNV();
             LOGI("DEBUG: eglGetSystemTimeNV(): time:%u\n", (guint)time);
         }
@@ -780,6 +781,9 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     //LOGE("s52egl:_egl_beg() .. \n");
     g_timer_reset(_timer);
 
+    //EGL_SUCCESS             0x3000
+    //LOGI("s52egl:_egl_beg(): eglGetError(): 0x%x\n", eglGetError());
+
     // Android-09, Blit x10 slower whitout
     // Android-19, no diff
     /*
@@ -829,13 +833,14 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     }
     */
 
-    //*
+#if !defined(S52_USE_MESA3D)
+    // Mesa3D 10.1 generate a glError() in _checkError(): from S52_GL_begin() -0-: 0x502 (GL_INVALID_OPERATION)
+    // Note: egltrace.so (apitrace) handle it
     if (NULL != _glInsertEventMarkerEXT) {
-        //_glInsertEventMarkerEXT(g_utf8_strlen(tag, -1), tag);
-        _glInsertEventMarkerEXT(strlen(tag), tag);
-        //LOGI("s52egl:_egl_beg(): %s\n", tag);
+        //_glInsertEventMarkerEXT(strlen(tag), tag);
+        _glInsertEventMarkerEXT(0, tag);
     }
-    //*/
+#endif
 
     return TRUE;
 }
@@ -1160,9 +1165,20 @@ static int      _s52_init       (s52engine *engine)
 
         wmm = (int)(w / engine->dpi) * 25.4;  // inch to mm
         hmm = (int)(h / engine->dpi) * 25.4;
-#else
-        // Aspire 5542G - 15.6" HD 1366 x 768 pixel resolution
-        // dual-screen: 2646 x 1024, 700 x 271 mm
+
+#else   // S52_USE_ANDROID
+
+#ifdef SET_SCREEN_SIZE
+        // Acer Aspire 5542G - 15.6" HD 1366 x 768 pixels
+        w   = engine->width  = 1366;
+        h   = engine->height =  768;
+        double diagPx = sqrt(w*w + h*h);  // diagonal pixels
+        double diagMM = 15.6 * 24.5;      // diagonal mm
+        wmm = engine->wmm    =  diagMM/diagPx * w;
+        hmm = engine->hmm    =  diagMM/diagPx * h;
+
+#else   // SET_SCREEN_SIZE
+        // dual-screen: 2646 x 1024 pixels, 700 x 271 mm
         w   = XDisplayWidth   (engine->dpy, 0);
         wmm = XDisplayWidthMM (engine->dpy, 0);
         h   = XDisplayHeight  (engine->dpy, 0);
@@ -1172,18 +1188,14 @@ static int      _s52_init       (s52engine *engine)
         //h   = 1024;
         //hmm = 301; // wrong
 
-        wmm = engine->wmm    =  376;
+        //wmm = engine->wmm    =  376;
         //hmm = engine->hmm    =  307;
-        hmm = engine->hmm    =  200;
-        //w   = engine->width  = 1366;
-        w   = engine->width  = 1280;
-        //h   = engine->height =  768;
-        h   = engine->height =  693;
+        //hmm = engine->hmm    =  200;
+        //w   = engine->width  = 1280;
+        //h   = engine->height =  693;
 
-        // EGL_UNKNOWN (-1)
-        //wmm = engine->wmm;
-        //hmm = engine->hmm;
-#endif
+#endif  // SET_SCREEN_SIZE
+#endif  // S52_USE_ANDROID
 
 #ifdef S52_USE_LOG
         // Nexus: no root, can't do: $ su -c "setprop log.redirect-stdio true"
@@ -1202,7 +1214,6 @@ static int      _s52_init       (s52engine *engine)
 
         S52_setViewPort(0, 0, w, h);
     }
-
 
 #ifdef S52_USE_ANDROID
     // read cell location fron s52.cfg
@@ -1224,7 +1235,7 @@ static int      _s52_init       (s52engine *engine)
     // Portneuf
     //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
     //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
-    //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+    //S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
 #endif
 
 #ifdef S52_USE_TEGRA2
@@ -1236,7 +1247,7 @@ static int      _s52_init       (s52engine *engine)
     // Portneuf
     //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA479017.000", NULL);
     //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
-    //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+    //S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
 #endif
 
 #else  // S52_USE_ANDROID
@@ -1267,7 +1278,7 @@ static int      _s52_init       (s52engine *engine)
     // RADAR - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/radar/RADAR_imitator/out.raw", NULL);
 
-    //S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+    //S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
 
 #endif  // S52_USE_ANDROID
 
@@ -1312,8 +1323,8 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
     // -- DEPTH COLOR ------------------------------------
 
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the GPU]
@@ -1378,17 +1389,14 @@ static int      _s52_init       (s52engine *engine)
 
 #ifdef S52_USE_ADRENO
     // Nexus 7 (2013) [~323 ppi]
-    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
-
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.2);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
 #endif
 
-#ifdef S52_USE_MESA3D
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
-#endif
+//#ifdef S52_USE_MESA3D
+//    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
+//    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
+//#endif
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
     //S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
@@ -1398,6 +1406,7 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
     S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
 
+    //*
     // debug - use for timing rendering
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
@@ -1405,6 +1414,7 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
+    //*/
 
     // if first start, find where we are looking
     _s52_computeView(&engine->state);
@@ -1446,7 +1456,7 @@ static int      _s52_init       (s52engine *engine)
 
 #ifdef S52_USE_RADAR
     _radar_init();
-    S52_setMarinerParam(S52_MAR_DISP_RASTER, 1.0);
+    S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
     S52_setRADARCallBack(_s52_radar_cb1, Rmax);
     S52_setRADARCallBack(_s52_radar_cb2, Rmax);
 #endif
@@ -2885,7 +2895,7 @@ static int      _X11_handleXevent(gpointer user_data)
             unsigned int keycode = ((XKeyEvent *)&event)->keycode;
             unsigned int keysym  = XkbKeycodeToKeysym(engine->dpy, keycode, 0, 1);
 
-            // FIXME: use switch on leysym
+            // FIXME: use switch on keysym
 
             // quit
             if (XK_Escape == keysym) {
