@@ -199,7 +199,7 @@ static double _MARparamVal[] = {
 
     1.0,      // 44 - S52_MAR_DISP_VRMEBL_LABEL - display bearing / range label on VRMEBL (on/off)
 
-    0.0,      // 45 - S52_MAR_DISP_RASTER - display Raster:RADAR,Bathy,... (on/off) (default off)
+    0.0,      // 45 - S52_MAR_DISP_RADAR_LAYER - display Raster: RADAR, Bathy, ... (on/off) (default off)
 
     46.0      // number of parameter type
 };

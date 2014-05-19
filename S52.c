@@ -361,6 +361,9 @@ static char _version[] = "$Revision: 1.126 $\n"
 #ifdef S52_USE_EGL
       "S52_USE_EGL\n"
 #endif 
+#ifdef S52_USE_GL1
+      "S52_USE_GL1\n"
+#endif
 #ifdef S52_USE_GL2
       "S52_USE_GL2\n"
 #endif
@@ -415,9 +418,11 @@ static EGL_cb _eglBeg = NULL;
 static EGL_cb _eglEnd = NULL;
 static void  *_EGLctx = NULL;
 // WARNING: call BEFORE mutex
-#define EGL_BEG(tag)    if (NULL != _eglBeg) {                   \
-                            if (FALSE == _eglBeg(_EGLctx,#tag))  \
-    					        return FALSE;                    \
+#define EGL_BEG(tag)    if (NULL != _eglBeg) {                    \
+                           if (FALSE == _eglBeg(_EGLctx,#tag)) {  \
+                                goto exit;                        \
+                                return FALSE;                     \
+                           }                                      \
 						}
 
 // WARNING: call AFTER mutex
@@ -771,7 +776,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
         case S52_MAR_DISP_WORLD          : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_RND_LN_END     : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_VRMEBL_LABEL   : val = _validate_bool(val);                   break;
-        case S52_MAR_DISP_RASTER         : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_RADAR_LAYER    : val = _validate_bool(val);                   break;
 
         case S52_CMD_WRD_FILTER          : val = _validate_filter(val);                 break;
 
@@ -1766,7 +1771,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     // set default to show all text
     S52_MP_setTextDisp(0, 100, TRUE);
 
-#if !defined(S52_USE_GLES2)
+#ifdef S52_USE_GL1
     // broken on GL1 (it use stencil)
     S52_MP_set(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
 #endif
@@ -4087,14 +4092,8 @@ static int        _draw()
 // draw object inside view
 // then draw object's text
 {
-    //for (guint i=_cellList->len; i>0; --i) {
     for (guint i=_cellList->len; i>1; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
-
-    // FIXME: assume that len > 0 because of MARINER
-    //guint n = _cellList->len-1;
-    //for (guint i=n; i>0; --i) {
-    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         g_atomic_int_get(&_atomicAbort);
         if (TRUE == _atomicAbort) {
@@ -4109,15 +4108,15 @@ static int        _draw()
 
 #ifdef S52_USE_GLES2
         // draw radar (raster)
-        if (1.0 == S52_MP_get(S52_MAR_DISP_RASTER))
+        if (1.0 == S52_MP_get(S52_MAR_DISP_RADAR_LAYER))
             _drawRaster();
 #endif
 
         // draw over radar
         g_ptr_array_foreach(c->objList_over, (GFunc)S52_GL_draw, NULL);
 
-        // draw text
         // FIXME: implicit call to S52_PL_hasText() again
+        // draw text
         g_ptr_array_foreach(c->textList,     (GFunc)S52_GL_drawText, NULL);
     }
 
@@ -4131,7 +4130,11 @@ DLL int    STD S52_draw(void)
 
     S52_CHECK_INIT;
 
+    //static int  cnt = 0;
+    //static char drawTag[64];
+    //g_snprintf(drawTag, 64, "%s-%i", "DRAW", cnt++);
     EGL_BEG(DRAW);
+    //EGL_BEG(drawTag);
 
 
     // do not wait if an other thread is allready drawing
@@ -4346,7 +4349,11 @@ DLL int    STD S52_drawLast(void)
         return TRUE;
 
 #if !defined(S52_USE_RADAR)
+    //static int  cnt = 0;
+    //static char drawTag[64];
+    //g_snprintf(drawTag, 64, "%s-%i", "LAST", cnt++);
     EGL_BEG(LAST);
+    //EGL_BEG(drawTag);
 #endif
 
 #ifdef S52_USE_ANDROID
@@ -4547,6 +4554,7 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
     // FIXME: check x,y
     S52_GL_drawStrWin(pixels_x, pixels_y, colorName, bsize, str);
 
+exit:
     GMUTEXUNLOCK(&_mp_mutex);
 
     EGL_END(STR);

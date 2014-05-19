@@ -133,7 +133,7 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_DISP_VRMEBL_LABEL   = 44,   // display bearing / range label on VRMEBL (on/off)
 
-    S52_MAR_DISP_RASTER         = 45,   // display Raster:RADAR,Bathy,... (on/off) (default off)
+    S52_MAR_DISP_RADAR_LAYER    = 45,   // display Raster: RADAR, Bathy, ... (on/off) (default off)
 
     // FIXME: DISP TEXT SHADOW - 0-7 bit: N NE E SE S SW W NW, 0 - off
 
@@ -700,6 +700,7 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
  * @texRadius: (in): texture radius (pixels), if 0 free cb
  *
  * Signal that libS52 is at RADAR layer in the layer's sequence in S52_draw()
+ * (compile with S52_USE_RADAR)
  *
  * S52_RADAR_cb return alpha texture data
  * @cLat: (in): center latutude in deg
