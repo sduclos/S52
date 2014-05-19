@@ -70,8 +70,6 @@ typedef struct _prim {
 
 typedef struct _S57_prim {
     GArray *list;      // list of _prim in 'vertex'
-    // FIXME: optimisation: use XY, so that the GPU move, internaly, 1/3 less data -OR- not GPU make no diff of moving 2D or 3D
-    // but this is useless if no LOD for ENC - zooming out will add 10x more data
     GArray *vertex;    // XYZ geographic coordinate (bouble or float for GLES2 since some go right in the GPU - ie line)
     guint   DList;     // display list of the above
 } _S57_prim;

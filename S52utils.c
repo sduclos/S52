@@ -67,11 +67,15 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
     snprintf(buf, MAX, "%s:%i in %s(): ", file, line, function);
 
 	int size = (int) strlen(buf);
-	if (size < MAX) {
+    if (size < MAX) {
 		va_list argptr;
 		va_start(argptr, frmt);
-		vsnprintf(&buf[size], MAX - size, frmt, argptr);
-		va_end(argptr);
+		int n = vsnprintf(&buf[size], MAX - size, frmt, argptr);
+        va_end(argptr);
+        if (n == (MAX-size)) {
+            g_print("WARNING: string buffer FULL\n");
+            g_assert(0);
+        }
 	}
 
     g_print("%s", buf);

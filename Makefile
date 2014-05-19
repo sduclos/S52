@@ -66,18 +66,17 @@ CXX  = g++ -fPIC
 
 # win32: check this _MINGW32_
 s52win32 : MINGW = /usr/bin/i586-mingw32msvc-
-s52win32 : CC    = $(MINGW)gcc -g -O0 -Wall -DG_DISABLE_ASSERT -D_MINGW -std=c99
-s52win32 : CXX   = $(MINGW)g++ -g -O0 -Wall -DG_DISABLE_ASSERT -D_MINGW
-#s52win32 : CC    = winegcc -g -std=c99 -O0 -Wall -DG_DISABLE_ASSERT -D_MINGW
+s52win32 : CC    = $(MINGW)gcc -g -O0 -Wall -m32 -std=c99
+s52win32 : CXX   = $(MINGW)g++ -g -O0 -Wall -m32
 
 #s52eglw32: MINGW = /usr/bin/i686-w64-mingw32-
 s52eglw32: MINGW = /usr/bin/i586-mingw32msvc-
-s52eglw32: CC    = $(MINGW)gcc -g -O0 -Wall -DG_DISABLE_ASSERT -D_MINGW -m32 -std=gnu99
-s52eglw32: CXX   = $(MINGW)g++ -g -O0 -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
+s52eglw32: CC    = $(MINGW)gcc -g -O0 -Wall -m32 -std=gnu99
+s52eglw32: CXX   = $(MINGW)g++ -g -O0 -Wall -m32
 
-s52win32 : CXX  = $(CC)     # hack
-s52gv    : CXX  = $(CC)     # hack
-s52gv2   : CXX  = $(CC)     # hack
+s52win32 : CXX  = $(CC)  # hack
+s52gv    : CXX  = $(CC)  # hack
+s52gv2   : CXX  = $(CC)  # hack
 
 s52win32 s52eglw32: LIBWIN32PATH = ../../mingw
 
@@ -121,7 +120,9 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # NOTE: -D_REENTRANT add this if threading
 # NOTE: signal is handled by glib-2.0 as of gtk+-2.0
 #
+#
 # *** experimental ***
+#
 # Text:
 # -DS52_USE_COGL         - used to test text rendering from COGL
 # -DS52_USE_FTGL         - text rendering
@@ -129,7 +130,8 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_FREETYPE_GL  - text rendering need -DS52_USE_GLES2
 # -DS52_USE_TXT_SHADOW   - add 'shadow' to Text
 #
-# -DS52_USE_OGR_FILECOLLECTOR:
+# S52/S57:
+# -DS52_USE_OGR_FILECOLLECTOR
 #        - compile with g++ to use gdal/ogr s57filecollector()
 #        - add 'extern "C"' to ogr/ogrsf_frmts/s57.h:40 S57FileCollector()  -or- compile S52 with g++
 #        - for Windows file path in CATALOG to work on unix apply patch in doc/s57filecollector.cpp.diff
@@ -141,24 +143,36 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_RADAR        - skip swapbuffer between DRAW & LAST cycle, skip read/write FB
 # -DS52_USE_AFGLOW       - experimental synthetic after glow
 #
+# Debug:
 # -DS52_DEBUG            - add more info for debugging libS52 (ex _checkError() in S52GL.c)
 # -DS52_USE_LOG          - log every S52_* in tmp file
 # -DG_DISABLE_ASSERT     - disable g_assert()
+# -DS52_USE_BACKTRACE    - debug
 #
+# Network:
 # -DS52_USE_DBUS         - mimic S52.h
 # -DS52_USE_SOCK         - same as DBus - socket & WebSocket - need ./lib/parson
 # -DS52_USE_PIPE         - same as DBus, in a day
 # -DS52_USE_GOBJECT      - make S52objH an int64 for gjs (Javascript compiler)
-# -DS52_USE_SYM_AISSEL01 - experimental - symbol in plib-test-priv.rle
-# -DS52_USE_BACKTRACE    - debug
+#
+# OpenGL:
+# -DS52_USE_MESA3D       - Mesa drive specific code
+# -DS52_USE_EGL          - EGL callback from libS52
 # -DS52_USE_OPENGL_VBO   - GL version 1.5 or greater.
-# -DS52_USE_EGL          - for GLES2
-# -DS52_USE_GL2          - GL only stuff
-# -DS52_USE_GLES2        - need VBO
+# -DS52_USE_GL1          - GL1.x
+# -DS52_USE_GL_FIXFUNC   - GL1.x (same as GL1 - old OpenGL)
+# -DS52_USE_GL2          - GL2.x
+# -DS52_USE_GLES2        - GLES2.x
+# -DS52_USE_GL_GLSL      - GL2.x, GLES2.x (new OpenGL)
+#
+# ARM:
 # -DS52_USE_ANDROID      - build for Android/ARM
 # -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
 # -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7 (2013))
-# -DS52_USE_MESA3D       - use Mesa drive
+#
+# MinGW:
+# -D_MINGW
+
 
 # default CFLAGS for default target
 CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl`  \
@@ -204,11 +218,12 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
                   `gdal-config --cflags`          \
                   -DS52_USE_PROJ                  \
                   -DS52_USE_GLIB2                 \
+                  -DS52_USE_GL1                   \
                   -DS52_USE_OPENGL_VBO            \
                   -DS52_USE_FTGL                  \
                   -DS52_DEBUG $(DBG)
 
-# EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
+# EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord (use by afterglow)
 #                  `pkg-config  --cflags glib-2.0 lcms egl glesv2`
 #                  `pkg-config  --cflags glib-2.0 lcms egl gl`
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
@@ -262,9 +277,6 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_SOCK                        \
                      -DS52_USE_TXT_SHADOW
 
-#-DS52_USE_LOG
-#-DS52_DEBUG $(DBG)
-
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
                      -I$(S52DROIDINC)/glib-2.0             \
                      -I$(S52DROIDINC)/glib-2.0/include     \
@@ -275,7 +287,6 @@ s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
                      $(DEFS)
 
 # check this; gv use glib-1 S52 use glib-2
-#                 -DS52_USE_PROJ
 s52gv  : CFLAGS = `glib-config --cflags`                \
                   `gdal-config --cflags`                \
                   -DS52_USE_GV $(DBG)                   \
@@ -316,6 +327,8 @@ s52win32 : CFLAGS   = -mms-bitfields                         \
                       -DS52_USE_PROJ                         \
                       -DS52_USE_OGR_FILECOLLECTOR            \
                       -DS52_USE_LOG                          \
+                      -DG_DISABLE_ASSERT                     \
+                      -D_MINGW                               \
                       -DS52_DEBUG $(DBG)
 
 s52eglw32 : GDALPATH = ../../../gdal/gdal-1.7.2-mingw
@@ -340,7 +353,9 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
                       -DS52_USE_OGR_FILECOLLECTOR    \
                       -DS52_USE_SYM_VESSEL_DNGHL     \
                       -DS52_USE_LOG                  \
-                      -DS52_DEBUG
+                      -DG_DISABLE_ASSERT             \
+                      -D_MINGW                       \
+                      -DS52_DEBUG $(DBG)
 
 
 ############### LIBS setup ##############################
@@ -478,6 +493,7 @@ test/s52gtk3egl:
 
 # FIXME: remove DEPRECATED step to cd in test
 #	(cd test; make s52eglarm; cd android; make)
+
 test/s52eglarm:
 	(cd test/android; make)
 
@@ -557,6 +573,9 @@ err.txt: *.c *.h
 	cppcheck --enable=all $(DEFS) *.c 2> err.txt
 
 
+############### Notes ##############################
+#
+#
 
 # git:
 #   git init (one time)
@@ -565,17 +584,12 @@ err.txt: *.c *.h
 #   git remote add origin https://github.com/sduclos/S52.git (one time !)
 #   git push -u origin master (sync local .git with github !)
 
-# note on working with git
-#
-# SD 2012OCT06
-
-# 0 - init (do once)
+# --- do once ---
+# 0 - init
 # Assigns the original repo to a 'remote' called "upstream"
 # $ git remote add upstream https://github.com/rikulo/rikulo
 
-
 # --- normal flow ---
-
 # 1 - sync .git with official git
 # Fetches any new changes from the original repo
 # Pulls in changes not present in your local repository,
