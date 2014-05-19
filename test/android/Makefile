@@ -140,3 +140,8 @@ distclean: clean
 # mksh
 # export COLUMNS=140
 # export LINES=60
+
+# Note: to start s52ui (the HTML UI that replace sl4agps) in android by hand
+# adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/.s52ui
+# adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/android.app.NativeActivity
+
