@@ -1718,7 +1718,7 @@ static int      _initS52()
     // init decoration (scale bar, North arrow, unit, calib.)
     S52_newCSYMB();
 
-    /*
+    //*
     _setOWNSHP();
 
     _setVRMEBL();
