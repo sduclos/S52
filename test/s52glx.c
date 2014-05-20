@@ -148,27 +148,21 @@ int main(int argc, char* argv[])
     }
 
     {   // init S52 lib (Screen No 0)
-        //int h   = XDisplayHeight  (dpy, 0);
-        //int hmm = XDisplayHeightMM(dpy, 0);
-        //int w   = XDisplayWidth   (dpy, 0);
-        //int wmm = XDisplayWidthMM (dpy, 0);
+#ifdef SET_SCREEN_SIZE
         int w      = 1280;
         int h      = 1024;
         int wmm    = 376;
-        //hmm    = 301; // wrong
         int hmm    = 307;
-
+#else
+        int h   = XDisplayHeight  (dpy, 0);
+        int hmm = XDisplayHeightMM(dpy, 0);
+        int w   = XDisplayWidth   (dpy, 0);
+        int wmm = XDisplayWidthMM (dpy, 0);
+#endif
         S52_init(w, h, wmm, hmm, NULL);
     }
 
     S52_loadCell(NULL, NULL);
-
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
-    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);   // pattern broken on GL1.x
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
 
     { // main loop
         XEvent event;
@@ -176,13 +170,17 @@ int main(int argc, char* argv[])
             do {
                 XNextEvent(dpy, &event);
                 switch (event.type) {
-                case ConfigureNotify:
-                    S52_setViewPort(0, 0, event.xconfigure.width, event.xconfigure.height);
+                case ConfigureNotify: break;
+                case GraphicsExpose:
+                    S52_setViewPort(0, 0, event.xconfigure.width, event.xconfigure.height); break;
                 //case ...
 
                 }
             } while (XPending(dpy));
             S52_draw();
+            // FIXME
+            //S52_drawLast();
+
             glXSwapBuffers(dpy,  win);
         }
     }
