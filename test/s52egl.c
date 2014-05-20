@@ -1435,7 +1435,7 @@ static int      _s52_init       (s52engine *engine)
     _s52_setupLEGLIN();
 
     // wind farme for testing centroids in a concave poly
-    //_s52_setupPRDARE(&engine->state);
+    _s52_setupPRDARE(&engine->state);
 
 
 #ifdef USE_FAKE_AIS
@@ -1448,9 +1448,6 @@ static int      _s52_init       (s52engine *engine)
 #endif
 
 #ifdef USE_AIS
-    //G_BREAKPOINT();
-    //g_on_error_query(NULL);
-
     s52ais_initAIS();
 #endif
 
