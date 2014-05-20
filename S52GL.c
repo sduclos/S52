@@ -54,7 +54,23 @@
 #if defined(S52_USE_GL1) && defined(S52_USE_GL2)
 #error "GL1 or GL2, not both"
 #endif
+#if !defined(S52_USE_GL1) && !defined(S52_USE_GL2)
+#error "must define GL1 or GL2"
+#endif
 
+// include the apropriate declaration/definition
+// GL1.x
+#ifdef S52_USE_GL1
+#include "_GL1.i"
+#endif
+// GL2.x
+#ifdef S52_USE_GL2
+#include "_GL2.i"
+#endif
+// GL3.x
+//#ifdef S52_USE_GL2
+//#include "_GL3.i"
+//#endif
 
 // debug - ATI
 // glGetIntegerv(GL_ATI_meminfo, GLint *params);
@@ -67,6 +83,9 @@
       param[2] - total auxiliary memory free
       param[3] - largest auxiliary free block
 */
+// NOTE: rubber band in GL 1.x
+// glEnable(GL_COLOR_LOGIC_OP); glLogicOp(GL_XOR);
+
 
 
 // experiment OpenGL ES SC
@@ -82,71 +101,14 @@ typedef GLfloat GLdouble;
 #define GL_UNSIGNED_INT     0x1405  // byte size of a dispaly list
 #define GL_DBL_FLT          GL_FLOAT
 #endif  // S52_USE_OPENGL_SAFETY_CRITICAL
+
 #define GL_DBL_FLT          GL_DOUBLE
-
-// NOTE: rubber band in GL 1.x
-// glEnable(GL_COLOR_LOGIC_OP); glLogicOp(GL_XOR);
-
-#ifdef S52_USE_GLES2
-#ifdef S52_USE_GL2
-
-// FRIXME: these include are also at the end
-#include <GL/gl.h>
-#include <GL/glext.h>
-
-
-#else   // S52_USE_GL2
-#include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
-#endif  // S52_USE_GL2
-
-typedef double GLdouble;
-
-// convert float to double for tess
-static GArray *_tessWorkBuf_d  = NULL;
-// for converting geo double to VBO float
-static GArray *_tessWorkBuf_f  = NULL;
-
-// glsl main
-static GLint  _programObject  = 0;
-static GLuint _vertexShader   = 0;
-static GLuint _fragmentShader = 0;
-
-// glsl uniform
-static GLint _uProjection = 0;
-static GLint _uModelview  = 0;
-static GLint _uColor      = 0;
-static GLint _uPointSize  = 0;
-static GLint _uSampler2d  = 0;
-static GLint _uBlitOn     = 0;
-static GLint _uStipOn     = 0;
-static GLint _uGlowOn     = 0;
-
-static GLint _uPattOn     = 0;
-static GLint _uPattGridX  = 0;
-static GLint _uPattGridY  = 0;
-static GLint _uPattW      = 0;
-static GLint _uPattH      = 0;
-
-// glsl varying
-static GLint _aPosition    = 0;
-static GLint _aUV          = 0;
-static GLint _aAlpha       = 0;
-
-#else   // S52_USE_GLES2
-
-#define GL_GLEXT_PROTOTYPES
-#include <GL/gl.h>
-#include "GL/glext.h"
-
-#endif  // S52_USE_GLES2
 
 
 ///////////////////////////////////////////////////////////////////
 //
 // FONTS  (test various libs)
 //
-
 
 #define S52_MAX_FONT  4
 
@@ -2874,7 +2836,7 @@ static GLubyte   _glColor4ub(S52_Color *c)
         if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS))
             glEnable(GL_BLEND);
 
-#ifdef S52_USE_GL2
+#if !defined(S52_USE_GLES2)
         glEnable(GL_ALPHA_TEST);
 #endif
     }
@@ -2997,7 +2959,7 @@ static int       _glCallList(S52_DListData *DListData)
 #endif  // S52_USE_OPENGL_VBO
 
         if ('0' != trans) {
-#ifdef S52_USE_GL2
+#if !defined(S52_USE_GLES2)
             glDisable(GL_ALPHA_TEST);
 #endif
         }
@@ -5485,10 +5447,9 @@ static int       _renderAP_NODATA_layer0(void)
     pt3.y = _pmin.v;
 
     S52_Color *chgrd = S52_PL_getColor("CHGRD");  // grey, conspic
+    _glColor4ub(chgrd);
 
 #ifdef S52_USE_GLES2
-    glUniform4f(_uColor, chgrd->R/255.0, chgrd->G/255.0, chgrd->B/255.0, (4 - (chgrd->trans - '0'))*TRNSP_FAC_GLES2);
-
     // draw using texture as a stencil -------------------
 
     vertex_t tile_x   = 32 * _scalex;
@@ -5562,7 +5523,6 @@ static int       _renderAP_NODATA_layer0(void)
 #else  // S52_USE_GLES2
 
     glEnable(GL_POLYGON_STIPPLE);
-    glColor4ub(chgrd->R, chgrd->G, chgrd->B, (4 - (chgrd->trans - '0'))*TRNSP_FAC);
 
     //glPolygonStipple(_nodata_mask);
 
@@ -6107,6 +6067,9 @@ static int       _renderAP_gl1(S52_obj *obj)
             }
         }
     }
+
+    // broken on GL1 (it use stencil)
+    return TRUE;
 
     S52_DListData *DListData = S52_PL_getDListData(obj);
     S57_geo *geoData = S52_PL_getGeo(obj);
@@ -8010,7 +7973,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     S52_GL_init();
 
-#ifdef S52_USE_GL2
+#if !defined(S52_USE_GLES2)
     // FALSE: enable GLSL gl_PointCood
     glEnable(GL_POINT_SPRITE);
 #endif
@@ -8659,7 +8622,7 @@ static int       _init_gl2(void)
         PRINTF("GL_VERTEX_SHADER\n");
 
         static const char vertSrc[] =
-#if !defined(S52_USE_GL2)
+#ifdef S52_USE_GLES2
             "precision lowp float;                                          \n"
             //"precision mediump float;                                     \n"
             //"precision highp   float;                                     \n"
@@ -8718,7 +8681,7 @@ static int       _init_gl2(void)
 
 
         static const char fragSrc[] =
-#if !defined(S52_USE_GL2)
+#ifdef S52_USE_GLES2
             "precision lowp float;                      \n"
             //"precision mediump float;                 \n"
             //"precision highp float;                   \n"
@@ -9023,10 +8986,8 @@ int        S52_GL_init(void)
     if (NULL == _objPick)
         _objPick = g_ptr_array_new();
 
-    _doInit = FALSE;
-
-    // signal to build S52 symbol
-    _symbCreated = FALSE;
+    // signal to (re)build S52 symbol
+    //_symbCreated = FALSE;
 
     //_DEBUG = TRUE;
 
@@ -9058,6 +9019,8 @@ int        S52_GL_init(void)
         return FALSE;
     }
 #endif
+
+    _doInit = FALSE;
 
     return TRUE;
 }
