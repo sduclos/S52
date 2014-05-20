@@ -315,7 +315,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.131\n"
+      "libS52 0.132\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -664,13 +664,14 @@ static double     _validate_filter(double mask)
     else
         crntMask += newMask;
 
-
-    //PRINTF("Filter State:\n");
-    //PRINTF("S52_CMD_WRD_FILTER_SY:%s\n",(S52_CMD_WRD_FILTER_SY & crntVal) ? "TRUE" : "FALSE");
-    //PRINTF("S52_CMD_WRD_FILTER_LS:%s\n",(S52_CMD_WRD_FILTER_LS & crntVal) ? "TRUE" : "FALSE");
-    //PRINTF("S52_CMD_WRD_FILTER_LC:%s\n",(S52_CMD_WRD_FILTER_LC & crntVal) ? "TRUE" : "FALSE");
-    //PRINTF("S52_CMD_WRD_FILTER_AC:%s\n",(S52_CMD_WRD_FILTER_AC & crntVal) ? "TRUE" : "FALSE");
-    //PRINTF("S52_CMD_WRD_FILTER_AP:%s\n",(S52_CMD_WRD_FILTER_AP & crntVal) ? "TRUE" : "FALSE");
+#ifdef S52_DEBUG
+    PRINTF("DEBUG: Command Word Filter State:\n");
+    PRINTF("DEBUG: S52_CMD_WRD_FILTER_SY:%s\n",(S52_CMD_WRD_FILTER_SY & crntMask) ? "TRUE" : "FALSE");
+    PRINTF("DEBUG: S52_CMD_WRD_FILTER_LS:%s\n",(S52_CMD_WRD_FILTER_LS & crntMask) ? "TRUE" : "FALSE");
+    PRINTF("DEBUG: S52_CMD_WRD_FILTER_LC:%s\n",(S52_CMD_WRD_FILTER_LC & crntMask) ? "TRUE" : "FALSE");
+    PRINTF("DEBUG: S52_CMD_WRD_FILTER_AC:%s\n",(S52_CMD_WRD_FILTER_AC & crntMask) ? "TRUE" : "FALSE");
+    PRINTF("DEBUG: S52_CMD_WRD_FILTER_AP:%s\n",(S52_CMD_WRD_FILTER_AP & crntMask) ? "TRUE" : "FALSE");
+#endif
 
     return (double)crntMask;
 }
@@ -1770,12 +1771,6 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 
     // set default to show all text
     S52_MP_setTextDisp(0, 100, TRUE);
-
-#ifdef S52_USE_GL1
-    // broken on GL1 (it use stencil)
-    S52_MP_set(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
-#endif
-
 
     // setup the virtual cell that will hold mariner's objects
     // NOTE: there is no IHO cell at scale '6', this garanty that
@@ -4549,17 +4544,24 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
 
     S52_CHECK_MUTX;
 
-    //PRINTF("X:%f Y:%f color:%s bsize:%i str:%s\n", pixels_x, pixels_y, colorName, bsize, str);
+    int ret = FALSE;
+    if (FALSE == (ret = _validate_screenPos(&pixels_x, &pixels_y))) {
+        PRINTF("WARNING: _validate_screenPos() failed\n");
+        goto exit;
+    }
 
-    // FIXME: check x,y
-    S52_GL_drawStrWin(pixels_x, pixels_y, colorName, bsize, str);
+    PRINTF("X:%f Y:%f color:%s bsize:%i str:%s\n", pixels_x, pixels_y, colorName, bsize, str);
+
+    ret = S52_GL_drawStrWin(pixels_x, pixels_y, colorName, bsize, str);
+
 
 exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     EGL_END(STR);
 
-    return TRUE;
+    return ret;
 }
 
 DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx)
