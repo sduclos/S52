@@ -3,8 +3,11 @@
 #
 
 
+2014MAY23
+    -mod split socket stuff in S52.c to _S52.i
+
 2014MAY20
-    -mod start spliting S5GL.c to _GL1.i / _GL2.i for GLx specific stuff
+    -mod start to spliting S5GL.c to _GL1.i / _GL2.i for GLx specific stuff
 
 2014MAY19
     -mod S52_drawStr() validate pixels_x, pixels_y

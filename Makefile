@@ -162,12 +162,13 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # OpenGL:
 # -DS52_USE_MESA3D       - Mesa drive specific code
 # -DS52_USE_EGL          - EGL callback from libS52
-# -DS52_USE_OPENGL_VBO   - GL version 1.5 or greater.
+# GL FIXFUNC:
 # -DS52_USE_GL1          - GL1.x
-# -DS52_USE_GL_FIXFUNC   - GL1.x, not used (same as GL1 - old OpenGL)
+# -DS52_USE_OPENGL_VBO   - GL1.5 or greater. Vertex Buffer Object
+# -DS52_USE_OPENGL_SC    - GL SAFETY_CRITICAL
+# GL GLSL:
 # -DS52_USE_GL2          - GL2.x
 # -DS52_USE_GLES2        - GLES2.x
-# -DS52_USE_GL_GLSL      - GL2.x, GLES2.x (OpenGL using shader GLSL)
 #
 # ARM:
 # -DS52_USE_ANDROID      - build for Android/ARM
