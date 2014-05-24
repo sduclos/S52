@@ -36,20 +36,6 @@
 // compiled with -std=gnu99 instead of -std=c99 will define M_PI
 #include <math.h>         // sin(), cos(), atan2(), pow(), sqrt(), floor(), INFINITY, M_PI
 
-// sanity checks
-#if defined(S52_USE_GLES2) && !defined(S52_USE_GL2)
-#define S52_USE_GL2
-#endif
-#if defined(S52_USE_FREETYPE_GL) && !defined(S52_USE_GL2)
-#error "Need GL2 for Freetype GL"
-#endif
-#if defined(S52_USE_GL1) && defined(S52_USE_GL2)
-#error "GL1 or GL2, not both"
-#endif
-#if !defined(S52_USE_GL1) && !defined(S52_USE_GL2)
-#error "must define GL1 or GL2"
-#endif
-
 
 ///////////////////////////////////////////////////////////////////
 // state
@@ -115,6 +101,21 @@ static int            _fb_format      = RGBA;
 //
 // include the apropriate declaration/definition
 //
+
+// sanity checks
+#if defined(S52_USE_GLES2) && !defined(S52_USE_GL2)
+#define S52_USE_GL2  // will load _GL2.i
+#endif
+#if defined(S52_USE_FREETYPE_GL) && !defined(S52_USE_GLES2)
+#error "Need GLES2 for Freetype GL"
+#endif
+#if defined(S52_USE_GL1) && defined(S52_USE_GL2)
+#error "GL1 or GL2, not both"
+#endif
+#if !defined(S52_USE_GL1) && !defined(S52_USE_GL2)
+#error "must define GL1 or GL2"
+#endif
+
 
 // GL1.x
 #ifdef S52_USE_GL1
@@ -1366,70 +1367,6 @@ static void      _glPopMatrix(void)
     return;
 }
 
-static void      _glTranslated(double x, double y, double z)
-{
-#ifdef S52_USE_GLES2
-    GLfloat t[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  (GLfloat) x, (GLfloat) y, (GLfloat) z, 1 };
-    //GLfloat t[16] = {1, (GLfloat) x, (GLfloat) y, (GLfloat) z,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1};
-
-    _multiply(_crntMat, t);
-
-    // optimisation - reset flag
-    if (GL_MODELVIEW == _mode)
-        _identity_MODELVIEW = FALSE;
-
-#else
-    glTranslated(x, y, z);
-#endif
-
-    return;
-}
-
-static void      _glScaled(double x, double y, double z)
-{
-#ifdef S52_USE_GLES2
-    GLfloat m[16];
-
-    _make_scale_matrix((GLfloat) x, (GLfloat) y, (GLfloat) z, m);
-
-    _multiply(_crntMat, m);
-
-    // optimisation - reset flag
-    if (GL_MODELVIEW == _mode)
-        _identity_MODELVIEW = FALSE;
-
-#else
-    glScaled(x, y, z);
-#endif
-
-    return;
-}
-
-static void      _glRotated(double angle, double x, double y, double z)
-// rotate on Z
-{
-#ifdef S52_USE_GLES2
-    GLfloat m[16];
-    // FIXME: handle only 0.0==x 0.0==y 1.0==z
-    // silence warning for now
-    (void)x;
-    (void)y;
-    (void)z;
-
-    _make_z_rot_matrix((GLfloat) angle, m);
-
-    _multiply(_crntMat, m);
-
-    // optimisation - reset flag
-    if (GL_MODELVIEW == _mode)
-        _identity_MODELVIEW = FALSE;
-#else
-    glRotated(angle, x, y, z);
-#endif
-
-    return;
-}
-
 static void      _glLoadIdentity(void)
 {
 #ifdef S52_USE_GLES2
@@ -1687,15 +1624,12 @@ static int       _win2prj(double *x, double *y)
 static projXY    _prj2win(projXY p)
 // convert coordinate: projected --> window (pixel)
 {
-    // FIXME: get MODELVIEW_MATRIX & PROJECTION_MATRIX once per draw
-    // less opengl call, less chance to mix up matrix in _prj2win()
-
     // FIXME: find a better way -
     if (0 == _pjm[0])
         return p;
 
     // debug
-    //PRINTF("_VP[]: %i,%i,%i,%i\n",_vp[0],_vp[1],_vp[2],_vp[3]);
+    //PRINTF("_VP[]: %i,%i,%i,%i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
 
 #ifdef S52_USE_GLES2
     float u = p.u;
@@ -2034,8 +1968,33 @@ static int       _DrawArrays(S57_prim *prim)
     return TRUE;
 }
 
-static int       _createDList(S57_prim *prim)
-// create or run display list
+//static int       _createDList(S57_prim *prim)
+static guint     _createDList(S57_prim *prim)
+// create display list
+{
+    guint DList = 0;
+    DList = glGenLists(1);
+    if (0 == DList) {
+        PRINTF("ERROR: glGenLists() failed\n");
+        g_assert(0);
+    }
+
+    glNewList(DList, GL_COMPILE);
+
+    _DrawArrays(prim);
+
+    glEndList();
+
+    S57_setPrimDList(prim, DList);
+
+    _checkError("_createDList()");
+
+    //return TRUE;
+    return DList;
+}
+
+static int       _callDList(S57_prim *prim)
+// run display list - create it first
 {
     guint     primNbr = 0;
     vertex_t *vert    = NULL;
@@ -2047,30 +2006,12 @@ static int       _createDList(S57_prim *prim)
 
     // no glIsList() in "OpenGL ES SC"
     if (GL_FALSE == glIsList(DList)) {
-        DList = glGenLists(1);
-        if (0 == DList) {
-            PRINTF("ERROR: glGenLists() failed\n");
-            g_assert(0);
-        }
-
-        glNewList(DList, GL_COMPILE);
-
-        _checkError("_createDList()");
-
-
-        _DrawArrays(prim);
-
-        glEndList();
-
-        S57_setPrimDList(prim, DList);
+        DList = _createDList(prim);
     }
 
-    if (GL_TRUE == glIsList(DList)) {
-        glCallList(DList);
-        //glCallLists(1, GL_UNSIGNED_INT, &DList);
-    }
+    glCallList(DList);
 
-    _checkError("_createDList()");
+    _checkError("_callDList()");
 
     return TRUE;
 }
@@ -2168,7 +2109,8 @@ static int       _fillarea(S57_geo *geoData)
         PRINTF("DEBUG: _VBODraw() failed [%s]\n", S57_getName(geoData));
     }
 #else
-    _createDList(prim);
+    //_createDList(prim);
+    _callDList(prim);
 #endif
 
     return TRUE;

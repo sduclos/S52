@@ -247,7 +247,6 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_BACKTRACE            \
                   -DS52_USE_EGL                  \
                   -DS52_USE_OPENGL_VBO           \
-                  -DS52_USE_GL2                  \
                   -DS52_USE_GLES2                \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_SOCK                 \
@@ -276,7 +275,6 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
               DEFS = -DS52_USE_GLIB2                       \
                      -DS52_USE_PROJ                        \
                      -DS52_USE_EGL                         \
-                     -DS52_USE_GL2                         \
                      -DS52_USE_GLES2                       \
                      -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_FREETYPE_GL                 \
@@ -405,6 +403,10 @@ s52gv2 : LIBS = `pkg-config  --libs glib-2.0 lcms` \
                  -lGL -lGLU  $(GV2LIBS)
 
 
+############### BUILD ##############################
+#
+#
+
 s52glx        : libS52.so    test/s52glx
 s52eglx       : libS52egl.so test/s52eglx
 s52gtk2egl    : libS52egl.so test/s52gtk2egl
@@ -428,6 +430,12 @@ S52raz-3.2.rle.o: S52raz.s
 	$(CC) -c S52raz.s -o $@
 
 %.o: %.c %.h S52.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+S52GL.o: S52GL.c _GL1.i _GL2.i S52.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+S52.o: S52.c _S52.i S52.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 ./lib/libtess/%.o: ./lib/libtess/%.c

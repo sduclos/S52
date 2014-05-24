@@ -21,9 +21,6 @@ static void        _glLoadIdentity(void);
 static void        _glUniformMatrix4fv_uModelview(void);
 static int         _glMatrixSet(VP);
 static int         _glMatrixDel(VP);
-static void        _glTranslated(double, double, double);
-static void        _glScaled(double, double, double);
-static void        _glRotated(double, double, double, double);
 static int         _pushScaletoPixel(int);
 static int         _popScaletoPixel(void);
 static GLubyte     _glColor4ub(S52_Color *);
@@ -204,7 +201,7 @@ static const char      *_freetype_gl_fontfilename       =
     ;  // editor efte get confuse if ';' at the end of the string
 
 typedef struct {
-    GLfloat x, y, z;       // position
+    GLfloat x, y, z;    // position
     GLfloat s, t;       // texture
 } _freetype_gl_vertex_t;
 
@@ -232,7 +229,7 @@ static int       _f2d(GArray *tessWorkBuf_d, guint npt, vertex_t *ppt)
     return TRUE;
 }
 
-static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt)
+static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt) 
 // convert array of double to array of float, geo to VBO
 {
     g_array_set_size(tessWorkBuf_f, 0);
@@ -246,7 +243,7 @@ static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt)
     return TRUE;
 }
 
-static int       _init_freetype_gl(void)
+static int       _init_freetype_gl(void) 
 {
     const wchar_t   *cache    = L" !\"#$%&'()*+,-./0123456789:;<=>?"
                                 L"@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
@@ -329,7 +326,7 @@ static int       _init_freetype_gl(void)
     return TRUE;
 }
 
-static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsigned int weight)
+static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsigned int weight) 
 // fill buffer whit triangles strip
 // experimental: smaller text size if second line
 {
@@ -407,7 +404,7 @@ static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsi
 // gles2 float Matrix stuff (by hand)
 //
 
-static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m)
+static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m) 
 {
    float c = cos(angle * M_PI / 180.0);
    float s = sin(angle * M_PI / 180.0);
@@ -421,7 +418,7 @@ static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m)
    m[5] =  c;
 }
 
-static void      _make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat *m)
+static void      _make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat *m) 
 {
    memset(m, 0, sizeof(GLfloat) * 16);
    m[0]  = xs;
@@ -430,7 +427,7 @@ static void      _make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat 
    m[15] = 1.0;
 }
 
-static void      _multiply(GLfloat *m, GLfloat *n)
+static void      _multiply(GLfloat *m, GLfloat *n) 
 {
    GLfloat tmp[16];
    const GLfloat *row, *column;
@@ -446,10 +443,10 @@ static void      _multiply(GLfloat *m, GLfloat *n)
    }
    memcpy(m, &tmp, sizeof tmp);
 }
-
+ 
 //------------ NOT USED -----------------------------
 #if 0
-static void      _mul_matrix(GLfloat *prod, const GLfloat *a, const GLfloat *b)
+static void      _mul_matrix(GLfloat *prod, const GLfloat *a, const GLfloat *b) 
 {
 #define A(row,col)  a[(col<<2)+row]
 #define B(row,col)  b[(col<<2)+row]
@@ -471,7 +468,7 @@ static void      _mul_matrix(GLfloat *prod, const GLfloat *a, const GLfloat *b)
 //------------ NOT USED -----------------------------
 
 
-static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[4], GLfloat out[4])
+static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[4], GLfloat out[4]) 
 {
     for (int i=0; i<4; i++) {
         out[i] = in[0] * matrix[0*4+i] +
@@ -481,7 +478,7 @@ static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[
     }
 }
 
-static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16])
+static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16]) 
 {
     GLfloat inv[16], det;
 
@@ -530,7 +527,7 @@ static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16])
     return GL_TRUE;
 }
 
-static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GLfloat r[16])
+static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GLfloat r[16]) 
 {
     for (int i=0; i<4; ++i) {
         for (int j=0; j<4; ++j) {
@@ -542,7 +539,7 @@ static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GL
     }
 }
 
-static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz,
+static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz, 
                              const GLfloat modelMatrix[16],
                              const GLfloat projMatrix[16],
                              const GLint   viewport[4],
@@ -577,7 +574,7 @@ static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz,
     return GL_TRUE;
 }
 
-static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
+static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz, 
                                const GLfloat modelMatrix[16],
                                const GLfloat projMatrix[16],
                                const GLint viewport[4],
@@ -621,7 +618,71 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
     return GL_TRUE;
 }
 
-static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
+static void      _glTranslated(double x, double y, double z) 
+{
+#ifdef S52_USE_GLES2
+    GLfloat t[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  (GLfloat) x, (GLfloat) y, (GLfloat) z, 1 };
+    //GLfloat t[16] = {1, (GLfloat) x, (GLfloat) y, (GLfloat) z,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1};
+
+    _multiply(_crntMat, t);
+
+    // optimisation - reset flag
+    if (GL_MODELVIEW == _mode)
+        _identity_MODELVIEW = FALSE;
+
+#else
+    glTranslated(x, y, z);
+#endif
+
+    return;
+}
+
+static void      _glScaled(double x, double y, double z) 
+{
+#ifdef S52_USE_GLES2
+    GLfloat m[16];
+
+    _make_scale_matrix((GLfloat) x, (GLfloat) y, (GLfloat) z, m);
+
+    _multiply(_crntMat, m);
+
+    // optimisation - reset flag
+    if (GL_MODELVIEW == _mode)
+        _identity_MODELVIEW = FALSE;
+
+#else
+    glScaled(x, y, z);
+#endif
+
+    return;
+}
+
+static void      _glRotated(double angle, double x, double y, double z) 
+// rotate on Z
+{
+#ifdef S52_USE_GLES2
+    GLfloat m[16];
+    // FIXME: handle only 0.0==x 0.0==y 1.0==z
+    // silence warning for now
+    (void)x;
+    (void)y;
+    (void)z;
+
+    _make_z_rot_matrix((GLfloat) angle, m);
+
+    _multiply(_crntMat, m);
+
+    // optimisation - reset flag
+    if (GL_MODELVIEW == _mode)
+        _identity_MODELVIEW = FALSE;
+#else
+    glRotated(angle, x, y, z);
+#endif
+
+    return;
+}
+
+static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len) 
 // render VBO static text (ie no data) or dynamic text
 {
     // Note: static text could also come from MIO's (ie S52_GL_LAST cycle)
@@ -675,7 +736,7 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
     return TRUE;
 }
 
-static GLuint    _loadShader(GLenum type, const char *shaderSrc)
+static GLuint    _loadShader(GLenum type, const char *shaderSrc) 
 {
     GLint compiled = GL_FALSE;
 
@@ -711,7 +772,7 @@ static GLuint    _loadShader(GLenum type, const char *shaderSrc)
     return shader;
 }
 
-static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
+static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask) 
 // make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
 {
     memset(rgba_mask, 0, 4*32*8*4);
@@ -737,7 +798,7 @@ static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
     return TRUE;
 }
 
-static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
+static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask) 
 // make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
 {
     memset(rgba_mask, 0x00, 8*4*4);
@@ -763,7 +824,7 @@ static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
     return TRUE;
 }
 
-static int       _initTexture(void)
+static int       _initTexture(void) 
 {
     if (0 != _nodata_mask_texID)
         return TRUE;
@@ -819,33 +880,12 @@ static int       _initTexture(void)
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
 
-    // ------------
-    // AA
-    /*
-     glBindTexture(GL_TEXTURE_2D, _aa_mask_texID);
-
-     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-
-     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-     //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 1, 8, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _aa_mask_alpha);
-     glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 2, 8, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _aa_mask_alpha);
-     //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 8, 1, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _aa_mask_alpha);
-
-     glBindTexture(GL_TEXTURE_2D, 0);
-     */
-
     _checkError("_renderAP_NODATA_layer0 -1-");
 
     return TRUE;
 }
 
-static int       _init_gl2(void)
+static int       _init_gl2(void) 
 {
     PRINTF("begin ..\n");
 
@@ -871,7 +911,11 @@ static int       _init_gl2(void)
         // ----------------------------------------------------------------------
 
         PRINTF("DEBUG: re-building '_programObject'\n");
-        _programObject  = glCreateProgram();
+        _programObject = glCreateProgram();
+        if (0 == _programObject) {
+            PRINTF("ERROR: glCreateProgram() FAILED\n");
+            g_assert(0);
+        }
 
         // ----------------------------------------------------------------------
         PRINTF("GL_VERTEX_SHADER\n");
@@ -905,10 +949,6 @@ static int       _init_gl2(void)
             "    v_alpha = aAlpha;                                          \n"
             "    gl_PointSize = uPointSize;                                 \n"
             "    gl_Position = uProjection * uModelview * aPosition;        \n"
-            // optimisation: uProjection * uModelview on CPU, remove one '*'
-            // and also remove one glUniformMatrix4fv call
-            // FIXME: find a way to accuratly time the diff
-            // gl_Position = uModelview * aPosition;
             "    if (1.0 == uPattOn) {                                      \n"
             "        v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;    \n"
             "        v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;    \n"
@@ -938,11 +978,7 @@ static int       _init_gl2(void)
         static const char fragSrc[] =
 #ifdef S52_USE_GLES2
             "precision lowp float;                      \n"
-            //"precision mediump float;                 \n"
-            //"precision highp float;                   \n"
-
             "uniform lowp sampler2D uSampler2d;         \n"
-            //"uniform mediump sampler2D uSampler2d;    \n"
 #else
             "uniform sampler2D uSampler2d;              \n"
 #endif
@@ -1123,7 +1159,7 @@ static int       _init_gl2(void)
     return TRUE;
 }
 
-static int       _renderTile(S52_DListData *DListData)
+static int       _renderTile(S52_DListData *DListData) 
 {
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
@@ -1163,7 +1199,7 @@ static int       _renderTile(S52_DListData *DListData)
 }
 
 
-static int       _renderAP_gl2(S52_obj *obj)
+static int       _renderAP_gl2(S52_obj *obj) 
 {
     S52_DListData *DListData = S52_PL_getDListData(obj);
 

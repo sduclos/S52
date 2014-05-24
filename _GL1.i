@@ -1,10 +1,11 @@
-// _GL1.i: definition & declaration for GL1.x
+// _GL1.i: definition & declaration for S52GL1.x
 //
 // SD 2014MAY20
 
 
-// NOTE: rubber band in GL 1.x
-// glEnable(GL_COLOR_LOGIC_OP); glLogicOp(GL_XOR);
+// NOTE: rubber band in GL1.x
+// glEnable(GL_COLOR_LOGIC_OP);
+// glLogicOp(GL_XOR);
 
 
 #define GL_GLEXT_PROTOTYPES
@@ -13,30 +14,32 @@
 
 #include <GL/glu.h>
 
-// alpha is 0.0 - 255.0
+// alpha is 0.0 - 255.0 in GL1.x
 #define TRNSP_FAC   255 * 0.25
 
 // experiment OpenGL ES SC
+// Note: ES SC has some GLES2.x and GL1.x features
 #ifdef S52_USE_OPENGL_SC
 #include "GL/es_sc_gl.h"
 typedef GLfloat GLdouble;
 #define glScaled            glScalef
 #define glRotated           glRotatef
 #define glTranslated        glTranslatef
-#define glVertex3d          glVertex3f
 #define GL_COMPILE          0x1300
 #define GL_UNSIGNED_INT     0x1405  // byte size of a dispaly list
-// BUG: access to matrix is in integer
-// BUT gluProject() for OpenGL ES use GLfloat (make sens)
-// so how to get matrix in float!
+// WARNING: matrix is in integer (GLint)
 static GLint    _mvm[16];       // OpenGL ES SC
 static GLint    _pjm[16];       // OpenGL ES SC
 #define GL_DBL_FLT          GL_FLOAT
 
 #else   // S52_USE_OPENGL_SC
 
-static GLdouble _mvm[16];       // modelview matrix
-static GLdouble _pjm[16];       // projection matrix
+#define _glScaled            glScaled
+#define _glRotated           glRotated
+#define _glTranslated        glTranslated
+
+static GLdouble _mvm[16];       // modelview  matrix used in _win2prj / _prj2win
+static GLdouble _pjm[16];       // projection matrix used in _win2prj / _prj2win
 #define GL_DBL_FLT          GL_DOUBLE
 
 #endif  // S52_USE_OPENGL_SC

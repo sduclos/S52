@@ -3,6 +3,9 @@
 #
 
 
+2014MAY24
+    -mod refactor & clean-up
+
 2014MAY23
     -mod split socket stuff in S52.c to _S52.i
 
