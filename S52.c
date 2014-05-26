@@ -364,9 +364,6 @@ static char _version[] = "$Revision: 1.126 $\n"
 #ifdef S52_USE_COGL
       "S52_USE_COGL\n"
 #endif
-#ifdef S52_USE_A3D
-      "S52_USE_A3D\n"
-#endif
 #ifdef S52_USE_FREETYPE_GL
       "S52_USE_FREETYPE_GL\n"
 #endif
