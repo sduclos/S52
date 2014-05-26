@@ -104,7 +104,7 @@ static int            _fb_format      = RGBA;
 
 // sanity checks
 #if defined(S52_USE_GLES2) && !defined(S52_USE_GL2)
-#define S52_USE_GL2  // will load _GL2.i
+#define S52_USE_GL2  // this signal to load _GL2.i
 #endif
 #if defined(S52_USE_FREETYPE_GL) && !defined(S52_USE_GLES2)
 #error "Need GLES2 for Freetype GL"
@@ -169,17 +169,6 @@ static PangoFontMap         *_PangoFontMap   = NULL;
 static PangoContext         *_PangoCtx       = NULL;
 static PangoLayout          *_PangoLayout    = NULL;
 #endif  // S52_USE_COGL
-
-#ifdef S52_USE_A3D
-#define LOG_TAG "s52a3d"
-#define LOG_DEBUG
-#include "a3d/a3d_log.h"
-#include "a3d/a3d_texfont.h"
-#include "a3d/a3d_texstring.h"
-static const char      *_a3d_font_file = "/data/data/nav.ecs.s52droid/files/whitrabt.tex.gz";
-static a3d_texfont_t   *_a3d_font      = NULL;
-static a3d_texstring_t *_a3d_str       = NULL;
-#endif  // S52_USE_A3D
 
 
 ///////////////////////////////////////////////////////////////////
@@ -892,7 +881,7 @@ static int       _gluQuadricDrawStyle(_GLUquadricObj* qobj, GLint style)
 
     return TRUE;
 }
-#endif //S52_USE_OPENGL_VBO
+#endif  // S52_USE_OPENGL_VBO
 
 
 static GLint     _initGLU(void)
@@ -906,7 +895,6 @@ static GLint     _initGLU(void)
     //
     {
         // hold vertex comming from GLU_TESS_COMBINE callback
-        //_tmpV = g_array_new(FALSE, FALSE, sizeof(coor3d));
         _tmpV = g_ptr_array_new();
 
         _tobj = gluNewTess();
@@ -1011,6 +999,7 @@ static GLint     _initGLU(void)
 
     {
 #ifdef S52_USE_OPENGL_VBO
+
         _qobj = _gluNewQuadric();
         _gluQuadricCallback(_qobj, _QUADRIC_BEGIN_DATA, (f)_glBegin);
         _gluQuadricCallback(_qobj, _QUADRIC_END_DATA,   (f)_glEnd);
@@ -1219,31 +1208,6 @@ static int       _initCOGL(void)
     pango_layout_get_extents(_PangoLayout, NULL, &hello_label_size);
     int hello_label_width  = PANGO_PIXELS(hello_label_size.width);
     int hello_label_height = PANGO_PIXELS(hello_label_size.height);
-
-    return TRUE;
-}
-#endif
-
-#ifdef S52_USE_A3D
-static int       _initA3D(void)
-{
-    PRINTF("_initA3D() .. -0-\n");
-	_a3d_font = a3d_texfont_new(_a3d_font_file);
-    if(NULL == _a3d_font) {
-        PRINTF("a3d_texfont_new() .. failed\n");
-        return FALSE;
-    }
-
-    PRINTF("_initA3D() .. -1-\n");
-	//_a3d_str = a3d_texstring_new(_a3d_font, 16, 48, A3D_TEXSTRING_TOP_LEFT, 1.0f, 1.0f, 0.235f, 1.0f);   // yellow
-	//_a3d_str = a3d_texstring_new(_a3d_font, 16, 48, A3D_TEXSTRING_TOP_LEFT, 0.0f, 0.0f, 0.0f, 1.0f);      // black
-	_a3d_str = a3d_texstring_new(_a3d_font, 10, 12, A3D_TEXSTRING_TOP_LEFT, 0.0f, 0.0f, 0.0f, 1.0f);      // black
-    if(NULL == _a3d_str) {
-        PRINTF("a3d_texstring_new() .. failed\n");
-        return FALSE;
-    }
-
-    PRINTF("_initA3D() .. -2-\n");
 
     return TRUE;
 }
@@ -2267,7 +2231,8 @@ static int       _glCallList(S52_DListData *DListData)
             GLint count = 0;
 
             while (TRUE == S57_getPrimIdx(DListData->prim[i], j, &mode, &first, &count)) {
-                if (_QUADRIC_TRANSLATE == mode) {
+                //if (_QUADRIC_TRANSLATE == mode) {
+                if (_TRANSLATE == mode) {
                     GArray *vert = S57_getPrimVertex(DListData->prim[i]);
 
                     vertex_t *v = (vertex_t*)vert->data;
@@ -4967,7 +4932,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     // static text
     guint len = 0;
     if ((S52_GL_DRAW==_crnt_GL_cycle) && (NULL!=obj)) {
-        GLuint vboID = S52_PL_getFreetypeglVBO(obj, &len);
+        GLuint vboID = S52_PL_getFreetypeGL_VBO(obj, &len);
         if (GL_TRUE == glIsBuffer(vboID)) {
             // connect to data in VBO GPU
             glBindBuffer(GL_ARRAY_BUFFER, vboID);
@@ -4987,7 +4952,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
                 return FALSE;
             }
 
-            S52_PL_setFreetypeglVBO(obj, vboID, _freetype_gl_buffer->len);
+            S52_PL_setFreetypeGL_VBO(obj, vboID, _freetype_gl_buffer->len);
 
             // bind VBOs for vertex array
             glBindBuffer(GL_ARRAY_BUFFER, vboID);      // for vertex coordinates
@@ -5097,24 +5062,6 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     //cogl_pango_render_layout(_PangoLayout, 0, 0, &color, 0);
     //cogl_pango_render_layout(_PangoLayout, 100, 100, &white, 0);
     //cogl_pango_render_layout(_PangoLayout, p.u, p.v, &white, 0);
-#endif
-
-#ifdef S52_USE_A3D
-    a3d_texstring_printf(_a3d_str, "%s", str);
-    //a3d_texstring_printf(_a3d_str, "%s", "test");
-
-    _glMatrixSet(VP_PRJ);
-
-    //PRINTF("x:%f, y:%f\n", x, y);
-    projUV p = {x, y};
-    p = _prj2win(p);
-    //PRINTF("u:%f, v:%f\n", p.u, p.v);
-
-    _glMatrixDel(VP_PRJ);
-
-    a3d_texstring_draw(_a3d_str, p.u, _vp[3]-p.v , _vp[2], _vp[3]);
-    //a3d_texstring_draw(_a3d_str, 100.0f, 100.0f, _vp[2], _vp[3]);
-
 #endif
 
 #ifdef S52_USE_FTGL
@@ -5409,7 +5356,8 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 #ifdef  S52_USE_OPENGL_VBO
                 // compose symb need translation at render-time
                 // (or add offset everything afterward!)
-                _glBegin(_QUADRIC_TRANSLATE, vertex);
+                //_glBegin(_QUADRIC_TRANSLATE, vertex);
+                _glBegin(_TRANSLATE, vertex);
                 _vertex3f(data, vertex);
                 _glEnd(vertex);
 #else
@@ -6849,13 +6797,13 @@ int        S52_GL_del(S52_obj *obj)
 #ifdef S52_USE_FREETYPE_GL
         {   // delete text
             guint len;
-            guint vboID = S52_PL_getFreetypeglVBO(obj, &len);
+            guint vboID = S52_PL_getFreetypeGL_VBO(obj, &len);
             if (GL_TRUE == glIsBuffer(vboID))
                 glDeleteBuffers(1, &vboID);
 
             len   = 0;
             vboID = 0;
-            S52_PL_setFreetypeglVBO(obj, vboID, len);
+            S52_PL_setFreetypeGL_VBO(obj, vboID, len);
         }
 #endif
 
@@ -7001,11 +6949,6 @@ int        S52_GL_init(void)
 #ifdef S52_USE_COGL
     _initCOGL();
 #endif
-
-#ifdef S52_USE_A3D
-    _initA3D();
-#endif
-
 
 #ifdef S52_USE_GL2
     _init_gl2();
