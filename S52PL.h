@@ -260,7 +260,8 @@ int            S52_PL_getLCdata(S52_obj *obj, double *symlen, char *pen_w);
 S52_Color     *S52_PL_getACdata(S52_obj *obj);
 // get Area Pattern data
 int            S52_PL_getAPTileDim(S52_obj *obj, double *tw,  double *th,  double *dx);
-#ifdef S52_USE_GLES2
+//#ifdef S52_USE_GLES2
+#ifdef S52_USE_GL2
 // get Area Pattern Position
 int            S52_PL_getAPTilePos(S52_obj *obj, double *bbx, double *bby, double *pivot_x, double *pivot_y);
 // store texture ID of patterns in GLES2

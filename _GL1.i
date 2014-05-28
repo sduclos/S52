@@ -130,6 +130,160 @@ static int         _popScaletoPixel(void);
 static inline void _checkError(const char *);
 ////////////////////////////////////////////////////////
 
+
+///////////////////////////////////////////////////////////////////
+//
+// FONTS
+//
+
+#ifdef S52_USE_GLC
+#include <GL/glc.h>
+static GLint     _GLCctx;
+static GLint     _initGLC(void)
+{
+    GLint font;
+    static int first = FALSE;
+
+    if (first)
+        return TRUE;
+    first = TRUE;
+
+    _GLCctx = glcGenContext();
+
+    glcContext(_GLCctx);
+
+    // dot pitch mm to dpi
+    //double dpi = MM2INCH / _dotpitch_mm_x;  // dot per inch
+    double dpi = MM2INCH / _dotpitch_mm_y;  // dot per inch
+    glcResolution(dpi);
+    //glcResolution(dpi/10.0);
+    //glcResolution(12.0);
+
+
+    // speed very slow !!
+    // and small font somewhat darker but less "fuzzy"
+    //glcDisable(GLC_GL_OBJECTS);
+    // speed ok
+    glcEnable(GLC_GL_OBJECTS);
+
+    //glcRenderStyle(GLC_TEXTURE);
+    //glcRenderStyle(GLC_PIXMAP_QSO);
+    //glcRenderStyle(GLC_BITMAP);
+    //glcRenderStyle(GLC_LINE);
+    //glcStringType(GLC_UTF8_QSO);
+
+    // one or the other (same thing when MIPMAP on)
+    glcEnable(GLC_HINTING_QSO);
+    //glcDisable(GLC_HINTING_QSO);
+
+    // with Arial make no diff
+    // BIG DIFF: if positon rouded to and 'int' and no MIPMAP (less fuzzy)
+    glcEnable(GLC_MIPMAP);     // << GOOD!
+    //glcDisable(GLC_MIPMAP);    // << BAD!
+
+
+    font = glcGenFontID();
+    if (!glcNewFontFromFamily(font, "Arial")) {
+    //if (!glcNewFontFromFamily(font, "Verdana")) {
+    //if (!glcNewFontFromFamily(font, "Trebuchet")) {  // fail
+    //if (!glcNewFontFromFamily(font, "trebuc")) {  // fail
+    //if (!glcNewFontFromFamily(font, "DejaVu Sans")) {
+        PRINTF("font failed\n");
+        g_assert(0);
+    }
+
+    //if (!glcFontFace(font, "Bold")) {
+    if (!glcFontFace(font, "Regular")) {
+    //if (!glcFontFace(font, "Normal")) {
+        PRINTF("font face failed\n");
+        g_assert(0);
+    }
+
+    glcFont(font);
+
+    int  count = glcGeti(GLC_CURRENT_FONT_COUNT);
+    PRINTF("%d fonts were used :\n", count);
+
+    for (int i = 0; i < count; i++) {
+        int font = glcGetListi(GLC_CURRENT_FONT_LIST, i);
+        PRINTF("Font #%i : %s", font, (const char*) glcGetFontc(font, GLC_FAMILY));
+        PRINTF("Face : %s\n", (const char*) glcGetFontFace(font));
+    }
+
+    // for bitmap and pixmap
+    glcScale(13.0, 13.0);
+
+    return TRUE;
+}
+#endif
+
+#ifdef S52_USE_FTGL
+#include <FTGL/ftgl.h>
+static FTGLfont *_ftglFont[S52_MAX_FONT];
+static GLint     _initFTGL(void)
+{
+    //const char *file = "arial.ttf";
+    //const char *file = "DejaVuSans.ttf";
+    //const char *file = "Trebuchet_MS.ttf";
+    //const gchar *file = "Waree.ttf";
+    const gchar *file = "Waree.ttf";
+    // from Navit
+    //const char *file = "LiberationSans-Regular.ttf";
+
+
+    if (FALSE == g_file_test(file, G_FILE_TEST_EXISTS)) {
+        PRINTF("WARNING: font file not found (%s)\n", file);
+        return FALSE;
+    }
+
+    _ftglFont[0] = ftglCreatePixmapFont(file);
+    _ftglFont[1] = ftglCreatePixmapFont(file);
+    _ftglFont[2] = ftglCreatePixmapFont(file);
+    _ftglFont[3] = ftglCreatePixmapFont(file);
+
+    ftglSetFontFaceSize(_ftglFont[0], 12, 12);
+    ftglSetFontFaceSize(_ftglFont[1], 14, 14);
+    ftglSetFontFaceSize(_ftglFont[2], 16, 16);
+    ftglSetFontFaceSize(_ftglFont[3], 20, 20);
+
+
+    return TRUE;
+}
+#endif
+
+#ifdef S52_USE_COGL
+#include "cogl-pango/cogl-pango.h"
+static PangoFontDescription *_PangoFontDesc  = NULL;
+static PangoFontMap         *_PangoFontMap   = NULL;
+static PangoContext         *_PangoCtx       = NULL;
+static PangoLayout          *_PangoLayout    = NULL;
+static int       _initCOGL(void)
+{
+    // Setup a Pango font map and context
+    _PangoFontMap = cogl_pango_font_map_new();
+
+    cogl_pango_font_map_set_use_mipmapping(COGL_PANGO_FONT_MAP(_PangoFontMap), TRUE);
+
+    _PangoCtx = cogl_pango_font_map_create_context(COGL_PANGO_FONT_MAP(_PangoFontMap));
+
+    _PangoFontDesc = pango_font_description_new();
+    pango_font_description_set_family(_PangoFontDesc, "DroidSans");
+    pango_font_description_set_size(_PangoFontDesc, 30 * PANGO_SCALE);
+
+    // Setup the "Hello Cogl" text
+    _PangoLayout = pango_layout_new(_PangoCtx);
+    pango_layout_set_font_description(_PangoLayout, _PangoFontDesc);
+    pango_layout_set_text(_PangoLayout, "Hello Cogl", -1);
+
+    PangoRectangle hello_label_size;
+    pango_layout_get_extents(_PangoLayout, NULL, &hello_label_size);
+    int hello_label_width  = PANGO_PIXELS(hello_label_size.width);
+    int hello_label_height = PANGO_PIXELS(hello_label_size.height);
+
+    return TRUE;
+}
+#endif
+
 static int       _renderAP_NODATA_gl1(S52_obj *obj)
 {
     S57_geo       *geoData   = S52_PL_getGeo(obj);

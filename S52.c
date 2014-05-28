@@ -294,7 +294,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.134\n"
+      "libS52 0.135\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -3715,7 +3715,8 @@ static int        _cull(_extent ext)
     return TRUE;
 }
 
-#ifdef S52_USE_GLES2
+//#ifdef S52_USE_GLES2
+#ifdef S52_USE_GL2
 static int        _drawRaster()
 {
     for (guint i=0; i<_rasterList->len; ++i) {
@@ -4067,7 +4068,8 @@ static int        _draw()
         // draw under radar
         g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
 
-#ifdef S52_USE_GLES2
+//#ifdef S52_USE_GLES2
+#ifdef S52_USE_GL2
         // draw radar (raster)
         if (1.0 == S52_MP_get(S52_MAR_DISP_RADAR_LAYER))
             _drawRaster();

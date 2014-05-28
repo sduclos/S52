@@ -2,6 +2,10 @@
 //
 // SD 2014MAY20
 
+// Note: if this code is included it mean that S52_USE_GL2 is allready defined
+//       to get GLES2 specific code define S52_USE_GLES2 also.
+// Note: GL2 matrix stuff work with GL_DOUBLE while GLES2 work only with GL_FLOAT
+
 
 #ifdef S52_USE_GLES2
 #include <GLES2/gl2.h>
@@ -160,7 +164,7 @@ static GLuint        _fboID = 0;
 #define   MATRIX_STACK_MAX 8
 
 #ifdef S52_USE_GLES2
-// symbole not in GLES2
+// symbole not in GLES2 - but defined here to mimic GL2
 #define   GL_MODELVIEW    0x1700
 #define   GL_PROJECTION   0x1701
 
@@ -620,7 +624,8 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
 
 static void      _glTranslated(double x, double y, double z) 
 {
-#ifdef S52_USE_GLES2
+//#ifdef S52_USE_GLES2
+#ifdef S52_USE_GL2
     GLfloat t[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  (GLfloat) x, (GLfloat) y, (GLfloat) z, 1 };
     //GLfloat t[16] = {1, (GLfloat) x, (GLfloat) y, (GLfloat) z,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1};
 
@@ -639,7 +644,8 @@ static void      _glTranslated(double x, double y, double z)
 
 static void      _glScaled(double x, double y, double z) 
 {
-#ifdef S52_USE_GLES2
+//#ifdef S52_USE_GLES2
+#ifdef S52_USE_GL2
     GLfloat m[16];
 
     _make_scale_matrix((GLfloat) x, (GLfloat) y, (GLfloat) z, m);
@@ -660,7 +666,8 @@ static void      _glScaled(double x, double y, double z)
 static void      _glRotated(double angle, double x, double y, double z) 
 // rotate on Z
 {
-#ifdef S52_USE_GLES2
+//#ifdef S52_USE_GLES2
+#ifdef S52_USE_GL2
     GLfloat m[16];
     // FIXME: handle only 0.0==x 0.0==y 1.0==z
     // silence warning for now
@@ -921,7 +928,7 @@ static int       _init_gl2(void)
         PRINTF("GL_VERTEX_SHADER\n");
 
         static const char vertSrc[] =
-#ifdef S52_USE_GLES2
+#ifdef S52_USE_GLSLES
             "precision lowp float;                                          \n"
             //"precision mediump float;                                     \n"
             //"precision highp   float;                                     \n"
@@ -976,7 +983,7 @@ static int       _init_gl2(void)
 
 
         static const char fragSrc[] =
-#ifdef S52_USE_GLES2
+#ifdef S52_USE_GLSLES
             "precision lowp float;                      \n"
             "uniform lowp sampler2D uSampler2d;         \n"
 #else

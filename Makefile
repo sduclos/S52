@@ -22,7 +22,7 @@
 #all: s52gv          # GV  (GTK)
 #all: s52gv2         # GV2 (GTK2)
 all: s52gtk2        # OGR & GTK2 & GL 1.x
-#all: s52gtk2gl2     # OGR & GTK2 & GL 2.x need GLES2
+#all: s52gtk2gl2     # OGR & GTK2 & GL 2.x
 #all: s52gtk2p       # profiling
 #all: s52gtk2gps     # build s52gtk2 for testing with live data comming from GPSD
 #all: s52gtk2egl     # GTK2 & EGL
@@ -166,10 +166,11 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # GL FIXFUNC:
 # -DS52_USE_GL1          - GL1.x
 # -DS52_USE_OPENGL_VBO   - GL1.5 or greater. Vertex Buffer Object
-# -DS52_USE_OPENGL_SC    - GL SAFETY_CRITICAL
+# -DS52_USE_OPENGL_SC    - GL Safety Critical 1.0 (subset of GL1.3)
 # GL GLSL:
 # -DS52_USE_GL2          - GL2.x
 # -DS52_USE_GLES2        - GLES2.x
+# -DS52_USE_GLSLES       - GLSLES (FIXME: S52_USE_GLES2 should be anought but need refactoring)
 #
 # ARM:
 # -DS52_USE_ANDROID      - build for Android/ARM
@@ -210,8 +211,9 @@ s52gtk2gl2 : CFLAGS =                                  \
          -DS52_USE_TXT_SHADOW                          \
          -DS52_DEBUG $(DBG)
 
+# FIXME: clutter use cogl not ftgl
 s52clutter s52clutter.js : CFLAGS =                         \
-         `pkg-config  --cflags glib-2.0 lcms ftgl`          \
+         `pkg-config  --cflags glib-2.0 lcms glu gl ftgl`   \
          `gdal-config --cflags`                             \
          -I/home/sduclos/dev/gis/gdal/gdal/frmts/iso8211/   \
          -DS52_USE_GLIB2                                    \
@@ -219,6 +221,9 @@ s52clutter s52clutter.js : CFLAGS =                         \
          -DS52_USE_OGR_FILECOLLECTOR                        \
          -DS52_USE_BACKTRACE                                \
          -DS52_USE_GOBJECT                                  \
+         -DS52_USE_GL1                                      \
+         -DS52_USE_OPENGL_VBO                               \
+         -DS52_USE_FTGL                                     \
          -DS52_DEBUG $(DBG)
 
 s52gtk2p : CFLAGS += -pg
@@ -233,10 +238,8 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
                   -DS52_DEBUG $(DBG)
 
 # EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord (use by afterglow)
-#                  `pkg-config  --cflags glib-2.0 lcms egl glesv2`
-#                  `pkg-config  --cflags glib-2.0 lcms egl gl`
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
-                  `pkg-config  --cflags glib-2.0 lcms glesv2` \
+                  `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                   `gdal-config --cflags`         \
                   -I/usr/include                 \
                   -I/usr/include/freetype2       \
@@ -248,7 +251,9 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_BACKTRACE            \
                   -DS52_USE_EGL                  \
                   -DS52_USE_OPENGL_VBO           \
+                  -DS52_USE_GL2                  \
                   -DS52_USE_GLES2                \
+                  -DS52_USE_GLSLES               \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_SOCK                 \
                   -DS52_USE_OGR_FILECOLLECTOR    \

@@ -83,7 +83,8 @@ int       S57_begPrim      (S57_prim *prim, int mode);
 int       S57_endPrim      (S57_prim *prim);
 
 // GLES2 need float vertex
-#ifdef S52_USE_GLES2
+//#ifdef S52_USE_GLES2
+#ifdef S52_USE_GL2
 typedef float  vertex_t;
 #else
 typedef double vertex_t;
