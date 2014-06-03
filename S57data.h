@@ -83,8 +83,7 @@ int       S57_begPrim      (S57_prim *prim, int mode);
 int       S57_endPrim      (S57_prim *prim);
 
 // GLES2 need float vertex
-//#ifdef S52_USE_GLES2
-#ifdef S52_USE_GL2
+#ifdef S52_USE_GLES2
 typedef float  vertex_t;
 #else
 typedef double vertex_t;
@@ -97,13 +96,11 @@ GArray   *S57_getPrimVertex(S57_prim *prim);
 int       S57_getPrimIdx   (S57_prim *prim, unsigned int i, int *mode, int *first, int *count);
 //int       S57_getPrimIdx(S57_prim *prim, guint i, guint *mode, guint *first, guint *count);
 
-//S57_prim *S57_setPrimSize  (S57_prim *prim, int sz);
 int       S57_setPrimDList (S57_prim *prim, guint DList);
 
 // get/set extend
-int       S57_setExt   (S57_geo *geoData, double  x1, double  y1, double  x2, double  y2);
-int       S57_getExt   (S57_geo *geoData, double *x1, double *y1, double *x2, double *y2);
-//int       S57_getExtPRJ(S57_geo *geoData, double *x1, double *y1, double *x2, double *y2);
+int       S57_setExt(S57_geo *geoData, double  x1, double  y1, double  x2, double  y2);
+int       S57_getExt(S57_geo *geoData, double *x1, double *y1, double *x2, double *y2);
 
 // get geo type (P,L,A) of this object
 // Note: return the same thing as a call to S52_PL_getFTYP()
