@@ -7,6 +7,10 @@
 # APP_ABI=armeabi-v7a
 # -B, --always-make, Unconditionally make all targets.
 
+# 07da448e               device usb:2-2 product:razor model:Nexus_7 device:flo
+# 027831c7438020d7       device usb:2-1 product:omni_wingray model:Xoom_Wifi device:wingray
+
+
 APKNAME = s52droid-debug.apk
 
 all: build.xml bin/$(APKNAME)
@@ -28,7 +32,8 @@ build.xml: AndroidManifest.xml
 # Failure [INSTALL_PARSE_FAILED_NO_CERTIFICATES]
 bin/$(APKNAME): dist/sysroot/lib/libS52.a
 	ndk-build -B V=1 NDK_DEBUG=1
-	ant debug install
+	ANDROID_SERIAL=07da448e         ant debug install
+	#ANDROID_SERIAL=027831c7438020d7 ant debug install
 
 clean:
 	-rm -f bin/$(APKNAME)
