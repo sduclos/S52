@@ -34,7 +34,7 @@ S52DROIDINC      := /home/sduclos/S52/test/android/dist/sysroot/include
 LOCAL_CFLAGS     := -g -O0 -std=c99 -Wall -DG_LOG_DOMAIN=\"s52droid\"                 \
                     -DS52_USE_ANDROID -DS52_USE_ADRENO                                \
                     -DS52_USE_EGL -DS52_USE_GLES2                                     \
-                    -DUSE_AIS                                                         \
+                    -DUSE_AIS -DS52_USE_LOG                                           \
                     -I../..                                                           \
                     -I$(S52DROIDINC)                                                  \
                     -I$(S52DROIDINC)/glib-2.0                                         \
