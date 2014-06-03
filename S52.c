@@ -39,12 +39,11 @@
 #include <glib.h>       // GString, GArray, GPtrArray, guint64, ..
 #include <math.h>       // INFINITY
 
-// mkfifo
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>     // unlink()
-#define PIPENAME "/tmp/S52_pipe_01"
+// Network
+#if defined(S52_USE_SOCK) || defined(S52_USE_DBUS) || defined(S52_USE_PIPE)
+#include "_S52.i"
+#endif
+
 
 #include "gdal.h"       // to handle Raster
 
@@ -89,7 +88,7 @@ typedef struct { double u, v; } projUV;
 static int _mercPrjSet = FALSE;
 #endif
 
-static GTimer         *_timer   = NULL;  // debug - lap timer
+static GTimer *_timer = NULL;  // debug - lap timer
 
 // trap signal (ESC abort rendering)
 // must be compiled with -std=gnu99
@@ -264,11 +263,11 @@ static _view_t _view = {0.0, 0.0, 0.0, 0.0};
 // Note: that DBus and socket/WebSocket are running from the main loop but the handling is done from threads
 
 #ifdef S52_USE_ANDROID
-static GStaticMutex       _mp_mutex = G_STATIC_MUTEX_INIT;  // protect _ais_list
+static GStaticMutex       _mp_mutex = G_STATIC_MUTEX_INIT;
 #define GMUTEXLOCK   g_static_mutex_lock
 #define GMUTEXUNLOCK g_static_mutex_unlock
 #else
-static GMutex             _mp_mutex; // protect _ais_list
+static GMutex             _mp_mutex;
 #define GMUTEXLOCK   g_mutex_lock
 #define GMUTEXUNLOCK g_mutex_unlock
 #endif
@@ -294,7 +293,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.135\n"
+      "libS52 0.136\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -343,8 +342,8 @@ static char _version[] = "$Revision: 1.126 $\n"
 #ifdef S52_USE_OPENGL_VBO
       "S52_USE_OPENGL_VBO\n"
 #endif
-#ifdef S52_USE_OPENGL_SC
-      "S52_USE_OPENGL_SC\n"
+#ifdef S52_USE_GLSC1
+      "S52_USE_GLSC1\n"
 #endif
 #ifdef S52_USE_GL2
       "S52_USE_GL2\n"
@@ -948,6 +947,7 @@ static _cell     *_newCell(const char *filename)
 }
 
 static S52_obj   *_delObj(S52_obj *obj)
+// return NULL
 {
     S57_geo *geo = S52_PL_getGeo(obj);
 
@@ -1074,11 +1074,6 @@ int _app(void);
    return result;
 }
 */
-
-#ifdef S52_USE_DBUS
-    static int _initDBus();
-#endif
-
 //#include "unwind-minimal.h"
 #ifdef S52_USE_BACKTRACE
 #ifdef S52_USE_ANDROID
@@ -1580,10 +1575,6 @@ static int        _collect_CS_touch(_cell* c)
 
     return TRUE;
 }
-
-#if defined(S52_USE_SOCK) || defined(S52_USE_DBUS)
-#include "_S52.i"
-#endif
 
 DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb)
 // init basic stuff (outside of the main loop)
@@ -3715,7 +3706,6 @@ static int        _cull(_extent ext)
     return TRUE;
 }
 
-//#ifdef S52_USE_GLES2
 #ifdef S52_USE_GL2
 static int        _drawRaster()
 {
@@ -3752,7 +3742,7 @@ static int        _drawRaster()
 
     return TRUE;
 }
-#endif  // S52_USE_GLES2
+#endif  // S52_USE_GL2
 
 static int        _drawLayer(_extent ext, int layer)
 {
@@ -4068,7 +4058,6 @@ static int        _draw()
         // draw under radar
         g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
 
-//#ifdef S52_USE_GLES2
 #ifdef S52_USE_GL2
         // draw radar (raster)
         if (1.0 == S52_MP_get(S52_MAR_DISP_RADAR_LAYER))
@@ -5562,8 +5551,6 @@ DLL cchar *STD S52_getCellNameList(void)
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
 
-    const char *str = NULL;
-    GError *error;
     g_string_set_size(_cellNameList, 0);
 
     for (guint i=0; i<_cellList->len; ++i) {
@@ -5585,8 +5572,13 @@ DLL cchar *STD S52_getCellNameList(void)
         else
             g_string_append_printf(_cellNameList, ",*%s", c->encPath);
 
-        gchar *path = g_path_get_dirname(c->encPath);
-        GDir  *dir  = g_dir_open(path, 0, &error);
+        GError *error = NULL;
+        gchar  *path  = g_path_get_dirname(c->encPath);
+        GDir   *dir   = g_dir_open(path, 0, &error);
+        if (NULL != error) {
+            g_printf("WARNING: g_dir_open() failed (%s)\n", error->message);
+            g_error_free(error);
+        }
         if (NULL != dir) {
             const gchar *file = NULL;
             while (NULL != (file = g_dir_read_name(dir))) {
@@ -5608,6 +5600,7 @@ DLL cchar *STD S52_getCellNameList(void)
         g_free(path);
     }
 
+    const char *str = NULL;
     if (0 != _cellNameList->len)
         str = _cellNameList->str;
 
