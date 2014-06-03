@@ -3,6 +3,13 @@
 #
 
 
+2014JUN02
+    -mod refactor socket code in _S52.i
+    -fix WebSocket bug when a stream contain more than 1 msg
+
+2014MAY29
+    -mod split tess stuff in S52GL.c to _GLU.i
+
 2014MAY28
     -add S52_USE_GLSLES for the shader in preparation of refactoring GLES2 to GL2
     -mod S52_USE_GLES2 to S52_USE_GL2 to better show the GL1/GL2 split
