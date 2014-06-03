@@ -250,7 +250,8 @@ int            S52_PL_getSYbbox  (S52_obj *obj, int *width, int *height);
 int            S52_PL_setSYspeed (S52_obj *obj, double  speed);
 int            S52_PL_getSYspeed (S52_obj *obj, double *speed);
 
-// get Line Style data, width in ASCII (1 pixel=0.32 mm)
+// get Line Style data, width in ASCII (dotpitch 1 pixel=0.32 mm) for a S52/IHO display size viewed at 1 m.
+// Note: that it is more 'natural visualy', for a screen of 300ppi viewed at 10 cm, to go to a smaller dotpitch
 int            S52_PL_getLSdata(S52_obj *obj, char *pen_w, char *style, S52_Color **color);
 // set Line Complex data, width in ASCII (1 pixel=0.32 mm)
 int            S52_PL_setLCdata(S52_cmdDef *def, char pen_w);
@@ -260,8 +261,9 @@ int            S52_PL_getLCdata(S52_obj *obj, double *symlen, char *pen_w);
 S52_Color     *S52_PL_getACdata(S52_obj *obj);
 // get Area Pattern data
 int            S52_PL_getAPTileDim(S52_obj *obj, double *tw,  double *th,  double *dx);
-//#ifdef S52_USE_GLES2
-#ifdef S52_USE_GL2
+
+//#ifdef S52_USE_GL2
+#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
 // get Area Pattern Position
 int            S52_PL_getAPTilePos(S52_obj *obj, double *bbx, double *bby, double *pivot_x, double *pivot_y);
 // store texture ID of patterns in GLES2

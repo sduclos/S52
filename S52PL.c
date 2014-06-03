@@ -143,8 +143,8 @@ typedef struct _S52_cmdDef {
     S52_Color     *col;         // LC: color of last pen
     char           pen_w;       // LC: width in pixel of last pen in (ASCII)
 
-//#ifdef S52_USE_GLES2
-#ifdef S52_USE_GL2
+//#ifdef S52_USE_GL2
+#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
     guint          mask_texID;  // texture ID of pattern after running VBO
     int            potW;        // tex widht
     int            potH;        // tex height
@@ -3279,8 +3279,8 @@ int         S52_PL_getAPTilePos(_S52_obj *obj, double *bbx, double *bby, double 
     return TRUE;
 }
 
-//#ifdef S52_USE_GLES2
-#ifdef S52_USE_GL2
+//#ifdef S52_USE_GL2
+#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
 int         S52_PL_setAPtexID(_S52_obj *obj, guint mask_texID)
 {
     return_if_null(obj);
@@ -3304,7 +3304,7 @@ guint       S52_PL_getAPtexID(_S52_obj *obj)
 
     return cmd->cmd.def->mask_texID;
 }
-#endif
+#endif  // S52_USE_GL2 | S52_USE_GLES2
 
 #if 0
 int         S52_PL_setAPcover(_S52_cmdDef *def, double dotpitch_x, double dotpitch_y, char pen_w)
@@ -3358,7 +3358,7 @@ int         S52_PL_setAPcover(_S52_cmdDef *def, double dotpitch_x, double dotpit
 
     return 1;
 }
-#endif
+#endif  
 
 #if 0
 int         S52_PL_getSymOff(S52_vec *vecObj, int patt, int *off_x, int *off_y)
