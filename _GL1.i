@@ -1,4 +1,4 @@
-// _GL1.i: definition & declaration for S52GL1.x
+// _GL1.i: definition & declaration for S52GL1.x. Link to libGL.so.
 //
 // SD 2014MAY20
 
@@ -8,10 +8,9 @@
 // glLogicOp(GL_XOR);
 
 
-#define GL_GLEXT_PROTOTYPES
+#define GL_GLEXT_PROTOTYPES  // glIsBuffer(), glGenBuffers(), glBindBuffer(), ...
 #include <GL/gl.h>
 #include "GL/glext.h"
-
 #include <GL/glu.h>
 
 // alpha is 0.0 - 255.0 in GL1.x
@@ -19,7 +18,7 @@
 
 // experiment OpenGL ES SC
 // Note: ES SC has some GLES2.x and GL1.x features
-#ifdef S52_USE_OPENGL_SC
+#ifdef S52_USE_GLSC1
 #include "GL/es_sc_gl.h"
 typedef GLfloat GLdouble;
 #define glScaled            glScalef
@@ -32,7 +31,7 @@ static GLint    _mvm[16];       // OpenGL ES SC
 static GLint    _pjm[16];       // OpenGL ES SC
 #define GL_DBL_FLT          GL_FLOAT
 
-#else   // S52_USE_OPENGL_SC
+#else   // S52_USE_GLSC1
 
 #define _glScaled            glScaled
 #define _glRotated           glRotated
@@ -42,7 +41,7 @@ static GLdouble _mvm[16];       // modelview  matrix used in _win2prj / _prj2win
 static GLdouble _pjm[16];       // projection matrix used in _win2prj / _prj2win
 #define GL_DBL_FLT          GL_DOUBLE
 
-#endif  // S52_USE_OPENGL_SC
+#endif  // S52_USE_GLSC1
 
 
 //---- PATTERN GL1 -----------------------------------------------------------

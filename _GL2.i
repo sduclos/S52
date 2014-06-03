@@ -1,20 +1,32 @@
-// _GL2.i: definition & declaration for GL2.x, GLES2.x
+// _GL2.i: definition & declaration for GL2.x, GLES2.x.
+//         Link to libGL.so or libGLESv2.
 //
 // SD 2014MAY20
 
 // Note: if this code is included it mean that S52_USE_GL2 is allready defined
 //       to get GLES2 specific code define S52_USE_GLES2 also.
-// Note: GL2 matrix stuff work with GL_DOUBLE while GLES2 work only with GL_FLOAT
+// Note: GL2 matrix stuff work with GL_DOUBLE normaly while GLES2 work only with GL_FLOAT
 
 
-#ifdef S52_USE_GLES2
+//*
+//#ifdef S52_USE_GLES2
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 typedef double GLdouble;
-#else
-#include <GL/gl.h>
-#include <GL/glext.h>
-#endif
+//#include "tesselator.h"
+//typedef GLUtesselator GLUtesselatorObj;
+//typedef GLUtesselator GLUtriangulatorObj;
+//#else
+//#define GL_GLEXT_PROTOTYPES  // glGenBuffers(), glEnableVertexAttribArray(), ...
+//#include <GL/gl.h>
+//#include <GL/glext.h>
+//#include <GL/glu.h>
+//#endif
+//*/
+
+#include "tesselator.h"
+typedef GLUtesselator GLUtesselatorObj;
+typedef GLUtesselator GLUtriangulatorObj;
 
 ////////////////////////////////////////////////////////
 // forward decl
@@ -33,9 +45,9 @@ static inline void _checkError(const char *);
 ////////////////////////////////////////////////////////
 
 
-// convert float to double for tess
+// used to convert float to double for tesselator
 static GArray *_tessWorkBuf_d = NULL;
-// for converting geo double to VBO float
+// used to convert geo double to VBO float
 static GArray *_tessWorkBuf_f = NULL;
 
 // glsl main
@@ -63,10 +75,6 @@ static GLint _uPattH      = 0;
 static GLint _aPosition    = 0;
 static GLint _aUV          = 0;
 static GLint _aAlpha       = 0;
-
-#include "tesselator.h"
-typedef GLUtesselator GLUtesselatorObj;
-typedef GLUtesselator GLUtriangulatorObj;
 
 // alpha is 0.0 - 1.0
 #define TRNSP_FAC_GLES2   0.25
@@ -625,7 +633,6 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
 static void      _glTranslated(double x, double y, double z) 
 {
 //#ifdef S52_USE_GLES2
-#ifdef S52_USE_GL2
     GLfloat t[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  (GLfloat) x, (GLfloat) y, (GLfloat) z, 1 };
     //GLfloat t[16] = {1, (GLfloat) x, (GLfloat) y, (GLfloat) z,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1};
 
@@ -635,9 +642,9 @@ static void      _glTranslated(double x, double y, double z)
     if (GL_MODELVIEW == _mode)
         _identity_MODELVIEW = FALSE;
 
-#else
-    glTranslated(x, y, z);
-#endif
+//#else
+//    glTranslated(x, y, z);
+//#endif
 
     return;
 }
@@ -645,7 +652,6 @@ static void      _glTranslated(double x, double y, double z)
 static void      _glScaled(double x, double y, double z) 
 {
 //#ifdef S52_USE_GLES2
-#ifdef S52_USE_GL2
     GLfloat m[16];
 
     _make_scale_matrix((GLfloat) x, (GLfloat) y, (GLfloat) z, m);
@@ -656,9 +662,9 @@ static void      _glScaled(double x, double y, double z)
     if (GL_MODELVIEW == _mode)
         _identity_MODELVIEW = FALSE;
 
-#else
-    glScaled(x, y, z);
-#endif
+//#else
+//    glScaled(x, y, z);
+//#endif
 
     return;
 }
@@ -667,7 +673,6 @@ static void      _glRotated(double angle, double x, double y, double z)
 // rotate on Z
 {
 //#ifdef S52_USE_GLES2
-#ifdef S52_USE_GL2
     GLfloat m[16];
     // FIXME: handle only 0.0==x 0.0==y 1.0==z
     // silence warning for now
@@ -682,9 +687,10 @@ static void      _glRotated(double angle, double x, double y, double z)
     // optimisation - reset flag
     if (GL_MODELVIEW == _mode)
         _identity_MODELVIEW = FALSE;
-#else
-    glRotated(angle, x, y, z);
-#endif
+
+//#else
+//    glRotated(angle, x, y, z);
+//#endif
 
     return;
 }
@@ -928,7 +934,8 @@ static int       _init_gl2(void)
         PRINTF("GL_VERTEX_SHADER\n");
 
         static const char vertSrc[] =
-#ifdef S52_USE_GLSLES
+//#ifdef S52_USE_GLSLES
+#ifdef S52_USE_GLES2
             "precision lowp float;                                          \n"
             //"precision mediump float;                                     \n"
             //"precision highp   float;                                     \n"
@@ -983,7 +990,8 @@ static int       _init_gl2(void)
 
 
         static const char fragSrc[] =
-#ifdef S52_USE_GLSLES
+//#ifdef S52_USE_GLSLES
+#ifdef S52_USE_GLES2
             "precision lowp float;                      \n"
             "uniform lowp sampler2D uSampler2d;         \n"
 #else
@@ -1274,9 +1282,10 @@ static int       _renderAP_gl2(S52_obj *obj)
             case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
                 PRINTF("Incomplete missing attachment. (GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT)(FBO - 820)");
                 break;
-            case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
-                PRINTF("Incomplete dimensions. (GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT)(FBO - 820)");
-                break;
+// Not in GL
+//            case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
+//                PRINTF("Incomplete dimensions. (GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT)(FBO - 820)");
+//                break;
 
             /*
             case GL_FRAMEBUFFER_INCOMPLETE_FORMATS:
@@ -1326,7 +1335,7 @@ static int       _renderAP_gl2(S52_obj *obj)
         _glMatrixSet(VP_WIN);
 
         {   // set line/point width
-            GLdouble dummy = 0.0;
+            double   dummy = 0.0;
             char     pen_w = '1';
             S52_PL_getLCdata(obj, &dummy, &pen_w);
 
