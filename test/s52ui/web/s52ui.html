@@ -41,7 +41,7 @@
       // Dart GPS fail if not intialize here
       function deviceReady() {
         console.log("XXXXX s52ui.html:getCurrentPosition(): ..");
-        navigator.geolocation.getCurrentPosition(showPosition, geoError, {maximumAge:60000, timeout:5000, enableHighAccuracy:true});
+        //navigator.geolocation.getCurrentPosition(showPosition, geoError, {maximumAge:60000, timeout:5000, enableHighAccuracy:true});
       }
       function showPosition(position) {
         var latlon = "ZZZZZ s52ui.html:showPosition(): " + position.coords.latitude + "," + position.coords.longitude;

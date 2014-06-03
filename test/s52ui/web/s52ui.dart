@@ -10,7 +10,7 @@ import 'package:js/js.dart' as js;
 
 import 'dart:convert';
 
-//import 'dart:collection'; // Queue in s52.dart
+import 'dart:collection'; // Queue in s52.dart
 //import 'dart:isolate';    // handle WebSocket
 
 part 's52.dart';

@@ -7,22 +7,37 @@ part of s52ui;
 // UI <--> WebSocket (s52ui.html)
 //
 
+class Cmd {
+  String    _str;
+  int       _id;
+  Completer _completer;
+
+  Cmd(String str, int id, Completer completer) {
+    _str       = str;
+    _id        = id;
+    _completer = completer;
+  }
+}
+
 //abstract class S52 {
 class S52 {
-  Completer _completer = null;
-  Map       _data      = JSON.decode('{"id":1,"method":"???","params":["???"]}');
-  int       _id        = 1;
+  //Completer _completer = null;
+  Map _data = JSON.decode('{"id":1,"method":"???","params":["???"]}');
+  int _id   = 1;
+
+  get id => ++_id;
 
   WebSocket _ws;
 
-  Stopwatch _stopwatch = new Stopwatch();
+  //Stopwatch _stopwatch = new Stopwatch();
 
   // call drawLast() at interval
-  Timer _timer        = null;
-  bool  _skipTimer    = false;
+  Timer _timer     = null;
+  bool  _skipTimer = false;
 
   // FIXME: use Queue to stack S52 cmd .. what happend if returning out-of-order!
   //Queue<String> _queue = new Queue<String>();
+  Queue<Cmd> _queue = new Queue<Cmd>();
 
   // S52 color for UI element
   List UIBCK;  // background
@@ -33,10 +48,10 @@ class S52 {
   static const int MAR_SHOW_ERROR             =  0;
   static const int MAR_SHOW_TEXT              =  1;
 
-  static const int MAR_SAFETY_CONTOUR         =  3;   // S52_LINES: selected safety contour (meters) [IMO PS 3.6]
-  static const int MAR_SAFETY_DEPTH           =  4;   // S52_POINT: selected safety depth (for sounding color) (meters) [IMO PS 3.7]
-  static const int MAR_SHALLOW_CONTOUR        =  5;   // S52_AREAS: selected shallow water contour (meters) (optional) [OFF==S52_MAR_TWO_SHADES]
-  static const int MAR_DEEP_CONTOUR           =  6;   // S52_AREAS: selected deepwater contour (meters) (optional)
+  static const int MAR_SAFETY_CONTOUR         =  3;  // S52_LINES: selected safety contour (meters) [IMO PS 3.6]
+  static const int MAR_SAFETY_DEPTH           =  4;  // S52_POINT: selected safety depth (for sounding color) (meters) [IMO PS 3.7]
+  static const int MAR_SHALLOW_CONTOUR        =  5;  // S52_AREAS: selected shallow water contour (meters) (optional) [OFF==S52_MAR_TWO_SHADES]
+  static const int MAR_DEEP_CONTOUR           =  6;  // S52_AREAS: selected deepwater contour (meters) (optional)
 
   static const int MAR_COLOR_PALETTE          = 15;
   static const int MAR_SCAMIN                 = 23;
@@ -77,44 +92,26 @@ class S52 {
   }
 
   Future<bool> initWS(var wsUri) {
-    //Completer completer = new Completer();
-    _completer = new Completer();
+    Completer completer = new Completer();
+    //_completer = new Completer();
 
     _ws = new WebSocket(wsUri);
-    _ws.onOpen.   listen((Event e)        {_completer.complete(true);_drawLastTimer();});
+    //_ws.onOpen.   listen((Event e)        {completer.complete(true);_drawLastTimer();});
+    _ws.onOpen.   listen((Event e)        {completer.complete(true);});
     _ws.onMessage.listen((MessageEvent e) {_rcvMsg(e);});
     _ws.onClose.  listen((CloseEvent e)   {throw '_ws CLOSE:$e';});
     _ws.onError.  listen((Event e)        {throw '_ws ERROR:$e';});
 
-    return _completer.future;
+    return completer.future;
   }
-  /*
-  static void process(var str) {
-    //isolate.send("data", port.toSendPort());
-     while (true) {
-      if (true == _queue.isNotEmpty()
-    }
-
-  }
-  */
   _drawLastTimer() {
-    // FIXME: use Queue
-    //if (null != _timer)
-    //  return;
+    if (null != _timer)
+      return;
 
     // call drawLast every second (1sec)
     _timer = new Timer.periodic(new Duration(milliseconds: 1000), (timer) {
       if (false == _skipTimer) {
         drawLast().then((ret) {});
-
-        //drawLast()
-        //  .then(      (ret) {})
-        //  .catchError((err) {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');} );
-
-        // FIXME: can't make onError / catchError work
-        //drawLast().then      (    (ret) {print('_drawLastTimer(): then       ... &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&');},
-        //                 onError: (e)   {print('_drawLastTimer(): onError:   ... ##############################');})
-        //          .catchError(    (e)   {print('_drawLastTimer(): catchError ... %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%');});
       }
     });
   }
@@ -125,59 +122,76 @@ class S52 {
     Map data;
     try {
       data = JSON.decode(str);
-    } catch(e) {
-      print('rcvMsg(): malformed JSON throw the parser: $str');
-      throw('rcvMsg(): malformed JSON throw the parser: $str');
-      //return;
+    } catch (e) {
+      print ('rcvMsg(): malformed JSON throw the parser: $str');
+      throw ('rcvMsg(): malformed JSON throw the parser: $str');
     }
 
-    if (null == data["error"]) {
-      print('rcvMsg(): failed NO key: "error" [$data]');
-      throw('rcvMsg(): failed NO key: "error" [$data]');
-      //return;
-    }
+    //if (null == data["error"]) {
+    //  print('rcvMsg(): failed NO key: "error" [$data]');
+    //  throw ('rcvMsg(): failed NO key: "error" [$data]');
+    //}
+
+
     if ("no error" != data["error"]) {
-      print("rcvMsg(): S52 call failed  [$data]");
-      throw("rcvMsg(): S52 call failed  [$data]");
-      //return;
+      print ("rcvMsg(): S52 call failed [$data]");
+      throw ("rcvMsg(): S52 call failed [$data]");
     }
 
-    if (_id != data["id"]) {
-      print('rcvMsg(): failed on key: _id=$_id data_id=${data["id"]} [$data]');
-      throw "rcvMsg(): ID mismatch";
-    }
+    //if (_id != data["id"]) {
+    //  print('rcvMsg(): failed on key: _id=$_id data_id=${data["id"]} [$data]');
+    //  throw "rcvMsg(): ID mismatch";
+    //}
 
-    _stopwatch.stop();
 
     // debug
+    //_stopwatch.stop();
     //print("roundtrip: ${_stopwatch.elapsedMilliseconds}msec");
     //print('rcvMsg():receive JSON str from libS52: $str');
 
     // Javascript: MAXINT overflow if (x == x + 1)
     // Dart: same; 2^53 = 9007199254740992 = 52124995687 days @ 0.5s
-    _completer.complete(data['result']);
-    _skipTimer = false;
-    ++_id;
-  }
-  Future<List> _sendMsg(String str) {
-    _stopwatch.reset();
-    _stopwatch.start();
+    //_completer.complete(data['result']);
+    //_skipTimer = false;
 
-    _completer = new Completer();
+    if (true == _queue.isNotEmpty) {
+      Cmd cmd = _queue.removeFirst();
+      //Cmd cmd = _queue.removeLast();
+      if (cmd._id != data["id"]) {
+        print('rcvMsg(): failed on key: cmd._id=${cmd._id} data_id=${data["id"]} [data:$data]');
+        throw "rcvMsg(): ID mismatch";
+      }
+      //++_id;
 
-    //_queue.add(str);
+      _skipTimer = false;
 
-    //*
-    if (_ws.readyState == WebSocket.OPEN) {
-      _skipTimer = true;
-      _ws.send(str);
-      print('_sndMsg:$str');
+      return cmd._completer.complete(data['result']);
     } else {
+      throw ("rcvMsg(): queue empty!");
+    }
+  }
+  Future<List> _sndMsg(String str) {
+    if (_ws.readyState != WebSocket.OPEN) {
       throw 'WebSocket not connected, message not sent:$str';
     }
-    //*/
+    _skipTimer = true;
 
-    return _completer.future;
+    //_stopwatch.reset();
+    //_stopwatch.start();
+
+    Completer completer = new Completer();
+    Cmd cmd = new Cmd(str, _id, completer);
+    _queue.add(cmd);
+
+    if (_ws.bufferedAmount == 0) {
+      //_ws.send(str);
+      _ws.sendString(str);
+      print('_sndMsg:$str');
+    } else {
+      print('_sndMsg: ERROR SOCK FAIL');
+    }
+
+    return completer.future;
   }
 
   /*
@@ -197,18 +211,19 @@ class S52 {
   // con: lost of info .. doesn't mirror S52.h well since all call info would be
   // littered across s52ui.dart
   Future<List> draw() {
-    _data["id"    ] = _id;
+    //_data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_draw";
     _data["params"] = [];
     String jsonCmdstr = JSON.encode(_data);
 
-    _skipTimer = false;
+    //_skipTimer = false;
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> drawLast() {
-    //*
-    if (null!=_completer && false==_completer.isCompleted) {
+    /*
+    if (null != _completer && false == _completer.isCompleted) {
       print("drawLast(): _completer NOT completed XXXXXXXXX");
       //_timer.cancel();
       //_timer = null;
@@ -217,179 +232,178 @@ class S52 {
       //throw new AsyncError('error');
       //return _completer.future;
     }
-    //*/
+    */
 
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_drawLast";
     _data["params"] = [];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> drawBlit(double scale_x, double scale_y, double scale_z, double north) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_drawBlit";
-    _data["params"] = [scale_x,scale_y,scale_z,north];
+    _data["params"] = [scale_x, scale_y, scale_z, north];
     String jsonCmdstr = JSON.encode(_data);
 
-    _skipTimer    = true;
+    //_skipTimer = true;
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> getMarinerParam(int param) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_getMarinerParam";
     _data["params"] = [param];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> setMarinerParam(int param, double value) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_setMarinerParam";
     _data["params"] = [param, value];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> getPalettesNameList() {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_getPalettesNameList";
     _data["params"] = [];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> getRGB(String colorName) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_getRGB";
     _data["params"] = [colorName];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> newOWNSHP(var label) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_newOWNSHP";
     _data["params"] = [label];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> pushPosition(int objH, double latitude, double longitude, double z) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_pushPosition";
-    _data["params"] = [objH,latitude,longitude,z];
+    _data["params"] = [objH, latitude, longitude, z];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> setVector(int objH, int vecstb, double course, double speed) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_setVector";
-    _data["params"] = [objH,vecstb,course,speed];
+    _data["params"] = [objH, vecstb, course, speed];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> pickAt(double pixels_x, double pixels_y) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_pickAt";
-    _data["params"] = [pixels_x,pixels_y];
+    _data["params"] = [pixels_x, pixels_y];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> getObjList(var cellName, var className) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_getObjList";
-    _data["params"] = [cellName,className];
+    _data["params"] = [cellName, className];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> getAttList(int S57ID) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_getAttList";
     _data["params"] = [S57ID];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> getMarObjH(int S57ID) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_getMarObjH";
     _data["params"] = [S57ID];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> setVESSELstate(int objH, int vesselSelect, int vestat, int vesselTurn) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_setVESSELstate";
-    _data["params"] = [objH,vesselSelect,vestat,vesselTurn];
+    _data["params"] = [objH, vesselSelect, vestat, vesselTurn];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> getCellNameList() {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_getCellNameList";
     _data["params"] = [];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> doneCell(encPath) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_doneCell";
     _data["params"] = [encPath];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> loadCell(encPath) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_loadCell";
     _data["params"] = [encPath];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> xy2LL(double pixels_x, double pixels_y) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_xy2LL";
-    _data["params"] = [pixels_x,pixels_y];
+    _data["params"] = [pixels_x, pixels_y];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> setView(double cLat, double cLon, double rNM, double north) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_setView";
-    _data["params"] = [cLat,cLon,rNM,north];
+    _data["params"] = [cLat, cLon, rNM, north];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> getView() {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_getView";
     _data["params"] = [];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
   Future<List> setViewPort(int x, int y, int w, int h) {
-    _data["id"    ] = _id;
+    _data["id"    ] = id;
     _data["method"] = "S52_setViewPort";
-    _data["params"] = [x,y,w,h];
+    _data["params"] = [x, y, w, h];
     String jsonCmdstr = JSON.encode(_data);
 
-    return _sendMsg(jsonCmdstr);
+    return _sndMsg(jsonCmdstr);
   }
 }
 ////////////////////////////////////////////////////////
-
 
 
