@@ -96,8 +96,13 @@ int      S52_doneLog();
 
 
 
+///////////////////////////////////////////////////////////////////////////
+//
+// Other trick that could be usefull
+//
 
-
+// quiet compiler warning on unused param
+#define UNUSED(expr) do { (void)(expr); } while (0)
 
 
 

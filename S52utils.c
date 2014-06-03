@@ -251,7 +251,7 @@ int      S52_initLog(S52_error_cb err_cb)
 // set print handler
 // set tmp log file
 {
-    _err_cb          = err_cb;
+    _err_cb = err_cb;
 
 #ifdef S52_USE_LOG
     GError *error = NULL;
@@ -260,6 +260,10 @@ int      S52_initLog(S52_error_cb err_cb)
         PRINTF("g_file_open_tmp(): failed\n");
     } else {
         PRINTF("tmp dir:%s\n", g_get_tmp_dir());
+    }
+    if (NULL != error) {
+        g_printf("WARNING: g_file_open_tmp() failed (%s)\n", error->message);
+        g_error_free(error);
     }
     _oldPrintHandler = g_set_print_handler(_S52_printf);
 #else
