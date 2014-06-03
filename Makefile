@@ -165,12 +165,11 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_EGL          - EGL callback from libS52
 # GL FIXFUNC:
 # -DS52_USE_GL1          - GL1.x
+# -DS52_USE_GLSC1        - GL Safety Critical 1.0 (subset of GL1.3)
 # -DS52_USE_OPENGL_VBO   - GL1.5 or greater. Vertex Buffer Object
-# -DS52_USE_OPENGL_SC    - GL Safety Critical 1.0 (subset of GL1.3)
 # GL GLSL:
 # -DS52_USE_GL2          - GL2.x
 # -DS52_USE_GLES2        - GLES2.x
-# -DS52_USE_GLSLES       - GLSLES (FIXME: S52_USE_GLES2 should be anought but need refactoring)
 #
 # ARM:
 # -DS52_USE_ANDROID      - build for Android/ARM
@@ -205,7 +204,6 @@ s52gtk2gl2 : CFLAGS =                                  \
          -DS52_USE_OPENGL_VBO                          \
          -DS52_USE_GL2                                 \
          -DS52_USE_GLES2                               \
-         -DS52_USE_MESA3D                              \
          -DS52_USE_FREETYPE_GL                         \
          -DS52_USE_SUPP_LINE_OVERLAP                   \
          -DS52_USE_TXT_SHADOW                          \
@@ -289,7 +287,9 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
-                     -DS52_USE_TXT_SHADOW
+                     -DS52_USE_TXT_SHADOW                  \
+                     -DS52_USE_LOG                         \
+                     -DS52_DEBUG
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
                      -I$(S52DROIDINC)/glib-2.0             \
@@ -438,7 +438,7 @@ S52raz-3.2.rle.o: S52raz.s
 %.o: %.c %.h S52.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-S52GL.o: S52GL.c _GL1.i _GL2.i S52.h
+S52GL.o: S52GL.c _GL1.i _GL2.i _GLU.i S52.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 S52.o: S52.c _S52.i S52.h
