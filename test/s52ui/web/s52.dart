@@ -34,6 +34,7 @@ class S52 {
   // call drawLast() at interval
   Timer _timer     = null;
   bool  _skipTimer = false;
+  set skipTimer(val) => _skipTimer = val;
 
   // FIXME: use Queue to stack S52 cmd .. what happend if returning out-of-order!
   //Queue<String> _queue = new Queue<String>();
@@ -96,8 +97,7 @@ class S52 {
     //_completer = new Completer();
 
     _ws = new WebSocket(wsUri);
-    //_ws.onOpen.   listen((Event e)        {completer.complete(true);_drawLastTimer();});
-    _ws.onOpen.   listen((Event e)        {completer.complete(true);});
+    _ws.onOpen.   listen((Event e)        {completer.complete(true);_drawLastTimer();});
     _ws.onMessage.listen((MessageEvent e) {_rcvMsg(e);});
     _ws.onClose.  listen((CloseEvent e)   {throw '_ws CLOSE:$e';});
     _ws.onError.  listen((Event e)        {throw '_ws ERROR:$e';});
@@ -127,22 +127,10 @@ class S52 {
       throw ('rcvMsg(): malformed JSON throw the parser: $str');
     }
 
-    //if (null == data["error"]) {
-    //  print('rcvMsg(): failed NO key: "error" [$data]');
-    //  throw ('rcvMsg(): failed NO key: "error" [$data]');
-    //}
-
-
     if ("no error" != data["error"]) {
       print ("rcvMsg(): S52 call failed [$data]");
       throw ("rcvMsg(): S52 call failed [$data]");
     }
-
-    //if (_id != data["id"]) {
-    //  print('rcvMsg(): failed on key: _id=$_id data_id=${data["id"]} [$data]');
-    //  throw "rcvMsg(): ID mismatch";
-    //}
-
 
     // debug
     //_stopwatch.stop();
@@ -151,18 +139,17 @@ class S52 {
 
     // Javascript: MAXINT overflow if (x == x + 1)
     // Dart: same; 2^53 = 9007199254740992 = 52124995687 days @ 0.5s
-    //_completer.complete(data['result']);
+
     //_skipTimer = false;
 
     if (true == _queue.isNotEmpty) {
       Cmd cmd = _queue.removeFirst();
-      //Cmd cmd = _queue.removeLast();
       if (cmd._id != data["id"]) {
         print('rcvMsg(): failed on key: cmd._id=${cmd._id} data_id=${data["id"]} [data:$data]');
         throw "rcvMsg(): ID mismatch";
       }
-      //++_id;
 
+      // drawLas()
       _skipTimer = false;
 
       return cmd._completer.complete(data['result']);
@@ -211,29 +198,14 @@ class S52 {
   // con: lost of info .. doesn't mirror S52.h well since all call info would be
   // littered across s52ui.dart
   Future<List> draw() {
-    //_data["id"    ] = _id;
     _data["id"    ] = id;
     _data["method"] = "S52_draw";
     _data["params"] = [];
     String jsonCmdstr = JSON.encode(_data);
 
-    //_skipTimer = false;
-
     return _sndMsg(jsonCmdstr);
   }
   Future<List> drawLast() {
-    /*
-    if (null != _completer && false == _completer.isCompleted) {
-      print("drawLast(): _completer NOT completed XXXXXXXXX");
-      //_timer.cancel();
-      //_timer = null;
-      throw "drawLast(): _completer is busy";
-      //throw new Exception('drawLast(): _completer is busy');
-      //throw new AsyncError('error');
-      //return _completer.future;
-    }
-    */
-
     _data["id"    ] = id;
     _data["method"] = "S52_drawLast";
     _data["params"] = [];
@@ -246,8 +218,6 @@ class S52 {
     _data["method"] = "S52_drawBlit";
     _data["params"] = [scale_x, scale_y, scale_z, north];
     String jsonCmdstr = JSON.encode(_data);
-
-    //_skipTimer = true;
 
     return _sndMsg(jsonCmdstr);
   }

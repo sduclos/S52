@@ -9,9 +9,7 @@ import 'package:js/js.dart' as js;
 //import 'dart:js';
 
 import 'dart:convert';
-
 import 'dart:collection'; // Queue in s52.dart
-//import 'dart:isolate';    // handle WebSocket
 
 part 's52.dart';
 
@@ -174,6 +172,12 @@ void _clearTable(id) {
   }
 }
 
+/////////////// Close Window //////////////////////////
+void _closeWindow(MouseEvent e) {
+  // FF can't close a window that a script didn't open!
+  window.close();
+}
+
 /////////////// Color Palette Button Handling //////////////////////////
 void _listPal(MouseEvent e) {
   // start color highlight animation
@@ -188,8 +192,8 @@ void _listPal(MouseEvent e) {
       _appendCellRTable(nm, _updateUIcol, i++);
     });
 
-    // stop (abruptly) color animation
-    //query("#td_buttonCell").style.animationIterationCount = '0';
+  // stop (abruptly) color animation
+  //query("#td_buttonCell").style.animationIterationCount = '0';
   });
 }
 
@@ -412,6 +416,10 @@ Future<bool> _initUI() {
           });
 
 
+          querySelector("#td_buttonCell0")
+          ..onClick.listen((ev) => print("id:'td_buttonCell0'"))
+          ..onClick.listen((ev) => _closeWindow(ev));
+
           querySelector("#td_buttonCell1")
           ..onClick.listen((ev) => print("id:'td_buttonCell1'"))
           ..onClick.listen((ev) => _listPal(ev));
@@ -471,6 +479,7 @@ void _initTouch() {
 
   target.onTouchStart.listen((TouchEvent event) {
     event.preventDefault();
+    s52.skipTimer = true;
 
     // Start of new Touch event cycle
     if (false == newTouch) {
@@ -690,7 +699,7 @@ void _initTouch() {
         });
       }   // if
 
-      //s52.skipTimer = false;
+      s52.skipTimer = false;
 
      });  // timer
   });     // touchEnd
@@ -751,7 +760,11 @@ void _GPSpos(Geoposition position) {
 }
 
 void _hdg(DeviceOrientationEvent o) {
-  _devOrient = o.alpha;
+  _devOrient = 360.0 - 90.0 - o.alpha ;
+  if (_devOrient < 0.0)
+    _devOrient += 360.0;
+
+  // debug
   //print('s52ui.dart:_hdg():$_devOrient');
 }
 
@@ -784,10 +797,8 @@ void _watchPosition(int ownshpID) {
 //
 // Main / Init
 //
-//void _initMain(evt) {
 void _initMain() {
   var urlparam = window.location.search.toString();
-  //var url = window.
   print('s52ui.dart:_initMain(): URL:>$urlparam<');
 
   try {
@@ -804,19 +815,16 @@ void _initMain() {
   } catch (e,s) {
     print('ERROR: $e');
     print('STACK: $s');
-    //exit();
+    window.close();
   }
 }
-
 void main() {
   print('s5ui.dart:main(): start');
 
   // Xoom = 1, Nexus = 2
   //print('window.devicePixelRatio: ${window.devicePixelRatio}');
 
-  //js.context['onOpen']   = new js.FunctionProxy(_initMain);
   js.context['toggleUI'] = new js.FunctionProxy(_toggleUIEvent);
-  //js.context['hdg']      = new js.FunctionProxy(_hdg);
 
   _initMain();
 }
