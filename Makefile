@@ -151,8 +151,8 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # Debug:
 # -DS52_DEBUG            - add more info for debugging libS52 (ex _checkError() in S52GL.c)
 # -DS52_USE_LOG          - log every S52_* in tmp file
-# -DG_DISABLE_ASSERT     - disable g_assert()
 # -DS52_USE_BACKTRACE    - debug
+# -DG_DISABLE_ASSERT     - glib - disable g_assert()
 #
 # Network:
 # -DS52_USE_DBUS         - mimic S52.h
@@ -192,6 +192,7 @@ CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl`  \
          -DS52_USE_SOCK                                \
          -DS52_DEBUG $(DBG)
 
+# -DS52_USE_GLES2
 s52gtk2gl2 : CFLAGS =                                  \
          `pkg-config  --cflags glib-2.0 lcms gl freetype2`  \
          `gdal-config --cflags`                        \
@@ -203,7 +204,6 @@ s52gtk2gl2 : CFLAGS =                                  \
          -DS52_USE_EGL                                 \
          -DS52_USE_OPENGL_VBO                          \
          -DS52_USE_GL2                                 \
-         -DS52_USE_GLES2                               \
          -DS52_USE_FREETYPE_GL                         \
          -DS52_USE_SUPP_LINE_OVERLAP                   \
          -DS52_USE_TXT_SHADOW                          \
@@ -236,6 +236,8 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
                   -DS52_DEBUG $(DBG)
 
 # EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord (use by afterglow)
+# -DS52_USE_GL2
+# -DS52_USE_GLSLES
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                   `gdal-config --cflags`         \
@@ -249,9 +251,8 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_BACKTRACE            \
                   -DS52_USE_EGL                  \
                   -DS52_USE_OPENGL_VBO           \
-                  -DS52_USE_GL2                  \
                   -DS52_USE_GLES2                \
-                  -DS52_USE_GLSLES               \
+                  -DS52_USE_MESA3D               \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_SOCK                 \
                   -DS52_USE_OGR_FILECOLLECTOR    \
@@ -280,6 +281,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_PROJ                        \
                      -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
+                     -DS52_USE_GLSLES                      \
                      -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_FREETYPE_GL                 \
                      -DS52_USE_ANDROID                     \
