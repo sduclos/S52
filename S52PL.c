@@ -143,7 +143,6 @@ typedef struct _S52_cmdDef {
     S52_Color     *col;         // LC: color of last pen
     char           pen_w;       // LC: width in pixel of last pen in (ASCII)
 
-//#ifdef S52_USE_GL2
 #if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
     guint          mask_texID;  // texture ID of pattern after running VBO
     int            potW;        // tex widht
@@ -3263,6 +3262,7 @@ int         S52_PL_getAPTileDim(_S52_obj *obj, double *w, double *h, double *dx)
     return TRUE;
 }
 
+#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
 int         S52_PL_getAPTilePos(_S52_obj *obj, double *bbx, double *bby, double *pivot_x, double *pivot_y)
 {
     return_if_null(obj);
@@ -3279,8 +3279,6 @@ int         S52_PL_getAPTilePos(_S52_obj *obj, double *bbx, double *bby, double 
     return TRUE;
 }
 
-//#ifdef S52_USE_GL2
-#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
 int         S52_PL_setAPtexID(_S52_obj *obj, guint mask_texID)
 {
     return_if_null(obj);
