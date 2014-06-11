@@ -28,9 +28,10 @@
 #include <gtk/gtkgl.h>      // gtk_gl_*(), gdk_gl_*()
 #include <gdk/gdkgl.h>      // gtk_gl_*(), gdk_gl_*()
 
-#if !defined(S52_USE_GLES2)
-#include <GL/gl.h>          // gl*() in _renderHelp()
-#endif
+//#if !defined(S52_USE_GLES2)
+//// FIXME: work on GL1.x only
+//#include <GL/gl.h>          // gl*() in _renderHelp()
+//#endif
 
 #include <string.h>         // strcmp(), memcpy()
 #include <signal.h>         // raise() - abort drawing
@@ -110,10 +111,10 @@ static S52ObjectHandle _clrlin      = NULL;
 //static S52ObjectHandle _marfea_line = NULL;
 static S52ObjectHandle _marfea_point = NULL;
 
-#if !defined(S52_USE_GLES2)
-// FIXME: work on GL1.x only
-static int _doRenderHelp = FALSE;
-#endif
+//#if !defined(S52_USE_GLES2)
+//// FIXME: work on GL1.x only
+//static int _doRenderHelp = FALSE;
+//#endif
 
 static GtkWidget    *_win     = NULL;
 static GtkWidget    *_winArea = NULL;
@@ -205,7 +206,8 @@ static int      _usage(const char *arg)
     return 1;
 }
 
-#if !defined(S52_USE_GLES2)
+#if 0
+//#if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
 static int      _renderHelp(GtkWidget *widget)
 // FIXME: work on GL1.x only
 {
@@ -653,11 +655,11 @@ static gboolean expose_event(GtkWidget      *widget,
     // draw reste
     S52_drawLast();
 
-#if !defined(S52_USE_GLES2)
-    // this draw help 'above' drawLast()
-    if (TRUE == _doRenderHelp)
-        _renderHelp(widget);
-#endif
+//#if !defined(S52_USE_GLES2)
+//    // this draw help 'above' drawLast()
+//    if (TRUE == _doRenderHelp)
+//        _renderHelp(widget);
+//#endif
 
     //_renderCrsrPos(widget, _x, _y, _brg, _rge);
 
@@ -877,9 +879,9 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_Escape:_resetView(&_view);                break;
         case GDK_r     : /*gtk_widget_draw(widget, NULL);*/break;
         case GDK_h     :
-#if !defined(S52_USE_GLES2)
-            _doRenderHelp = !_doRenderHelp;
-#endif
+//#if !defined(S52_USE_GLES2)
+//            _doRenderHelp = !_doRenderHelp;
+//#endif
             _usage("s52gtk2");
             break;
         case GDK_v     :g_print("%s\n", S52_version());    break;
@@ -1075,10 +1077,10 @@ static gboolean motion_notify_event(GtkWidget      *widget,
 
     //*
     if (TRUE == S52_drawLast()) {
-#if !defined(S52_USE_GLES2)
-        if (TRUE == _doRenderHelp)
-            _renderHelp(widget);
-#endif
+//#if !defined(S52_USE_GLES2)
+//        if (TRUE == _doRenderHelp)
+//            _renderHelp(widget);
+//#endif
         //_renderCrsrPos(widget, _x, _y, _brg, _rge);
 
         if (gdk_gl_drawable_is_double_buffered(gldrawable))
@@ -1780,10 +1782,10 @@ gboolean update_cb(void *dummy)
 
 
     if (TRUE == S52_drawLast()) {
-#if !defined(S52_USE_GLES2)
-        if (TRUE == _doRenderHelp)
-            _renderHelp(_winArea);
-#endif
+//#if !defined(S52_USE_GLES2)
+//        if (TRUE == _doRenderHelp)
+//            _renderHelp(_winArea);
+//#endif
 
         if (gdk_gl_drawable_is_double_buffered(gldrawable))
             gdk_gl_drawable_swap_buffers(gldrawable);
@@ -1848,10 +1850,10 @@ int main(int argc, char **argv)
     // Drawing Area
     _winArea = gtk_drawing_area_new();
 
-#ifdef S52_USE_GLES2
+#if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
     int mode = (GdkGLConfigMode) (GDK_GL_MODE_RGBA | GDK_GL_MODE_DOUBLE);
 #else
-    int mode = (GdkGLConfigMode) (GDK_GL_MODE_RGBA | GDK_GL_MODE_STENCIL | GDK_GL_MODE_DOUBLE);
+    int mode = (GdkGLConfigMode) (GDK_GL_MODE_RGBA | GDK_GL_MODE_DOUBLE | GDK_GL_MODE_STENCIL );
 #endif
 
     GdkGLConfig *glconfig = gdk_gl_config_new_by_mode(mode);
