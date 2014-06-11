@@ -92,6 +92,7 @@ static GTimer *_timer = NULL;  // debug - lap timer
 
 // trap signal (ESC abort rendering)
 // must be compiled with -std=gnu99
+#include <unistd.h>      // getuid()
 #include <sys/types.h>
 #include <signal.h>
 static volatile gint G_GNUC_MAY_ALIAS _atomicAbort;
@@ -749,7 +750,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
         case S52_MAR_DISP_CALIB          : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_DRGARE_PATTERN : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_NODATA_LAYER   : val = _validate_bool(val);                   break;
-        case S52_MAR_DEL_VESSEL_DELAY    : val = _validate_int(val);                    break;
+        case S52_MAR_DISP_VESSEL_DELAY   : val = _validate_int(val);                    break;
         case S52_MAR_DISP_AFTERGLOW      : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_CENTROIDS      : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_WORLD          : val = _validate_bool(val);                   break;
@@ -3706,7 +3707,7 @@ static int        _cull(_extent ext)
     return TRUE;
 }
 
-#ifdef S52_USE_GL2
+#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
 static int        _drawRaster()
 {
     for (guint i=0; i<_rasterList->len; ++i) {
@@ -4058,7 +4059,7 @@ static int        _draw()
         // draw under radar
         g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
 
-#ifdef S52_USE_GL2
+#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
         // draw radar (raster)
         if (1.0 == S52_MP_get(S52_MAR_DISP_RADAR_LAYER))
             _drawRaster();
@@ -4243,7 +4244,7 @@ static void       _delOldVessel(gpointer data, gpointer user_data)
         g_get_current_time(&now);
         long old = S52_PL_getTimeSec(obj);
 
-        if (now.tv_sec - old > S52_MP_get(S52_MAR_DEL_VESSEL_DELAY)) {
+        if (now.tv_sec - old > S52_MP_get(S52_MAR_DISP_VESSEL_DELAY)) {
             GPtrArray *rbin = (GPtrArray *) user_data;
             // queue obj for deletion in next APP() cycle
             //g_ptr_array_add(_objToDelList, obj);
@@ -4342,7 +4343,7 @@ DLL int    STD S52_drawLast(void)
     _app();
 
     // check stray vessel (occur when s52ais restart)
-    if (0.0 != S52_MP_get(S52_MAR_DEL_VESSEL_DELAY)) {
+    if (0.0 != S52_MP_get(S52_MAR_DISP_VESSEL_DELAY)) {
         GPtrArray *rbinPT = _marinerCell->renderBin[S52_PRIO_MARINR][S52_POINT];
         g_ptr_array_foreach(rbinPT, _delOldVessel, rbinPT);
         GPtrArray *rbinLN = _marinerCell->renderBin[S52_PRIO_MARINR][S52_LINES];
@@ -6098,8 +6099,15 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     _insertS52Obj(_marinerCell, obj);
 
     // set timer for afterglow
-    if (0 == g_strcmp0("afgves", S57_getName(geo)))
+    if (0 == g_strcmp0("vessel", S57_getName(geo))) {
         S52_PL_setTimeNow(obj);
+    }
+#ifdef S52_USE_AFGLOW
+    else {
+        if (0 == g_strcmp0("afgves", S57_getName(geo))) {
+            S52_PL_setTimeNow(obj);
+    }
+#endif
 
     // init TX & TE
     S52_PL_resetParseText(obj);
@@ -6605,6 +6613,10 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
     S52_CHECK_INIT;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
 
+    // FIXME: bug, if 2 newVessel() from different process block on newMarObj()
+
+
+
     // debug
     //label = NULL;
     PRINTF("vesrce:%i, label:%s\n", vesrce, label);
@@ -6627,7 +6639,8 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
         }
 
         vessel = S52_newMarObj("vessel", S52_POINT, 1, xyz, attval);
-        S52_PL_setTimeNow(vessel);
+
+        //S52_PL_setTimeNow(vessel);
     }
 
     PRINTF("vessel objH: %lu\n", vessel);
@@ -6809,6 +6822,7 @@ DLL int             STD S52_newCSYMB(void)
 }
 
 DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin)
+// assume that only one process use this call - no mutex!
 {
     S52_CHECK_INIT;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
