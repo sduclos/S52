@@ -1264,6 +1264,7 @@ static gpointer      _gpsdClientRead(gpointer dummy)
     while (0 != gps_open(GPSD_HOST, GPSD_PORT, &_gpsdata)) {   // android (gpsd 2.96)
         g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec: %d, %s\n", errno, gps_errstr(errno));
 
+        // FIXME: reconnect when server is back on-line
         // try to connect to GPSD server, bailout after 10 failed attempt
         //g_static_mutex_lock(&_ais_list_mutex);
         //g_mutex_lock(&_ais_list_mutex);
@@ -1641,10 +1642,6 @@ int main(int argc, char *argv[])
 {
     g_print("main():starting: argc=%i, argv[0]=%s\n", argc, argv[0]);
 
-    // deprecated
-    //g_thread_init(NULL);
-    //g_type_init();
-
     _initSIG();
 
 #ifdef S52_USE_ANDROID
@@ -1653,17 +1650,6 @@ int main(int argc, char *argv[])
 
     if (FALSE == s52ais_initAIS())
         return FALSE;
-
-    // FIXME: remove old spurious AIS
-    // - S52_getObjList("--6MARIN.000", "vessel");
-    // - loop
-    //        - S52_getMarObjH(unsigned int S57ID)
-    //        - S52_delMarObj(S52ObjectHandle objH);
-    // -OR-
-    // reconnect
-    // -OR-
-    // libS52 will delete them when they expire
-    // S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 700.0);
 
     //_main_loop = g_main_loop_new(NULL, FALSE);
 
