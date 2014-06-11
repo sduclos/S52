@@ -81,10 +81,9 @@ s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-201009
 
 CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2
 
-# same as above - but skip GL1.x call in _renderHelp()
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
-                      -DS52_USE_GLIB2                             \
-                      -DS52_USE_GLES2                             \
+                      -DS52_USE_GLIB2                                  \
+                      -DS52_USE_GL2                                    \
                       -DS52_USE_MESA3D
 
 s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1`
