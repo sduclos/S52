@@ -294,7 +294,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.136\n"
+      "libS52 0.137\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
