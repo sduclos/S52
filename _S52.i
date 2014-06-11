@@ -49,7 +49,7 @@ static int                 _encode(char *buffer, const char *frmt, ...)
     }
 }
 
-static int                 _handle_method(const gchar *str, char *result, char *err)
+static int                 _handleS52method(const gchar *str, char *result, char *err)
 {
     // FIXME: use btree for name/function lookup
     // -OR-
@@ -671,11 +671,12 @@ exit:
     return (int)id;
 }
 
-static gboolean            _sendResp(GIOChannel *source, gchar *str_send, int len)
+static gboolean            _sendResp(GIOChannel *source, gchar *str_send, guint len)
 // send response
-{   
+{
     gsize   bytes_written = 0;
     GError *error         = NULL;
+
     GIOStatus stat = g_io_channel_write_chars(source, str_send, len, &bytes_written, &error);
     if (NULL != error) {
         PRINTF("WARNING: g_io_channel_write_chars(): failed [stat:%i errmsg:%s]\n", stat, error->message);
@@ -689,6 +690,7 @@ static gboolean            _sendResp(GIOChannel *source, gchar *str_send, int le
         // 2 - G_IO_STATUS_EOF    End of file.
         // 3 - G_IO_STATUS_AGAIN  Resource temporarily unavailable.
         PRINTF("WARNING: g_io_channel_write_chars() failed - GIOStatus:%i\n", stat);
+
         return FALSE; // will close connection
     }
 
@@ -697,46 +699,20 @@ static gboolean            _sendResp(GIOChannel *source, gchar *str_send, int le
     return TRUE;
 }
 
-static gboolean            _parseWS(GIOChannel *source, gchar *str_read)
-// FIXME: check stack overflow due to recursion
+static guint               _encodeWebSocket(gchar *str_send, gchar *response, gsize respLen)
 {
-    gchar  response[SOCK_BUF] = {'\0'};  // JSON resp
-    gchar  str_send[SOCK_BUF] = {'\0'};  // WedSocket buffer to send
-
-    gchar  result  [SOCK_BUF] = {'\0'};  // S52 call result
-    gchar  err     [SOCK_BUF] = {'\0'};  // S52 call error
-
-    guint len  = str_read[1] & 0x7F;
-    char *key  = str_read + 2;
-    char *data = key + 4;
-
-    guint readLen = strlen(str_read);
-
-    for (guint i = 0; i<len; ++i)
-        data[i] ^= key[i%4];
-
-    // debug
-    PRINTF("WebSocket Frame: msg in (length:%li len:%u):%s\n", readLen, len, data);
-
-    int   id      = _handle_method(data, result, err);
-    guint dataLen = g_snprintf(response, SOCK_BUF, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}",
-                               id, (err[0] == '\0') ? "no error" : err, result);
-
-    // debug
-    PRINTF("WebSocket Frame: resp out:%s\n", response);
-
     // encode response
-    int n = 0;
-    if (dataLen <= 125) {
+    guint n = 0;
+    if (respLen <= 125) {
         // lenght coded with 7 bits <= 125
-        n = g_snprintf(str_send, SOCK_BUF, "\x81%c%s", (char)(dataLen & 0x7F), response);
+        n = g_snprintf(str_send, SOCK_BUF, "\x81%c%s", (char)(respLen & 0x7F), response);
     } else {
-        if (dataLen < 65536) {
+        if (respLen < 65536) {
             // lenght coded with 16 bits (code 126)
             // bytesFormatted[1] = 126
             // bytesFormatted[2] = ( bytesRaw.length >> 8 )
             // bytesFormatted[3] = ( bytesRaw.length      )
-            n = g_snprintf(str_send, SOCK_BUF, "\x81%c%c%c%s", 126, (char)(dataLen>>8), (char)dataLen, response);
+            n = g_snprintf(str_send, SOCK_BUF, "\x81%c%c%c%s", 126, (char)(respLen>>8), (char)respLen, response);
         } else {
             // if need more then 65536 bytes to transfer (code 127)
             /* dataLen max = 2^64
@@ -751,46 +727,88 @@ static gboolean            _parseWS(GIOChannel *source, gchar *str_read)
              bytesFormatted[9] = ( bytesRaw.length       )
              */
             // FIXME: n == 0 !
-            PRINTF("WebSocket Frame: FIXME: dataLen > 65535 not handled (%i)\n", dataLen);
+            PRINTF("WebSocket Frame: FIXME: dataLen > 65535 not handled (%i)\n", respLen);
             g_assert(0);
         }
     }
 
-    int ret = _sendResp(source, str_send, n);
-    if (FALSE == ret)
-        return FALSE;
+    return n;
+}
 
-    // FIXME: check stack overflow due to recursion
-    // check if other msg pending in the stream
-    if (len + 6 < readLen) {
-        // recursion
-        _parseWS(source, str_read + len + 6);
+static gboolean            _handleSocket(GIOChannel *source, gchar *str_read)
+//
+{
+    gchar  response[SOCK_BUF] = {'\0'};
+    gchar  result  [SOCK_BUF] = {'\0'};
+    gchar  err     [SOCK_BUF] = {'\0'};
+
+    int   id = _handleS52method(str_read, result, err);
+
+    // FIXME: _encode() & g_snprintf() do basically the same thing and the resulting
+    // string is the same .. but only g_snprintf() string pass io channel !!!
+    guint n  = g_snprintf(response, SOCK_BUF, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}",
+                          id, (err[0] == '\0') ? "no error" : err, result);
+
+    return _sendResp(source, response, n);
+}
+
+static gboolean            _handleWebSocket(GIOChannel *source, gchar *str_read, gsize length)
+// handle multi-msg stream
+{
+    // seem that only Dart send multi-msg stream!
+    while (('\x81' == str_read[0]) && (length > 0)) {
+        gchar  response[SOCK_BUF] = {'\0'};  // JSON resp
+        gchar  str_send[SOCK_BUF] = {'\0'};  // WedSocket buffer to send
+
+        gchar  result  [SOCK_BUF] = {'\0'};  // S52 call result
+        gchar  err     [SOCK_BUF] = {'\0'};  // S52 call error
+
+        //gchar  jsonstr [SOCK_BUF] = {'\0'};  // JSON msg tmp holder
+
+        guint len  = str_read[1] & 0x7F;
+        char *key  = str_read + 2;
+        char *data = key      + 4;  // or str_read + 6;
+
+        for (guint i = 0; i<len; ++i) {
+            data[i] ^= key[i%4];
+            //jsonstr[i] = data[i];
+        }
+
+        // debug
+        PRINTF("WebSocket Frame: msg in (length:%li len:%u):%s\n", length, len, data);
+
+        // FIXME: copy only JSON part data to a buffer, then
+        // call _handleS52method with it so that the JSON parser can't get confuse by the trailling undecode data.
+        // Note that the Parson JSON parser have no problem with the tailling undecoded data
+        int   id      = _handleS52method(data, result, err);
+        guint respLen = g_snprintf(response, SOCK_BUF, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}",
+                                   id, (err[0] == '\0') ? "no error" : err, result);
+
+        // debug
+        PRINTF("WebSocket Frame: resp out:%s\n", response);
+
+        guint n = _encodeWebSocket(str_send, response, respLen);
+
+        int ret = _sendResp(source, str_send, n);
+        if (FALSE == ret)
+            return FALSE;
+
+        str_read += len + 6;
+        length   -= len + 6;
     }
 
     return TRUE;
 }
 
-static gboolean            _handshakeWS(GIOChannel *source, gchar *str_read)
+static gboolean            _handshakeWebSocket(GIOChannel *source, gchar *str_read)
 {
-    // FIXME: find an better way to detect a websocket handshake - sec-websocket-key:
-    int   n   = strlen("Sec-WebSocket-Key:");
-    char *str = strstr(str_read, "Sec-WebSocket-Key:");
-
-    // try lower case
-    if (NULL == str) {
-        str = strstr(str_read, "sec-websocket-key:");
-    }
-
-    if (NULL == str) {
-        return FALSE;
-    }
-
-    GString *secWebSocketKey = g_string_new(str + n + 1);     // FIXME: +1 is for skipping the space
-    secWebSocketKey = g_string_truncate(secWebSocketKey, 24); // shop
-    //PRINTF("secWebSocketKey: %s\n", secWebSocketKey->str);
+    gchar buf[SOCK_BUF] = {'\0'};
+    sscanf(str_read, "Sec-WebSocket-Key: %s", buf);
+    GString *secWebSocketKey = g_string_new(buf);
     secWebSocketKey = g_string_append(secWebSocketKey, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
-    PRINTF("websocket handshake: _SecWebSocketKey>>>%s<<<\n", secWebSocketKey->str);
 
+    // debug
+    //PRINTF("OUT secWebSocketKey>>>%s<<<\n", secWebSocketKey->str);
 
     GChecksum *checksum = g_checksum_new(G_CHECKSUM_SHA1);
     g_checksum_update(checksum, (const guchar *)secWebSocketKey->str, secWebSocketKey->len);
@@ -825,25 +843,7 @@ static gboolean            _handshakeWS(GIOChannel *source, gchar *str_read)
     return ret;
 }
 
-static gboolean            _parseSocket(GIOChannel *source, gchar *str_read)
-{
-    gchar  response[SOCK_BUF] = {'\0'};
-    gchar  result  [SOCK_BUF] = {'\0'};
-    gchar  err     [SOCK_BUF] = {'\0'};
-
-    int   id = _handle_method(str_read, result, err);
-
-    // FIXME: _encode() & g_snprintf() do basically the same thing and the resulting
-    // string is the same .. but only g_snprintf() string pass io channel !!!
-    guint n  = g_snprintf(response, SOCK_BUF, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}",
-                          id, (err[0] == '\0') ? "no error" : err, result);
-
-    return _sendResp(source, response, n);
-}
-
-
 static gboolean            _socket_read_write(GIOChannel *source, GIOCondition cond, gpointer user_data)
-// FIXME: g_io_channel_read_chars() read all socket msg (ie can be more than 1)
 {
     // quiet - not used
     (void)user_data;
@@ -881,21 +881,21 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
 
             // Not a WebSocket connection - normal JSON handling
             if ('{' == str_read[0]) {
-                return _parseSocket(source, str_read);
+                return _handleSocket(source, str_read);
             }
 
             // in a WebSocket Frame - msg
             if ('\x81' == str_read[0]) {
-                return _parseWS(source, str_read);
+                return _handleWebSocket(source, str_read, length);
             }
-            //int idx = 0;
-            //while ('\x81' == str_read[idx]) {
-            //    idx = _parseWS(source, str_read);
-            //    if (0 == idx)
-            //        return TRUE;
-            //}
 
-            return _handshakeWS(source, str_read);
+            gchar *WSKeystr = g_strrstr(str_read, "Sec-WebSocket-Key");
+            if (NULL != WSKeystr) {
+                return _handshakeWebSocket(source, WSKeystr);
+            } else {
+                PRINTF("ERROR: unknown socket msg\n");
+                return FALSE;
+            }
         }
 
 
@@ -910,7 +910,6 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
     return TRUE;
     //return FALSE;  // will close connection
 }
-
 
 static gboolean            _new_connection(GSocketService    *service,
                                            GSocketConnection *connection,
@@ -955,25 +954,14 @@ static gboolean            _new_connection(GSocketService    *service,
 
 static int                 _initSock(void)
 {
-
-
     // FIXME: check that the glib loop is UP .. or start one
-    // FIXME: GLib-CRITICAL **: g_main_loop_is_running: assertion `loop != NULL' failed
     //if (FALSE == g_main_loop_is_running(NULL)) {
     //    PRINTF("DEBUG: main loop is NOT running ..\n");
     //}
 
-    // DEPRECATED
-    //g_type_init();
-
-    PRINTF("start to listen to socket ..\n");
-
     GError         *error          = NULL;
-
     GSocketService *service        = g_socket_service_new();
-
     GInetAddress   *address        = g_inet_address_new_any(G_SOCKET_FAMILY_IPV4);
-
     GSocketAddress *socket_address = g_inet_socket_address_new(address, 2950); // GPSD use 2947
 
     g_socket_listener_add_address(G_SOCKET_LISTENER(service), socket_address, G_SOCKET_TYPE_STREAM,
@@ -992,6 +980,7 @@ static int                 _initSock(void)
 
     g_signal_connect(service, "incoming", G_CALLBACK(_new_connection), NULL);
 
+    PRINTF("start to listen to socket ..\n");
 
     return TRUE;
 }
