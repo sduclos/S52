@@ -1,28 +1,17 @@
 // _GL2.i: definition & declaration for GL2.x, GLES2.x.
-//         Link to libGL.so or libGLESv2.
+//         Link to libGL.so or libGLESv2.so.
 //
 // SD 2014MAY20
-
+//
 // Note: if this code is included it mean that S52_USE_GL2 is allready defined
-//       to get GLES2 specific code define S52_USE_GLES2 also.
+//       to get GLES2 specific code (ex GLSL ES) define S52_USE_GLES2 also.
 // Note: GL2 matrix stuff work with GL_DOUBLE normaly while GLES2 work only with GL_FLOAT
 
 
-//*
-//#ifdef S52_USE_GLES2
+// Note: GLES2 is a subset of GL2, so declaration in GLES2 header cover all GL2 decl use in the code
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 typedef double GLdouble;
-//#include "tesselator.h"
-//typedef GLUtesselator GLUtesselatorObj;
-//typedef GLUtesselator GLUtriangulatorObj;
-//#else
-//#define GL_GLEXT_PROTOTYPES  // glGenBuffers(), glEnableVertexAttribArray(), ...
-//#include <GL/gl.h>
-//#include <GL/glext.h>
-//#include <GL/glu.h>
-//#endif
-//*/
 
 #include "tesselator.h"
 typedef GLUtesselator GLUtesselatorObj;
@@ -42,6 +31,7 @@ static int         _popScaletoPixel(void);
 static GLubyte     _glColor4ub(S52_Color *);
 static void        _glPointSize(GLfloat);
 static inline void _checkError(const char *);
+static GLvoid      _DrawArrays_LINE_STRIP(guint, vertex_t *);  // debug pattern
 ////////////////////////////////////////////////////////
 
 
@@ -144,13 +134,6 @@ static const GLubyte _dashpa_mask_bits[4] = {     // 4 x 8 bits = 32 bits
     0xFF, 0xF0, 0xFF, 0xF0
 };
 
-// MSAA
-//static GLuint        _aa_mask_texID    = 0;
-//static GLubyte       _aa_mask_alpha[16] = {
-//    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
-//    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-//};
-
 // OVERSC01
 // vertical line at each 400 units (4 mm)
 // 0.15mm dotpitch then 27 pixels == 4mm  (26.666..)
@@ -171,7 +154,6 @@ static GLuint        _fboID = 0;
 //static int _debugMatrix = 1;
 #define   MATRIX_STACK_MAX 8
 
-#ifdef S52_USE_GLES2
 // symbole not in GLES2 - but defined here to mimic GL2
 #define   GL_MODELVIEW    0x1700
 #define   GL_PROJECTION   0x1701
@@ -184,7 +166,6 @@ static GLuint        _fboID = 0;
 // Boolean
 #define   GLU_TRUE                           1
 #define   GLU_FALSE                          0
-#endif  // S52_USE_GLES2
 
 //static    GLenum   _mode = GL_MODELVIEW;  // GL_MODELVIEW (initial) or GL_PROJECTION
 static    GLenum   _mode = GL_PROJECTION;  // GL_MODELVIEW (initial) or GL_PROJECTION
@@ -632,7 +613,6 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
 
 static void      _glTranslated(double x, double y, double z) 
 {
-//#ifdef S52_USE_GLES2
     GLfloat t[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  (GLfloat) x, (GLfloat) y, (GLfloat) z, 1 };
     //GLfloat t[16] = {1, (GLfloat) x, (GLfloat) y, (GLfloat) z,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1};
 
@@ -642,16 +622,11 @@ static void      _glTranslated(double x, double y, double z)
     if (GL_MODELVIEW == _mode)
         _identity_MODELVIEW = FALSE;
 
-//#else
-//    glTranslated(x, y, z);
-//#endif
-
     return;
 }
 
 static void      _glScaled(double x, double y, double z) 
 {
-//#ifdef S52_USE_GLES2
     GLfloat m[16];
 
     _make_scale_matrix((GLfloat) x, (GLfloat) y, (GLfloat) z, m);
@@ -662,17 +637,12 @@ static void      _glScaled(double x, double y, double z)
     if (GL_MODELVIEW == _mode)
         _identity_MODELVIEW = FALSE;
 
-//#else
-//    glScaled(x, y, z);
-//#endif
-
     return;
 }
 
 static void      _glRotated(double angle, double x, double y, double z) 
 // rotate on Z
 {
-//#ifdef S52_USE_GLES2
     GLfloat m[16];
     // FIXME: handle only 0.0==x 0.0==y 1.0==z
     // silence warning for now
@@ -687,10 +657,6 @@ static void      _glRotated(double angle, double x, double y, double z)
     // optimisation - reset flag
     if (GL_MODELVIEW == _mode)
         _identity_MODELVIEW = FALSE;
-
-//#else
-//    glRotated(angle, x, y, z);
-//#endif
 
     return;
 }
@@ -900,7 +866,7 @@ static int       _initTexture(void)
 
 static int       _init_gl2(void) 
 {
-    PRINTF("begin ..\n");
+    PRINTF("begin GLSL init ..\n");
 
     if (TRUE == glIsProgram(_programObject)) {
         PRINTF("DEBUG: _programObject valid not re-init\n");
@@ -934,9 +900,8 @@ static int       _init_gl2(void)
         PRINTF("GL_VERTEX_SHADER\n");
 
         static const char vertSrc[] =
-//#ifdef S52_USE_GLSLES
 #ifdef S52_USE_GLES2
-            "precision lowp float;                                          \n"
+            //"precision lowp float;                                          \n"
             //"precision mediump float;                                     \n"
             //"precision highp   float;                                     \n"
 #endif
@@ -953,8 +918,8 @@ static int       _init_gl2(void)
             "attribute vec4  aPosition;                                     \n"
             "attribute float aAlpha;                                        \n"
 
-            "varying   vec4  v_acolor;                                      \n"
             "varying   vec2  v_texCoord;                                    \n"
+            "varying   vec4  v_acolor;                                      \n"
             "varying   float v_pattOn;                                      \n"
             "varying   float v_alpha;                                       \n"
 
@@ -990,13 +955,9 @@ static int       _init_gl2(void)
 
 
         static const char fragSrc[] =
-//#ifdef S52_USE_GLSLES
 #ifdef S52_USE_GLES2
             "precision lowp float;                      \n"
-            "uniform lowp sampler2D uSampler2d;         \n"
-#else
             "uniform sampler2D uSampler2d;              \n"
-#endif
             "uniform float     uFlatOn;                 \n"
             "uniform float     uBlitOn;                 \n"
             "uniform float     uStipOn;                 \n"
@@ -1008,6 +969,22 @@ static int       _init_gl2(void)
 
             "varying vec2      v_texCoord;              \n"
             "varying float     v_alpha;                 \n"
+#else
+            "precision lowp float;                      \n"
+            "uniform sampler2D uSampler2d;              \n"
+            "uniform float     uFlatOn;                 \n"
+            "uniform float     uBlitOn;                 \n"
+            "uniform float     uStipOn;                 \n"
+            "uniform float     uPattOn;                 \n"
+            "uniform float     uGlowOn;                 \n"
+            "uniform float     uRasterOn;               \n"
+
+            "uniform vec4      uColor;                  \n"
+
+            "varying vec2      v_texCoord;              \n"
+            "varying float     v_alpha;                 \n"
+
+#endif
 
             // NOTE: if else if ... doesn't seem to slow things down
             "void main(void)                            \n"
@@ -1405,8 +1382,14 @@ static int       _renderAP_gl2(S52_obj *obj)
             //_glTranslated(tileWpx/2.0 - 10.0, tileHpx/2.0 - 10.0, 0.0);
 
 
-            // scale & flip on Y
-            // found by trial and error
+
+            ////////////////////////////////////////////////////////////////
+            //
+            // FIXME: scale found by trial and error
+            //        find a way to get it programmaticaly
+            //
+
+
 #ifdef S52_USE_TEGRA2
             // scale to POT (Xoom)
             _glScaled(0.03/(tileWpx/potW), -0.03/(tileHpx/potH), 1.0);
@@ -1414,11 +1397,14 @@ static int       _renderAP_gl2(S52_obj *obj)
 #endif
 
 #ifdef S52_USE_ADRENO
-            // Nexus 7 (2013) - 323ppi landscape (need S52_MAR_DOTPITCH_MM set to 0.2)
-            _glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/4.0, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-4.0, 1.0);
-            //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/5.0, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-5.0, 1.0);
-            //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/6.0, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-6.0, 1.0);
-            //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/8.0, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-8.0, 1.0);
+            // FIXME: no -Y because Adreno flip Y
+            // Nexus 7 (2013) - 323ppi landscape - S52_MAR_DOTPITCH_MM set to 0.2
+            //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/0.2, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/0.2, 1.0);
+            _glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/0.15, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/0.15, 1.0);
+            //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/0.1, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/0.1, 1.0);
+
+            // Nexus 7 (2013) - 323ppi landscape - S52_MAR_DOTPITCH_MM not set (so dotptich is set via EGL/S52_init()
+            //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/0.01, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/0.01, 1.0);  // half size
 #endif
 
 #ifdef S52_USE_MESA3D
@@ -1426,6 +1412,9 @@ static int       _renderAP_gl2(S52_obj *obj)
 #else
             _glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/6.0, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-6.0, 1.0);
 #endif
+
+
+            ////////////////////////////////////////////////////////////////
 
         }
 
