@@ -10,15 +10,19 @@ DARTSDKPATH = /home/sduclos/dev/prog/dart/dart/dart-sdk/bin
 
 # in DARTSDKPATH/dart2js script:  --heap_growth_rate=512
 # also add --no_use_inlining to save 1 sec of compilation time
-# --disable-native-live-type-analysis - Disable the optimization that removes unused native types from dart:html 
+# --disable-native-live-type-analysis - Disable the optimization that removes unused native types from dart:html
+# --checked 
+#build/web/s52ui.dart.js: web/s52ui.dart web/s52.dart
+#	$(DARTSDKPATH)/dart2js -v web/s52ui.dart -obuild/web/s52ui.dart.js
 build/web/s52ui.dart.js: web/s52ui.dart web/s52.dart
-	$(DARTSDKPATH)/dart2js --checked web/s52ui.dart -obuild/web/s52ui.dart.js
+	$(DARTSDKPATH)/pub -v build
 
 clean:
 	rm -rf build/web/*
 
 distclean: clean
 
-# copy to Android sdcard (s52ui.java must loadURL html for sdcard - not asset/www)
+# copy to Android sdcard (s52ui.java loadURL html from sdcard if present else asset/www)
+# build/web/s52ui.dart.js
 install: build/web/s52ui.dart.js
-	adb push build/web /sdcard/s52ui
+	adb push build/web                            /sdcard/s52ui/
