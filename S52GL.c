@@ -550,7 +550,7 @@ static void      _glOrtho(double left, double right, double bottom, double top, 
     float ty = (dy != 0.0) ? -(top   + bottom) / dy : 0.0;
     float tz = (dz != 0.0) ? -(zFar  + zNear)  / dz : 0.0;
 
-    // GLSL ERROR: row major
+    // GLSL: NOT row major
     //GLfloat m[16] = {
     //2.0f / dx,  0,          0,          tx,
     //0,          2.0f / dy,  0,          ty,
@@ -5582,7 +5582,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     cogl_begin_gl();
 #endif
 
-//#ifndef S52_USE_GL2
 #ifdef S52_USE_GL1
     glPushAttrib(GL_ALL_ATTRIB_BITS);
 #endif
@@ -5603,8 +5602,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     //glHint(GL_POINT_SMOOTH_HINT, GL_FASTEST);
 
 
-    // FIXME: GLES2 or GL2
-//#ifndef S52_USE_GL2
 #ifdef S52_USE_GL1
     glAlphaFunc(GL_ALWAYS, 0);
 
@@ -5847,7 +5844,6 @@ int        S52_GL_end(S52_GL_cycle cycle)
     _crnt_GL_cycle = cycle;
 
 
-//#ifndef S52_USE_GL2
 #ifdef S52_USE_GL1
     glDisableClientState(GL_VERTEX_ARRAY);
     glPopAttrib();     // NOT in OpenGL ES SC
@@ -6064,9 +6060,12 @@ int        S52_GL_init(void)
 // return TRUE on success
 {
     if (!_doInit) {
+        // debug
         //PRINTF("WARNING: S52 GL allready initialize!\n");
         return _doInit;
     }
+
+    PRINTF("begin GL init..\n");
 
     // juste checking
     if (sizeof(double) != sizeof(GLdouble)) {
@@ -6097,8 +6096,6 @@ int        S52_GL_init(void)
 #ifdef S52_USE_GL2
     _init_gl2();
 #endif
-
-
 
     if (NULL == _objPick)
         _objPick = g_ptr_array_new();
@@ -6498,7 +6495,6 @@ guchar    *S52_GL_readFBPixels(void)
     // debug
     //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
 
-    glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
 #ifdef S52_USE_TEGRA2
     // must be in sync with _fb_format
@@ -6518,11 +6514,12 @@ guchar    *S52_GL_readFBPixels(void)
 
 #else
 
+    glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
 #endif  // S52_USE_TEGRA2
 
-    glBindTexture(GL_TEXTURE_2D, 0);
 
     _checkError("S52_GL_readFBPixels().. -end-");
 
