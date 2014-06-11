@@ -693,7 +693,7 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
-    //S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
+    //S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 0.0);
 
     // debug - use for timing redering
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
