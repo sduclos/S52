@@ -121,7 +121,7 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_DISP_NODATA_LAYER   = 38,   // display NODATA layer 0 (on/off) (default on)
 
-    S52_MAR_DEL_VESSEL_DELAY    = 39,   // time delay (sec) defore deleting old AIS (default 600 sec, 0 - OFF)
+    S52_MAR_DISP_VESSEL_DELAY   = 39,   // time delay (sec) defore deleting old AIS (default 600 sec, 0 - OFF)
 
     S52_MAR_DISP_AFTERGLOW      = 40,   // display synthetic afterglow (in PLAUX_00.DAI) for OWNSHP & VESSEL (on/off)
 
