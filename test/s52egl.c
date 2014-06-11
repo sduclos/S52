@@ -1218,8 +1218,6 @@ static int      _s52_init       (s52engine *engine)
 #ifdef S52_USE_ANDROID
     // read cell location fron s52.cfg
     //S52_loadCell(NULL, NULL);
-    // Estuaire du St-Laurent
-    //S52_loadCell(PATH "/ENC_ROOT/CA279037.000", NULL);
     // Tadoussac
     //S52_loadCell(PATH "/ENC_ROOT/CA379035.000", NULL);
     // load all 3 S57 charts
@@ -1228,9 +1226,9 @@ static int      _s52_init       (s52engine *engine)
 #ifdef S52_USE_ADRENO
     //S52_loadCell(NULL, NULL);
     // Rimouski (Nexus)
-    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
+    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
     // Estuaire du St-Laurent
-    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
+    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
 
     // Portneuf
     //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
@@ -1253,7 +1251,7 @@ static int      _s52_init       (s52engine *engine)
 #else  // S52_USE_ANDROID
 
     // read cell location fron s52.cfg
-    S52_loadCell(NULL, NULL);
+    //S52_loadCell(NULL, NULL);
 
     // S-64 ENC
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/GB5X01SE.000", NULL);
@@ -1263,7 +1261,7 @@ static int      _s52_init       (s52engine *engine)
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US1EEZ1M/US1EEZ1M.000", NULL);
 
     // Rimouski
-    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
+    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
 
     // Estuaire du St-Laurent
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
@@ -1292,7 +1290,7 @@ static int      _s52_init       (s52engine *engine)
 
     // debug - remove clutter from this symb in SELECT mode
     //S52_setS57ObjClassSupp("M_QUAL", TRUE);  // supress display of the U pattern
-    //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // displaythe U pattern
+    //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
     S52_toggleObjClassON ("M_QUAL");           //  suppression ON
     //S52_toggleObjClassOFF("M_QUAL");         //  suppression OFF
 
@@ -1323,8 +1321,8 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
     // -- DEPTH COLOR ------------------------------------
 
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the GPU]
@@ -1399,9 +1397,9 @@ static int      _s52_init       (s52engine *engine)
 //#endif
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
-    //S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 0.0);
+    //S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 0.0);
     // FIXME: check AIS mmsi when s52ais reconnect
-    S52_setMarinerParam(S52_MAR_DEL_VESSEL_DELAY, 700.0); // older AIS - case where s52ais reconect
+    S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 700.0); // older AIS - case where s52ais reconect
 
     //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
     S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
@@ -3079,12 +3077,6 @@ int main(int argc, char *argv[])
 
     _egl_init(&_engine);
     _s52_init(&_engine);
-
-    // init thread first before any call to glib
-    // event if NULL mean that glib call are more relaxe
-    // deprecated
-    //g_thread_init(NULL);
-    //g_type_init();
 
     _timer = g_timer_new();
 
