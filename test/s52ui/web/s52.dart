@@ -41,10 +41,20 @@ class S52 {
   Queue<Cmd> _queue = new Queue<Cmd>();
 
   // S52 color for UI element
-  List UIBCK;  // background
-  List UINFF;  // text
+  List UIBCK;  // background (same as DEPDW)
+  List UINFF;  // text normal
   List UIBDR;  // border
 
+  // UIAFD;    // blue fill UI area
+  // UIAFF;    // brown fill UI area
+
+  // UINFD;  // text conspic important
+
+  // UINFB;  // blue
+  // UINFG;  // green
+  // UINFR;  // red
+  // UINFM;  // magenta
+  // UINFO;  // orange
 
   static const int MAR_SHOW_ERROR             =  0;
   static const int MAR_SHOW_TEXT              =  1;
@@ -87,14 +97,10 @@ class S52 {
   static const int CMD_WRD_FILTER_AP          =       16;  // 1 << 4; 010000 - AP
   static const int CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
 
-  S52() {
-    //_drawLastTimer();
-    //var isolate = Isolate.spawn(process, "Start Isolate");
-  }
+  S52() {}
 
   Future<bool> initWS(var wsUri) {
     Completer completer = new Completer();
-    //_completer = new Completer();
 
     _ws = new WebSocket(wsUri);
     _ws.onOpen.   listen((Event e)        {completer.complete(true);_drawLastTimer();});
@@ -117,7 +123,10 @@ class S52 {
   }
 
   _rcvMsg(MessageEvent evt) {
-    print('_rcvMsg:${evt.data}');
+
+    // debug
+    //print('_rcvMsg:${evt.data}');
+
     var str = evt.data;
     Map data;
     try {
@@ -173,7 +182,9 @@ class S52 {
     if (_ws.bufferedAmount == 0) {
       //_ws.send(str);
       _ws.sendString(str);
-      print('_sndMsg:$str');
+
+      // debug
+      //print('_sndMsg:$str');
     } else {
       print('_sndMsg: ERROR SOCK FAIL');
     }
