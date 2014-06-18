@@ -137,11 +137,13 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 #
 # S52/S57:
 # -DS52_USE_OGR_FILECOLLECTOR
-#        - compile with g++ to use gdal/ogr s57filecollector()
-#        - add 'extern "C"' to ogr/ogrsf_frmts/s57.h:40 S57FileCollector()  -or- compile S52 with g++
-#        - for Windows file path in CATALOG to work on unix apply patch in doc/s57filecollector.cpp.diff
-# -DS52_USE_SUPP_LINE_OVERLAP - supress display of overlapping line  (OGR patch in doc/ogrfeature.cpp.diff)
-#                              --see S52 manual p. 45 doc/pslb03_2.pdf
+#                        - compile with g++ to use gdal/ogr s57filecollector()
+#                        - add 'extern "C"' to ogr/ogrsf_frmts/s57.h:40 S57FileCollector()  -or- compile S52 with g++
+#                        - for Windows file path in CATALOG to work on unix apply patch in doc/s57filecollector.cpp.diff
+# -DS52_USE_SUPP_LINE_OVERLAP
+#                        - supress display of overlapping line  (OGR patch in doc/ogrfeature.cpp.diff)
+#                        - work for LC() only (not LS())
+#                        - see S52 manual p. 45 doc/pslb03_2.pdf
 # -DS52_USE_C_AGGR_C_ASSO - return info C_AGGR C_ASSO on cursor pick (OGR patch in doc/ogrfeature.cpp.diff)
 # -DS52_USE_SYM_AISSEL01 - need symbol in test/plib-test-priv.rle
 # -DS52_USE_WORLD        - need shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
@@ -170,6 +172,9 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # GL GLSL:
 # -DS52_USE_GL2          - GL2.x
 # -DS52_USE_GLES2        - GLES2.x
+# -DS52_USE_GL3          - GL3.x
+# -DS52_USE_GLES3        - GLES3.x / GLSL ES 3.0
+
 #
 # ARM:
 # -DS52_USE_ANDROID      - build for Android/ARM
@@ -192,7 +197,6 @@ CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl`  \
          -DS52_USE_SOCK                                \
          -DS52_DEBUG $(DBG)
 
-# -DS52_USE_GLES2
 s52gtk2gl2 : CFLAGS =                                  \
          `pkg-config  --cflags glib-2.0 lcms gl freetype2`  \
          `gdal-config --cflags`                        \
@@ -235,9 +239,6 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
                   -DS52_USE_FTGL                  \
                   -DS52_DEBUG $(DBG)
 
-# EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord (use by afterglow)
-# -DS52_USE_GL2
-# -DS52_USE_GLSLES
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                   `gdal-config --cflags`         \
@@ -290,6 +291,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_SOCK                        \
                      -DS52_USE_TXT_SHADOW                  \
                      -DS52_USE_LOG                         \
+                     -DS52_USE_AFGLOW                      \
                      -DS52_DEBUG
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
