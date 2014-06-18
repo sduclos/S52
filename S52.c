@@ -1954,11 +1954,8 @@ static int        _linkRel2LNAM(_cell* c)
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 static int        _suppLineOverlap()
 // no SUPP in case manual chart correction (LC(CHCRIDnn) and LC(CHCRDELn))
-// Note: for now _suppLineOverlap() work for LC() only.
+// Note: for now _suppLineOverlap() work for LC() only (not LS())
 {
-    // FIXME: some valid edge are supress,
-    // check if odd vertex supress on to many edge
-
     return_if_null(_crntCell->Edges);
     return_if_null(_crntCell->ConnectedNodes);
 
@@ -1994,27 +1991,41 @@ static int        _suppLineOverlap()
                 }
 
 
-                //* CA379035.000 (Tadoussac) has Mask
-                //MASK (IntegerList) = (7:255,255,255,255,255,255,255)
+                /////////////////////// MASK ////////////////////////////////////////////////
+                //
+                // CA379035.000 Tadoussac has Mask on TSSLPT:5339,5340
+                // but TSSLPT has no LC() or LS() to mask !
+                // TSSLPT:5339 : MASK (IntegerList) = (7:1,2,255,255,255,255,2)
+                // 1 - mask, 2 - show, 255 - null (exterior boundary truncated by the data limit)
+                /*
                 GString *maskstr = S57_getAttVal(geo, "MASK");
                 if (NULL != maskstr) {
-                    gchar **splitMASK = g_strsplit_set(maskstr->str+1, "():,", 0);
-                    gchar **topMASK   = splitMASK;
+                    gchar *substr = ",...)";
+                    gchar *found1 = g_strrstr(maskstr->str, substr);
+                    if (NULL != found1) {
+                        PRINTF("ERROR: OGR buffer TEMP_BUFFER_SIZE in ogr/ogrfeature.cpp:994 overflow\n");
+                        g_assert(0);
+                    } else {
 
-                    // the first integer is the lenght (ie the number of mask value)
-                    guint n = atoi(*splitMASK++);
-                    // 1 - mask, 2 - show, 255 - null (exterior boundary truncated by the data limit)
-                    for (guint i=0; i<n; ++splitMASK, ++i) {
-                        if (('1'==*splitMASK[0]) || ('5'==*splitMASK[1])) {
-                            PRINTF("FIXME: 'MASK' FOUND ---> %s : %s\n", S57_getName(geo), maskstr->str);
+                        gchar **splitMASK = g_strsplit_set(maskstr->str+1, "():,", 0);
+                        gchar **topMASK   = splitMASK;
 
-                            // debug - CA379035.000 (Tadoussac) pass here
-                            //g_assert(0);
+                        // the first integer is the lenght (ie the number of mask value)
+                        guint n = atoi(*splitMASK++);
+                        for (guint i=0; i<n; ++splitMASK, ++i) {
+                            if (('1'==*splitMASK[0]) || ('5'==*splitMASK[1])) {
+                                PRINTF("FIXME: 'MASK' FOUND ---> %s : %s\n", S57_getName(geo), maskstr->str);
+                                // TSSLPT:5339 : (7:1,2,255,255,255,255,2)
+                                // TSSLPT:5340 : (5:1,2,255,255,2)
+                                //g_assert(0);
+                            }
                         }
+                        g_strfreev(topMASK);
                     }
-                    g_strfreev(topMASK);
                 }
                 //*/
+                ///////////////////////////////////////////////////////////////////////////
+
 
                 // take only Edge (ie rcnm == 130 (Edge type))
                 gchar **splitrcnm  = g_strsplit_set(name_rcnmstr->str+1, "():,", 0);
@@ -6106,6 +6117,7 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     else {
         if (0 == g_strcmp0("afgves", S57_getName(geo))) {
             S52_PL_setTimeNow(obj);
+        }
     }
 #endif
 
