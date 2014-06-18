@@ -265,7 +265,13 @@ GL_OUT_OF_MEMORY
 
         //PRINTF("from %s: 0x%4x:%s (%s)\n", msg, err, gluErrorString(err), name);
         PRINTF("from %s: 0x%x (%s)\n", msg, err, name);
-        //g_assert(0);
+
+#ifdef S52_USE_ANDROID
+        // exit if s52droid restart - tons of error and nothing drawn
+        // so it's useless to keep s52droid running
+        g_assert(0);
+#endif
+
     }
 #endif
 }
@@ -2684,20 +2690,20 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
     }
 
     if (NULL != orientstr) {
-        double o = S52_atof(orientstr->str);
+        double orient = S52_atof(orientstr->str);
 
         _glMatrixMode(GL_MODELVIEW);
         _glLoadIdentity();
 
         _glTranslated(ppt[0], ppt[1], 0.0);
-        _glRotated(90.0-o, 0.0, 0.0, 1.0);
+        _glRotated(90.0-orient, 0.0, 0.0, 1.0);
 
         _pushScaletoPixel(FALSE);
 
 #ifdef S52_USE_GL2
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 #endif
-        {
+        {   // from sea side
             pt3v pt[2] = {{0.0, 0.0, 0.0}, {-leglenpix, 0.0, 0.0}};
             _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
         }
@@ -2720,7 +2726,7 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 #endif
 
-        {
+        {   // from sea side
             pt3v pt[2] = {{0.0, 0.0, 0.0}, {-leglenpix, 0.0, 0.0}};
             _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
         }
@@ -2735,7 +2741,7 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
         _glLoadIdentity();
 
         _glTranslated(ppt[0], ppt[1], 0.0);
-        _glRotated(90-sectr2, 0.0, 0.0, 1.0);
+        _glRotated(90.0-sectr2, 0.0, 0.0, 1.0);
 
         _pushScaletoPixel(FALSE);
 
@@ -2743,7 +2749,7 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 #endif
 
-        {
+        {    // from sea side
             pt3v pt[2] = {{0.0, 0.0, 0.0}, {-leglenpix, 0.0, 0.0}};
             _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
         }
@@ -2988,13 +2994,13 @@ static int       _renderLS_afterglow(S52_obj *obj)
     if (0 == npt)
         return TRUE;
 
-    //{   // set color
+    {   // set color
         S52_Color *col;
         char       style;   // dummy
         char       pen_w;   // dummy
         S52_PL_getLSdata(obj, &pen_w, &style, &col);
         _glColor4ub(col);
-    //}
+    }
 
     //_setBlend(TRUE);
 
@@ -3002,7 +3008,6 @@ static int       _renderLS_afterglow(S52_obj *obj)
 
     _glPointSize(7.0);
 
-    // fill color (alpha) array
     guint  pti = S57_getGeoSize(geo);
     if (0 == pti)
         return TRUE;
@@ -3021,6 +3026,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
     g_array_set_size(_aftglwColorArr, 0);
 
 #ifdef S52_USE_GL2
+    // set point alpha
     for (guint i=0; i<pti; ++i) {
         g_array_append_val(_aftglwColorArr, crntAlpha);
         crntAlpha += dalpha;
@@ -3028,7 +3034,23 @@ static int       _renderLS_afterglow(S52_obj *obj)
     // convert an array of geo double (3) to float (3)
     _d2f(_tessWorkBuf_f, pti, ppt);
 
-#else
+    //_checkError("_renderLS_afterglow() .. -0-");
+    // turn ON after glow in shader
+    glUniform1f(_uGlowOn, 1.0);
+
+    // vertex array - fill vbo arrays
+    glEnableVertexAttribArray(_aPosition);
+    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 0,  _tessWorkBuf_f->data);
+    //_checkError("_renderLS_afterglow() .. -0.1-");
+
+    // fill array with alpha
+    glEnableVertexAttribArray(_aAlpha);
+    glVertexAttribPointer    (_aAlpha, 1, GL_FLOAT, GL_FALSE, 0, _aftglwColorArr->data);
+    //_checkError("_renderLS_afterglow() .. -1-");
+
+#else  // S52_USE_GL2
+
+    // fill color (alpha) array
     for (guint i=0; i<pti; ++i) {
         g_array_append_val(_aftglwColorArr, col->R);
         g_array_append_val(_aftglwColorArr, col->G);
@@ -3037,28 +3059,6 @@ static int       _renderLS_afterglow(S52_obj *obj)
         g_array_append_val(_aftglwColorArr, tmp);
         crntAlpha += dalpha;
     }
-#endif
-
-#ifdef S52_USE_GL2
-    //_checkError("_renderLS_afterglow() .. -0-");
-
-    // vertex array - fill vbo arrays
-    glEnableVertexAttribArray(_aPosition);
-    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 0,  _tessWorkBuf_f->data);
-
-
-    // turn ON after glow in shader
-    glUniform1f(_uGlowOn, 1.0);
-
-    //_checkError("_renderLS_afterglow() .. -0.1-");
-
-    // fill array with alpha
-    glEnableVertexAttribArray(_aAlpha);
-    glVertexAttribPointer    (_aAlpha, 1, GL_FLOAT, GL_FALSE, 0, _aftglwColorArr->data);
-
-    //_checkError("_renderLS_afterglow() .. -1-");
-
-#else  // S52_USE_GL2
 
     // vertex array - fill vbo arrays
     glBindBuffer(GL_ARRAY_BUFFER, _vboIDaftglwVertID);
@@ -3074,7 +3074,6 @@ static int       _renderLS_afterglow(S52_obj *obj)
     glBufferData(GL_ARRAY_BUFFER, pti*sizeof(unsigned char)*4, (const void *)_aftglwColorArr->data, GL_DYNAMIC_DRAW);
 
 #endif  // S52_USE_GL2
-
 
     // 3 - draw
     _glUniformMatrix4fv_uModelview();
@@ -3211,13 +3210,14 @@ static int       _renderLS(S52_obj *obj)
             if (0 == g_strcmp0("ownshp", S57_getName(geoData))) {
                 // what symbol for ownshp of type line or area ?
                 // when ownshp is a POINT_T type !!!
-                PRINTF("DEBUG: ownshp obj of type LINES_T, AREAS_T!");
+                PRINTF("DEBUG: ownshp obj of type LINES_T, AREAS_T\n");
                 _renderLS_ownshp(obj);
                 g_assert(0);
             } else {
                 if ((0 == g_strcmp0("afgves", S57_getName(geoData))) ||
                     (0 == g_strcmp0("afgshp", S57_getName(geoData)))
                    ) {
+                    //PRINTF("DEBUG: XXXXXXXXXXXXXXX afgves\n");
                     _renderLS_afterglow(obj);
                 } else {
 
@@ -3635,41 +3635,25 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
     GString   *sectr2str = S57_getAttVal(geoData, "SECTR2");
 
     if ((NULL!=sectr1str) && (NULL!=sectr2str)) {
-        GLdouble  *ppt       = NULL;
-        guint      npt       = 0;
         S52_Color *c         = S52_PL_getACdata(obj);
         S52_Color *black     = S52_PL_getColor("CHBLK");
-        GLdouble   sectr1    = (NULL == sectr1str) ? 0.0 : S52_atof(sectr1str->str);
-        GLdouble   sectr2    = (NULL == sectr2str) ? 0.0 : S52_atof(sectr2str->str);
+        GLdouble   sectr1    = S52_atof(sectr1str->str);
+        GLdouble   sectr2    = S52_atof(sectr2str->str);
         double     sweep     = (sectr1 > sectr2) ? sectr2-sectr1+360 : sectr2-sectr1;
-        //GLdouble   startAng  = (sectr1 + 180 > 360.0) ? sectr1 : sectr1 + 180;
         GString   *extradstr = S57_getAttVal(geoData, "extend_arc_radius");
         GLdouble   radius    = 0.0;
         GLint      loops     = 1;
-        projUV     p         = {0.0, 0.0};
-        //double     z         = 0.0;
 
+        GLdouble  *ppt       = NULL;
+        guint      npt       = 0;
         if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt))
             return FALSE;
-
-        //_glMatrixMode(GL_MODELVIEW);
-        //_glLoadIdentity();
-
-        p.u = ppt[0];
-        p.v = ppt[1];
-        p = _prj2win(p);
 
         if (NULL!=extradstr && 'Y'==*extradstr->str) {
             radius = 25.0 / S52_MP_get(S52_MAR_DOTPITCH_MM_X);    // (not 25 mm on xoom)
         } else {
             radius = 20.0 / S52_MP_get(S52_MAR_DOTPITCH_MM_X);    // (not 20 mm on xoom)
         }
-
-        //_setBlend(TRUE);
-
-
-        _glTranslated(ppt[0], ppt[1], 0.0);
-        _pushScaletoPixel(FALSE);
 
         // NOTE: specs say unit, assume it mean pixel
 #ifdef S52_USE_OPENGL_VBO
@@ -3705,8 +3689,7 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
             glNewList(DList->vboIds[0], GL_COMPILE);
 
             _diskPrimTmp = DList->prim[0];
-            //gluPartialDisk(_qobj, radius, radius+4, slice, loops, sectr1+180, sweep);
-            gluPartialDisk(_qobj, radius, radius+4, sweep/2.0, loops, sectr1+180, sweep);
+            gluPartialDisk(_qobj, radius, radius+4, slice, loops, sectr1+180, sweep);
             _DrawArrays(_diskPrimTmp);
             glEndList();
 
@@ -3715,13 +3698,21 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
             glNewList(DList->vboIds[1], GL_COMPILE);
 
             _diskPrimTmp = DList->prim[1];
-            //gluPartialDisk(_qobj, radius+1, radius+3, slice, loops, sectr1+180, sweep);
-            gluPartialDisk(_qobj, radius+1, radius+3, sweep/2.0, loops, sectr1+180, sweep);
+            gluPartialDisk(_qobj, radius+1, radius+3, slice, loops, sectr1+180, sweep);
             _DrawArrays(_diskPrimTmp);
             glEndList();
 #endif
             _diskPrimTmp = NULL;
         }
+
+        //_setBlend(TRUE);
+
+
+        _glMatrixMode(GL_MODELVIEW);
+        _glLoadIdentity();
+
+        _glTranslated(ppt[0], ppt[1], 0.0);
+        _pushScaletoPixel(FALSE);
 
         // use VBO
         _glCallList(DList);
@@ -4163,14 +4154,11 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
 #ifdef S52_USE_GLC
     if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS)) {
-        projUV p = {x, y};
-
-        //_glMatrixMode(GL_MODELVIEW);
-        //_glLoadIdentity();
-
-        p = _prj2win(p);
 
         _glMatrixSet(VP_WIN);
+
+        projUV p = {x, y};
+        p = _prj2win(p);
 
         glRasterPos3d((int)p.u, (int)p.v, 0.0);
         PRINTF("GLC:%s\n", str);
@@ -5373,7 +5361,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //    //return;
     //}
     //if (0 == strcmp("$CSYMB", S52_PL_getOBCL(obj))) {
-    //    PRINTF("UNSARE found\n");
+    //    PRINTF("$CSYMB found\n");
     //    //return;
     //}
     //if (S52_GL_PICK == _crnt_GL_cycle) {
@@ -5689,8 +5677,17 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     // FIXME: need to clock this more accuratly
     // Note: Mesa RadeonHD & Xoom (TEGRA2) Android 4.4.2 a bit slower with cull face!
     // also make little diff on Nexus with current timming method (not accurate)
-    glEnable(GL_CULL_FACE);
-    //glDisable(GL_CULL_FACE);
+    //glEnable(GL_CULL_FACE);
+    glDisable(GL_CULL_FACE);
+
+#if !defined(S52_USE_MESA3D) && defined(S52_USE_AFGLOW)
+    // GL_POINT_SPRITE 0x8861 define only in Mesa3d GL/glext.h also in android tool chain GLES/gl.h
+    // but GLSL ES 3.0 say that GL_POINT_SPRITE/gl_PointCoord work
+#define GL_POINT_SPRITE 0x8861  
+    //glEnable(GL_POINT_SPRITE);               // Adreno GLSL ES 3.0 say invalid (libGLESv3, libGLESv1_CM)
+#define GL_VERTEX_PROGRAM_POINT_SIZE 0x8642
+    //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);  // Adreno GLSL ES 3.0 say invalid
+#endif
 
     // EnableCap
     glDisable(GL_DITHER);
@@ -6019,7 +6016,8 @@ static int       _contextValid(void)
         const GLubyte *extensions = glGetString(GL_EXTENSIONS);
         if (NULL == extensions) {
             PRINTF("ERROR: glGetString(GL_EXTENSIONS) is NULL\n");
-            g_assert(0);
+            //g_assert(0);
+            return FALSE;
         }
 
         PRINTF("Vendor:     %s\n", vendor);
@@ -6040,6 +6038,12 @@ static int       _contextValid(void)
             PRINTF("DEBUG: GL_EXT_debug_marker OK\n");
         else
             PRINTF("DEBUG: GL_EXT_debug_marker FAILED\n");
+
+        // point sprites
+        if (NULL != g_strrstr((const char *)extensions, "GL_OES_point_sprite"))
+            PRINTF("DEBUG: GL_OES_point_sprite OK\n");
+        else
+            PRINTF("DEBUG: GL_OES_point_sprite FAILED\n");
 
     }
 #else
@@ -6110,14 +6114,21 @@ int        S52_GL_init(void)
         _tmpWorkBuffer = g_array_new(FALSE, FALSE, sizeof(vertex_t)*3);
 
 #ifdef S52_USE_AFGLOW
+#ifdef S52_USE_GL2
+    if (NULL == _aftglwColorArr)
+        _aftglwColorArr = g_array_new(FALSE, FALSE, sizeof(float));
+#else
     if (NULL == _aftglwColorArr)
         _aftglwColorArr = g_array_new(FALSE, FALSE, sizeof(unsigned char));
+#endif
 
     // init vbo for color
     if (0 == _vboIDaftglwColrID)
         glGenBuffers(1, &_vboIDaftglwColrID);
 
-    if (GL_FALSE == glIsBuffer(_vboIDaftglwColrID)) {
+    // FIXME: glIsBuffer() faild but _vboIDaftglwColrID is valid
+    //if (GL_FALSE == glIsBuffer(_vboIDaftglwColrID)) {
+    if (0 == _vboIDaftglwColrID) {
         PRINTF("ERROR: glGenBuffers() fail\n");
         g_assert(0);
         return FALSE;
@@ -6127,7 +6138,9 @@ int        S52_GL_init(void)
     if (0 == _vboIDaftglwVertID)
         glGenBuffers(1, &_vboIDaftglwVertID);
 
-    if (GL_FALSE == glIsBuffer(_vboIDaftglwVertID)) {
+    // FIXME: glIsBuffer() faild but _vboIDaftglwVertID is valid
+    //if (GL_FALSE == glIsBuffer(_vboIDaftglwVertID)) {
+    if (0 == _vboIDaftglwVertID) {
         PRINTF("ERROR: glGenBuffers() fail\n");
         g_assert(0);
         return FALSE;
@@ -6711,8 +6724,13 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
             return FALSE;
 
+        //_glMatrixSet(VP_WIN);
+        _glMatrixSet(VP_PRJ);
+
         projUV p = {pt.x, pt.y};
         p = _prj2win(p);
+        //_glMatrixDel(VP_WIN);
+        _glMatrixDel(VP_PRJ);
 
         // FIXME: what happen if the viewport change!!
         if ((p.u - width/2 ) <      0) x = width/2;
