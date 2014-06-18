@@ -5,7 +5,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE     := s52droid
 # -DUSE_AIS
 LOCAL_SRC_FILES  := ../../s52egl.c ../../s52ais.c
-# -DS52AIS_STANDALONE 
+# -DS52AIS_STANDALONE
 #LOCAL_SRC_FILES  := ../../s52egl.c
 
 
@@ -18,14 +18,15 @@ LOCAL_SRC_FILES  := ../../s52egl.c ../../s52ais.c
 
 # -DS52_USE_AFGLOW   - add afterglow to target (VESSEL/OWNSHP), need symbole in PLAUX_00.DAI
 # -DS52_USE_SL4A     - SL4A is a RPC bridge to the Android framework
-# -DS52_USE_GLES2    -
+# -DS52_USE_GLES2    - GLES2.x
+# -DS52_USE_GLES3    - GLES3.x / GLSL ES 3.0
 # -DS52_USE_ANDROID  -
 # -DS52_USE_TEGRA2   - need GLES2
 # -DS52_USE_ADRENO   - need GLES2
 # -DS52_USE_WORLD    - experimental - load world Shapefile
 # -DS52_USE_SOCK     - send call to S52_*() via socket
 # -DS52_USE_LOG      - use S52_error_cb in init to get log send to STDOUT (usefull on non-rooted device)
-# -DS52_USE_RADAR    - 
+# -DS52_USE_RADAR    -
 
 ARMTOOLCHAINPATH := /home/sduclos/dev/prog/Android/dev/android-19-toolchain
 S52DROIDINC      := /home/sduclos/S52/test/android/dist/sysroot/include
@@ -35,6 +36,7 @@ LOCAL_CFLAGS     := -g -O0 -std=c99 -Wall -DG_LOG_DOMAIN=\"s52droid\"           
                     -DS52_USE_ANDROID -DS52_USE_ADRENO                                \
                     -DS52_USE_EGL -DS52_USE_GLES2                                     \
                     -DUSE_AIS -DS52_USE_LOG                                           \
+                    -DS52_USE_AFGLOW                                                  \
                     -I../..                                                           \
                     -I$(S52DROIDINC)                                                  \
                     -I$(S52DROIDINC)/glib-2.0                                         \
@@ -76,7 +78,9 @@ $(ARMTOOLCHAINPATH)/arm-linux-androideabi/lib/thumb/libstdc++.a
 
 
 #LOCAL_SHARED_LIBRARIES := -L$(OMNILIBS) -lEGL -lGLESv2 -llog -landroid -landroid_runtime -lz -lc -lm -ldl
-_LOCAL_SHARED_LIBRARIES := -lEGL -lGLESv2 -llog -landroid -lz -lc -lm -ldl
+#_LOCAL_SHARED_LIBRARIES := -lEGL -lGLESv2 -llog -landroid -lz -lc -lm -ldl
+#_LOCAL_SHARED_LIBRARIES := -lEGL -lGLESv2_adreno -lGLESv1_CM_adreno -llog -landroid -lz -lc -lm -ldl
+_LOCAL_SHARED_LIBRARIES := -lEGL -lGLESv3 -llog -landroid -lz -lc -lm -ldl
 
 # Android NDK:     This is likely to result in incorrect builds. Try using LOCAL_STATIC_LIBRARIES
 # Android NDK:     or LOCAL_SHARED_LIBRARIES instead to list the library dependencies of the
