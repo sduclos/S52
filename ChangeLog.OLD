@@ -2,6 +2,15 @@
 #                The 'real' ChangeLog is generated with the Perl script cvs2cl.pl
 #
 
+
+2014JUN18
+    -fix synthetic after glow for the GL2 code path
+
+2014JUN16
+    -fix and refactor light sector
+    -add some feedback in s52ui
+    -add S52_USE_GL3 / S52_USE_GLES3 / GLSL ES 3.0
+
 2014JUN05
     -mod refactor _parseWS() in _S52.i to avoid recursion
 
