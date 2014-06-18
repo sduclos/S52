@@ -775,7 +775,7 @@ static gboolean            _handleWebSocket(GIOChannel *source, gchar *str_read,
         }
 
         // debug
-        PRINTF("WebSocket Frame: msg in (length:%li len:%u):%s\n", length, len, data);
+        //PRINTF("WebSocket Frame: msg in (length:%li len:%u):%s\n", length, len, data);
 
         // FIXME: copy only JSON part data to a buffer, then
         // call _handleS52method with it so that the JSON parser can't get confuse by the trailling undecode data.
@@ -785,7 +785,7 @@ static gboolean            _handleWebSocket(GIOChannel *source, gchar *str_read,
                                    id, (err[0] == '\0') ? "no error" : err, result);
 
         // debug
-        PRINTF("WebSocket Frame: resp out:%s\n", response);
+        //PRINTF("WebSocket Frame: resp out:%s\n", response);
 
         guint n = _encodeWebSocket(str_send, response, respLen);
 
