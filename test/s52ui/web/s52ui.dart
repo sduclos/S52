@@ -262,13 +262,20 @@ void _listAIS(MouseEvent e) {
 /////////////// ENC Button Handling //////////////////////////
 void _loadENC(int idx, TableCellElement c) {
   var encPath = c.children[0].text;
+  c.children[0].style.backgroundColor = 'yellow';
   if ('*' == encPath[0]) {
     s52.doneCell(encPath.substring(1)).then((ret) {
-      s52.draw().then((ret) {_listENC(null);});
+      s52.draw().then((ret) {
+        _listENC(null);
+        c.children[0].style.backgroundColor = 'transparent';
+      });
     });
   } else {
     s52.loadCell(encPath).then((ret) {
-      s52.draw().then((ret) {_listENC(null);});
+      s52.draw().then((ret) {
+        _listENC(null);
+        c.children[0].style.backgroundColor = 'transparent';
+      });
     });
   }
 }
@@ -456,8 +463,8 @@ void _initTouch() {
   // Handle touch events.
   Element target = querySelector('#svg1');
 
-  bool doBlit1  = true;
-  bool doBlit2  = true;
+  //bool doBlit1  = true;
+  //bool doBlit2  = true;
   bool modeZoom = false;
   bool newTouch = false;
 
@@ -487,15 +494,14 @@ void _initTouch() {
       modeZoom = false;
       zoom_fac = 0.0;
       ticks    = 0;
-      //s52.skipTimer = true;
     }
 
     if (1 == event.touches.length) {
       start_x1 = event.touches[0].page.x;
       start_y1 = event.touches[0].page.y;
 
-      doBlit1  = true;
-      doBlit2  = false;
+      //doBlit1  = true;
+      //doBlit2  = false;
 
       // debug
       //print("onTouchStart start_x1:$start_x1, start_y1:$start_y1");
@@ -507,8 +513,8 @@ void _initTouch() {
       start_x2 = event.touches[1].page.x;
       start_y2 = event.touches[1].page.y;
 
-      doBlit1  = false;
-      doBlit2  = true;
+      //doBlit1  = false;
+      //doBlit2  = true;
 
       modeZoom = true;
 
@@ -533,15 +539,18 @@ void _initTouch() {
       //print('onTouchMove 1: dx_pc:$dx_pc, dy_pc:$dy_pc, w:${window.innerWidth}, h:${window.innerHeight}');
 
       //if (true == doBlit1) {
-        doBlit1 = false;
-        s52.drawBlit(dx_pc, dy_pc, 0.0, 0.0).then((ret) {doBlit1 = true;});
+        //doBlit1 = false;
+        s52.drawBlit(dx_pc, dy_pc, 0.0, 0.0).then((ret) {
+          //doBlit1 = true;
+        });
       //}
 
       return;
     }
 
     // zoom (in/out)
-    if (2==event.touches.length && true==doBlit2) {
+    //if (2==event.touches.length && true==doBlit2) {
+    if (2 == event.touches.length) {
       new_x1 = event.touches[0].page.x;
       new_y1 = event.touches[0].page.y;
       new_x2 = event.touches[1].page.x;
@@ -574,8 +583,10 @@ void _initTouch() {
       //double dy_pc = dy / window.innerHeight; // not used
 
       //if (true == doBlit2) {
-        doBlit2 = false;
-        s52.drawBlit(0.0, 0.0, dx_pc / window.devicePixelRatio, 0.0).then((ret) {doBlit2 = true;});
+        //doBlit2 = false;
+        s52.drawBlit(0.0, 0.0, dx_pc / window.devicePixelRatio, 0.0).then((ret) {
+          //doBlit2 = true;
+        });
         zoom_fac = dx_pc;
 
       //}
@@ -623,7 +634,9 @@ void _initTouch() {
 
         querySelector('#svg1g').style.display = 'inline-block';
 
-        s52.draw().then((ret) {});
+        s52.draw().then((ret) {
+          s52.skipTimer = false;
+        });
       });
 
       return;
@@ -664,7 +677,9 @@ void _initTouch() {
           double rNMnew = rNM - (rNM * zoom_fac);
           rNMnew = (0 < rNMnew) ? rNMnew : -rNMnew;  // ABS()
           s52.setView(cLat, cLon, rNMnew, north).then((ret) {
-            s52.draw().then((ret) {});
+            s52.draw().then((ret) {
+              s52.skipTimer = false;
+            });
           });
         });
       }
@@ -692,14 +707,16 @@ void _initTouch() {
               double dx = x2 - x1;
               double dy = y2 - y1;
               s52.setView(cLat + dy, cLon + dx, rNM, north).then((ret) {
-                s52.draw().then((ret) {});
+                s52.draw().then((ret) {
+                  s52.skipTimer = false;
+                });
               });
             });
           });
         });
       }   // if
 
-      s52.skipTimer = false;
+      //s52.skipTimer = false;
 
      });  // timer
   });     // touchEnd
@@ -760,12 +777,13 @@ void _GPSpos(Geoposition position) {
 }
 
 void _hdg(DeviceOrientationEvent o) {
-  _devOrient = 360.0 - 90.0 - o.alpha ;
+  //_devOrient = 360.0 - 90.0 - o.alpha ;  // landscape
+  _devOrient = 90.0 - o.alpha ;  // reverse landscape
   if (_devOrient < 0.0)
     _devOrient += 360.0;
 
   // debug
-  //print('s52ui.dart:_hdg():$_devOrient');
+  //print('s52ui.dart:_hdg(): orient:$_devOrient, a:${o.alpha}, b:${o.beta}, g:${o.gamma}');
 }
 
 void _watchPosition(int ownshpID) {
