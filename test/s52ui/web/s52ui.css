@@ -5,7 +5,6 @@ body {
   line-height      : 1.2em;
   margin           : 0px;
   background-color : transparent;
-  
 }
 table {
   width            : 30%;
@@ -18,9 +17,17 @@ tbody {
   width            : 100%;
   /* need 100% otherwise the width of the table element will kick in */
 }
+/* Table Row */
 tr {
 }
+/* Table Data (cell) */
 td {
+}
+td:hover, td:focus {
+  border: 1px dotted #f00;
+}
+div:active {
+  background-color: yellow;
 }
 input {
   float            : right;
@@ -32,12 +39,12 @@ h3 {
   text-align       : left;
 }
 hr {
-  height           : 1px;
+  /* height           : 1px; */
   border           : 0px;
   background-color : blue;
 }
 h3>hr {
-  height           : 3px;
+  /* height           : 3px; */
   border           : 0px;
 }
 label {
