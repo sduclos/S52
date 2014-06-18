@@ -902,8 +902,8 @@ static int       _init_gl2(void)
         static const char vertSrc[] =
 #ifdef S52_USE_GLES2
             //"precision lowp float;                                          \n"
-            //"precision mediump float;                                     \n"
-            //"precision highp   float;                                     \n"
+            "precision mediump float;                                       \n"
+            //"precision highp   float;                                       \n"
 #endif
             "uniform   mat4  uProjection;                                   \n"
             "uniform   mat4  uModelview;                                    \n"
@@ -925,9 +925,9 @@ static int       _init_gl2(void)
 
             "void main(void)                                                \n"
             "{                                                              \n"
-            "    v_alpha = aAlpha;                                          \n"
+            "    v_alpha      = aAlpha;                                     \n"
             "    gl_PointSize = uPointSize;                                 \n"
-            "    gl_Position = uProjection * uModelview * aPosition;        \n"
+            "    gl_Position  = uProjection * uModelview * aPosition;       \n"
             "    if (1.0 == uPattOn) {                                      \n"
             "        v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;    \n"
             "        v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;    \n"
@@ -942,12 +942,14 @@ static int       _init_gl2(void)
 
         PRINTF("GL_FRAGMENT_SHADER\n");
 
+/*
 #ifdef S52_USE_TEGRA2
         // FIXME: does this really help with blending on a TEGRA2
 #define BLENDFUNC #pragma profilepragma blendoperation(gl_FragColor, GL_FUNC_ADD, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 #else
 #define BLENDFUNC
 #endif
+*/
 
 //#ifdef S52_USE_MESA3D         // to get gl_PointCoord when s52_use_afterglow
 //            "#version 120 \n"
@@ -956,35 +958,21 @@ static int       _init_gl2(void)
 
         static const char fragSrc[] =
 #ifdef S52_USE_GLES2
-            "precision lowp float;                      \n"
-            "uniform sampler2D uSampler2d;              \n"
-            "uniform float     uFlatOn;                 \n"
-            "uniform float     uBlitOn;                 \n"
-            "uniform float     uStipOn;                 \n"
-            "uniform float     uPattOn;                 \n"
-            "uniform float     uGlowOn;                 \n"
-            "uniform float     uRasterOn;               \n"
-
-            "uniform vec4      uColor;                  \n"
-
-            "varying vec2      v_texCoord;              \n"
-            "varying float     v_alpha;                 \n"
-#else
-            "precision lowp float;                      \n"
-            "uniform sampler2D uSampler2d;              \n"
-            "uniform float     uFlatOn;                 \n"
-            "uniform float     uBlitOn;                 \n"
-            "uniform float     uStipOn;                 \n"
-            "uniform float     uPattOn;                 \n"
-            "uniform float     uGlowOn;                 \n"
-            "uniform float     uRasterOn;               \n"
-
-            "uniform vec4      uColor;                  \n"
-
-            "varying vec2      v_texCoord;              \n"
-            "varying float     v_alpha;                 \n"
-
+//            "precision lowp float;                      \n"
+            "precision mediump float;                   \n"
 #endif
+            "uniform sampler2D uSampler2d;              \n"
+            "uniform float     uFlatOn;                 \n"
+            "uniform float     uBlitOn;                 \n"
+            "uniform float     uStipOn;                 \n"
+            "uniform float     uPattOn;                 \n"
+            "uniform float     uGlowOn;                 \n"
+            "uniform float     uRasterOn;               \n"
+
+            "uniform vec4      uColor;                  \n"
+
+            "varying vec2      v_texCoord;              \n"
+            "varying float     v_alpha;                 \n"
 
             // NOTE: if else if ... doesn't seem to slow things down
             "void main(void)                            \n"
@@ -1002,7 +990,10 @@ static int       _init_gl2(void)
             "            } else {                                                    \n"
 #ifdef S52_USE_AFGLOW
             "                if (0.0 < uGlowOn) {                                    \n"
-            "                    if (0.5 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) + (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) { \n"
+            "                    float dist = distance(vec2(0.5,0.5), gl_PointCoord); \n"
+            //"                    if (0.5 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) +   \n"
+            //"                                   (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) { \n"
+            "                    if (0.5 > dist) {                                   \n"
             "                        gl_FragColor   = uColor;                        \n"
             "                        gl_FragColor.a = v_alpha;                       \n"
             "                    } else {                                            \n"
@@ -1419,9 +1410,10 @@ static int       _renderAP_gl2(S52_obj *obj)
         }
 
         // debug - break if patt has stag
+        // CA379035.000:UNSARE
         if (0.0 != stagOffsetPix) {
             PRINTF("FIXME: stagOffsetPix not implemented for GLES2\n");
-            g_assert(0);
+            //g_assert(0);
         }
 
         _renderTile(DListData);
