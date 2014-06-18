@@ -31,6 +31,7 @@ public class s52ui extends Activity
         webview.getSettings().setJavaScriptEnabled(true);
         webview.getSettings().setGeolocationDatabasePath("/data/data/nav.ecs.s52droid");
 
+        // this is required - CSS: body {  background-color : transparent; } alone doesn't do
         webview.setBackgroundColor(Color.TRANSPARENT);
 
         try {
@@ -52,7 +53,6 @@ public class s52ui extends Activity
             }
 		});
 
-
         Log.i(TAG, "Starting WebView ...");
 
 
@@ -72,11 +72,15 @@ public class s52ui extends Activity
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Check if the key event was the Back button and if there's history
         if (keyCode == KeyEvent.KEYCODE_BACK) {
+
             webview.setSystemUiVisibility(WebView.SYSTEM_UI_FLAG_IMMERSIVE       |
                                           WebView.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
                                           WebView.SYSTEM_UI_FLAG_FULLSCREEN      );
+
             //webview.setSystemUiVisibility(webview.STATUS_BAR_HIDDEN);
+
             webview.loadUrl("javascript:toggleUI()");
+
             return true;
         }
         // If it wasn't the Back key or there's no web page history, bubble up to the default
