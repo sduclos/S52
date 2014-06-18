@@ -448,7 +448,7 @@ static int      _egl_init       (s52engine *engine)
         EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
 
         // this bit open access to ES3 functions on QCOM hardware pre-Android support for ES3
-        // WARNING: this break MSAA on Android 4.4.2 - Kit-Kat
+        // WARNING: this break MSAA on Android Kit-Kat 4.4.2, 4.4.3 - and -lGLESv3 Android.mk
         //EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT_KHR,
 
 
@@ -1226,9 +1226,9 @@ static int      _s52_init       (s52engine *engine)
 #ifdef S52_USE_ADRENO
     //S52_loadCell(NULL, NULL);
     // Rimouski (Nexus)
-    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
+    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
     // Estuaire du St-Laurent
-    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
+    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
 
     // Portneuf
     //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
@@ -1251,7 +1251,7 @@ static int      _s52_init       (s52engine *engine)
 #else  // S52_USE_ANDROID
 
     // read cell location fron s52.cfg
-    //S52_loadCell(NULL, NULL);
+    S52_loadCell(NULL, NULL);
 
     // S-64 ENC
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/GB5X01SE.000", NULL);
@@ -1261,10 +1261,13 @@ static int      _s52_init       (s52engine *engine)
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US1EEZ1M/US1EEZ1M.000", NULL);
 
     // Rimouski
-    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
+    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
 
     // Estuaire du St-Laurent
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
+
+    //Tadoussac
+    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA379035.000", NULL);
 
     // Ice - experimental (HACK: ice symb link to --0WORLD.shp for one shot test)
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
@@ -1321,8 +1324,8 @@ static int      _s52_init       (s52engine *engine)
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
     // -- DEPTH COLOR ------------------------------------
 
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the GPU]
@@ -1391,10 +1394,10 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
 #endif
 
-//#ifdef S52_USE_MESA3D
-//    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-//    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
-//#endif
+#ifdef S52_USE_MESA3D
+    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
+    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
+#endif
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
     //S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 0.0);
@@ -1403,6 +1406,9 @@ static int      _s52_init       (s52engine *engine)
 
     //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
     S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
+
+    //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
+    S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 1.0);  // on
 
     //*
     // debug - use for timing rendering
