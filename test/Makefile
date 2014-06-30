@@ -143,15 +143,6 @@ s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobjec
 # same as s52eglx, add "gtk+-3.0"
 s52gtk3egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-3.0` $(S52_LIBS)
 
-#s52eglarm : LIBS    = $(S52DROIDLIBS)/libgio-2.0.a      \
-#                      $(S52DROIDLIBS)/libgobject-2.0.a  \
-#                      $(S52DROIDLIBS)/libgmodule-2.0.a  \
-#                      $(S52DROIDLIBS)/libglib-2.0.a     \
-#                      $(S52DROIDLIBS)/libgthread-2.0.a  \
-#                      $(S52DROIDLIBS)/libiconv.a        \
-#                      $(S52DROIDLIBS)/libgps.a          \
-#                       -L$(DROIDLIBS) -llog -lm
-
 
 ############### build ##############################
 #
