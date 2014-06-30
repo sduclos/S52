@@ -62,7 +62,13 @@ void g_get_current_time(GTimeVal *result);
 
 void _printf(const char *file, int line, const char *function, const char *frmt, ...)
 {
-    const int MAX = 1024;
+    //S52GL.c:6020 in _contextValid(): Renderer:   Gallium 0.4 on AMD CEDAR
+    //S52GL.c:6021 in _contextValid(): Version:    3.0 Mesa 10.1.3
+    //S52GL.c:6022 in _contextValid(): Shader:     1.30
+    // this driver need a buffer of 5K to fit all extesion string
+
+    //const int MAX = 1024 + 1024 + 1024 + 1024;
+    const int MAX = 1024 + 1024 + 1024 + 1024 + 1024;
     char buf[MAX];
     snprintf(buf, MAX, "%s:%i in %s(): ", file, line, function);
 
@@ -70,10 +76,11 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
     if (size < MAX) {
 		va_list argptr;
 		va_start(argptr, frmt);
-		int n = vsnprintf(&buf[size], MAX - size, frmt, argptr);
+		int n = vsnprintf(&buf[size], (MAX-size), frmt, argptr);
         va_end(argptr);
-        if (n == (MAX-size)) {
-            g_print("WARNING: string buffer FULL\n");
+
+        if (n > (MAX-size)) {
+            g_print("WARNING: _printf(): string buffer FULL, str len:%i, buf len:%i\n", n, (MAX-size));
             g_assert(0);
         }
 	}
