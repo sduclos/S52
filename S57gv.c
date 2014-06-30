@@ -138,7 +138,7 @@ S57_geo   *S57_gvLoadObject(const char *objname, void *shape)
             // FIXME: check if winding is OK (at load time)
             GvAreaShape *area    = (GvAreaShape *) shape;
 
-            geoData = S57_setAREAS((guint)area->num_rings, (guint*)area->num_ring_nodes, area->xyz_ring_nodes);
+            geoData = S57_setAREAS((guint)area->num_rings, (guint*)area->num_ring_nodes, area->xyz_ring_nodes, S57_AW_NONE);
 
             break;
         }

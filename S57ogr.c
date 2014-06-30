@@ -234,12 +234,14 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
         case wkbLineString: {
             int count = OGR_G_GetPointCount(hGeom);
 
-            // NOTE: Edge might have 0 node
-            //if (count < 2) {
-            //    PRINTF("WARNING: a line with less than 2 points!?\n");
-            //    //g_assert(0);
-            //    return NULL;
-            //}
+            // NOTE: when S52_USE_SUPP_LINE_OVERLAP then Edge might have 0 node
+            /* so this code fail
+            if (count < 2) {
+                PRINTF("WARNING: a line with less than 2 points!?\n");
+                g_assert(0);
+                return NULL;
+            }
+            */
 
             geocoord *linexyz = NULL;
             if (0 != count)
@@ -261,12 +263,19 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
         // AREA
         case wkbPolygon25D:
         case wkbPolygon: {
+            // Note: S57 area have CW outer ring and CCW inner ring
             guint        nRingCount = OGR_G_GetGeometryCount(hGeom);
             guint       *ringxyznbr;
             geocoord   **ringxyz;
+            double       area = 0;
 
             ringxyznbr = g_new(guint,      nRingCount);
             ringxyz    = g_new(geocoord *, nRingCount);
+
+            // NOTE: to check winding on an open area
+            //for (i = n-1, j = 0; j < n; i = j, j++) {
+            //     ai = x[i] * y[j] - x[j] * y[i];
+            //}
 
             for (guint iRing=0; iRing<nRingCount; ++iRing) {
                 OGRGeometryH hRing;
@@ -281,66 +290,54 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                     // FIX: GDAL/OGR - is it a bug in the reader or in the chart it self (S57)
                     // FIX: or this is an empty Geo
                     PRINTF("WARNING: wkbPolygon, empty ring  (%s)\n", objname);
+                    g_assert(0);
                     continue;
                 }
 
-                // why add a 1 !?!
-                //ringxyz[iRing]    = g_new(geocoord, (vert_count+1)*3*sizeof(geocoord));
                 ringxyz[iRing]    = g_new(geocoord, vert_count*3*sizeof(geocoord));
 
-                // debug: check winding
-                //for (i = n-1, j = 0; j < n; i = j, j++)
-                //{
-                //     ai = x[i] * y[j] - x[j] * y[i];
-                //}
+                // check if last vertex is NOT the first vertex (ie ring not close)
+                if ((OGR_G_GetX(hRing, 0) != OGR_G_GetX(hRing, vert_count-1)) ||
+                    (OGR_G_GetY(hRing, 0) != OGR_G_GetY(hRing, vert_count-1)) ) {
 
-                double area = 0;
-                //for (guint i=0; i<vert_count-1; i++) {
+                    PRINTF("ERROR: S-57 ring (AREA) not closed (%s)\n", objname);
+
+                    g_assert(0);
+
+                    // Note: to compute area of an open poly
+                    //double area = 0;
+                    //for (guint i=vert_count-1, j=0; j<vert_count; i=j, ++j) {
+                    //    double x1 = OGR_G_GetX(hRing, i);
+                    //    double y1 = OGR_G_GetY(hRing, i);
+                    //    double x2 = OGR_G_GetX(hRing, j);
+                    //    double y2 = OGR_G_GetY(hRing, j);
+                    //    area += (x1*y2) - (x2*y1);
+                    //}
+                }
+
                 for (guint i=0; (i+1)<vert_count; i++) {
-                    double x1 = OGR_G_GetX(hRing, i);
-                    double y1 = OGR_G_GetY(hRing, i);
+                    double x1 = OGR_G_GetX(hRing, i  );
+                    double y1 = OGR_G_GetY(hRing, i  );
                     double x2 = OGR_G_GetX(hRing, i+1);
                     double y2 = OGR_G_GetY(hRing, i+1);
                     area += (x1*y2) - (x2*y1);
                 }
 
-                // if last vertex is NOT the first vertex
-                //for (i=vert_count-1, j=0; j<vert_count; i=j, ++j) {
-                //    double x1 = OGR_G_GetX(hRing, i);
-                //    double y1 = OGR_G_GetY(hRing, i);
-                //    double x2 = OGR_G_GetX(hRing, j);
-                //    double y2 = OGR_G_GetY(hRing, j);
-                //    area += (x1*y2) - (x2*y1);
-                //}
+                // CW if area is < 0, else CCW
+                PRINTF("AREA(ring=%i/%i): %s (%s)\n", iRing, nRingCount, (area <= 0.0) ? "CW" : "CCW", objname);
 
-                //int close = 0;
-                if ( (OGR_G_GetX(hRing, 0) == OGR_G_GetX(hRing, vert_count-1)) &&
-                     (OGR_G_GetY(hRing, 0) == OGR_G_GetY(hRing, vert_count-1)) )
-                    //close = 1;
-                    ;
-                else {
-                    PRINTF("ERROR: S-57 ring (AREA) not closed (%s)\n", objname);
-                    g_assert(0);
-                }
-
-                // CW = 1
-                //PRINTF("AREA(%i): %s %i\n", iRing, (area >= 0.0) ? "CW" : "CCW", close);
-
-                //if ((area<0.0) && (0==iRing)) {
-                //if (area<0.0) {
-                // reverse winding
+                // CCW winding
                 if (area > 0.0) {
-                    // if first ring put winding CCW
+                    // if first ring reverse winding to CW
                     if (0==iRing) {
+                        PRINTF("DEBUG: reversing S-57 outer ring to CW (%s)\n", objname);
+                        //g_assert(0);
                         for (guint node=0; node<vert_count; ++node) {
-                            ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, vert_count-node-1);
-                            ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, vert_count-node-1);
-                            ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, vert_count-node-1);
+                            ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, vert_count - node-1);
+                            ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, vert_count - node-1);
+                            ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, vert_count - node-1);
                         }
-                    }
-
-
-                    else {
+                    } else {
                         for (guint node=0; node<vert_count; ++node) {
                             ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, node);
                             ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, node);
@@ -349,29 +346,29 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                     }
 
 
-                } else {
-
+                } else {  // CW winding
                     if (0==iRing) {
-                    // if NOT first ring put winding CW
                         for (guint node=0; node<vert_count; ++node) {
                             ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, node);
                             ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, node);
                             ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, node);
                         }
+                    } else {
+                        // if NOT first ring reverse winding (CCW)
+                        PRINTF("DEBUG: reversing S-57 inner ring to CCW (%s)\n", objname);
+                        //g_assert(0);
 
-
-                     } else {
                         for (guint node=0; node<vert_count; ++node) {
-                            ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, vert_count-node-1);
-                            ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, vert_count-node-1);
-                            ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, vert_count-node-1);
+                            ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, vert_count - node-1);
+                            ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, vert_count - node-1);
+                            ringxyz[iRing][node*3+2] = OGR_G_GetZ(hRing, vert_count - node-1);
                         }
                     }
 
                 }
             }     // for loop
 
-            geoData = S57_setAREAS(nRingCount, ringxyznbr, ringxyz);
+            geoData = S57_setAREAS(nRingCount, ringxyznbr, ringxyz, (area <= 0.0) ? S57_AW_CW : S57_AW_CCW);
             _setExtent(geoData, hGeom);
 
             if (0==strcmp(WORLD_BASENM, objname)) {
