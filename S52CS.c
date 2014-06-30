@@ -3613,8 +3613,8 @@ static GString *QUESMRK1 (S57_geo *geo)
 // this is a catch all, the LUP link to unknown CS
 {
     GString   *err = NULL;
-    //S57_Obj_t  ot  = S57_getObjtype(geo);
-    S52_Obj_t  ot  = S57_getObjtype(geo);
+    S57_Obj_t  ot  = S57_getObjtype(geo);
+    //S52_Obj_t  ot  = S57_getObjtype(geo);
 
     switch (ot) {
         case POINT_T: err = g_string_new(";SY(QUESMRK1)"); break;
