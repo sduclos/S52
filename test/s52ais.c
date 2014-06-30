@@ -1251,34 +1251,27 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
     return;
 }
 
-static gpointer      _gpsdClientRead(gpointer dummy)
-// start gpsd client - loop forever
-// return if _ais_list is NULL or 10 failed attempt to connect
+static int           _connectGPSD(void)
+// return FALSE if _ais_list is NULL or 10 failed attempt to connect else TRUE
 {
     int nWait = 0;
 
     g_print("s52ais:_gpsdClientRead(): start looping ..\n");
-    __builtin_bzero(&_gpsdata, sizeof(_gpsdata));
+    memset(&_gpsdata, 0, sizeof(_gpsdata));
 
-    //*
     while (0 != gps_open(GPSD_HOST, GPSD_PORT, &_gpsdata)) {   // android (gpsd 2.96)
         g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec: %d, %s\n", errno, gps_errstr(errno));
 
-        // FIXME: reconnect when server is back on-line
         // try to connect to GPSD server, bailout after 10 failed attempt
-        //g_static_mutex_lock(&_ais_list_mutex);
-        //g_mutex_lock(&_ais_list_mutex);
         GMUTEXLOCK(&_ais_list_mutex);
 
         if ((NULL==_ais_list) || (10 <= ++nWait)) {
             g_print("s52ais:_gpsdClientRead() no AIS list (main exited) or no GPSD server.. terminate _gpsClientRead thread\n");
 
-            //g_static_mutex_unlock(&_ais_list_mutex);
             GMUTEXUNLOCK(&_ais_list_mutex);
 
-            return NULL;
+            return FALSE;
         }
-        //g_static_mutex_unlock(&_ais_list_mutex);
         GMUTEXUNLOCK(&_ais_list_mutex);
 
         g_usleep(1000 * 1000); // 1.0 sec
@@ -1286,10 +1279,17 @@ static gpointer      _gpsdClientRead(gpointer dummy)
 
     if (-1 == gps_stream(&_gpsdata, WATCH_ENABLE|WATCH_NEWSTYLE, NULL)) {
         g_print("s52ais:_gpsdClientRead():gps_stream() failed .. exiting\n");
-        return NULL;
+        return FALSE;
     }
-    //*/
 
+    return TRUE;
+}
+
+static int           _gpsdClientReadLoop(void)
+// start gpsd client - loop forever
+// return TRUE if main is exiting
+{
+    int ret = 0;
 
     // debug
     //gps_enable_debug(3, stderr);
@@ -1297,37 +1297,33 @@ static gpointer      _gpsdClientRead(gpointer dummy)
 
     // heart of the client
     for (;;) {
-        //g_static_mutex_lock(&_ais_list_mutex);
         GMUTEXLOCK(&_ais_list_mutex);
         if (NULL == _ais_list) {
             g_print("s52ais:_gpsdClientRead() no AIS list .. main exited .. terminate gpsRead thread\n");
+            ret = TRUE;
             goto exit;
         }
-        //g_static_mutex_unlock(&_ais_list_mutex);
         GMUTEXUNLOCK(&_ais_list_mutex);
 
         if (FALSE == gps_waiting(&_gpsdata,  500*1000)) {    // wait 0.5 sec     (500*1000 uSec)
             //g_print("s52ais:_gpsdClientRead():gps_waiting() timed out\n");
 
-            //g_static_mutex_lock(&_ais_list_mutex);
             GMUTEXLOCK(&_ais_list_mutex);
             _updateTimeTag();
-            //g_static_mutex_unlock(&_ais_list_mutex);
             GMUTEXUNLOCK(&_ais_list_mutex);
 
         } else {
             errno = 0;
 
-            int ret = gps_read(&_gpsdata);
+            //int ret = gps_read(&_gpsdata);
+            ret = gps_read(&_gpsdata);
             if (0 < ret) {
                 // no error
                 //g_print("s52ais:_gpsdClientRead():gps_read() ..\n");
 
                 // handle AIS data
-                //g_static_mutex_lock(&_ais_list_mutex);
                 GMUTEXLOCK(&_ais_list_mutex);
                 _updateAISdata(&_gpsdata);
-                //g_static_mutex_unlock(&_ais_list_mutex);
                 GMUTEXUNLOCK(&_ais_list_mutex);
 
                 continue;
@@ -1346,11 +1342,25 @@ static gpointer      _gpsdClientRead(gpointer dummy)
 
 exit:
     // exit thread
-    //g_static_mutex_unlock(&_ais_list_mutex);
     GMUTEXUNLOCK(&_ais_list_mutex);
 
-    gps_stream(&_gpsdata, WATCH_DISABLE, NULL);
-    gps_close(&_gpsdata);
+    return ret;
+}
+
+static gpointer      _gpsdClientStart(gpointer dummy)
+{
+    int ret = -1;
+
+    while (ret < 0) {
+        if (TRUE == _connectGPSD()) {
+
+            ret = _gpsdClientReadLoop();
+
+            // disconnect GPSD
+            gps_stream(&_gpsdata, WATCH_DISABLE, NULL);
+            gps_close(&_gpsdata);
+        }
+    }
 
     return dummy;
 }
@@ -1398,7 +1408,6 @@ static int           _startGPSD(void)
 
 static int           _flushAIS(int all)
 {
-    //g_static_mutex_lock(&_ais_list_mutex);
     GMUTEXLOCK(&_ais_list_mutex);
     if (NULL != _ais_list) {
         unsigned int i = 0;
@@ -1412,7 +1421,6 @@ static int           _flushAIS(int all)
             _ais_list = NULL;
         }
     }
-    //g_static_mutex_unlock(&_ais_list_mutex);
     GMUTEXUNLOCK(&_ais_list_mutex);
 
     return TRUE;
@@ -1424,18 +1432,15 @@ int            s52ais_initAIS(void)
 
     // so all occurence of _ais_list are mutex'ed
     // (but this one is useless - but what if android restart main()!)
-    //g_static_mutex_lock(&_ais_list_mutex);
     GMUTEXLOCK(&_ais_list_mutex);
     if (NULL == _ais_list) {
         _ais_list = g_array_new(FALSE, TRUE, sizeof(_ais_t));
     } else {
         g_print("s52ais:s52ais_initAIS(): bizzard case where we are restarting a running process!!\n");
 
-        //g_static_mutex_unlock(&_ais_list_mutex);
         GMUTEXUNLOCK(&_ais_list_mutex);
         return TRUE;
     }
-    //g_static_mutex_unlock(&_ais_list_mutex);
     GMUTEXUNLOCK(&_ais_list_mutex);
 
 
@@ -1469,9 +1474,9 @@ int            s52ais_initAIS(void)
 #if !defined(S52AIS_STANDALONE)
     // not joinable - gps done will not wait
 #ifdef S52_USE_ANDROID
-    _gpsClientThread = g_thread_create_full(_gpsdClientRead, NULL, 0, FALSE, TRUE, G_THREAD_PRIORITY_NORMAL, NULL);
+    _gpsClientThread = g_thread_create_full(_gpsdClientStart, NULL, 0, FALSE, TRUE, G_THREAD_PRIORITY_NORMAL, NULL);
 #else
-    _gpsClientThread = g_thread_new("threadName", _gpsdClientRead, NULL);
+    _gpsClientThread = g_thread_new("threadName", _gpsdClientStart, NULL);
 #endif
 #endif
 
