@@ -131,8 +131,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_COGL         - used to test text rendering from COGL
 # -DS52_USE_FTGL         - text rendering
 # -DS52_USE_GLC          - text rendering
-# -DS52_USE_A3D          - DEPRECATED text rendering for Android
-# -DS52_USE_FREETYPE_GL  - text rendering need -DS52_USE_GLES2
+# -DS52_USE_FREETYPE_GL  - text rendering need GL2 or GLES2
 # -DS52_USE_TXT_SHADOW   - add 'shadow' to Text (work only with S52_USE_FREETYPE_GL)
 #
 # S52/S57:
@@ -256,9 +255,10 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_MESA3D               \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_SOCK                 \
-                  -DS52_USE_OGR_FILECOLLECTOR    \
                   -DS52_USE_SYM_VESSEL_DNGHL     \
                   -DS52_USE_TXT_SHADOW           \
+                  -DS52_USE_AFGLOW               \
+                  -DS52_USE_SUPP_LINE_OVERLAP    \
                   -DS52_DEBUG $(DBG)
 
 # CFLAGS="-mthumb" CXXFLAGS="-mthumb" LIBS="-lstdc++" ./configure --host=arm-eabi \
