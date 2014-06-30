@@ -695,6 +695,9 @@ static int      _s52_init       (s52engine *engine)
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
     //S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 0.0);
 
+    //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
+    S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 1.0);  // on
+
     // debug - use for timing redering
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
@@ -1033,9 +1036,9 @@ static gboolean _dumpParam()
 
     return TRUE;
 }
-static gboolean _configure_event(GtkWidget         *widget,
-                                GdkEventConfigure *event,
-                                gpointer           data)
+static gboolean configure_event(GtkWidget         *widget,
+                                 GdkEventConfigure *event,
+                                 gpointer           data)
 {
     (void)widget;
     (void)event;
@@ -1075,7 +1078,7 @@ static gboolean _configure_event(GtkWidget         *widget,
     return TRUE;
 }
 
-static gboolean _key_release_event(GtkWidget   *widget,
+static gboolean key_release_event(GtkWidget   *widget,
                                   GdkEventKey *event,
                                   gpointer     data)
 {
@@ -1223,8 +1226,8 @@ int main (int argc, char** argv)
     gtk_widget_set_redraw_on_allocate(_engine.window, TRUE );
 
     g_signal_connect(G_OBJECT(_engine.window), "destroy",           G_CALLBACK(gtk_main_quit),      NULL);
-    g_signal_connect(G_OBJECT(_engine.window), "key_release_event", G_CALLBACK(_key_release_event), NULL);
-    g_signal_connect(G_OBJECT(_engine.window), "configure_event",   G_CALLBACK(_configure_event),   NULL);
+    g_signal_connect(G_OBJECT(_engine.window), "key_release_event", G_CALLBACK(key_release_event), NULL);
+    g_signal_connect(G_OBJECT(_engine.window), "configure_event",   G_CALLBACK(configure_event),   NULL);
 
     _engine.do_S52init = TRUE;
     g_timeout_add(500, _s52_draw_cb, &_engine); // 0.5 sec
