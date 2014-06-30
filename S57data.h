@@ -26,61 +26,70 @@
 #define _S57DATA_H_
 
 #include <glib.h>       // guint, GArray, GData, GString, gconstpointer
-#define GCPTR gconstpointer 
+#define GCPTR gconstpointer
 
 // internal geo enum used to link S52 to S57 geo
 // S57 object type have a PLib enum: P,L,A
-typedef enum S52_Obj_t {
+typedef enum S57_Obj_t {
     _META_T  =  0 ,       // meta geo stuff (ex: C_AGGR)
     POINT_T  = 'P',       // 80 (point)
     LINES_T  = 'L',       // 76 (line)
     AREAS_T  = 'A',       // 65 (area)
     N_OBJ_T  =  4         // number of object type
-} S52_Obj_t;
+} S57_Obj_t;
+
+// experimental (fail - because Edge ID are used to match geo)
+// outer ring original Area Winding - info needed to revere S57_att
+typedef enum S57_AW_t {
+    S57_AW_NONE =  0,
+    S57_AW_CW   =  1,
+    S57_AW_CCW  =  2,
+    S57_AW_MAX  =  3
+} S57_AW_t;
 
 typedef double geocoord;
 typedef struct _S57_geo  S57_geo;
 typedef struct _S57_prim S57_prim;
 
-int       S57_doneData(S57_geo *geoData, gpointer user_data);
+int       S57_doneData(S57_geo *geo, gpointer user_data);
 
 S57_geo  *S57_setPOINT(geocoord *xyz);
 S57_geo  *S57_setLINES(guint xyznbr, geocoord *xyz);
 //S57_geo  *S57_setMLINE(guint linenbr, guint *linexyznbr, geocoord **linexyz);
-S57_geo  *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz);
+S57_geo  *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S57_AW_t origAW);
 S57_geo  *S57_set_META();
 
 // used for PASTRK
-S57_geo  *S57_setGeoLine(S57_geo *geoData, guint xyznbr, geocoord *xyz);
+S57_geo  *S57_setGeoLine(S57_geo *geo, guint xyznbr, geocoord *xyz);
 
-S57_geo  *S57_getGeoLink(S57_geo *geoData);
-S57_geo  *S57_setGeoLink(S57_geo *geoData, S57_geo *link);
+S57_geo  *S57_getGeoLink(S57_geo *geo);
+S57_geo  *S57_setGeoLink(S57_geo *geo, S57_geo *link);
 
 #ifdef S52_USE_WORLD
-S57_geo  *S57_setNextPoly(S57_geo *geoData, S57_geo *nextPoly);
-S57_geo  *S57_getNextPoly(S57_geo *geoData);
-S57_geo  *S57_delNextPoly(S57_geo *geoData);
+S57_geo  *S57_setNextPoly(S57_geo *geo, S57_geo *nextPoly);
+S57_geo  *S57_getNextPoly(S57_geo *geo);
+S57_geo  *S57_delNextPoly(S57_geo *geo);
 #endif
 
-int       S57_setName  (S57_geo *geoData, const char *name);
-GCPTR     S57_getName  (S57_geo *geoData);
+int       S57_setName(S57_geo *geo, const char *name);
+GCPTR     S57_getName(S57_geo *geo);
 
 // debug:
-//int       S57_setOGRGeo(S57_geo *geoData, void *hGeom);
-//void     *S57_getOGRGeo(S57_geo *geoData);
+//int       S57_setOGRGeo(S57_geo *geo, void *hGeom);
+//void     *S57_getOGRGeo(S57_geo *geo);
 
 // get the number of rings
-guint     S57_getRingNbr(S57_geo *geoData);
+guint     S57_getRingNbr(S57_geo *geo);
 // get data
-int       S57_getGeoData(S57_geo *geoData, guint ringNo, guint *npt, double **ppt);
+int       S57_getGeoData(S57_geo *geo, guint ringNo, guint *npt, double **ppt);
 
 // handling of S52/S57 object rendering primitive
-S57_prim *S57_initPrim     (S57_prim *prim);
-S57_prim *S57_donePrim     (S57_prim *prim);
-S57_prim *S57_initPrimGeo  (S57_geo  *geoData);
-S57_geo  *S57_donePrimGeo  (S57_geo  *geoData);
-int       S57_begPrim      (S57_prim *prim, int mode);
-int       S57_endPrim      (S57_prim *prim);
+S57_prim *S57_initPrim   (S57_prim *prim);
+S57_prim *S57_donePrim   (S57_prim *prim);
+S57_prim *S57_initPrimGeo(S57_geo  *geo);
+S57_geo  *S57_donePrimGeo(S57_geo  *geo);
+int       S57_begPrim    (S57_prim *prim, int mode);
+int       S57_endPrim    (S57_prim *prim);
 
 // GLES2 need float vertex
 #if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
@@ -91,7 +100,7 @@ typedef double vertex_t;
 #endif
 int       S57_addPrimVertex(S57_prim *prim, vertex_t *ptr);
 
-S57_prim *S57_getPrimGeo   (S57_geo  *geoData);
+S57_prim *S57_getPrimGeo   (S57_geo  *geo);
 guint     S57_getPrimData  (S57_prim *prim, guint *primNbr, vertex_t **vert, guint *vertNbr, guint *vboID);
 GArray   *S57_getPrimVertex(S57_prim *prim);
 int       S57_getPrimIdx   (S57_prim *prim, unsigned int i, int *mode, int *first, int *count);
@@ -100,23 +109,21 @@ int       S57_getPrimIdx   (S57_prim *prim, unsigned int i, int *mode, int *firs
 int       S57_setPrimDList (S57_prim *prim, guint DList);
 
 // get/set extend
-int       S57_setExt(S57_geo *geoData, double  x1, double  y1, double  x2, double  y2);
-int       S57_getExt(S57_geo *geoData, double *x1, double *y1, double *x2, double *y2);
+int       S57_setExt(S57_geo *geo, double  x1, double  y1, double  x2, double  y2);
+int       S57_getExt(S57_geo *geo, double *x1, double *y1, double *x2, double *y2);
 
 // get geo type (P,L,A) of this object
 // Note: return the same thing as a call to S52_PL_getFTYP()
 // Note: S52_Obj_t vs S57_Obj_t
-S52_Obj_t S57_getObjtype(S57_geo *geoData);
-//S57_Obj_t S57_getObjtype(S57_geo *geoData);
+//S52_Obj_t S57_getObjtype(S57_geo *geo);
+S57_Obj_t S57_getObjtype(S57_geo *geo);
 
-// return TRUE if same point
-//int       S57_samePtPos(S57_geo *geoA, S57_geo *geoB);
 // return S57 attribute value of the attribute name
-GString  *S57_getAttVal(S57_geo *geoData, const char *name);
+GString  *S57_getAttVal(S57_geo *geo, const char *name);
 // set attribute name and value
-GData    *S57_setAtt(S57_geo *geoData, const char *name, const char *val);
+GData    *S57_setAtt(S57_geo *geo, const char *name, const char *val);
 // get str of the form ",KEY1:VAL1,KEY2:VAL2, ..." of S57 attribute only (not OGR)
-GCPTR     S57_getAtt(S57_geo *geoData);
+GCPTR     S57_getAtt(S57_geo *geo);
 
 int       S57_setTouchTOPMAR(S57_geo *geo, S57_geo *touch);
 S57_geo  *S57_getTouchTOPMAR(S57_geo *geo);
@@ -135,17 +142,17 @@ int       S57_setRelationship(S57_geo *geo, S57_geo *geoRel);
 S57_geo  *S57_getRelationship(S57_geo *geo);
 
 // suppression
-gboolean  S57_setSup(S57_geo *geoData, gboolean sup);
-gboolean  S57_getSup(S57_geo *geoData);
+gboolean  S57_setSupp(S57_geo *geo, gboolean supp);
+gboolean  S57_getSupp(S57_geo *geo);
 
 // count the number of 'real (6length)' attributes
-//int       S57_getNumAtt(S57_geo *geoData);
+//int       S57_getNumAtt(S57_geo *geo);
 // return the 'real' attributes of the geodata. name and val must be preallocated, and be sufficient large. (use S57_getNumAtt for counting)
-//int       S57_getAttributes(S57_geo *geoData, char **name, char **val);
+//int       S57_getAttributes(S57_geo *geo, char **name, char **val);
 
 // debug
-int       S57_dumpData(S57_geo *geoData, int dumpCoords);
-guint     S57_getGeoID(S57_geo *geoData);
+int       S57_dumpData(S57_geo *geo, int dumpCoords);
+guint     S57_getGeoID(S57_geo *geo);
 
 #ifdef S52_USE_PROJ
 #include <proj_api.h>   // projXY, projUV, projPJ
@@ -173,6 +180,9 @@ int       S57_markOverlapGeo(S57_geo *geo, S57_geo *geoEdge);
 GString  *S57_getRCIDstr(S57_geo *geo);
 // experimental (fail)
 //int       S57_sameChainNode(S57_geo *geoA, S57_geo *geoB);
+// experimental (fail)
+// debug - outer ring original Area Winding - info needed to revere S57_att
+S57_AW_t  S57_getOrigAW (S57_geo *geo);
 #endif
 
 int       S57_highlightON (S57_geo *geo);

@@ -81,11 +81,11 @@ typedef struct _S57_geo {
 
 
     GString     *name;        // object name 6/8 + '\0'; used for S52 LUP
-    S52_Obj_t    obj_t;       // used in CS
-    //S57_Obj_t    obj_t;       // used in CS
+    //S52_Obj_t    obj_t;       // used in CS
+    S57_Obj_t    obj_t;       // used in CS
 
     _rect        rect;        // lat/lon extent of object
-    gboolean     sup;         // geo sup - TRUE if outside view
+    gboolean     supp;         // geo suppression - TRUE if outside view
 
     // length of geo data (POINT, LINE, AREA) currently in buffer
     guint        dataSize;        // max is 1, linexyznbr, ringxyznbr[0]
@@ -122,8 +122,9 @@ typedef struct _S57_geo {
     double       scamin;
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
-    GString     *rcidstr;     // optimisation point to rcid str value
+    GString     *rcidstr;     // optimisation: point to Att RCID str value
     S57_geo     *link;        // experimetal, link to auxiliary
+    S57_AW_t     origAW;      // debug - original Area Winding, CW: area < 0,  CCW: area > 0
 #endif
 
     // centroid - save current centroids of this object
@@ -141,82 +142,79 @@ typedef struct _S57_geo {
 
 static GString *_attList = NULL;
 
-static void   _string_free(gpointer data)
+static int    _doneGeoData(_S57_geo *geo)
+// delete the geo data it self - data from OGR is a copy
 {
-    g_string_free((GString*)data, TRUE);
-}
+#ifdef S52_USE_GV
+    // not GV geo data
+    return TRUE;
+#endif
 
-static int    _doneGeoData(_S57_geo *geoData)
-// delete the geo data it self
-{
     // POINT
-    if (NULL != geoData->pointxyz) {
-        g_free((geocoord*)geoData->pointxyz);
-        geoData->pointxyz = NULL;
+    if (NULL != geo->pointxyz) {
+        g_free((geocoord*)geo->pointxyz);
+        geo->pointxyz = NULL;
     }
 
     // LINES
-    if (NULL != geoData->linexyz) {
-        g_free((geocoord*)geoData->linexyz);
-        geoData->linexyz = NULL;
+    if (NULL != geo->linexyz) {
+        g_free((geocoord*)geo->linexyz);
+        geo->linexyz = NULL;
     }
 
     // AREAS
-    if (NULL != geoData->ringxyz){
+    if (NULL != geo->ringxyz){
         unsigned int i;
-        for(i = 0; i < geoData->ringnbr; ++i) {
-            if (NULL != geoData->ringxyz[i])
-                g_free((geocoord*)geoData->ringxyz[i]);
-            geoData->ringxyz[i] = NULL;
+        for(i = 0; i < geo->ringnbr; ++i) {
+            if (NULL != geo->ringxyz[i])
+                g_free((geocoord*)geo->ringxyz[i]);
+            geo->ringxyz[i] = NULL;
         }
-        g_free((geocoord*)geoData->ringxyz);
-        geoData->ringxyz = NULL;
+        g_free((geocoord*)geo->ringxyz);
+        geo->ringxyz = NULL;
     }
 
-    if (NULL != geoData->ringxyznbr) {
-        g_free(geoData->ringxyznbr);
-        geoData->ringxyznbr = NULL;
+    if (NULL != geo->ringxyznbr) {
+        g_free(geo->ringxyznbr);
+        geo->ringxyznbr = NULL;
     }
 
-    geoData->linexyznbr = 0;
-    geoData->ringnbr    = 0;
+    geo->linexyznbr = 0;
+    geo->ringnbr    = 0;
 
     return TRUE;
 }
 
-int        S57_doneData   (_S57_geo *geoData, gpointer user_data)
+int        S57_doneData   (_S57_geo *geo, gpointer user_data)
 {
     // quiet line overlap analysis that trigger a bunch of harmless warning
-    if (NULL!=user_data && NULL==geoData)
+    if (NULL!=user_data && NULL==geo)
         return FALSE;
 
 #ifdef S52_USE_WORLD
     {
-        S57_geo *geoDataNext = NULL;
-        if (NULL != (geoDataNext = S57_getNextPoly(geoData))) {
-            S57_doneData(geoDataNext, user_data);
+        S57_geo *geoNext = NULL;
+        if (NULL != (geoNext = S57_getNextPoly(geo))) {
+            S57_doneData(geoNext, user_data);
         }
     }
 #endif
 
 
-#ifndef S52_USE_GV
-    // data from OGR is a copy --so this need to be deleted
-    _doneGeoData(geoData);
-#endif
+    _doneGeoData(geo);
 
-    S57_donePrimGeo(geoData);
+    S57_donePrimGeo(geo);
 
-    if (NULL != geoData->name)
-        g_string_free(geoData->name, TRUE);
+    if (NULL != geo->name)
+        g_string_free(geo->name, TRUE);
 
-    if (NULL != geoData->attribs)
-        g_datalist_clear(&geoData->attribs);
+    if (NULL != geo->attribs)
+        g_datalist_clear(&geo->attribs);
 
-    if (NULL != geoData->centroid)
-        g_array_free(geoData->centroid, TRUE);
+    if (NULL != geo->centroid)
+        g_array_free(geo->centroid, TRUE);
 
-    g_free(geoData);
+    g_free(geo);
 
     return TRUE;
 }
@@ -324,6 +322,10 @@ projXY     S57_prj2geo(projUV uv)
 int        S57_geo2prj3dv(guint npt, double *data)
 // convert to XY 'in-place'
 {
+#ifdef S52_USE_GV
+    return TRUE;
+#endif
+
     return_if_null(data);
 
     pt3 *pt = (pt3*)data;
@@ -363,18 +365,18 @@ int        S57_geo2prj3dv(guint npt, double *data)
     return TRUE;
 }
 
-int        S57_geo2prj(_S57_geo *geoData)
+int        S57_geo2prj(_S57_geo *geo)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
     if (TRUE == _doInit)
         S57_initPROJ();
 
-    guint nr = S57_getRingNbr(geoData);
+    guint nr = S57_getRingNbr(geo);
     for (guint i=0; i<nr; ++i) {
         guint   npt;
         double *ppt;
-        if (TRUE == S57_getGeoData(geoData, i, &npt, &ppt))
+        if (TRUE == S57_getGeoData(geo, i, &npt, &ppt))
             if (FALSE == S57_geo2prj3dv(npt, ppt))
                 return FALSE;
     }
@@ -387,220 +389,226 @@ S57_geo   *S57_setPOINT(geocoord *xyz)
 {
     return_if_null(xyz);
 
-    _S57_geo *geoData = g_new0(_S57_geo, 1);
-    //_S57_geo *geoData = g_try_new0(_S57_geo, 1);
-    if (NULL == geoData)
+    _S57_geo *geo = g_new0(_S57_geo, 1);
+    //_S57_geo *geo = g_try_new0(_S57_geo, 1);
+    if (NULL == geo)
         g_assert(0);
 
-    geoData->id       = _id++;
-    geoData->obj_t    = POINT_T;
-    geoData->pointxyz = xyz;
+    geo->id       = _id++;
+    geo->obj_t    = POINT_T;
+    geo->pointxyz = xyz;
 
-    geoData->rect.x1  =  INFINITY;
-    geoData->rect.y1  =  INFINITY;
-    geoData->rect.x2  = -INFINITY;
-    geoData->rect.y2  = -INFINITY;
+    geo->rect.x1  =  INFINITY;
+    geo->rect.y1  =  INFINITY;
+    geo->rect.x2  = -INFINITY;
+    geo->rect.y2  = -INFINITY;
 
-    geoData->scamin   =  INFINITY;
+    geo->scamin   =  INFINITY;
 
 #ifdef S52_USE_WORLD
-    geoData->nextPoly = NULL;
+    geo->nextPoly = NULL;
 #endif
 
-    return geoData;
+    return geo;
 }
 
 // experimental
-S57_geo   *S57_setGeoLine(_S57_geo *geoData, guint xyznbr, geocoord *xyz)
+S57_geo   *S57_setGeoLine(_S57_geo *geo, guint xyznbr, geocoord *xyz)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    geoData->obj_t      = LINES_T;  // because some Edge objet default to _META_T when no geo yet
-    geoData->linexyznbr = xyznbr;
-    geoData->linexyz    = xyz;
+    geo->obj_t      = LINES_T;  // because some Edge objet default to _META_T when no geo yet
+    geo->linexyznbr = xyznbr;
+    geo->linexyz    = xyz;
 
-    return geoData;
+    return geo;
 }
 
 S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
 {
-    _S57_geo *geoData = g_new0(_S57_geo, 1);
-    //_S57_geo *geoData = g_try_new0(_S57_geo, 1);
-    if (NULL == geoData)
+    _S57_geo *geo = g_new0(_S57_geo, 1);
+    //_S57_geo *geo = g_try_new0(_S57_geo, 1);
+    if (NULL == geo)
         g_assert(0);
 
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    geoData->id         = _id++;
-    geoData->obj_t      = LINES_T;
-    geoData->linexyznbr = xyznbr;
-    geoData->linexyz    = xyz;
+    geo->id         = _id++;
+    geo->obj_t      = LINES_T;
+    geo->linexyznbr = xyznbr;
+    geo->linexyz    = xyz;
 
-    geoData->rect.x1 =  INFINITY;
-    geoData->rect.y1 =  INFINITY;
-    geoData->rect.x2 = -INFINITY;
-    geoData->rect.y2 = -INFINITY;
+    geo->rect.x1    =  INFINITY;
+    geo->rect.y1    =  INFINITY;
+    geo->rect.x2    = -INFINITY;
+    geo->rect.y2    = -INFINITY;
 
-    geoData->scamin  =  INFINITY;
+    geo->scamin     =  INFINITY;
 
 
 #ifdef S52_USE_WORLD
-    geoData->nextPoly = NULL;
+    geo->nextPoly   = NULL;
 #endif
 
-    return geoData;
+    return geo;
 }
 
 #if 0
 S57_geo   *S57_setMLINE(guint nLineCount, guint *linexyznbr, geocoord **linexyz)
 {
-    _S57_geo *geoData = g_new0(_S57_geo, 1);
-    //_S57_geo *geoData = g_try_new0(_S57_geo, 1);
-    if (NULL == geoData)
+    _S57_geo *geo = g_new0(_S57_geo, 1);
+    //_S57_geo *geo = g_try_new0(_S57_geo, 1);
+    if (NULL == geo)
         g_assert(0);
 
-    geoData->id         = _id++;
-    geoData->obj_t      = MLINE_T;
-    geoData->linenbr    = nLineCount;
-    geoData->linexyznbr = linexyznbr;
-    geoData->linexyz    = linexyz;
+    geo->id         = _id++;
+    geo->obj_t      = MLINE_T;
+    geo->linenbr    = nLineCount;
+    geo->linexyznbr = linexyznbr;
+    geo->linexyz    = linexyz;
 
 #ifdef S52_USE_WORLD
-    geoData->nextPoly = NULL;
+    geo->nextPoly   = NULL;
 #endif
 
-    return geoData;
+    return geo;
 }
 #endif
 
-S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
+S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S57_AW_t origAW)
 {
     return_if_null(ringxyznbr);
     return_if_null(ringxyz);
 
-    _S57_geo *geoData = g_new0(_S57_geo, 1);
-    //_S57_geo *geoData = g_try_new0(_S57_geo, 1);
-    if (NULL == geoData)
+    _S57_geo *geo = g_new0(_S57_geo, 1);
+    //_S57_geo *geo = g_try_new0(_S57_geo, 1);
+    if (NULL == geo)
         g_assert(0);
 
-    geoData->id         = _id++;
-    geoData->obj_t      = AREAS_T;
-    geoData->ringnbr    = ringnbr;
-    geoData->ringxyznbr = ringxyznbr;
-    geoData->ringxyz    = ringxyz;
+    geo->id         = _id++;
+    geo->obj_t      = AREAS_T;
+    geo->ringnbr    = ringnbr;
+    geo->ringxyznbr = ringxyznbr;
+    geo->ringxyz    = ringxyz;
 
-    geoData->rect.x1 =  INFINITY;
-    geoData->rect.y1 =  INFINITY;
-    geoData->rect.x2 = -INFINITY;
-    geoData->rect.y2 = -INFINITY;
+    geo->rect.x1    =  INFINITY;
+    geo->rect.y1    =  INFINITY;
+    geo->rect.x2    = -INFINITY;
+    geo->rect.y2    = -INFINITY;
 
-    geoData->scamin  =  INFINITY;
+    geo->scamin     =  INFINITY;
 
 #ifdef S52_USE_WORLD
-    geoData->nextPoly = NULL;
+    geo->nextPoly   = NULL;
 #endif
 
-    return geoData;
+#ifdef S52_USE_SUPP_LINE_OVERLAP
+    geo->origAW     = origAW;
+#else
+    (void)origAW;
+#endif
+
+    return geo;
 }
 
 S57_geo   *S57_set_META()
 {
-    _S57_geo *geoData = g_new0(_S57_geo, 1);
-    //_S57_geo *geoData = g_try_new0(_S57_geo, 1);
-    if (NULL == geoData)
+    _S57_geo *geo = g_new0(_S57_geo, 1);
+    //_S57_geo *geo = g_try_new0(_S57_geo, 1);
+    if (NULL == geo)
         g_assert(0);
 
-    geoData->id       = _id++;
-    geoData->obj_t    = _META_T;
+    geo->id       = _id++;
+    geo->obj_t    = _META_T;
 
-    geoData->rect.x1 =  INFINITY;
-    geoData->rect.y1 =  INFINITY;
-    geoData->rect.x2 = -INFINITY;
-    geoData->rect.y2 = -INFINITY;
+    geo->rect.x1 =  INFINITY;
+    geo->rect.y1 =  INFINITY;
+    geo->rect.x2 = -INFINITY;
+    geo->rect.y2 = -INFINITY;
 
-    geoData->scamin  =  INFINITY;
+    geo->scamin  =  INFINITY;
 
 #ifdef S52_USE_WORLD
-    geoData->nextPoly = NULL;
+    geo->nextPoly = NULL;
 #endif
 
-    return geoData;
+    return geo;
 }
 
-int        S57_setName(_S57_geo *geoData, const char *name)
+int        S57_setName(_S57_geo *geo, const char *name)
 // NOTE: this is a S57 object name .. UTF-16 or UTF-8
 // use g_string to handle that
 {
-    return_if_null(geoData);
+    return_if_null(geo);
     return_if_null(name);
 
-    geoData->name = g_string_new(name);
+    geo->name = g_string_new(name);
 
     return TRUE;
 }
 
-GCPTR      S57_getName(_S57_geo *geoData)
+GCPTR      S57_getName(_S57_geo *geo)
 {
-    return_if_null(geoData);
-    return_if_null(geoData->name);
+    return_if_null(geo);
+    return_if_null(geo->name);
 
-    return geoData->name->str;
+    return geo->name->str;
 }
 
-guint      S57_getRingNbr(_S57_geo *geoData)
+guint      S57_getRingNbr(_S57_geo *geo)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
     // since this is used with S57_getGeoData
     // META object don't need to be projected for rendering
-    switch (geoData->obj_t) {
+    switch (geo->obj_t) {
         case POINT_T:
         case LINES_T:
             return 1;
         case AREAS_T:
-            return geoData->ringnbr;
+            return geo->ringnbr;
         default:
             return 0;
     }
 }
 
-int        S57_getGeoData(_S57_geo *geoData, guint ringNo, guint *npt, double **ppt)
-// helper providing uniform access to geoData
+int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
+// helper providing uniform access to geo
 // WARNING: npt is the allocated mem (capacity)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    if  (AREAS_T==geoData->obj_t && geoData->ringnbr<ringNo) {
+    if  (AREAS_T==geo->obj_t && geo->ringnbr<ringNo) {
         PRINTF("WARNING: invalid ring number requested! \n");
         *npt = 0;
         g_assert(0);
     }
 
-    switch (geoData->obj_t) {
+    switch (geo->obj_t) {
     	case _META_T: *npt = 0; break;        // meta geo stuff (ex: C_AGGR)
 
     	case POINT_T:
-            if (NULL != geoData->pointxyz) {
+            if (NULL != geo->pointxyz) {
                 *npt = 1;
-                *ppt = geoData->pointxyz;
+                *ppt = geo->pointxyz;
             } else {
                 *npt = 0;
             }
             break;
 
         case LINES_T:
-            if (NULL != geoData->linexyz) {
-                *npt = geoData->linexyznbr;
-                *ppt = geoData->linexyz;
+            if (NULL != geo->linexyz) {
+                *npt = geo->linexyznbr;
+                *ppt = geo->linexyz;
             } else {
                 *npt = 0;
             }
             break;
 
         case AREAS_T:
-            if (NULL != geoData->ringxyznbr) {
-                *npt = geoData->ringxyznbr[ringNo];
-                *ppt = geoData->ringxyz[ringNo];
+            if (NULL != geo->ringxyznbr) {
+                *npt = geo->ringxyznbr[ringNo];
+                *ppt = geo->ringxyz[ringNo];
             } else {
                 *npt = 0;
             }
@@ -635,12 +643,12 @@ int        S57_getGeoData(_S57_geo *geoData, guint ringNo, guint *npt, double **
             //}
             break;
         default:
-            PRINTF("ERROR: object type invalid (%i)\n", geoData->obj_t);
+            PRINTF("ERROR: object type invalid (%i)\n", geo->obj_t);
             g_assert(0);
             return FALSE;
     }
 
-    if (*npt < geoData->dataSize) {
+    if (*npt < geo->dataSize) {
         PRINTF("ERROR: geo lenght greater then npt - internal error\n");
         g_assert(0);
         return FALSE;
@@ -695,22 +703,22 @@ S57_prim  *S57_donePrim(_S57_prim *prim)
     return NULL;
 }
 
-S57_prim  *S57_initPrimGeo(_S57_geo *geoData)
+S57_prim  *S57_initPrimGeo(_S57_geo *geo)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    geoData->prim = S57_initPrim(geoData->prim);
+    geo->prim = S57_initPrim(geo->prim);
 
-    return geoData->prim;
+    return geo->prim;
 }
 
-S57_geo   *S57_donePrimGeo(_S57_geo *geoData)
+S57_geo   *S57_donePrimGeo(_S57_geo *geo)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    if (NULL != geoData->prim) {
-        S57_donePrim(geoData->prim);
-        geoData->prim = NULL;
+    if (NULL != geo->prim) {
+        S57_donePrim(geo->prim);
+        geo->prim = NULL;
     }
 
     return NULL;
@@ -763,11 +771,11 @@ int        S57_addPrimVertex(_S57_prim *prim, vertex_t *ptr)
     return TRUE;
 }
 
-S57_prim  *S57_getPrimGeo(_S57_geo *geoData)
+S57_prim  *S57_getPrimGeo(_S57_geo *geo)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    return geoData->prim;
+    return geo->prim;
 }
 
 guint      S57_getPrimData(_S57_prim *prim, guint *primNbr, vertex_t **vert, guint *vertNbr, guint *vboID)
@@ -789,18 +797,6 @@ GArray    *S57_getPrimVertex(_S57_prim *prim)
 
     return prim->vertex;
 }
-
-/*
-S57_prim  *S57_setPrimSize(_S57_prim *prim, int sz)
-{
-    return_if_null(prim);
-
-    g_array_set_size(prim->list,   sz);
-    g_array_set_size(prim->vertex, sz);
-
-    return prim;
-}
-*/
 
 int        S57_setPrimDList (_S57_prim *prim, guint DList)
 {
@@ -833,13 +829,13 @@ int        S57_getPrimIdx(_S57_prim *prim, unsigned int i, int *mode, int *first
     return TRUE;
 }
 
-int        S57_setExt(_S57_geo *geoData, double x1, double y1, double x2, double y2)
+int        S57_setExt(_S57_geo *geo, double x1, double y1, double x2, double y2)
 // assume: extent canonical
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    //if (0 == g_strncasecmp(geoData->name->str, "M_COVR", 6)) {
-    //    PRINTF("%s: %f, %f  UR: %f, %f\n", geoData->name->str, x1, y1, x2, y2);
+    //if (0 == g_strncasecmp(geo->name->str, "M_COVR", 6)) {
+    //    PRINTF("%s: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
     //}
 
     // canonize lng
@@ -852,44 +848,44 @@ int        S57_setExt(_S57_geo *geoData, double x1, double y1, double x2, double
     /*
     // check prime-meridian crossing
     if ((x1 < 0.0) && (0.0 < x2)) {
-        PRINTF("DEBUG: prime-meridian crossing %s: LL: %f, %f  UR: %f, %f\n", geoData->name->str, x1, y1, x2, y2);
+        PRINTF("DEBUG: prime-meridian crossing %s: LL: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
         g_assert(0);
     }
     */
 
     if (isinf(x1)  && isinf(x2)) {
-        PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geoData->name->str, x1, y1, x2, y2);
+        PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
         g_assert(0);
     }
 
-    geoData->rect.x1 = x1;
-    geoData->rect.y1 = y1;
-    geoData->rect.x2 = x2;
-    geoData->rect.y2 = y2;
+    geo->rect.x1 = x1;
+    geo->rect.y1 = y1;
+    geo->rect.x2 = x2;
+    geo->rect.y2 = y2;
 
     return TRUE;
 }
 
-int        S57_getExt(_S57_geo *geoData, double *x1, double *y1, double *x2, double *y2)
+int        S57_getExt(_S57_geo *geo, double *x1, double *y1, double *x2, double *y2)
 // assume: extent canonical
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    *x1 = geoData->rect.x1; // W
-    *y1 = geoData->rect.y1; // S
-    *x2 = geoData->rect.x2; // E
-    *y2 = geoData->rect.y2; // N
+    *x1 = geo->rect.x1; // W
+    *y1 = geo->rect.y1; // S
+    *x2 = geo->rect.x2; // E
+    *y2 = geo->rect.y2; // N
 
     return TRUE;
 }
 
-S52_Obj_t  S57_getObjtype(_S57_geo *geoData)
-//S57_Obj_t  S57_getObjtype(_S57_geo *geoData)
+S57_Obj_t  S57_getObjtype(_S57_geo *geo)
+//S52_Obj_t  S57_getObjtype(_S57_geo *geo)
 {
-    if (NULL == geoData)
+    if (NULL == geo)
         return _META_T;
 
-    return geoData->obj_t;
+    return geo->obj_t;
 }
 
 #if 0
@@ -903,10 +899,10 @@ static void   _countItems(GQuark key_id, gpointer data, gpointer user_data)
     }
 }
 
-int        S57_getNumAtt(S57_geo *geoData)
+int        S57_getNumAtt(S57_geo *geo)
 {
     int cnt = 0;
-    g_datalist_foreach(&geoData->attribs, _countItems, &cnt);
+    g_datalist_foreach(&geo->attribs, _countItems, &cnt);
     return cnt;
 }
 
@@ -939,7 +935,7 @@ static void   _getAttValues(GQuark key_id, gpointer data, gpointer user_data)
 // recommend you count number of attributes in advance, to allocate the
 // propper amount of **. each char *name should be allocated 7 and the char
 // *val 20 ????
-int        S57_getAttributes(_S57_geo *geoData, char **name, char **val)
+int        S57_getAttributes(_S57_geo *geo, char **name, char **val)
 {
   struct _qwerty tmp;
 
@@ -947,26 +943,26 @@ int        S57_getAttributes(_S57_geo *geoData, char **name, char **val)
   tmp.name       = name;
   tmp.value      = val;
 
-  g_datalist_foreach(&geoData->attribs, _getAttValues,  &tmp);
+  g_datalist_foreach(&geo->attribs, _getAttValues,  &tmp);
   //  strcpy(name[tmp.currentIdx], "x");
   //  strcpy(val[tmp.currentIdx], "y");
   return tmp.currentIdx;
 }
 #endif
 
-GString   *S57_getAttVal(_S57_geo *geoData, const char *att_name)
+GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
 // return attribute string value or NULL if:
 //      1- attribute name abscent
 //      2- its a mandatory attribute but its value is not define (EMPTY_NUMBER_MARKER)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
     return_if_null(att_name);
 
-    //GString *att = (GString*) g_datalist_get_data(&geoData->attribs, att_name);
-    //GString *att = (GString*) g_dataset_id_get_data(&geoData->attribs, g_quark_try_string(att_name));
+    //GString *att = (GString*) g_datalist_get_data(&geo->attribs, att_name);
+    //GString *att = (GString*) g_dataset_id_get_data(&geo->attribs, g_quark_try_string(att_name));
     GQuark   q   = g_quark_from_string(att_name);
     //GQuark   q   = g_quark_from_static_string(att_name);
-    GString *att = (GString*) g_datalist_id_get_data(&geoData->attribs, q);
+    GString *att = (GString*) g_datalist_id_get_data(&geo->attribs, q);
 
     if (NULL!=att && (0==g_strcmp0(att->str, EMPTY_NUMBER_MARKER))) {
         //PRINTF("NOTE: mandatory attribute (%s) with ommited value\n", att_name);
@@ -976,7 +972,7 @@ GString   *S57_getAttVal(_S57_geo *geoData, const char *att_name)
     // display this NOTE once (because of to many warning)
     static int silent = FALSE;
     if (!silent && NULL!=att && 0==att->len) {
-        PRINTF("NOTE: attribute (%s) has no value [obj:%s]\n", att_name, geoData->name->str);
+        PRINTF("NOTE: attribute (%s) has no value [obj:%s]\n", att_name, geo->name->str);
         PRINTF("      (this msg will not repeat)\n");
         silent = TRUE;
         return NULL;
@@ -985,28 +981,32 @@ GString   *S57_getAttVal(_S57_geo *geoData, const char *att_name)
     return att;
 }
 
-GData     *S57_setAtt(_S57_geo *geoData, const char *name, const char *val)
+static void   _string_free(gpointer data)
 {
-    return_if_null(geoData);
+    g_string_free((GString*)data, TRUE);
+}
+
+GData     *S57_setAtt(_S57_geo *geo, const char *name, const char *val)
+{
+    return_if_null(geo);
     return_if_null(name);
     return_if_null(val);
 
     GQuark   qname = g_quark_from_string(name);
     GString *value = g_string_new(val);
 
-    if (NULL == geoData->attribs)
-        g_datalist_init(&geoData->attribs);
+    if (NULL == geo->attribs)
+        g_datalist_init(&geo->attribs);
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
-    //if ((0==S52_strncmp(S57_getName(geoData), "Edge", 4)) && (0==S52_strncmp(name, "RCID", 4))) {
-    if ((0==g_strcmp0(S57_getName(geoData), "Edge")) && (0==g_strcmp0(name, "RCID"))) {
-         geoData->rcidstr = value;
+    if ((0==g_strcmp0(S57_getName(geo), "Edge")) && (0==g_strcmp0(name, "RCID"))) {
+         geo->rcidstr = value;
      }
 #endif
 
-    g_datalist_id_set_data_full(&geoData->attribs, qname, value, _string_free);
+    g_datalist_id_set_data_full(&geo->attribs, qname, value, _string_free);
 
-    return geoData->attribs;
+    return geo->attribs;
 }
 
 int        S57_setTouchTOPMAR(_S57_geo *geo, S57_geo *touch)
@@ -1147,56 +1147,56 @@ static void   _printAtt(GQuark key_id, gpointer data, gpointer user_data)
         PRINTF("\t%s : %s\n", attName, (char*)attValue->str);
 }
 
-gboolean   S57_setSup(_S57_geo *geoData, gboolean sup)
+gboolean   S57_setSupp(_S57_geo *geo, gboolean supp)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    geoData->sup = sup;
+    geo->supp = supp;
 
-    return geoData->sup;
+    return geo->supp;
 }
 
 // FIXME: bellow is an accesor - 'inline' it somehow
-gboolean   S57_getSup(_S57_geo *geoData)
+gboolean   S57_getSupp(_S57_geo *geo)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    return geoData->sup;
+    return geo->supp;
 }
 
 
-int        S57_dumpData(_S57_geo *geoData, int dumpCoords)
+int        S57_dumpData(_S57_geo *geo, int dumpCoords)
 // debug
 // if dumpCoords is TRUE dump all coordinates else dump extent
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
 
-    PRINTF("S57ID : %i\n", geoData->id);
-    PRINTF("NAME  : %s\n", geoData->name->str);
+    PRINTF("S57ID : %i\n", geo->id);
+    PRINTF("NAME  : %s\n", geo->name->str);
 
-    g_datalist_foreach(&geoData->attribs, _printAtt, NULL);
+    g_datalist_foreach(&geo->attribs, _printAtt, NULL);
 
     {    // print coordinate
         guint     npt = 0;
         geocoord *ppt;
 
-        S57_getGeoData(geoData, 0, &npt, &ppt);
+        S57_getGeoData(geo, 0, &npt, &ppt);
 
-        switch (geoData->obj_t) {
+        switch (geo->obj_t) {
             case _META_T:  PRINTF("_META_T (%i)\n", npt); break;
             case POINT_T:  PRINTF("POINT_T (%i)\n", npt); break;
             case LINES_T:  PRINTF("LINES_T (%i)\n", npt); break;
             case AREAS_T:  PRINTF("AREAS_T (%i)\n", npt); break;
             default:
-                PRINTF("WARNING: invalid object type; %i\n", geoData->obj_t);
+                PRINTF("WARNING: invalid object type; %i\n", geo->obj_t);
         }
 
         if (TRUE == dumpCoords) {
             guint     npt = 0;
             geocoord *ppt = NULL;
 
-            if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt))
+            if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
                 return FALSE;
 
             for (guint i=0; i<npt; ++i) {
@@ -1206,7 +1206,7 @@ int        S57_dumpData(_S57_geo *geoData, int dumpCoords)
         } else {
             // dump extent
             PRINTF("EXTENT: %f, %f  --  %f, %f\n",
-                   geoData->rect.y1, geoData->rect.x1, geoData->rect.y2, geoData->rect.x2);
+                   geo->rect.y1, geo->rect.x1, geo->rect.y2, geo->rect.x2);
 
         }
     }
@@ -1227,8 +1227,6 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     if (0 == g_strcmp0("ORNT",      attName)) return;
     if (0 == g_strcmp0("NAME_RCNM", attName)) return;
     if (0 == g_strcmp0("NAME_RCID", attName)) return;
-
-    // FIXME: convert accent to UTF-8 for JSON, skipped for now
     if (0 == g_strcmp0("NINFOM",    attName)) return;
 
     // save S57 attribute + system attribute (ex vessel name - AIS)
@@ -1254,20 +1252,18 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     return;
 }
 
-GCPTR      S57_getAtt(_S57_geo *geoData)
+GCPTR      S57_getAtt(_S57_geo *geo)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
 
-    PRINTF("S57ID : %i\n", geoData->id);
-    PRINTF("NAME  : %s\n", geoData->name->str);
+    PRINTF("S57ID : %i\n", geo->id);
+    PRINTF("NAME  : %s\n", geo->name->str);
 
     g_string_set_size(_attList, 0);
-    g_string_printf(_attList, "%i", geoData->id);
+    g_string_printf(_attList, "%i", geo->id);
 
-    g_datalist_foreach(&geoData->attribs, _getAtt, _attList);
-
-
+    g_datalist_foreach(&geo->attribs, _getAtt, _attList);
 
     return _attList->str;
 }
@@ -1379,64 +1375,66 @@ int        S57_sameChainNode(_S57_geo *geoA, _S57_geo *geoB)
     return FALSE;
 }
 
-S57_geo   *S57_getGeoLink(_S57_geo *geoData)
+S57_geo   *S57_getGeoLink(_S57_geo *geo)
 {
-    return_if_null(geoData);
+    // not needed
+    //return_if_null(geo);
 
-    return geoData->link;
+    return geo->link;
 }
 
-S57_geo   *S57_setGeoLink(_S57_geo *geoData, _S57_geo *link)
+S57_geo   *S57_setGeoLink(_S57_geo *geo, _S57_geo *link)
 {
-    return_if_null(geoData);
+    // not needed
+    //return_if_null(geo);
 
-    geoData->link = link;
+    geo->link = link;
 
-    return geoData;
+    return geo;
 }
 #endif
 
 #ifdef S52_USE_WORLD
-S57_geo   *S57_setNextPoly(_S57_geo *geoData, _S57_geo *nextPoly)
+S57_geo   *S57_setNextPoly(_S57_geo *geo, _S57_geo *nextPoly)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    if (NULL != geoData->nextPoly)
-        nextPoly->nextPoly = geoData->nextPoly;
+    if (NULL != geo->nextPoly)
+        nextPoly->nextPoly = geo->nextPoly;
 
-    geoData->nextPoly = nextPoly;
+    geo->nextPoly = nextPoly;
 
-    return geoData;
+    return geo;
 }
 
 
-S57_geo   *S57_getNextPoly(_S57_geo *geoData)
+S57_geo   *S57_getNextPoly(_S57_geo *geo)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    return geoData->nextPoly;
+    return geo->nextPoly;
 }
 
-S57_geo   *S57_delNextPoly(_S57_geo *geoData)
+S57_geo   *S57_delNextPoly(_S57_geo *geo)
 // unlink Poly chain
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    while (NULL != geoData) {
-        S57_geo *nextPoly = geoData->nextPoly;
-        geoData->nextPoly = NULL;
-        geoData = nextPoly;
+    while (NULL != geo) {
+        S57_geo *nextPoly = geo->nextPoly;
+        geo->nextPoly = NULL;
+        geo = nextPoly;
     }
 
     return NULL;
 }
 #endif
 
-unsigned int S57_getGeoID(S57_geo *geoData)
+guint      S57_getGeoID(S57_geo *geo)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
-    return  geoData->id;
+    return  geo->id;
 }
 
 int        S57_isPtInside(int npt, double *xyz, double x, double y, int close)
@@ -1738,7 +1736,14 @@ GString   *S57_getRCIDstr(_S57_geo *geo)
     return geo->rcidstr;
 }
 
-#endif
+S57_AW_t   S57_getOrigAW(S57_geo *geo)
+// debug
+{
+    return_if_null(geo);
+
+    return geo->origAW;
+}
+#endif  // S52_USE_SUPP_LINE_OVERLAP
 
 int        S57_highlightON (_S57_geo *geo)
 {
@@ -1758,7 +1763,7 @@ int        S57_highlightOFF(_S57_geo *geo)
     return TRUE;
 }
 
-int       S57_getHighlight(_S57_geo *geo)
+int        S57_getHighlight(_S57_geo *geo)
 {
     return_if_null(geo);
 
