@@ -692,6 +692,9 @@ static int      _s52_init       (s52engine *engine)
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
     //S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 0.0);
 
+    //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
+    S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 1.0);  // on
+
     // debug - use for timing redering
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
@@ -868,7 +871,7 @@ exit:
 //}
 
 
-static gboolean _scroll(GdkEventKey *event)
+static gboolean _scroll  (GdkEventKey *event)
 {
     switch(event->keyval) {
         case GDK_KEY_Left : _engine.state.cLon -= _engine.state.rNM/(60.0*10.0); S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
@@ -880,7 +883,7 @@ static gboolean _scroll(GdkEventKey *event)
     return TRUE;
 }
 
-static gboolean _zoom(GdkEventKey *event)
+static gboolean _zoom    (GdkEventKey *event)
 {
     switch(event->keyval) {
         // zoom in
@@ -918,7 +921,7 @@ static gboolean _rotation(GdkEventKey *event)
     return TRUE;
 }
 
-static gboolean _toggle(S52MarinerParameter paramName)
+static gboolean _toggle  (S52MarinerParameter paramName)
 {
     double val = 0.0;
 
@@ -948,7 +951,7 @@ static gboolean _meterDec(S52MarinerParameter paramName)
     return TRUE;
 }
 
-static gboolean _disp(S52MarinerParameter paramName, const char disp)
+static gboolean _disp    (S52MarinerParameter paramName, const char disp)
 {
     double val = (double) disp;
 
@@ -957,7 +960,7 @@ static gboolean _disp(S52MarinerParameter paramName, const char disp)
     return TRUE;
 }
 
-static gboolean _cpal(S52MarinerParameter paramName, double val)
+static gboolean _cpal    (S52MarinerParameter paramName, double val)
 {
     val = S52_getMarinerParam(paramName) + val;
 
@@ -966,7 +969,7 @@ static gboolean _cpal(S52MarinerParameter paramName, double val)
     return TRUE;
 }
 
-static gboolean _inc(S52MarinerParameter paramName)
+static gboolean _inc     (S52MarinerParameter paramName)
 {
     double val = 0.0;
 
@@ -977,7 +980,7 @@ static gboolean _inc(S52MarinerParameter paramName)
     return TRUE;
 }
 
-static gboolean _mmInc(S52MarinerParameter paramName)
+static gboolean _mmInc   (S52MarinerParameter paramName)
 {
     double val = 0.0;
 
