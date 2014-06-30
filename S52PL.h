@@ -167,23 +167,22 @@ typedef struct _S52_vec    S52_vec;
 typedef struct _S52_obj    S52_obj;
 
 // load/init presentation library
-int           S52_PL_init();
+int            S52_PL_init();
 // load supplemental PLib
-int           S52_PL_load(const char *PLib);
+int            S52_PL_load(const char *PLib);
 // free presentation library
-int           S52_PL_done();
+int            S52_PL_done();
 
 // get RGB from color name, for the currently selected color table
-S52_Color    *S52_PL_getColor(const char *colorName);
+S52_Color     *S52_PL_getColor(const char *colorName);
 // get currently selected color table
-//GArray     *S52_PL_getColorTable();
+//GArray        *S52_PL_getColorTable();
 // return color at index, for the currently selected color table
 S52_Color     *S52_PL_getColorAt(guchar index);
 
 // get a rasterising rules for this S57 object
 S52_obj       *S52_PL_newObj(S57_geo *geoData);
-S52_obj       *S52_PL_delDta(S52_obj *obj);
-S52_obj       *S52_PL_cpyObj(S52_obj *objdst, S52_obj *objsrc);
+S57_geo       *S52_PL_delObj(S52_obj *obj);
 // get the geo part (S57) of this S52 object
 S57_geo       *S52_PL_getGeo(S52_obj *obj);
 S57_geo       *S52_PL_setGeo(S52_obj *obj, S57_geo *geoData);
@@ -192,7 +191,8 @@ S57_geo       *S52_PL_setGeo(S52_obj *obj, S57_geo *geoData);
 const char    *S52_PL_getOBCL(S52_obj *obj);
 // get addressed object TYPe
 // Note: return the same thing as a call to S57_getObjtype()
-S52_Obj_t      S52_PL_getFTYP(S52_obj *obj);
+//S52_Obj_t      S52_PL_getFTYP(S52_obj *obj);
+S57_Obj_t      S52_PL_getFTYP(S52_obj *obj);
 // get Display PRIority
 S52_disPrio    S52_PL_getDPRI(S52_obj *obj);
 // get DISplay Category

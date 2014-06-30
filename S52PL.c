@@ -212,8 +212,8 @@ typedef enum _LUPtnm {
 typedef struct _LUP {
     int          RCID;          // record identifier
     char         OBCL[S52_PL_NMLN+1]; // LUP name --'\0' terminated
-    S52_Obj_t    FTYP;          // 'A' Area, 'L' Line, 'P' Point
-    //S57_Obj_t    FTYP;          // 'A' Area, 'L' Line, 'P' Point
+    //S52_Obj_t    FTYP;          // 'A' Area, 'L' Line, 'P' Point
+    S57_Obj_t    FTYP;          // 'A' Area, 'L' Line, 'P' Point
     S52_disPrio  DPRI;          // Display Priority
     S52_RadPrio  RPRI;          // 'O' or 'S', Radar Priority
        _LUPtnm   TNAM;          // FTYP:  areas, points, lines
@@ -309,7 +309,7 @@ typedef struct _S52_obj {
 
     struct _S52_obj *wholin;    // link to wholin obj
 
-    GTimeVal        time;       // store time (use to find age of AIS)
+    GTimeVal         time;      // store time (use to find age of AIS)
 
 } _S52_obj;
 
@@ -1361,8 +1361,7 @@ static int        _readColor(_PL *fp)
         // debug
         //PRINTF("%s\n", _pBuf);
 
-        // need mem
-        memset(&c, '\0', sizeof(S52_Color));
+        memset(&c, 0, sizeof(S52_Color));
         _chopAtEOL(_pBuf, ' ');
         strncpy(c.colName, _pBuf+9, 5);
         c.x = S52_atof(_pBuf+14);
@@ -1416,7 +1415,7 @@ static int        _readColor(_PL *fp, GArray *colors)
     while ( 0 != strncmp(_pBuf, "****",4)) {
         S52_Color c;
 
-        memset(&c, '\0', sizeof(S52_Color));
+        memset(&c, 0, sizeof(S52_Color));
         _chopAtEOL(_pBuf, ' ');
         strncpy(c.colName, _pBuf+9, 5);
 
@@ -1546,8 +1545,8 @@ static int        _parseLUPT(_PL *fp)
     sscanf(_pBuf+11, "%d", &LUP->RCID);
     //sscanf(_pBuf+11, "%i", &LUP->RCID);
     strncpy(LUP->OBCL, _pBuf+19, S52_PL_NMLN);
-    LUP->FTYP = (S52_Obj_t  )  _pBuf[25];
-    //LUP->FTYP = (S57_Obj_t  )  _pBuf[25];
+    //LUP->FTYP = (S52_Obj_t  )  _pBuf[25];
+    LUP->FTYP = (S57_Obj_t  )  _pBuf[25];
     LUP->DPRI = (S52_disPrio) (_pBuf[30] - '0');
     LUP->RPRI = (S52_RadPrio)  _pBuf[31];
     LUP->TNAM = (   _LUPtnm )  _pBuf[36];
@@ -2671,9 +2670,10 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     return obj;
 }
 
-S52_obj    *S52_PL_delDta(_S52_obj *obj)
-// clear data in S52 obj (not S57 obj geoData)
-// return obj
+//S52_obj    *S52_PL_delDta(_S52_obj *obj)
+S57_geo    *S52_PL_delObj(_S52_obj *obj)
+// free data in S52 obj
+// return S57 obj geoData
 {
     return_if_null(obj);
 
@@ -2731,17 +2731,10 @@ S52_obj    *S52_PL_delDta(_S52_obj *obj)
     obj->crntA        = NULL;
     obj->crntAidx     = 0;
 
-    // free S52 container
-    //g_free(obj);
+    S57_geo *geo = obj->geoData;
+    g_free(obj);
 
-    return NULL;
-}
-
-S52_obj    *S52_PL_cpyObj(_S52_obj *objdst, _S52_obj *objsrc)
-{
-    *objdst = *objsrc;
-
-    return objdst;
+    return geo;
 }
 
 S57_geo    *S52_PL_getGeo(_S52_obj *obj)
@@ -2772,7 +2765,8 @@ const char *S52_PL_getOBCL(_S52_obj *obj)
         return obj->LUP->OBCL;
 }
 
-S52_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
+//S52_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
+S57_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
 {
     return_if_null(obj);
 
@@ -2976,7 +2970,7 @@ const char *S52_PL_getCmdText(_S52_obj *obj)
     return cmd->cmd.def->exposition.LXPO->str;
 }
 
-S52_DListData *S52_PL_getDLData(S52_cmdDef *def)
+S52_DListData *S52_PL_getDLData(_S52_cmdDef *def)
 // TRUE if new (updated)
 {
     if (NULL == def)
@@ -3356,10 +3350,10 @@ int         S52_PL_setAPcover(_S52_cmdDef *def, double dotpitch_x, double dotpit
 
     return 1;
 }
-#endif  
+#endif
 
 #if 0
-int         S52_PL_getSymOff(S52_vec *vecObj, int patt, int *off_x, int *off_y)
+int         S52_PL_getSymOff(_S52_vec *vecObj, int patt, int *off_x, int *off_y)
 {
     int bbx     = vecObj->bbx;
     int bby     = vecObj->bby;
@@ -3550,7 +3544,7 @@ S52_vec    *S52_PL_initVOCmd(_S52_cmdDef *def)
     return vecObj;
 }
 
-int         S52_PL_doneVOCmd(S52_vec *vecObj)
+int         S52_PL_doneVOCmd(_S52_vec *vecObj)
 {
     return_if_null(vecObj);
 
@@ -3562,7 +3556,7 @@ int         S52_PL_doneVOCmd(S52_vec *vecObj)
 }
 
 
-S52_vCmd    S52_PL_getNextVOCmd(S52_vec *vecObj)
+S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
 // return S52_VC_* (Vector Command)
 {
     return_if_null(vecObj);
@@ -3729,31 +3723,31 @@ S52_vCmd    S52_PL_getNextVOCmd(S52_vec *vecObj)
     return S52_VC_NONE;
 }
 
-GArray     *S52_PL_getVOdata(S52_vec *vecObj)
+GArray     *S52_PL_getVOdata(_S52_vec *vecObj)
 {
     return_if_null(vecObj);
     return S57_getPrimVertex(vecObj->prim);
 }
 
-S57_prim   *S52_PL_getVOprim(S52_vec *vecObj)
+S57_prim   *S52_PL_getVOprim(_S52_vec *vecObj)
 {
     return_if_null(vecObj);
     return vecObj->prim;
 }
 
-char        S52_PL_getVOwidth(S52_vec *vecObj)
+char        S52_PL_getVOwidth(_S52_vec *vecObj)
 {
     return_if_null(vecObj);
     return vecObj->pen_w;
 }
 
-double      S52_PL_getVOradius(S52_vec *vecObj)
+double      S52_PL_getVOradius(_S52_vec *vecObj)
 {
     return_if_null(vecObj);
     return vecObj->radius;
 }
 
-const char *S52_PL_getVOname(S52_vec *vecObj)
+const char *S52_PL_getVOname(_S52_vec *vecObj)
 {
     return_if_null(vecObj);
     return vecObj->name;
@@ -3874,7 +3868,7 @@ static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
     return text;
 }
 
-const char *S52_PL_getEX(S52_obj *obj, S52_Color **col,
+const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
                          int *xoffs, int *yoffs, unsigned int *bsize,
                          unsigned int *weight, int *dis)
 {
@@ -3946,7 +3940,7 @@ int         S52_PL_resetParseText(_S52_obj *obj)
     return TRUE;
 }
 
-int         S52_PL_setTextParsed(S52_obj *obj)
+int         S52_PL_setTextParsed(_S52_obj *obj)
 {
     return_if_null(obj);
 
@@ -4304,7 +4298,7 @@ const char* S52_PL_getPalTableNm(unsigned int idx)
     return NULL;
 }
 
-int         S52_PL_setNextLeg(S52_obj *obj, S52_obj *objNextLeg)
+int         S52_PL_setNextLeg(_S52_obj *obj, S52_obj *objNextLeg)
 {
     return_if_null(obj);
     return_if_null(objNextLeg);
@@ -4315,21 +4309,21 @@ int         S52_PL_setNextLeg(S52_obj *obj, S52_obj *objNextLeg)
     return TRUE;
 }
 
-S52_obj    *S52_PL_getNextLeg(S52_obj *obj)
+S52_obj    *S52_PL_getNextLeg(_S52_obj *obj)
 {
     return_if_null(obj);
 
     return obj->nextLeg;
 }
 
-S52_obj    *S52_PL_getPrevLeg(S52_obj *obj)
+S52_obj    *S52_PL_getPrevLeg(_S52_obj *obj)
 {
     return_if_null(obj);
 
     return obj->prevLeg;
 }
 
-S52_obj    *S52_PL_setWholin(S52_obj *obj)
+S52_obj    *S52_PL_setWholin(_S52_obj *obj)
 {
     return_if_null(obj);
 
@@ -4340,14 +4334,14 @@ S52_obj    *S52_PL_setWholin(S52_obj *obj)
     return obj;
 }
 
-S52_obj    *S52_PL_getWholin(S52_obj *obj)
+S52_obj    *S52_PL_getWholin(_S52_obj *obj)
 {
     return_if_null(obj);
 
     return obj->wholin;
 }
 
-int         S52_PL_setTimeNow(S52_obj *obj)
+int         S52_PL_setTimeNow(_S52_obj *obj)
 {
     return_if_null(obj);
 
@@ -4356,7 +4350,7 @@ int         S52_PL_setTimeNow(S52_obj *obj)
     return TRUE;
 }
 
-long        S52_PL_getTimeSec(S52_obj *obj)
+long        S52_PL_getTimeSec(_S52_obj *obj)
 {
     return_if_null(obj);
 
@@ -4364,7 +4358,7 @@ long        S52_PL_getTimeSec(S52_obj *obj)
 }
 
 #ifdef S52_USE_FREETYPE_GL
-guint       S52_PL_getFreetypeGL_VBO(S52_obj *obj, guint *len)
+guint       S52_PL_getFreetypeGL_VBO(_S52_obj *obj, guint *len)
 {
     return_if_null(obj);
 
@@ -4384,7 +4378,7 @@ guint       S52_PL_getFreetypeGL_VBO(S52_obj *obj, guint *len)
     return cmd->vboID;
 }
 
-int         S52_PL_setFreetypeGL_VBO(S52_obj *obj, guint vboID, guint len)
+int         S52_PL_setFreetypeGL_VBO(_S52_obj *obj, guint vboID, guint len)
 {
     return_if_null(obj);
 
