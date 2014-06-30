@@ -1674,7 +1674,6 @@ static int      _initS52()
     S52_setMarinerParam(S52_MAR_ANTIALIAS,        1.0);
 
 
-
     ////////////////////////////////////////////////////////////
     //
     // setup mariner object (for debugging)
@@ -1708,6 +1707,9 @@ static int      _initS52()
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 
     S52_setMarinerParam(S52_MAR_DISP_CALIB, 1.0);
+
+    //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
+    S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 1.0);  // on
 
     // debug - use for timing rendering
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
