@@ -305,8 +305,8 @@ static int      _radar_init()
         return FALSE;
     }
 
-    memset(_Polar_Matrix_Of_Coords, 0x00, sizeof(_Polar_Matrix_Of_Coords));
-    memset(_RADARtex, 0x00, sizeof(_RADARtex));
+    memset(_Polar_Matrix_Of_Coords, 0, sizeof(_Polar_Matrix_Of_Coords));
+    memset(_RADARtex,               0, sizeof(_RADARtex));
 
     // calculate polar coords
     for (int ANGLE = 0; ANGLE < ANGLEmax; ANGLE++) {
@@ -1394,7 +1394,7 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
 #endif
 
-#ifdef S52_USE_MESA3D
+#if !defined(SET_SCREEN_SIZE)
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 #endif
@@ -3085,10 +3085,6 @@ int main(int argc, char *argv[])
     _s52_init(&_engine);
 
     _timer = g_timer_new();
-
-#ifdef USE_AIS
-    s52ais_initAIS();
-#endif
 
 #ifdef S52_USE_MESA3D
     // Mesa3D env - signal no vSync
