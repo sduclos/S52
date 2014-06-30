@@ -780,7 +780,7 @@ static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
 static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask) 
 // make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
 {
-    memset(rgba_mask, 0x00, 8*4*4);
+    memset(rgba_mask, 0, 8*4*4);
     //for (int i=0; i<8; ++i) {
     for (int i=0; i<4; ++i) {    // 4 bytes
         if (0 != mask[i]) {
@@ -1394,7 +1394,7 @@ static int       _renderAP_gl2(S52_obj *obj)
             _glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/0.15, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/0.15, 1.0);
             //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/0.1, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/0.1, 1.0);
 
-            // Nexus 7 (2013) - 323ppi landscape - S52_MAR_DOTPITCH_MM not set (so dotptich is set via EGL/S52_init()
+            // Nexus 7 (2013) - 323ppi landscape - if S52_MAR_DOTPITCH_MM not set (so dotptich is set via EGL/S52_init()
             //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/0.01, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/0.01, 1.0);  // half size
 #endif
 
