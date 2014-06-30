@@ -3,6 +3,9 @@
 #
 
 
+2014JUN27
+    -fix refactor _insertS57Obj()
+
 2014JUN18
     -fix synthetic after glow for the GL2 code path
 
