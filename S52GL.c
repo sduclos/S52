@@ -635,6 +635,10 @@ static GLint     _popScaletoPixel(void)
 static GLint     _glMatrixSet(VP vpcoord)
 // push & reset matrix GL_PROJECTION & GL_MODELVIEW
 {
+#ifdef S52_USE_GV
+    return TRUE;
+#endif
+
     GLdouble  left   = 0.0;
     GLdouble  right  = 0.0;
     GLdouble  bottom = 0.0;
@@ -2662,18 +2666,18 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
             pt.x = x1;  // not used
             pt.y = y1;
             pt.z = 0.0;
-#ifndef S52_USE_GV
+//#ifndef S52_USE_GV
             if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
                 return FALSE;
-#endif
+//#endif
             // position of end of sector nominal range
             ptlen.x = x1; // not used
             ptlen.y = y1 + (valnmr / 60.0);
             ptlen.z = 0.0;
-#ifndef S52_USE_GV
+//#ifndef S52_USE_GV
             if (FALSE == S57_geo2prj3dv(1, (double*)&ptlen))
                 return FALSE;
-#endif
+//#endif
             {
                 projUV p = {ptlen.x, ptlen.y};
                 //p.u = ptlen.x;
@@ -3836,9 +3840,9 @@ static int       _renderAC(S52_obj *obj)
 
     _glColor4ub(c);
 
-#if !defined(S52_USE_GV)
+//#if !defined(S52_USE_GV)
     _glUniformMatrix4fv_uModelview();
-#endif
+//#endif
 
     _fillarea(geo);
 
@@ -5760,24 +5764,13 @@ int        S52_GL_begin(S52_GL_cycle cycle)
         g_assert(0);
     }
 
-#ifndef S52_USE_GV
-    // GV set the matrix it self
-    // also don't erase GV stuff with NODATA
-    /*
-    if (TRUE != drawLast) {
-        _glMatrixSet(VP_PRJ);
-    } else {
-        double northtmp = _north;
-        _north = 0.0;
-        _glMatrixSet(VP_PRJ);
-        _north = northtmp;
-    }
-    */
+//#ifndef S52_USE_GV
     _glMatrixSet(VP_PRJ);
 
 #ifdef S52_USE_GL2
     glActiveTexture(GL_TEXTURE0);
 #else
+    // GL1 read in matrix from GPU
     glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
     glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
 #endif
@@ -5798,14 +5791,16 @@ int        S52_GL_begin(S52_GL_cycle cycle)
             // fill with NODATA03 pattern
             _renderAP_NODATA_layer0();
         }
+
 #ifdef S52_USE_RADAR
         if (0.0 == S52_MP_get(S52_MAR_DISP_NODATA_LAYER)) {
             // fill display with black color in RADAR mode
             _renderAC_NODATA_layer0();
         }
-#endif
+//#endif
+//#if !defined(S52_USE_RADAR)
+#else  // S52_USE_RADAR
 
-#if !defined(S52_USE_RADAR)
     } else {
         if (S52_GL_LAST == _crnt_GL_cycle) {
             // user can draw on top of base
@@ -5818,11 +5813,12 @@ int        S52_GL_begin(S52_GL_cycle cycle)
             // load FB that was filled with the previous draw() call
             S52_GL_drawFBPixels();
         }
-#endif
+
+#endif  // S52_USE_RADAR
     }
     //---------------------------------------------------------------
 
-#endif  // S52_USE_GV
+//#endif  // S52_USE_GV
 
     _checkError("S52_GL_begin() - fini");
 
@@ -6007,7 +6003,11 @@ static int       _contextValid(void)
     // 16 bits:mode,r,g,b,a,s: 1 5 6 5 0 8
     // 24 bits:mode,r,g,b,a,s: 1 8 8 8 0 8
 
-#ifdef S52_USE_GL2
+#if S52_USE_GL1
+    if (s <= 0)
+        PRINTF("WARNING: no stencil buffer in cinfig for pattern on GL1\n");
+#endif
+
     {
         const GLubyte *vendor     = glGetString(GL_VENDOR);
         const GLubyte *renderer   = glGetString(GL_RENDERER);
@@ -6027,29 +6027,29 @@ static int       _contextValid(void)
         PRINTF("Extensions: %s\n", extensions);
 
         // npot
-        if (NULL != g_strrstr((const char *)extensions, "GL_OES_texture_npot"))
+        //if (NULL != g_strrstr((const char *)extensions, "GL_OES_texture_npot"))
+        if (NULL != g_strrstr((const char *)extensions, "_texture_npot"))
             PRINTF("DEBUG: GL_OES_texture_npot OK\n");
         else
             PRINTF("DEBUG: GL_OES_texture_npot FAILED\n");
 
-
         // marker
-        if (NULL != g_strrstr((const char *)extensions, "GL_EXT_debug_marker"))
+        //if (NULL != g_strrstr((const char *)extensions, "GL_EXT_debug_marker"))
+        if (NULL != g_strrstr((const char *)extensions, "_debug_marker"))
             PRINTF("DEBUG: GL_EXT_debug_marker OK\n");
         else
             PRINTF("DEBUG: GL_EXT_debug_marker FAILED\n");
 
         // point sprites
-        if (NULL != g_strrstr((const char *)extensions, "GL_OES_point_sprite"))
+        //if (NULL != g_strrstr((const char *)extensions, "GL_OES_point_sprite"))
+        if (NULL != g_strrstr((const char *)extensions, "_point_sprite"))
             PRINTF("DEBUG: GL_OES_point_sprite OK\n");
         else
             PRINTF("DEBUG: GL_OES_point_sprite FAILED\n");
 
     }
-#else
-    if (s <= 0)
-        PRINTF("WARNING: no stencil buffer for pattern in GL1\n");
 
+#if !defined(S52_USE_GLES2)
     GLboolean d = FALSE;
     glGetBooleanv(GL_DOUBLEBUFFER, &d);
     PRINTF("double buffer: %s\n", ((TRUE==d) ? "TRUE" : "FALSE"));
