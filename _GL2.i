@@ -32,6 +32,7 @@ static GLubyte     _glColor4ub(S52_Color *);
 static void        _glPointSize(GLfloat);
 static inline void _checkError(const char *);
 static GLvoid      _DrawArrays_LINE_STRIP(guint, vertex_t *);  // debug pattern
+static guint       _minPOT(guint value);
 ////////////////////////////////////////////////////////
 
 
@@ -1128,7 +1129,7 @@ static int       _init_gl2(void)
     //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_UNSIGNED_BYTE, 0);
 
     //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,  0, 0, _vp[2], _vp[3], 0);
 #else
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
 #endif
@@ -1181,8 +1182,280 @@ static int       _renderTile(S52_DListData *DListData)
     return TRUE;
 }
 
+static int       _initFBO(GLuint mask_texID)
+{
+    if (0 == _fboID) {
+        glGenFramebuffers (1, &_fboID);
+    }
 
-static int       _renderAP_gl2(S52_obj *obj) 
+    glBindFramebuffer     (GL_FRAMEBUFFER, _fboID);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mask_texID, 0);
+
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE) {
+        //PRINTF("ERROR: glCheckFramebufferStatus() fail: %s status: %i\n", S52_PL_getOBCL(obj), status);
+        PRINTF("ERROR: glCheckFramebufferStatus() fail, status: %i\n", status);
+
+        //*
+        switch(status)
+        {
+        case GL_FRAMEBUFFER_UNSUPPORTED:
+            PRINTF("Framebuffer object format is unsupported by the video hardware. (GL_FRAMEBUFFER_UNSUPPORTED)(FBO - 820)");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
+            PRINTF("Incomplete attachment. (GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT)(FBO - 820)");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
+            PRINTF("Incomplete missing attachment. (GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT)(FBO - 820)");
+            break;
+// Not in GL
+//            case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
+//                PRINTF("Incomplete dimensions. (GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT)(FBO - 820)");
+//                break;
+
+/*
+        case GL_FRAMEBUFFER_INCOMPLETE_FORMATS:
+            PRINTF("Incomplete formats. (GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT)(FBO - 820)");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
+            PRINTF("Incomplete draw buffer. (GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT)(FBO - 820)");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
+            PRINTF("Incomplete read buffer. (GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT)(FBO - 820)");
+            break;
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+            PRINTF("Incomplete multisample buffer. (GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT)(FBO - 820)");
+            break;
+//*/
+
+        default:
+            PRINTF("Some video driver error or programming error occured. Framebuffer object status is invalid. (FBO - 823)");
+            break;
+        }
+
+        return FALSE;
+    }
+
+    _checkError("_setFBO()");
+
+    return TRUE;
+}
+
+static int       _set_glScaled(void)
+{
+    // sailsafe
+    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 6.0;
+    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-6.0;
+    double scaleX = _dotpitch_mm_x;
+    double scaleY = _dotpitch_mm_y;
+
+
+    ////////////////////////////////////////////////////////////////
+    //
+    // FIXME: scale found by trial and error
+    //        find a way to get it programmaticaly
+    //
+
+#ifdef S52_USE_TEGRA2
+    // scale to POT (Xoom)
+    scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 1.0;
+    scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-1.0;
+#endif
+
+#ifdef S52_USE_ADRENO
+    // Nexus 7 (2013) - 323ppi landscape - if S52_MAR_DOTPITCH_MM not set (so dotptich is set via EGL/S52_init()
+    //scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 1.0;
+    //scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-1.0;
+
+    // Nexus 7 (2013) - 323ppi landscape - S52_MAR_DOTPITCH_MM set to 0.2
+    scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 4.0;  // 4 or 5 OK
+    scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-4.0;  // 4 or 5 OK
+#endif
+
+#ifdef S52_USE_MESA3D
+    scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 8.0;
+    scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-8.0;
+#endif
+
+    _glScaled(scaleX, scaleY, 1.0);
+
+    ////////////////////////////////////////////////////////////////
+
+    return TRUE;
+}
+
+static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, double stagOffsetPix)
+{
+    GLuint mask_texID = 0;
+
+    glGenTextures(1, &mask_texID);
+    glBindTexture(GL_TEXTURE_2D, mask_texID);
+
+    // GL_OES_texture_npot
+    // The npot extension for GLES2 is only about support of mipmaps and repeat/mirror wrap modes.
+    // If you don't care about mipmaps and use only the clamp wrap mode, you can use npot textures.
+    // It's part of the GLES2 spec.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+#ifdef S52_USE_TEGRA2
+    // POT
+    guint potW = _minPOT(tileWpx);
+    guint potH = _minPOT(tileHpx);
+    if (0.0 != stagOffsetPix) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW*2, potH*2, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
+    } else {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW,   potH,   0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
+    }
+#else
+    // NPOT
+    int w = ceil(tileWpx);
+    int h = ceil(tileHpx);
+
+    // NOTE: GL_RGBA is needed for:
+    // - Vendor: Tungsten Graphics, Inc. - Renderer: Mesa DRI Intel(R) 965GM x86/MMX/SSE2
+    // - Vendor: Qualcomm                - Renderer: Adreno (TM) 320
+
+    // stag - CA379035.000:UNSARE
+    if (0.0 != stagOffsetPix) {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w*2, h*2, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    } else {
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w,   h,   0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    }
+
+#endif
+
+    _initFBO(mask_texID);
+
+    // save texture mask ID when everythings check ok
+    S52_PL_setAPtexID(obj, mask_texID);
+
+    // Clear Color ------------------------------------------------
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+
+#ifdef S52_USE_TEGRA2
+    // xoom specific - clear FB to reset Tegra 2 CSAA (anti-aliase), define in gl2ext.h
+    //int GL_COVERAGE_BUFFER_BIT_NV = 0x8000;
+    glClear(GL_COLOR_BUFFER_BIT | GL_COVERAGE_BUFFER_BIT_NV);
+#else
+    glClear(GL_COLOR_BUFFER_BIT);
+#endif
+
+    // set color alpha
+    glUniform4f(_uColor, 0.0, 0.0, 0.0, 1.0);
+
+    _checkError("_setTex() -1-");
+
+    // render to texture -----------------------------------------
+
+    _glMatrixSet(VP_WIN);
+
+    {   // set line/point width
+        double   dummy = 0.0;
+        char     pen_w = '1';
+        S52_PL_getLCdata(obj, &dummy, &pen_w);
+
+        //glLineWidth (pen_w - '0');
+        glLineWidth (pen_w - '0' + 1.0);  // must enlarge line glsl sampler
+        _glPointSize(pen_w - '0' + 1.0);  // sampler + AA soften pixel, so need enhencing a bit
+    }
+
+    /* debug - draw X and Y axis
+    {
+        // Note: line in X / Y need to start at +1 to show up
+#ifdef S52_USE_TEGRA2
+        pt3v lineW[2] = {{1.0, 1.0, 0.0}, {potW,  1.0, 0.0}};
+        pt3v lineH[2] = {{1.0, 1.0, 0.0}, { 1.0, potH, 0.0}};
+#else
+        pt3v lineW[2] = {{1.0, 1.0, 0.0}, {tileWpx,     1.0, 0.0}};
+        pt3v lineH[2] = {{1.0, 1.0, 0.0}, {    1.0, tileHpx, 0.0}};
+#endif
+
+        _DrawArrays_LINE_STRIP(2, (vertex_t*)lineW);
+        _DrawArrays_LINE_STRIP(2, (vertex_t*)lineH);
+    }
+    //*/
+
+    /* debug
+    double tw = 0.0;  // tile width
+    double th = 0.0;  // tile height
+    double dx = 0.0;  // run length offset for STG pattern
+    S52_PL_getAPTileDim(obj, &tw,  &th,  &dx);
+
+    PRINTF("Tile   : %6.1f x %6.1f\n", tw,        th       );
+    PRINTF("pivot  : %6.1f x %6.1f\n", px,        py       );
+    PRINTF("bbox   : %6.1f x %6.1f\n", bbx,       bby      );
+    PRINTF("off    : %6.1f x %6.1f\n", (px-bbx),  (py-bby) );
+    PRINTF("off  px: %6.1f x %6.1f\n", offsetXpx, offsetYpx);
+    PRINTF("Tile px: %6.1f x %6.1f\n", tileWpx,   tileHpx  );
+
+    PRCARE  : tex: 32 x 32,   frac: 0.591071 x 0.592593
+    Tile    :  500.0 x  500.0
+    pivot   :  750.0 x  750.0
+    bboxOrig:  750.0 x  250.0
+    offset  :    0.0 x  500.0
+    offsetpx:    0.0 x   19.0
+    Tile px :   18.9 x   19.0
+
+    PATD   55DIAMOND1VLINCON0000000000022500225002250043130112500093
+    DEPARE  : tex: 128 x 256, frac: 0.664955 x 0.638963
+    Tile    : 2250.0 x 4313.0
+    pivot   : 2250.0 x 2250.0
+    bboxOrig: 1125.0 x   93.0
+    offset  : 1125.0 x 2157.0
+    offsetpx:   42.6 x   81.8
+    Tile px :   85.1 x  163.6
+
+    DRGARE  : tex: 16 x 16,   frac: 0.827500 x 0.829630
+    Tile    :  350.0 x  350.0
+    pivot   : 1500.0 x 1500.0
+    bboxOrig: 1500.0 x 1300.0
+    offset  :    0.0 x  200.0
+    offsetpx:    0.0 x    7.6
+    Tile px :   13.2 x   13.3
+    */
+
+    _glTranslated(tileWpx/2.0 - 0.0, tileHpx/2.0 - 0.0, 0.0);
+    //_glTranslated(tileWpx/2.0 - 3.0, tileHpx/2.0 - 3.0, 0.0);
+    //_glTranslated(tileWpx/2.0 - 5.0, tileHpx/2.0 - 5.0, 0.0);
+    //_glTranslated(tileWpx/2.0 - 10.0, tileHpx/2.0 - 10.0, 0.0);
+
+
+
+    _set_glScaled();
+
+    S52_DListData *DListData = S52_PL_getDListData(obj);
+    _renderTile(DListData);
+
+    if (0.0 != stagOffsetPix) {
+        _glLoadIdentity();
+
+        //_glTranslated(tileWpx + (tileWpx/2.0) + stagOffsetPix, tileHpx + (tileHpx/2.0), 0.0);
+        _glTranslated(tileWpx + stagOffsetPix, tileHpx + (tileHpx/2.0), 0.0);
+
+        _set_glScaled();
+
+        _renderTile(DListData);
+    }
+
+    _glMatrixDel(VP_WIN);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // test to get rid of artefact at start up
+    //glDeleteFramebuffers(1, &_fboID);
+    //_fboID = 0;
+
+    _checkError("_setTex() -1-");
+
+    return mask_texID;
+}
+
+static int       _renderAP_gl2(S52_obj *obj)
 {
     S52_DListData *DListData = S52_PL_getDListData(obj);
 
@@ -1196,284 +1469,8 @@ static int       _renderAP_gl2(S52_obj *obj)
 
     GLuint mask_texID = S52_PL_getAPtexID(obj);
     if (0 == mask_texID) {
-        // NPOT
-        int w    = ceil(tileWpx);
-        int h    = ceil(tileHpx);
-
-        glGenTextures(1, &mask_texID);
-        glBindTexture(GL_TEXTURE_2D, mask_texID);
-
-        // GL_OES_texture_npot
-        // The npot extension for GLES2 is only about support of mipmaps and repeat/mirror wrap modes.
-        // If you don't care about mipmaps and use only the clamp wrap mode, you can use npot textures.
-        // It's part of the GLES2 spec.
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-#ifdef S52_USE_TEGRA2
-        // POT
-        int potW = _minPOT(w);
-        int potH = _minPOT(h);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW, potH, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
-#else
-        // NPOT - fail on TEGRA2
-        //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, w, h, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
-
-        // test POT on MESA
-        //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW, potH, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
-
-        // NOTE: GL_RGBA is needed for:
-        // - Vendor: Tungsten Graphics, Inc. - Renderer: Mesa DRI Intel(R) 965GM x86/MMX/SSE2
-        // - Vendor: Qualcomm                - Renderer: Adreno (TM) 320
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-#endif
-
-        glGenFramebuffers (1, &_fboID);
-        glBindFramebuffer     (GL_FRAMEBUFFER, _fboID);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mask_texID, 0);
-
-        GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-        if (status != GL_FRAMEBUFFER_COMPLETE) {
-            PRINTF("ERROR: glCheckFramebufferStatus() fail: %s status: %i\n", S52_PL_getOBCL(obj), status);
-
-            //*
-            switch(status)
-            {
-            case GL_FRAMEBUFFER_UNSUPPORTED:
-                PRINTF("Framebuffer object format is unsupported by the video hardware. (GL_FRAMEBUFFER_UNSUPPORTED)(FBO - 820)");
-                break;
-            case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-                PRINTF("Incomplete attachment. (GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT)(FBO - 820)");
-                break;
-            case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-                PRINTF("Incomplete missing attachment. (GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT)(FBO - 820)");
-                break;
-// Not in GL
-//            case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
-//                PRINTF("Incomplete dimensions. (GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT)(FBO - 820)");
-//                break;
-
-            /*
-            case GL_FRAMEBUFFER_INCOMPLETE_FORMATS:
-                PRINTF("Incomplete formats. (GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT)(FBO - 820)");
-                break;
-            case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER:
-                PRINTF("Incomplete draw buffer. (GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT)(FBO - 820)");
-                break;
-            case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER:
-                PRINTF("Incomplete read buffer. (GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT)(FBO - 820)");
-                break;
-            case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
-                PRINTF("Incomplete multisample buffer. (GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_EXT)(FBO - 820)");
-                break;
-            */
-            default:
-                PRINTF("Some video driver error or programming error occured. Framebuffer object status is invalid. (FBO - 823)");
-                break;
-            }
-            //*/
-        }
-
-        _checkError("_renderAP_es2() -0.32-");
-
-        // save texture mask ID when everythings check ok
-        S52_PL_setAPtexID(obj, mask_texID);
-
-        // Clear Color ------------------------------------------------
-        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-        glClearColor(0.0, 0.0, 0.0, 0.0);
-
-#ifdef S52_USE_TEGRA2
-        // xoom specific - clear FB to reset Tegra 2 CSAA (anti-aliase), define in gl2ext.h
-        //int GL_COVERAGE_BUFFER_BIT_NV = 0x8000;
-        glClear(GL_COLOR_BUFFER_BIT | GL_COVERAGE_BUFFER_BIT_NV);
-#else
-        glClear(GL_COLOR_BUFFER_BIT);
-#endif
-
-        // set color alpha
-        glUniform4f(_uColor, 0.0, 0.0, 0.0, 1.0);
-
-        _checkError("_renderAP_es2() -0.4-");
-
-        // render to texture -----------------------------------------
-
-        _glMatrixSet(VP_WIN);
-
-        {   // set line/point width
-            double   dummy = 0.0;
-            char     pen_w = '1';
-            S52_PL_getLCdata(obj, &dummy, &pen_w);
-
-            glLineWidth (pen_w - '0');
-            _glPointSize(pen_w - '0' + 1.0); // sampler + AA soften pixel, so need enhencing a bit
-        }
-
-        /* debug - draw X and Y axis
-        {
-            // Note: line in X / Y need to start at +1 to show up
-#ifdef S52_USE_TEGRA2
-            pt3v lineW[2] = {{1.0, 1.0, 0.0}, {potW,  1.0, 0.0}};
-            pt3v lineH[2] = {{1.0, 1.0, 0.0}, { 1.0, potH, 0.0}};
-#else
-            pt3v lineW[2] = {{1.0, 1.0, 0.0}, {tileWpx,     1.0, 0.0}};
-            pt3v lineH[2] = {{1.0, 1.0, 0.0}, {    1.0, tileHpx, 0.0}};
-#endif
-
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)lineW);
-            _DrawArrays_LINE_STRIP(2, (vertex_t*)lineH);
-        }
-        //*/
-
-        {
-            /* debug
-            double tw = 0.0;  // tile width
-            double th = 0.0;  // tile height
-            double dx = 0.0;  // run length offset for STG pattern
-            S52_PL_getAPTileDim(obj, &tw,  &th,  &dx);
-
-            PRINTF("Tile   : %6.1f x %6.1f\n", tw,        th       );
-            PRINTF("pivot  : %6.1f x %6.1f\n", px,        py       );
-            PRINTF("bbox   : %6.1f x %6.1f\n", bbx,       bby      );
-            PRINTF("off    : %6.1f x %6.1f\n", (px-bbx),  (py-bby) );
-            PRINTF("off  px: %6.1f x %6.1f\n", offsetXpx, offsetYpx);
-            PRINTF("Tile px: %6.1f x %6.1f\n", tileWpx,   tileHpx  );
-
-            PRCARE  : tex: 32 x 32,   frac: 0.591071 x 0.592593
-            Tile    :  500.0 x  500.0
-            pivot   :  750.0 x  750.0
-            bboxOrig:  750.0 x  250.0
-            offset  :    0.0 x  500.0
-            offsetpx:    0.0 x   19.0
-            Tile px :   18.9 x   19.0
-
-            PATD   55DIAMOND1VLINCON0000000000022500225002250043130112500093
-            DEPARE  : tex: 128 x 256, frac: 0.664955 x 0.638963
-            Tile    : 2250.0 x 4313.0
-            pivot   : 2250.0 x 2250.0
-            bboxOrig: 1125.0 x   93.0
-            offset  : 1125.0 x 2157.0
-            offsetpx:   42.6 x   81.8
-            Tile px :   85.1 x  163.6
-
-            DRGARE  : tex: 16 x 16,   frac: 0.827500 x 0.829630
-            Tile    :  350.0 x  350.0
-            pivot   : 1500.0 x 1500.0
-            bboxOrig: 1500.0 x 1300.0
-            offset  :    0.0 x  200.0
-            offsetpx:    0.0 x    7.6
-            Tile px :   13.2 x   13.3
-            */
-
-            _glTranslated(tileWpx/2.0 - 0.0, tileHpx/2.0 - 0.0, 0.0);
-            //_glTranslated(tileWpx/2.0 - 3.0, tileHpx/2.0 - 3.0, 0.0);
-            //_glTranslated(tileWpx/2.0 - 5.0, tileHpx/2.0 - 5.0, 0.0);
-            //_glTranslated(tileWpx/2.0 - 10.0, tileHpx/2.0 - 10.0, 0.0);
-
-
-
-            ////////////////////////////////////////////////////////////////
-            //
-            // FIXME: scale found by trial and error
-            //        find a way to get it programmaticaly
-            //
-
-
-#ifdef S52_USE_TEGRA2
-            // scale to POT (Xoom)
-            _glScaled(0.03/(tileWpx/potW), -0.03/(tileHpx/potH), 1.0);
-            //_glScaled(_dotpitch_mm_x/(tileWpx/potW), -_dotpitch_mm_y/(tileHpx/potH), 1.0);
-#endif
-
-#ifdef S52_USE_ADRENO
-            // FIXME: no -Y because Adreno flip Y
-            // Nexus 7 (2013) - 323ppi landscape - S52_MAR_DOTPITCH_MM set to 0.2
-            //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/0.2, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/0.2, 1.0);
-            _glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/0.15, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/0.15, 1.0);
-            //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/0.1, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/0.1, 1.0);
-
-            // Nexus 7 (2013) - 323ppi landscape - if S52_MAR_DOTPITCH_MM not set (so dotptich is set via EGL/S52_init()
-            //_glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/0.01, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/0.01, 1.0);  // half size
-#endif
-
-#ifdef S52_USE_MESA3D
-            _glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/8.0, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-8.0, 1.0);
-#else
-            _glScaled(S52_MP_get(S52_MAR_DOTPITCH_MM_X)/6.0, S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-6.0, 1.0);
-#endif
-
-
-            ////////////////////////////////////////////////////////////////
-
-        }
-
-        // debug - break if patt has stag
-        // CA379035.000:UNSARE
-        if (0.0 != stagOffsetPix) {
-            PRINTF("FIXME: stagOffsetPix not implemented for GLES2\n");
-            //g_assert(0);
-        }
-
-        _renderTile(DListData);
-
-        _glMatrixDel(VP_WIN);
-
-        glBindTexture(GL_TEXTURE_2D, 0);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        _checkError("_renderAP_es2() -1-");
-
-
-//---------------------------------------------------------------------------------------------------------------
-            /*
-            if (0.0 == stagOffsetPix) {
-                // move to center
-                _glTranslated(tileWidthPix/2.0, tileHeightPix/2.0, 0.0);
-                // then flip on Y
-                _glScaled(1.0, -1.0, 1.0);
-
-                // Translated() can't have an 'offset' of 0 (matrix goes nuts)
-                GLdouble offsetx = pivotxPix - bbxPix - (tileWidthPix  / 2.0) + 1.0;
-                GLdouble offsety = pivotyPix - bbyPix - (tileHeightPix / 2.0) + 1.0;
-                if (0.0 == offsetx) g_assert(0);
-                if (0.0 == offsety) g_assert(0);
-
-                // move - the 5.0 was found by trial and error .. could be improve
-                // to fill the gap in pattern TSSJCT02 (traffic separation scheme crossing)
-                //_glTranslated(offsetx, offsety, 0.0);
-                _glTranslated(offsetx + (tileWidthPix/2.0) - 5.0, offsety - (tileHeightPix/2.0) + 5.0, 0.0);
-
-                // scale
-                // FIXME: why 0.03 and not 0.3 (ie S52_MAR_DOTPITCH_MM_ X/Y)
-                // FIXME: use _pushScaletoPixel() on _glMatrixSet(VP_PRJ) !!
-                //_glScaled(0.03, 0.03, 1.0);
-                _glScaled(0.03/(tileWidthPix/potW), 0.03/(tileHeightPix/potH), 1.0);
-
-            } else {
-                _glTranslated(potW/4.0, potH/4.0, 0.0);
-                _glScaled(0.05, -0.05, 1.0);
-            }
-
-            _renderTile(DListData);
-
-            // 2nd row (top up right) if stag ON
-            if (0.0 != stagOffsetPix) {
-                _glLoadIdentity();
-
-                _glTranslated((potW/4.0)*3.0, (potH/4.0)*3.0, 0.0);
-
-                //_glScaled(0.03, -0.03, 1.0);
-                _glScaled(0.05, -0.05, 1.0);
-
-                _renderTile(DListData);
-            }
-            */
-//---------------------------------------------------------------------------------------------------------------
-
+        mask_texID = _setTexture(obj, tileWpx, tileHpx, stagOffsetPix);
     }
-
 
     _glColor4ub(DListData->colors);
 
@@ -1493,11 +1490,11 @@ static int       _renderAP_gl2(S52_obj *obj)
     /*
     if (0.0 == stagOffsetPix) {
         // this strech the texture
-        glUniform1f(_uPattX,    w0);        // tile width in world
-        glUniform1f(_uPattY,    h0);        // tile height in world
+        glUniform1f(_uPattX, tileWw);        // tile width in world
+        glUniform1f(_uPattY, tileHw);        // tile height in world
     } else {
-        glUniform1f(_uPattX,    w * _scalex);
-        glUniform1f(_uPattY,    h * _scaley);
+        glUniform1f(_uPattX, w * _scalex);
+        glUniform1f(_uPattY, h * _scaley);
     }
     */
 
