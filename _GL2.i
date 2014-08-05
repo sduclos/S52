@@ -9,6 +9,7 @@
 
 
 // Note: GLES2 is a subset of GL2, so declaration in GLES2 header cover all GL2 decl use in the code
+#define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 typedef double GLdouble;
@@ -32,7 +33,7 @@ static GLubyte     _glColor4ub(S52_Color *);
 static void        _glPointSize(GLfloat);
 static inline void _checkError(const char *);
 static GLvoid      _DrawArrays_LINE_STRIP(guint, vertex_t *);  // debug pattern
-static guint       _minPOT(guint value);
+static int         _minPOT(int value);
 ////////////////////////////////////////////////////////
 
 
@@ -1193,7 +1194,6 @@ static int       _initFBO(GLuint mask_texID)
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE) {
-        //PRINTF("ERROR: glCheckFramebufferStatus() fail: %s status: %i\n", S52_PL_getOBCL(obj), status);
         PRINTF("ERROR: glCheckFramebufferStatus() fail, status: %i\n", status);
 
         //*
@@ -1244,8 +1244,6 @@ static int       _initFBO(GLuint mask_texID)
 static int       _set_glScaled(void)
 {
     // sailsafe
-    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 6.0;
-    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-6.0;
     double scaleX = _dotpitch_mm_x;
     double scaleY = _dotpitch_mm_y;
 
@@ -1257,9 +1255,9 @@ static int       _set_glScaled(void)
     //
 
 #ifdef S52_USE_TEGRA2
-    // scale to POT (Xoom)
-    scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 1.0;
-    scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-1.0;
+    // Xoom - S52_MAR_DOTPITCH_MM set to 0.3
+    scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 8.0;
+    scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-8.0;
 #endif
 
 #ifdef S52_USE_ADRENO
@@ -1300,32 +1298,24 @@ static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, doubl
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-#ifdef S52_USE_TEGRA2
-    // POT
-    guint potW = _minPOT(tileWpx);
-    guint potH = _minPOT(tileHpx);
-    if (0.0 != stagOffsetPix) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW*2, potH*2, 0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
-    } else {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, potW,   potH,   0, GL_ALPHA, GL_UNSIGNED_BYTE, NULL);
+    GLsizei w = ceil(tileWpx);
+    GLsizei h = ceil(tileHpx);
+
+    if (FALSE == _GL_OES_texture_npot) {
+        w = _minPOT(w);
+        h = _minPOT(h);
     }
-#else
-    // NPOT
-    int w = ceil(tileWpx);
-    int h = ceil(tileHpx);
+
+    if (0.0 != stagOffsetPix) {
+        w *= 2;
+        h *= 2;
+    }
 
     // NOTE: GL_RGBA is needed for:
     // - Vendor: Tungsten Graphics, Inc. - Renderer: Mesa DRI Intel(R) 965GM x86/MMX/SSE2
     // - Vendor: Qualcomm                - Renderer: Adreno (TM) 320
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w,   h,   0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
-    // stag - CA379035.000:UNSARE
-    if (0.0 != stagOffsetPix) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w*2, h*2, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    } else {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w,   h,   0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    }
-
-#endif
 
     _initFBO(mask_texID);
 
@@ -1347,7 +1337,8 @@ static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, doubl
     // set color alpha
     glUniform4f(_uColor, 0.0, 0.0, 0.0, 1.0);
 
-    _checkError("_setTex() -1-");
+    _checkError("_setTexture() -1-");
+
 
     // render to texture -----------------------------------------
 
@@ -1433,8 +1424,11 @@ static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, doubl
     if (0.0 != stagOffsetPix) {
         _glLoadIdentity();
 
-        //_glTranslated(tileWpx + (tileWpx/2.0) + stagOffsetPix, tileHpx + (tileHpx/2.0), 0.0);
-        _glTranslated(tileWpx + stagOffsetPix, tileHpx + (tileHpx/2.0), 0.0);
+        if (TRUE == _GL_OES_texture_npot) {
+            _glTranslated(tileWpx + stagOffsetPix, tileHpx + (tileHpx/2.0), 0.0);
+        } else {
+            _glTranslated((w/2.0) + stagOffsetPix, (h/2.0), 0.0);
+        }
 
         _set_glScaled();
 
@@ -1446,11 +1440,11 @@ static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, doubl
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // test to get rid of artefact at start up
+    // debug - test to get rid of artefact at start up
     //glDeleteFramebuffers(1, &_fboID);
     //_fboID = 0;
 
-    _checkError("_setTex() -1-");
+    _checkError("_setTexture() -1-");
 
     return mask_texID;
 }
