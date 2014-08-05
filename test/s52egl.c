@@ -44,8 +44,6 @@
 #include <glibconfig.h>
 #include <gio/gio.h>      // mutex
 
-#define DEG_TO_RAD     0.01745329238
-
 //extern GMemVTable *glib_mem_profiler_table;
 
 #ifdef S52_USE_ANDROID
@@ -74,7 +72,9 @@
 
 //#include <glib-android/glib-android.h>  // g_android_init()
 
+#define DEG_TO_RAD     0.01745329238
 #define RAD_TO_DEG    57.29577951308232
+#define INCH2MM       25.4
 
 #define PATH     "/sdcard/s52droid"      // Android 4.2
 #define PLIB     PATH "/PLAUX_00.DAI"
@@ -1163,21 +1163,23 @@ static int      _s52_init       (s52engine *engine)
         w   = engine->width;
         h   = engine->height;
 
-        wmm = (int)(w / engine->dpi) * 25.4;  // inch to mm
-        hmm = (int)(h / engine->dpi) * 25.4;
+        wmm = (int)(w / engine->dpi) * INCH2MM;
+        hmm = (int)(h / engine->dpi) * INCH2MM;
 
 #else   // S52_USE_ANDROID
 
 #ifdef SET_SCREEN_SIZE
-        // Acer Aspire 5542G - 15.6" HD 1366 x 768 pixels
+        // Acer Aspire 5542G - 15.6" HD 1366 x 768 pixels, 16:9 aspect ratio
         w   = engine->width  = 1366;
         h   = engine->height =  768;
-        double diagPx = sqrt(w*w + h*h);  // diagonal pixels
-        double diagMM = 15.6 * 24.5;      // diagonal mm
-        wmm = engine->wmm    =  diagMM/diagPx * w;
-        hmm = engine->hmm    =  diagMM/diagPx * h;
+
+        double diagMM        = 15.6 * INCH2MM;   // diagonal mm
+        double diagPx        = sqrt(w*w + h*h);  // diagonal pixels
+        wmm = engine->wmm    = diagMM/diagPx * w;
+        hmm = engine->hmm    = diagMM/diagPx * h;
 
 #else   // SET_SCREEN_SIZE
+
         // dual-screen: 2646 x 1024 pixels, 700 x 271 mm
         w   = XDisplayWidth   (engine->dpy, 0);
         wmm = XDisplayWidthMM (engine->dpy, 0);
@@ -1226,9 +1228,9 @@ static int      _s52_init       (s52engine *engine)
 #ifdef S52_USE_ADRENO
     //S52_loadCell(NULL, NULL);
     // Rimouski (Nexus)
-    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
+    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
     // Estuaire du St-Laurent
-    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
+    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
 
     // Portneuf
     //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
@@ -1293,8 +1295,8 @@ static int      _s52_init       (s52engine *engine)
 
     // debug - remove clutter from this symb in SELECT mode
     //S52_setS57ObjClassSupp("M_QUAL", TRUE);  // supress display of the U pattern
-    //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
-    S52_toggleObjClassON ("M_QUAL");           //  suppression ON
+    S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
+    //S52_toggleObjClassON ("M_QUAL");           //  suppression ON
     //S52_toggleObjClassOFF("M_QUAL");         //  suppression OFF
 
 
@@ -1394,7 +1396,8 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
 #endif
 
-#if !defined(SET_SCREEN_SIZE)
+#if !defined(SET_SCREEN_SIZE) && !defined(S52_USE_ANDROID)
+    // NOTE: S52 pixels for symb are 0.3 mm
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 #endif
@@ -1941,38 +1944,22 @@ static int      _android_signalDraw  (s52engine *engine, double new_y, double ne
     //*/
 
     if (TRUE == S52_setView(new_y, new_x, new_z, new_r)) {
-        //g_static_mutex_lock(&engine->mutex);
-
         engine->state.cLat  = new_y;
         engine->state.cLon  = new_x;
         engine->state.rNM   = new_z;
         engine->state.north = new_r;
 
 #ifdef S52_USE_EGL
-        //*
         engine->do_S52draw     = TRUE;
         engine->do_S52drawLast = FALSE;
         _s52_draw_cb(engine);
 
-        // signal glib thread to draw
-        //g_async_queue_push(engine->queue, engine);
-
-        /*
-        S52_draw();
-        //_s52_draw_user(engine); // to add stuff on top of draw() but bellow drawLast()
-        S52_drawLast();
-        //_s52_draw_user(engine); // add stuff on top of darwLast()
-        //*/
 #else
         _egl_beg(engine, "test");
-        //S52_draw();
-        //_s52_draw_user(engine);
-        //S52_drawLast();
         _s52_draw_cb(engine);
         _egl_end(engine);
 #endif
 
-        //g_static_mutex_unlock(&engine->mutex);
     }
 
     return TRUE;
