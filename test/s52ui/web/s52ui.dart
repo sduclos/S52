@@ -174,7 +174,7 @@ void _clearTable(id) {
 
 /////////////// Close Window //////////////////////////
 void _closeWindow(MouseEvent e) {
-  // FF can't close a window that a script didn't open!
+  // FIXME: can't close a window that a script didn't open!
   window.close();
 }
 
@@ -423,9 +423,9 @@ Future<bool> _initUI() {
           });
 
 
-          querySelector("#td_buttonCell0")
-          ..onClick.listen((ev) => print("id:'td_buttonCell0'"))
-          ..onClick.listen((ev) => _closeWindow(ev));
+          //querySelector("#td_buttonCell0")
+          //..onClick.listen((ev) => print("id:'td_buttonCell0'"))
+          //..onClick.listen((ev) => _closeWindow(ev));
 
           querySelector("#td_buttonCell1")
           ..onClick.listen((ev) => print("id:'td_buttonCell1'"))
@@ -777,6 +777,9 @@ void _GPSpos(Geoposition position) {
 }
 
 void _hdg(DeviceOrientationEvent o) {
+  if (null == o.alpha)
+    return;
+
   //_devOrient = 360.0 - 90.0 - o.alpha ;  // landscape
   _devOrient = 90.0 - o.alpha ;  // reverse landscape
   if (_devOrient < 0.0)
