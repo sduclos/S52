@@ -39,21 +39,6 @@ s52eglw32 : CC  = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32
 
-# using Android toolchain from NDK to cross compile for ARM (s52eglarm target)
-# Xoom info: Processor : ARMv7 Processor rev 0 (v7l)
-#            Features  : swp half thumb fastmult vfp edsp vfpv3 vfpv3d16
-# TEGRA: tadp: -fno-omit-frame-pointer -mno-thumb
-#s52eglarm : DROIDTOOLCHAINROOT = /home/sduclos/dev/prog/Android/dev/android-19-toolchain
-#s52eglarm : DROIDINCLUDE       = $(DROIDTOOLCHAINROOT)/sysroot/usr/include
-#s52eglarm : DROIDLIBS          = $(DROIDTOOLCHAINROOT)/sysroot/usr/lib
-#s52eglarm : CC                 = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -g -O0 -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16 -std=c99
-#s52eglarm : CXX                = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -g -O0 -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
-#s52eglarm : STRIP              = $(DROIDTOOLCHAINROOT)/bin/arm-linux-androideabi-strip -s
-
-#s52eglarm : S52DROIDINC        = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/android/dist/sysroot/include
-#s52eglarm : S52DROIDLIBS       = $(HOME)/dev/gis/openev-cvs/contrib/S52/test/android/dist/sysroot/lib
-
-
 # NOTE: -malign-double: for 32bits system --useless on 64its
 # NOTE: GV_USE_DOUBLE_PRECISION_COORD not needed directly for S52
 # but gvtype.h need it and it can be pulled in (somehow.)
