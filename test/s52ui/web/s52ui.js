@@ -82,7 +82,7 @@ Main.prototype.tables = function(html)
 
 //=========== 'MARINERS OPTIONS' ==========================================
                           html.insert(this.sectionTitle, 'MARINERS OPTIONS'),
-                          html.insert(this.buttonCell, ['td_buttonCell0', 'Close s52ui']),
+                          //html.insert(this.buttonCell, ['td_buttonCell0', 'Close s52ui']),
                           html.insert(this.buttonCell, ['td_buttonCell1', 'Color Palettes']),
                           html.insert(this.buttonCell, ['td_buttonCell2', 'AIS']),
                           html.insert(this.buttonCell, ['td_buttonCell3', 'ENC']),
