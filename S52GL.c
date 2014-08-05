@@ -85,19 +85,28 @@ static unsigned char *_fb_pixels      = NULL;
 static unsigned int   _fb_pixels_size = 0;
 static guint          _fb_texture_id  = 0;
 
-#ifdef S52_USE_ADRENO
 #define RGB           3
-static int            _fb_format      = RGB;   // alpha blending done in shader
-                                               // no need to read alpha from FB
-#else
 #define RGBA          4
+#ifdef S52_USE_ADRENO
+static int            _fb_format      = RGB;   // alpha blending done in shader
+#else
 static int            _fb_format      = RGBA;
 //static int            _fb_format      = RGB ;  // NOTE: on TEGRA2 RGB (3) very slow
-#endif  // S52_USE_ADRENO
+#endif
 
 typedef struct  pt3  { double   x,y,z; } pt3;
 typedef struct  pt3v { vertex_t x,y,z; } pt3v;
 
+// NOTE: S52 pixels for symb are 0.3 mm
+// this is the real dotpitch of the device
+// as computed at init() time
+static double _dotpitch_mm_x = 0.3;  // will be overwright at init()
+static double _dotpitch_mm_y = 0.3;  // will be overwright at init()
+
+// GPU Extension
+static int _GL_OES_texture_npot = FALSE;
+static int _GL_EXT_debug_marker = FALSE;
+static int _GL_OES_point_sprite = FALSE;
 
 /////////////////////////////////////////////////////
 //
@@ -130,10 +139,11 @@ typedef struct  pt3v { vertex_t x,y,z; } pt3v;
 #include "_GL2.i"
 #endif
 
-// GL3.x, GLES3.x
+// GL3.x, GLES3.x - in a day
 #ifdef S52_USE_GL3
 #include "_GL3.i"
 #endif
+
 
 ///////////////////////////////////////////////////////////////////
 //
@@ -152,13 +162,14 @@ static int     _nAC    = 0;     // total AC (Area Color)
 static guint _S57ID = 0;
 
 
-// tessalated area stat
+// tesselated area stat
 static guint   _ntris     = 0;     // area GL_TRIANGLES      count
 static guint   _ntristrip = 0;     // area GL_TRIANGLE_STRIP count
 static guint   _ntrisfan  = 0;     // area GL_TRIANGLE_FAN   count
 static guint   _nCall     = 0;
 static guint   _npoly     = 0;     // total polys
 
+// GL utility
 #include "_GLU.i"
 
 // display list / VBO
@@ -175,12 +186,6 @@ typedef struct { double u, v; } projUV;
 #define ATAN2TODEG(xyz)   (90.0 - atan2(xyz[4]-xyz[1], xyz[3]-xyz[0]) * RAD_TO_DEG)
 
 #define PICA   0.351
-
-// NOTE: S52 pixels for symb are 0.3 mm
-// this is the real dotpitch of the device
-// as computed at init() time
-static double _dotpitch_mm_x      = 0.3;  // will be overwright at init()
-static double _dotpitch_mm_y      = 0.3;  // will be overwright at init()
 
 #define MM2INCH 25.4
 
@@ -263,7 +268,6 @@ GL_OUT_OF_MEMORY
                 name = "Unknown text for this GL_ERROR";
         }
 
-        //PRINTF("from %s: 0x%4x:%s (%s)\n", msg, err, gluErrorString(err), name);
         PRINTF("from %s: 0x%x (%s)\n", msg, err, name);
 
 #ifdef S52_USE_ANDROID
@@ -1483,7 +1487,6 @@ static int       _glCallList(S52_DListData *DListData)
 #endif
 
     glEnable(GL_CULL_FACE);
-
 
     _checkError("_glCallList(): -end-");
 
@@ -5082,20 +5085,43 @@ int        S52_GL_isOFFscreen(S52_obj *obj)
     return FALSE;
 }
 
-#if 0
-static guint     _minPOT(guint value)
+#ifdef S52_USE_TEGRA2
+static int       _minPOT(int value)
 // min POT greater than 'value' - simplyfie texture handling
 // compare to _nearestPOT() but use more GPU memory
 {
     int i = 1;
 
-    if (value == 0) return -1;      // Error!
+    if (value <= 0) return -1;      // Error!
 
     for (;;) {
         if (value == 0) return i;
         value >>= 1;
         i *= 2;
     }
+}
+#endif  // S52_USE_TEGRA2
+
+#if 0
+static int       next_power_of_two(int v)
+{
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v++;
+
+    return v;
+}
+
+static int       is_power_of_two(guint v)
+{
+    if (v == 0)
+        return TRUE;
+
+    return (v & (v-1)) == 0;
 }
 #endif
 
@@ -5681,8 +5707,8 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     // FIXME: need to clock this more accuratly
     // Note: Mesa RadeonHD & Xoom (TEGRA2) Android 4.4.2 a bit slower with cull face!
     // also make little diff on Nexus with current timming method (not accurate)
-    //glEnable(GL_CULL_FACE);
-    glDisable(GL_CULL_FACE);
+    glEnable(GL_CULL_FACE);
+    //glDisable(GL_CULL_FACE);
 
 #if !defined(S52_USE_MESA3D) && defined(S52_USE_AFGLOW)
     // GL_POINT_SPRITE 0x8861 define only in Mesa3d GL/glext.h also in android tool chain GLES/gl.h
@@ -5764,7 +5790,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
         g_assert(0);
     }
 
-//#ifndef S52_USE_GV
     _glMatrixSet(VP_PRJ);
 
 #ifdef S52_USE_GL2
@@ -5778,6 +5803,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glBindTexture(GL_TEXTURE_2D, 0);
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
@@ -5797,8 +5823,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
             // fill display with black color in RADAR mode
             _renderAC_NODATA_layer0();
         }
-//#endif
-//#if !defined(S52_USE_RADAR)
+
 #else  // S52_USE_RADAR
 
     } else {
@@ -6027,22 +6052,21 @@ static int       _contextValid(void)
         PRINTF("Extensions: %s\n", extensions);
 
         // npot
-        //if (NULL != g_strrstr((const char *)extensions, "GL_OES_texture_npot"))
-        if (NULL != g_strrstr((const char *)extensions, "_texture_npot"))
+        if (NULL != g_strrstr((const char *)extensions, "GL_OES_texture_npot")) {
             PRINTF("DEBUG: GL_OES_texture_npot OK\n");
-        else
+            _GL_OES_texture_npot = TRUE;
+        } else {
             PRINTF("DEBUG: GL_OES_texture_npot FAILED\n");
-
+            _GL_OES_texture_npot = FALSE;
+        }
         // marker
-        //if (NULL != g_strrstr((const char *)extensions, "GL_EXT_debug_marker"))
-        if (NULL != g_strrstr((const char *)extensions, "_debug_marker"))
+        if (NULL != g_strrstr((const char *)extensions, "GL_EXT_debug_marker"))
             PRINTF("DEBUG: GL_EXT_debug_marker OK\n");
         else
             PRINTF("DEBUG: GL_EXT_debug_marker FAILED\n");
 
         // point sprites
-        //if (NULL != g_strrstr((const char *)extensions, "GL_OES_point_sprite"))
-        if (NULL != g_strrstr((const char *)extensions, "_point_sprite"))
+        if (NULL != g_strrstr((const char *)extensions, "GL_OES_point_sprite"))
             PRINTF("DEBUG: GL_OES_point_sprite OK\n");
         else
             PRINTF("DEBUG: GL_OES_point_sprite FAILED\n");
@@ -6152,23 +6176,6 @@ int        S52_GL_init(void)
     return TRUE;
 }
 
-int        S52_GL_setDotPitch(int w, int h, int wmm, int hmm)
-{
-    _dotpitch_mm_x = (double)wmm / (double)w;
-    _dotpitch_mm_y = (double)hmm / (double)h;
-
-    // debug
-    PRINTF("DOTPITCH(mm): X = %f, Y = %f\n", _dotpitch_mm_x, _dotpitch_mm_y);
-
-    S52_MP_set(S52_MAR_DOTPITCH_MM_X, _dotpitch_mm_x);
-    S52_MP_set(S52_MAR_DOTPITCH_MM_Y, _dotpitch_mm_y);
-
-    _fb_pixels_size = w * h * _fb_format;
-    _fb_pixels      = g_new0(unsigned char, _fb_pixels_size);
-
-    return TRUE;
-}
-
 int        S52_GL_done(void)
 {
     if (_doInit) return _doInit;
@@ -6218,6 +6225,11 @@ int        S52_GL_done(void)
     // done texture object
     glDeleteTextures(1, &_nodata_mask_texID);
     _nodata_mask_texID = 0;
+    glDeleteTextures(1, &_dottpa_mask_texID);
+    _dottpa_mask_texID = 0;
+    glDeleteTextures(1, &_dashpa_mask_texID);
+    _dashpa_mask_texID = 0;
+
     glDeleteProgram(_programObject);
     _programObject = 0;
 
@@ -6274,6 +6286,23 @@ int        S52_GL_done(void)
     _doInit = TRUE;
 
     return _doInit;
+}
+
+int        S52_GL_setDotPitch(int w, int h, int wmm, int hmm)
+{
+    _dotpitch_mm_x = (double)wmm / (double)w;
+    _dotpitch_mm_y = (double)hmm / (double)h;
+
+    // debug
+    PRINTF("DOTPITCH(mm): X = %f, Y = %f\n", _dotpitch_mm_x, _dotpitch_mm_y);
+
+    S52_MP_set(S52_MAR_DOTPITCH_MM_X, _dotpitch_mm_x);
+    S52_MP_set(S52_MAR_DOTPITCH_MM_Y, _dotpitch_mm_y);
+
+    _fb_pixels_size = w * h * _fb_format;
+    _fb_pixels      = g_new0(unsigned char, _fb_pixels_size);
+
+    return TRUE;
 }
 
 int        S52_GL_setPRJView(double  s, double  w, double  n, double  e)
@@ -6508,9 +6537,11 @@ guchar    *S52_GL_readFBPixels(void)
     // debug
     //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
 
+    glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
 #ifdef S52_USE_TEGRA2
-    // must be in sync with _fb_format
+    // Note: glCopyTexImage2D flip Y on TEGRA (Xoom)
+    // Note: must be in sync with _fb_format
 
     // copy FB --> MEM
     // RGBA
@@ -6523,16 +6554,12 @@ guchar    *S52_GL_readFBPixels(void)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
     // RGB
     //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _vp[2], _vp[3], 0, GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _vp[2], _vp[3], 0, GL_RGB, GL_UNSIGNED_BYTE, 0);
 
 #else
-
-    glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
-    glBindTexture(GL_TEXTURE_2D, 0);
-
 #endif  // S52_USE_TEGRA2
 
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     _checkError("S52_GL_readFBPixels().. -end-");
 
@@ -6558,8 +6585,6 @@ int        S52_GL_drawFBPixels(void)
 #ifdef S52_USE_GL2
 
     _glMatrixSet(VP_PRJ);
-
-    //glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
@@ -6588,8 +6613,6 @@ int        S52_GL_drawFBPixels(void)
 
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
-
-    //glBindTexture(GL_TEXTURE_2D, 0);
 
     _glMatrixDel(VP_PRJ);
 
@@ -6634,7 +6657,6 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
 #ifdef S52_USE_GL2
 
     _glMatrixSet(VP_PRJ);
-
 
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
