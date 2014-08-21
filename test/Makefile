@@ -29,9 +29,9 @@ CXX   = g++ -O0 -g -Wall
 MINGW = /usr/bin/i586-mingw32msvc-
 #MINGW = /usr/bin/i686-w64-mingw32-
 #s52win32 : CC = $(MINGW)gcc -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
-s52win32 : CC = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
+s52win32 : CC = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 #s52win32 : CC = $(MINGW)g++ -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
-s52win32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
+s52win32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 s52win32 : GTKPATH   = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
 s52win32 : GTKGLPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/bin
 
