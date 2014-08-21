@@ -128,7 +128,6 @@ static gchar   *_outpng  = NULL;
 static gint     _s57id   = 0;
 static gchar   *_encnm   = NULL;
 
-
 static int      _usage(const char *arg)
 {
     g_print("\n");
@@ -541,145 +540,6 @@ static gint     _execOption()
     return TRUE;
 }
 
-static void     realize(GtkWidget *widget, gpointer data)
-{
-    (void)widget;
-    (void)data;
-
-#ifdef USE_AIS
-    // Note: data form AIS start too fast for the main loop
-    s52ais_initAIS(update_cb);
-
-    // for continuous drawing
-    g_idle_add(_draw, widget);
-    //g_idle_add(update_cb, widget);
-
-    //g_print("install hook to loop on gtk_widget_draw when idle\n");
-#endif
-
-}
-
-static int      _initS52();  // foward decl
-static gboolean configure_event(GtkWidget         *widget,
-                                GdkEventConfigure *event,
-                                gpointer           data)
-{
-    (void)event;
-    (void)data;
-
-    GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
-    GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
-
-    if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
-        return FALSE;
-
-    _computeView(&_view);
-
-    S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
-    S52_setViewPort(0, 0, widget->allocation.width, widget->allocation.height);
-
-    _width  = widget->allocation.width;
-    _height = widget->allocation.height;
-
-    gdk_gl_drawable_gl_end(gldrawable);
-
-    return TRUE;
-}
-
-static gboolean expose_event(GtkWidget      *widget,
-                             GdkEventExpose *event,
-                             gpointer        data)
-{
-    (void)event;
-    (void)data;
-
-    GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
-    GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
-
-    // test - toggle symbol suppresion
-    //S52_toggleObjSUP(_waypnt1);
-    //S52_toggleObjSUP(_waypnt2);
-
-
-    if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext)) {
-        g_assert(0);
-        return FALSE;
-    }
-
-    if (TRUE == _execOpt)
-        _execOption();
-
-    //  draw 'base'
-    S52_draw();
-
-    /*
-    {   // Example of small viewport overlay
-        // draw your stuff on top (draw() above) the base chart
-        // ...
-
-        static S52_view view;
-
-        _computeView(&view);
-
-        S52_setView(view.cLat, view.cLon, view.rNM, view.north);
-        S52_setViewPort(50, 50, 200, 200);
-
-        S52_setMarinerParam(S52_MAR_NODATA_LAYER_OFF, TRUE);  // do not display layer 0 (no data) (default off)
-
-        S52_draw();
-
-        S52_setMarinerParam(S52_MAR_NODATA_LAYER_OFF, FALSE);
-
-        // reset normal view
-        S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
-        S52_setViewPort(0, 0, _width, _height);
-    }
-    */
-
-    // debug - UTF need font file that support the language
-    // Japanese: ???
-    //S52_drawStr(50,  50, "UINFF", 1, "Japanese Hiragana: (Iroha) " "いろはにほへとちりぬるを");
-    // Thai: Waree.ttf
-    //S52_drawStr(50, 100, "UINFF", 1, "Thai: " "๏ เป็นมนุษย์สุดประเสริฐเลิศคุณค่า  กว่าบรรดาฝูงสัตว์เดรัจฉาน");
-    // Russian: 13947.ttf (accent missing)
-    //S52_drawStr(50, 200, "UINFF", 1, "Russian: " "Большо́му кораблю́ — большо́е пла́вание.");
-    //Translation: For a big ship, a big voyage.
-
-
-    // this draw on chart and drawLast() will draw 'above' that
-    //if (TRUE == _doRenderHelp)
-    //    _renderHelp(widget);
-
-    //_renderCrsrPos(widget, _x, _y, _brg, _rge);
-
-    // draw reste
-    S52_drawLast();
-
-//#if !defined(S52_USE_GLES2)
-//    // this draw help 'above' drawLast()
-//    if (TRUE == _doRenderHelp)
-//        _renderHelp(widget);
-//#endif
-
-    //_renderCrsrPos(widget, _x, _y, _brg, _rge);
-
-    if (gdk_gl_drawable_is_double_buffered(gldrawable))
-        gdk_gl_drawable_swap_buffers(gldrawable);
-
-    gdk_gl_drawable_gl_end(gldrawable);
-
-    if (TRUE == _execOpt) {
-        if (NULL != _outpng) {
-            S52_dumpS57IDPixels(_outpng, _s57id, 200, 200);
-            gtk_main_quit();
-        }
-    }
-    // FIXME: two expose event .. why?
-    _execOpt = FALSE;
-
-    return TRUE;
-    //return FALSE;
-}
 
 static gboolean _scroll(GtkWidget *widget, GdkEventKey *event)
 {
@@ -852,243 +712,6 @@ static gboolean _dumpParam()
     g_print("\tF4 - S52_CMD_WRD_FILTER_AC: %s\n", (S52_CMD_WRD_FILTER_AC & crntVal) ? "TRUE" : "FALSE");
     g_print("\tF5 - S52_CMD_WRD_FILTER_AP: %s\n", (S52_CMD_WRD_FILTER_AP & crntVal) ? "TRUE" : "FALSE");
     g_print("\tF6 - S52_CMD_WRD_FILTER_TX: %s\n", (S52_CMD_WRD_FILTER_TX & crntVal) ? "TRUE" : "FALSE");
-
-    return TRUE;
-}
-
-static gboolean key_release_event(GtkWidget   *widget,
-                                  GdkEventKey *event,
-                                  gpointer     data)
-{
-    (void)data;
-
-    switch(event->keyval) {
-        case GDK_Left  :
-        case GDK_Right :
-        case GDK_Up    :
-        case GDK_Down  :_scroll(widget, event);            break;
-
-        case GDK_equal :
-        case GDK_plus  :
-        case GDK_minus :_rotation(widget, event);          break;
-
-        case GDK_Page_Down:
-        case GDK_Page_Up:_zoom(widget, event);             break;
-
-
-        case GDK_Escape:_resetView(&_view);                break;
-        case GDK_r     : /*gtk_widget_draw(widget, NULL);*/break;
-        case GDK_h     :
-//#if !defined(S52_USE_GLES2)
-//            _doRenderHelp = !_doRenderHelp;
-//#endif
-            _usage("s52gtk2");
-            break;
-        case GDK_v     :g_print("%s\n", S52_version());    break;
-        case GDK_x     :_dumpParam();                      break;
-        case GDK_q     :gtk_main_quit();                   break;
-
-        case GDK_w     :_toggle(S52_MAR_TWO_SHADES);       break;
-        case GDK_s     :_toggle(S52_MAR_SHALLOW_PATTERN);  break;
-        case GDK_o     :_toggle(S52_MAR_SHIPS_OUTLINE);    break;
-        case GDK_l     :_toggle(S52_MAR_FULL_SECTORS);     break;
-        case GDK_b     :_toggle(S52_MAR_SYMBOLIZED_BND);   break;
-        case GDK_p     :_toggle(S52_MAR_SYMPLIFIED_PNT);   break;
-        case GDK_n     :_toggle(S52_MAR_FONT_SOUNDG);      break;
-        case GDK_u     :_toggle(S52_MAR_SCAMIN);           break;
-        case GDK_i     :_toggle(S52_MAR_ANTIALIAS);        break;
-        case GDK_j     :_toggle(S52_MAR_QUAPNT01);         break;
-        case GDK_z     :_toggle(S52_MAR_DISP_OVERLAP);     break;
-        case GDK_1     :_meterInc(S52_MAR_DISP_LAYER_LAST);break;
-        case GDK_exclam:_meterDec(S52_MAR_DISP_LAYER_LAST);break;
-
-        case GDK_2     :_inc(S52_MAR_ROT_BUOY_LIGHT);      break;
-
-        case GDK_3     :_toggle(S52_MAR_DISP_CRSR_POS);
-                        _toggle(S52_MAR_DISP_LEGEND);
-                        _toggle(S52_MAR_DISP_CALIB);
-                        _toggle(S52_MAR_DISP_DRGARE_PATTERN);
-                        break;
-
-        case GDK_4     :_toggle(S52_MAR_DISP_GRATICULE);   break;
-        case GDK_5     :_toggle(S52_MAR_HEADNG_LINE);      break;
-
-        case GDK_t     :
-        case GDK_T     :_toggle  (S52_MAR_SHOW_TEXT);      break;
-        case GDK_c     :_meterInc(S52_MAR_SAFETY_CONTOUR); break;
-        case GDK_C     :_meterDec(S52_MAR_SAFETY_CONTOUR); break;
-        case GDK_d     :_meterInc(S52_MAR_SAFETY_DEPTH);   break;
-        case GDK_D     :_meterDec(S52_MAR_SAFETY_DEPTH);   break;
-        case GDK_a     :_meterInc(S52_MAR_SHALLOW_CONTOUR);break;
-        case GDK_A     :_meterDec(S52_MAR_SHALLOW_CONTOUR);break;
-        case GDK_e     :_meterInc(S52_MAR_DEEP_CONTOUR);   break;
-        case GDK_E     :_meterDec(S52_MAR_DEEP_CONTOUR);   break;
-        case GDK_f     :_meterInc(S52_MAR_DISTANCE_TAGS);  break;
-        case GDK_F     :_meterDec(S52_MAR_DISTANCE_TAGS);  break;
-        case GDK_g     :_meterInc(S52_MAR_TIME_TAGS);      break;
-        case GDK_G     :_meterDec(S52_MAR_TIME_TAGS);      break;
-        case GDK_y     :_meterInc(S52_MAR_BEAM_BRG_NM);    break;
-        case GDK_Y     :_meterDec(S52_MAR_BEAM_BRG_NM);    break;
-        case GDK_m     :_meterInc(S52_MAR_DATUM_OFFSET);   break;
-        case GDK_M     :_meterDec(S52_MAR_DATUM_OFFSET);   break;
-
-        case GDK_7     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_BASE);   break; // DISPLAYBASE
-        case GDK_8     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_STD);    break; // STANDARD
-        case GDK_9     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_OTHER);  break; // OTHER
-        case GDK_0     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT); break; // OTHER (all)
-
-        case GDK_k     :_cpal(S52_MAR_COLOR_PALETTE,  1.0);break;
-        case GDK_K     :_cpal(S52_MAR_COLOR_PALETTE, -1.0);break;
-
-        case GDK_6     :_meterInc(S52_MAR_DISP_WHOLIN);    break;
-        case GDK_asciicircum:
-        case GDK_question:
-        case GDK_caret :_meterDec(S52_MAR_DISP_WHOLIN);    break;
-
-        case GDK_F1    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY); break;
-        case GDK_F2    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS); break;
-        case GDK_F3    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC); break;
-        case GDK_F4    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC); break;
-        case GDK_F5    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP); break;
-        case GDK_F6    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX); break;
-
-        case GDK_F7    :_mmInc(S52_MAR_DOTPITCH_MM_X); break;
-        case GDK_F8    :_mmInc(S52_MAR_DOTPITCH_MM_Y); break;
-
-        case GDK_F9    :_toggle(S52_MAR_DISP_NODATA_LAYER); break;
-
-        default:
-            g_print("key: 0x%04x\n", event->keyval);
-    }
-
-    // redraw
-    gtk_widget_draw(widget, NULL);
-
-    return TRUE;
-}
-
-static gboolean button_release_event(GtkWidget      *widget,
-                                     GdkEventButton *event,
-                                     gpointer        data)
-{
-    (void)data;
-
-    // Ctl + left click: set origine for 'freely movable' VRMEBL
-    if ((GDK_CONTROL_MASK & event->state) && (1==event->button)) {
-        double x = event->x;
-        double y = event->y;
-
-        // set origine 
-        //S52_setVRMEBLorigine(_vrmebl, x, y);
-        //S52_setVRMEBL(_vrmebl, x, y, TRUE);
-
-        double brg = 0.0;
-        double rge = 0.0;
-        //S52_setVRMEBL(_vrmeblB, x, y, &brg, &rge);
-        S52_setVRMEBL(_vrmeblA, x, y, &brg, &rge);
-        _originIsSet = TRUE;
-
-        return TRUE;
-    }
-
-    switch(event->button) {
-        case 3: // right click
-            {
-                double x = event->x;
-                double y = event->y;
-                S52_xy2LL(&x, &y);
-
-                _view.cLat = y;
-                _view.cLon = x;
-                S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
-                gtk_widget_draw(widget, NULL);
-
-                break; 
-            }
-        case 1: // left click
-            {
-                // FIXME: why this does work without this
-                // because same context
-                GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
-                GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
-
-                if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
-                    return FALSE;
-
-                const char *name = S52_pickAt(event->x, event->y);
-                if (NULL != name)
-                    g_print("OBJ(%.f, %.f): %s\n", event->x, event->y, name);
-
-                S52_draw();
-                S52_drawLast();
-
-                if (gdk_gl_drawable_is_double_buffered(gldrawable))
-                    gdk_gl_drawable_swap_buffers(gldrawable);
-
-                gdk_gl_drawable_gl_end(gldrawable);
-
-                gtk_widget_draw(widget, NULL);
-
-                break;
-            }
-        default:
-            g_print("EVENT(button_release_event)\n");
-    }
-
-
-    return TRUE;
-}
-
-static gboolean motion_notify_event(GtkWidget      *widget,
-                                    GdkEventMotion *event,
-                                    gpointer        data)
-{
-    (void)data;
-
-    GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
-    GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
-
-    _x = event->x;
-    _y = event->y;
-
-    /* debug:  S52_xy2LL() --> S52_LL2xy() should be the same
-    {
-    // NOTE:  (0,0) the OpenGL origine (not GTK origine)
-        double Xlon = 0.0;
-        double Ylat = 0.0;
-        S52_xy2LL(&Xlon, &Ylat);
-        S52_LL2xy(&Xlon, &Ylat);
-        printf("xy2LL(0,0) --> LL2xy ==  Xlon: %f  Ylat: %f\n", Xlon, Ylat);
-    }
-    */
-
-    if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
-        return FALSE;
-
-    if (NULL != _vrmeblA) {
-        _brg = 0.0;
-        _rge = 0.0;
-        S52_setVRMEBL(_vrmeblA, _x, _y, &_brg, &_rge);
-
-        if (TRUE == _originIsSet) {
-            S52_setVRMEBL(_vrmeblA, _x, _y, &_brg, &_rge);
-        }
-    }
-
-    //*
-    if (TRUE == S52_drawLast()) {
-//#if !defined(S52_USE_GLES2)
-//        if (TRUE == _doRenderHelp)
-//            _renderHelp(widget);
-//#endif
-        //_renderCrsrPos(widget, _x, _y, _brg, _rge);
-
-        if (gdk_gl_drawable_is_double_buffered(gldrawable))
-            gdk_gl_drawable_swap_buffers(gldrawable);
-    }
-    //*/
-
-    gdk_gl_drawable_gl_end(gldrawable);
 
     return TRUE;
 }
@@ -1490,31 +1113,32 @@ static int      _setMarFeature()
 static int      _initS52()
 // setup some decent setting for testing
 {
-    // FIXME: broken on some monitor
     GdkScreen *screen = gdk_screen_get_default();
+
+    // get dual-screen size
     gint       w      = gdk_screen_get_width    (screen);
     gint       h      = gdk_screen_get_height   (screen);
     gint       wmm    = gdk_screen_get_width_mm (screen);
     gint       hmm    = gdk_screen_get_height_mm(screen);
 
-    // return -1 (not avaible)
+    // get monitor size
     //gint hmm0 = gdk_screen_get_monitor_height_mm(screen, 0);
     //gint hmm1 = gdk_screen_get_monitor_height_mm(screen, 1);
     //gint wmm0 = gdk_screen_get_monitor_width_mm(screen, 0);
     //gint wmm1 = gdk_screen_get_monitor_width_mm(screen, 1);
     //printf("screen monitor 0: (w/h): %i / %i\n", wmm0, hmm0);  // 338 / 270
     //printf("screen monitor 1: (w/h): %i / %i\n", wmm1, hmm1);  // 376 / 301
-    //return 0;
+
     //GdkRectangle dest;
     //gdk_screen_get_monitor_geometry(screen, 0, &dest);
     //gdk_screen_get_monitor_geometry(screen, 0, &dest);
 
     // debug --info from xrandr
-    //w      = 1280;
-    //h      = 1024;
-    //wmm    = 376;
+    w      = 1280;
+    h      = 1024;
+    wmm    = 376;
     //hmm    = 301; // wrong
-    //hmm    = 307;
+    hmm    = 307;
 
     printf("screen (w/h/wmm/hmm): %i / %i / %i / %i\n", w, h, wmm, hmm);
 
@@ -1547,7 +1171,7 @@ static int      _initS52()
     //ret = S52_toggleObjClassOFF("M_QUAL");  // OK - ret == TRUE
     //ret = S52_toggleObjClassON ("M_QUAL");  // OK - ret == TRUE
     //ret = S52_toggleObjClassON ("M_QUAL");  // OK - ret == FALSE
-    S52_setS57ObjClassSupp("M_QUAL", TRUE);
+    //S52_setS57ObjClassSupp("M_QUAL", TRUE);
 
     // test
     //S52_toggleObjClass("DRGARE");   // drege area
@@ -1766,6 +1390,382 @@ static int      _err_cb(const char *err)
 }
 #endif
 
+static void     realize(GtkWidget *widget, gpointer data)
+{
+    (void)widget;
+    (void)data;
+
+#ifdef USE_AIS
+    // Note: data form AIS start too fast for the main loop
+    s52ais_initAIS(update_cb);
+
+    // for continuous drawing
+    g_idle_add(_draw, widget);
+    //g_idle_add(update_cb, widget);
+
+    //g_print("install hook to loop on gtk_widget_draw when idle\n");
+#endif
+
+}
+
+static gboolean configure_event(GtkWidget         *widget,
+                                GdkEventConfigure *event,
+                                gpointer           data)
+{
+    (void)event;
+    (void)data;
+
+    GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
+    GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
+
+    if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
+        return FALSE;
+
+    _computeView(&_view);
+
+    S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
+    S52_setViewPort(0, 0, widget->allocation.width, widget->allocation.height);
+
+    _width  = widget->allocation.width;
+    _height = widget->allocation.height;
+
+    gdk_gl_drawable_gl_end(gldrawable);
+
+    return TRUE;
+}
+
+static gboolean expose_event(GtkWidget      *widget,
+                             GdkEventExpose *event,
+                             gpointer        data)
+{
+    (void)event;
+    (void)data;
+
+    GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
+    GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
+
+    // test - toggle symbol suppresion
+    //S52_toggleObjSUP(_waypnt1);
+    //S52_toggleObjSUP(_waypnt2);
+
+
+    if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext)) {
+        g_assert(0);
+        return FALSE;
+    }
+
+    if (TRUE == _execOpt)
+        _execOption();
+
+    //  draw 'base'
+    S52_draw();
+
+    /*
+    {   // Example of small viewport overlay
+        // draw your stuff on top (draw() above) the base chart
+        // ...
+
+        static S52_view view;
+
+        _computeView(&view);
+
+        S52_setView(view.cLat, view.cLon, view.rNM, view.north);
+        S52_setViewPort(50, 50, 200, 200);
+
+        S52_setMarinerParam(S52_MAR_NODATA_LAYER_OFF, TRUE);  // do not display layer 0 (no data) (default off)
+
+        S52_draw();
+
+        S52_setMarinerParam(S52_MAR_NODATA_LAYER_OFF, FALSE);
+
+        // reset normal view
+        S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
+        S52_setViewPort(0, 0, _width, _height);
+    }
+    */
+
+    // debug - UTF need font file that support the language
+    // Japanese: ???
+    //S52_drawStr(50,  50, "UINFF", 1, "Japanese Hiragana: (Iroha) " "いろはにほへとちりぬるを");
+    // Thai: Waree.ttf
+    //S52_drawStr(50, 100, "UINFF", 1, "Thai: " "๏ เป็นมนุษย์สุดประเสริฐเลิศคุณค่า  กว่าบรรดาฝูงสัตว์เดรัจฉาน");
+    // Russian: 13947.ttf (accent missing)
+    //S52_drawStr(50, 200, "UINFF", 1, "Russian: " "Большо́му кораблю́ — большо́е пла́вание.");
+    //Translation: For a big ship, a big voyage.
+
+
+    // this draw on chart and drawLast() will draw 'above' that
+    //if (TRUE == _doRenderHelp)
+    //    _renderHelp(widget);
+
+    //_renderCrsrPos(widget, _x, _y, _brg, _rge);
+
+    // draw reste
+    S52_drawLast();
+
+//#if !defined(S52_USE_GLES2)
+//    // this draw help 'above' drawLast()
+//    if (TRUE == _doRenderHelp)
+//        _renderHelp(widget);
+//#endif
+
+    //_renderCrsrPos(widget, _x, _y, _brg, _rge);
+
+    if (gdk_gl_drawable_is_double_buffered(gldrawable))
+        gdk_gl_drawable_swap_buffers(gldrawable);
+
+    gdk_gl_drawable_gl_end(gldrawable);
+
+    if (TRUE == _execOpt) {
+        if (NULL != _outpng) {
+            S52_dumpS57IDPixels(_outpng, _s57id, 200, 200);
+            gtk_main_quit();
+        }
+    }
+    // FIXME: two expose event .. why?
+    _execOpt = FALSE;
+
+    return TRUE;
+    //return FALSE;
+}
+
+static gboolean key_release_event(GtkWidget   *widget,
+                                  GdkEventKey *event,
+                                  gpointer     data)
+{
+    (void)data;
+
+    switch(event->keyval) {
+        case GDK_Left  :
+        case GDK_Right :
+        case GDK_Up    :
+        case GDK_Down  :_scroll(widget, event);            break;
+
+        case GDK_equal :
+        case GDK_plus  :
+        case GDK_minus :_rotation(widget, event);          break;
+
+        case GDK_Page_Down:
+        case GDK_Page_Up:_zoom(widget, event);             break;
+
+
+        case GDK_Escape:_resetView(&_view);                break;
+        case GDK_r     : /*gtk_widget_draw(widget, NULL);*/break;
+        case GDK_h     :
+//#if !defined(S52_USE_GLES2)
+//            _doRenderHelp = !_doRenderHelp;
+//#endif
+            _usage("s52gtk2");
+            break;
+        case GDK_v     :g_print("%s\n", S52_version());    break;
+        case GDK_x     :_dumpParam();                      break;
+        case GDK_q     :gtk_main_quit();                   break;
+
+        case GDK_w     :_toggle(S52_MAR_TWO_SHADES);       break;
+        case GDK_s     :_toggle(S52_MAR_SHALLOW_PATTERN);  break;
+        case GDK_o     :_toggle(S52_MAR_SHIPS_OUTLINE);    break;
+        case GDK_l     :_toggle(S52_MAR_FULL_SECTORS);     break;
+        case GDK_b     :_toggle(S52_MAR_SYMBOLIZED_BND);   break;
+        case GDK_p     :_toggle(S52_MAR_SYMPLIFIED_PNT);   break;
+        case GDK_n     :_toggle(S52_MAR_FONT_SOUNDG);      break;
+        case GDK_u     :_toggle(S52_MAR_SCAMIN);           break;
+        case GDK_i     :_toggle(S52_MAR_ANTIALIAS);        break;
+        case GDK_j     :_toggle(S52_MAR_QUAPNT01);         break;
+        case GDK_z     :_toggle(S52_MAR_DISP_OVERLAP);     break;
+        case GDK_1     :_meterInc(S52_MAR_DISP_LAYER_LAST);break;
+        case GDK_exclam:_meterDec(S52_MAR_DISP_LAYER_LAST);break;
+
+        case GDK_2     :_inc(S52_MAR_ROT_BUOY_LIGHT);      break;
+
+        case GDK_3     :_toggle(S52_MAR_DISP_CRSR_POS);
+                        _toggle(S52_MAR_DISP_LEGEND);
+                        _toggle(S52_MAR_DISP_CALIB);
+                        _toggle(S52_MAR_DISP_DRGARE_PATTERN);
+                        break;
+
+        case GDK_4     :_toggle(S52_MAR_DISP_GRATICULE);   break;
+        case GDK_5     :_toggle(S52_MAR_HEADNG_LINE);      break;
+
+        case GDK_t     :
+        case GDK_T     :_toggle  (S52_MAR_SHOW_TEXT);      break;
+        case GDK_c     :_meterInc(S52_MAR_SAFETY_CONTOUR); break;
+        case GDK_C     :_meterDec(S52_MAR_SAFETY_CONTOUR); break;
+        case GDK_d     :_meterInc(S52_MAR_SAFETY_DEPTH);   break;
+        case GDK_D     :_meterDec(S52_MAR_SAFETY_DEPTH);   break;
+        case GDK_a     :_meterInc(S52_MAR_SHALLOW_CONTOUR);break;
+        case GDK_A     :_meterDec(S52_MAR_SHALLOW_CONTOUR);break;
+        case GDK_e     :_meterInc(S52_MAR_DEEP_CONTOUR);   break;
+        case GDK_E     :_meterDec(S52_MAR_DEEP_CONTOUR);   break;
+        case GDK_f     :_meterInc(S52_MAR_DISTANCE_TAGS);  break;
+        case GDK_F     :_meterDec(S52_MAR_DISTANCE_TAGS);  break;
+        case GDK_g     :_meterInc(S52_MAR_TIME_TAGS);      break;
+        case GDK_G     :_meterDec(S52_MAR_TIME_TAGS);      break;
+        case GDK_y     :_meterInc(S52_MAR_BEAM_BRG_NM);    break;
+        case GDK_Y     :_meterDec(S52_MAR_BEAM_BRG_NM);    break;
+        case GDK_m     :_meterInc(S52_MAR_DATUM_OFFSET);   break;
+        case GDK_M     :_meterDec(S52_MAR_DATUM_OFFSET);   break;
+
+        case GDK_7     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_BASE);   break; // DISPLAYBASE
+        case GDK_8     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_STD);    break; // STANDARD
+        case GDK_9     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_OTHER);  break; // OTHER
+        case GDK_0     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT); break; // OTHER (all)
+
+        case GDK_k     :_cpal(S52_MAR_COLOR_PALETTE,  1.0);break;
+        case GDK_K     :_cpal(S52_MAR_COLOR_PALETTE, -1.0);break;
+
+        case GDK_6     :_meterInc(S52_MAR_DISP_WHOLIN);    break;
+        case GDK_asciicircum:
+        case GDK_question:
+        case GDK_caret :_meterDec(S52_MAR_DISP_WHOLIN);    break;
+
+        case GDK_F1    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY); break;
+        case GDK_F2    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS); break;
+        case GDK_F3    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC); break;
+        case GDK_F4    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC); break;
+        case GDK_F5    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP); break;
+        case GDK_F6    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX); break;
+
+        case GDK_F7    :_mmInc(S52_MAR_DOTPITCH_MM_X); break;
+        case GDK_F8    :_mmInc(S52_MAR_DOTPITCH_MM_Y); break;
+
+        case GDK_F9    :_toggle(S52_MAR_DISP_NODATA_LAYER); break;
+
+        default:
+            g_print("key: 0x%04x\n", event->keyval);
+    }
+
+    // redraw
+    gtk_widget_draw(widget, NULL);
+
+    return TRUE;
+}
+
+static gboolean button_release_event(GtkWidget      *widget,
+                                     GdkEventButton *event,
+                                     gpointer        data)
+{
+    (void)data;
+
+    // Ctl + left click: set origine for 'freely movable' VRMEBL
+    if ((GDK_CONTROL_MASK & event->state) && (1==event->button)) {
+        double x = event->x;
+        double y = event->y;
+
+        // set origine 
+        //S52_setVRMEBLorigine(_vrmebl, x, y);
+        //S52_setVRMEBL(_vrmebl, x, y, TRUE);
+
+        double brg = 0.0;
+        double rge = 0.0;
+        //S52_setVRMEBL(_vrmeblB, x, y, &brg, &rge);
+        S52_setVRMEBL(_vrmeblA, x, y, &brg, &rge);
+        _originIsSet = TRUE;
+
+        return TRUE;
+    }
+
+    switch(event->button) {
+        case 3: // right click
+            {
+                double x = event->x;
+                double y = event->y;
+                S52_xy2LL(&x, &y);
+
+                _view.cLat = y;
+                _view.cLon = x;
+                S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
+                gtk_widget_draw(widget, NULL);
+
+                break; 
+            }
+        case 1: // left click
+            {
+                // FIXME: why this does work without this
+                // because same context
+                GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
+                GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
+
+                if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
+                    return FALSE;
+
+                const char *name = S52_pickAt(event->x, event->y);
+                if (NULL != name)
+                    g_print("OBJ(%.f, %.f): %s\n", event->x, event->y, name);
+
+                S52_draw();
+                S52_drawLast();
+
+                if (gdk_gl_drawable_is_double_buffered(gldrawable))
+                    gdk_gl_drawable_swap_buffers(gldrawable);
+
+                gdk_gl_drawable_gl_end(gldrawable);
+
+                gtk_widget_draw(widget, NULL);
+
+                break;
+            }
+        default:
+            g_print("EVENT(button_release_event)\n");
+    }
+
+
+    return TRUE;
+}
+
+static gboolean motion_notify_event(GtkWidget      *widget,
+                                    GdkEventMotion *event,
+                                    gpointer        data)
+{
+    (void)data;
+
+    GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
+    GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
+
+    _x = event->x;
+    _y = event->y;
+
+    /* debug:  S52_xy2LL() --> S52_LL2xy() should be the same
+    {
+    // NOTE:  (0,0) the OpenGL origine (not GTK origine)
+        double Xlon = 0.0;
+        double Ylat = 0.0;
+        S52_xy2LL(&Xlon, &Ylat);
+        S52_LL2xy(&Xlon, &Ylat);
+        printf("xy2LL(0,0) --> LL2xy ==  Xlon: %f  Ylat: %f\n", Xlon, Ylat);
+    }
+    */
+
+    if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
+        return FALSE;
+
+    if (NULL != _vrmeblA) {
+        _brg = 0.0;
+        _rge = 0.0;
+        S52_setVRMEBL(_vrmeblA, _x, _y, &_brg, &_rge);
+
+        if (TRUE == _originIsSet) {
+            S52_setVRMEBL(_vrmeblA, _x, _y, &_brg, &_rge);
+        }
+    }
+
+    //*
+    if (TRUE == S52_drawLast()) {
+//#if !defined(S52_USE_GLES2)
+//        if (TRUE == _doRenderHelp)
+//            _renderHelp(widget);
+//#endif
+        //_renderCrsrPos(widget, _x, _y, _brg, _rge);
+
+        if (gdk_gl_drawable_is_double_buffered(gldrawable))
+            gdk_gl_drawable_swap_buffers(gldrawable);
+    }
+    //*/
+
+    gdk_gl_drawable_gl_end(gldrawable);
+
+    return TRUE;
+}
+
 #ifdef USE_AIS
 gboolean update_cb(void *dummy)
 {
@@ -1844,13 +1844,20 @@ int main(int argc, char **argv)
     g_setenv("GALLIUM_MSAA", "4", 1);
 #endif
 
-    // setup S52 display
-    _initS52();
-
     _timer = g_timer_new();
+
+    // Main Window
+    _win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    // normal
+    //gtk_window_fullscreen(GTK_WINDOW(_win));
+    // debug
+    gtk_window_set_default_size(GTK_WINDOW(_win), 800, 600 );
 
     // Drawing Area
     _winArea = gtk_drawing_area_new();
+
+    gtk_container_add(GTK_CONTAINER(_win), _winArea);
+
 
 #if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
     int mode = (GdkGLConfigMode) (GDK_GL_MODE_RGBA | GDK_GL_MODE_DOUBLE);
@@ -1873,6 +1880,10 @@ int main(int argc, char **argv)
     gtk_widget_set_events(_winArea, GDK_POINTER_MOTION_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);
     //gtk_widget_set_events(_winArea, GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);
 
+    // setup S52 display
+    _initS52();
+
+
 #if S52_USE_GLIB2
     g_signal_connect_after(G_OBJECT(_winArea), "realize",             G_CALLBACK(realize),         NULL);
     g_signal_connect(      G_OBJECT(_winArea), "configure_event",     G_CALLBACK(configure_event), NULL);
@@ -1885,21 +1896,9 @@ int main(int argc, char **argv)
     gtk_signal_connect(      GTK_OBJECT(_winArea), "expose_event",    GTK_SIGNAL_FUNC(expose_event),    NULL);
 #endif
 
-    // Main Window
-    _win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
     g_signal_connect_after(G_OBJECT(_win), "key_release_event",   G_CALLBACK(key_release_event),    NULL);
     g_signal_connect(      G_OBJECT(_win), "delete_event",        G_CALLBACK(gtk_main_quit),        NULL);
     //g_signal_connect(      G_OBJECT(_win), "button_release_event",G_CALLBACK(button_release_event), NULL);
-
-    // normal
-    //gtk_window_fullscreen(GTK_WINDOW(_win));
-
-    printf("main .. \n");
-
-    // debug
-    gtk_window_set_default_size(GTK_WINDOW(_win), 800, 600 );
-
-    gtk_container_add(GTK_CONTAINER(_win), _winArea);
 
     gtk_widget_show_all(_win);
 
