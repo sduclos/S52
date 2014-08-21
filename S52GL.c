@@ -21,7 +21,7 @@
 */
 
 
-// - S52GL.c : S52 OpenGL rendering front-end
+// - S52GL.c : S52 OpenGL rendering
 //   - _GL1.i: GL1.x / GLSC1.0  - fixe-function pipeline
 //   - _GL2.i: GL2.x / GLES2.x  - programmable/shader (GLSL)
 
@@ -31,7 +31,7 @@
 #include "S52utils.h"     // PRINTF(), S52_atof(), S52_atoi(), S52_strlen()
 
 #include <glib.h>
-#include <glib/gstdio.h>  // g_file_test()
+#include <glib/gstdio.h>  // g_file_test(),
 
 // compiled with -std=gnu99 instead of -std=c99 will define M_PI
 #include <math.h>         // sin(), cos(), atan2(), pow(), sqrt(), floor(), INFINITY, M_PI
@@ -85,12 +85,12 @@ static unsigned char *_fb_pixels      = NULL;
 static unsigned int   _fb_pixels_size = 0;
 static guint          _fb_texture_id  = 0;
 
-#define RGB           3
-#define RGBA          4
+#define _RGB           3
+#define _RGBA          4
 #ifdef S52_USE_ADRENO
-static int            _fb_format      = RGB;   // alpha blending done in shader
+static int            _fb_format      = _RGB;   // alpha blending done in shader
 #else
-static int            _fb_format      = RGBA;
+static int            _fb_format      = _RGBA;
 //static int            _fb_format      = RGB ;  // NOTE: on TEGRA2 RGB (3) very slow
 #endif
 
@@ -225,7 +225,7 @@ inline void      _checkError(const char *msg)
 GL_NO_ERROR
                 No error has been recorded. The value of this
                     symbolic constant is guaranteed to be 0.
-GL_INVALID_ENUM
+GL_INVALID_ENUM               d
                 An unacceptable value is specified for an
                     enumerated argument. The offending command is ignored,
                     and has no other side effect than to set the error
@@ -611,6 +611,7 @@ static GLint     _pushScaletoPixel(int scaleSym)
 {
     double scalex = _scalex;
     double scaley = _scaley;
+
     if (TRUE == scaleSym) {
         scalex /= (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0);
         scaley /= (S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 100.0);
@@ -940,7 +941,7 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
     glDrawArrays(GL_LINES, 0, npt);
     glDisableVertexAttribArray(_aPosition);
 #else
-    glEnableClientState(GL_VERTEX_ARRAY);
+    //glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(3, GL_DBL_FLT, 0, ppt);
     glDrawArrays(GL_LINES, 0, npt);
 #endif
@@ -1123,7 +1124,6 @@ static int       _DrawArrays(S57_prim *prim)
     return TRUE;
 }
 
-//static int       _createDList(S57_prim *prim)
 static guint     _createDList(S57_prim *prim)
 // create display list
 {
@@ -1144,7 +1144,6 @@ static guint     _createDList(S57_prim *prim)
 
     _checkError("_createDList()");
 
-    //return TRUE;
     return DList;
 }
 
@@ -1264,7 +1263,6 @@ static int       _fillarea(S57_geo *geoData)
         PRINTF("DEBUG: _VBODraw() failed [%s]\n", S57_getName(geoData));
     }
 #else
-    //_createDList(prim);
     _callDList(prim);
 #endif
 
@@ -3076,7 +3074,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
     glBufferData(GL_ARRAY_BUFFER, pti*sizeof(vertex_t)*3, (const void *)ppt, GL_DYNAMIC_DRAW);
 
     // colors array
-    glEnableClientState(GL_COLOR_ARRAY);
+    //glEnableClientState(GL_COLOR_ARRAY);
     glBindBuffer(GL_ARRAY_BUFFER, _vboIDaftglwColrID);
     glBufferData(GL_ARRAY_BUFFER, pti*sizeof(unsigned char)*4, (const void *)_aftglwColorArr->data, GL_DYNAMIC_DRAW);
 
@@ -3675,7 +3673,10 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
             DList = S52_PL_newDListData(obj);
             DList->nbr = 2;
         }
-        if (FALSE == glIsBuffer(DList->vboIds[0])) {
+
+        //if (FALSE == glIsBuffer(DList->vboIds[0])) {
+        // GL1 win32
+        if (0 == DList->vboIds[0]) {
             DList->prim[0] = S57_initPrim(NULL);
             DList->prim[1] = S57_initPrim(NULL);
 
@@ -3696,7 +3697,7 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
             glNewList(DList->vboIds[0], GL_COMPILE);
 
             _diskPrimTmp = DList->prim[0];
-            gluPartialDisk(_qobj, radius, radius+4, slice, loops, sectr1+180, sweep);
+            gluPartialDisk(_qobj, radius, radius+4, sweep/2.0, loops, sectr1+180, sweep);
             _DrawArrays(_diskPrimTmp);
             glEndList();
 
@@ -3705,7 +3706,7 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
             glNewList(DList->vboIds[1], GL_COMPILE);
 
             _diskPrimTmp = DList->prim[1];
-            gluPartialDisk(_qobj, radius+1, radius+3, slice, loops, sectr1+180, sweep);
+            gluPartialDisk(_qobj, radius+1, radius+3, sweep/2.0, loops, sectr1+180, sweep);
             _DrawArrays(_diskPrimTmp);
             glEndList();
 #endif
@@ -3863,7 +3864,7 @@ static int       _renderAP_NODATA_layer0(void)
     typedef struct {vertex_t x,y;} pt2v;
     pt2v pt0, pt1, pt2, pt3;
 
-    // double --> float
+    // double --> float if GLES2
     pt0.x = _pmin.u;
     pt0.y = _pmin.v;
 
@@ -3887,36 +3888,15 @@ static int       _renderAP_NODATA_layer0(void)
     int      n_tile_x = (_pmin.u - _pmax.u) / tile_x;
     int      n_tile_y = (_pmin.v - _pmax.v) / tile_y;
 
-    //*
     vertex_t ppt[4*3 + 4*2] = {
         pt0.x, pt0.y, 0.0,        0.0f,     0.0f,
         pt1.x, pt1.y, 0.0,        0.0f,     n_tile_y,
         pt2.x, pt2.y, 0.0,        n_tile_x, n_tile_y,
         pt3.x, pt3.y, 0.0,        n_tile_x, 0.0f
     };
-    //*/
-
-    /*
-    vertex_t ppt1[4*2] = {
-        0.0f,     0.0f,
-        0.0f,     n_tile_y,
-        n_tile_x, n_tile_y,
-        n_tile_x, 0.0f
-    };
-    //*/
-
-    /*
-    vertex_t ppt[4*3 + 4*2] = {
-        pt0.x, pt0.y, 0.0,        pt0.x, pt0.y,
-        pt1.x, pt1.y, 0.0,        pt1.x, pt1.y,
-        pt2.x, pt2.y, 0.0,        pt2.x, pt2.y,
-        pt3.x, pt3.y, 0.0,        pt3.x, pt3.y
-    };
-    //*/
 
     glEnableVertexAttribArray(_aUV);
     glVertexAttribPointer(_aUV, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
-    //glVertexAttribPointer(_aUV, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
 
     glEnableVertexAttribArray(_aPosition);
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
@@ -3952,15 +3932,23 @@ static int       _renderAP_NODATA_layer0(void)
 
 #else  // S52_USE_GL2
 
+
+    // FIXME: stippling fail on Mesa3d as of 10.1.3 (bug 25280)
+
     glEnable(GL_POLYGON_STIPPLE);
 
-    //glPolygonStipple(_nodata_mask);
+    glPolygonStipple(_nodata_mask);
 
-    // FIXME: could bind buffer - why? or why not?
     {
-        vertex_t ppt[4*3] = {pt0.x, pt0.y, 0.0, pt1.x, pt1.y, 0.0, pt2.x, pt2.y, 0.0, pt3.x, pt3.y, 0.0};
+        vertex_t ppt[4*3] = {
+            pt0.x, pt0.y, 0.0,
+            pt1.x, pt1.y, 0.0,
+            pt2.x, pt2.y, 0.0,
+            pt3.x, pt3.y, 0.0
+        };
+
         glVertexPointer(3, GL_DBL_FLT, 0, ppt);
-        glDrawArrays(GL_QUADS, 0, 4);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
     glDisable(GL_POLYGON_STIPPLE);
@@ -4827,7 +4815,9 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
 #ifndef S52_USE_GLSC1
     // can't delete a display list - no garbage collector in GL SC
     // first delete DL
-    if (TRUE == glIsBuffer(DL->vboIds[0])) {
+    //if (TRUE == glIsBuffer(DL->vboIds[0])) {
+    // GL1 win32
+    if (0 != DL->vboIds[0]) {
         glDeleteLists(DL->vboIds[0], DL->nbr);
         DL->vboIds[0] = 0;
     }
@@ -5085,57 +5075,13 @@ int        S52_GL_isOFFscreen(S52_obj *obj)
     return FALSE;
 }
 
-#ifdef S52_USE_TEGRA2
-static int       _minPOT(int value)
-// min POT greater than 'value' - simplyfie texture handling
-// compare to _nearestPOT() but use more GPU memory
-{
-    int i = 1;
-
-    if (value <= 0) return -1;      // Error!
-
-    for (;;) {
-        if (value == 0) return i;
-        value >>= 1;
-        i *= 2;
-    }
-}
-#endif  // S52_USE_TEGRA2
-
-#if 0
-static int       next_power_of_two(int v)
-{
-    v--;
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v++;
-
-    return v;
-}
-
-static int       is_power_of_two(guint v)
-{
-    if (v == 0)
-        return TRUE;
-
-    return (v & (v-1)) == 0;
-}
-#endif
-
 #ifdef S52_USE_GL2
 static int       _newTexture(S52_GL_ras *raster)
 // copy and blend raster 'data' to alpha texture
 // FIXME: test if the use of hader to blend rather than precomputing value here is faster
 {
-    //guint potX  = _minPOT(raster->w);
-    //guint potY  = _minPOT(raster->h);
     guint npotX = raster->w;
     guint npotY = raster->h;
-    //potX = npotX;
-    //potY = npotY;
 
     float min  =  INFINITY;
     float max  = -INFINITY;
@@ -5710,6 +5656,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     glEnable(GL_CULL_FACE);
     //glDisable(GL_CULL_FACE);
 
+/*
 #if !defined(S52_USE_MESA3D) && defined(S52_USE_AFGLOW)
     // GL_POINT_SPRITE 0x8861 define only in Mesa3d GL/glext.h also in android tool chain GLES/gl.h
     // but GLSL ES 3.0 say that GL_POINT_SPRITE/gl_PointCoord work
@@ -5718,6 +5665,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 #define GL_VERTEX_PROGRAM_POINT_SIZE 0x8642
     //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);  // Adreno GLSL ES 3.0 say invalid
 #endif
+*/
 
     // EnableCap
     glDisable(GL_DITHER);
@@ -5728,12 +5676,14 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     _checkError("S52_GL_begin() - EnableCap");
 
-#else
+#else  // S52_USE_GL2
+
     glShadeModel(GL_FLAT);                       // NOT in GLES2
     // draw both side
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);   // NOT in OpenGL ES SC
     glEnableClientState(GL_VERTEX_ARRAY);
-#endif
+
+#endif  // S52_USE_GL2
 
 
 
@@ -5794,17 +5744,16 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
 #ifdef S52_USE_GL2
     glActiveTexture(GL_TEXTURE0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 #else
     // GL1 read in matrix from GPU
     glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
     glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
 #endif
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glBindTexture(GL_TEXTURE_2D, 0);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
     //-- update background ------------------------------------------
@@ -5946,8 +5895,12 @@ int        S52_GL_del(S52_obj *obj)
 
 #ifdef S52_USE_OPENGL_VBO
         // delete VBO when program terminated
-        if (GL_TRUE == glIsBuffer(vboID))
+        if (GL_TRUE == glIsBuffer(vboID)) {
             glDeleteBuffers(1, &vboID);
+        }else {
+            PRINTF("WARNING: ivalid VBO\n");
+            g_assert(0);
+        }
 
         vboID = 0;
         S57_setPrimDList(prim, vboID);
@@ -5958,7 +5911,10 @@ int        S52_GL_del(S52_obj *obj)
             guint vboID = S52_PL_getFreetypeGL_VBO(obj, &len);
             if (GL_TRUE == glIsBuffer(vboID))
                 glDeleteBuffers(1, &vboID);
-
+            else {
+                PRINTF("WARNING: ivalid FrretypeGL VBO\n");
+                g_assert(0);
+            }
             len   = 0;
             vboID = 0;
             S52_PL_setFreetypeGL_VBO(obj, vboID, len);
@@ -5973,6 +5929,8 @@ int        S52_GL_del(S52_obj *obj)
             PRINTF("WARNING: ivalid DL\n");
             g_assert(0);
         }
+        vboID = 0;
+        S57_setPrimDList(prim, vboID);
 #endif  // S52_USE_OPENGL_VBO
     }
 
@@ -6059,24 +6017,30 @@ static int       _contextValid(void)
             PRINTF("DEBUG: GL_OES_texture_npot FAILED\n");
             _GL_OES_texture_npot = FALSE;
         }
+
         // marker
-        if (NULL != g_strrstr((const char *)extensions, "GL_EXT_debug_marker"))
+        if (NULL != g_strrstr((const char *)extensions, "GL_EXT_debug_marker")) {
             PRINTF("DEBUG: GL_EXT_debug_marker OK\n");
-        else
+            _GL_EXT_debug_marker = TRUE;
+        } else {
             PRINTF("DEBUG: GL_EXT_debug_marker FAILED\n");
+            _GL_EXT_debug_marker = FALSE;
+        }
 
         // point sprites
-        if (NULL != g_strrstr((const char *)extensions, "GL_OES_point_sprite"))
+        if (NULL != g_strrstr((const char *)extensions, "GL_OES_point_sprite")) {
             PRINTF("DEBUG: GL_OES_point_sprite OK\n");
-        else
+            _GL_OES_point_sprite = TRUE;
+        } else {
             PRINTF("DEBUG: GL_OES_point_sprite FAILED\n");
-
+            _GL_OES_point_sprite = FALSE;
+        }
     }
 
 #if !defined(S52_USE_GLES2)
     GLboolean d = FALSE;
     glGetBooleanv(GL_DOUBLEBUFFER, &d);
-    PRINTF("double buffer: %s\n", ((TRUE==d) ? "TRUE" : "FALSE"));
+    PRINTF("DEBUG: double buffer: %s\n", ((TRUE==d) ? "TRUE" : "FALSE"));
 #endif
 
     _checkError("_contextValid()");
