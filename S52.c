@@ -263,7 +263,7 @@ static _view_t _view = {0.0, 0.0, 0.0, 0.0};
 // Note: the mutex never have to do work with the main_loop already serializing call.
 // Note: that DBus and socket/WebSocket are running from the main loop but the handling is done from threads
 
-#ifdef S52_USE_ANDROID
+#if (defined(S52_USE_ANDROID) || defined(_MINGW))
 static GStaticMutex       _mp_mutex = G_STATIC_MUTEX_INIT;
 #define GMUTEXLOCK   g_static_mutex_lock
 #define GMUTEXUNLOCK g_static_mutex_unlock
@@ -294,7 +294,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.138\n"
+      "libS52 0.139\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -2315,12 +2315,12 @@ static int        _loadCATALOG(char *filename)
 #endif  // 0
 #endif  // S52_USE_OGR_FILECOLLECTOR
 
+#ifdef S52_USE_RADAR
 // see http://www.gdal.org/warptut.html
 #include "gdal_alg.h"
 #include "ogr_srs_api.h"
 #include "gdalwarper.h"
 
-//static char      *_getSRS(const char *str)
 static char      *_getSRS(void)
 {
     char       *ret    = NULL;
@@ -2524,6 +2524,7 @@ int               _loadRaster(const char *fname)
 
     return TRUE;
 }
+#endif  // S52_USE_RADAR
 
 DLL int    STD S52_loadLayer (const char *layername, void *layer, S52_loadObject_cb loadObject_cb);  // forward decl
 DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb)
@@ -2596,7 +2597,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     }
 #endif
 
-    //*
+#ifdef S52_USE_RADAR
     {   // experimental - load raster (GeoTIFF)
         gchar *basename = g_path_get_basename(fname);
         int len = strlen(basename);
@@ -2610,7 +2611,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
             return TRUE;
         }
     }
-    //*/
+#endif  // S52_USE_RADAR
 
     /*
     {   // experimental - load raw raster RADAR
@@ -4116,7 +4117,8 @@ DLL int    STD S52_draw(void)
 
 
     // do not wait if an other thread is allready drawing
-#ifdef S52_USE_ANDROID
+//#ifdef S52_USE_ANDROID
+#if (defined(S52_USE_ANDROID) || defined(_MINGW))
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
 #else
     if (FALSE == g_mutex_trylock(&_mp_mutex)) {
@@ -4331,7 +4333,8 @@ DLL int    STD S52_drawLast(void)
     //EGL_BEG(drawTag);
 #endif
 
-#ifdef S52_USE_ANDROID
+//#ifdef S52_USE_ANDROID
+#if (defined(S52_USE_ANDROID) || defined(_MINGW))
     // do not wait if an other thread is allready drawing
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
 #else
