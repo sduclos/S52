@@ -1301,7 +1301,7 @@ static int      _s52_init       (s52engine *engine)
 
 
     S52_loadPLib(PLIB);
-    S52_loadPLib(COLS);
+    //S52_loadPLib(COLS);
 
     // load PLib in s52.cfg
     S52_loadPLib(NULL);
