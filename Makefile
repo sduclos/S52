@@ -185,15 +185,15 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 
 
 # default CFLAGS for default target (s52gtk2)
+#         -DS52_USE_OPENGL_VBO
+#         -DS52_USE_SOCK
 CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl`  \
          `gdal-config --cflags`                        \
          -I./lib/parson                                \
          -DS52_USE_PROJ                                \
          -DS52_USE_GLIB2                               \
          -DS52_USE_GL1                                 \
-         -DS52_USE_OPENGL_VBO                          \
          -DS52_USE_FTGL                                \
-         -DS52_USE_SOCK                                \
          -DS52_DEBUG $(DBG)
 
 s52gtk2gl2 : CFLAGS =                                  \
@@ -285,7 +285,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_FREETYPE_GL                 \
                      -DS52_USE_ANDROID                     \
-                     -DS52_USE_ADRENO                      \
+                     -DS52_USE_TEGRA2                      \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
@@ -339,14 +339,14 @@ s52win32 : CFLAGS   = -mms-bitfields                         \
                       -I$(GDALPATH)gcore                     \
                       -I$(GDALPATH)frmts/iso8211/            \
                       -DS52_USE_FTGL                         \
-                      -DS52_USE_OPENGL_VBO                   \
+                      -DS52_USE_GL1                          \
                       -DS52_USE_GLIB2                        \
                       -DS52_USE_PROJ                         \
                       -DS52_USE_OGR_FILECOLLECTOR            \
                       -DS52_USE_LOG                          \
                       -DG_DISABLE_ASSERT                     \
                       -D_MINGW                               \
-                      -DS52_DEBUG $(DBG)
+                      -DS52_DEBUG $(DBG2)
 
 s52eglw32 : GDALPATH = ../../../gdal/gdal-1.7.2-mingw
 s52eglw32 : CFLAGS   = -mms-bitfields                         \
@@ -373,7 +373,7 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
                       -DS52_USE_LOG                  \
                       -DG_DISABLE_ASSERT             \
                       -D_MINGW                       \
-                      -DS52_DEBUG $(DBG)
+                      -DS52_DEBUG $(DBG2)
 
 
 ############### LIBS setup ##############################
@@ -393,9 +393,6 @@ s52clutter, s52clutter.js : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl` \
 s52glx : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl ftgl` \
                 `gdal-config --libs` -lproj
 
-# EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord need "#version 120\n"
-#s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms egl gl freetype2` \
-#                                      `gdal-config --libs` -lproj
 s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                                       `gdal-config --libs` -lproj
 
@@ -475,29 +472,32 @@ libS52gv.so: $(OBJS_S52) $(OBJS_GV)
 	$(CXX) -shared $(OBJS_S52) $(OBJS_GV) $(LIBS) -o libS52.so
 
 #-static-libgcc
-#	$(LIBWIN32PATH)/libftgl.a -lfreetype6
+#   -lfreetype6
 s52win32 s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
-s52win32 s52eglw32 : LIBS    = $(LIBWIN32PATH)/libproj.a              \
-                               $(LIBWIN32PATH)/libgdal-1.dll          \
-                               $(LIBWIN32PATH)/liblcms-1.dll          \
-                               $(LIBWIN32PATH)/libEGL.lib             \
-                               $(LIBWIN32PATH)/libGLESv2.lib          \
-                               -L$(GTKPATH) -lglib-2.0-0 -lfreetype6
+s52win32  : LIBS = $(LIBWIN32PATH)/libproj.a              \
+                   $(LIBWIN32PATH)/libftgl.a              \
+                   $(LIBWIN32PATH)/libgdal-1.dll          \
+                   $(LIBWIN32PATH)/liblcms-1.dll          \
+                   -lopengl32 -lglu32                     \
+                   -L$(GTKPATH) -lglib-2.0-0 -lfreetype6
 
-#libS52.dll: $(OBJS_S52)
-#	$(MINGW)objcopy --redefine-sym S52raz=_S52raz                     \
+s52eglw32 : LIBS = $(LIBWIN32PATH)/libproj.a              \
+                   $(LIBWIN32PATH)/libgdal-1.dll          \
+                   $(LIBWIN32PATH)/liblcms-1.dll          \
+                   $(LIBWIN32PATH)/libEGL.lib             \
+                   $(LIBWIN32PATH)/libGLESv2.lib          \
+                   -L$(GTKPATH) -lglib-2.0-0 -lfreetype6
+
+libS52.dll: $(OBJS_S52)
+	$(MINGW)objcopy --redefine-sym S52raz=_S52raz --redefine-sym S52razLen=_S52razLen S52raz-3.2.rle.o S52raz-3.2.rle.o
+	$(MINGW)g++ -g -mms-bitfields -O0 -Wall -shared -Wl,--add-stdcall-alias $(OBJS_S52) $(LIBS) -o $@
+
+#libS52.dll: $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
+#	$(MINGW)objcopy --redefine-sym S52raz=_S52raz                         \
 #	--redefine-sym S52razLen=_S52razLen S52raz-3.2.rle.o S52raz-3.2.rle.o
-#	 $(MINGW)g++ -g -mms-bitfields -O0 -Wall  -shared -Wl,--add-stdcall-alias $(OBJS_S52) \
-#	 $(LIBS)                               \
-#	-L$(GTKPATH) -lglib-2.0-0 -lfreetype6  \
-#	-lopengl32 -lglu32 -o $@
-
-libS52.dll: $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
-	$(MINGW)objcopy --redefine-sym S52raz=_S52raz                         \
-	--redefine-sym S52razLen=_S52razLen S52raz-3.2.rle.o S52raz-3.2.rle.o
-	 $(MINGW)g++ -g -mms-bitfields -O0 -Wall  -shared -Wl,--add-stdcall-alias \
-	 $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)               \
-	 $(LIBS) -o $@
+#	 $(MINGW)g++ -g -mms-bitfields -O0 -Wall  -shared -Wl,--add-stdcall-alias \
+#	 $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)               \
+#	 $(LIBS) -o $@
 
 
 
