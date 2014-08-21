@@ -7,12 +7,12 @@
 //
 // tessallation
 // mingw specific, with gcc APIENTRY expand to nothing
-//#ifdef _MINGW
-//#define _CALLBACK __attribute__ ((__stdcall__))
+#ifdef _MINGW
+#define _CALLBACK __attribute__ ((__stdcall__))
 //#define _CALLBACK
-//#else
+#else
 #define _CALLBACK
-//#endif
+#endif
 
 #define void_cb_t GLvoid _CALLBACK
 
