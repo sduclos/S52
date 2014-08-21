@@ -3,6 +3,9 @@
 #
 
 
+2014AUG21
+    -fix s52win32 code path
+
 2014JUN27
     -fix refactor _insertS57Obj()
 
