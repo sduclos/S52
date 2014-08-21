@@ -33,7 +33,6 @@ static GLubyte     _glColor4ub(S52_Color *);
 static void        _glPointSize(GLfloat);
 static inline void _checkError(const char *);
 static GLvoid      _DrawArrays_LINE_STRIP(guint, vertex_t *);  // debug pattern
-static int         _minPOT(int value);
 ////////////////////////////////////////////////////////
 
 
@@ -270,8 +269,15 @@ static int       _init_freetype_gl(void)
         PRINTF("default TTF not found in s52.cfg\n");
         PRINTF("using hard-coded TTF filename: %s\n", _freetype_gl_fontfilename);
     } else {
-        GStatBuf buf;
-        if (0 == g_stat(TTFPath, &buf)) {
+
+
+//#if !GLIB_CHECK_VERSION(2,26,0)
+//typedef struct stat GStatBuf;
+//#endif
+        //GStatBuf buf;
+        //if (0 == g_stat(TTFPath, &buf)) {
+
+        if (TRUE == g_file_test(TTFPath, G_FILE_TEST_EXISTS)) {
             _freetype_gl_fontfilename = TTFPath;
             PRINTF("default TTF found in s52.cfg (%s)\n", TTFPath);
         }
@@ -1282,6 +1288,44 @@ static int       _set_glScaled(void)
     return TRUE;
 }
 
+static int       _minPOT(int value)
+// min POT greater than 'value' - simplyfie texture handling
+// compare to _nearestPOT() but use more GPU memory
+{
+    int i = 1;
+
+    if (value <= 0) return -1;      // Error!
+
+    for (;;) {
+        if (value == 0) return i;
+        value >>= 1;
+        i *= 2;
+    }
+}
+
+#if 0
+static int       next_power_of_two(int v)
+{
+    v--;
+    v |= v >> 1;
+    v |= v >> 2;
+    v |= v >> 4;
+    v |= v >> 8;
+    v |= v >> 16;
+    v++;
+
+    return v;
+}
+
+static int       is_power_of_two(guint v)
+{
+    if (v == 0)
+        return TRUE;
+
+    return (v & (v-1)) == 0;
+}
+#endif
+
 static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, double stagOffsetPix)
 {
     GLuint mask_texID = 0;
@@ -1341,8 +1385,6 @@ static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, doubl
 
 
     // render to texture -----------------------------------------
-
-    _glMatrixSet(VP_WIN);
 
     {   // set line/point width
         double   dummy = 0.0;
@@ -1408,6 +1450,8 @@ static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, doubl
     offsetpx:    0.0 x    7.6
     Tile px :   13.2 x   13.3
     */
+    _glMatrixSet(VP_WIN);
+
 
     _glTranslated(tileWpx/2.0 - 0.0, tileHpx/2.0 - 0.0, 0.0);
     //_glTranslated(tileWpx/2.0 - 3.0, tileHpx/2.0 - 3.0, 0.0);
@@ -1480,17 +1524,6 @@ static int       _renderAP_gl2(S52_obj *obj)
 
     glUniform1f(_uPattW,     tileWw);        // tile width in world
     glUniform1f(_uPattH,     tileHw);        // tile height in world
-
-    /*
-    if (0.0 == stagOffsetPix) {
-        // this strech the texture
-        glUniform1f(_uPattX, tileWw);        // tile width in world
-        glUniform1f(_uPattY, tileHw);        // tile height in world
-    } else {
-        glUniform1f(_uPattX, w * _scalex);
-        glUniform1f(_uPattY, h * _scaley);
-    }
-    */
 
     glBindTexture(GL_TEXTURE_2D, mask_texID);
 
