@@ -13,6 +13,13 @@
 #include "GL/glext.h"
 #include <GL/glu.h>
 
+// add missing def for MINGW
+#ifdef _MINGW
+#define GL_ARRAY_BUFFER                   0x8892
+#define GL_STATIC_DRAW                    0x88E4
+#define GL_SHADING_LANGUAGE_VERSION       0x8B8C
+#endif
+
 // alpha is 0.0 - 255.0 in GL1.x
 #define TRNSP_FAC   255 * 0.25
 
@@ -307,16 +314,11 @@ static int       _renderAP_NODATA_gl1(S52_obj *obj)
 
 static int       _renderAP_DRGARE_gl1(S52_obj *obj)
 {
-    if (TRUE != (int) S52_MP_get(S52_MAR_DISP_DRGARE_PATTERN))
-        return TRUE;
-
     S57_geo       *geoData   = S52_PL_getGeo(obj);
     S52_DListData *DListData = S52_PL_getDListData(obj);
 
     if (NULL != DListData) {
         S52_Color *col = DListData->colors;
-
-
         _glColor4ub(col);
 
         glEnable(GL_POLYGON_STIPPLE);
@@ -334,7 +336,7 @@ static int       _renderAP_DRGARE_gl1(S52_obj *obj)
 static int       _renderAP_gl1(S52_obj *obj)
 {
     // broken on GL1
-    return TRUE;
+    //return TRUE;
 
     //--------------------------------------------------------
     // debug - U pattern
@@ -366,7 +368,9 @@ static int       _renderAP_gl1(S52_obj *obj)
         if (0==g_strcmp0("UNSARE", S52_PL_getOBCL(obj)) ) {
             _renderAP_NODATA_gl1(obj);
             return TRUE;
-        } else {
+        }
+        /*
+        else {
             // fill area with OVERSC01
             if (0==g_strcmp0("M_COVR", S52_PL_getOBCL(obj)) ) {
                 //_renderAP_NODATA(obj);
@@ -385,8 +389,15 @@ static int       _renderAP_gl1(S52_obj *obj)
                 }
             }
         }
+        */
     }
 
+    // fill area with
+    if (0==g_strcmp0("M_QUAL", S52_PL_getOBCL(obj)) ) {
+        //_renderAP_NODATA(obj);
+        //return TRUE;
+        PRINTF("M_QUAL\n");
+    }
 
     // Bec      pattern stencil
     // 550 msec   on      on
@@ -418,8 +429,6 @@ static int       _renderAP_gl1(S52_obj *obj)
     //  14  on  off off
 
     //*
-    S52_DListData *DListData = S52_PL_getDListData(obj);
-    S57_geo *geoData = S52_PL_getGeo(obj);
     {   // setup stencil
         glEnable(GL_STENCIL_TEST);
 
@@ -434,6 +443,7 @@ static int       _renderAP_gl1(S52_obj *obj)
         glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
 
         // fill stencil
+        S57_geo *geoData = S52_PL_getGeo(obj);
         _fillarea(geoData);
 
         // setup stencil to clip pattern
@@ -482,32 +492,29 @@ static int       _renderAP_gl1(S52_obj *obj)
     // are displayed  (hence pattern are clipped) because ajacent area
     // filled with same pattern will complete the clipped pattern.
     // No test y+th<y2 and x+tw<x2 to check for the end of a row/collum.
-    //d = 0.0;
 
-    //
-    // FIXME: GL1.5 texture
-    //
-    //*
     int npatt = 0;  // stat
     int stag  = 0;  // 0-1 true/false add dx for stagged pattern
     double ww = tileWidthPix  * _scalex;  // pattern width in world
     double hw = tileHeightPix * _scaley;  // pattern height in world
     double d  = stagOffsetPix * _scalex;  // stag offset in world
 
+    S52_DListData *DListData = S52_PL_getDListData(obj);
+
     glMatrixMode(GL_MODELVIEW);
 
-    for (double y=y1; y<=y2; y+=ww) {
+    for (double y=y1; y<=y2; y+=hw) {
         glLoadIdentity();   // reset to screen origin
         glTranslated(x1 + (d*stag), y, 0.0);
         glScaled(1.0, -1.0, 1.0);
 
-        _pushScaletoPixel(TRUE);
-        for (double x=x1; x<x2; x+=hw) {
+        for (double x=x1; x<x2; x+=ww) {
+            _pushScaletoPixel(TRUE);
             _glCallList(DListData);
+            _popScaletoPixel();
             glTranslated(ww, 0.0, 0.0);
             ++npatt;
         }
-        _popScaletoPixel();
         stag = !stag;
     }
 
@@ -519,7 +526,6 @@ static int       _renderAP_gl1(S52_obj *obj)
 
     // this turn off blending from display list
     //_setBlend(FALSE);
-    //*/
 
     _checkError("_renderAP()");
 
