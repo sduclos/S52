@@ -1020,17 +1020,6 @@ static int           _updateTimeTag(void)
 static void          _updateAISdata(struct gps_data_t *gpsdata)
 {
 
-/*
-#ifdef S52_USE_SOCK
-    if (FALSE == _s52_connection) {
-        _s52_connection = _s52_init_sock(_localhost, S52_PORT);
-        if (FALSE == _s52_connection)
-            return;
-    }
-#endif
-*/
-
-
 /* debug - gpsdata->set
 #define ONLINE_SET      (1u<<1)
 #define TIME_SET        (1u<<2)
@@ -1315,7 +1304,6 @@ static int           _gpsdClientReadLoop(void)
         } else {
             errno = 0;
 
-            //int ret = gps_read(&_gpsdata);
             ret = gps_read(&_gpsdata);
             if (0 < ret) {
                 // no error
