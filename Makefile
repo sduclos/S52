@@ -65,7 +65,8 @@ CC   = gcc -std=gnu99 -fPIC # need gnu99 to get M_PI
 CXX  = g++ -fPIC
 
 # win32: check this _MINGW32_
-s52win32 : MINGW = /usr/bin/i586-mingw32msvc-
+s52win32 : MINGW = /usr/bin/i686-w64-mingw32-
+#s52win32 : MINGW = /usr/bin/i586-mingw32msvc-
 s52win32 : CC    = $(MINGW)gcc -g -O0 -Wall -m32 -std=c99
 s52win32 : CXX   = $(MINGW)g++ -g -O0 -Wall -m32
 
@@ -74,7 +75,7 @@ s52eglw32: MINGW = /usr/bin/i586-mingw32msvc-
 s52eglw32: CC    = $(MINGW)gcc -g -O0 -Wall -m32 -std=gnu99
 s52eglw32: CXX   = $(MINGW)g++ -g -O0 -Wall -m32
 
-s52win32 : CXX  = $(CC)  # hack
+#s52win32 : CXX  = $(CC)  # hack
 s52gv    : CXX  = $(CC)  # hack
 s52gv2   : CXX  = $(CC)  # hack
 
@@ -190,11 +191,11 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl`  \
          `gdal-config --cflags`                        \
          -I./lib/parson                                \
-         -DS52_USE_PROJ                                \
-         -DS52_USE_GLIB2                               \
-         -DS52_USE_GL1                                 \
          -DS52_USE_FTGL                                \
-         -DS52_DEBUG $(DBG)
+         -DS52_USE_GL1                                 \
+         -DS52_USE_GLIB2                               \
+         -DS52_USE_PROJ                                \
+         -DS52_DEBUG $(DBG2)
 
 s52gtk2gl2 : CFLAGS =                                  \
          `pkg-config  --cflags glib-2.0 lcms gl freetype2`  \
@@ -293,6 +294,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_LOG                         \
                      -DS52_USE_AFGLOW                      \
                      -DS52_DEBUG
+
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
                      -I$(S52DROIDINC)/glib-2.0             \
@@ -490,7 +492,7 @@ s52eglw32 : LIBS = $(LIBWIN32PATH)/libproj.a              \
 
 libS52.dll: $(OBJS_S52)
 	$(MINGW)objcopy --redefine-sym S52raz=_S52raz --redefine-sym S52razLen=_S52razLen S52raz-3.2.rle.o S52raz-3.2.rle.o
-	$(MINGW)g++ -g -mms-bitfields -O0 -Wall -shared -Wl,--add-stdcall-alias $(OBJS_S52) $(LIBS) -o $@
+	$(CXX) -g -mms-bitfields -O0 -Wall -shared -Wl,--add-stdcall-alias $(OBJS_S52) $(LIBS) -o $@
 
 #libS52.dll: $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
 #	$(MINGW)objcopy --redefine-sym S52raz=_S52raz                         \

@@ -26,8 +26,8 @@ CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=gnu99
 #CC   = g++ -fPIC -O0 -g -Wall
 CXX   = g++ -O0 -g -Wall
 
-MINGW = /usr/bin/i586-mingw32msvc-
-#MINGW = /usr/bin/i686-w64-mingw32-
+#MINGW = /usr/bin/i586-mingw32msvc-
+MINGW = /usr/bin/i686-w64-mingw32-
 #s52win32 : CC = $(MINGW)gcc -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
 s52win32 : CC = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 #s52win32 : CC = $(MINGW)g++ -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
@@ -65,7 +65,7 @@ s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-201009
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 # -DS52_USE_RADAR     - when in RADAR mode
 
-CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2
+CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2 -DUSE_FAKE_AIS
 
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
                       -DS52_USE_GLIB2                                  \
@@ -77,7 +77,11 @@ s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --l
 s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 
 s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
-                     -DS52_USE_GLES2 -DS52_USE_EGL -DS52_USE_AFGLOW -DUSE_AIS -DS52_USE_MESA3D -DSET_SCREEN_SIZE
+                     -DS52_USE_EGL           \
+                     -DS52_USE_GLES2         \
+                     -DUSE_FAKE_AIS          \
+                     -DS52_USE_MESA3D        \
+                     -DSET_SCREEN_SIZE
 
 # same as s52eglx, but "gtk+-2.0" is added - no AIS
 s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` \
@@ -86,7 +90,7 @@ s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
 s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-3.0` \
                      -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2
 
-s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`     \
+s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`      \
                       -I$(OPENEV_HOME) -DGV_USE_DOUBLE_PRECISION_COORD \
                       -I.. -DS52_USE_GV
 
@@ -186,43 +190,6 @@ s52gtk2p: s52gtk2.c ../S52.h
 #$(CC) $(CFLAGS) -nodefaultlibs -nostartfiles s52gtk2.c ../*.o $(LIBS) -lproj -llcms -o $@
 
 
-############### DEPRECATED build: Android (Android.mk do the build now) ##############################
-
-android/dist/sdcard/s52droid/UI.xml: android/dist/sdcard/s52droid/UI.tmpl.xml
-	awk 'BEGIN { count_text    = 0;                                             \
-                 count_border  = 0;                                             \
-                 start_comment = 0;                                             \
-               }                                                                \
-               /^$$/  { getline;           }                                    \
-               /<!--/ { start_comment = 1; }                                    \
-               {                                                                \
-                if (start_comment == 1) {                                       \
-                  if ($$0 ~ /-->/) { start_comment = 0; }                       \
-                } else {                                                        \
-                  if ($$0 ~ /@\+id\/s52_text_/) {                               \
-                    str = "s52_text_" count_text++;                             \
-                    sub(/s52_text_/, str, $$0);                                 \
-                  }                                                             \
-                  if ($$0 ~ /@id\/s52_text_/) {                                 \
-                    str = "s52_text_" count_text-2;                             \
-                    sub(/s52_text_/, str, $$0);                                 \
-                  }                                                             \
-                  if ($$0 ~ /s52_border_/) {                                    \
-                    sub(/s52_border_/, "s52_border_" count_border++, $$0);      \
-                  }                                                             \
-                  print $$0;                                                    \
-                }                                                               \
-               }                                                                \
-    END { print("#define NBR_TEXT   ", count_text,   "// grep s52_text_   UI.xml" ) >  "sl4agps.cfg";   \
-          print("#define NBR_BORDER ", count_border, "// grep s52_border_ UI.xml" ) >> "sl4agps.cfg";   \
-        }'                                                                                              \
-    android/dist/sdcard/s52droid/UI.tmpl.xml > android/dist/sdcard/s52droid/UI.xml
-	adb push  android/dist/sdcard/s52droid/UI.xml /sdcard/s52droid/UI.xml
-
-sl4agps.cfg:
-	-rm android/dist/sdcard/s52droid/UI.xml
-
-
 ############### profiling ##############################
 #
 #
@@ -237,7 +204,7 @@ run: s52gtk2
 
 # watch ps -C s52gtk2 -o pid,ppid,rss,vsize,pcpu,pmem,time,cmd
 # watch ps -C s52gps  -o pid,ppid,rss,vsize,pcpu,pmem,time,cmd
-# watch ps -C s52eglx  -o pid,ppid,rss,vsize,pcpu,pmem,time,cmd
+# watch ps -C s52eglx -o pid,ppid,rss,vsize,pcpu,pmem,time,cmd
 
 
 ########### WIN32 STUFF ####################################
@@ -257,8 +224,7 @@ s52eglw32: LIBS = $(S52_LIBS) -L$(GTKPATH)/bin                \
 #../../../mingw/libgps.a
 
 
-s52win32: CFLAGS = -DS52_USE_GTK2                                                                            \
-                   -DS52_USE_GLIB2                                                                           \
+s52win32: CFLAGS = -DS52_USE_GLIB2                                                                           \
                    -mms-bitfields                                                                            \
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/include/gtk-2.0      \
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
@@ -270,8 +236,7 @@ s52win32: CFLAGS = -DS52_USE_GTK2                                               
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/include/gtkglext-1.0              \
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/lib/gtkglext-1.0/include
 
-s52eglw32:CFLAGS = -DS52_USE_GTK2                    \
-                   -DS52_USE_GLIB2                   \
+s52eglw32:CFLAGS = -DS52_USE_GLIB2                   \
                    -mms-bitfields                    \
                    -I$(GTKPATH)/../include           \
                    -I$(GTKPATH)/include/gtk-2.0      \
