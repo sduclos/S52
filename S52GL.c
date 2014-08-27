@@ -1386,6 +1386,8 @@ static int       _glCallList(S52_DListData *DListData)
         return FALSE;
     }
 
+    _checkError("_glCallList(): -start-");
+
 #ifdef S52_USE_GL2
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
     glEnableVertexAttribArray(_aPosition);
@@ -5750,6 +5752,8 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     // GL1 read in matrix from GPU
     glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
     glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
+    // draw to back buffer then swap
+    glDrawBuffer(GL_BACK);
 #endif
 
 
@@ -5780,7 +5784,13 @@ int        S52_GL_begin(S52_GL_cycle cycle)
             // user can draw on top of base
             // then call drawLast repeatdly
             if (TRUE == _fb_update) {
+#ifdef S52_USE_GL2
                 S52_GL_readFBPixels();
+#else
+                glDrawBuffer(GL_FRONT); // GL1
+                S52_GL_readFBPixels();
+                glDrawBuffer(GL_BACK);  // GL1
+#endif
                 _fb_update = FALSE;
             }
 
@@ -5912,7 +5922,7 @@ int        S52_GL_del(S52_obj *obj)
             if (GL_TRUE == glIsBuffer(vboID))
                 glDeleteBuffers(1, &vboID);
             else {
-                PRINTF("WARNING: ivalid FrretypeGL VBO\n");
+                PRINTF("WARNING: ivalid FreetypeGL VBO\n");
                 g_assert(0);
             }
             len   = 0;
@@ -6501,8 +6511,9 @@ guchar    *S52_GL_readFBPixels(void)
     // debug
     //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
 
-    glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
+#ifdef S52_USE_GL2
+    glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 #ifdef S52_USE_TEGRA2
     // Note: glCopyTexImage2D flip Y on TEGRA (Xoom)
     // Note: must be in sync with _fb_format
@@ -6522,8 +6533,11 @@ guchar    *S52_GL_readFBPixels(void)
 #else
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
 #endif  // S52_USE_TEGRA2
-
     glBindTexture(GL_TEXTURE_2D, 0);
+
+#else   // S52_USE_GL2
+    glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+#endif  // S52_USE_GL2
 
     _checkError("S52_GL_readFBPixels().. -end-");
 
