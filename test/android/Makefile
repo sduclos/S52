@@ -32,8 +32,7 @@ build.xml: AndroidManifest.xml
 # Failure [INSTALL_PARSE_FAILED_NO_CERTIFICATES]
 bin/$(APKNAME): dist/sysroot/lib/libS52.a
 	ndk-build -B V=1 NDK_DEBUG=1
-	ANDROID_SERIAL=07da448e         ant debug install
-	#ANDROID_SERIAL=027831c7438020d7 ant debug install
+	ant debug install
 
 clean:
 	-rm -f bin/$(APKNAME)
