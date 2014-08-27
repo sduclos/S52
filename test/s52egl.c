@@ -46,6 +46,11 @@
 
 //extern GMemVTable *glib_mem_profiler_table;
 
+#define DEG_TO_RAD     0.01745329238
+#define RAD_TO_DEG    57.29577951308232
+#define INCH2MM       25.4
+
+
 #ifdef S52_USE_ANDROID
 #include <jni.h>
 #include <errno.h>
@@ -69,12 +74,7 @@
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define  g_print    g_message
 
-
 //#include <glib-android/glib-android.h>  // g_android_init()
-
-#define DEG_TO_RAD     0.01745329238
-#define RAD_TO_DEG    57.29577951308232
-#define INCH2MM       25.4
 
 #define PATH     "/sdcard/s52droid"      // Android 4.2
 #define PLIB     PATH "/PLAUX_00.DAI"
@@ -2886,7 +2886,7 @@ static int      _X11_handleXevent(gpointer user_data)
             // FIXME: use switch on keysym
 
             // quit
-            if (XK_Escape == keysym) {
+            if (XK_Escape == keysym || XK_q == keysym) {
                 g_main_loop_quit(engine->main_loop);
                 return TRUE;
             }
