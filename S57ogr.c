@@ -324,13 +324,13 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 }
 
                 // CW if area is < 0, else CCW
-                PRINTF("AREA(ring=%i/%i): %s (%s)\n", iRing, nRingCount, (area <= 0.0) ? "CW" : "CCW", objname);
+                //PRINTF("AREA(ring=%i/%i): %s (%s)\n", iRing, nRingCount, (area <= 0.0) ? "CW" : "CCW", objname);
 
                 // CCW winding
                 if (area > 0.0) {
                     // if first ring reverse winding to CW
                     if (0==iRing) {
-                        PRINTF("DEBUG: reversing S-57 outer ring to CW (%s)\n", objname);
+                        //PRINTF("DEBUG: reversing S-57 outer ring to CW (%s)\n", objname);
                         //g_assert(0);
                         for (guint node=0; node<vert_count; ++node) {
                             ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, vert_count - node-1);
@@ -355,7 +355,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                         }
                     } else {
                         // if NOT first ring reverse winding (CCW)
-                        PRINTF("DEBUG: reversing S-57 inner ring to CCW (%s)\n", objname);
+                        //PRINTF("DEBUG: reversing S-57 inner ring to CCW (%s)\n", objname);
                         //g_assert(0);
 
                         for (guint node=0; node<vert_count; ++node) {
