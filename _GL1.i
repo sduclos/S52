@@ -380,23 +380,10 @@ static int       _renderAP_gl1(S52_obj *obj)
                 if (0==g_strcmp0("M_CSCL", S52_PL_getOBCL(obj)) ) {
                     //_renderAP_NODATA(obj);
                     return TRUE;
-                } else {
-                    // fill area with
-                    if (0==g_strcmp0("M_QUAL", S52_PL_getOBCL(obj)) ) {
-                        //_renderAP_NODATA(obj);
-                        return TRUE;
-                    }
                 }
             }
         }
         */
-    }
-
-    // fill area with
-    if (0==g_strcmp0("M_QUAL", S52_PL_getOBCL(obj)) ) {
-        //_renderAP_NODATA(obj);
-        //return TRUE;
-        PRINTF("M_QUAL\n");
     }
 
     // Bec      pattern stencil
