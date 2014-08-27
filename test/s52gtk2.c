@@ -85,11 +85,22 @@ static S52ObjectHandle _vrmeblA     = NULL;
 static S52ObjectHandle _vrmeblB     = NULL;
 static int             _originIsSet = FALSE;
 
+#ifdef S52_USE_AFGLOW
+#define MAX_AFGLOW_PT (12 * 20)   // 12 min @ 1 vessel pos per 5 sec
+//#define MAX_AFGLOW_PT 10        // debug
+static S52ObjectHandle _vessel_ais_afglow = NULL;
+
+#endif  // S52_USE_AFGLOW
+
+
+#define VESSELLABEL "~~MV Non Such~~ "           // bug: last char will be trimmed
+#define OWNSHPLABEL "OWNSHP\\n220 deg / 6.0 kt"
+
+
 // VESSEL
 static S52ObjectHandle _ownshp      = NULL;
 static S52ObjectHandle _vessel_arpa = NULL;
 static S52ObjectHandle _vessel_ais  = NULL;
-
 static S52ObjectHandle _pastrk      = NULL;
 
 static S52ObjectHandle _leglin1     = NULL;
@@ -740,32 +751,6 @@ static int      _setOWNSHP()
     return TRUE;
 }
 
-static int      _setVRMEBL()
-// FIXME: broken
-{
-    //int vrm             = TRUE;
-    //int ebl             = FALSE;
-    //int normalLineStyle = FALSE;
-    //int setOrigin       = FALSE;
-
-    // normal VRM/EBL
-    //_vrmeblA = S52_newVRMEBL(TRUE, TRUE, TRUE, FALSE);
-
-    // normal VRM (vrmark)
-    //--> _vrmeblA = S52_newVRMEBL(vrm, ebl, normalLineStyle, setOrigin);
-
-    // alterned VRM/EBL line style
-    //_vrmebl = S52_newVRMEBL(TRUE, TRUE, FALSE);
-
-    // alternate VRM/EBL, freely moveable
-    //_vrmeblB = S52_newVRMEBL(TRUE, TRUE, FALSE, TRUE);
-
-    // alternate VRM, freely moveable
-    //_vrmeblB = S52_newVRMEBL(TRUE, FALSE, FALSE, TRUE);
-
-    return TRUE;
-}
-
 static int      _setVESSEL()
 {
     //int dummy = 0;
@@ -798,6 +783,33 @@ static int      _setVESSEL()
     // VTS (this will not draw anything!)
     //_vessel_vts = S52_newVESSEL(3, dummy);
 
+
+    return TRUE;
+}
+
+
+static int      _setVRMEBL()
+// FIXME: broken
+{
+    //int vrm             = TRUE;
+    //int ebl             = FALSE;
+    //int normalLineStyle = FALSE;
+    //int setOrigin       = FALSE;
+
+    // normal VRM/EBL
+    //_vrmeblA = S52_newVRMEBL(TRUE, TRUE, TRUE, FALSE);
+
+    // normal VRM (vrmark)
+    //--> _vrmeblA = S52_newVRMEBL(vrm, ebl, normalLineStyle, setOrigin);
+
+    // alterned VRM/EBL line style
+    //_vrmebl = S52_newVRMEBL(TRUE, TRUE, FALSE);
+
+    // alternate VRM/EBL, freely moveable
+    //_vrmeblB = S52_newVRMEBL(TRUE, TRUE, FALSE, TRUE);
+
+    // alternate VRM, freely moveable
+    //_vrmeblB = S52_newVRMEBL(TRUE, FALSE, FALSE, TRUE);
 
     return TRUE;
 }
@@ -1346,13 +1358,13 @@ static int      _initS52()
     // init decoration (scale bar, North arrow, unit, calib.)
     S52_newCSYMB();
 
-    //*
     _setOWNSHP();
+    _setVESSEL();
 
+
+    /*
     _setVRMEBL();
     // FIXME: broken
-
-    _setVESSEL();
 
     _setPASTRK();
 
@@ -1397,7 +1409,8 @@ static void     realize(GtkWidget *widget, gpointer data)
 
 #ifdef USE_AIS
     // Note: data form AIS start too fast for the main loop
-    s52ais_initAIS(update_cb);
+    //s52ais_initAIS(update_cb);
+    s52ais_initAIS(_s52_draw_cb);
 
     // for continuous drawing
     g_idle_add(_draw, widget);
@@ -1766,9 +1779,41 @@ static gboolean motion_notify_event(GtkWidget      *widget,
     return TRUE;
 }
 
-#ifdef USE_AIS
-gboolean update_cb(void *dummy)
+#ifdef USE_FAKE_AIS
+static int      _s52_updTimeTag(void)
 {
+
+    // fake one AIS
+    if (NULL != _vessel_ais) {
+        gchar         str[80];
+        GTimeVal      now;
+        static double hdg = 0.0;
+
+        hdg = (hdg >= 359.0) ? 0.0 : hdg+1;  // fake rotating hdg
+
+        g_get_current_time(&now);
+        g_sprintf(str, "%s %lis", VESSELLABEL, now.tv_sec);
+        S52_setVESSELlabel(_vessel_ais, str);
+        S52_pushPosition(_vessel_ais, _view.cLat - 0.01, _view.cLon + 0.01, hdg);
+        S52_setVector(_vessel_ais, 1, hdg, 16.0);   // ground
+
+#ifdef S52_USE_AFGLOW
+        // stay at the same place but fill internal S52 buffer - in the search for possible leak
+        S52_pushPosition(_vessel_ais_afglow, _view.cLat, _view.cLon, 0.0);
+#endif
+    }
+
+
+    return TRUE;
+}
+#endif
+
+//#ifdef USE_AIS
+//gboolean update_cb(void *dummy)
+static int      _s52_draw_cb    (gpointer user_data)
+{
+    (void)user_data;
+
     GdkGLContext  *glcontext  = gtk_widget_get_gl_context (_winArea);
     GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(_winArea);
 
@@ -1782,6 +1827,9 @@ gboolean update_cb(void *dummy)
     if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
         return FALSE;
 
+#ifdef USE_FAKE_AIS
+    _s52_updTimeTag();
+#endif
 
     if (TRUE == S52_drawLast()) {
 //#if !defined(S52_USE_GLES2)
@@ -1815,7 +1863,7 @@ gboolean update_cb(void *dummy)
 
     return TRUE;
 }
-#endif
+//#endif
 
 int main(int argc, char **argv)
 {
@@ -1827,9 +1875,11 @@ int main(int argc, char **argv)
     //g_atexit(g_mem_profile);
     //return 1;
 
+    //g_thread_init(&vtable);
+    g_thread_init(NULL);
+
     gtk_init(&argc, &argv);
 
-    //g_thread_init(&vtable);
 
     gtk_gl_init(&argc, &argv);
 
@@ -1880,9 +1930,13 @@ int main(int argc, char **argv)
     gtk_widget_set_events(_winArea, GDK_POINTER_MOTION_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);
     //gtk_widget_set_events(_winArea, GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK);
 
+    //GTK_WIDGET_UNSET_FLAGS(_win,     GTK_DOUBLE_BUFFERED);
+    //GTK_WIDGET_UNSET_FLAGS(_winArea, GTK_DOUBLE_BUFFERED);
+
     // setup S52 display
     _initS52();
 
+    g_timeout_add(500, _s52_draw_cb, NULL); // 0.5 sec
 
 #if S52_USE_GLIB2
     g_signal_connect_after(G_OBJECT(_winArea), "realize",             G_CALLBACK(realize),         NULL);
