@@ -294,7 +294,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.139\n"
+      "libS52 0.140\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -1872,18 +1872,6 @@ DLL int    STD S52_done(void)
 
     return TRUE;
 }
-
-#if 0
-//  DEPRECATED
-DLL int    STD S52_setFont(int font)
-{
-    S52_CHECK_INIT;
-
-    S52_GL_setFontDL(font);
-
-    return font;
-}
-#endif
 
 #ifdef S52_USE_C_AGGR_C_ASSO
 static int        _linkRel2LNAM(_cell* c)
@@ -5419,7 +5407,6 @@ static GString   *_getMARINClassList()
     return classList;
 }
 
-//DLL const char * STD S52_getS57ObjClassList(const char *cellName)
 DLL cchar *STD S52_getS57ClassList(const char *cellName)
 {
     S52_CHECK_INIT;
