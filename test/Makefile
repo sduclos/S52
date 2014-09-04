@@ -26,18 +26,15 @@ CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=gnu99
 #CC   = g++ -fPIC -O0 -g -Wall
 CXX   = g++ -O0 -g -Wall
 
-#MINGW = /usr/bin/i586-mingw32msvc-
-MINGW = /usr/bin/i686-w64-mingw32-
+MINGW = /usr/bin/i586-mingw32msvc-
+#MINGW = /usr/bin/i686-w64-mingw32-
 #s52win32 : CC = $(MINGW)gcc -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
 s52win32 : CC = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 #s52win32 : CC = $(MINGW)g++ -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
 s52win32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
-s52win32 : GTKPATH   = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
-s52win32 : GTKGLPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/bin
 
 s52eglw32 : CC  = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
-s52eglw32 : GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32
 
 # NOTE: -malign-double: for 32bits system --useless on 64its
 # NOTE: GV_USE_DOUBLE_PRECISION_COORD not needed directly for S52
@@ -210,21 +207,43 @@ run: s52gtk2
 ########### WIN32 STUFF ####################################
 #
 #
-s52win32: LIBS = $(S52_LIBS) -L$(GTKPATH) -L$(GTKGLPATH)         \
-                 -lgtk-win32-2.0-0 -lgdk-win32-2.0-0             \
-                 -lgtkglext-win32-1.0-0 -lgdkglext-win32-1.0-0   \
-                 -lglib-2.0-0 -lgobject-2.0-0 -lglu32 -lopengl32 \
-                 -lgthread-2.0-0
 
-s52eglw32: LIBS = $(S52_LIBS) -L$(GTKPATH)/bin                \
+s52win32: LIBWIN32PATH = $(HOME)/dev/gis/openev-cvs/mingw
+s52win32: GTKPATH      = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
+s52win32: GTKGLPATH    = $(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/bin
+s52win32: LIBS = $(S52_LIBS)                                     \
+                 -L$(GTKPATH)                                    \
+                 -lglib-2.0-0 -lgobject-2.0-0 -lgthread-2.0-0    \
+                 -lgtk-win32-2.0-0 -lgdk-win32-2.0-0             \
+                 -lfreetype6                                     \
+                 -L$(GTKGLPATH)                                  \
+                 -lgtkglext-win32-1.0-0 -lgdkglext-win32-1.0-0   \
+                 $(LIBWIN32PATH)/libproj.a                       \
+                 $(LIBWIN32PATH)/libftgl.a                       \
+                 $(LIBWIN32PATH)/libgdal-1.dll                   \
+                 $(LIBWIN32PATH)/liblcms-1.dll                   \
+                 -lglu32 -lopengl32
+
+# test for Wine crash
+#s52win32: GTKPATH   = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/lib
+#s52win32: LIBS = $(S52_LIBS)                                     \
+#                 -L$(GTKPATH)                                    \
+#                 $(GTKPATH)/gtk-win32-2.0.lib $(GTKPATH)/gdk-win32-2.0.lib                 \
+#                 $(GTKPATH)/glib-2.0.lib $(GTKPATH)/gobject-2.0.lib $(GTKPATH)/gthread-2.0.lib          \
+#                 -L$(GTKGLPATH)                                  \
+#                 -lgtkglext-win32-1.0-0 -lgdkglext-win32-1.0-0   \
+#                 -lglu32 -lopengl32
+
+s52eglw32: GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
+s52eglw32: LIBS = $(S52_LIBS) -L$(GTKPATH)                    \
                  -lgtk-win32-2.0-0 -lgdk-win32-2.0-0          \
                  -lglib-2.0-0 -lgobject-2.0-0 -lgthread-2.0-0 \
-				 $(GTKPATH)/../libEGL.lib
+                 $(GTKPATH)/../libEGL.lib
 
 #../../../mingw/libgps.a
 
 
-s52win32: CFLAGS = -DS52_USE_GLIB2                                                                           \
+s52win32: CFLAGS = -DS52_USE_GLIB2 -DUSE_FAKE_AIS                                                            \
                    -mms-bitfields                                                                            \
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/include/gtk-2.0      \
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
@@ -241,14 +260,14 @@ s52eglw32:CFLAGS = -DS52_USE_GLIB2                   \
                    -I$(GTKPATH)/../include           \
                    -I$(GTKPATH)/include/gtk-2.0      \
                    -I$(GTKPATH)/include/glib-2.0     \
-				   -I$(GTKPATH)/include/cairo        \
-				   -I$(GTKPATH)/include/pango-1.0    \
-				   -I$(GTKPATH)/include/atk-1.0      \
+                   -I$(GTKPATH)/include/cairo        \
+                   -I$(GTKPATH)/include/pango-1.0    \
+                   -I$(GTKPATH)/include/atk-1.0      \
                    -I$(GTKPATH)/lib/glib-2.0/include \
                    -I$(GTKPATH)/lib/gtk-2.0/include
 
 s52win32: s52gtk2.c ../S52.h
-	$(CC) $(CFLAGS) -I.. s52gtk2.c $(LIBS) -o s52gtk2.exe
+	$(CXX) $(CFLAGS) -I.. s52gtk2.c $(LIBS) -o s52gtk2.exe
 
 s52win32gps: libs52gps.dll s52gtk2.c  ../S52.h
 	$(CXX) $(CFLAGS) -I.. s52gtk2.c $(LIBS) -L. -llibs52gps -o s52gtk2gps.exe
