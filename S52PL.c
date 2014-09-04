@@ -327,7 +327,7 @@ static GTree   *_table[TBL_NUM] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}
 // MAXINT-6 is how OGR tag an UNKNOWN value
 // see gdal/ogr/ogrsf_frmts/s57/s57.h:126
 // it is then turn into a string in gv_properties
-#define EMPTY_NUMBER_MARKER "2147483641"  /* MAXINT-6 */
+//#define EMPTY_NUMBER_MARKER "2147483641"  /* MAXINT-6 */
 
 // MAX_BUF == 1024 --for buffer overflow
 //#define LNFMT  "%1024[^\n]"   // line format

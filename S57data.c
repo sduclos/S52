@@ -40,7 +40,7 @@ static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 // MAXINT-6 is how OGR tag an UNKNOWN value
 // see gdal/ogr/ogrsf_frmts/s57/s57.h:126
 // it is then turn into a string in gv_properties
-#define EMPTY_NUMBER_MARKER "2147483641"  /* MAXINT-6 */
+//#define EMPTY_NUMBER_MARKER "2147483641"  /* MAXINT-6 */
 
 #define UNKNOWN  (1.0/0.0)   //HUGE_VAL   // INFINITY/NAN
 
@@ -272,6 +272,32 @@ int        S57_setMercPrj(double lat, double lon)
     // Note: true scale using the +lat_ts parameter, which is the latitude at which the scale is 1.
     // Note: +lon_wrap=180.0 convert clamp [-180..180] to clamp [0..360]
 
+
+/* http://en.wikipedia.org/wiki/Web_Mercator
+PROJCS["WGS 84 / Pseudo-Mercator",
+    GEOGCS["WGS 84",
+        DATUM["WGS_1984",
+            SPHEROID["WGS 84",6378137,298.257223563,
+                AUTHORITY["EPSG","7030"]],
+            AUTHORITY["EPSG","6326"]],
+        PRIMEM["Greenwich",0,
+            AUTHORITY["EPSG","8901"]],
+        UNIT["degree",0.0174532925199433,
+            AUTHORITY["EPSG","9122"]],
+        AUTHORITY["EPSG","4326"]],
+    PROJECTION["Mercator_1SP"],
+    PARAMETER["central_meridian",0],
+    PARAMETER["scale_factor",1],
+    PARAMETER["false_easting",0],
+    PARAMETER["false_northing",0],
+    UNIT["metre",1,
+        AUTHORITY["EPSG","9001"]],
+    AXIS["X",EAST],
+    AXIS["Y",NORTH],
+    EXTENSION["PROJ4","+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs"],
+    AUTHORITY["EPSG","3857"]]
+*/
+
     const char *templ = "+proj=merc +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
 
     if (NULL != _pjstr) {
@@ -334,7 +360,7 @@ int        S57_geo2prj3dv(guint npt, double *data)
         S57_initPROJ();
 
     if (NULL == _pjdst) {
-        PRINTF("ERROR: nothing to project to .. load a chart frist!\n");
+        PRINTF("ERROR: nothing to project to .. load a chart first!\n");
         // debug
         g_assert(0);
 

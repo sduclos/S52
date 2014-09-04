@@ -28,6 +28,11 @@
 #include <glib.h>       // guint, GArray, GData, GString, gconstpointer
 #define GCPTR gconstpointer
 
+// MAXINT-6 is how OGR tag an UNKNOWN value
+// see gdal/ogr/ogrsf_frmts/s57/s57.h:126
+// it is then turn into a string in gv_properties
+#define EMPTY_NUMBER_MARKER "2147483641"  /* MAXINT-6 */
+
 // internal geo enum used to link S52 to S57 geo
 // S57 object type have a PLib enum: P,L,A
 typedef enum S57_Obj_t {
