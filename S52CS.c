@@ -712,10 +712,10 @@ static int      _parseList(const char *str, char *buf)
 }
 
 static const char *_selSYcol(char *buf)
+// WARNING: string must be store be the caller right after the call
 {
     // FIXME: C1 3.1 use LIGHTS0x          and specs 3.2 use LIGHTS1x
-
-    const char *sym = ";SY(LIGHTDEF";            //sym = ";SY(LITDEF11";
+    const char *sym = ";SY(LIGHTDEF";      //sym = ";SY(LITDEF11";
 
     // max 1 color
     if ('\0' == buf[1]) {
@@ -729,9 +729,9 @@ static const char *_selSYcol(char *buf)
         // max 2 color
         if ('\0' == buf[2]) {
             if (_strpbrk(buf, "\001") && _strpbrk(buf, "\003"))
-                sym = ";SY(LIGHTS01";          //sym = ";SY(LIGHTS11";
+                sym = ";SY(LIGHTS01";      //sym = ";SY(LIGHTS11";
             else if (_strpbrk(buf, "\001") && _strpbrk(buf, "\004"))
-                sym = ";SY(LIGHTS02";          //sym = ";SY(LIGHTS12";
+                sym = ";SY(LIGHTS02";      //sym = ";SY(LIGHTS12";
         }
     }
 
@@ -899,7 +899,7 @@ static GString *DEPARE01 (S57_geo *geo)
     // there is no object number zero
     if (0 == objl) {
         PRINTF("ERROR: OBJL == 0 (this is impossible!)\n");
-        //g_assert(objl);
+        g_assert(0);
     }
 
     if (DRGARE == objl) {
@@ -1369,7 +1369,6 @@ static GString *LIGHTS05 (S57_geo *geo)
 
     if (NULL==sectr1str || NULL==sectr2str) {
         // not a sector light
-        const char *sym;
 
         //flare_at_45 = _setPtPos(geo, LIGHTLIST);
         //if (_setPtPos(geo, LIGHTLIST)) {
@@ -1378,17 +1377,19 @@ static GString *LIGHTS05 (S57_geo *geo)
                 flare_at_45 = TRUE;
         }
 
-        sym = _selSYcol(colist);
+        //const char *sym = _selSYcol(colist);
 
         if (_strpbrk(catlit, "\001\020")) {
             if (NULL != orientstr){
-                g_string_append(lights05, sym);
+                //g_string_append(lights05, sym);
+                g_string_append(lights05, _selSYcol(colist));
                 g_string_sprintfa(lights05, ",%s)", orientstr->str);
                 g_string_append(lights05, ";TE('%03.0lf deg','ORIENT',3,3,3,'15110',3,1,CHBLK,23)" );
             } else
                 g_string_append(lights05, ";SY(QUESMRK1)");
         } else {
-            g_string_append(lights05, sym);
+            //g_string_append(lights05, sym);
+            g_string_append(lights05, _selSYcol(colist));
             if (flare_at_45)
                 g_string_append(lights05, ", 45)");
             else
@@ -1420,9 +1421,10 @@ static GString *LIGHTS05 (S57_geo *geo)
 
     if (sweep<1.0 || sweep==360.0) {
         // handle all round light
-        const char *sym = _selSYcol(colist);;
 
-        g_string_append(lights05, sym);
+        //const char *sym = _selSYcol(colist);
+        //g_string_append(lights05, sym);
+        g_string_append(lights05, _selSYcol(colist));
         g_string_append(lights05, ",135)");
 
         GString *litdsn01 = _LITDSN01(geo);
@@ -2431,7 +2433,6 @@ static GString *SLCONS03 (S57_geo *geo)
     // WARNING: not explicitly specified in S-52 !!
     // FIXME: this is to put AC(DEPIT) --intertidal area
 
-    /* */
     if (AREAS_T == S57_getObjtype(geo)) {
         GString    *seabed01  = NULL;
         GString    *drval1str = S57_getAttVal(geo, "DRVAL1");
@@ -2458,8 +2459,6 @@ static GString *SLCONS03 (S57_geo *geo)
         }
 
     }
-    /* */
-
 
     if (NULL != cmdw) {
         if (NULL == slcons03)
@@ -2563,7 +2562,7 @@ static GString *RESARE02 (S57_geo *geo)
                     else {
                         if (_strpbrk(restrn, "\011\012\013\014\015"))
                             symb = ";SY(FSHRES71)";
-                        else{
+                        else {
                             if (NULL != catreastr && _strpbrk(catrea, "\004\005\006\007\012\022\024\026\027\030"))
                                 symb = ";SY(FSHRES71)";
                             else
@@ -3380,6 +3379,11 @@ static GString *WRECKS02 (S57_geo *geo)
     //if (0==strcmp("2135161787", FIDNstr->str)) {
     //    PRINTF("%s\n",FIDNstr->str);
     //}
+    // CA279037.000
+    //if (6246 == S57_getGeoID(geo)) {
+    //    PRINTF("WRECKS found\n");
+    //}
+
 
     if (NULL != valsoustr) {
         valsou      = S52_atof(valsoustr->str);
@@ -3394,10 +3398,8 @@ static GString *WRECKS02 (S57_geo *geo)
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
             GString *catwrkstr = S57_getAttVal(geo, "CATWRK");
 
-            // S52 BUG: negative depth
-            // FIX: change to positive
             if (NULL == watlevstr) // default (missing)
-                depth_value = 15.0;
+                depth_value = -15.0;
             else {
                 // incidentaly EMPTY_NUMBER_MARKER str start with a '2' and
                 // have the same value as the case '2'
@@ -3408,14 +3410,11 @@ static GString *WRECKS02 (S57_geo *geo)
 
                 switch (*watlevstr->str) { // ambiguous
                     case '1':
-                    //case '2': depth_value = -15.0 ; break;
-                    case '2': depth_value =  15.0 ; break;
+                    case '2': depth_value = -15.0 ; break;
                     case '3': depth_value =   0.01; break;
-                    //case '4': depth_value = -15.0 ; break;
-                    case '4': depth_value =  15.0 ; break;
+                    case '4': depth_value = -15.0 ; break;
                     case '5': depth_value =   0.0 ; break;
-                    //case '6': depth_value = -15.0 ; break;
-                    case '6': depth_value =  15.0 ; break;
+                    case '6': depth_value = -15.0 ; break;
                     //default :{
                     //     if (NULL != catwrkstr) {
                     //        switch (*catwrkstr->str) {
@@ -3433,8 +3432,7 @@ static GString *WRECKS02 (S57_geo *geo)
                         case '1': depth_value =  20.0; break;
                         case '2': depth_value =   0.0; break;
                         case '4':
-                        //case '5': depth_value = -15.0; break;
-                        case '5': depth_value =  15.0; break;
+                        case '5': depth_value = -15.0; break;
                     }
                 }
             }
@@ -3464,13 +3462,15 @@ static GString *WRECKS02 (S57_geo *geo)
                 } else
                     wrecks02str = g_string_new(";SY(DANGER02)");
 
+                // !!! - check this - doesn't make sens
                 if (NULL != udwhaz03str)
                     g_string_append(wrecks02str, udwhaz03str->str);
                 if (NULL != quapnt01str)
                     g_string_append(wrecks02str, quapnt01str->str);
 
             } else {
-                const char *sym    = NULL;
+                //const char *sym    = NULL;
+                const char *sym    = ";SY(WRECKS05)";  // default
                 GString *catwrkstr = S57_getAttVal(geo, "CATWRK");
                 GString *watlevstr = S57_getAttVal(geo, "WATLEV");
 
@@ -3480,21 +3480,24 @@ static GString *WRECKS02 (S57_geo *geo)
                     else
                         if ('2'==*catwrkstr->str && '3'==*watlevstr->str)
                             sym = ";SY(WRECKS05)";
-                } else {
-                    if (NULL!=catwrkstr && ('4' == *catwrkstr->str || '5' == *catwrkstr->str)) {
-                        sym = ";SY(WRECKS01)";
-                    } else {
+                }
+                //else {
+                if (NULL!=catwrkstr && ('4' == *catwrkstr->str || '5' == *catwrkstr->str)) {
+                    sym = ";SY(WRECKS01)";
+                }
+                //else {
                         if (NULL != watlevstr) {
                             if ('1' == *watlevstr->str ||
                                 '2' == *watlevstr->str ||
                                 '5' == *watlevstr->str ||
                                 '4' == *watlevstr->str )
                                 sym = ";SY(WRECKS01)";
-                        } else
-                            sym = ";SY(WRECKS05)"; // default
+                        }
+                        //else
+                        //    sym = ";SY(WRECKS05)"; // default
 
-                    }
-                }
+                    //}
+                //}
 
                 wrecks02str = g_string_new(sym);
                 if (NULL != quapnt01str)
