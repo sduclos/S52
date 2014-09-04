@@ -1419,6 +1419,8 @@ static void     realize(GtkWidget *widget, gpointer data)
     //g_print("install hook to loop on gtk_widget_draw when idle\n");
 #endif
 
+    // setup S52 display
+    //_initS52();
 }
 
 static gboolean configure_event(GtkWidget         *widget,
@@ -1876,10 +1878,9 @@ int main(int argc, char **argv)
     //return 1;
 
     //g_thread_init(&vtable);
-    g_thread_init(NULL);
+    //g_thread_init(NULL);
 
     gtk_init(&argc, &argv);
-
 
     gtk_gl_init(&argc, &argv);
 
@@ -1912,10 +1913,10 @@ int main(int argc, char **argv)
 #if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
     int mode = (GdkGLConfigMode) (GDK_GL_MODE_RGBA | GDK_GL_MODE_DOUBLE);
 #else
-    int mode = (GdkGLConfigMode) (GDK_GL_MODE_RGBA | GDK_GL_MODE_DOUBLE | GDK_GL_MODE_STENCIL );
+    int mode = (GDK_GL_MODE_RGBA | GDK_GL_MODE_DOUBLE | GDK_GL_MODE_STENCIL );
 #endif
 
-    GdkGLConfig *glconfig = gdk_gl_config_new_by_mode(mode);
+    GdkGLConfig *glconfig = gdk_gl_config_new_by_mode((GdkGLConfigMode)mode);
     if (NULL == glconfig) {
         g_print("gdk_gl_config_new_by_mode() failed .. exit\n");
         goto exit;
