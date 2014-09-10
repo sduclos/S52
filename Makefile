@@ -425,9 +425,9 @@ s52gtk2p      : $(OBJS_S52)  test/s52gtk2p  # static link
 s52clutter    : libS52.so    test/s52clutter
 s52clutter.js : libS52.so    test/s52clutter.js
 s52qt4        : libS52.so    test/s52qt4
-#s52win32      : libS52.dll   test/s52win32 s52win32fini
+s52win32      : libS52.dll   test/s52win32 s52win32fini
 #s52win32      : libS52.dll   test/s52win32
-s52win32      : libS52.dll.a   test/s52win32
+#s52win32      : libS52.dll.a   test/s52win32
 #s52win32gps  : libS52.dll   test/s52win32gps s52win32fini
 s52eglw32     : libS52.dll   test/s52eglw32
 s52gtk2gps    : libS52.so    test/s52gtk2gps
@@ -489,9 +489,11 @@ s52eglw32 : LIBS = $(LIBWIN32PATH)/libproj.a              \
                    $(LIBWIN32PATH)/libGLESv2.lib          \
                    -L$(GTKPATH) -lglib-2.0-0 -lfreetype6
 
-libS52.dll.a: $(OBJS_S52)
+libS52.dll: $(OBJS_S52)
 	$(MINGW)objcopy --redefine-sym S52raz=_S52raz --redefine-sym S52razLen=_S52razLen S52raz-3.2.rle.o S52raz-3.2.rle.o
-	#$(CXX) -O0 -g -Wall -mms-bitfields -shared -Wl,--add-stdcall-alias $(OBJS_S52) $(LIBS) -o $@
+	$(CXX) -O0 -g -Wall -mms-bitfields -shared -Wl,--add-stdcall-alias $(OBJS_S52) $(LIBS) -o $@
+
+libS52.dll.a: $(OBJS_S52)
 	$(AR) rc   libS52.dll.a $(OBJS_S52) 
 	$(RANLIB)  libS52.dll.a
 
