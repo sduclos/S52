@@ -87,6 +87,10 @@ typedef enum _colorTableStat {
 
 #define S52_COL_NMLN   5     // color name lenght
 #define S52_COL_NUM   63     // number of color (#64 is transparent)
+
+// Following 4 additional colors could be made available as alternative colors for non-charted items.
+// Draft PLib 4.0 has 4 more color of MIO's: "MARBL", "MARCY", "MARMG", "MARWH"
+//#define S52_COL_NUM   67     // number of color
 static const char *_colorName[] = {
     "NODTA", "CURSR", "CHBLK", "CHGRD", "CHGRF", "CHRED", "CHGRN", "CHYLW",
     "CHMGD", "CHMGF", "CHBRN", "CHWHT", "SCLBR", "CHCOR", "LITRD", "LITGN",
@@ -96,6 +100,7 @@ static const char *_colorName[] = {
     "SHIPS", "PSTRK", "SYTRK", "PLRTE", "APLRT", "UINFD", "UINFF", "UIBCK",
     "UIAFD", "UINFR", "UINFG", "UINFO", "UINFB", "UINFM", "UIBDR", "UIAFF",
     "OUTLW", "OUTLL", "RES01", "RES02", "RES03", "BKAJ1", "BKAJ2"
+//    ,"MARBL", "MARCY", "MARMG", "MARWH"
 };
 
 // FIXME: boken optimisation
@@ -749,7 +754,12 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
     while (LUPlist) {
         int      skipLUP   = 0;   //
         int      nATTmatch = 0;   // nbr of att value match for this LUP
-        char    *attlv     = LUPlist->ATTC->str; // ATTL+ATTV
+        char    *attlv     = (NULL == LUPlist->ATTC) ? NULL : LUPlist->ATTC->str; // ATTL+ATTV
+
+        if (NULL == attlv) {
+            LUPlist = LUPlist->OBCLnext;
+            continue;
+        }
 
         if (trace)
             _dumpATT(attlv);
@@ -1083,7 +1093,7 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
 
                     // Look-Up Comment
                     if (S52_PRIO_NOPRIO != c[3])
-                        sscanf(c+3, "%d",&obj->LUCM);
+                        sscanf(c+3, "%d", &obj->LUCM);
                 }
 
                 // continue to fill array with expanded CS
@@ -1192,7 +1202,7 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
 
     if (S52_VC_SP!=*str && S52_VC__P!=*(str+1)) {
         PRINTF("FIXME: color command is not the verry first one!\n");
-        g_assert(0);
+        //g_assert(0);
     }
 
 
@@ -1444,9 +1454,9 @@ static int        _readColor(_PL *fp, GArray *colors)
 
             *c1 = c;
         } else {
-            // something broke the PLib !?
-            PRINTF("ERROR: color %s not in ref table\n", c.colName);
-            g_assert(0);
+            // PLib 4.0 has 4 more color of MIO's: "MARBL", "MARCY", "MARMG", "MARWH"
+            PRINTF("WARNING: color %s not in ref table\n", c.colName);
+            //g_assert(0);
         }
 
         _readS52Line(fp, _pBuf);
@@ -1838,7 +1848,7 @@ static int        _parseSYMB(_PL *fp)
             _parsePos(&symb->pos.symb, _pBuf+18, FALSE);
         }
 
-        FIELD(SBTM) { PRINTF("ERROR: symbol bitmap not in specs\n"); }
+        FIELD(SBTM) { PRINTF("WARNING: symbol bitmap not processed\n"); }
         FIELD(SXPO) { symb->exposition.SXPO        = g_string_append( symb->exposition.SXPO, _pBuf+9); }
         FIELD(SVCT) { symb->shape.symb.vector.SVCT = g_string_append( symb->shape.symb.vector.SVCT, _pBuf+9); }
         FIELD(SCRF) { symb->colRef.SCRF            = g_string_new(_pBuf+9); } // CIDX + CTOK
