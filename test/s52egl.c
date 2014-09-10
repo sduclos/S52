@@ -78,7 +78,7 @@
 
 #define PATH     "/sdcard/s52droid"      // Android 4.2
 #define PLIB     PATH "/PLAUX_00.DAI"
-#define COLS     PATH "/plib_COLS-3.4.1.rle"
+#define COLS     PATH "/plib_COLS-3.4-a.rle"
 #define GPS      PATH "/bin/sl4agps"
 #define AIS      PATH "/bin/s52ais"
 #define PID           ".pid"
@@ -88,7 +88,7 @@
 
 #define  PATH "/home/sduclos/dev/gis/data"
 #define  PLIB "PLAUX_00.DAI"
-#define  COLS "plib_COLS-3.4.1.rle"
+#define  COLS "plib_COLS-3.4-a.rle"
 #define  LOGI(...)   g_print(__VA_ARGS__)
 #define  LOGE(...)   g_print(__VA_ARGS__)
 
@@ -1217,7 +1217,22 @@ static int      _s52_init       (s52engine *engine)
         S52_setViewPort(0, 0, w, h);
     }
 
+    S52_loadPLib(PLIB);
+    //S52_loadPLib(COLS);
+
+    // Inland Waterway rasterization rules (form OpenCPN)
+    S52_loadPLib("S52RAZDS.RLE");
+
+    // load PLib in s52.cfg
+    //S52_loadPLib(NULL);
+
+
 #ifdef S52_USE_ANDROID
+
+    // set GDAL data path
+    g_setenv("S57_CSV", "/sdcard/s52droid/gdal_data", 1);
+
+
     // read cell location fron s52.cfg
     //S52_loadCell(NULL, NULL);
     // Tadoussac
@@ -1251,6 +1266,17 @@ static int      _s52_init       (s52engine *engine)
 #endif
 
 #else  // S52_USE_ANDROID
+
+    // Note:
+    // GDAL profile (s57attributes_<profile>.csv, s57objectclasses_<profile>.csv)
+    // iw: Inland Waterway profile add object classe OBCL:17000-17065 (and attributes)
+    //g_setenv("S57_PROFILE", "iw", 1);
+    g_setenv("S57_PROFILE", "iw2", 1);
+
+    // GDAL debug info ON
+    g_setenv("CPL_DEBUG", "ON", 1);
+
+
 
     // read cell location fron s52.cfg
     S52_loadCell(NULL, NULL);
@@ -1294,17 +1320,11 @@ static int      _s52_init       (s52engine *engine)
 #endif
 
     // debug - remove clutter from this symb in SELECT mode
-    //S52_setS57ObjClassSupp("M_QUAL", TRUE);  // supress display of the U pattern
-    S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
+    S52_setS57ObjClassSupp("M_QUAL", TRUE);  // supress display of the U pattern
+    //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
     //S52_toggleObjClassON ("M_QUAL");           //  suppression ON
     //S52_toggleObjClassOFF("M_QUAL");         //  suppression OFF
 
-
-    S52_loadPLib(PLIB);
-    //S52_loadPLib(COLS);
-
-    // load PLib in s52.cfg
-    S52_loadPLib(NULL);
 
     // -- DEPTH COLOR ------------------------------------
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
