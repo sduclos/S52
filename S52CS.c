@@ -630,7 +630,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
 //    return _vecper;
 //}
 
-//static int      _overlap(S57_geo *geoA, S57_geo *geoB)
 static int      _sectOverlap(S57_geo *geoA, S57_geo *geoB)
 // TRUE if A overlap B and arc of A is bigger, else FALSE
 {
@@ -760,7 +759,6 @@ static GString *CLRLIN01 (S57_geo *geo)
             g_string_append(clrlin01, ";TX('NLT',2,1,2,'15110',-1,-1,CHBLK,51)");
 
     }
-    //PRINTF("Mariner's object not drawn\n");
 
     return clrlin01;
 }
@@ -925,6 +923,19 @@ static GString *DEPARE02 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(DEPARE02) --> CS(DEPARE01)\n");
+        PRINTF("       (this msg will not repeat)\n");
+        silent = TRUE;
+    }
+
+    return DEPARE01(geo);
+}
+
+static GString *DEPARE03 (S57_geo *geo)
+{
+    static int silent = FALSE;
+
+    if (FALSE == silent) {
+        PRINTF("FIXME: CS(DEPARE03) --> CS(DEPARE01)\n");
         PRINTF("       (this msg will not repeat)\n");
         silent = TRUE;
     }
@@ -1164,7 +1175,6 @@ static GString *DEPCNT03 (S57_geo *geo)
         silent = TRUE;
     }
 
-    //return g_string_new(";LC(QUESMRK1)");
     return DEPCNT02(geo);
 }
 
@@ -1212,6 +1222,30 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
     }
 
     return least_depth;
+}
+
+static double   _DEPVAL02(S57_geo *geo, double least_depth)
+// PLib-4.0 draft
+// Remarks: If the value of the attribute VALSOU for a wreck, rock or obstruction is
+//          missing/unknown, CSP DEPVAL will establish a default 'LEAST_DEPTH'
+//          from the attribute DRVAL1 of the underlying depth area, and
+//          pass it to conditional procedures OBSTRN and WRECKS. However
+//          this procedure is not valid if the value of EXPSOU for the object is 2
+//          (object is shoaler than the DRVAL1 of the surrounding depth area), or
+//          is unknown. It is also not valid if the value of WATLEV for the object is
+//          other than 3 (object is always underwater). In either of these cases
+//          the default procedures in conditional procedures OBSTRN and
+//          WRECKS are used.
+{
+    static int silent = FALSE;
+
+    if (FALSE == silent) {
+        PRINTF("FIXME: _DEPVAL02 --> _DEPVAL01\n");
+        PRINTF("       (this msg will not repeat)\n");
+        silent = TRUE;
+    }
+
+    return _DEPVAL01(geo, least_depth);
 }
 
 static GString *LEGLIN02 (S57_geo *geo)
@@ -1516,6 +1550,20 @@ static GString *LIGHTS05 (S57_geo *geo)
     return lights05;
 }
 
+static GString *LIGHTS06 (S57_geo *geo)
+{
+    static int silent = FALSE;
+
+    if (FALSE == silent) {
+        PRINTF("FIXME: CS(LIGHTS06) --> CS(LIGHTS05)\n");
+        PRINTF("       (this msg will not repeat)\n");
+        silent = TRUE;
+    }
+
+    return LIGHTS05(geo);
+}
+
+
 static GString *_LITDSN01(S57_geo *geo)
 // Remarks: In S-57 the light characteristics are held as a series of attributes values. The
 // mariner may wish to see a light description text string displayed on the
@@ -1567,7 +1615,7 @@ static GString *_LITDSN01(S57_geo *geo)
 
                 //2: rear/upper light
                 //3: front/lower light
-            	case 3:
+                case 3:
                 //4: leading light           IP 20.1-3;  475.6;
                 case 4: break;
 
@@ -1582,9 +1630,9 @@ static GString *_LITDSN01(S57_geo *geo)
                 //10: subsidiary light        IP 42;      471.8;
                 //11: spotlight
                 //12: front
-            	case 12: break;
+                case 12: break;
                 //13: rear
-            	case 13: break;
+                case 13: break;
                 //14: lower
                 //15: upper
                 //16: moire' effect         IP 31;      475.8;
@@ -3612,6 +3660,32 @@ static GString *WRECKS03 (S57_geo *geo)
     return WRECKS02(geo);
 }
 
+static GString *WRECKS04 (S57_geo *geo)
+{
+    static int silent = FALSE;
+
+    if (FALSE == silent) {
+        PRINTF("FIXME: CS(WRECKS04) --> CS(WRECKS02)\n");
+        PRINTF("       (this msg will not repeat)\n");
+        silent = TRUE;
+    }
+
+    return WRECKS02(geo);
+}
+
+static GString *WRECKS05 (S57_geo *geo)
+{
+    static int silent = FALSE;
+
+    if (FALSE == silent) {
+        PRINTF("FIXME: CS(WRECKS05) --> CS(WRECKS02)\n");
+        PRINTF("       (this msg will not repeat)\n");
+        silent = TRUE;
+    }
+
+    return WRECKS02(geo);
+}
+
 static GString *QUESMRK1 (S57_geo *geo)
 // this is a catch all, the LUP link to unknown CS
 {
@@ -3649,7 +3723,12 @@ S52_MAR_TIME_TAGS           ?
 
 //CS          called by S57 objects
 DEPARE01  <-  DEPARE DRGARE
+DEPARE02  <-  ????
+DEPARE03  <-  DEPARE DRGARE
+
 DEPCNT02  <-  DEPARE DEPCNT
+DEPCNT03  <-  DEPARE DEPCNT
+
 LIGHTS05  <-  LIGHTS
 OBSTRN04  <-  OBSTRN UWTROC
 RESARE02  <-  RESARE
@@ -3683,40 +3762,96 @@ S52_CS_condSymb S52_CS_condTable[] = {
    {"DATCVR02", DATCVR02},   // ????
    {"DEPARE01", DEPARE01},   // _RESCSP01, _SEABED01
    {"DEPARE02", DEPARE02},   // ????
+   {"DEPARE03", DEPARE03},   // PLib 4.0 draft: _RESTRN03, _SEABED01, _SAFCON01
    {"DEPCNT02", DEPCNT02},   //
-   {"DEPCNT03", DEPCNT03},   // ????
+   {"DEPCNT03", DEPCNT03},   // PLib 4.0 draft: _SAFCON02
    {"LEGLIN02", LEGLIN02},   //
    {"LEGLIN03", LEGLIN03},   // ????
    {"LIGHTS05", LIGHTS05},   // _LITDSN01
+   {"LIGHTS06", LIGHTS06},   // PLib 4.0 draft:_LITDSN01
    {"OBSTRN04", OBSTRN04},   // _DEPVAL01, _QUAPNT01, _SNDFRM02, _UDWHAZ03
    {"OBSTRN05", OBSTRN05},   // ????
    {"OBSTRN06", OBSTRN06},   // ????
+   //{"OBSTRN07", OBSTRN07},   // PLib 4.0 draft:
    {"OWNSHP02", OWNSHP02},   //
    {"PASTRK01", PASTRK01},   //
-   {"QUAPOS01", QUAPOS01},   // _QUALIN01, _QUAPNT01
+   {"QUAPOS01", QUAPOS01},   // PLib 4.0 draft: _QUALIN01, _QUAPNT02
    {"RESARE02", RESARE02},   //
    {"RESARE03", RESARE03},   // ????
-   {"RESTRN01", RESTRN01},   // _RESCSP01
+   //{"RESARE04", RESARE04},   // PLib 4.0 draft:
+   {"RESTRN01", RESTRN01},   // PLib 4.0 draft: _RESCSP01
    {"SLCONS03", SLCONS03},   //
+   //{"SLCONS04", SLCONS04},   // PLib 4.0 draft:
    {"SOUNDG02", SOUNDG02},   // _SNDFRM02
-   {"TOPMAR01", TOPMAR01},   //
+   //{"SOUNDG03", SOUNDG03},   // PLib 4.0 draft:
+   {"TOPMAR01", TOPMAR01},   // PLib 4.0 draft:
    {"VESSEL01", VESSEL01},   //
    {"VESSEL02", VESSEL02},   // ????
    {"VRMEBL01", VRMEBL01},   //
    {"VRMEBL02", VRMEBL02},   // ????
    {"WRECKS02", WRECKS02},   // _DEPVAL01, _QUAPNT01, _SNDFRM02, _UDWHAZ03
    {"WRECKS03", WRECKS03},   // ????
+   {"WRECKS04", WRECKS04},   // ????
+   {"WRECKS05", WRECKS05},   // PLib 4.0 draft: _DEPVAL02 _QUAPNT02 _SNDFRM03 _UDWHAZ05
    {"QUESMRK1", QUESMRK1},
    {"########", NULL}
 };
 
-/* new CS not handled
-DEPVAL02
-QUAPNT02
-RESCSP02
-SAFCON01
-SNDFRM03
-SYMINSnn'
-UDWHAZ04
-WRECKS04
+/* PLib 4.0 draft CS   PLib 3.1
+DEPVAL02               _DEPVAL01
+LITDSN02               _LITDSN01
+RESCSP02               _RESCSP01
+SAFCON01               _SAFCON01
+SEABED01               _SEABED01
+SNDFRM04               _SNDFRM03
+UDWHAZ05               _UDWHAZ05
 */
+
+//   {"SYMINS02", SYMINS02},   // PLib 4.0 draft:
+
+/* PLib 4.0 draft: share Sub-Procedure
+
+S-57 Object(Geometry) CSP name    Sub-Procedure name
+---------------------------------------------------------------------
+
+DEPARE(a)             DEPAREnn    RESCSPnn SEABEDnn SAFCONnn
+DRGARE(a)
+
+DEPARE(l)             DEPCNTnn    SAFCONnn
+DEPCNT(l)
+
+LIGHTS(p)             LIGHTS06    LITDSNnn
+
+OBSTRN(pla)           OBSTRN07    DEPVALnn QUAPNTnn SNDFRMnn UDWHAZnn
+UWTROC(p)
+
+LNDARE(pl)            QUAPOS01    QUAPNTnn QUALINnn
+COALNE(l)
+
+RESARE(a)             RESAREnn
+
+ACHARE(a)             RESTRNnn    RESCSPnn
+CBLARE(a)
+DMPGRD(a)
+DWRTPT(a)
+FAIRWY(a)
+ICNARE(a)
+ISTZNE(a)
+MARCUL(a)
+MIPARE(a)
+OSPARE(a)
+PIPARE(a)
+PRCARE(a)
+SPLARE(a)
+SUBTLN(a)
+TESARE(a)
+TSSCRS(a)
+TSSLPT(a)
+TSSRON(a)
+
+SOUNDG(p)            SOUNDGnn     SNDFRMnn
+
+WRECKS(pa)           WRECKSnn     DEPVALnn QUAPNTnn SNDFRMnn UDWHAZnn
+
+*/
+
