@@ -5907,27 +5907,28 @@ int        S52_GL_del(S52_obj *obj)
         // delete VBO when program terminated
         if (GL_TRUE == glIsBuffer(vboID)) {
             glDeleteBuffers(1, &vboID);
+            vboID = 0;
+            S57_setPrimDList(prim, vboID);
         }else {
-            PRINTF("WARNING: ivalid VBO\n");
+            PRINTF("WARNING: ivalid PrimData VBO\n");
             g_assert(0);
         }
 
-        vboID = 0;
-        S57_setPrimDList(prim, vboID);
-
 #ifdef S52_USE_FREETYPE_GL
-        {   // delete text
+        {   // delete text if any
             guint len;
             guint vboID = S52_PL_getFreetypeGL_VBO(obj, &len);
-            if (GL_TRUE == glIsBuffer(vboID))
+            if (GL_TRUE == glIsBuffer(vboID)) {
                 glDeleteBuffers(1, &vboID);
-            else {
-                PRINTF("WARNING: ivalid FreetypeGL VBO\n");
-                g_assert(0);
+
+                len   = 0;
+                vboID = 0;
+                S52_PL_setFreetypeGL_VBO(obj, vboID, len);
             }
-            len   = 0;
-            vboID = 0;
-            S52_PL_setFreetypeGL_VBO(obj, vboID, len);
+            //else {
+            //        PRINTF("WARNING: ivalid FreetypeGL VBOID(%i)\n", vboID);
+            //g_assert(0);
+            //    }
         }
 #endif
 
