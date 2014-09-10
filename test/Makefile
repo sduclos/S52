@@ -208,31 +208,32 @@ run: s52gtk2
 #
 #
 
-s52win32: LIBWIN32PATH = $(HOME)/dev/gis/openev-cvs/mingw
-s52win32: GTKPATH      = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
-s52win32: GTKGLPATH    = $(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/bin
-s52win32: LIBS = $(S52_LIBS)                                     \
-                 -L$(GTKPATH)                                    \
-                 -lglib-2.0-0 -lgobject-2.0-0 -lgthread-2.0-0    \
-                 -lgtk-win32-2.0-0 -lgdk-win32-2.0-0             \
-                 -lfreetype6                                     \
-                 -L$(GTKGLPATH)                                  \
-                 -lgtkglext-win32-1.0-0 -lgdkglext-win32-1.0-0   \
-                 $(LIBWIN32PATH)/libproj.a                       \
-                 $(LIBWIN32PATH)/libftgl.a                       \
-                 $(LIBWIN32PATH)/libgdal-1.dll                   \
-                 $(LIBWIN32PATH)/liblcms-1.dll                   \
-                 -lglu32 -lopengl32
-
 # test for Wine crash
-#s52win32: GTKPATH   = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/lib
+#s52win32: LIBWIN32PATH = $(HOME)/dev/gis/openev-cvs/mingw
+#s52win32: GTKPATH      = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
+#s52win32: GTKGLPATH    = $(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/bin
 #s52win32: LIBS = $(S52_LIBS)                                     \
 #                 -L$(GTKPATH)                                    \
-#                 $(GTKPATH)/gtk-win32-2.0.lib $(GTKPATH)/gdk-win32-2.0.lib                 \
-#                 $(GTKPATH)/glib-2.0.lib $(GTKPATH)/gobject-2.0.lib $(GTKPATH)/gthread-2.0.lib          \
+#                 -lglib-2.0-0 -lgobject-2.0-0 -lgthread-2.0-0    \
+#                 -lgtk-win32-2.0-0 -lgdk-win32-2.0-0             \
+#                 -lfreetype6                                     \
 #                 -L$(GTKGLPATH)                                  \
 #                 -lgtkglext-win32-1.0-0 -lgdkglext-win32-1.0-0   \
+#                 $(LIBWIN32PATH)/libproj.a                       \
+#                 $(LIBWIN32PATH)/libftgl.a                       \
+#                 $(LIBWIN32PATH)/libgdal-1.dll                   \
+#                 $(LIBWIN32PATH)/liblcms-1.dll                   \
 #                 -lglu32 -lopengl32
+
+s52win32: GTKPATH   = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/lib
+s52win32: GTKGLPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/bin
+s52win32: LIBS = $(S52_LIBS)                                     \
+                 -L$(GTKPATH)                                    \
+                 $(GTKPATH)/gtk-win32-2.0.lib $(GTKPATH)/gdk-win32-2.0.lib                 \
+                 $(GTKPATH)/glib-2.0.lib $(GTKPATH)/gobject-2.0.lib $(GTKPATH)/gthread-2.0.lib          \
+                 -L$(GTKGLPATH)                                  \
+                 -lgtkglext-win32-1.0-0 -lgdkglext-win32-1.0-0   \
+                 -lglu32 -lopengl32
 
 s52eglw32: GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
 s52eglw32: LIBS = $(S52_LIBS) -L$(GTKPATH)                    \
