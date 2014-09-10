@@ -116,7 +116,7 @@ static struct   sigaction             _old_signal_handler_SIGTERM;  // 15
 
 // not available on win32
 #ifdef S52_USE_BACKTRACE
-#if !defined(S52_USE_ANDROID)
+#if !defined(S52_USE_ANDROID) || !defined(_MINGW)
 #include <execinfo.h>
 #endif
 #endif
@@ -294,7 +294,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.140\n"
+      "libS52 0.141\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -581,7 +581,9 @@ static double     _validate_deg(double val)
 
 static double     _validate_lat(double lat)
 {
+    // FIXME: 85.051125°
     if (lat < -90.0 || 90.0 < lat) {
+        // FIXME: check proj4
         PRINTF("WARNING: latitude out of bound [-90.0 .. +90.0], reset to 0.0: %f\n", lat);
         lat = 0.0;
     }
@@ -593,6 +595,7 @@ static double     _validate_lat(double lat)
 
 static double     _validate_lon(double val)
 {
+    // FIXME: def this! abs()!
     if (val < -180.0 || 180.0 < val) {
         PRINTF("WARNING: longitude out of bound [-180.0 .. +180.0], reset to 0.0: %f\n", val);
         val = 0.0;
@@ -1398,10 +1401,10 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 
 
 
-#ifdef S52_USE_ANDROID
+//#ifdef S52_USE_ANDROID
         // break loop - android debuggerd rethrow SIGSEGV
         //exit(0);
-#endif
+//#endif
 
 
     // shouldn't reach this !?
@@ -1682,15 +1685,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 
     // GDAL/OGR/S57 options (1: overwrite env)
 
-    // GDAL debug info ON
-    //g_setenv("CPL_DEBUG", "ON", 1);
-
 #ifdef S52_USE_GLIB2
-
-#ifdef S52_USE_ANDROID
-    g_setenv("S57_CSV", "/sdcard/s52droid/gdal_data", 1);
-#endif
-
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
     // make OGR return primitive and linkage
@@ -3297,7 +3292,6 @@ DLL int    STD S52_loadObject(const char *objname, void *shape)
         //    g_assert(0);
         //}
 
-
         // check M_QUAL:CATZOC
         if (0== g_strcmp0(objname, "M_QUAL"))
             _crntCell->catzocstr = S57_getAttVal(geoData, "CATZOC");  // data quality indicator
@@ -3614,8 +3608,7 @@ static int        _cullObj(_cell *c)
                 ++_nTotal;
 
                 // debug - anti-meridian, US5HA06M/US5HA06M.000
-                //if
-                //(103 == S57_getGeoID(geo)) {
+                //if (103 == S57_getGeoID(geo)) {
                 //    PRINTF("ISODGR01 found\n");
                 //}
 
@@ -4105,7 +4098,6 @@ DLL int    STD S52_draw(void)
 
 
     // do not wait if an other thread is allready drawing
-//#ifdef S52_USE_ANDROID
 #if (defined(S52_USE_ANDROID) || defined(_MINGW))
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
 #else
@@ -4321,7 +4313,6 @@ DLL int    STD S52_drawLast(void)
     //EGL_BEG(drawTag);
 #endif
 
-//#ifdef S52_USE_ANDROID
 #if (defined(S52_USE_ANDROID) || defined(_MINGW))
     // do not wait if an other thread is allready drawing
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
@@ -6316,7 +6307,6 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
             return FALSE;
         }
 
-        // FIXME: what happen if speed change!?
         if (0.0 != wholinDist)
             SPRINTF(attval, "select:%i,plnspd:%f,_wholin_dist:%f", select, plnspd, wholinDist);
         else
