@@ -1217,14 +1217,14 @@ static int      _s52_init       (s52engine *engine)
         S52_setViewPort(0, 0, w, h);
     }
 
-    S52_loadPLib(PLIB);
-    //S52_loadPLib(COLS);
-
-    // Inland Waterway rasterization rules (form OpenCPN)
-    S52_loadPLib("S52RAZDS.RLE");
-
     // load PLib in s52.cfg
     //S52_loadPLib(NULL);
+
+    S52_loadPLib(PLIB);
+    S52_loadPLib(COLS);
+
+    // Inland Waterway rasterization rules (form OpenCPN)
+    //S52_loadPLib("S52RAZDS.RLE");
 
 
 #ifdef S52_USE_ANDROID
@@ -1271,10 +1271,10 @@ static int      _s52_init       (s52engine *engine)
     // GDAL profile (s57attributes_<profile>.csv, s57objectclasses_<profile>.csv)
     // iw: Inland Waterway profile add object classe OBCL:17000-17065 (and attributes)
     //g_setenv("S57_PROFILE", "iw", 1);
-    g_setenv("S57_PROFILE", "iw2", 1);
+    //g_setenv("S57_PROFILE", "iw2", 1);
 
     // GDAL debug info ON
-    g_setenv("CPL_DEBUG", "ON", 1);
+    //g_setenv("CPL_DEBUG", "ON", 1);
 
 
 
@@ -1290,6 +1290,9 @@ static int      _s52_init       (s52engine *engine)
 
     // Rimouski
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
+
+    // load PLib in s52.cfg
+    //S52_loadPLib(NULL);
 
     // Estuaire du St-Laurent
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
@@ -1318,6 +1321,7 @@ static int      _s52_init       (s52engine *engine)
         S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);     // show world
     }
 #endif
+
 
     // debug - remove clutter from this symb in SELECT mode
     S52_setS57ObjClassSupp("M_QUAL", TRUE);  // supress display of the U pattern
