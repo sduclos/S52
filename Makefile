@@ -15,20 +15,20 @@
 
 
 ##### TARGETS #########
-#all: s52glx         # OGR & GLX & GL 1.x
+#all: s52glx         # OGR & GLX & GL 1.1 & GLU
 #all: s52eglx        # OGR & EGL & X11   (for testing EGL/GLES2 on X)
 #all: s52eglarm      # OGR & EGL & ARM   (for testing EGL/GLES2 on ARM/Android)
 #all: s52eglw32      # OGR & EGL & Win32 (for testing EGL/GLES2 on Win32)
 #all: s52gv          # GV  (GTK)
 #all: s52gv2         # GV2 (GTK2)
-all: s52gtk2        # OGR & GTK2 & GL 1.x
+all: s52gtk2        # OGR & GTK2 & GL 1.5 (VBO) 
 #all: s52gtk2gl2     # OGR & GTK2 & GL 2.x
 #all: s52gtk2p       # profiling
 #all: s52gtk2gps     # build s52gtk2 for testing with live data comming from GPSD
 #all: s52gtk2egl     # GTK2 & EGL
 #all: s52gtk3egl     # GTK3 & EGL
 #all: s52qt4         # OGR & Qt4 (build s52gtk2 to run on Qt4)
-#all: s52win32       # build s52gtk2 to run on wine/win32 (MinGW)
+#all: s52win32       # build libS52.dll on GL1 to run on wine/win32 (MinGW)
 #all: s52clutter     # use COGL for rendering text
 #all: s52clutter.js  # use COGL for rendering text and Javascript
 
@@ -182,13 +182,13 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 
 
 # default CFLAGS for default target (s52gtk2)
-#         -DS52_USE_OPENGL_VBO
-#         -DS52_USE_SOCK
-CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl`  \
+CFLAGS = `pkg-config  --cflags glib-2.0 lcms gl ftgl`  \
          `gdal-config --cflags`                        \
          -I./lib/parson                                \
          -DS52_USE_FTGL                                \
          -DS52_USE_GL1                                 \
+         -DS52_USE_OPENGL_VBO                          \
+         -DS52_USE_SOCK                                \
          -DS52_USE_GLIB2                               \
          -DS52_USE_PROJ                                \
          -DS52_DEBUG $(DBG2)
@@ -201,7 +201,6 @@ s52gtk2gl2 : CFLAGS =                                  \
          -I./lib/parson                                \
          -DS52_USE_PROJ                                \
          -DS52_USE_GLIB2                               \
-         -DS52_USE_EGL                                 \
          -DS52_USE_OPENGL_VBO                          \
          -DS52_USE_GL2                                 \
          -DS52_USE_FREETYPE_GL                         \
@@ -231,7 +230,6 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
                   -DS52_USE_PROJ                  \
                   -DS52_USE_GLIB2                 \
                   -DS52_USE_GL1                   \
-                  -DS52_USE_OPENGL_VBO            \
                   -DS52_USE_FTGL                  \
                   -DS52_DEBUG $(DBG)
 
@@ -272,6 +270,8 @@ s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -fPIC -mt
 s52eglarm : AR     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ar
 s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 
+#                     -DS52_USE_LOG                         \
+
 s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/sysroot/include
 s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
 
@@ -287,7 +287,6 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
                      -DS52_USE_TXT_SHADOW                  \
-                     -DS52_USE_LOG                         \
                      -DS52_USE_AFGLOW                      \
                      -DS52_DEBUG
 
@@ -328,8 +327,6 @@ s52gtk2gps:  CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl dbus-1 dbus-glib-
                       -DS52_DEBUG $(DBG)
 
 s52win32 : GDALPATH = ../../../gdal/gdal-1.7.2-mingw/
-#                      -DS52_USE_LOG                          \
-
 s52win32 : CFLAGS   = -mms-bitfields                         \
                       -I../../mingw/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
                       -I../../mingw/gtk+-bundle_2.16.6-20100912_win32/lib/glib-2.0/include \
@@ -380,7 +377,7 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
 #
 
 # default LIBS for default target
-LIBS = `pkg-config  --libs glib-2.0 lcms glu gl ftgl` \
+LIBS = `pkg-config  --libs glib-2.0 lcms gl ftgl` \
        `gdal-config --libs` -lproj
 
 s52gtk2gl2 : LIBS = `pkg-config  --libs glib-2.0 lcms gl freetype2` \
