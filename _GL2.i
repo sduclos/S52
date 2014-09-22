@@ -21,7 +21,7 @@ typedef GLUtesselator GLUtriangulatorObj;
 ////////////////////////////////////////////////////////
 // forward decl
 static double      _getGridRef(S52_obj *, double *, double *, double *, double *, double *, double *);
-static int         _fillarea(S57_geo *);
+static int         _fillArea(S57_geo *);
 static void        _glMatrixMode(guint);
 static void        _glLoadIdentity(void);
 static void        _glUniformMatrix4fv_uModelview(void);
@@ -706,7 +706,6 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
 
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
-    //glDrawArrays(GL_TRIANGLE_STRIP, 0, len);
     glDrawArrays(GL_TRIANGLES, 0, len);
 
     _popScaletoPixel();
@@ -1169,8 +1168,8 @@ static int       _renderTile(S52_DListData *DListData)
 
         while (TRUE == S57_getPrimIdx(DListData->prim[i], j, &mode, &first, &count)) {
             /*
-            if (_QUADRIC_TRANSLATE == mode) {
-                PRINTF("FIXME: handle _QUADRIC_TRANSLATE for Tile!\n");
+            if (_TRANSLATE == mode) {
+                PRINTF("FIXME: handle _TRANSLATE for Tile!\n");
                 g_assert(0);
             } else {
                 glDrawArrays(mode, first, count);
@@ -1527,7 +1526,7 @@ static int       _renderAP_gl2(S52_obj *obj)
 
     glBindTexture(GL_TEXTURE_2D, mask_texID);
 
-    _fillarea(S52_PL_getGeo(obj));
+    _fillArea(S52_PL_getGeo(obj));
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
