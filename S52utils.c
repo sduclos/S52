@@ -40,7 +40,7 @@
 #include <time.h>         // time
 #include <unistd.h>       // write
 
-// configuration file
+// debug - configuration file
 #ifdef S52_USE_ANDROID
 #define CONF_NAME   "/sdcard/s52droid/s52.cfg"
 #else
@@ -264,9 +264,9 @@ int      S52_initLog(S52_error_cb err_cb)
     GError *error = NULL;
     _log = g_file_open_tmp("XXXXXX", NULL, &error);
     if (-1 == _log) {
-        PRINTF("g_file_open_tmp(): failed\n");
+        PRINTF("WARNING: g_file_open_tmp(): failed\n");
     } else {
-        PRINTF("tmp dir:%s\n", g_get_tmp_dir());
+        PRINTF("DEBUG: tmp dir:%s\n", g_get_tmp_dir());
     }
     if (NULL != error) {
         g_printf("WARNING: g_file_open_tmp() failed (%s)\n", error->message);
