@@ -1,4 +1,5 @@
 // s52ais.c: GPSD client to get AIS data to test libS52.so
+//           via DBus, Socket and strait function call
 //
 // Project:  OpENCview
 
@@ -144,10 +145,12 @@ typedef struct _ais_t {
     int             status;
     int             turn;     // Rate of turn
     char            name[AIS_SHIPNAME_MAXLEN + 1];
-
-    GTimeVal        lastUpdate;
     double          course;
     double          speed;
+
+
+    GTimeVal        lastUpdate;
+    int             lost;     // TRUE if target lost
     S52ObjectHandle vesselH;
 
 #ifdef S52_USE_AFGLOW
@@ -171,6 +174,9 @@ static GMutex             _ais_list_mutex; // protect _ais_list
 #endif
 
 #define AIS_SILENCE_MAX 600   // sec of silence from an AIS before deleting it
+
+// debug - limit the total number of target
+//#define AIS_TARGET_MAX  10
 
 //#define MAX_AFGLOW_PT (15 * 60)   // 15 min trail @ 1 pos per sec - trail too long
 #define MAX_AFGLOW_PT (12 * 20)     // 12 min @ 1 pos per 5 sec
@@ -225,19 +231,18 @@ static GTimeVal _timeTick;
 #ifdef S52_USE_SOCK
 #define NL "\\n"  // New Line
 #else
-#define NL '\n'  
+#define NL '\n'
 #endif
 
-#ifdef S52_USE_DBUS
+
+/////////////////////////////////////////////////////////
 // DBUS messaging
+//
+#ifdef S52_USE_DBUS
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib.h>
 DBusConnection *_dbus      = NULL;
 DBusError       _dbusError;
-
-// experiment
-// NOTE: only socket and DBus signal are send to the outside from here
-//
 
 static DBusMessage  *_newBDusSignal(const char *sigName)
 // caller must free msg
@@ -432,9 +437,15 @@ static int           _initDBus(void)
     return TRUE;
 }
 #endif // S52_USE_DBUS
+//////////////////////////////////////////////////////////////////
 
+
+//////////////////////////////////////////////////////////////////
+// SOCK messaging
+//
 #ifdef S52_USE_SOCK
-static GSocketConnection *_s52_init_sock(char *hostname, int port)
+static
+GSocketConnection   *_s52_init_sock(char *hostname, int port)
 {
     g_print("s52ais:_init_s52_sock(): starting ..\n");
 
@@ -559,12 +570,14 @@ static char         *_encodeNsend(const char *command, const char *frmt, ...)
 
     return resp;
 }
-#endif
+#endif  // S52_USE_SOCK
+/////////////////////////////////////////////////////////////////////
+
 
 static _ais_t       *_getAIS    (unsigned int mmsi)
 {
-    // return this
-    _ais_t *ais = NULL;
+    // debug
+    //return NULL;
 
     // check that gps_done() haven't flush this
     if (NULL == _ais_list) {
@@ -572,21 +585,23 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         return NULL;
     }
 
-    unsigned int i = 0;
-    for (i=0; i<_ais_list->len; ++i) {
-        ais = &g_array_index(_ais_list, _ais_t, i);
+    for (guint i=0; i<_ais_list->len; ++i) {
+        _ais_t *ais = &g_array_index(_ais_list, _ais_t, i);
         if (mmsi == ais->mmsi) {
             return ais;
         }
     }
 
-    {   // NEW AIS (not found hence new)
+    // debug - max target
+    //if (AIS_TARGET_MAX > _ais_list->len)
+
+    // NEW AIS (not found hence new)
+    {
         _ais_t newais;
-        __builtin_bzero(&newais, sizeof(_ais_t));
+        //__builtin_bzero(&newais, sizeof(_ais_t));
+        memset(&newais, 0, sizeof(_ais_t));
         newais.mmsi     = mmsi;
         newais.status   = -1;     // 0 indicate that status form report is needed
-        //newais.name[AIS_SHIPNAME_MAXLEN + 1] = '\0';
-        newais.name[0]  = '\0';
         g_get_current_time(&newais.lastUpdate);
         newais.course   = -1.0;
         newais.speed    =  0.0;
@@ -663,33 +678,21 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
             g_print("s52ais:_getAIS(): new afglowH fail\n");
             return NULL;
         }
-#endif
+#endif  // S52_USE_AFGLOW
 
         // save S52obj handle after registered in libS52
         g_array_append_val(_ais_list, newais);
-        ais = &g_array_index(_ais_list, _ais_t, _ais_list->len - 1);
+        _ais_t *ais = &g_array_index(_ais_list, _ais_t, _ais_list->len - 1);
 
 
 #ifdef S52_USE_DBUS
         _signal_newVESSEL(_dbus, newais.vesselH, newais.name);
 #endif
 
+        return ais;
     }
 
-    return ais;
-}
-
-static int           _delAIS    (unsigned int mmsi)
-{
-    for (guint i=0; i<_ais_list->len; ++i) {
-        _ais_t *ais = &g_array_index(_ais_list, _ais_t, i);
-        if (mmsi == ais->mmsi) {
-            g_array_remove_index_fast(_ais_list, i);
-            return TRUE;
-        }
-    }
-
-    return FALSE;
+    return NULL;
 }
 
 #if 0
@@ -717,33 +720,17 @@ static int           _setAISPos (unsigned int mmsi, double lat, double lon, doub
     if (NULL == ais)
         return FALSE;
 
-    g_get_current_time(&ais->lastUpdate);
-
 #ifdef S52_USE_SOCK
-    {
-        char *ret = _encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int *)ais->vesselH, lat, lon, heading);
-        if ('0' == ret[1]) {
-            _delAIS(mmsi);
-            return FALSE;
-        }
-    }
+    _encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int *)ais->vesselH, lat, lon, heading);
 #else
-    if (FALSE == S52_pushPosition(ais->vesselH, lat, lon, heading))
-        _delAIS(mmsi);
+    S52_pushPosition(ais->vesselH, lat, lon, heading);
 #endif
 
 #ifdef S52_USE_AFGLOW
 #ifdef S52_USE_SOCK
-    {
-        char *ret = _encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int *)ais->afglowH, lat, lon, heading);
-        if ('0' == ret[1]) {
-            _delAIS(mmsi);
-            return FALSE;
-        }
-    }
+    _encodeNsend("S52_pushPosition", "%lu,%lf,%lf,%lf", (long unsigned int *)ais->afglowH, lat, lon, heading);
 #else
-    if (FALSE == S52_pushPosition(ais->afglowH, lat, lon, 0.0))
-        _delAIS(mmsi);
+    S52_pushPosition(ais->afglowH, lat, lon, 0.0);
 #endif
 #endif
 
@@ -751,6 +738,8 @@ static int           _setAISPos (unsigned int mmsi, double lat, double lon, doub
     _signal_setPosition   (_dbus, ais->vesselH, lat, lon, heading);
     _signal_setVESSELlabel(_dbus, ais->vesselH, ais->name);
 #endif
+
+    g_get_current_time(&ais->lastUpdate);
 
     return TRUE;
 }
@@ -785,12 +774,22 @@ static int           _setAISVec (unsigned int mmsi, double course, double speed)
 static int           _setAISLab (unsigned int mmsi, const char *name)
 // update AIS label
 {
+    // debug
+    //if (316006302 == mmsi)
+    //    g_print("s52ais:_setAISLab(): mmsi:%i name:[%s]\n", mmsi, name);
+
     _ais_t *ais = _getAIS(mmsi);
     if (NULL == ais)
         return FALSE;
 
     if (NULL != name) {
-        g_snprintf(ais->name, AIS_SHIPNAME_MAXLEN, "%s", name);
+        g_snprintf(ais->name, AIS_SHIPNAME_MAXLEN+1, "%s", name);
+
+#ifdef S52_USE_SOCK
+        _encodeNsend("S52_setVESSELlabel", "%lu,\"%s\"", ais->vesselH, name);
+#else
+        S52_setVESSELlabel(ais->vesselH, name);
+#endif
 
 #ifdef S52_USE_DBUS
         _signal_setVESSELlabel(_dbus, ais->vesselH, ais->name);
@@ -915,21 +914,20 @@ static int           _setAISDel (_ais_t *ais)
 
 static int           _removeOldAIS(void)
 {
-    _ais_t  *ais = NULL;
-    GTimeVal now;
-
     if (NULL == _ais_list) {
         g_print("s52ais:_getAIS() no AIS list\n");
         return FALSE;
     }
 
+    GTimeVal now;
     g_get_current_time(&now);
 
-    unsigned int i = 0;
-    for (i=0; i<_ais_list->len; ++i) {
-        ais = &g_array_index(_ais_list, _ais_t, i);
+    for (guint i=0; i<_ais_list->len; ++i) {
+        _ais_t *ais = &g_array_index(_ais_list, _ais_t, i);
         // AIS report older then 10 min
-        if (now.tv_sec > (ais->lastUpdate.tv_sec + AIS_SILENCE_MAX)) {
+        if ((now.tv_sec > (ais->lastUpdate.tv_sec + AIS_SILENCE_MAX)) ||
+            (TRUE == ais->lost))
+        {
             _setAISDel(ais);
 
              g_array_remove_index_fast(_ais_list, i);
@@ -967,18 +965,6 @@ static int           _updateTimeTag(void)
     if (NULL == _ais_list)
         return FALSE;
 
-    /*
-    {   // check global time - update time tag of all AIS each sec
-        // FIXME: should be 0.5 sec
-        GTimeVal now;
-        g_get_current_time(&now);
-        if ((now.tv_sec-_timeTick.tv_sec) < 1)
-            return FALSE;
-
-        g_get_current_time(&_timeTick);
-    }
-    */
-
     // keep removing old AIS
     while (TRUE == _removeOldAIS())
         _dumpAIS();
@@ -986,29 +972,27 @@ static int           _updateTimeTag(void)
     GTimeVal now;
     g_get_current_time(&now);
     for (guint i=0; i<_ais_list->len; ++i) {
-        gchar    str[127+1] = {'\0'};
+        gchar    str[128] = {'\0'};
         _ais_t  *ais = &g_array_index(_ais_list, _ais_t, i);
 
         if (-1.0 != ais->course) {
 #ifdef S52_USE_SOCK
-            g_snprintf(str, 127, "%s %lis%s%03.f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec),      NL, ais->course, ais->speed);
+            g_snprintf(str, 128, "%s %lis%s%03.f deg / %3.1f kt",
+                       ais->name, (now.tv_sec - ais->lastUpdate.tv_sec),      NL, ais->course, ais->speed);
 #else
-            g_snprintf(str, 127, "%s %lis%c%03.f deg / %3.1f kt", ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), (int)NL, ais->course, ais->speed);
+            g_snprintf(str, 128, "%s %lis%c%03.f deg / %3.1f kt",
+                       ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), (int)NL, ais->course, ais->speed);
 #endif
         } else {
-            g_snprintf(str, 127, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
+            g_snprintf(str, 128, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
         }
-
 
 #ifdef S52_USE_SOCK
         _encodeNsend("S52_setVESSELlabel", "%lu,\"%s\"", ais->vesselH, str);
 #else
+        //Note: can't use _setAISLab() as it update timetag - long str
         if (FALSE == S52_setVESSELlabel(ais->vesselH, str)) {
-            g_print("s52ais:_updateTimeTag(): FAIL setVESSELlabel = %s\n", str);
-            _setAISDel(ais);
-            g_array_remove_index_fast(_ais_list, i);
-
-            //g_assert(0);
+            ais->lost = TRUE;
         }
 #endif
 
