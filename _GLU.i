@@ -42,12 +42,12 @@ static pt3    _pcin;
 
 ////////////////////////////////////////////////////
 //
-// Quadric (by hand)
+// Quadric (by hand to fill VBO)
 //
 
-// Make it not a power of two to avoid cache thrashing on the chip
 #ifdef S52_USE_OPENGL_VBO
 
+// Make it not a power of two to avoid cache thrashing on the chip
 #define CACHE_SIZE    240
 
 #undef  PI
@@ -347,13 +347,6 @@ static void_cb_t _vertex3d(GLvoid *data, S57_prim *prim)
     return;
 }
 
-static void_cb_t _vertex3f(GLvoid *data, S57_prim *prim)
-// float - use by symb from _parseHPGL() (so vertex are from the PLib and allready in float)
-// store float vertex of primitive other than AREA
-{
-    S57_addPrimVertex(prim, (vertex_t*)data);
-}
-
 static void_cb_t _vertexCen(GLvoid *data)
 {
     pt3 *p = (pt3*) data;
@@ -380,7 +373,6 @@ static void_cb_t _vertexCin(GLvoid *data)
 
 static GLint     _initGLU(void)
 // initialize various GLU object
-//
 {
 
     ////////////////////////////////////////////////////////////////
@@ -483,14 +475,12 @@ static GLint     _initGLU(void)
 
         // set poly in x-y plane normal is Z (for performance)
         gluTessNormal(_tcin, 0.0, 0.0, 1.0);
-
     }
 
     ////////////////////////////////////////////////////////////////
     //
     // init quadric stuff
     //
-
     {
 #ifdef S52_USE_OPENGL_VBO
         _qobj = _gluNewQuadric();
@@ -517,6 +507,7 @@ static GLint     _freeGLU(void)
     if (_tmpV) g_ptr_array_free(_tmpV, TRUE);
     //if (tmpV) g_ptr_array_unref(tmpV);
     if (_tobj) gluDeleteTess(_tobj);
+
 #ifdef S52_USE_OPENGL_VBO
     if (_qobj) _gluDeleteQuadric(_qobj);
 #else
