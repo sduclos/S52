@@ -67,7 +67,7 @@ CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2 -DU
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
                       -DS52_USE_GLIB2                                  \
                       -DS52_USE_GL2                                    \
-                      -DS52_USE_MESA3D
+                      -DS52_USE_MESA3D -DUSE_AIS
 
 s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1`
 
@@ -76,7 +76,6 @@ s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
-                     -DUSE_FAKE_AIS          \
                      -DS52_USE_MESA3D        \
                      -DSET_SCREEN_SIZE
 
@@ -163,8 +162,8 @@ s52gv2: s52gv.c
 testmain:
 	$(CC) $(LDFLAGS) testmain.o $(LIBS)  -o $@
 
-s52gtk2 s52gtk2gl2: s52gtk2.c ../S52.h
-	$(CC) $(CFLAGS) s52gtk2.c $(S52_LIBS) $(GTK2LIBS) -o $@
+s52gtk2 s52gtk2gl2: s52gtk2.c s52ais.c ../S52.h
+	$(CC) $(CFLAGS) s52gtk2.c s52ais.c $(S52_LIBS) $(GTK2LIBS) `pkg-config --cflags --libs libgps` -o $@
 
 #libs52gps.so: s52gps.h s52gps.c
 #	$(CC) $(CFLAG) -fPIC -shared -I.. s52gps.c `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1` -o $@
