@@ -1184,7 +1184,7 @@ static S52_Color *_parseCol(char c, char *colRef)
 //static int        _filterVector(char *str, char *colRef, colorIdx *colIdx)
 static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
 // resolve color index
-// move color & transparency to 'colors'
+// move color & transparency & pen_w to 'colors'
 // weed out redundent pen width/trans/color command
 // return number of color switch (or number of sub-list of vector)
 // FIXME: what if there is no color command!
@@ -1195,6 +1195,7 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
     char pen_w = 0;   // no pen width
     int  idx   = 0;   // pos in 'str'
 
+    // FIXME: check if same color with different pen_w
     //int  curVecPen =  0;   // check if pen_w change for this color
     //char oldTrans  = '0';
     //int  curVecTrn =  0;   // check if trans change for this color
@@ -1205,7 +1206,6 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
         //g_assert(0);
     }
 
-
     // paranoia
     if (NULL == colors) {
         PRINTF("ERROR: no colors\n");
@@ -1213,27 +1213,32 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
     }
 
     while ('\0' != str[idx]) {
-        //S52_Color *col = NULL;
 
-        char *c1 = &str[idx];     // first character
+        char *c1 = &str[idx+0];   // first character
         char *c2 = &str[idx+1];   // second character
 
         // 'S' 'P' --color
         if (S52_VC_SP==*c1 && S52_VC__P==*c2) {
             // if same color replace cmd with NOP cmd
             if (str[idx+2] != color) {
+                // advance to next color if not the fist color cmd
+                if (0 != color)
+                    ++colors;
 
-                S52_Color *col = _parseCol(str[idx+2], colRef);
+                // update crnt color
+                color = str[idx+2];
+
+                //S52_Color *col = _parseCol(str[idx+2], colRef);
+                S52_Color *col = _parseCol(color, colRef);
+                if (NULL == col) {
+                    PRINTF("ERROR: color command not fount (%c)\n", color);
+                    g_assert(0);
+                }
+                *colors = *col;
+
                 // init pen width
                 //col->pen_w = 0;
 
-                // advance to next color
-                if ('\0' != color)
-                    ++colors;
-
-                *colors = *col;
-
-                color   = str[idx+2];
 
                 // to indicate beginning of new sub-vec
                 *c1 = 'X';
@@ -1754,7 +1759,6 @@ static int        _parseLNST(_PL *fp)
     // not sure if new PLib symb can be NOT inserted
     if (TRUE == inserted) {
         lnst->DListData.create = TRUE;
-        //lnst->DListData.len    = _filterVector(lnst->shape.line.vector.LVCT->str,
         lnst->DListData.nbr    = _filterVector(lnst->shape.line.vector.LVCT->str,
                                                lnst->colRef.LCRF->str,
                                                lnst->DListData.colors);
@@ -1812,7 +1816,6 @@ static int        _parsePATT(_PL *fp)
 
     if (TRUE == inserted) {
         patt->DListData.create = TRUE;
-        //patt->DListData.len    = _filterVector(patt->shape.patt.vector.PVCT->str,
         patt->DListData.nbr    = _filterVector(patt->shape.patt.vector.PVCT->str,
                                                patt->colRef.PCRF->str,
                                                patt->DListData.colors);
@@ -1880,7 +1883,6 @@ static int        _parseSYMB(_PL *fp)
         //}
 
         symb->DListData.create = TRUE;
-        //symb->DListData.len    = _filterVector(symb->shape.line.vector.SVCT->str,
         symb->DListData.nbr    = _filterVector(symb->shape.line.vector.SVCT->str,
                                                symb->colRef.SCRF->str,
                                                symb->DListData.colors);
@@ -3606,7 +3608,13 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
 
             // CIrcle
             case S52_VC_CI:
+                // debug - PLib 4.0
+                //PRINTF("vecObj CI-1: %s\n", vecObj->str);
                 vecObj->radius = strtod(vecObj->str, &vecObj->str);
+
+                // debug - PLib 4.0
+                //PRINTF("vecObj CI-2: %s\n", vecObj->str);
+
                 return S52_VC_CI;
 
             // Polygone Mode
@@ -3629,6 +3637,7 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
                     case S52_VC_SP: // Color --should note happen now
                     default:
                         PRINTF("ERROR: first vector command unknown (%c)\n", c1);
+                        PRINTF("vecObj: %s\n", vecObj->str);
                         g_assert(0);
 
                 }
@@ -3640,6 +3649,7 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
             case S52_VC_ST: // Select Transparency --should not happen now
             default:
                 PRINTF("ERROR: second vector command unknown (%c)\n", c2);
+                PRINTF("vecObj: %s\n", vecObj->str);
                 g_assert(0);
         }
 
@@ -3668,8 +3678,13 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
                 pt3.x = S52_atof(vecObj->str);
                 pt3.x -= off_x;
 
+                //vecObj->str++;
+                //while (',' != *vecObj->str)
+                //    vecObj->str++;  // advance to Y coord, skip ','
+
+                // Note: side effect of ++
                 while (',' != *vecObj->str++)
-                    ;  // advance to Y coord, skip ','
+                    ;
 
                 pt3.y = S52_atof(vecObj->str);
                 pt3.y -= off_y;
