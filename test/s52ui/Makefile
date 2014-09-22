@@ -25,4 +25,4 @@ distclean: clean
 # copy to Android sdcard (s52ui.java loadURL html from sdcard if present else asset/www)
 # build/web/s52ui.dart.js
 install: build/web/s52ui.dart.js
-	adb push build/web                            /sdcard/s52ui/
+	adb push build/web /sdcard/s52droid/s52ui/
