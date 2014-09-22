@@ -1132,7 +1132,7 @@ void              _dump_crash_report(unsigned pid)
     _UPT_destroy (ui);
 }
 
-static _Unwind_Reason_Code _trace_func(struct _Unwind_Context *ctx, void *user_data)
+static int        _Unwind_Reason_Code _trace_func(struct _Unwind_Context *ctx, void *user_data)
 {
     //unsigned int rawAddr = __gnu_Unwind_Find_exidx(ctx); //  _Unwind_GetIP(ctx);
     unsigned int rawAddr = _Unwind_GetIP(ctx);
@@ -5775,7 +5775,7 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
         // maybe case of unbalanced att/val pair
         // but that case is trapped by the code above
         if ('\0' == *attvalL[1]) {
-            PRINTF("WARNING: mixed up '\0' val, the rest of list fail [%s]\n", listAttVal);
+            PRINTF("WARNING: mixed up val, the rest of list fail [%s]\n", listAttVal);
             g_strfreev(freeL);
             return FALSE;
             //attvalL += 1;
@@ -5868,8 +5868,10 @@ static int        _isObjNameValid(S52ObjectHandle obj, const char *objName)
 // return TRUE if the class name of 'obj' is 'objName' else FALSE
 {
     S57_geo *geo = S52_PL_getGeo(obj);
-    if (0 != g_strcmp0(objName, S57_getName(geo)))
+    if (0 != g_strcmp0(objName, S57_getName(geo))) {
+        //PRINTF("WARNING: object name invalid\n");
         return FALSE;
+    }
 
     return TRUE;
 }
@@ -6442,7 +6444,6 @@ DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH,  int vecstb, double 
     } else {
         PRINTF("WARNING: can't setVector on this object (%p)\n", objH);
         objH = FALSE;
-        //return NULL;
     }
 
 exit:
@@ -6523,9 +6524,10 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
 
     S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)objH);
     if (NULL == obj) {
+        //GMUTEXUNLOCK(&_mp_mutex);
+        //return objH;
         objH = FALSE;
-        GMUTEXUNLOCK(&_mp_mutex);
-        return objH;
+        goto exit;
     }
 
     S57_geo *geo = S52_PL_getGeo(obj);
@@ -6550,12 +6552,15 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
     // POINT
     if (POINT_T == S57_getObjtype(geo)) {
         _setPointPosition(objH, latitude, longitude, data);
+        /*
+        // experimental: display cursor lat/lng
         if (0 == g_strcmp0("cursor", S57_getName(geo))) {
             char attval[80] = {'\0'};
             SPRINTF(attval, "_cursor_label:%f%c %f%c", fabs(latitude), (latitude<0)? 'S':'N', fabs(longitude), (longitude<0)? 'W':'E');
             _setAtt(geo, attval);
             S52_PL_resetParseText(obj);
         }
+        */
     }
     else // LINE AREA
     {
@@ -6566,16 +6571,20 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
         double  *ppt    = NULL;
 
         if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
-            GMUTEXUNLOCK(&_mp_mutex);
-            return FALSE;
+            //GMUTEXUNLOCK(&_mp_mutex);
+            //return FALSE;
+            objH = FALSE;
+            goto exit;
         }
 
 #ifdef S52_USE_PROJ
         if (FALSE == S57_geo2prj3dv(1, xyz)) {
             PRINTF("WARNING: S57_geo2prj3dv() fail\n");
 
-            GMUTEXUNLOCK(&_mp_mutex);
-            return FALSE;
+            //GMUTEXUNLOCK(&_mp_mutex);
+            //return FALSE;
+            objH = FALSE;
+            goto exit;
         }
 #endif
 
@@ -6592,6 +6601,8 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
             ppt[((npt-1) * 3) + 2] = data;
         }
     }
+
+exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
