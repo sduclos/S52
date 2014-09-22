@@ -35,10 +35,10 @@ public class s52ui extends Activity
         webview.setBackgroundColor(Color.TRANSPARENT);
 
         try {
-            StatFs stat = new StatFs("/sdcard/s52ui/s52ui.html");
+            StatFs stat = new StatFs("/sdcard/s52droid/s52ui/s52ui.html");
             Log.i(TAG, "StatFs: " + stat.getAvailableBlocks());
             // debug - work OK for dev (faster)
-            webview.loadUrl("file:///sdcard/s52ui/s52ui.html");
+            webview.loadUrl("file:///sdcard/s52droid/s52ui/s52ui.html");
             webview.clearCache(false);                           // page loading always from file (a bit slower)
         } catch (IllegalArgumentException e) {
             webview.loadUrl("file:///android_asset/www/s52ui.html");
