@@ -229,7 +229,7 @@ S52_vec    *S52_PL_initVOCmd(S52_cmdDef *def);
 int         S52_PL_doneVOCmd(S52_vec *vecObj);
 // get (parse) next vector command, width in ASCII (1 pixel=0.32 mm)
 S52_vCmd    S52_PL_getNextVOCmd(S52_vec *vecObj);
-// get vextor for this command
+// get vector for this command
 S57_prim   *S52_PL_getVOprim(S52_vec *vecObj);
 // get pen width
 char        S52_PL_getVOwidth(S52_vec *vecObj);
