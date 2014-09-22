@@ -91,7 +91,7 @@ static guint          _fb_texture_id  = 0;
 static int            _fb_format      = _RGB;   // alpha blending done in shader
 #else
 static int            _fb_format      = _RGBA;
-//static int            _fb_format      = RGB ;  // NOTE: on TEGRA2 RGB (3) very slow
+//static int            _fb_format      = _RGB ;  // NOTE: on TEGRA2 RGB (3) very slow
 #endif
 
 typedef struct  pt3  { double   x,y,z; } pt3;
@@ -156,10 +156,11 @@ static guint   _nFrag  = 0;     // number of pixel fragment (color switch)
 static int     _drgare = 0;     // DRGARE
 static int     _depare = 0;     // DEPARE
 static int     _nAC    = 0;     // total AC (Area Color)
-//static int     _debug = 0;
+
 // debug
-//static int _DEBUG = FALSE;
-static guint _S57ID = 0;
+//static int   _debug  = 0;
+//static int   _DEBUG  = FALSE;
+//static guint _S57ID  = 0;
 
 
 // tesselated area stat
@@ -902,9 +903,11 @@ static GLvoid    _DrawArrays_LINE_STRIP(guint npt, vertex_t *ppt)
     }
     */
 
-
-    if (npt < 2)
+    if (npt < 2) {
+        PRINTF("FIXME: npt < 2 (%i)\n", npt);
+        g_assert(0);
         return;
+    }
 
 #ifdef S52_USE_GL2
     glEnableVertexAttribArray(_aPosition);
@@ -912,11 +915,9 @@ static GLvoid    _DrawArrays_LINE_STRIP(guint npt, vertex_t *ppt)
     glDrawArrays(GL_LINE_STRIP, 0, npt);
     glDisableVertexAttribArray(_aPosition);
 #else
-    //glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(3, GL_DBL_FLT, 0, ppt);
     glDrawArrays(GL_LINE_STRIP, 0, npt);
 #endif
-
 
     _checkError("_DrawArrays_LINE_STRIP() .. end");
 
@@ -924,16 +925,19 @@ static GLvoid    _DrawArrays_LINE_STRIP(guint npt, vertex_t *ppt)
 }
 
 static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
-// this is used when VRM line style is aternate line style
+// this is used when VRM line style is alternate line style
 // ie _normallinestyle == 'N'
 {
+    if (npt < 2) {
+        // line overlap
+        return;
+    }
+
     if (0 != (npt % 2)) {
         PRINTF("FIXME: found LINES not modulo 2\n");
         g_assert(0);
     }
 
-    if (npt < 2)
-        return;
 
 #ifdef S52_USE_GL2
     glEnableVertexAttribArray(_aPosition);
@@ -941,7 +945,6 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
     glDrawArrays(GL_LINES, 0, npt);
     glDisableVertexAttribArray(_aPosition);
 #else
-    //glEnableClientState(GL_VERTEX_ARRAY);
     glVertexPointer(3, GL_DBL_FLT, 0, ppt);
     glDrawArrays(GL_LINES, 0, npt);
 #endif
@@ -952,12 +955,13 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
 }
 
 #ifdef S52_USE_OPENGL_VBO
-static int       _VBODrawArrays(S57_prim *prim)
+static int       _VBODrawArrays_AREA(S57_prim *prim)
+// only called by _fillArea() --> _VBODraw_AREA()
 {
     guint     primNbr = 0;
-    vertex_t *vert    = NULL;
-    guint     vertNbr = 0;
-    guint     vboID   = 0;
+    vertex_t *vert    = NULL;   // dummy
+    guint     vertNbr = 0;      // dummy
+    guint     vboID   = 0;      // dummy
 
     if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
         return FALSE;
@@ -992,25 +996,16 @@ static int       _VBODrawArrays(S57_prim *prim)
         }
         */
 
-        // debug - 10 call of count = 66 --> AC(),AP()
-        //glDrawArrays(mode = GL_TRIANGLES, first = 0, count = 66)
-        //if (GL_TRIANGLES==mode && 66==count)
-        //    PRINTF("SKIP %i\n", _S57ID);
-        //else
+        if (_TRANSLATE == mode) {
+            PRINTF("FIXME: _TRANSLATE\n");
+            g_assert(0);
+        } else {
             glDrawArrays(mode, first, count);
-
-
-        //
-        //if (_QUADRIC_TRANSLATE == mode) {
-        //    g_assert(1 == count);
-        //    _glTranslated(vert[first+0], vert[first+1], vert[first+2]);
-        //} else {
-        //    glDrawArrays(mode, first, count);
-        //}
+        }
     }
 
 
-    _checkError("_VBODrawArrays()");
+    _checkError("_VBODrawArrays_AREA()");
 
     return TRUE;
 }
@@ -1056,8 +1051,8 @@ static int       _VBOCreate(S57_prim *prim)
     return vboID;
 }
 
-static int       _VBODraw(S57_prim *prim)
-// run a VBO
+static int       _VBODraw_AREA(S57_prim *prim)
+// run a VBO - only called by _fillArea()
 {
     guint     primNbr = 0;
     vertex_t *vert    = NULL;
@@ -1078,18 +1073,18 @@ static int       _VBODraw(S57_prim *prim)
 #ifdef S52_USE_GL2
     glEnableVertexAttribArray(_aPosition);
     glVertexAttribPointer(_aPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    _VBODrawArrays(prim);
+    _VBODrawArrays_AREA(prim);
     glDisableVertexAttribArray(_aPosition);
 #else
     // set VertPtr to VBO
-    glVertexPointer(3, GL_DOUBLE, 0, 0);
-    _VBODrawArrays(prim);
+    glVertexPointer(3, GL_DBL_FLT, 0, 0);
+    _VBODrawArrays_AREA(prim);
 #endif
 
     // bind with 0 - switch back to normal pointer operation
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    _checkError("_VBODraw() -fini-");
+    _checkError("_VBODraw_AREA() -fini-");
 
     return TRUE;
 }
@@ -1100,8 +1095,8 @@ static int       _DrawArrays(S57_prim *prim)
 {
     guint     primNbr = 0;
     vertex_t *vert    = NULL;
-    guint     vertNbr = 0;
-    guint     vboID   = 0;
+    guint     vertNbr = 0;      // dummy
+    guint     vboID   = 0;      // dummy
 
     if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
         return FALSE;
@@ -1241,16 +1236,11 @@ static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx
     return stagOffsetPix;
 }
 
-static int       _fillarea(S57_geo *geoData)
+static int       _fillArea(S57_geo *geoData)
 {
-    _S57ID = S57_getGeoID(geoData);
-    _npoly++;
-
-    S57_prim *prim = S57_getPrimGeo(geoData);
-    if (NULL == prim) {
-        prim = _tessd(_tobj, geoData);
-    }
-
+    // debug
+    //_S57ID = S57_getGeoID(geoData);
+    //_npoly++;
     // debug - test optimization
     //if (0 == g_strcmp0("DEPARE", S57_getName(geoData))) {
     //    ++_depare;
@@ -1258,9 +1248,15 @@ static int       _fillarea(S57_geo *geoData)
     //}
     //++_nAC;
 
+
+    S57_prim *prim = S57_getPrimGeo(geoData);
+    if (NULL == prim) {
+        prim = _tessd(_tobj, geoData);
+    }
+
 #ifdef S52_USE_OPENGL_VBO
-    if (FALSE == _VBODraw(prim)) {
-        PRINTF("DEBUG: _VBODraw() failed [%s]\n", S57_getName(geoData));
+    if (FALSE == _VBODraw_AREA(prim)) {
+        PRINTF("DEBUG: _VBODraw_AREA() failed [%s]\n", S57_getName(geoData));
     }
 #else
     _callDList(prim);
@@ -1404,7 +1400,7 @@ static int       _glCallList(S52_DListData *DListData)
 
         GLubyte trans = _glColor4ub(col);
 
-#ifdef  S52_USE_OPENGL_VBO
+#ifdef S52_USE_OPENGL_VBO
         GLuint vboId = DListData->vboIds[i];
         glBindBuffer(GL_ARRAY_BUFFER, vboId);         // for vertex coordinates
 
@@ -1412,7 +1408,7 @@ static int       _glCallList(S52_DListData *DListData)
 #ifdef S52_USE_GL2
         glVertexAttribPointer(_aPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
 #else
-        glVertexPointer(3, GL_DOUBLE, 0, 0);
+        glVertexPointer(3, GL_DBL_FLT, 0, 0);
 #endif
 
         {
@@ -1422,7 +1418,6 @@ static int       _glCallList(S52_DListData *DListData)
             GLint count = 0;
 
             while (TRUE == S57_getPrimIdx(DListData->prim[i], j, &mode, &first, &count)) {
-                //if (_QUADRIC_TRANSLATE == mode) {
                 if (_TRANSLATE == mode) {
                     GArray *vert = S57_getPrimVertex(DListData->prim[i]);
 
@@ -1453,6 +1448,7 @@ static int       _glCallList(S52_DListData *DListData)
 
                         // normal draw
                         glDrawArrays(mode, first, count);
+
                     }
                 }
                 ++j;
@@ -1463,7 +1459,7 @@ static int       _glCallList(S52_DListData *DListData)
 
 #else   // S52_USE_OPENGL_VBO
 
-        glVertexPointer(3, GL_DOUBLE, 0, 0);              // last param is offset, not ptr
+        glVertexPointer(3, GL_DBL_FLT, 0, 0);              // last param is offset, not ptr
         if (TRUE == glIsList(lst)) {
             //++_nFrag;
             glCallList(lst);              // NOT in OpenGL ES SC
@@ -1480,6 +1476,7 @@ static int       _glCallList(S52_DListData *DListData)
             glDisable(GL_ALPHA_TEST);
 #endif
         }
+
     }
 
 #ifdef S52_USE_GL2
@@ -1795,7 +1792,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         double y = 10.0; // bottom justifier
 
 
-        _glMatrixSet(VP_PRJ);
+        //_glMatrixSet(VP_PRJ);
 
         _win2prj(&x, &y);
 
@@ -1823,7 +1820,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
         _popScaletoPixel();
 
-        _glMatrixDel(VP_PRJ);
+        //_glMatrixDel(VP_PRJ);
 
         return TRUE;
     }
@@ -1835,13 +1832,13 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         double y = _vp[3] - 40;
         double rotation = 0.0;
 
-        _glMatrixSet(VP_PRJ);
+        //_glMatrixSet(VP_PRJ);
 
         _win2prj(&x, &y);
 
         _renderSY_POINT_T(obj, x, y, rotation);
 
-        _glMatrixDel(VP_PRJ);
+        //_glMatrixDel(VP_PRJ);
 
         return TRUE;
     }
@@ -1852,13 +1849,13 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         double x = 30;
         double y = 20;
 
-        _glMatrixSet(VP_PRJ);
+        //_glMatrixSet(VP_PRJ);
 
         _win2prj(&x, &y);
 
         _renderSY_POINT_T(obj, x, y, _north);
 
-        _glMatrixDel(VP_PRJ);
+        //_glMatrixDel(VP_PRJ);
 
         return TRUE;
     }
@@ -1870,7 +1867,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
             double x = _vp[0] + 50;
             double y = _vp[1] + 50;
 
-            _glMatrixSet(VP_PRJ);
+            //_glMatrixSet(VP_PRJ);
             _win2prj(&x, &y);
 
             _glMatrixMode(GL_MODELVIEW);
@@ -1886,7 +1883,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
             _glCallList(DListData);
 
-            _glMatrixDel(VP_PRJ);
+            //_glMatrixDel(VP_PRJ);
 
             return TRUE;
         }
@@ -1898,12 +1895,13 @@ static int       _renderSY_CSYMB(S52_obj *obj)
             double x = _vp[2] - 50;
             double y = _vp[3] - 50;
 
-            _glMatrixSet(VP_PRJ);
+            //_glMatrixSet(VP_PRJ);
+
             _win2prj(&x, &y);
 
             _renderSY_POINT_T(obj, x, y, _north);
 
-            _glMatrixDel(VP_PRJ);
+            //_glMatrixDel(VP_PRJ);
 
             return TRUE;
         }
@@ -2374,38 +2372,6 @@ static int       _renderSY(S52_obj *obj)
 
     if (POINT_T == S57_getObjtype(geoData)) {
 
-        // SOUNDG
-        /* S52_MAR_FONT_SOUNDG deprecated
-        if (0 == g_strcmp0(S57_getName(geoData), "SOUNDG")) {
-            if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
-                double    datum   = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                char      str[16] = {'\0'};
-                double    soundg;
-
-                guint     npt = 0;
-                GLdouble *ppt = NULL;
-
-                if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt)) {
-                    return FALSE;
-                }
-
-                soundg = ppt[2] + datum;
-
-                if (30.0 > soundg)
-                    g_snprintf(str, 5, "%4.1f", soundg);
-                else
-                    g_snprintf(str, 5, "%4.f", soundg);
-
-                S52_DListData *DListData = S52_PL_getDListData(obj);
-                S52_Color *col = DListData->colors;
-
-                _glColor4ub(col);
-
-                return TRUE;
-            }
-        }
-        */
-
         if (0 == g_strcmp0(S57_getName(geoData), "ownshp")) {
             _renderSY_ownshp(obj);
             return TRUE;
@@ -2556,8 +2522,10 @@ static int       _renderSY(S52_obj *obj)
                 S52_Color *col = DListData->colors;
                 _glColor4ub(col);
 
+                _glUniformMatrix4fv_uModelview();
+
                 // when in pick mode, fill the area
-                _fillarea(geoData);
+                _fillArea(geoData);
             }
 
             // centroid offset might put the symb outside the area
@@ -3071,7 +3039,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
     glBindBuffer(GL_ARRAY_BUFFER, _vboIDaftglwVertID);
 
     //glEnableClientState(GL_VERTEX_ARRAY);       // no need to activate vertex coords array - alway on
-    glVertexPointer(3, GL_DOUBLE, 0, 0);          // last param is offset, not ptr
+    glVertexPointer(3, GL_DBL_FLT, 0, 0);          // last param is offset, not ptr
     glColorPointer(4, GL_UNSIGNED_BYTE, 0, 0);
     glBufferData(GL_ARRAY_BUFFER, pti*sizeof(vertex_t)*3, (const void *)ppt, GL_DYNAMIC_DRAW);
 
@@ -3803,7 +3771,7 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
 #ifdef S52_USE_GL2
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 #else
-    glVertexPointer(3, GL_DOUBLE, 0, 0);              // last param is offset, not ptr
+    glVertexPointer(3, GL_DBL_FLT, 0, 0);              // last param is offset, not ptr
 #endif
 
     GString *normallinestylestr = S57_getAttVal(geo, "_normallinestyle");
@@ -3825,7 +3793,7 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
 static int       _renderAC(S52_obj *obj)
 // Area Color (also filter light sector)
 {
-    // debug - this filter also in _VBODrawArrays():glDraw()
+    // debug - this filter also in _VBODrawArrays_AREA():glDraw()
     if (S52_CMD_WRD_FILTER_AC & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
@@ -3846,11 +3814,9 @@ static int       _renderAC(S52_obj *obj)
 
     _glColor4ub(c);
 
-//#if !defined(S52_USE_GV)
     _glUniformMatrix4fv_uModelview();
-//#endif
 
-    _fillarea(geo);
+    _fillArea(geo);
 
     _checkError("_renderAC()");
 
@@ -3859,7 +3825,7 @@ static int       _renderAC(S52_obj *obj)
 
 static int       _renderAP_NODATA_layer0(void)
 {
-    // debug - this filter also in _VBODrawArrays():glDraw()
+    // debug - this filter also in _VBODrawArrays_AREA():glDraw()
     if (S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
@@ -3915,7 +3881,6 @@ static int       _renderAP_NODATA_layer0(void)
     glFrontFace(GL_CW);
 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    //glDrawArrays(GL_TRIANGLES, 0, 3);
 
     glFrontFace(GL_CCW);
 
@@ -3966,7 +3931,7 @@ static int       _renderAP(S52_obj *obj)
 // Area Pattern
 // NOTE: S52 define pattern rotation but doesn't use it in PLib, so not implemented.
 {
-    // debug - this filter also in _VBODrawArrays():glDraw()
+    // debug - this filter also in _VBODrawArrays_AREA():glDraw()
     if (S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
@@ -3995,7 +3960,7 @@ static int       _renderAP(S52_obj *obj)
         S52_Color dummy;
 
         _glColor4ub(&dummy);
-        _fillarea(geoData);
+        _fillArea(geoData);
 
         return TRUE;
     }
@@ -4423,7 +4388,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
     // Note: transparency: 0=0%(opaque), 1=25%, 2=50%, 3=75%
 
     // FIXME: instruction EP (Edge Polygon), AA (Arc Angle) and SC (Symbol Call)
-    //        are not used in current PLib/Chart-1, so not implemented.
+    //        are not used i PLib/Chart-1 3.1, so not implemented.
 
     GLenum    fillMode = GLU_SILHOUETTE;
     //GLenum    fillMode = GLU_FILL;
@@ -4442,6 +4407,23 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
     //if (0==strncmp("CHKSYM01", S52_PL_getVOname(vecObj), 8)) {
     //    PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
     //}
+
+    //*
+    // FIXME: CHRVID01, CHRVID02, CHDATD01 in PLib 4.0 draft as xyz coord. The code should handle
+    // wrong input gracefully - xy; instead of xyz; the latter is not apparently in S52 4.0
+    if (0==strncmp("CHRVID01", S52_PL_getVOname(vecObj), 8)) {
+        PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
+        return vertex;
+    }
+    if (0==strncmp("CHRVID02", S52_PL_getVOname(vecObj), 8)) {
+        PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
+        return vertex;
+    }
+    if (0==strncmp("CHDATD01", S52_PL_getVOname(vecObj), 8)) {
+        PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
+        return vertex;
+    }
+    //*/
 
     // skip first token if it's S52_VC_NEW
     //if (S52_VC_NEW == vcmd)
@@ -4494,15 +4476,12 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 
                 GLdouble  outer  = radius;     // in 0.01mm unit
 
-                // pass 'vertex' via global '_diskPrimTmp' used by _gluDisk()
-                _diskPrimTmp = vertex;
-
-#ifdef  S52_USE_OPENGL_VBO
+#ifdef S52_USE_OPENGL_VBO
                 // compose symb need translation at render-time
                 // (or add offset everything afterward!)
-                //_glBegin(_QUADRIC_TRANSLATE, vertex);
                 _glBegin(_TRANSLATE, vertex);
-                _vertex3f(data, vertex);
+                //_vertex3v(data, vertex);
+                S57_addPrimVertex(vertex, data);
                 _glEnd(vertex);
 #else
                 glMatrixMode(GL_MODELVIEW);
@@ -4510,7 +4489,10 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 glTranslated(data[0], data[1], data[2]);
 #endif
 
-#ifdef  S52_USE_OPENGL_VBO
+                // pass 'vertex' via global '_diskPrimTmp' used by _gluDisk()
+                _diskPrimTmp = vertex;
+
+#ifdef S52_USE_OPENGL_VBO
                 if (GLU_FILL == fillMode) {
                     // FIXME: optimisation, draw a point instead of a filled disk
                     _gluQuadricDrawStyle(_qobj, GLU_FILL);
@@ -4526,14 +4508,13 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                     gluDisk(_qobj, inner, outer, slices, loops);
                 }
 #endif
-                // finish with tmp buffer
+                // finish with tmp pointer to buffer
                 _diskPrimTmp = NULL;
 
 
-#if !defined( S52_USE_OPENGL_VBO)
+#if !defined(S52_USE_OPENGL_VBO)
                 // when in fill mode draw outline (antialias)
                 gluQuadricDrawStyle(_qobj, GLU_SILHOUETTE);
-                //gluQuadricDrawStyle(_qobj, GLU_LINE);
                 gluDisk(_qobj, inner, outer, slices, loops);
                 glPopMatrix();
 #endif
@@ -4601,19 +4582,16 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 
             case S52_VC_PD:    // pen down
             case S52_VC_PU: {  // pen up
-                GArray   *vec  = S52_PL_getVOdata(vecObj);
-                //vertex_t *data = (vertex_t *)vec->data;
-
-                // paranoi
+                /*
+                // paranoia
+                GArray *vec = S52_PL_getVOdata(vecObj);
                 if (0 == vec->len) {
                     PRINTF("Vector Object Name: %s  Command: %c - NO VECTOR!\n", S52_PL_getVOname(vecObj), vcmd);
                     g_assert(0);
                     break;
                 }
+                */
 
-                //*
-                // split STRIP into LINES
-                //if (1 < vec->len)
                 {
                     _glBegin(GL_LINES,  vertex);
                     while ((S52_VC_PD==vcmd) || (S52_VC_PU==vcmd)) {
@@ -4625,33 +4603,30 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                             continue;
 
                         // POINTS
-                        //if (1 == vec->len)
-                        //    break;
                         // draw points as a short line so one glDraw call
                         // to render all: points, lines, strip to save a lone glDraw point call
                         if (1 == vec->len) {
                             vertex_t data1[3] = {data[0]+20.0, data[1]+20.0, 0.0};
-                            _vertex3f(data, vertex);
-                            _vertex3f(data1, vertex);
+                            S57_addPrimVertex(vertex, data);
+                            S57_addPrimVertex(vertex, data1);
                             vcmd = S52_PL_getNextVOCmd(vecObj);
                             continue;
                         }
 
                         // LINES
                         if (2 == vec->len) {
-                            _vertex3f(data+0, vertex);
-                            //data+=3;
-                            _vertex3f(data+3, vertex);
+                            S57_addPrimVertex(vertex, data+0);
+                            S57_addPrimVertex(vertex, data+3);
                             vcmd = S52_PL_getNextVOCmd(vecObj);
                             continue;
                         }
 
                         // split STRIP into LINES
-                        //for (guint i=0; i<vec->len-1; ++i, data+=3) {
-                        for (guint i=0; (i+1)<vec->len; ++i, data+=3) {
-                            _vertex3f(data+0, vertex);
-                            _vertex3f(data+3, vertex);
+                        for (guint i=1; i<vec->len; ++i, data+=3) {
+                            S57_addPrimVertex(vertex, data+0);
+                            S57_addPrimVertex(vertex, data+3);
                         }
+
                         vcmd = S52_PL_getNextVOCmd(vecObj);
                     }
                     _glEnd(vertex);
@@ -4659,95 +4634,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                     // vcmd is set, go to the outer while
                     continue;
                 }
-                /*
-                else {
-                    _glBegin(GL_POINTS, vertex);
-                    while ((S52_VC_PD==vcmd) || (S52_VC_PU==vcmd)) {
-                        GArray   *vec  = S52_PL_getVOdata(vecObj);
-                        vertex_t *data = (vertex_t *)vec->data;
 
-                        // not POINTS
-                        if (1 != vec->len)
-                            break;
-
-                        _vertex3f(data, vertex);
-                        vcmd = S52_PL_getNextVOCmd(vecObj);
-                    }
-                    _glEnd(vertex);
-                    continue;
-                }
-                //*/
-
-                /*
-                // accumulate LINES segment
-                if (2 == vec->len) {
-                    _glBegin(GL_LINES, vertex);
-
-                    _vertex3f(data, vertex);
-                    data+=3;
-                    _vertex3f(data, vertex);
-
-                    vcmd = S52_PL_getNextVOCmd(vecObj);
-                    while ((S52_VC_PD==vcmd) || (S52_VC_PU==vcmd)) {
-                        GArray   *vec  = S52_PL_getVOdata(vecObj);
-                        vertex_t *data = (vertex_t *)vec->data;
-
-                        // LINES
-                        if (2 == vec->len) {
-                            _vertex3f(data, vertex);
-                            data+=3;
-                            _vertex3f(data, vertex);
-                            vcmd = S52_PL_getNextVOCmd(vecObj);
-                        } else {
-                            break;  // not LINES, break out of the inner while
-                        }
-                    }
-                    _glEnd(vertex);
-
-                    // vcmd is set, go to the outer while
-                    continue;
-                }
-                //*/
-
-                /*
-                if (1 == vec->len) {
-                    _glBegin(GL_POINTS,     vertex);
-                } else {
-                    _glBegin(GL_LINE_STRIP, vertex);
-                }
-                //*/
-
-/*
-#ifdef S52_USE_GL2
-                for (guint i=0; i<vec->len; ++i, data+=3) {
-                    _vertex3f(data, vertex);
-                }
-#else
-                for (guint i=0; i<vec->len; ++i, data+=3) {
-                    _vertex3d(data, vertex);
-                }
-#endif
-                // close loop by inserting last pen position
-                // before entering polygon mode
-                // this is to fix OBSTRN11 line on it side
-                // other symbole (ex BOYLAT) have extra vector to close the loop
-                if (NULL != fristCoord) {
-                    unsigned int idx = (vec->len-1) * 3;
-                    if (fristCoord[0] == data[idx] && fristCoord[1] == data[idx + 1]) {
-                        PRINTF("WARNING: same coord (%7.1f,%7.1f): %s\n", fristCoord[0], fristCoord[1], S52_PL_getVOname(vecObj));
-                    } else {
-                        _vertex3f(fristCoord, vertex);
-                        fristCoord = NULL;
-                    }
-                }
-
-                _glEnd(vertex);
-
-                //_DrawArrays(vertex);
-                //S57_initPrim(vertex); //reset
-                //continue;
-                break;
-*/
             }
 
             // should not get here since these command
@@ -4796,7 +4683,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
     if (FALSE == DL->create)
         return FALSE;
 
-#ifdef  S52_USE_OPENGL_VBO
+#ifdef S52_USE_OPENGL_VBO
     if (TRUE == glIsBuffer(DL->vboIds[0])) {
         // NOTE: DL->nbr is 1 - all pattern in PLib have only one color
         // but this is not in S52 specs (check this)
@@ -4847,7 +4734,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
         g_assert(0);
     }
 
-#ifdef  S52_USE_OPENGL_VBO
+#ifdef S52_USE_OPENGL_VBO
     // using VBO we need to keep some info (mode, first, count)
     DL->prim[0]   = _parseHPGL(vecObj, DL->prim[0]);
     DL->vboIds[0] = _VBOCreate(DL->prim[0]);
@@ -4895,7 +4782,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
         g_assert(0);
     }
 
-#ifdef  S52_USE_OPENGL_VBO
+#ifdef S52_USE_OPENGL_VBO
     if (TRUE == glIsBuffer(DL->vboIds[0])) {
         glDeleteBuffers(DL->nbr, &DL->vboIds[0]);
 
@@ -4938,7 +4825,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
         }
     }
 
-#ifdef  S52_USE_OPENGL_VBO
+#ifdef S52_USE_OPENGL_VBO
     for (guint i=0; i<DL->nbr; ++i) {
         // using VBO we need to keep some info (mode, first, count)
         DL->prim[i]   = _parseHPGL(vecObj, DL->prim[i]);
@@ -5936,12 +5823,12 @@ int        S52_GL_del(S52_obj *obj)
         // 'vboID' is in fact a DList here
         if (GL_TRUE == glIsList(vboID)) {
             glDeleteLists(vboID, 1);
+            vboID = 0;
+            S57_setPrimDList(prim, vboID);
         } else {
             PRINTF("WARNING: ivalid DL\n");
             g_assert(0);
         }
-        vboID = 0;
-        S57_setPrimDList(prim, vboID);
 #endif  // S52_USE_OPENGL_VBO
     }
 
@@ -6048,7 +5935,7 @@ static int       _contextValid(void)
         }
     }
 
-#if !defined(S52_USE_GLES2)
+#if !defined(S52_USE_GL2)
     GLboolean d = FALSE;
     glGetBooleanv(GL_DOUBLEBUFFER, &d);
     PRINTF("DEBUG: double buffer: %s\n", ((TRUE==d) ? "TRUE" : "FALSE"));
@@ -6563,7 +6450,7 @@ int        S52_GL_drawFBPixels(void)
 
 #ifdef S52_USE_GL2
 
-    _glMatrixSet(VP_PRJ);
+    //_glMatrixSet(VP_PRJ);
 
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
@@ -6593,7 +6480,8 @@ int        S52_GL_drawFBPixels(void)
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
 
-    _glMatrixDel(VP_PRJ);
+    // _GL_end
+    //_glMatrixDel(VP_PRJ);
 
 #else   // S52_USE_GL2
 
@@ -6635,7 +6523,7 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
 
 #ifdef S52_USE_GL2
 
-    _glMatrixSet(VP_PRJ);
+    //_glMatrixSet(VP_PRJ);
 
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
@@ -6664,7 +6552,7 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
 
-    _glMatrixDel(VP_PRJ);
+    //_glMatrixDel(VP_PRJ);
 
 #else
     (void)scale_x;
@@ -6725,12 +6613,11 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
             return FALSE;
 
-        //_glMatrixSet(VP_WIN);
         _glMatrixSet(VP_PRJ);
 
         projUV p = {pt.x, pt.y};
         p = _prj2win(p);
-        //_glMatrixDel(VP_WIN);
+
         _glMatrixDel(VP_PRJ);
 
         // FIXME: what happen if the viewport change!!
