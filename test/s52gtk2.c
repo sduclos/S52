@@ -551,7 +551,6 @@ static gint     _execOption()
     return TRUE;
 }
 
-
 static gboolean _scroll(GtkWidget *widget, GdkEventKey *event)
 {
     (void)widget;
@@ -1183,7 +1182,7 @@ static int      _initS52()
     //ret = S52_toggleObjClassOFF("M_QUAL");  // OK - ret == TRUE
     //ret = S52_toggleObjClassON ("M_QUAL");  // OK - ret == TRUE
     //ret = S52_toggleObjClassON ("M_QUAL");  // OK - ret == FALSE
-    //S52_setS57ObjClassSupp("M_QUAL", TRUE);
+    S52_setS57ObjClassSupp("M_QUAL", TRUE);
 
     // test
     //S52_toggleObjClass("DRGARE");   // drege area
@@ -1231,8 +1230,6 @@ static int      _initS52()
     S52_setMarinerParam("S52_MAR_QUAPNT01",        0.0);
     */
 
-    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       15.0);
-    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,      60.0);
     //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);
     S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);
     S52_setTextDisp(0, 100, TRUE);                      // show all text
@@ -1323,7 +1320,7 @@ static int      _initS52()
     S52_loadPLib("PLAUX_00.DAI");
 
     // load PLib from s52.cfg indication
-    S52_loadPLib(NULL);
+    //S52_loadPLib(NULL);
 
     // lastest (S52 ed 6.0) IHO colors from www.ecdisregs.com
     S52_loadPLib("plib_COLS-3.4.1.rle");
@@ -1362,7 +1359,7 @@ static int      _initS52()
     _setVESSEL();
 
 
-    /*
+    //*
     _setVRMEBL();
     // FIXME: broken
 
@@ -1409,11 +1406,10 @@ static void     realize(GtkWidget *widget, gpointer data)
 
 #ifdef USE_AIS
     // Note: data form AIS start too fast for the main loop
-    //s52ais_initAIS(update_cb);
-    s52ais_initAIS(_s52_draw_cb);
+    s52ais_initAIS();
 
     // for continuous drawing
-    g_idle_add(_draw, widget);
+    //g_idle_add(_draw, widget);
     //g_idle_add(update_cb, widget);
 
     //g_print("install hook to loop on gtk_widget_draw when idle\n");
