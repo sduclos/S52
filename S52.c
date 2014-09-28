@@ -294,7 +294,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 0.142\n"
+      "libS52 1.143\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -1725,8 +1725,8 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     S52_PL_init();
 
     // put an error No in S52_MAR_ERROR
-    //S52_MP_set(S52_MAR_ERROR, INFINITY);
-    S52_MP_set(S52_MAR_ERROR, 0.0);
+    S52_MP_set(S52_MAR_ERROR, INFINITY);
+    //S52_MP_set(S52_MAR_ERROR, 0.0);
 
     // set default to show all text
     S52_MP_setTextDisp(0, 100, TRUE);
@@ -1967,7 +1967,8 @@ static int        _suppLineOverlap()
                     gchar       *found1 = g_strrstr(name_rcnmstr->str, substr);
                     gchar       *found2 = g_strrstr(name_rcidstr->str, substr);
                     if (NULL!=found1 || NULL!=found2) {
-                        PRINTF("ERROR: OGR buffer TEMP_BUFFER_SIZE in ogr/ogrfeature.cpp:994 overflow\n");
+                        PRINTF("FIXME: OGR buffer TEMP_BUFFER_SIZE in ogr/ogrfeature.cpp:994 overflow\n");
+                        PRINTF("FIXME: apply patch in S52/doc/ogrfeature.cpp.diff to OGR source code\n");
                         g_assert(0);
                     }
                 }
@@ -3921,74 +3922,74 @@ static int        _drawLegend()
 
         // ENC Name
         if (NULL == c->filename)
-            SPRINTF(str, "ENC NAME: Unknown");
+            SNPRINTF(str, 80, "ENC NAME: Unknown");
         else
-            SPRINTF(str, "%.8s", c->filename->str);
+            SNPRINTF(str, 80, "%.8s", c->filename->str);
         S52_GL_drawStr(xyz[0], xyz[1], str, 1, 3);
 
         // DSID:DSPM_DUNI: units for depth
         if (NULL == c->dsid_dunistr)
-            SPRINTF(str, "dsid_dspm_duni: NULL");
+            SNPRINTF(str, 80, "dsid_dspm_duni: NULL");
         else {
             if ('1' == *c->dsid_dunistr->str)
-                SPRINTF(str, "DEPTH IN METER");
+                SNPRINTF(str, 80, "DEPTH IN METER");
             else
-                SPRINTF(str, "DEPTH IN :%s", (NULL==c->dsid_dunistr) ? "NULL" : c->dsid_dunistr->str);
+                SNPRINTF(str, 80, "DEPTH IN :%s", (NULL==c->dsid_dunistr) ? "NULL" : c->dsid_dunistr->str);
         }
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // DSID:DSPM_HUNI: units for height
         if (NULL==c->dsid_hunistr)
-            SPRINTF(str, "dsid_dpsm_huni: NULL");
+            SNPRINTF(str, 80, "dsid_dpsm_huni: NULL");
         else {
             if ('1' == *c->dsid_hunistr->str)
-                SPRINTF(str, "HEIGHT IN METER");
+                SNPRINTF(str, 80, "HEIGHT IN METER");
             else
-                SPRINTF(str, "HEIGHT IN :%s", c->dsid_hunistr->str);
+                SNPRINTF(str, 80, "HEIGHT IN :%s", c->dsid_hunistr->str);
         }
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 0);
 
         //7. value of safety depth       Selected by user. Default is 30 metres.
-        SPRINTF(str, "Safety Depth: %.1f", S52_MP_get(S52_MAR_SAFETY_DEPTH));
+        SNPRINTF(str, 80, "Safety Depth: %.1f", S52_MP_get(S52_MAR_SAFETY_DEPTH));
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 0);
 
         //8. value of safety contour     Selected by user. Default is 30 metres.
-        SPRINTF(str, "Safety Contour: %.1f", S52_MP_get(S52_MAR_SAFETY_CONTOUR));
+        SNPRINTF(str, 80, "Safety Contour: %.1f", S52_MP_get(S52_MAR_SAFETY_CONTOUR));
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 0);
 
         // scale of display
         xyz[1] -= offset_y; // add some room
         if (NULL==c->dsid_csclstr)
-            SPRINTF(str, "dsid_cscl:%s", (NULL==c->dsid_csclstr) ? "NULL" : c->dsid_csclstr->str);
+            SNPRINTF(str, 80, "dsid_cscl:%s", (NULL==c->dsid_csclstr) ? "NULL" : c->dsid_csclstr->str);
         else
-            SPRINTF(str, "Scale 1:%s", (NULL==c->dsid_csclstr) ? "NULL" : c->dsid_csclstr->str);
+            SNPRINTF(str, 80, "Scale 1:%s", (NULL==c->dsid_csclstr) ? "NULL" : c->dsid_csclstr->str);
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 2);
 
 
         // ----------- DATUM ----------------------------------------------------------
 
         // DSID:DSPM_SDAT: sounding datum
-        SPRINTF(str, "dsid_sdat:%s", (NULL==c->dsid_sdatstr) ? "NULL" : c->dsid_sdatstr->str);
+        SNPRINTF(str, 80, "dsid_sdat:%s", (NULL==c->dsid_sdatstr) ? "NULL" : c->dsid_sdatstr->str);
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // vertical datum
-        SPRINTF(str, "dsid_vdat:%s", (NULL==c->dsid_vdatstr) ? "NULL" : c->dsid_vdatstr->str);
+        SNPRINTF(str, 80, "dsid_vdat:%s", (NULL==c->dsid_vdatstr) ? "NULL" : c->dsid_vdatstr->str);
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // horizontal datum
-        SPRINTF(str, "dsid_hdat:%s", (NULL==c->dsid_hdatstr) ? "NULL" : c->dsid_hdatstr->str);
+        SNPRINTF(str, 80, "dsid_hdat:%s", (NULL==c->dsid_hdatstr) ? "NULL" : c->dsid_hdatstr->str);
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // legend from M_SDAT
         // sounding datum
         if (NULL != c->sverdatstr) {
-            SPRINTF(str, "sverdat:%s", c->sverdatstr->str);
+            SNPRINTF(str, 80, "sverdat:%s", c->sverdatstr->str);
             S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
         // legend from M_VDAT
         // vertical datum
         if (NULL != c->vverdatstr) {
-            SPRINTF(str, "vverdat:%s", c->vverdatstr->str);
+            SNPRINTF(str, 80, "vverdat:%s", c->vverdatstr->str);
             S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
 
@@ -3996,51 +3997,51 @@ static int        _drawLegend()
         // ---------------------------------------------------------------------
 
         // date of latest update
-        SPRINTF(str, "dsid_isdt:%s", (NULL==c->dsid_isdtstr) ? "NULL" : c->dsid_isdtstr->str);
+        SNPRINTF(str, 80, "dsid_isdt:%s", (NULL==c->dsid_isdtstr) ? "NULL" : c->dsid_isdtstr->str);
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         // number of latest update
-        SPRINTF(str, "dsid_updn:%s", (NULL==c->dsid_updnstr) ? "NULL" : c->dsid_updnstr->str);
+        SNPRINTF(str, 80, "dsid_updn:%s", (NULL==c->dsid_updnstr) ? "NULL" : c->dsid_updnstr->str);
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         // edition number
-        SPRINTF(str, "dsid_edtn:%s", (NULL==c->dsid_edtnstr) ? "NULL" : c->dsid_edtnstr->str);
+        SNPRINTF(str, 80, "dsid_edtn:%s", (NULL==c->dsid_edtnstr) ? "NULL" : c->dsid_edtnstr->str);
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         // edition date
-        SPRINTF(str, "dsid_uadt:%s", (NULL==c->dsid_uadtstr) ? "NULL" : c->dsid_uadtstr->str);
+        SNPRINTF(str, 80, "dsid_uadt:%s", (NULL==c->dsid_uadtstr) ? "NULL" : c->dsid_uadtstr->str);
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // legend from M_CSCL
         // scale
         if (NULL != c->cscalestr) {
-            SPRINTF(str, "cscale:%s", c->cscalestr->str);
+            SNPRINTF(str, 80, "cscale:%s", c->cscalestr->str);
             S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
 
         // legend from M_QUAL
         // data quality indicator
-        SPRINTF(str, "catzoc:%s", (NULL==c->catzocstr) ? "NULL" : c->catzocstr->str);
+        SNPRINTF(str, 80, "catzoc:%s", (NULL==c->catzocstr) ? "NULL" : c->catzocstr->str);
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // legend from M_ACCY POSACC
         // data quality indicator
         if (NULL != c->posaccstr) {
-            SPRINTF(str, "posacc:%s", c->posaccstr->str);
+            SNPRINTF(str, 80, "posacc:%s", c->posaccstr->str);
             S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
 
         // legend from MAGVAR
         // magnetic
         if (NULL != c->valmagstr) {
-            SPRINTF(str, "valmag:%s", c->valmagstr->str);
+            SNPRINTF(str, 80, "valmag:%s", c->valmagstr->str);
             S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
 
         if (NULL != c->ryrmgvstr) {
-            SPRINTF(str, "ryrmgv:%s", c->ryrmgvstr->str);
+            SNPRINTF(str, 80, "ryrmgv:%s", c->ryrmgvstr->str);
             S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
 
         if (NULL != c->valacmstr) {
-            SPRINTF(str, "valacm:%s", c->valacmstr->str);
+            SNPRINTF(str, 80, "valacm:%s", c->valacmstr->str);
             S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
     }
@@ -6259,8 +6260,8 @@ DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBeg
     lonEnd   = _validate_lon(lonEnd);
 
     {
-        char attval[256];
-        SPRINTF(attval, "catclr:%i", catclr);
+        char attval[80];
+        SNPRINTF(attval, 80, "catclr:%i", catclr);
         double xyz[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
 
 
@@ -6299,7 +6300,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
 
 
     {
-        char   attval[256];
+        char   attval[80];
         double xyz[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
 
         // check if same point
@@ -6310,9 +6311,9 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         }
 
         if (0.0 != wholinDist)
-            SPRINTF(attval, "select:%i,plnspd:%f,_wholin_dist:%f", select, plnspd, wholinDist);
+            SNPRINTF(attval, 80, "select:%i,plnspd:%f,_wholin_dist:%f", select, plnspd, wholinDist);
         else
-            SPRINTF(attval, "select:%i,plnspd:%f", select, plnspd);
+            SNPRINTF(attval, 80, "select:%i,plnspd:%f", select, plnspd);
 
         S52ObjectHandle leglin = S52_newMarObj("leglin", S52_LINES, 2, xyz, attval);
 
@@ -6341,13 +6342,13 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
 
     return_if_null((void*)label);  // what if we need to erase label!
 
-    char   attval[256];
+    char   attval[80];
 
     // FIXME: get the real value
     //double xyz[3] = {_view.cLon, _view.cLat, 0.0};      // quiet the warning in S52_newMarObj()
     double xyz[3] = {0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
 
-    SPRINTF(attval, "_vessel_label:%s", label);
+    SNPRINTF(attval, 80, "_vessel_label:%s", label);
 
     // only one OWNSHP (bug if we want 2 GPS shown)
     if (NULL == _OWNSHP)
@@ -6385,11 +6386,11 @@ DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double 
         double shp_off_y = shplen / 2.0 - b;
         double shp_off_x = shpbrd / 2.0 - c;
 
-        char attval[256];
+        char attval[80];
         //double xyz[3] = {0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
 
-        //SPRINTF(attval, "shpbrd:%f,shplen:%f,cogcrs:0,sogspd:0,ctwcrs:0,stwspd:0", beam, length);
-        SPRINTF(attval, "shpbrd:%f,shplen:%f,_shp_off_x:%f,_shp_off_y:%f",
+        //SNPRINTF(attval, 80, "shpbrd:%f,shplen:%f,cogcrs:0,sogspd:0,ctwcrs:0,stwspd:0", beam, length);
+        SNPRINTF(attval, 80, "shpbrd:%f,shplen:%f,_shp_off_x:%f,_shp_off_y:%f",
                 shpbrd, shplen, shp_off_x, shp_off_y);
 
         //_updateGeoNattVal(objH, NULL, attval);
@@ -6432,10 +6433,10 @@ DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH,  int vecstb, double 
     }
 
     if (TRUE == _isObjNameValid(objH, "ownshp") || TRUE == _isObjNameValid(objH, "vessel")) {
-        char   attval[256];
-        //SPRINTF(attval, "cogcrs:%f,sogspd:%f,ctwcrs:%f,stwspd:%f,vecmrk:%i,vecstb:%i", course, speed, course, speed, vecmrk, vecstb);
-        //SPRINTF(attval, "cogcrs:%f,sogspd:%f,ctwcrs:%f,stwspd:%f", course, speed, course, speed);
-        SPRINTF(attval, "vecstb:%i,cogcrs:%f,sogspd:%f,ctwcrs:%f,stwspd:%f", vecstb, course, speed, course, speed);
+        char   attval[80];
+        //SNPRINTF(attval, 80, "cogcrs:%f,sogspd:%f,ctwcrs:%f,stwspd:%f,vecmrk:%i,vecstb:%i", course, speed, course, speed, vecmrk, vecstb);
+        //SNPRINTF(attval, 80, "cogcrs:%f,sogspd:%f,ctwcrs:%f,stwspd:%f", course, speed, course, speed);
+        SNPRINTF(attval, 80, "vecstb:%i,cogcrs:%f,sogspd:%f,ctwcrs:%f,stwspd:%f", vecstb, course, speed, course, speed);
 
         //_updateGeoNattVal(objH, NULL, attval);
         S57_geo *geo = S52_PL_getGeo(objH);
@@ -6462,8 +6463,8 @@ DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int maxpts)
 
     PRINTF("catpst:%i\n", catpst);
 
-    char attval[256];
-    SPRINTF(attval, "catpst:%i", catpst);
+    char attval[80];
+    SNPRINTF(attval, 80, "catpst:%i", catpst);
 
     S52ObjectHandle pastrk = S52_newMarObj("pastrk", S52_LINES, maxpts, NULL, attval);
 
@@ -6495,8 +6496,8 @@ static
 
     //PRINTF("-2- latitude:%f, longitude:%f, heading:%f\n", latitude, longitude, heading);
     {
-        char   attval[256];
-        SPRINTF(attval, "headng:%f", heading);
+        char   attval[80];
+        SNPRINTF(attval, 80, "headng:%f", heading);
         _setAtt(geo, attval);
     }
 
@@ -6556,7 +6557,7 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
         // experimental: display cursor lat/lng
         if (0 == g_strcmp0("cursor", S57_getName(geo))) {
             char attval[80] = {'\0'};
-            SPRINTF(attval, "_cursor_label:%f%c %f%c", fabs(latitude), (latitude<0)? 'S':'N', fabs(longitude), (longitude<0)? 'W':'E');
+            SNPRINTF(attval, 80, "_cursor_label:%f%c %f%c", fabs(latitude), (latitude<0)? 'S':'N', fabs(longitude), (longitude<0)? 'W':'E');
             _setAtt(geo, attval);
             S52_PL_resetParseText(obj);
         }
@@ -6640,13 +6641,13 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
 
     S52ObjectHandle vessel = 0x0;
     {
-        char   attval[256];
+        char   attval[80];
         double xyz[3] = {0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
 
         if (NULL == label) {
-            SPRINTF(attval, "vesrce:%i,_vessel_label: ", vesrce);
+            SNPRINTF(attval, 80, "vesrce:%i,_vessel_label: ", vesrce);
         } else {
-            SPRINTF(attval, "vesrce:%i,_vessel_label:%s", vesrce, label);
+            SNPRINTF(attval, 80, "vesrce:%i,_vessel_label:%s", vesrce, label);
         }
 
         vessel = S52_newMarObj("vessel", S52_POINT, 1, xyz, attval);
@@ -6677,10 +6678,10 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
     //PRINTF("label:%s\n", newLabel);
 
     if (TRUE == _isObjNameValid(objH, "ownshp") || TRUE == _isObjNameValid(objH, "vessel")) {
-        char attval[256] = {'\0'};
+        char attval[80] = {'\0'};
         S57_geo *geo = S52_PL_getGeo(objH);
 
-        SPRINTF(attval, "[_vessel_label,%s]", newLabel);
+        SNPRINTF(attval, 80, "[_vessel_label,%s]", newLabel);
         _setAtt(geo, attval);
 
         // FIXME:
@@ -6716,7 +6717,7 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
     }
 
     if (TRUE == _isObjNameValid(objH, "ownshp") || TRUE == _isObjNameValid(objH, "vessel")) {
-        char  attval[60] = {'\0'};
+        char  attval[80] = {'\0'};
         char *attvaltmp  = attval;
         S57_geo *geo = S52_PL_getGeo((S52_obj *)objH);
 
@@ -6726,7 +6727,7 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
             vesselSelect = 1;
         }
         if (1 == vesselSelect) {
-            SPRINTF(attvaltmp, "_vessel_select:Y,");
+            SNPRINTF(attvaltmp, 80, "_vessel_select:Y,");
             _SELECTED = objH;
 
             /*
@@ -6746,24 +6747,25 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
             // get feedback sooner than the next pushPos (witch could never come)
         }
         if (2 == vesselSelect) {
-            SPRINTF(attvaltmp, "_vessel_select:N,");
+            SNPRINTF(attvaltmp, 80, "_vessel_select:N,");
             _SELECTED = FALSE;  // NULL
         }
 
-        attvaltmp += S52_strlen(attvaltmp);
 
         // validate vestat (Vessel Status): 1 AIS active, 2 AIS sleeping
         if (0!=vestat && 1!=vestat && 2!=vestat && 3!=vestat) {
             PRINTF("WARNING: 'vestat' must be 0, 1, 2 or 3.. reset to 1\n");
             vestat = 1;
         }
+
+        int offset = S52_strlen(attvaltmp);
         if (1==vestat || 2==vestat || 3==vestat ) {
-            SPRINTF(attvaltmp, "vestat:%i,", vestat);
+            SNPRINTF(attvaltmp+offset, 80-offset, "vestat:%i,", vestat);
             // FIXME: _doCS to get the new text (and prio)
         }
-        attvaltmp += S52_strlen(attvaltmp);
 
-        SPRINTF(attvaltmp, "_vessel_turn:%i", vesselTurn);
+        offset = S52_strlen(attvaltmp);
+        SNPRINTF(attvaltmp+offset, 80-offset, "_vessel_turn:%i", vesselTurn);
 
         _setAtt(geo, attval);
 
@@ -6791,8 +6793,8 @@ DLL int             STD S52_newCSYMB(void)
     S52_CHECK_INIT;
     //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
 
-    const char   *attval = NULL;
-    double        pos[3] = {0.0, 0.0, 0.0};
+    const char *attval = NULL;
+    double      pos[3] = {0.0, 0.0, 0.0};
 
     if (FALSE == _iniCSYMB) {
         PRINTF("WARNING: CSYMB allready initialize\n");
@@ -6844,17 +6846,16 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
 
     S52ObjectHandle vrmebl = FALSE;
 
-    char attval[256];
+    char attval[80];
     if (TRUE == setOrigin) {
         // initialy when user set origine
-        SPRINTF(attval, "%s%c,%s%c,%s",
+        SNPRINTF(attval, 80, "%s%c,%s%c,%s",
                 "_normallinestyle:", ((TRUE == normalLineStyle)    ? 'Y' : 'N'),
                 "_symbrngmrk:",      ((TRUE == vrm && TRUE == ebl) ? 'Y' : 'N'),
                 "_setOrigin:Init"
                );
     } else {
-        SPRINTF(attval, "%s%c,%s%c,%s",
-        //SPRINTF(attval, "%s%c,%s%c",
+        SNPRINTF(attval, 80, "%s%c,%s%c,%s",
                 "_normallinestyle:", ((TRUE == normalLineStyle)    ? 'Y' : 'N'),
                 "_symbrngmrk:",      ((TRUE == vrm && TRUE == ebl) ? 'Y' : 'N'),
                 "_setOrigin:N"
@@ -6945,7 +6946,7 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
         double dist   = sqrt(pow(xyz[3]-xyz[0], 2) + pow(xyz[4]-xyz[1], 2));
         double deg    = ATAN2TODEG(xyz);
         char   unit   = 'm';
-        char attval[256] = {'\0'};
+        char attval[80] = {'\0'};
 
         _updateGeo(objH, xyz);
 
@@ -6958,7 +6959,7 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
         if (deg < 0)
             deg += 360;
 
-        SPRINTF(attval, "_vrmebl_label:%.1f deg / %.1f%c", deg, dist, unit);
+        SNPRINTF(attval, 80, "_vrmebl_label:%.1f deg / %.1f%c", deg, dist, unit);
         _setAtt(geo, attval);
         S52_PL_resetParseText((S52_obj *)objH);
 
