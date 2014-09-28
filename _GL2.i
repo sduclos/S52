@@ -23,7 +23,7 @@ typedef GLUtesselator GLUtriangulatorObj;
 static double      _getGridRef(S52_obj *, double *, double *, double *, double *, double *, double *);
 static int         _fillArea(S57_geo *);
 static void        _glMatrixMode(guint);
-static void        _glLoadIdentity(void);
+static void        _glLoadIdentity(int);
 static void        _glUniformMatrix4fv_uModelview(void);
 static int         _glMatrixSet(VP);
 static int         _glMatrixDel(VP);
@@ -169,12 +169,14 @@ static GLuint        _fboID = 0;
 #define   GLU_FALSE                          0
 
 //static    GLenum   _mode = GL_MODELVIEW;  // GL_MODELVIEW (initial) or GL_PROJECTION
-static    GLenum   _mode = GL_PROJECTION;  // GL_MODELVIEW (initial) or GL_PROJECTION
+//static    GLenum   _mode = GL_PROJECTION;  // GL_MODELVIEW (initial) or GL_PROJECTION
 static    GLfloat  _mvm[MATRIX_STACK_MAX][16];       // modelview matrix
 static    GLfloat  _pjm[MATRIX_STACK_MAX][16];       // projection matrix
 static    GLfloat *_crntMat;          // point to active matrix
 static    int      _mvmTop = 0;       // point to stack top
 static    int      _pjmTop = 0;       // point to stack top
+//static    int      _mvmTop = -1;       // point to stack top
+//static    int      _pjmTop = -1;       // point to stack top
 
 #include <wchar.h>
 #include "vector.h"
@@ -517,8 +519,10 @@ static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16])
              + m[4]*m[2] *m[9]  + m[8] *m[1] *m[6]  - m[8] *m[2]*m[5];
 
     det = m[0]*inv[0] + m[1]*inv[4] + m[2]*inv[8] + m[3]*inv[12];
-    if (det == 0)
+    if (0.0 == det) {
+        PRINTF("WARNING: det = 0, fail\n");
         return GL_FALSE;
+    }
 
     det=1.0f/det;
 
@@ -586,7 +590,8 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
     GLfloat out[4];
 
     __gluMultMatricesf(modelMatrix, projMatrix, finalMatrix);
-    if (!__gluInvertMatrixf(finalMatrix, finalMatrix)) {
+    if (GL_FALSE == __gluInvertMatrixf(finalMatrix, finalMatrix)) {
+        PRINTF("WARNING: __gluInvertMatrixf() fail\n");
         return GL_FALSE;
     }
 
@@ -605,7 +610,8 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
     in[2] = in[2] * 2 - 1;
 
     __gluMultMatrixVecf(finalMatrix, in, out);
-    if (out[3] == 0.0) {
+    if (0.0 == out[3]) {
+        PRINTF("WARNING: __gluMultMatrixVecf() fail [out[3]=0]\n");
         return GL_FALSE;
     }
 
@@ -627,8 +633,8 @@ static void      _glTranslated(double x, double y, double z)
     _multiply(_crntMat, t);
 
     // optimisation - reset flag
-    if (GL_MODELVIEW == _mode)
-        _identity_MODELVIEW = FALSE;
+    //if (GL_MODELVIEW == _mode)
+    //    _identity_MODELVIEW = FALSE;
 
     return;
 }
@@ -642,8 +648,8 @@ static void      _glScaled(double x, double y, double z)
     _multiply(_crntMat, m);
 
     // optimisation - reset flag
-    if (GL_MODELVIEW == _mode)
-        _identity_MODELVIEW = FALSE;
+    //if (GL_MODELVIEW == _mode)
+    //    _identity_MODELVIEW = FALSE;
 
     return;
 }
@@ -663,8 +669,8 @@ static void      _glRotated(double angle, double x, double y, double z)
     _multiply(_crntMat, m);
 
     // optimisation - reset flag
-    if (GL_MODELVIEW == _mode)
-        _identity_MODELVIEW = FALSE;
+    //if (GL_MODELVIEW == _mode)
+    //    _identity_MODELVIEW = FALSE;
 
     return;
 }
@@ -696,7 +702,7 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
     glBindTexture(GL_TEXTURE_2D, _freetype_gl_atlas->id);
 
     _glMatrixMode(GL_MODELVIEW);
-    _glLoadIdentity();
+    _glLoadIdentity(GL_MODELVIEW);
     _glTranslated(x, y, 0.0);
 
     _pushScaletoPixel(FALSE);
@@ -1094,9 +1100,9 @@ static int       _init_gl2(void)
 
     //  init matrix
     _glMatrixMode(GL_PROJECTION);
-    _glLoadIdentity();
+    _glLoadIdentity(GL_PROJECTION);
     _glMatrixMode(GL_MODELVIEW);
-    _glLoadIdentity();
+    _glLoadIdentity(GL_MODELVIEW);
 
     //clear FB ALPHA before use, also put blue but doen't show up unless startup bug
     //glClearColor(0, 0, 1, 1);     // blue
@@ -1465,7 +1471,7 @@ static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, doubl
     _renderTile(DListData);
 
     if (0.0 != stagOffsetPix) {
-        _glLoadIdentity();
+        _glLoadIdentity(GL_MODELVIEW);
 
         if (TRUE == _GL_OES_texture_npot) {
             _glTranslated(tileWpx + stagOffsetPix, tileHpx + (tileHpx/2.0), 0.0);
