@@ -107,7 +107,7 @@ int      S52_getConfig(const char *label, valueBuf *vbuf)
 
    // prevent buffer overflow
    //sprintf(frmt, "%s%i%s", " %s %", MAXL-1, "[^\n]s");
-   SPRINTF(frmt, "%s%i%s", " %s %", MAXL-1, "[^\n]s");
+   SNPRINTF(frmt, MAXL, "%s%i%s", " %s %", MAXL-1, "[^\n]s");
    //printf("frmt:%s\n", frmt);
 
    ret = fscanf(fp, frmt, lbuf, vbuf);
