@@ -128,7 +128,7 @@ static const GLubyte _nodata_mask[4*32] = {
 ////////////////////////////////////////////////////////
 // forward decl
 static double      _getGridRef(S52_obj *, double *, double *, double *, double *, double *, double *);
-static int         _fillarea(S57_geo *);
+static int         _fillArea(S57_geo *);
 static int         _glCallList(S52_DListData *);
 static GLubyte     _glColor4ub(S52_Color *);
 static int         _pushScaletoPixel(int);
@@ -302,7 +302,7 @@ static int       _renderAP_NODATA_gl1(S52_obj *obj)
         glEnable(GL_POLYGON_STIPPLE);
         glPolygonStipple(_nodata_mask);
 
-        _fillarea(geoData);
+        _fillArea(geoData);
 
         glDisable(GL_POLYGON_STIPPLE);
 
@@ -324,7 +324,7 @@ static int       _renderAP_DRGARE_gl1(S52_obj *obj)
         glEnable(GL_POLYGON_STIPPLE);
         glPolygonStipple(_drgare_mask);
 
-        _fillarea(geoData);
+        _fillArea(geoData);
 
         glDisable(GL_POLYGON_STIPPLE);
         return TRUE;
@@ -431,7 +431,7 @@ static int       _renderAP_gl1(S52_obj *obj)
 
         // fill stencil
         S57_geo *geoData = S52_PL_getGeo(obj);
-        _fillarea(geoData);
+        _fillArea(geoData);
 
         // setup stencil to clip pattern
         // all color to pass stencil filter
