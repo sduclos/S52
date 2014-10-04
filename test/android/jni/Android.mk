@@ -32,11 +32,11 @@ ARMTOOLCHAINPATH := /home/sduclos/dev/prog/Android/dev/android-19-toolchain
 S52DROIDINC      := /home/sduclos/S52/test/android/dist/sysroot/include
 # TEGRA: tadp: -fno-omit-frame-pointer -mno-thumb
 # NDK-BUILD add this: -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
+#                    -DS52_USE_AFGLOW
 LOCAL_CFLAGS     := -g -O0 -std=c99 -Wall -DG_LOG_DOMAIN=\"s52droid\"                 \
-                    -DS52_USE_ANDROID -DS52_USE_ADRENO                                \
+                    -DS52_USE_ANDROID -DS52_USE_TEGRA2                                \
                     -DS52_USE_EGL -DS52_USE_GLES2                                     \
-                    -DUSE_AIS -DS52_USE_LOG                                           \
-                    -DS52_USE_AFGLOW                                                  \
+                    -DUSE_AIS                                                         \
                     -I../..                                                           \
                     -I$(S52DROIDINC)                                                  \
                     -I$(S52DROIDINC)/glib-2.0                                         \
@@ -78,9 +78,9 @@ $(ARMTOOLCHAINPATH)/arm-linux-androideabi/lib/thumb/libstdc++.a
 
 
 #LOCAL_SHARED_LIBRARIES := -L$(OMNILIBS) -lEGL -lGLESv2 -llog -landroid -landroid_runtime -lz -lc -lm -ldl
-#_LOCAL_SHARED_LIBRARIES := -lEGL -lGLESv2 -llog -landroid -lz -lc -lm -ldl
+_LOCAL_SHARED_LIBRARIES := -lEGL -lGLESv2 -llog -landroid -lz -lc -lm -ldl
 #_LOCAL_SHARED_LIBRARIES := -lEGL -lGLESv2_adreno -lGLESv1_CM_adreno -llog -landroid -lz -lc -lm -ldl
-_LOCAL_SHARED_LIBRARIES := -lEGL -lGLESv3 -llog -landroid -lz -lc -lm -ldl
+#_LOCAL_SHARED_LIBRARIES := -lEGL -lGLESv3 -llog -landroid -lz -lc -lm -ldl
 
 # Android NDK:     This is likely to result in incorrect builds. Try using LOCAL_STATIC_LIBRARIES
 # Android NDK:     or LOCAL_SHARED_LIBRARIES instead to list the library dependencies of the
