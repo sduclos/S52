@@ -1224,6 +1224,7 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
     return least_depth;
 }
 
+/*
 static double   _DEPVAL02(S57_geo *geo, double least_depth)
 // PLib-4.0 draft
 // Remarks: If the value of the attribute VALSOU for a wreck, rock or obstruction is
@@ -1247,6 +1248,7 @@ static double   _DEPVAL02(S57_geo *geo, double least_depth)
 
     return _DEPVAL01(geo, least_depth);
 }
+*/
 
 static GString *LEGLIN02 (S57_geo *geo)
 // Remarks: The course of a leg is given by its start and end point. Therefore this
