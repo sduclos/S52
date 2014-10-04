@@ -582,7 +582,7 @@ static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz,
 static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz, 
                                const GLfloat modelMatrix[16],
                                const GLfloat projMatrix[16],
-                               const GLint viewport[4],
+                               const GLint   viewport[4],
                                GLfloat* objx, GLfloat* objy, GLfloat* objz)
 {
     GLfloat finalMatrix[16];
@@ -701,8 +701,9 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
 
     glBindTexture(GL_TEXTURE_2D, _freetype_gl_atlas->id);
 
-    _glMatrixMode(GL_MODELVIEW);
+    //_glMatrixMode  (GL_MODELVIEW);
     _glLoadIdentity(GL_MODELVIEW);
+
     _glTranslated(x, y, 0.0);
 
     _pushScaletoPixel(FALSE);
@@ -1098,17 +1099,22 @@ static int       _init_gl2(void)
     _uPattH      = glGetUniformLocation(_programObject, "uPattH");
 
 
+    //  init matrix stack
+    memset(_mvm, 0, sizeof(GLfloat) * 16 * MATRIX_STACK_MAX);
+    memset(_pjm, 0, sizeof(GLfloat) * 16 * MATRIX_STACK_MAX);
+
     //  init matrix
-    _glMatrixMode(GL_PROJECTION);
+    _glMatrixMode  (GL_PROJECTION);
     _glLoadIdentity(GL_PROJECTION);
-    _glMatrixMode(GL_MODELVIEW);
+
+    _glMatrixMode  (GL_MODELVIEW);
     _glLoadIdentity(GL_MODELVIEW);
 
     //clear FB ALPHA before use, also put blue but doen't show up unless startup bug
     //glClearColor(0, 0, 1, 1);     // blue
-    //glClearColor(1.0, 0.0, 0.0, 1.0);     // red
+    glClearColor(1.0, 0.0, 0.0, 1.0);     // red
     //glClearColor(1.0, 0.0, 0.0, 0.0);     // red
-    glClearColor(0.0, 0.0, 0.0, 0.0);
+    //glClearColor(0.0, 0.0, 0.0, 0.0);
 
 #ifdef S52_USE_TEGRA2
     // xoom specific - clear FB to reset Tegra 2 CSAA (anti-aliase), define in gl2ext.h
