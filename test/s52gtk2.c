@@ -407,10 +407,6 @@ static int      _renderHelp(GtkWidget *widget)
 #if 0
 static int      _renderCrsrPos(GtkWidget *widget, double x, double y, double _brg, double _rge)
 {
-    // debug
-    //if (FALSE == S52_getMarinerParam(S52_MAR_DISP_CRSR_POS))
-    //    return FALSE;
-
     char str[80] = {'\0'};
     sprintf(str, "%05.1f° / %.1f m", _brg, _rge);
 
@@ -1691,8 +1687,6 @@ static gboolean button_release_event(GtkWidget      *widget,
             }
         case 1: // left click
             {
-                // FIXME: why this does work without this
-                // because same context
                 GdkGLContext  *glcontext  = gtk_widget_get_gl_context (widget);
                 GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(widget);
 
