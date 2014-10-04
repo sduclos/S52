@@ -102,7 +102,7 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_ROT_BUOY_LIGHT      = 28,   // rotate buoy light (deg from north)
 
-    S52_MAR_DISP_CRSR_POS       = 29,   // display cursor position (on/off)
+    S52_MAR_DISP_CRSR_POS       = 29,   // NOT IMPLEMENTED: display cursor position (on/off)
 
     S52_MAR_DISP_GRATICULE      = 30,   // display graticule (on/off)
 
@@ -433,6 +433,19 @@ DLL int    STD S52_doneCell        (const char *encPath);
  * Return: TRUE on success, else FALSE
  */
 DLL int    STD S52_setView(double  cLat, double  cLon, double  rNM, double  north);
+
+/**
+ * S52_getView:
+ * @cLat:  (out) (transfer full): latitude of the center of the view (deg)  [- 90 .. + 90]
+ * @cLon:  (out) (transfer full): longitude of the center of the view (deg) [-180 .. +180]
+ * @rNM:   (out) (transfer full): range (radius of view (NM), <0 unchange
+ * @north: (out) (transfer full): angle from north (deg),     <0 unchange
+ *
+ * Get center of view / where to place the camera on model
+ *
+ *
+ * Return: TRUE on success, else FALSE
+ */
 DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *north);
 
 /**
@@ -457,7 +470,7 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
  *
  * Get the value of the Mariners' Parameter @paramID (global variables/system wide)
  *
- * Invalid @paramID will return INFINITY, the value of S52_MAR_NONE
+ * Invalid @paramID will return INFINITY, the value of S52_MAR_ERROR
  *
  *
  * Return: value
@@ -560,7 +573,7 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className);
 /**
  * S52_setS57ObjClassSupp:
  * @className: (in): name of the S57 classe
- * @value: (in): TRUE / FALSE
+ * @value:     (in): TRUE / FALSE
  *
  * set suppression (TRUE/FALSE) from display of all Objects of the S57 class @className
  *
@@ -657,7 +670,7 @@ DLL const char * STD S52_getObjList(const char *cellName, const char *className)
 
 /**
  * S52_getAttList: get Attributes of a S52 object (S57ID)
-`* @S57ID:  (in) : a S52 object has a unique S57ID
+ * @S57ID:  (in) : a S52 object has a unique S57ID
  *
  * Where the first elementy is the ID, folowed by <key>:<value> pair
  * WARNING: the return str can be dandling, so raw C call must save
@@ -685,9 +698,9 @@ DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char
 /**
  * S52_getRGB:
  * @colorName: (in) : S52 color name
- * @R:         (out): red,   [0..255]
- * @G:         (out): green, [0..255]
- * @B:         (out): blue,  [0..255]
+ * @R:         (out) (transfer full): red,   [0..255]
+ * @G:         (out) (transfer full): green, [0..255]
+ * @B:         (out) (transfer full): blue,  [0..255]
  *
  *
  * Return: TRUE on success, else FALSE
@@ -699,13 +712,14 @@ DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char
  * @cb: (scope call) (allow-none):
  * @texRadius: (in): texture radius (pixels), if 0 free cb
  *
+ * S52_RADAR_cb: return alpha texture data
+ * @cLat: (in): center latutude in deg
+ * @cLng: (in): center longitude in deg
+ * @rNM : (in): radar range in NM
+ *
  * Signal that libS52 is at RADAR layer in the layer's sequence in S52_draw()
  * (compile with S52_USE_RADAR)
  *
- * S52_RADAR_cb return alpha texture data
- * @cLat: (in): center latutude in deg
- * @cLng: (in): center longitude in deg
- * @rNM : (in): radar range in NM,
  *
  * Return: TRUE on success, else FALSE
  */
@@ -715,9 +729,9 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius);
 /**
  * S52_dumpS57IDPixels:
  * @toFilename: (in): PNG file (with full path) to dump pixels to
- * @S57ID:  (in): internal ID of object (return via S52_getObjList() or S52_pickAt())
- * @width:  (in): width of dump in pixels (max viewport width)
- * @height: (in): height of dump in pixels (max viewport height)
+ * @S57ID:      (in): internal ID of object (return via S52_getObjList() or S52_pickAt())
+ * @width:      (in): width of dump in pixels (max viewport width)
+ * @height:     (in): height of dump in pixels (max viewport height)
  *
  * Dump (@width x @height) pixels to PNG @toFilename centered on @S57ID of the current framebuffer
  * Note: changing the size of the viewport require a call to draw() before this call
@@ -797,7 +811,7 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
 
 /**
  * S52_getMarObjH: get Mariners' Object handle
-`* @S57ID: (in)  : a S52 object internal S57ID
+ * @S57ID: (in)  : a S52 object internal S57ID
  *
  * get the handle of a Mariners' Object from is internal S57ID
  * (return via S52_pickAt())
@@ -831,10 +845,10 @@ DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle objH);
 /**
  * S52_newCLRLIN:
  * @catclr:   (in): 0 - undefined, 1 - NMT (not more than), 2 - NLT (not less than)
- * @latBegin: (in):
- * @lonBegin: (in):
- * @latEnd:   (in):
- * @lonEnd:   (in):
+ * @latBegin: (in): lat of LEGLIN beginning (degdecimal)
+ * @lonBegin: (in): lon of LEGLIN beginning (degdecimal)
+ * @latEnd:   (in): lat of LEGLIN ending    (degdecimal)
+ * @lonEnd:   (in): lon of LEGLIN ending    (degdecimal)
  *
  * new S52_obj "Clearing Line"
  * 'clrlin': CS(CLRLIN--)
