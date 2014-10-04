@@ -600,6 +600,18 @@ tags:
 err.txt: *.c *.h
 	cppcheck --enable=all $(DEFS) *.c 2> err.txt
 
+S52-1.143.gir: S52.h libS52.so
+	g-ir-scanner --verbose --namespace=S52 --nsversion=1.143 --library=S52 --no-libtool \
+	-US52_USE_DBUS S52.h -o $@
+	#sudo cp $@ /usr/share/gir-1.0/
+
+S52-1.143.typelib: S52-1.143.gir
+	g-ir-compiler S52-1.143.gir -o $@
+	#sudo cp $@ /usr/lib/girepository-1.0/S52-1.0.typelib
+
+# https://git.gnome.org/browse/introspection-doc-generator
+doc: S52-1.143.typelib
+	#cd /home/sduclos/dev/prog/doc-generator/introspection-doc-generator/; seed docs.js ./doc/tmp S52;
 
 ############### Notes ##############################
 #
