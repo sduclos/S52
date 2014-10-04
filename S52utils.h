@@ -54,8 +54,8 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
 #endif  // SOLARIS
 
 #ifdef S52_USE_GLIB2
-#define SNPRINTF g_snprintf
-//#define SNPRINTF(b,n,f, ...) if (n <= g_snprintf(b,n,f,__VA_ARGS__)) {PRINTF("WARNING: str overflow\n");g_assert(0);}
+//#define SNPRINTF g_snprintf
+#define SNPRINTF(b,n,f, ...) if (n <= g_snprintf(b,n,f,__VA_ARGS__)) {PRINTF("WARNING: str overflow\n");g_assert(0);}
 #else
 #define SNPRINTF snprintf
 #endif
