@@ -3863,10 +3863,13 @@ static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
 
                 switch (*pf) {
                     case 'c':
-                    case 's': b += SNPRINTF(b, MAXL, tmp, val);           cc = 1; break;
-                    case 'f': b += SNPRINTF(b, MAXL, tmp, S52_atof(val)); cc = 1; break;
+                    //case 's': b += SNPRINTF(b, MAXL, tmp, val);           cc = 1; break;
+                    case 's': b += g_snprintf(b, MAXL, tmp, val);           cc = 1; break;
+                    //case 'f': b += SNPRINTF(b, MAXL, tmp, S52_atof(val)); cc = 1; break;
+                    case 'f': b += g_snprintf(b, MAXL, tmp, S52_atof(val)); cc = 1; break;
                     case 'd':
-                    case 'i': b += SNPRINTF(b, MAXL, tmp, S52_atoi(val)); cc = 1; break;
+                    //case 'i': b += SNPRINTF(b, MAXL, tmp, S52_atoi(val)); cc = 1; break;
+                    case 'i': b += g_snprintf(b, MAXL, tmp, S52_atoi(val)); cc = 1; break;
                 }
             } while (!cc);
             pf++;             // skip conv. char
