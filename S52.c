@@ -294,7 +294,7 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 1.143\n"
+      "libS52 1.144\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -3921,31 +3921,34 @@ static int        _drawLegend()
         S52_GL_getStrOffset(&offset_x, &offset_y, str);
 
         // ENC Name
-        if (NULL == c->filename)
-            SNPRINTF(str, 80, "ENC NAME: Unknown");
-        else
+        if (NULL == c->filename) {
+            SNPRINTF(str, 80, "ENC NAME: %s", "Unknown");
+        } else {
             SNPRINTF(str, 80, "%.8s", c->filename->str);
+        }
         S52_GL_drawStr(xyz[0], xyz[1], str, 1, 3);
 
         // DSID:DSPM_DUNI: units for depth
-        if (NULL == c->dsid_dunistr)
-            SNPRINTF(str, 80, "dsid_dspm_duni: NULL");
-        else {
-            if ('1' == *c->dsid_dunistr->str)
-                SNPRINTF(str, 80, "DEPTH IN METER");
-            else
+        if (NULL == c->dsid_dunistr) {
+            SNPRINTF(str, 80, "dsid_dspm_duni: %s", "NULL");
+        } else {
+            if ('1' == *c->dsid_dunistr->str) {
+                SNPRINTF(str, 80, "DEPTH IN %s", "METER");
+            } else {
                 SNPRINTF(str, 80, "DEPTH IN :%s", (NULL==c->dsid_dunistr) ? "NULL" : c->dsid_dunistr->str);
+            }
         }
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // DSID:DSPM_HUNI: units for height
-        if (NULL==c->dsid_hunistr)
-            SNPRINTF(str, 80, "dsid_dpsm_huni: NULL");
-        else {
-            if ('1' == *c->dsid_hunistr->str)
-                SNPRINTF(str, 80, "HEIGHT IN METER");
-            else
+        if (NULL==c->dsid_hunistr) {
+            SNPRINTF(str, 80, "dsid_dpsm_huni: %s", "NULL");
+        } else {
+            if ('1' == *c->dsid_hunistr->str) {
+                SNPRINTF(str, 80, "HEIGHT IN %s", "METER");
+            } else {
                 SNPRINTF(str, 80, "HEIGHT IN :%s", c->dsid_hunistr->str);
+            }
         }
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 0);
 
@@ -3959,10 +3962,11 @@ static int        _drawLegend()
 
         // scale of display
         xyz[1] -= offset_y; // add some room
-        if (NULL==c->dsid_csclstr)
+        if (NULL==c->dsid_csclstr) {
             SNPRINTF(str, 80, "dsid_cscl:%s", (NULL==c->dsid_csclstr) ? "NULL" : c->dsid_csclstr->str);
-        else
+        } else {
             SNPRINTF(str, 80, "Scale 1:%s", (NULL==c->dsid_csclstr) ? "NULL" : c->dsid_csclstr->str);
+        }
         S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 2);
 
 
@@ -4310,8 +4314,8 @@ DLL int    STD S52_drawLast(void)
     //static int  cnt = 0;
     //static char drawTag[64];
     //g_snprintf(drawTag, 64, "%s-%i", "LAST", cnt++);
-    EGL_BEG(LAST);
     //EGL_BEG(drawTag);
+    EGL_BEG(LAST);
 #endif
 
 #if (defined(S52_USE_ANDROID) || defined(_MINGW))
@@ -6310,10 +6314,11 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
             return FALSE;
         }
 
-        if (0.0 != wholinDist)
+        if (0.0 != wholinDist) {
             SNPRINTF(attval, 80, "select:%i,plnspd:%f,_wholin_dist:%f", select, plnspd, wholinDist);
-        else
+        } else {
             SNPRINTF(attval, 80, "select:%i,plnspd:%f", select, plnspd);
+        }
 
         S52ObjectHandle leglin = S52_newMarObj("leglin", S52_LINES, 2, xyz, attval);
 
@@ -6727,7 +6732,7 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
             vesselSelect = 1;
         }
         if (1 == vesselSelect) {
-            SNPRINTF(attvaltmp, 80, "_vessel_select:Y,");
+            SNPRINTF(attvaltmp, 80, "_vessel_select:%c,", 'Y');
             _SELECTED = objH;
 
             /*
@@ -6747,7 +6752,7 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
             // get feedback sooner than the next pushPos (witch could never come)
         }
         if (2 == vesselSelect) {
-            SNPRINTF(attvaltmp, 80, "_vessel_select:N,");
+            SNPRINTF(attvaltmp, 80, "_vessel_select:%c,", 'N');
             _SELECTED = FALSE;  // NULL
         }
 
