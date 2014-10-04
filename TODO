@@ -25,7 +25,7 @@ Curent focus (top priority *):
 
     Coding:
 *   -use masked lines field (OGR/S57 MASK/FSPT) to use the line overlap trick
-*   -chart manager / chart extent / CATALOG.031
+*   -chart manager / chart extent / CATALOG.031 (client job!)
     -check CRC32 of S57 in CATALOG.031
     -read text referenced by CATALOG.031 (some text in M_NPUB also)
     -write back mariner's parameter to .cfg (client job!)
