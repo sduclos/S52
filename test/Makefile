@@ -298,6 +298,10 @@ s52clutter.js: S52-1.0.typelib
 S52-1.0.h: ../S52.h libS52-1.0.so
 	cp ../S52.h $@
 
+libS52-1.0.so: ../libS52.so ../S52.h
+	cp  ../libS52.so libS52-1.0.so
+	sudo cp  libS52-1.0.so $(GNOME3_SHELL_LIBS)
+
 S52-1.0.gir: S52-1.0.h libS52-1.0.so
 	$(GNOME3_SHELL_RUN) g-ir-scanner           \
         -DS52_USE_FTGL                         \
@@ -318,10 +322,6 @@ S52-1.0.gir: S52-1.0.h libS52-1.0.so
 S52-1.0.typelib: S52-1.0.gir
 	$(GNOME3_SHELL_RUN) g-ir-compiler S52-1.0.gir -o $@
 	sudo cp S52-1.0.typelib $(GNOME3_SHELL_LIBS)/girepository-1.0/
-
-libS52-1.0.so: ../libS52.so ../S52.h
-	cp  ../libS52.so libS52-1.0.so
-	sudo cp  libS52-1.0.so $(GNOME3_SHELL_LIBS)
 
 
 ############### clean up ##############################
