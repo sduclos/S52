@@ -1,7 +1,22 @@
 # ChangeLog.OLD: the old way to note mods
 #                The 'real' ChangeLog is generated with the Perl script cvs2cl.pl
+#                OR git log
 #
 
+
+2014OCT02
+    -fix update _crntMat in _glPopMatrix
+
+2014SEP26
+    -mod SPRINTF by SNPRINTF
+    -mod internal version 1.x
+
+2014SEP10
+    -mob GDAL env. var move to test/*
+
+2014SEP04
+    -mod move EMPTY_NUMBER_MARKER to S57data.h
+    -fix CS wreck above water
 
 2014AUG21
     -fix s52win32 code path
