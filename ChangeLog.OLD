@@ -4,6 +4,11 @@
 #
 
 
+2014OCT06
+    -mod S52_error_cb to S52_log_cb
+    -mod setViewPort at init()
+    -mod move _version to utils.c
+
 2014OCT02
     -fix update _crntMat in _glPopMatrix
 
