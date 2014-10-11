@@ -25,7 +25,7 @@
 #ifndef _S52UTILS_H_
 #define _S52UTILS_H_
 
-#include "S52.h"          // S52_error_cb
+#include "S52.h"          // S52_log_cb
 
 #include <glib.h>         // g_print()
 
@@ -34,6 +34,8 @@
 #else
 #include <stdio.h>        // FILE
 #endif
+
+
 
 #ifdef SOLARIS
     // well should be cc
@@ -92,8 +94,9 @@ gboolean S52_string_equal(const GString *v, const GString *v2);
 
 void     S52_tree_replace(GTree *tree, gpointer key, gpointer value);
 
-int      S52_initLog(S52_error_cb err_cb);
-int      S52_doneLog();
+cchar   *S52_utils_version(void);
+int      S52_initLog(S52_log_cb log_cb);
+int      S52_doneLog(void);
 
 
 
