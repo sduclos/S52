@@ -1214,7 +1214,8 @@ static int      _s52_init       (s52engine *engine)
 
         //LOGI("s52egl:_init_S52():S52_init(%i,%i,%i,%i)\n", w, h, wmm, hmm);
 
-        S52_setViewPort(0, 0, w, h);
+        // init() will do that by default at startup
+        //S52_setViewPort(0, 0, w, h);
     }
 
     // load PLib in s52.cfg
@@ -1494,6 +1495,7 @@ static int      _s52_init       (s52engine *engine)
     engine->do_S52drawBlit    = FALSE;
     engine->do_S52setViewPort = FALSE;
 
+    S52_version();
 
     LOGI("s52egl:_s52_init(): end ..\n");
 
