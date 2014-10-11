@@ -256,6 +256,7 @@ GL_OUT_OF_MEMORY
                     recorded.
 */
 
+    /* Note: glGetError() stall the pipeline - how bad it is ?
     GLint err = GL_NO_ERROR; // == 0x0
     for (err = glGetError(); GL_NO_ERROR != err; err = glGetError()) {
         const char *name = NULL;
@@ -280,6 +281,7 @@ GL_OUT_OF_MEMORY
 #endif
 
     }
+    */
 #endif
 }
 
@@ -4550,7 +4552,9 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 _f2d(_tessWorkBuf_d, vec->len, data);
                 double *dptr = (double*)_tessWorkBuf_d->data;
                 for (guint i=0; i<_tessWorkBuf_d->len; ++i, dptr+=3) {
+                //for (guint i=0; i<vec->len; ++i, data+=3) {
                     gluTessVertex(_tobj, (GLdouble*)dptr, (void*)dptr);
+                    //gluTessVertex(_tobj, data, (void*)data);
                     //PRINTF("x/y/z %f/%f/%f\n", dptr[0], dptr[1], dptr[2]);
                 }
 #else
@@ -4744,7 +4748,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
     DL->vboIds[0] = _VBOCreate(DL->prim[0]);
 
     // set normal mode
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    //glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 #else   // S52_USE_OPENGL_VBO
 
@@ -5587,7 +5591,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     //
 
     // check if an initial call S52_GL_setViewPort()
-    //if (0.0==_vp[0] && 0.0==_vp[1] && 0.0==_vp[2] && 0.0==_vp[3]) {
     if (0==_vp[0] && 0==_vp[1] && 0==_vp[2] && 0==_vp[3]) {
 
         // a viewport cant only have positive, but GL ask for int
@@ -6013,27 +6016,27 @@ int        S52_GL_init(void)
 #endif
 
     // init vbo for color
-    if (0 == _vboIDaftglwColrID)
+    if (0 == _vboIDaftglwColrID) {
         glGenBuffers(1, &_vboIDaftglwColrID);
 
-    // FIXME: glIsBuffer() faild but _vboIDaftglwColrID is valid
-    //if (GL_FALSE == glIsBuffer(_vboIDaftglwColrID)) {
-    if (0 == _vboIDaftglwColrID) {
-        PRINTF("ERROR: glGenBuffers() fail\n");
-        g_assert(0);
-        return FALSE;
+        // glIsBuffer() faild but _vboIDaftglwColrID is valid
+        if (0 == _vboIDaftglwColrID) {
+            PRINTF("ERROR: glGenBuffers() fail\n");
+            g_assert(0);
+            return FALSE;
+        }
     }
 
     // init VBO for vertex
-    if (0 == _vboIDaftglwVertID)
+    if (0 == _vboIDaftglwVertID) {
         glGenBuffers(1, &_vboIDaftglwVertID);
 
-    // FIXME: glIsBuffer() faild but _vboIDaftglwVertID is valid
-    //if (GL_FALSE == glIsBuffer(_vboIDaftglwVertID)) {
-    if (0 == _vboIDaftglwVertID) {
-        PRINTF("ERROR: glGenBuffers() fail\n");
-        g_assert(0);
-        return FALSE;
+        // glIsBuffer() faild but _vboIDaftglwVertID is valid
+        if (0 == _vboIDaftglwVertID) {
+            PRINTF("ERROR: glGenBuffers() fail\n");
+            g_assert(0);
+            return FALSE;
+        }
     }
 #endif
 
@@ -6393,7 +6396,6 @@ char      *S52_GL_getNameObjPick(void)
 
 guchar    *S52_GL_readFBPixels(void)
 {
-    //if (S52_GL_PICK==_crnt_GL_cycle || NULL==_fb_pixels) {
     if (S52_GL_PICK == _crnt_GL_cycle) {
         return NULL;
     }
@@ -6438,7 +6440,6 @@ guchar    *S52_GL_readFBPixels(void)
 
 int        S52_GL_drawFBPixels(void)
 {
-    //if (S52_GL_PICK==_crnt_GL_cycle || NULL==_fb_pixels) {
     if (S52_GL_PICK == _crnt_GL_cycle) {
         return FALSE;
     }
@@ -6453,9 +6454,6 @@ int        S52_GL_drawFBPixels(void)
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
 #ifdef S52_USE_GL2
-
-    //_glMatrixSet(VP_PRJ);
-
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
 
@@ -6483,9 +6481,6 @@ int        S52_GL_drawFBPixels(void)
 
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
-
-    // _GL_end
-    //_glMatrixDel(VP_PRJ);
 
 #else   // S52_USE_GL2
 
@@ -6949,10 +6944,7 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
     //_setBlend(TRUE);
 
     S52_DListData *DListData = S52_PL_getDListData(objA);
-    //if ((NULL==DListData) || (FALSE==_VBOvalidate(DListData)))
-    //    return FALSE;
-
-    S52_Color *color = DListData->colors;
+    S52_Color     *color     = DListData->colors;
     _glColor4ub(color);
 
 
