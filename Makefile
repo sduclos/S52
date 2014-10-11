@@ -21,7 +21,7 @@
 #all: s52eglw32      # OGR & EGL & Win32 (for testing EGL/GLES2 on Win32)
 #all: s52gv          # GV  (GTK)
 #all: s52gv2         # GV2 (GTK2)
-all: s52gtk2        # OGR & GTK2 & GL 1.5 (VBO) 
+all: s52gtk2        # OGR & GTK2 & GL 1.5 (VBO)
 #all: s52gtk2gl2     # OGR & GTK2 & GL 2.x
 #all: s52gtk2p       # profiling
 #all: s52gtk2gps     # build s52gtk2 for testing with live data comming from GPSD
@@ -35,7 +35,7 @@ all: s52gtk2        # OGR & GTK2 & GL 1.5 (VBO)
 
 SHELL = /bin/sh
 
-.PHONY: test/* clean distclean
+.PHONY: test/* clean distclean LIBVERS
 
 
 DBG0   = -O0 -g
@@ -91,8 +91,7 @@ OBJS_GV  = gvS57layer.o S57gv.o
 
 OBJS_FREETYPE_GL = ./lib/freetype-gl/vector.o ./lib/freetype-gl/texture-atlas.o ./lib/freetype-gl/texture-font.o
 
-# Note: there is no GLU for ARM, the code handle tessallation by converting double->float on the fly,
-# so the tess code is pulled from COGL.
+# Note: there is no GLU for ARM, so the tess code is pulled from COGL.
 # (Quadric are also in GLU, but it is done by hand in S52GL.c to output float
 # for VBO in GLES2 for circle / disk / arc.)
 OBJS_TESS = ./lib/libtess/dict.o      ./lib/libtess/geom.o     \
@@ -491,7 +490,7 @@ libS52.dll: $(OBJS_S52)
 	$(CXX) -O0 -g -Wall -mms-bitfields -shared -Wl,--add-stdcall-alias $(OBJS_S52) $(LIBS) -o $@
 
 libS52.dll.a: $(OBJS_S52)
-	$(AR) rc   libS52.dll.a $(OBJS_S52) 
+	$(AR) rc   libS52.dll.a $(OBJS_S52)
 	$(RANLIB)  libS52.dll.a
 
 libS52egl.dll: $(OBJS_S52) $(OBJS_FREETYPE_GL) $(OBJS_TESS) $(OBJ_PARSON)
@@ -600,18 +599,22 @@ tags:
 err.txt: *.c *.h
 	cppcheck --enable=all $(DEFS) *.c 2> err.txt
 
-S52-1.143.gir: S52.h libS52.so
-	g-ir-scanner --verbose --namespace=S52 --nsversion=1.143 --library=S52 --no-libtool \
-	-US52_USE_DBUS S52.h -o $@
-	#sudo cp $@ /usr/share/gir-1.0/
+#"libS52-1.145\n" --> 1.145
+LIBVERS = $(shell grep libS52- S52utils.c | sed 's/.*"libS52-\(.*\)\\n"/\1/' )
 
-S52-1.143.typelib: S52-1.143.gir
-	g-ir-compiler S52-1.143.gir -o $@
-	#sudo cp $@ /usr/lib/girepository-1.0/S52-1.0.typelib
+S52-$(LIBVERS).gir: S52.h
+	g-ir-scanner --verbose --namespace=S52 --nsversion=$(LIBVERS) --library=S52 --no-libtool S52.h -o $@
+	sudo cp $@ /usr/share/gir-1.0/
+
+S52-$(LIBVERS).typelib: S52-$(LIBVERS).gir
+	g-ir-compiler S52-$(LIBVERS).gir -o $@
+	sudo cp $@ /usr/lib/girepository-1.0/
 
 # https://git.gnome.org/browse/introspection-doc-generator
-doc: S52-1.143.typelib
-	#cd /home/sduclos/dev/prog/doc-generator/introspection-doc-generator/; seed docs.js ./doc/tmp S52;
+doc: S52-$(LIBVERS).typelib
+	(cd /home/sduclos/dev/prog/doc-generator/introspection-doc-generator/; seed docs.js ../tmp S52;)
+	cp /home/sduclos/dev/prog/doc-generator/introspection-doc-generator/tmp/seed/* doc/tmp
+
 
 ############### Notes ##############################
 #
