@@ -28,7 +28,7 @@
 // -- call to camera movement
 // -- call to PLib state
 // -- call for MIO's
-// -- call made over DBUS, Socket, WebSocket
+// -- call made over DBUS, Socket, WebSocket (_S52.i)
 // --- JSON Grammar (see ./test/s52ui)
 
 #ifndef _S52_H_
@@ -322,19 +322,20 @@ DLL int    STD S52_LL2xy (double *longitude, double *latitude);
  * @screen_pixels_h: (in): use to compute DOTPITCH Y
  * @screen_mm_w:     (in): use to compute DOTPITCH X
  * @screen_mm_h:     (in): use to compute DOTPITCH Y
- * @err_cb:          (scope call) (allow-none): callback
+ * @log_cb:          (scope call) (allow-none): callback
  *
  * Initialize libS52, install SIGINT handler to abort drawing (Ctrl-C)
  * xrandr can be used if framework doesn't do it (ie Clutter)
  * Note: the ratio screen mmw/h and screen mmw/h is used to compute initial DOTPITCH
  *       any number will do if system screen size call can't handle it
- *       overide with S52_MAR_DOTPITCH_MM_X / Y after init()
+ *       overide with S52_MAR_DOTPITCH_MM_X / Y after init().
+ * Note: screen_pixels_w, int screen_pixels_h are used to setViewPort to full-screen
  *
  *
  * Return: TRUE on success, else FALSE
  */
-typedef int (*S52_error_cb)(const char *err);
-DLL int   STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb);
+typedef int (*S52_log_cb)(const char *str);
+DLL int   STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_log_cb log_cb);
 
 /**
  * S52_version:
@@ -1069,11 +1070,13 @@ DLL int    STD S52_newCSYMB(void);
 
 
 // FIXME: use GDBus instead
-// or socket as DBus as to handle system-wide msg that slow the bus
+// Note: DBus has to handle system-wide msg that slow the bus
 #ifdef  S52_USE_DBUS
+//* commented to hide it from 'make doc' g-ir-scanner
 #define S52_DBUS_OBJ_NAME  "nav.ecs.dbus"
 #define S52_DBUS_OBJ_PATH  "/nav/ecs/dbus"
 #define S52_DBUS_OBJ_IFACE "nav.ecs.dbus"
+//*
 #endif
 
 
