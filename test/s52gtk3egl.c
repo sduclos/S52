@@ -21,6 +21,9 @@
 */
 
 
+// FIXME: merge gtk2 and gtk3 in new s52gtkegl, use GTK_CHECK_VERSION()
+// to define _GDK_KEY_Left to GDK_Left (2) or GDK_KEY_Left (3)
+
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
@@ -561,7 +564,7 @@ static int      _s52_init       (s52engine *engine)
 
         //g_print("_init_S52(): start -2- ..\n");
 
-        S52_setViewPort(0, 0, w, h);
+        //S52_setViewPort(0, 0, w, h);
 
     }
 
