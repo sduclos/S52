@@ -206,8 +206,6 @@ static int       _gluQuadricDrawStyle(_GLUquadricObj* qobj, GLint style)
 {
     qobj->style = style;
 
-    //g_assert(0);
-
     return TRUE;
 }
 #endif  // S52_USE_OPENGL_VBO
