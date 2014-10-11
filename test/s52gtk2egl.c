@@ -126,9 +126,9 @@ static S52ObjectHandle _ownshp            = NULL;
 //#define MAX_AFGLOW_PT 10        // debug
 static S52ObjectHandle _vessel_ais_afglow = NULL;
 
-#endif
+#endif  // S52_USE_AFGLOW
 
-#endif
+#endif  // USE_FAKE_AIS
 //-----------------------------
 
 
@@ -566,7 +566,7 @@ static int      _s52_init       (s52engine *engine)
 
         //g_print("_init_S52(): start -2- ..\n");
 
-        S52_setViewPort(0, 0, w, h);
+        //S52_setViewPort(0, 0, w, h);
 
     }
 
@@ -866,6 +866,19 @@ exit:
 
 static gboolean _scroll  (GdkEventKey *event)
 {
+    // TODO: test blit
+    /*
+    switch(event->keyval) {
+    case GDK_Left :
+        _engine.state.cLon -= _engine.state.rNM/(60.0*10.0);
+        S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north);
+        break;
+        case GDK_Right: _engine.state.cLon += _engine.state.rNM/(60.0*10.0); S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
+        case GDK_Up   : _engine.state.cLat += _engine.state.rNM/(60.0*10.0); S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
+        case GDK_Down : _engine.state.cLat -= _engine.state.rNM/(60.0*10.0); S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
+    }
+    */
+
     //*
     switch(event->keyval) {
         case GDK_Left : _engine.state.cLon -= _engine.state.rNM/(60.0*10.0); S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
@@ -874,6 +887,7 @@ static gboolean _scroll  (GdkEventKey *event)
         case GDK_Down : _engine.state.cLat -= _engine.state.rNM/(60.0*10.0); S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
     }
     //*/
+
     return TRUE;
 }
 
