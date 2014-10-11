@@ -293,104 +293,6 @@ static S52ObjectHandle _BLKADJ01 = FALSE;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
 //static S52_GL_ras   *_raster     = NULL;
 
-static char _version[] = "$Revision: 1.126 $\n"
-      "libS52 1.144\n"
-#ifdef _MINGW
-      "_MINGW\n"
-#endif
-#ifdef S52_USE_GV
-      "S52_USE_GV\n"
-#endif
-#ifdef GV_USE_DOUBLE_PRECISION_COORD
-      "GV_USE_DOUBLE_PRECISION_COORD\n"
-#endif
-#ifdef S52_USE_GLIB2
-      "S52_USE_GLIB2\n"
-#endif
-#ifdef S52_USE_OGR_FILECOLLECTOR
-      "S52_USE_OGR_FILECOLLECTOR\n"
-#endif
-#ifdef S52_USE_PROJ
-      "S52_USE_PROJ\n"
-#endif
-#ifdef S52_USE_SUPP_LINE_OVERLAP
-      "S52_USE_SUPP_LINE_OVERLAP\n"
-#endif
-#ifdef S52_DEBUG
-      "S52_DEBUG\n"
-#endif
-#ifdef S52_USE_LOG
-      "S52_USE_LOG\n"
-#endif
-#ifdef S52_USE_DBUS
-      "S52_USE_DBUS\n"
-#endif
-#ifdef S52_USE_SOCK
-      "S52_USE_SOCK\n"
-#endif
-#ifdef S52_USE_GOBJECT
-      "S52_USE_GOBJECT\n"
-#endif
-#ifdef S52_USE_BACKTRACE
-      "S52_USE_BACKTRACE\n"
-#endif
-#ifdef S52_USE_EGL
-      "S52_USE_EGL\n"
-#endif 
-#ifdef S52_USE_GL1
-      "S52_USE_GL1\n"
-#endif
-#ifdef S52_USE_OPENGL_VBO
-      "S52_USE_OPENGL_VBO\n"
-#endif
-#ifdef S52_USE_GLSC1
-      "S52_USE_GLSC1\n"
-#endif
-#ifdef S52_USE_GL2
-      "S52_USE_GL2\n"
-#endif
-#ifdef S52_USE_GLES2
-      "S52_USE_GLES2\n"
-#endif
-#ifdef S52_USE_ANDROID
-      "S52_USE_ANDROID\n"
-#endif
-#ifdef S52_USE_TEGRA2
-      "S52_USE_TEGRA2\n"
-#endif
-#ifdef S52_USE_ADRENO
-      "S52_USE_ADRENO\n"
-#endif
-#ifdef S52_USE_COGL
-      "S52_USE_COGL\n"
-#endif
-#ifdef S52_USE_FREETYPE_GL
-      "S52_USE_FREETYPE_GL\n"
-#endif
-#ifdef S52_USE_SYM_AISSEL01
-      "S52_USE_SYM_AISSEL01\n"
-#endif
-#ifdef S52_USE_WORLD
-      "S52_USE_WORLD\n"
-#endif
-#ifdef S52_USE_SYM_VESSEL_DNGHL
-      "S52_USE_SYM_VESSEL_DNGHL\n"
-#endif
-#ifdef S52_USE_TXT_SHADOW
-      "S52_USE_TXT_SHADOW\n"
-#endif
-#ifdef S52_USE_RADAR
-      "S52_USE_RADAR\n"
-#endif
-#ifdef S52_USE_MESA3D
-      "S52_USE_MESA3D\n"
-#endif
-#ifdef S52_USE_C_AGGR_C_ASSO
-      "S52_USE_C_AGGR_C_ASSO\n"
-#endif
-;
-
-
 // callback to eglMakeCurrent() / eglSwapBuffers()
 #ifdef S52_USE_EGL
 static EGL_cb _eglBeg = NULL;
@@ -1578,15 +1480,15 @@ static int        _collect_CS_touch(_cell* c)
     return TRUE;
 }
 
-DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_error_cb err_cb)
+DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_log_cb log_cb)
 // init basic stuff (outside of the main loop)
 {
     //libS52Zdso();
     // debug
-    if (NULL != err_cb)
-        err_cb("S52_init(): test err log\n");
+    if (NULL != log_cb)
+        log_cb("S52_init(): test log\n");
 
-    S52_initLog(err_cb);
+    S52_initLog(log_cb);
 
     PRINTF("screen_pixels_w: %i, screen_pixels_h: %i, screen_mm_w: %i, screen_mm_h: %i\n",
             screen_pixels_w,     screen_pixels_h,     screen_mm_w,     screen_mm_h);
@@ -1678,6 +1580,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 
     S52_GL_setDotPitch(screen_pixels_w, screen_pixels_h, screen_mm_w, screen_mm_h);
 
+    S52_GL_setViewPort(0, 0, screen_pixels_w, screen_pixels_h);
 
     ///////////////////////////////////////////////////////////
     // init env stuff for GDAL/OGR/S57
@@ -1786,9 +1689,11 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 
 DLL cchar *STD S52_version(void)
 {
-    PRINTF("%s", _version);
+    //PRINTF("%s", _version());
+    PRINTF("%s", S52_utils_version());
 
-    return _version;
+    //return _version;
+    return S52_utils_version();
 }
 
 DLL int    STD S52_done(void)
