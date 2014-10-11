@@ -171,8 +171,8 @@ int main(int argc, char* argv[])
                 XNextEvent(dpy, &event);
                 switch (event.type) {
                 case ConfigureNotify: break;
-                case GraphicsExpose:
-                    S52_setViewPort(0, 0, event.xconfigure.width, event.xconfigure.height); break;
+                //case GraphicsExpose:
+                //    S52_setViewPort(0, 0, event.xconfigure.width, event.xconfigure.height); break;
                 //case ...
 
                 }
