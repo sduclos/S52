@@ -37,6 +37,7 @@ LOCAL_CFLAGS     := -g -O0 -std=c99 -Wall -DG_LOG_DOMAIN=\"s52droid\"           
                     -DS52_USE_ANDROID -DS52_USE_TEGRA2                                \
                     -DS52_USE_EGL -DS52_USE_GLES2                                     \
                     -DUSE_AIS                                                         \
+                    -DS52_USE_AFGLOW                                                  \
                     -I../..                                                           \
                     -I$(S52DROIDINC)                                                  \
                     -I$(S52DROIDINC)/glib-2.0                                         \
