@@ -643,7 +643,8 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
 
         case S52_MAR_ROT_BUOY_LIGHT      : val = _validate_deg(val);                    break;
 
-        case S52_MAR_DISP_CRSR_POS       : val = _validate_bool(val);                   break;
+        //case S52_MAR_DISP_CRSR_POS       : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_CRSR_PICK      : val = _validate_int(val);                    break;
         case S52_MAR_DISP_GRATICULE      : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_WHOLIN         : val = _validate_int(val);                    break;
 
@@ -3015,6 +3016,9 @@ static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
             g_assert(0);
     }
 
+    // optimisation: set LOD
+    //S52_PL_setLOD(obj, c->filename->str[2]);
+
     // special prossesing for light sector
     if (FALSE == _insertLightSec(c, obj)) {
         // insert normal object (ie not a light with sector)
@@ -5132,6 +5136,9 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     double gs,gw,gn,ge;   // hold GEO view
     double oldAA = 0.0;
 
+    if (0.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK))
+        return FALSE;
+
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
 
@@ -5178,7 +5185,8 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         S52_GL_getPRJView(&ps, &pw, &pn, &pe);
 
         // set view of the pick (PRJ)
-        S52_GL_setViewPort(pixels_x-4, tmp_px_y-4, 8, 8);
+        //S52_GL_setViewPort(pixels_x-4, tmp_px_y-4, 8, 8);
+        S52_GL_setViewPort(pixels_x, tmp_px_y, 1, 1);
         S52_GL_setPRJView(ext.S, ext.W, ext.N, ext.E);
         //PRINTF("PICK PRJ EXTENT (swne): %f, %f  %f, %f \n", ext.s, ext.w, ext.n, ext.e);
 
@@ -5221,6 +5229,7 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         _draw();
 
         // Mariners' (layer 9 - Last)
+        // FIXME: fail to pick Mariners'
         // FIXME: cull
         _drawLast();
 
