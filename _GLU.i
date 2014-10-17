@@ -409,6 +409,7 @@ static GLint     _initGLU(void)
         //gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_NEGATIVE);
         //gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_ABS_GEQ_TWO);
 
+        // Note: tolerance not implemented in libtess
         //gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.00001);
         //gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.1);
 
@@ -441,7 +442,9 @@ static GLint     _initGLU(void)
         //gluTessProperty(_tcen, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_NEGATIVE);
         gluTessProperty(_tcen, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_ABS_GEQ_TWO);
         gluTessProperty(_tcen, GLU_TESS_BOUNDARY_ONLY, GLU_TRUE);
-        gluTessProperty(_tcen, GLU_TESS_TOLERANCE, 0.000001);
+
+        // Note: tolerance not implemented in libtess
+        //gluTessProperty(_tcen, GLU_TESS_TOLERANCE, 0.000001);
 
         gluTessCallback(_tcen, GLU_TESS_BEGIN,  (f)_beginCen);
         gluTessCallback(_tcen, GLU_TESS_END,    (f)_endCen);
@@ -462,7 +465,9 @@ static GLint     _initGLU(void)
 
         //gluTessProperty(_tcin, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_ODD);
         gluTessProperty(_tcin, GLU_TESS_BOUNDARY_ONLY, GLU_FALSE);
-        gluTessProperty(_tcin, GLU_TESS_TOLERANCE, 0.000001);
+
+        // Note: tolerance not implemented in libtess
+        //gluTessProperty(_tcin, GLU_TESS_TOLERANCE, 0.000001);
 
         gluTessCallback(_tcin, GLU_TESS_BEGIN,     (f)_beginCin);
         gluTessCallback(_tcin, GLU_TESS_END,       (f)_endCin);
