@@ -256,7 +256,7 @@ GL_OUT_OF_MEMORY
                     recorded.
 */
 
-    /* Note: glGetError() stall the pipeline - how bad it is ?
+    //* Note: glGetError() stall the pipeline - how bad it is ?
     GLint err = GL_NO_ERROR; // == 0x0
     for (err = glGetError(); GL_NO_ERROR != err; err = glGetError()) {
         const char *name = NULL;
@@ -281,7 +281,7 @@ GL_OUT_OF_MEMORY
 #endif
 
     }
-    */
+    //*/
 #endif
 }
 
@@ -654,6 +654,7 @@ static GLint     _popScaletoPixel(void)
     return TRUE;
 }
 
+#if 0
 static GLint     _glMatrixDump(int mode)
 // debug
 {
@@ -672,6 +673,7 @@ static GLint     _glMatrixDump(int mode)
 
     return TRUE;
 }
+#endif
 
 static GLint     _glMatrixSet(VP vpcoord)
 // push & reset matrix GL_PROJECTION & GL_MODELVIEW
@@ -1253,6 +1255,7 @@ static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx
 }
 
 static int       _fillArea(S57_geo *geoData)
+//static int       _fillArea(S57_geo *geoData, char LOD)
 {
     // debug
     //_S57ID = S57_getGeoID(geoData);
@@ -1267,7 +1270,27 @@ static int       _fillArea(S57_geo *geoData)
 
     S57_prim *prim = S57_getPrimGeo(geoData);
     if (NULL == prim) {
+
+        /*
+        switch (LOD) {
+        //case -1: break;
+        case '0': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.1     ); break;  // world
+        case '1': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.01    ); break;
+        //case '2': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.001   ); break;
+        case '2': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.1   ); break;
+        case '3': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.0001  ); break;
+        case '4': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.00001 ); break;
+        case '5': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.000001); break;
+        case '6': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.000001); break;
+        default:
+            gluTessProperty(_tcen, GLU_TESS_TOLERANCE, 0.000001); 
+        }
+        //*/
+
         prim = _tessd(_tobj, geoData);
+
+        // reset normal tolerance
+        //gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.000001);
     }
 
 #ifdef S52_USE_OPENGL_VBO
@@ -1287,10 +1310,14 @@ static int       _fillArea(S57_geo *geoData)
 // SYMBOLOGY INSTRUCTION RENDERER SECTION
 //
 //---------------------------------------
+
+// FIXME: ship head up for safety perimeter
+
 typedef struct col {
     GLubyte r;
     GLubyte g;
     GLubyte b;
+    // FIXME: use _fb_format (rgb/rgba) and EGL rgb/rgba
     GLubyte a;
 } col;
 
@@ -1300,6 +1327,8 @@ typedef union cIdx {
     guint idx;
 } cIdx;
 static cIdx _cIdx;
+// FIXME: try 1 x 1
+//static cIdx _pixelsRead[1 * 1];  // buffer to collect pixels when in S52_GL_PICK mode
 static cIdx _pixelsRead[8 * 8];  // buffer to collect pixels when in S52_GL_PICK mode
 
 #if 0
@@ -2535,6 +2564,7 @@ static int       _renderSY(S52_obj *obj)
 
                 // when in pick mode, fill the area
                 _fillArea(geoData);
+                //_fillArea(geoData, 0);
             }
 
             // centroid offset might put the symb outside the area
@@ -3822,7 +3852,9 @@ static int       _renderAC(S52_obj *obj)
 
     _glUniformMatrix4fv_uModelview();
 
+    //char LOD = S52_PL_getLOD(obj);
     _fillArea(geo);
+    //_fillArea(geo, LOD);
 
     _checkError("_renderAC()");
 
@@ -5300,22 +5332,35 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     // Can cursor pick now use the journal in S52.c instead of the GPU?
     // NO, if extent is use then concave AREA and LINES can trigger false positive
     if (S52_GL_PICK == _crnt_GL_cycle) {
-        // FIXME: optimisation - read only once all draw to get the top obj
-        // FIXME: copy to texture then test pixels!
-        // FB --> TEX
-        //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, 8, 8, 0);
-        // TEX --> MEM
-        // gl...
-        // -OR-
-        // a shader trick! .. put the pixels back in an array then back to main!!
+        if (2.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
+
+            // FIXME: optimisation - read only once all draw to get the top obj
+            // FIXME: copy to texture then test pixels!
+            // FB --> TEX
+            //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, 8, 8, 0);
+            // TEX --> MEM
+            // gl...
+            // -OR-
+            // a shader trick! .. put the pixels back in an array then back to main!!
 
 
-        // WARNING: some graphic card preffer RGB / BYTE .. YMMV
-        //glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGB, GL_UNSIGNED_BYTE, &_pixelsRead);
-        glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
+            // WARNING: some graphic card preffer RGB / BYTE .. YMMV
+            // FIXME: use _fb_format (rgb/rgba) and EGL rgb/rgba
+            //glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
+            //glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGB, GL_UNSIGNED_BYTE, &_pixelsRead);
+            //glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &_pixelsRead);
+            glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
 
-        _checkError("S52_GL_draw():glReadPixels()");
+            _checkError("S52_GL_draw():glReadPixels()");
 
+            if (_pixelsRead[0].color.r == _cIdx.color.r) {
+                g_ptr_array_add(_objPick, obj);
+
+                // debug
+                PRINTF("pixel found (%i, %i): i=%i color=%X\n", _vp[0], _vp[1], 0, _cIdx.color.r);
+            }
+
+        /*
         for (int i=0; i<(8*8); ++i) {
             if (_pixelsRead[i].color.r == _cIdx.color.r) {
                 g_ptr_array_add(_objPick, obj);
@@ -5325,7 +5370,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
                 break;
             }
         }
-
+        */
         // debug - dump pixel
         /*
         for (int i=7; i>=0; --i) {
@@ -5338,6 +5383,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
         printf("finish with object: cIdx: %X\n", _cIdx.idx);
         printf("----------------------------\n");
         */
+        }
     }
 
 
@@ -5492,7 +5538,10 @@ int        S52_GL_begin(S52_GL_cycle cycle)
         //glDisable(GL_LINE_SMOOTH);     // NOT in GLES2
         //glDisable(GL_POLYGON_SMOOTH);  // NOT in "OpenGL ES SC"
         glDisable(GL_BLEND);
-        //glDisable(GL_DITHER);          // NOT in "OpenGL ES SC"
+
+        // 2014OCT14 - optimisation no color ditherring
+        glDisable(GL_DITHER);          // NOT in "OpenGL ES SC"
+
         //glDisable(GL_FOG);             // NOT in "OpenGL ES SC", NOT in GLES2
         //glDisable(GL_LIGHTING);        // NOT in GLES2
         //glDisable(GL_TEXTURE_1D);      // NOT in "OpenGL ES SC"
@@ -5714,6 +5763,16 @@ int        S52_GL_end(S52_GL_cycle cycle)
     }
     _crnt_GL_cycle = cycle;
 
+    // FIXME: same code as _draw()
+    if (S52_GL_PICK==_crnt_GL_cycle && 1.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
+        glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
+
+        _checkError("S52_GL_draw():glReadPixels()");
+
+        //if (_pixelsRead[0].color.r == _cIdx.color.r) {
+        //    g_ptr_array_add(_objPick, obj);
+        //}
+    }
 
 #ifdef S52_USE_GL1
     glDisableClientState(GL_VERTEX_ARRAY);
@@ -6347,6 +6406,8 @@ char      *S52_GL_getNameObjPick(void)
     S57_highlightON(geo);
 
 #ifdef S52_USE_C_AGGR_C_ASSO
+    if (3.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
+
     // debug
     GString *geo_refs = S57_getAttVal(geo, "_LNAM_REFS_GEO");
     if (NULL != geo_refs)
@@ -6388,6 +6449,7 @@ char      *S52_GL_getNameObjPick(void)
         g_string_free(geoRelIDs, TRUE);
 
         g_strfreev(topRefs);
+    }
     }
 #endif  // S52_USE_C_AGGR_C_ASSO
 
