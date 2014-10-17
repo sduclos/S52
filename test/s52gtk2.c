@@ -204,7 +204,7 @@ static int      _usage(const char *arg)
     g_print("\tz    \t:S52_MAR_DISP_OVERLAP [ON/OFF]\n");
     g_print("\t1!   \t:S52_MAR_DISP_LAYER_LAST (0,1,2,3)\n");
     g_print("\t2    \t:S52_MAR_ROT_BUOY_LIGHT (+15 deg)\n");
-    g_print("\t3    \t:S52_MAR_DISP_CRSR_POS [ON/OFF]\n");
+    g_print("\t3    \t:S52_MAR_DISP_CRSR_PICK [ON/OFF]\n");
     g_print("\t4    \t:S52_MAR_DISP_GRATICULE [ON/OFF]\n");
     g_print("\t6^   \t:S52_MAR_DISP_WHOLIN [cycle]\n");
     g_print("\t3    \t:S52_MAR_DISP_LEGEND [ON/OFF]\n");
@@ -359,7 +359,7 @@ static int      _renderHelp(GtkWidget *widget)
     S52_drawStr(x, y-=dy, "UINFF", 0, str);
     g_sprintf(str, "S52_MAR_ROT_BUOY_LIGHT    2 %4.1f", S52_getMarinerParam(S52_MAR_ROT_BUOY_LIGHT));
     S52_drawStr(x, y-=dy, "UINFF", 0, str);
-    g_sprintf(str, "S52_MAR_DISP_CRSR_POS     3 %4.1f", S52_getMarinerParam(S52_MAR_DISP_CRSR_POS));
+    g_sprintf(str, "S52_MAR_DISP_CRSR_PICK    3 %4.1f", S52_getMarinerParam(S52_MAR_DISP_CRSR_PICK));
     S52_drawStr(x, y-=dy, "UINFF", 0, str);
     g_sprintf(str, "S52_MAR_DISP_GRATICULE    4 %4.1f", S52_getMarinerParam(S52_MAR_DISP_GRATICULE));
     S52_drawStr(x, y-=dy, "UINFF", 0, str);
@@ -699,7 +699,7 @@ static gboolean _dumpParam()
     g_print("S52_MAR_DISP_OVERLAP      z %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_OVERLAP));
     g_print("S52_MAR_DISP_LAYER_LAST   1 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST));
     g_print("S52_MAR_ROT_BUOY_LIGHT    2 %4.1f\n", S52_getMarinerParam(S52_MAR_ROT_BUOY_LIGHT));
-    g_print("S52_MAR_DISP_CRSR_POS     3 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_CRSR_POS));
+    g_print("S52_MAR_DISP_CRSR_PICK    3 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_CRSR_PICK));
     g_print("S52_MAR_DISP_GRATICULE    4 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_GRATICULE));
     g_print("S52_MAR_HEADNG_LINE       5 %4.1f\n", S52_getMarinerParam(S52_MAR_HEADNG_LINE));
     g_print("S52_MAR_DISP_WHOLIN       6 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_WHOLIN));
@@ -1257,10 +1257,6 @@ static int      _initS52()
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND,  1.0);
     S52_setMarinerParam(S52_MAR_SYMPLIFIED_PNT,  1.0);
 
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,  0.0);  // BASE
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,  1.0);  // STANDARD (default)
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,  2.0);  // OTHER
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,  3.0);  // SELECT (all)
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,  S52_MAR_DISP_CATEGORY_BASE);  // BASE
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,  S52_MAR_DISP_CATEGORY_STD);   // STANDARD (default)
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,  S52_MAR_DISP_CATEGORY_OTHER); // OTHER
@@ -1321,8 +1317,6 @@ static int      _initS52()
     // lastest (S52 ed 6.0) IHO colors from www.ecdisregs.com
     S52_loadPLib("plib_COLS-3.4.1.rle");
 
-    // debug - turn off rendering of last layer
-    // very slow on some machine
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE);  // none
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD);  // Mariner Standard
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);  // Mariner Other (EBL VRN)
@@ -1579,12 +1573,13 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_i     :_toggle(S52_MAR_ANTIALIAS);        break;
         case GDK_j     :_toggle(S52_MAR_QUAPNT01);         break;
         case GDK_z     :_toggle(S52_MAR_DISP_OVERLAP);     break;
-        case GDK_1     :_meterInc(S52_MAR_DISP_LAYER_LAST);break;
-        case GDK_exclam:_meterDec(S52_MAR_DISP_LAYER_LAST);break;
+        // FIXME: none, std, other, select
+        //case GDK_1     :_meterInc(S52_MAR_DISP_LAYER_LAST);break;
+        //case GDK_exclam:_meterDec(S52_MAR_DISP_LAYER_LAST);break;
 
         case GDK_2     :_inc(S52_MAR_ROT_BUOY_LIGHT);      break;
 
-        case GDK_3     :_toggle(S52_MAR_DISP_CRSR_POS);
+        case GDK_3     :_toggle(S52_MAR_DISP_CRSR_PICK);
                         _toggle(S52_MAR_DISP_LEGEND);
                         _toggle(S52_MAR_DISP_CALIB);
                         _toggle(S52_MAR_DISP_DRGARE_PATTERN);
