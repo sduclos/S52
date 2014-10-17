@@ -165,7 +165,10 @@ static double _MARparamVal[] = {
 
     0.0,      // 28 - S52_MAR_ROT_BUOY_LIGHT (deg)
 
-    0.0,      // 29 - S52_MAR_DISP_CRSR_POS, display cursor position (default off)
+    //0.0,      // 29 - S52_MAR_DISP_CRSR_POS, display cursor position (default off)
+    1.0,      // 29 - S52_MAR_DISP_CRSR_PICK, 0 - off, 1 - pick/highlight top object, 2 - pick stack/highlight top,
+              //                              3 - pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
+
 
     0.0,      // 30 - S52_MAR_DISP_GRATICULE  (default off)
 
