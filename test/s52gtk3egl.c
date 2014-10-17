@@ -1020,7 +1020,7 @@ static gboolean _dumpParam()
     g_print("S52_MAR_DISP_OVERLAP      z %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_OVERLAP));
     g_print("S52_MAR_DISP_LAYER_LAST   1 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST));
     g_print("S52_MAR_ROT_BUOY_LIGHT    2 %4.1f\n", S52_getMarinerParam(S52_MAR_ROT_BUOY_LIGHT));
-    g_print("S52_MAR_DISP_CRSR_POS     3 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_CRSR_POS));
+    g_print("S52_MAR_DISP_CRSR_PICK    3 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_CRSR_PICK));
     g_print("S52_MAR_DISP_GRATICULE    4 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_GRATICULE));
     g_print("S52_MAR_HEADNG_LINE       5 %4.1f\n", S52_getMarinerParam(S52_MAR_HEADNG_LINE));
     g_print("S52_MAR_DISP_WHOLIN       6 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_WHOLIN));
@@ -1120,7 +1120,7 @@ static gboolean key_release_event(GtkWidget   *widget,
 
         case GDK_KEY_2     :_inc(S52_MAR_ROT_BUOY_LIGHT);      break;
 
-        case GDK_KEY_3     :_toggle(S52_MAR_DISP_CRSR_POS);
+        case GDK_KEY_3     :_toggle(S52_MAR_DISP_CRSR_PICK);
                             _toggle(S52_MAR_DISP_LEGEND);
                             _toggle(S52_MAR_DISP_CALIB);
                             _toggle(S52_MAR_DISP_DRGARE_PATTERN);
