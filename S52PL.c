@@ -294,6 +294,7 @@ typedef struct _S52_obj {
     gint         textParsed[2]; // TRUE if parsed, need two flag because there is text for
                                 // two type of point and area
 
+    //char         LOD;           // optimisation: chart purpose: cell->filename->str[2]
 
     gdouble      orient;        // LIGHT angle (after parsing), heading of 'ownshp'
     gdouble      speed;         // 'ownshp' speed for drawing vertor lenght
@@ -4425,6 +4426,24 @@ int         S52_PL_setFreetypeGL_VBO(_S52_obj *obj, guint vboID, guint len)
     cmd->len   = len;
 
     return TRUE;
+}
+#endif
+
+#if 0
+int         S52_PL_setLOD(S52_obj *obj, char LOD)
+{
+    return_if_null(obj);
+
+    obj->LOD = LOD;
+
+    return TRUE;
+}
+
+char        S52_PL_getLOD(S52_obj *obj)
+{
+    return_if_null(obj);
+
+    return obj->LOD;
 }
 #endif
 
