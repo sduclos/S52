@@ -60,7 +60,7 @@ DBG    = $(DBG3)
 #CXX  = tcc -fPIC -fmudflap
 #CC   = gcc -std=c99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
 #CC   = gcc -std=c99 -fPIC
-CC   = gcc -std=gnu99 -fPIC # need gnu99 to get M_PI
+CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI
 #CC   = g++ -fPIC
 CXX  = g++ -fPIC
 
@@ -136,10 +136,10 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 #                        - add 'extern "C"' to ogr/ogrsf_frmts/s57.h:40 S57FileCollector()  -or- compile S52 with g++
 #                        - for Windows file path in CATALOG to work on unix apply patch in doc/s57filecollector.cpp.diff
 # -DS52_USE_SUPP_LINE_OVERLAP
-#                        - supress display of overlapping line  (OGR patch in doc/ogrfeature.cpp.diff)
+#                        - supress display of overlapping line (need OGR patch in doc/ogrfeature.cpp.diff)
 #                        - work for LC() only (not LS())
 #                        - see S52 manual p. 45 doc/pslb03_2.pdf
-# -DS52_USE_C_AGGR_C_ASSO - return info C_AGGR C_ASSO on cursor pick (OGR patch in doc/ogrfeature.cpp.diff)
+# -DS52_USE_C_AGGR_C_ASSO - return info C_AGGR C_ASSO on cursor pick (need OGR patch in doc/ogrfeature.cpp.diff)
 # -DS52_USE_SYM_AISSEL01 - need symbol in test/plib-test-priv.rle
 # -DS52_USE_WORLD        - need shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
 # -DS52_USE_RADAR        - skip swapbuffer between DRAW & LAST cycle, skip read/write FB
@@ -160,10 +160,10 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # OpenGL:
 # -DS52_USE_MESA3D       - Mesa drive specific code
 # -DS52_USE_EGL          - EGL callback from libS52
-# GL FIXFUNC:
+# GL FIX FUNC:
 # -DS52_USE_GL1          - GL1.x
 # -DS52_USE_GLSC1        - GL Safety Critical 1.0 (subset of GL1.3)
-# -DS52_USE_OPENGL_VBO   - GL1.5 or greater. Vertex Buffer Object
+# -DS52_USE_OPENGL_VBO   - GL1.5 or greater. Vertex Buffer Object used also in GL2+
 # GL GLSL:
 # -DS52_USE_GL2          - GL2.x
 # -DS52_USE_GLES2        - GLES2.x
