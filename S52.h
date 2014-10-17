@@ -102,7 +102,9 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_ROT_BUOY_LIGHT      = 28,   // rotate buoy light (deg from north)
 
-    S52_MAR_DISP_CRSR_POS       = 29,   // NOT IMPLEMENTED: display cursor position (on/off)
+    //S52_MAR_DISP_CRSR_POS       = 29,   // NOT IMPLEMENTED: display cursor position (on/off)
+    S52_MAR_DISP_CRSR_PICK       = 29,  // 0 - off, 1 - pick/highlight top object, 2 - pick stack/highlight top,
+                                        // 3 - pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
 
     S52_MAR_DISP_GRATICULE      = 30,   // display graticule (on/off)
 
@@ -110,7 +112,7 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_DISP_LEGEND         = 32,   // display legend (on/off) (default off)
 
-    S52_CMD_WRD_FILTER          = 33,   // toggle command word filter mask for profiling
+    S52_CMD_WRD_FILTER          = 33,   // toggle command word filter mask for profiling (see [3] bellow)
 
     S52_MAR_DOTPITCH_MM_X       = 34,   // dotpitch X (mm) - pixel size in X
     S52_MAR_DOTPITCH_MM_Y       = 35,   // dotpitch Y (mm) - pixel size in Y
@@ -140,14 +142,14 @@ typedef enum S52MarinerParameter {
     S52_MAR_NUM                 = 46    // number of parameters
 } S52MarinerParameter;
 
-// debug - command word filter for profiling
+// [3] debug - command word filter for profiling
 typedef enum S52_CMD_WRD_FILTER_t {
-    S52_CMD_WRD_FILTER_SY = 1 << 0,   // 000001 - SY
-    S52_CMD_WRD_FILTER_LS = 1 << 1,   // 000010 - LS
-    S52_CMD_WRD_FILTER_LC = 1 << 2,   // 000100 - LC
-    S52_CMD_WRD_FILTER_AC = 1 << 3,   // 001000 - AC
-    S52_CMD_WRD_FILTER_AP = 1 << 4,   // 010000 - AP
-    S52_CMD_WRD_FILTER_TX = 1 << 5    // 100000 - TE & TX
+    S52_CMD_WRD_FILTER_SY = 1 << 0,   // 0x000001 - SY
+    S52_CMD_WRD_FILTER_LS = 1 << 1,   // 0x000010 - LS
+    S52_CMD_WRD_FILTER_LC = 1 << 2,   // 0x000100 - LC
+    S52_CMD_WRD_FILTER_AC = 1 << 3,   // 0x001000 - AC
+    S52_CMD_WRD_FILTER_AP = 1 << 4,   // 0x010000 - AP
+    S52_CMD_WRD_FILTER_TX = 1 << 5    // 0x100000 - TE & TX
 } S52_CMD_WRD_FILTER_t;
 
 // [1] S52_MAR_DISP_CATEGORY / S52_MAR_DISP_LAYER_LAST
@@ -161,16 +163,16 @@ typedef enum S52_CMD_WRD_FILTER_t {
 // 0x1000000 - MARINERS' SELECT:   - (see [2])
 // [2] the display/supression of objects on STANDARD and/or OHTER is set via S52_toggleObjClass/ON/OFF()
 typedef enum S52_MAR_DISP_CATEGORY_t {
-    S52_MAR_DISP_CATEGORY_BASE     = 0,        // 0000000 - DISPLAY BASE
-    S52_MAR_DISP_CATEGORY_STD      = 1 << 0,   // 0000001 - STANDARD
-    S52_MAR_DISP_CATEGORY_OTHER    = 1 << 1,   // 0000010 - OTHER
-    S52_MAR_DISP_CATEGORY_SELECT   = 1 << 2,   // 0000100 - SELECT
+    S52_MAR_DISP_CATEGORY_BASE     = 0,        // 0x0000000 - DISPLAY BASE
+    S52_MAR_DISP_CATEGORY_STD      = 1 << 0,   // 0x0000001 - STANDARD
+    S52_MAR_DISP_CATEGORY_OTHER    = 1 << 1,   // 0x0000010 - OTHER
+    S52_MAR_DISP_CATEGORY_SELECT   = 1 << 2,   // 0x0000100 - SELECT
 
     //S52_MAR_DISP_LAYER_LAST  - MARINERS' CATEGORY (drawn on top - last)
-    S52_MAR_DISP_LAYER_LAST_NONE   = 1 << 3,   // 0001000 - MARINERS' NONE
-    S52_MAR_DISP_LAYER_LAST_STD    = 1 << 4,   // 0010000 - MARINERS' STANDARD
-    S52_MAR_DISP_LAYER_LAST_OTHER  = 1 << 5,   // 0100000 - MARINERS' OTHER
-    S52_MAR_DISP_LAYER_LAST_SELECT = 1 << 6    // 1000000 - MARINERS' SELECT
+    S52_MAR_DISP_LAYER_LAST_NONE   = 1 << 3,   // 0x0001000 - MARINERS' NONE
+    S52_MAR_DISP_LAYER_LAST_STD    = 1 << 4,   // 0x0010000 - MARINERS' STANDARD
+    S52_MAR_DISP_LAYER_LAST_OTHER  = 1 << 5,   // 0x0100000 - MARINERS' OTHER
+    S52_MAR_DISP_LAYER_LAST_SELECT = 1 << 6    // 0x1000000 - MARINERS' SELECT
 } S52_MAR_DISP_CATEGORY_t;
 
 
