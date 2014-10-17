@@ -7,11 +7,11 @@ Last update:
 Curent focus (top priority *):
 
     GL:
-**  -alarm (safety perimeter, x-track!), try the GL cursor pick trick and GL diamond rule for 9x9 pixels
+**  -alarm (safety perimeter)
 *   -handle overlaping symbol at the center of the screen (find test case to debug)
     -fading chart boudary, calib symb, ..
     -implement patern scale spacing (PASP field)
-    -handle GLU_TESS_MAX_COORD
+    -handle GLU_TESS_MAX_COORD, GLU_TESS_TOLERANCE (LOD)
 
     PL:
 *   -view group or somme equivalent functionality
