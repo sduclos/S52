@@ -349,4 +349,8 @@ guint          S52_PL_getFreetypeGL_VBO(S52_obj *obj, guint *len);
 int            S52_PL_setFreetypeGL_VBO(S52_obj *obj, guint vboID, guint len);
 #endif
 
+//int            S52_PL_setLOD(S52_obj *obj, char LOD);
+//char           S52_PL_getLOD(S52_obj *obj);
+
+
 #endif // _S52PL_H_
