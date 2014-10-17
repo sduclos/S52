@@ -4,6 +4,10 @@
 #
 
 
+2014OCT17
+    -mod S52_MAR_DISP_CRSR_POS --> S52_MAR_DISP_CRSR_PICK
+    -add optimisation (failed) using tess tolerance (not implemented in libtess) for LOD
+
 2014OCT06
     -mod S52_error_cb to S52_log_cb
     -mod setViewPort at init()
