@@ -22,6 +22,7 @@ typedef GLUtesselator GLUtriangulatorObj;
 // forward decl
 static double      _getGridRef(S52_obj *, double *, double *, double *, double *, double *, double *);
 static int         _fillArea(S57_geo *);
+//static int         _fillArea(S57_geo *, char LOD);
 static void        _glMatrixMode(guint);
 static void        _glLoadIdentity(int);
 static void        _glUniformMatrix4fv_uModelview(void);
@@ -1539,6 +1540,7 @@ static int       _renderAP_gl2(S52_obj *obj)
     glBindTexture(GL_TEXTURE_2D, mask_texID);
 
     _fillArea(S52_PL_getGeo(obj));
+    //_fillArea(S52_PL_getGeo(obj), 0);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
