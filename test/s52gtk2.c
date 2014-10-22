@@ -1027,7 +1027,7 @@ static guchar  *_radar_cb(double *cLat, double *cLng, double *rNM)
 
     return NULL;
 }
-#endif
+#endif  // S52_USE_RADAR
 
 #if 0
 static int      _my_S52_loadObject_cb(const char *objname,   void *shape)
@@ -1040,19 +1040,6 @@ static int      _my_S52_loadObject_cb(const char *objname,   void *shape)
     //printf("\tOBJECT NAME: %s\n", objname);
 
     return S52_loadObject(objname, shape);
-
-    //return TRUE;
-}
-
-static int      _my_S52_loadLayer_cb (const char *layername, void *layer, S52_loadObject_cb loadObject_cb)
-{
-    //
-    // .. do something cleaver with each layer ..
-    //
-
-    //printf("\n**** LAYER NAME: %s\n", layername);
-
-    return S52_loadLayer(layername, layer, _my_S52_loadObj_cb);
 
     //return TRUE;
 }
@@ -1208,8 +1195,7 @@ static int      _initS52()
     S52_setMarinerParam("S52_MAR_SYMBOLIZED_BND",  1.0);
     S52_setMarinerParam("S52_MAR_SYMPLIFIED_PNT",  1.0);
 
-    //S52_setMarinerParam("S52_MAR_DISP_CATEGORY",  2.0);  // OTHER
-    S52_setMarinerParam("S52_MAR_DISP_CATEGORY",   1.0);  // STANDARD (default)
+    S52_setMarinerParam("S52_MAR_DISP_CATEGORY",   S52_MAR_DISP_CATEGORY_STD);  // STANDARD (default)
 
     S52_setMarinerParam("S52_MAR_COLOR_PALETTE",   0.0);  // first palette
 
@@ -1287,7 +1273,7 @@ static int      _initS52()
     // Deep           30 m
     /*
     S52_setMarinerParam("S52_MAR_SHOW_TEXT",        1.0);
-    S52_setMarinerParam("S52_MAR_DISP_CATEGORY",    3.0); // OTHER_ALL - show all
+    S52_setMarinerParam("S52_MAR_DISP_CATEGORY",    S52_MAR_DISP_CATEGORY_OTHER); // OTHER
     S52_setMarinerParam("S52_MAR_TWO_SHADES",       0.0); // Depth Shades
     S52_setMarinerParam("S52_MAR_SAFETY_CONTOUR",  10.0);
     S52_setMarinerParam("S52_MAR_SAFETY_DEPTH",     7.0);
@@ -1321,6 +1307,12 @@ static int      _initS52()
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD);  // Mariner Standard
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);  // Mariner Other (EBL VRN)
     S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD | S52_MAR_DISP_LAYER_LAST_OTHER);    // All Mariner (Standard + Other)
+                    
+    //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 0.0);  // none
+    //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 1.0);  // pick/highlight top object
+    //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 2.0);  // pick stack/highlight top
+    S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 3.0);  // pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
+
 
     // cell's legend
     //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
@@ -1573,6 +1565,7 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_i     :_toggle(S52_MAR_ANTIALIAS);        break;
         case GDK_j     :_toggle(S52_MAR_QUAPNT01);         break;
         case GDK_z     :_toggle(S52_MAR_DISP_OVERLAP);     break;
+
         // FIXME: none, std, other, select
         //case GDK_1     :_meterInc(S52_MAR_DISP_LAYER_LAST);break;
         //case GDK_exclam:_meterDec(S52_MAR_DISP_LAYER_LAST);break;
@@ -1610,7 +1603,7 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_7     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_BASE);   break; // DISPLAYBASE
         case GDK_8     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_STD);    break; // STANDARD
         case GDK_9     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_OTHER);  break; // OTHER
-        case GDK_0     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT); break; // OTHER (all)
+        case GDK_0     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT); break; // SELECT (all)
 
         case GDK_k     :_cpal(S52_MAR_COLOR_PALETTE,  1.0);break;
         case GDK_K     :_cpal(S52_MAR_COLOR_PALETTE, -1.0);break;
@@ -1676,6 +1669,7 @@ static gboolean button_release_event(GtkWidget      *widget,
                 _view.cLat = y;
                 _view.cLon = x;
                 S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
+
                 gtk_widget_draw(widget, NULL);
 
                 break; 
@@ -1688,9 +1682,9 @@ static gboolean button_release_event(GtkWidget      *widget,
                 if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
                     return FALSE;
 
-                const char *name = S52_pickAt(event->x, event->y);
+                const char *name = S52_pickAt(event->x, _height-event->y);
                 if (NULL != name)
-                    g_print("OBJ(%.f, %.f): %s\n", event->x, event->y, name);
+                    g_print("s52gtk.c:button_release_event(): OBJ PICKED(%.f, %.f): %s\n", event->x, event->y, name);
 
                 S52_draw();
                 S52_drawLast();
@@ -1705,7 +1699,7 @@ static gboolean button_release_event(GtkWidget      *widget,
                 break;
             }
         default:
-            g_print("EVENT(button_release_event)\n");
+            g_print("s52gtk.c:button_release_event(): EVENT(%i)\n", event->button);
     }
 
 
@@ -1887,7 +1881,7 @@ int main(int argc, char **argv)
     // normal
     //gtk_window_fullscreen(GTK_WINDOW(_win));
     // debug
-    gtk_window_set_default_size(GTK_WINDOW(_win), 800, 600 );
+    gtk_window_set_default_size(GTK_WINDOW(_win), 800, 600);
 
     // Drawing Area
     _winArea = gtk_drawing_area_new();
