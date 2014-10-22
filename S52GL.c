@@ -504,7 +504,8 @@ static void      _glPushMatrix(int mode)
     memcpy(_crntMat, prevMat, sizeof(GLfloat) * 16);
 
 #else
-   glPushMatrix();
+    (void)mode;
+    glPushMatrix();
 #endif
 
     return;
@@ -536,7 +537,8 @@ static void      _glPopMatrix(int mode)
     //    _identity_MODELVIEW = FALSE;
 
 #else
-   glPopMatrix();
+    (void)mode;
+    glPopMatrix();
 #endif
 
     return;
@@ -5294,6 +5296,11 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
 
     if (S52_GL_PICK == _crnt_GL_cycle) {
         ++_cIdx.color.r;
+
+        // stack obj
+        if (1.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK))
+            g_ptr_array_add(_objPick, obj);
+
     }
 
     ++_nobj;
@@ -5332,7 +5339,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     // Can cursor pick now use the journal in S52.c instead of the GPU?
     // NO, if extent is use then concave AREA and LINES can trigger false positive
     if (S52_GL_PICK == _crnt_GL_cycle) {
-        if (2.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
+        if (2.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK) || 3.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
 
             // FIXME: optimisation - read only once all draw to get the top obj
             // FIXME: copy to texture then test pixels!
@@ -5359,30 +5366,6 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
                 // debug
                 PRINTF("pixel found (%i, %i): i=%i color=%X\n", _vp[0], _vp[1], 0, _cIdx.color.r);
             }
-
-        /*
-        for (int i=0; i<(8*8); ++i) {
-            if (_pixelsRead[i].color.r == _cIdx.color.r) {
-                g_ptr_array_add(_objPick, obj);
-
-                // debug
-                PRINTF("pixel found (%i, %i): i=%i color=%X\n", _vp[0], _vp[1], i, _cIdx.color.r);
-                break;
-            }
-        }
-        */
-        // debug - dump pixel
-        /*
-        for (int i=7; i>=0; --i) {
-            int j = i*8;
-            printf("%i |%X %X %X %X %X %X %X %X|\n", i,
-                   _pixelsRead[j+0].color.r, _pixelsRead[j+1].color.r, _pixelsRead[j+2].color.r,
-                   _pixelsRead[j+3].color.r, _pixelsRead[j+4].color.r, _pixelsRead[j+5].color.r,
-                   _pixelsRead[j+6].color.r, _pixelsRead[j+7].color.r;
-        }
-        printf("finish with object: cIdx: %X\n", _cIdx.idx);
-        printf("----------------------------\n");
-        */
         }
     }
 
@@ -5766,12 +5749,7 @@ int        S52_GL_end(S52_GL_cycle cycle)
     // FIXME: same code as _draw()
     if (S52_GL_PICK==_crnt_GL_cycle && 1.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
         glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
-
-        _checkError("S52_GL_draw():glReadPixels()");
-
-        //if (_pixelsRead[0].color.r == _cIdx.color.r) {
-        //    g_ptr_array_add(_objPick, obj);
-        //}
+        _checkError("S52_GL_end():glReadPixels()");
     }
 
 #ifdef S52_USE_GL1
@@ -6343,115 +6321,129 @@ char      *S52_GL_getNameObjPick(void)
     if (NULL == _strPick)
         _strPick = g_string_new("");
 
-    const    char *name  = NULL;
-    unsigned int   S57ID = 0;
+    const char *name = NULL;
+    guint S57ID = 0;
+    guint idx   = 0;
 
-    PRINTF("----------- PICK(%i) ---------------\n", _objPick->len);
+    if (1.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
+        idx = _pixelsRead[0].color.r - 1;
 
-    for (guint i=0; i<_objPick->len; ++i) {
-        S52_obj *obj = (S52_obj*)g_ptr_array_index(_objPick, i);
-        S57_geo *geo = S52_PL_getGeo(obj);
+        g_assert(0 <= idx);
+    }
 
-        name  = S57_getName(geo);
-        S57ID = S57_getGeoID(geo);
+    //if (2.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
+    if (2.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK) || 3.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
 
-        PRINTF("%i  : %s\n", i, name);
-        PRINTF("LUP : %s\n", S52_PL_getCMDstr(obj));
-        PRINTF("DPRI: %i\n", (int)S52_PL_getDPRI(obj));
+        PRINTF("----------- PICK(%i) ---------------\n", _objPick->len);
 
-        { // pull PLib exposition field: LXPO/PXPO/SXPO
-            int nCmd = 0;
-            S52_CmdWrd cmdWrd = S52_PL_iniCmd(obj);
-            while (S52_CMD_NONE != cmdWrd) {
-                const char *cmdType = NULL;
-                switch (cmdWrd) {
+        for (guint i=0; i<_objPick->len; ++i) {
+            S52_obj *obj = (S52_obj*)g_ptr_array_index(_objPick, i);
+            S57_geo *geo = S52_PL_getGeo(obj);
+
+            name  = S57_getName(geo);
+            S57ID = S57_getGeoID(geo);
+
+            PRINTF("%i  : %s\n", i, name);
+            PRINTF("LUP : %s\n", S52_PL_getCMDstr(obj));
+            PRINTF("DPRI: %i\n", (int)S52_PL_getDPRI(obj));
+
+            { // pull PLib exposition field: LXPO/PXPO/SXPO
+                int nCmd = 0;
+                S52_CmdWrd cmdWrd = S52_PL_iniCmd(obj);
+                while (S52_CMD_NONE != cmdWrd) {
+                    const char *cmdType = NULL;
+
+                    switch (cmdWrd) {
                     case S52_CMD_SYM_PT: cmdType = "SXPO"; break;   // SY
                     case S52_CMD_COM_LN: cmdType = "LXPO"; break;   // LC
-                	case S52_CMD_ARE_PA: cmdType = "PXPO"; break;   // AP
+                    case S52_CMD_ARE_PA: cmdType = "PXPO"; break;   // AP
 
-                	default: break;
+                    default: break;
+                    }
+
+                    //*
+                    if (NULL != cmdType) {
+                        char  name[80];
+                        const char *value = S52_PL_getCmdText(obj);
+                        // debug
+                        //PRINTF("%s%i: %s\n", cmdType, nCmd, value);
+
+                        if (NULL !=  value) {
+                            // insert in Att
+                            SNPRINTF(name, 80, "%s%i", cmdType, nCmd);
+                            S57_setAtt(geo, name, value);
+                        }
+                    }
+                    //*/
+
+                    cmdWrd = S52_PL_getCmdNext(obj);
+                    ++nCmd;
                 }
-
-                //*
-                if (NULL != cmdType) {
-                    char  name[80];
-                    const char *value = S52_PL_getCmdText(obj);
-
-                    // debug
-                    PRINTF("%s%i: %s\n", cmdType, nCmd, value);
-
-                    // insert in Att
-                    SNPRINTF(name, 80, "%s%i", cmdType, nCmd);
-                    S57_setAtt(geo, name, value);
-                    cmdType = NULL;
-                }
-                //*/
-
-                cmdWrd = S52_PL_getCmdNext(obj);
-                ++nCmd;
             }
-        }
 
-        S57_dumpData(geo, FALSE);
-        PRINTF("-----------\n");
+            S57_dumpData(geo, FALSE);
+            PRINTF("-----------\n");
+        }
+        idx = _objPick->len-1;
+
+    }
+
+    // hightlight object at the top of the stack
+    //S52_obj *objhighlight = (S52_obj *)g_ptr_array_index(_objPick, _objPick->len-1);
+    S52_obj *objHighLight = (S52_obj *)g_ptr_array_index(_objPick, idx);
+    S57_geo *geoHighLight = S52_PL_getGeo(objHighLight);
+    S57_highlightON(geoHighLight);
+
+    name  = S57_getName (geoHighLight);
+    S57ID = S57_getGeoID(geoHighLight);
+
+    // Note: compile with S52_USE_C_AGGR_C_ASSO
+    if (3.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
+        // debug
+        GString *geo_refs = S57_getAttVal(geoHighLight, "_LNAM_REFS_GEO");
+        if (NULL != geo_refs)
+            PRINTF("DEBUG:geo:_LNAM_REFS_GEO = %s\n", geo_refs->str);
+
+        // get relationship obj
+        S57_geo *geoRel = S57_getRelationship(geoHighLight);
+        if (NULL != geoRel) {
+            GString *geoRelIDs   = NULL;
+            GString *geoRel_refs = S57_getAttVal(geoRel, "_LNAM_REFS_GEO");
+            if (NULL != geoRel_refs)
+                PRINTF("DEBUG:geoRel:_LNAM_REFS_GEO = %s\n", geoRel_refs->str);
+
+            // parse Refs
+            gchar **splitRefs = g_strsplit_set(geoRel_refs->str, ",", 0);
+            gchar **topRefs   = splitRefs;
+
+            while (NULL != *splitRefs) {
+                S57_geo *geoRelAssoc = NULL;
+
+                sscanf(*splitRefs, "%p", (void**)&geoRelAssoc);
+                S57_highlightON(geoRelAssoc);
+
+                guint idAssoc = S57_getGeoID(geoRelAssoc);
+
+                if (NULL == geoRelIDs) {
+                    geoRelIDs = g_string_new("");
+                    g_string_printf(geoRelIDs, ":%i,%i", S57_getGeoID(geoRel), idAssoc);
+                } else {
+                    g_string_append_printf(geoRelIDs, ",%i", idAssoc);
+                }
+
+                splitRefs++;
+            }
+
+            // if in a relation then append it to pick string
+            g_string_printf(_strPick, "%s:%i%s", name, S57ID, geoRelIDs->str);
+
+            g_string_free(geoRelIDs, TRUE);
+
+            g_strfreev(topRefs);
+        }
     }
 
     g_string_printf(_strPick, "%s:%i", name, S57ID);
-
-    //*
-    // hightlight object at the top of the stack
-    S52_obj *objhighlight = (S52_obj *)g_ptr_array_index(_objPick, _objPick->len-1);
-
-    S57_geo *geo  = S52_PL_getGeo(objhighlight);
-    S57_highlightON(geo);
-
-#ifdef S52_USE_C_AGGR_C_ASSO
-    if (3.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
-
-    // debug
-    GString *geo_refs = S57_getAttVal(geo, "_LNAM_REFS_GEO");
-    if (NULL != geo_refs)
-        PRINTF("DEBUG:geo:_LNAM_REFS_GEO = %s\n", geo_refs->str);
-
-    // get relationship obj
-    S57_geo *geoRel = S57_getRelationship(geo);
-    if (NULL != geoRel) {
-        GString *geoRelIDs   = NULL;
-        GString *geoRel_refs = S57_getAttVal(geoRel, "_LNAM_REFS_GEO");
-        if (NULL != geoRel_refs)
-            PRINTF("DEBUG:geoRel:_LNAM_REFS_GEO = %s\n", geoRel_refs->str);
-
-        // parse Refs
-        gchar  **splitRefs = g_strsplit_set(geoRel_refs->str, ",", 0);
-        gchar  **topRefs   = splitRefs;
-
-        while (NULL != *splitRefs) {
-            S57_geo *geoRelAssoc = NULL;
-
-            sscanf(*splitRefs, "%p", (void**)&geoRelAssoc);
-            S57_highlightON(geoRelAssoc);
-
-            guint idAssoc = S57_getGeoID(geoRelAssoc);
-
-            if (NULL == geoRelIDs) {
-                geoRelIDs = g_string_new("");
-                g_string_printf(geoRelIDs, ":%i,%i", S57_getGeoID(geoRel), idAssoc);
-            } else {
-                g_string_append_printf(geoRelIDs, ",%i", idAssoc);
-            }
-
-            splitRefs++;
-        }
-
-        // if in a relation then append it to pick string
-        g_string_printf(_strPick, "%s:%i%s", name, S57ID, geoRelIDs->str);
-
-        g_string_free(geoRelIDs, TRUE);
-
-        g_strfreev(topRefs);
-    }
-    }
-#endif  // S52_USE_C_AGGR_C_ASSO
 
     return (const char *)_strPick->str;
 }
