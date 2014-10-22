@@ -2099,10 +2099,10 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
                 double height = S52_atof(value->str);
 
                 // ajust datum if required
-                if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
+                //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
                     double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
                     height += datum;
-                }
+                //}
                 g_snprintf(buf, 4, "%4.1f", height);
 
                 return str;
@@ -2116,10 +2116,10 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
                 double height = S52_atof(value->str);
 
                 // ajust datum if required
-                if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
+                //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
                     double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
                     height -= datum;
-                }
+                //}
                 g_snprintf(buf, 4, "%4.1fm ", height);
 
                 return str;
