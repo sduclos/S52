@@ -23,6 +23,7 @@
 
 
 #include "S52MP.h"      // S52_MP_get/set()
+#include "S52utils.h"   // PRINTF()
 
 #include <glib.h>       // TRUE, FALSE
 
@@ -101,18 +102,17 @@ static double _MARparamVal[] = {
     2.0,      // 5 - SHALLOW_CONTOUR (SEABED01 default)
     //5.0,      // 5 - SHALLOW_CONTOUR
 
-    //30.0,     // 6 - DEEP_CONTOUR (SEABED01 defautl)
+    //30.0,     // 6 - DEEP_CONTOUR (SEABED01 default)
     15.0,     // 6 - DEEP_CONTOUR
 
-    FALSE,    // 7 - SHALLOW_PATTERN (SEABED01 defautl)
+    FALSE,    // 7 - SHALLOW_PATTERN (SEABED01 default)
     //TRUE,    // 7 - SHALLOW_PATTERN
 
     FALSE,    // 8 - SHIPS_OUTLINE
 
     0.0,      // 9 - S52_DISTANCE_TAGS (default OFF)
 
-    //0.0,      // 10 - TIME_TAGS
-    1.0,      // 10 - TIME_TAGS  (debug)
+    0.0,      // 10 - TIME_TAGS (default OFF)
 
     TRUE,     // 11 - FULL_SECTORS
 
@@ -145,7 +145,7 @@ static double _MARparamVal[] = {
 
 
     //---- experimantal ----
-    0.0,      // 21 - S52_MAR_FONT_SOUNDG   --use font for souding (on/off)
+    0.0,      // 21 - S52_MAR_FONT_SOUNDG   --NOT IMPLEMENTED: use font for souding (on/off)
     0.0,      // 22 - S52_MAR_DATUM_OFFSET  --value of chart datum offset (raster_sound must be ON)
 
     1.0,      // 23 - S52_MAR_SCAMIN        --flag for using SCAMIN filter (on/off)  (default ON)
@@ -157,7 +157,7 @@ static double _MARparamVal[] = {
 
     0.0,      // 26 - display overlapping symbol (default to false, debug)
 
-    //1.0,      // 27 - S52_MAR_DISP_LAYER_LAST to enable S52_drawLast()
+              // 27 - S52_MAR_DISP_LAYER_LAST to enable S52_drawLast()
     //S52_MAR_DISP_LAYER_LAST_NONE,   // 1 << 3  0x0001000 - MARINERS' NONE
     S52_MAR_DISP_LAYER_LAST_STD,      // 1 << 4  0x0010000 - MARINERS' STANDARD (default)
     //S52_MAR_DISP_LAYER_LAST_OTHER,  // 1 << 5  0x0100000 - MARINERS' OTHER
@@ -165,10 +165,8 @@ static double _MARparamVal[] = {
 
     0.0,      // 28 - S52_MAR_ROT_BUOY_LIGHT (deg)
 
-    //0.0,      // 29 - S52_MAR_DISP_CRSR_POS, display cursor position (default off)
     1.0,      // 29 - S52_MAR_DISP_CRSR_PICK, 0 - off, 1 - pick/highlight top object, 2 - pick stack/highlight top,
               //                              3 - pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
-
 
     0.0,      // 30 - S52_MAR_DISP_GRATICULE  (default off)
 
@@ -211,14 +209,26 @@ double S52_MP_get(S52MarinerParameter param)
 // return Mariner parameter or S52_MAR_ERROR if fail
 // FIXME: check mariner param against groups selection
 {
-    if (S52_MAR_ERROR<param && param<S52_MAR_NUM)
-        return _MARparamVal[param];
+    if (param<S52_MAR_ERROR || S52_MAR_NUM<=param) {
+    //if (S52_MAR_ERROR<=param && param<S52_MAR_NUM) {
+        PRINTF("WARNING: param invalid(%f)\n", param);
+        g_assert(0);
 
-    return _MARparamVal[S52_MAR_ERROR];
+        return _MARparamVal[S52_MAR_ERROR];
+    }
+
+    return _MARparamVal[param];
 }
 
 int    S52_MP_set(S52MarinerParameter param, double val)
 {
+    if (param<S52_MAR_ERROR || S52_MAR_NUM<=param) {
+        PRINTF("WARNING: param invalid(%f)\n", param);
+        g_assert(0);
+
+        return FALSE;
+    }
+
     _MARparamVal[param] = val;
 
     return TRUE;
