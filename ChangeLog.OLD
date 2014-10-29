@@ -4,6 +4,16 @@
 #
 
 
+2014OCT27
+    -fix typo in suppression, Supp, ...
+    -mod skip culling mariners' separetly in _cull()
+    -mod rename S52_GL_isOFFscreen() to S52_GL_isOFFview()
+    -mod rename S52_PL_getToggleState() to S52_PL_getObjToggleState()
+    -fix g_assert(0) to return something in case of G_DISABLE_ASSERT
+
+2014OCT25
+    -add S52_USE_LOGFILE to split LOG and LOG_to_FILE code path
+
 2014OCT17
     -mod S52_MAR_DISP_CRSR_POS --> S52_MAR_DISP_CRSR_PICK
     -add optimisation (failed) using tess tolerance (not implemented in libtess) for LOD
@@ -118,7 +128,7 @@
     -fix build of s52glx
 
 2014APR19
-    -fix compiler warning (static mutex deprecated) 
+    -fix compiler warning (static mutex deprecated)
     -fix mem corruption in GL mask of pattern
 
 2014APR17
@@ -133,7 +143,7 @@
     -add black background in RADAR mode when and NODATA is off
 
 2014APR11
-    -add lat/lng to radar_cb, 
+    -add lat/lng to radar_cb,
     -mod handle more than one radar
 
 2014APR10
@@ -150,7 +160,7 @@
 
 2014MAR24
     -mod optimze DRAW cycle static text
-    -mod optimise centroid to recompute only those affected when view change 
+    -mod optimise centroid to recompute only those affected when view change
 
 2014MAR22
     -mod test/android/dist/system to test/android/dist/sysroot
