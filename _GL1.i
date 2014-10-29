@@ -231,7 +231,6 @@ static GLint     _initFTGL(void)
     //const char *file = "arial.ttf";
     //const char *file = "DejaVuSans.ttf";
     //const char *file = "Trebuchet_MS.ttf";
-    //const gchar *file = "Waree.ttf";
     const gchar *file = "Waree.ttf";
     // from Navit
     //const char *file = "LiberationSans-Regular.ttf";
