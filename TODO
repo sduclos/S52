@@ -7,11 +7,11 @@ Last update:
 Curent focus (top priority *):
 
     GL:
-**  -alarm (safety perimeter)
+**  -alarm safety perimeter (pick GL trick) and route planning -try fast geo route instead of the pick GL trick
 *   -handle overlaping symbol at the center of the screen (find test case to debug)
-    -fading chart boudary, calib symb, ..
     -implement patern scale spacing (PASP field)
     -handle GLU_TESS_MAX_COORD, GLU_TESS_TOLERANCE (LOD)
+    -nice to have: fading chart boudary, calib symb, ..
 
     PL:
 *   -view group or somme equivalent functionality
