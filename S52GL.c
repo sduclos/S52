@@ -720,6 +720,7 @@ static GLint     _glMatrixSet(VP vpcoord)
         PRINTF("WARNING: Viewport not set (%f,%f,%f,%f)\n",
                left, right, bottom, top);
         g_assert(0);
+        return FALSE;
     }
 
     _glMatrixMode  (GL_PROJECTION);
@@ -826,6 +827,7 @@ static projXY    _prj2win(projXY p)
     if (GL_FALSE == _gluProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, &u, &v, &dummy_z)) {
         PRINTF("ERROR\n");
         g_assert(0);
+        return p;
     }
     p.u = u;
     p.v = v;
@@ -834,6 +836,7 @@ static projXY    _prj2win(projXY p)
     if (GL_FALSE == gluProject(p.u, p.v, dummy_z, _mvm, _pjm, (GLint*)_vp, &p.u, &p.v, &dummy_z)) {
         PRINTF("ERROR\n");
         g_assert(0);
+        return p;
     }
 #endif
 
@@ -1066,6 +1069,7 @@ static int       _VBOCreate(S57_prim *prim)
     } else {
         PRINTF("ERROR: VBO allready set!\n");
         g_assert(0);
+        return FALSE;
     }
 
     return vboID;
@@ -1147,6 +1151,7 @@ static guint     _createDList(S57_prim *prim)
     if (0 == DList) {
         PRINTF("ERROR: glGenLists() failed\n");
         g_assert(0);
+        return FALSE;
     }
 
     glNewList(DList, GL_COMPILE);
@@ -1365,14 +1370,12 @@ static int       _setBlend(int blend)
 static GLubyte   _glColor4ub(S52_Color *c)
 // return transparancy
 {
-
-#ifdef S52_DEBUG
+    // debug
     if (NULL == c) {
-        PRINTF("ERROR: no color\n");
+        PRINTF("DEBUG: no color NULL\n");
         g_assert(0);
         return 0;
     }
-#endif
 
     if (S52_GL_PICK == _crnt_GL_cycle) {
         // debug
@@ -1577,7 +1580,6 @@ static int       _computeCentroid(S57_geo *geoData)
     //PRINTF("%s EXT %f,%f -- %f,%f\n", S57_getName(geoData), _pmin.u, _pmin.v, _pmax.u, _pmax.v);
 
     double x1,y1, x2,y2;
-    //S57_getExtPRJ(geoData, &x1, &y1, &x2, &y2);
     S57_getExt(geoData, &x1, &y1, &x2, &y2);
     double xyz[6] = {x1, y1, 0.0, x2, y2, 0.0};
     if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
@@ -3118,7 +3120,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
 
 static int       _renderLS(S52_obj *obj)
 // Line Style
-// FIXME: do overlapping line supression (need to find a test case - S52_MAR_SYMBOLIZED_BND)
+// FIXME: do overlapping line suppression (need to find a test case - S52_MAR_SYMBOLIZED_BND)
 // FIX: add clip plane in shader (GLES2)
 {
 #ifdef S52_USE_GV
@@ -3175,6 +3177,8 @@ static int       _renderLS(S52_obj *obj)
 
         default:
             PRINTF("ERROR: invalid line style\n");
+            g_assert(0);
+            return FALSE;
     }
 
     {
@@ -3498,7 +3502,7 @@ static int       _renderLC(S52_obj *obj)
 
         //////////////////////////////////////////////////////
         //
-        // overlapping Line Complex (LC) supression
+        // overlapping Line Complex (LC) suppression
         //
         if (z1<0.0 && z2<0.0) {
             //PRINTF("NOTE: this line segment (%s) overlap a line segment with higher prioritity (Z=%f)\n", S57_getName(geo), z1);
@@ -3759,6 +3763,7 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
     if (0 != g_strcmp0("vrmark", S57_getName(geo))) {
         PRINTF("ERROR: not a 'vrmark' (%s)\n", S57_getName(geo));
         g_assert(0);
+        return FALSE;
     }
 
     S52_DListData *DListData = S52_PL_getDListData(obj);
@@ -4058,6 +4063,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
     if (weight >= S52_MAX_FONT) {
         PRINTF("ERROR: weight(%i) >= S52_MAX_FONT(%i)\n", weight, S52_MAX_FONT);
+        g_assert(0);
         return FALSE;
     }
 
@@ -4691,6 +4697,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
             default:
                 PRINTF("ERROR: invalid vector command: (%c)\n", vcmd);
                 g_assert(0);
+                return vertex;
         }
 
         vcmd = S52_PL_getNextVOCmd(vecObj);
@@ -4733,12 +4740,14 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
 
         PRINTF("TODO: debug this code path\n");
         g_assert(0);
+        return FALSE;
     }
 
     // debug
     if (MAX_SUBLIST < DL->nbr) {
         PRINTF("ERROR: sublist overflow -1-\n");
         g_assert(0);
+        return FALSE;
     }
 
 #else   // S52_USE_OPENGL_VBO
@@ -4759,6 +4768,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
     if (0 == DL->vboIds[0]) {
         PRINTF("ERROR: glGenLists() failed .. exiting\n");
         g_assert(0);
+        return FALSE;
     }
     glNewList(DL->vboIds[0], GL_COMPILE);
 
@@ -4774,6 +4784,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
     else {
         PRINTF("ERROR: DL->prim[0] not NULL\n");
         g_assert(0);
+        return FALSE;
     }
 
 #ifdef S52_USE_OPENGL_VBO
@@ -4822,6 +4833,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
     if (MAX_SUBLIST < DL->nbr) {
         PRINTF("ERROR: sublist overflow -0-\n");
         g_assert(0);
+        return FALSE;
     }
 
 #ifdef S52_USE_OPENGL_VBO
@@ -4864,6 +4876,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
         else {
             PRINTF("ERROR: DL->prim[i] not NULL\n");
             g_assert(0);
+            return FALSE;
         }
     }
 
@@ -4936,7 +4949,7 @@ int        S52_GL_isSupp(S52_obj *obj)
 // TRUE if display of object is suppressed
 // also collect stat
 {
-    if (S52_SUP_ON == S52_PL_getToggleState(obj)) {
+    if (S52_SUPP_ON == S52_PL_getObjToggleState(obj)) {
         ++_oclip;
         return TRUE;
     }
@@ -4955,10 +4968,10 @@ int        S52_GL_isSupp(S52_obj *obj)
     return FALSE;
 }
 
-int        S52_GL_isOFFscreen(S52_obj *obj)
+int        S52_GL_isOFFview(S52_obj *obj)
 // TRUE if object not in view
 {
-    /*
+    //*
     // debug: CHKSYM01 land here because it is on layer 8, other use layer 9
     S57_geo *geo  = S52_PL_getGeo(obj);
     if (0 == g_strcmp0("$CSYMB", S57_getName(geo))) {
@@ -4971,11 +4984,15 @@ int        S52_GL_isOFFscreen(S52_obj *obj)
         if (0 == g_strcmp0(attval->str, "BLKADJ01"))
             return FALSE;
 
-        PRINTF("%s:%s\n", S57_getName(geo), attval->str);
+        PRINTF("DEBUG: %s:%s\n", S57_getName(geo), attval->str);
 
         return FALSE;
     }
-    */
+    //*/
+
+    //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "pastrk")) {
+    //    PRINTF("DEBUG: pastrk FOUND\n");
+    //}
 
     {   // geo extent _gmin/max
         double x1,y1,x2,y2;
@@ -5271,6 +5288,9 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //    PRINTF("$CSYMB found\n");
     //    //return;
     //}
+    //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "pastrk")) {
+    //    PRINTF("DEBUG: pastrk FOUND\n");
+    //}
     //if (S52_GL_PICK == _crnt_GL_cycle) {
     //    S57_geo *geo = S52_PL_getGeo(obj);
     //    GString *FIDNstr = S57_getAttVal(geo, "FIDN");
@@ -5298,9 +5318,10 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
         ++_cIdx.color.r;
 
         // stack obj
-        if (1.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK))
+        if (1.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
             g_ptr_array_add(_objPick, obj);
-
+            PRINTF("DEBUG: pick %s\n", S52_PL_getOBCL(obj));
+        }
     }
 
     ++_nobj;
@@ -5340,18 +5361,8 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     // NO, if extent is use then concave AREA and LINES can trigger false positive
     if (S52_GL_PICK == _crnt_GL_cycle) {
         if (2.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK) || 3.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
-
-            // FIXME: optimisation - read only once all draw to get the top obj
-            // FIXME: copy to texture then test pixels!
-            // FB --> TEX
-            //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, 8, 8, 0);
-            // TEX --> MEM
-            // gl...
-            // -OR-
-            // a shader trick! .. put the pixels back in an array then back to main!!
-
-
             // WARNING: some graphic card preffer RGB / BYTE .. YMMV
+            // FIXME: optimisation: shader trick! .. put the pixels back in an array then back to main!!
             // FIXME: use _fb_format (rgb/rgba) and EGL rgb/rgba
             //glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
             //glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGB, GL_UNSIGNED_BYTE, &_pixelsRead);
@@ -5364,11 +5375,10 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
                 g_ptr_array_add(_objPick, obj);
 
                 // debug
-                PRINTF("pixel found (%i, %i): i=%i color=%X\n", _vp[0], _vp[1], 0, _cIdx.color.r);
+                PRINTF("DEBUG: pixel found (%i, %i): i=%i color=%X\n", _vp[0], _vp[1], 0, _cIdx.color.r);
             }
         }
     }
-
 
     return TRUE;
 }
@@ -5444,6 +5454,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     if (S52_GL_NONE != _crnt_GL_cycle) {
         PRINTF("WARNING: S52_GL_cycle out of sync\n");
         g_assert(0);
+        return FALSE;
     }
     _crnt_GL_cycle = cycle;
 
@@ -5666,6 +5677,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
         _fb_pixels = NULL;
 
         g_assert(0);
+        return FALSE;
     }
 
     _glMatrixSet(VP_PRJ);
@@ -5746,7 +5758,7 @@ int        S52_GL_end(S52_GL_cycle cycle)
     }
     _crnt_GL_cycle = cycle;
 
-    // FIXME: same code as _draw()
+    // read once, top object
     if (S52_GL_PICK==_crnt_GL_cycle && 1.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
         glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
         _checkError("S52_GL_end():glReadPixels()");
@@ -5934,22 +5946,20 @@ static int       _contextValid(void)
 #endif
 
     {
-        const GLubyte *vendor     = glGetString(GL_VENDOR);
-        const GLubyte *renderer   = glGetString(GL_RENDERER);
-        const GLubyte *version    = glGetString(GL_VERSION);
-        const GLubyte *slglver    = glGetString(GL_SHADING_LANGUAGE_VERSION);
         const GLubyte *extensions = glGetString(GL_EXTENSIONS);
-        if (NULL == extensions) {
-            PRINTF("ERROR: glGetString(GL_EXTENSIONS) is NULL\n");
-            //g_assert(0);
-            return FALSE;
+#ifdef S52_DEBUG
+        {
+            const GLubyte *vendor     = glGetString(GL_VENDOR);
+            const GLubyte *renderer   = glGetString(GL_RENDERER);
+            const GLubyte *version    = glGetString(GL_VERSION);
+            const GLubyte *slglver    = glGetString(GL_SHADING_LANGUAGE_VERSION);
+            PRINTF("Vendor:     %s\n", vendor);
+            PRINTF("Renderer:   %s\n", renderer);
+            PRINTF("Version:    %s\n", version);
+            PRINTF("Shader:     %s\n", slglver);
+            PRINTF("Extensions: %s\n", extensions);
         }
-
-        PRINTF("Vendor:     %s\n", vendor);
-        PRINTF("Renderer:   %s\n", renderer);
-        PRINTF("Version:    %s\n", version);
-        PRINTF("Shader:     %s\n", slglver);
-        PRINTF("Extensions: %s\n", extensions);
+#endif
 
         // npot
         if (NULL != g_strrstr((const char *)extensions, "GL_OES_texture_npot")) {
@@ -6005,6 +6015,7 @@ int        S52_GL_init(void)
     if (sizeof(double) != sizeof(GLdouble)) {
         PRINTF("ERROR: sizeof(double) != sizeof(GLdouble)\n");
         g_assert(0);
+        return FALSE;
     }
 
     // GL sanity check before start of init
@@ -6326,9 +6337,11 @@ char      *S52_GL_getNameObjPick(void)
     guint idx   = 0;
 
     if (1.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
-        idx = _pixelsRead[0].color.r - 1;
+        idx = _pixelsRead[0].color.r;
 
-        g_assert(0 <= idx);
+        // pick anything
+        if (0 != idx)
+            --idx;
     }
 
     //if (2.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
@@ -6384,7 +6397,10 @@ char      *S52_GL_getNameObjPick(void)
             S57_dumpData(geo, FALSE);
             PRINTF("-----------\n");
         }
-        idx = _objPick->len-1;
+
+        // pick anything
+        if (0 != _objPick->len)
+            idx = _objPick->len-1;
 
     }
 
@@ -6398,6 +6414,7 @@ char      *S52_GL_getNameObjPick(void)
     S57ID = S57_getGeoID(geoHighLight);
 
     // Note: compile with S52_USE_C_AGGR_C_ASSO
+#ifdef S52_USE_C_AGGR_C_ASSO
     if (3.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
         // debug
         GString *geo_refs = S57_getAttVal(geoHighLight, "_LNAM_REFS_GEO");
@@ -6442,6 +6459,7 @@ char      *S52_GL_getNameObjPick(void)
             g_strfreev(topRefs);
         }
     }
+#endif  // S52_USE_C_AGGR_C_ASSO
 
     g_string_printf(_strPick, "%s:%i", name, S57ID);
 
