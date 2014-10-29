@@ -130,7 +130,8 @@ static S52ObjectHandle _marfea_point = NULL;
 static GtkWidget    *_win     = NULL;
 static GtkWidget    *_winArea = NULL;
 
-static GTimer       *_timer   = NULL;
+// debug
+//static GTimer       *_timer   = NULL;
 
 // debug - command-line options for test
 static gint     _execOpt = FALSE;
@@ -1134,10 +1135,11 @@ static int      _initS52()
     //hmm    = 301; // wrong
     hmm    = 307;
 
-    printf("screen (w/h/wmm/hmm): %i / %i / %i / %i\n", w, h, wmm, hmm);
+    // debug
+    g_print("s52gtk2.c:_initS52(): screen (w/h/wmm/hmm): %i / %i / %i / %i\n", w, h, wmm, hmm);
 
     // can be used before S52_init()
-    S52_version();
+    g_print("%s\n", S52_version());
 
 #ifdef S52_USE_LOG
     S52_init(w, h, wmm, hmm, _err_cb);
@@ -1309,9 +1311,9 @@ static int      _initS52()
     S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD | S52_MAR_DISP_LAYER_LAST_OTHER);    // All Mariner (Standard + Other)
                     
     //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 0.0);  // none
-    //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 1.0);  // pick/highlight top object
+    S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 1.0);  // pick/highlight top object
     //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 2.0);  // pick stack/highlight top
-    S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 3.0);  // pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
+    //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 3.0);  // pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
 
 
     // cell's legend
@@ -1836,10 +1838,8 @@ static int      _s52_draw_cb    (gpointer user_data)
     //*/
 
 
+    // debug
     //gdouble sec = g_timer_elapsed(_timer, NULL);
-    //PRINTF("%.0f msec (%i obj / %i cmd)\n", sec * 1000, _nobj, _ncmd);
-    //g_print("%.0f msec (%i obj / %i cmd) renew = %i / %iB\n", sec * 1000, _nobj, _ncmd, _nrealloc, fobj.sz);
-    //g_print("DRAW: %.0f msec\n", sec * 1000);
     //printf("update_cb: %.0f msec\n", sec * 1000);
 
     return TRUE;
@@ -1859,6 +1859,8 @@ int main(int argc, char **argv)
     //g_thread_init(&vtable);
     //g_thread_init(NULL);
 
+    g_print("s52gtk2:main(): starting (argc:%i, argv[0]:%s\n", argc, argv[0]);
+
     gtk_init(&argc, &argv);
 
     gtk_gl_init(&argc, &argv);
@@ -1874,7 +1876,8 @@ int main(int argc, char **argv)
     g_setenv("GALLIUM_MSAA", "4", 1);
 #endif
 
-    _timer = g_timer_new();
+    // debug
+    //_timer = g_timer_new();
 
     // Main Window
     _win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -1959,7 +1962,8 @@ exit:
 
     S52_done();
 
-    g_timer_destroy(_timer);
+    // debug
+    //g_timer_destroy(_timer);
 
     //g_mem_profile();
 
