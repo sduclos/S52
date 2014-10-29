@@ -111,6 +111,8 @@ class S52 {
     return completer.future;
   }
   _drawLastTimer() {
+    // debug
+    //print('_drawLastTimer() ..');
     if (null != _timer)
       return;
 

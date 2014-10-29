@@ -798,7 +798,7 @@ void _watchPosition(int ownshpID) {
     return;
   }
 
-  // GYRO - TODO: test ship's head up
+  // GYRO - TODO: test ship's head up - set north in setView
   window.onDeviceOrientation.listen(_hdg);
 
   // GPS
@@ -834,8 +834,8 @@ void _initMain() {
       }).catchError((e) {print(e);});
     });
   } catch (e,s) {
-    print('ERROR: $e');
-    print('STACK: $s');
+    print('s52ui.dart:ERROR: $e');
+    print('s52ui.dart:STACK: $s');
     window.close();
   }
 }
