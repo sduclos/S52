@@ -66,12 +66,12 @@ CXX  = g++ -fPIC
 
 MINGW = /usr/bin/i586-mingw32msvc-
 #MINGW = /usr/bin/i686-w64-mingw32-
-s52win32 : CC    = $(MINGW)gcc -g -O0 -Wall -m32 -std=c99
-s52win32 : CXX   = $(MINGW)g++ -g -O0 -Wall -m32
+s52win32 : CC    = $(MINGW)gcc -Wall -m32 -std=c99
+s52win32 : CXX   = $(MINGW)g++ -Wall -m32
 s52win32 : AR    = $(MINGW)ar
 s52win32 : RANLIB= $(MINGW)ranlib
-s52eglw32: CC    = $(MINGW)gcc -g -O0 -Wall -m32 -std=gnu99
-s52eglw32: CXX   = $(MINGW)g++ -g -O0 -Wall -m32
+s52eglw32: CC    = $(MINGW)gcc -Wall -m32 -std=gnu99
+s52eglw32: CXX   = $(MINGW)g++ -Wall -m32
 
 #s52win32 : CXX  = $(CC)  # hack
 s52gv    : CXX  = $(CC)  # hack
@@ -139,7 +139,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 #                        - supress display of overlapping line (need OGR patch in doc/ogrfeature.cpp.diff)
 #                        - work for LC() only (not LS())
 #                        - see S52 manual p. 45 doc/pslb03_2.pdf
-# -DS52_USE_C_AGGR_C_ASSO - return info C_AGGR C_ASSO on cursor pick (need OGR patch in doc/ogrfeature.cpp.diff)
+# -DS52_USE_C_AGGR_C_ASSO- return info C_AGGR C_ASSO on cursor pick (need OGR patch in doc/ogrfeature.cpp.diff)
 # -DS52_USE_SYM_AISSEL01 - need symbol in test/plib-test-priv.rle
 # -DS52_USE_WORLD        - need shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
 # -DS52_USE_RADAR        - skip swapbuffer between DRAW & LAST cycle, skip read/write FB
@@ -326,9 +326,12 @@ s52gtk2gps:  CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl dbus-1 dbus-glib-
                       -DS52_DEBUG $(DBG)
 
 s52win32 : GDALPATH = ../../../gdal/gdal-1.7.2-mingw/
+
+#                      -DS52_DEBUG $(DBG2)                    \
+
 s52win32 : CFLAGS   = -mms-bitfields                         \
-                      -I../../mingw/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
-                      -I../../mingw/gtk+-bundle_2.16.6-20100912_win32/lib/glib-2.0/include \
+                      -I../../mingw/gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
+                      -I../../mingw/gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/lib/glib-2.0/include \
                       -I../../mingw/include                  \
                       -I$(GDALPATH)ogr                       \
                       -I$(GDALPATH)port                      \
@@ -340,13 +343,12 @@ s52win32 : CFLAGS   = -mms-bitfields                         \
                       -DS52_USE_PROJ                         \
                       -DS52_USE_OGR_FILECOLLECTOR            \
                       -DG_DISABLE_ASSERT                     \
-                      -DS52_DEBUG $(DBG2)                    \
                       -D_MINGW
 
 s52eglw32 : GDALPATH = ../../../gdal/gdal-1.7.2-mingw
 s52eglw32 : CFLAGS   = -mms-bitfields                         \
-                      -I../../mingw/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
-                      -I../../mingw/gtk+-bundle_2.16.6-20100912_win32/lib/glib-2.0/include \
+                      -I../../mingw/gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
+                      -I../../mingw/gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/lib/glib-2.0/include \
                       -I../../mingw/include                   \
                       -I$(GDALPATH)/ogr                       \
                       -I$(GDALPATH)/port                      \
@@ -422,7 +424,6 @@ s52clutter    : libS52.so    test/s52clutter
 s52clutter.js : libS52.so    test/s52clutter.js
 s52qt4        : libS52.so    test/s52qt4
 s52win32      : libS52.dll   test/s52win32 s52win32fini
-#s52win32      : libS52.dll   test/s52win32
 #s52win32      : libS52.dll.a   test/s52win32
 #s52win32gps  : libS52.dll   test/s52win32gps s52win32fini
 s52eglw32     : libS52.dll   test/s52eglw32
@@ -469,7 +470,7 @@ libS52gv.so: $(OBJS_S52) $(OBJS_GV)
 	$(CXX) -shared $(OBJS_S52) $(OBJS_GV) $(LIBS) -o libS52.so
 
 s52win32 s52eglw32: LIBWIN32PATH = ../../mingw
-s52win32 s52eglw32: GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
+s52win32 s52eglw32: GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/bin
 #s52win32 s52eglw32: GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/lib
 s52win32  : LIBS = -L$(GTKPATH) -lglib-2.0-0 -lfreetype6  \
                    $(LIBWIN32PATH)/libproj.a              \
