@@ -898,6 +898,7 @@ static GString *DEPARE01 (S57_geo *geo)
     if (0 == objl) {
         PRINTF("ERROR: OBJL == 0 (this is impossible!)\n");
         g_assert(0);
+        return depare01;
     }
 
     if (DRGARE == objl) {
@@ -976,6 +977,7 @@ static GString *DEPCNT02 (S57_geo *geo)
     if (0 == objl) {
         PRINTF("ERROR: no OBJL\n");
         g_assert(0);
+        return depcnt02;
     }
 
 
@@ -1002,7 +1004,9 @@ static GString *DEPCNT02 (S57_geo *geo)
         if (drval1 > drval2) {
             PRINTF("WARNING: drval1 > drval2\n");
             g_assert(0);
+            return depcnt02;
         }
+
         // adjuste datum
         //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
             double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
@@ -1979,6 +1983,7 @@ static GString *OBSTRN04 (S57_geo *geo)
                 if (0 == objl) {
                     PRINTF("ERROR: no OBJL\n");
                     g_assert(0);
+                    return obstrn04str;
                 }
 
                 if (UWTROC == objl) {
@@ -2023,6 +2028,7 @@ static GString *OBSTRN04 (S57_geo *geo)
                 if (0 == objl) {
                     PRINTF("ERROR: no OBJL\n");
                     g_assert(0);
+                    return obstrn04str;
                 }
 
                 if (UWTROC == objl) {
@@ -2385,6 +2391,7 @@ static GString *_QUALIN01(S57_geo *geo)
         if (0 == objl) {
             PRINTF("ERROR: no OBJL\n");
             g_assert(0);
+            return qualino1;
         }
 
 
@@ -2850,7 +2857,6 @@ static GString *SOUNDG02 (S57_geo *geo)
     if (POINT_T != S57_getObjtype(geo)) {
         PRINTF("invalid object type (not POINT_T)\n");
         g_assert(0);
-
         return NULL;
     }
 
@@ -2863,6 +2869,7 @@ static GString *SOUNDG02 (S57_geo *geo)
     if (npt > 1) {
         PRINTF("ERROR: GDAL config error, SOUNDING array instead or point\n");
         g_assert(0);
+        return NULL;
     }
 
     return _SNDFRM02(geo, ppt[2]);
