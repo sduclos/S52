@@ -154,13 +154,13 @@ typedef enum S52_vCmd {
     S52_VC_FP = 'F'     // fill polygone
 } S52_vCmd;
 
-// display supression flag
-typedef enum S52_objSup {
-    S52_SUP_OFF  = 0,    // initial object not supressed
-    S52_SUP_ON   = 1,    // display of object is supressed
-    S52_SUP_ERR  = 2     // object not found or not togglelable (displaybase)
+// display suppression flag
+typedef enum S52_objSupp {
+    S52_SUPP_OFF  = 0,    // initial object not suppressed
+    S52_SUPP_ON   = 1,    // display of object is suppressed
+    S52_SUPP_ERR  = 2     // object not found or not togglelable (displaybase)
 
-} S52_objSup;
+} S52_objSupp;
 
 typedef struct _S52_cmdDef S52_cmdDef;
 typedef struct _S52_vec    S52_vec;
@@ -302,21 +302,11 @@ int            S52_PL_hasLC(S52_obj *obj);
 // return CS name if this object has CS (Conditional Symbology) else NULL
 const char    *S52_PL_hasCS(S52_obj *obj);
 
-
-// get new display priority
-//S52_disPrio S52_PL_getOPprio(S52_obj *obj);
-
-// toggle display supression of this object
-//S52_objSup S52_PL_toggleObjSUP(S52_obj *obj);
-
-// toggle display supression of this type of object
-//S52_objSup     S52_PL_toggleObjType(S52_obj *obj);
-
 // toggle display suppression of this class of object
-S52_objSup     S52_PL_toggleObjClass(const char *className);
+S52_objSupp    S52_PL_toggleObjClass(const char *className);
 // get display state for this type of object
-S52_objSup     S52_PL_getToggleState(S52_obj *obj);
-S52_objSup     S52_PL_getObjClassState(const char *className);
+S52_objSupp    S52_PL_getObjToggleState(S52_obj *obj);
+S52_objSupp    S52_PL_getObjClassState(const char *className);
 
 int            S52_PL_resloveSMB(S52_obj *obj);
 
