@@ -62,7 +62,8 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 # -DS52_USE_RADAR     - when in RADAR mode
 
-CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2 -DUSE_FAKE_AIS
+#CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2 -DUSE_FAKE_AIS
+CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2
 
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
                       -DS52_USE_GLIB2                                  \
@@ -224,8 +225,8 @@ run: s52gtk2
 #                 $(LIBWIN32PATH)/liblcms-1.dll                   \
 #                 -lglu32 -lopengl32
 
-s52win32: GTKPATH   = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/lib
-s52win32: GTKGLPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/bin
+s52win32: GTKPATH   = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/lib
+s52win32: GTKGLPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtkglext-2011/bin
 s52win32: LIBS = $(S52_LIBS)                                     \
                  -L$(GTKPATH)                                    \
                  $(GTKPATH)/gtk-win32-2.0.lib $(GTKPATH)/gdk-win32-2.0.lib                 \
@@ -234,7 +235,7 @@ s52win32: LIBS = $(S52_LIBS)                                     \
                  -lgtkglext-win32-1.0-0 -lgdkglext-win32-1.0-0   \
                  -lglu32 -lopengl32
 
-s52eglw32: GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/bin
+s52eglw32: GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw//gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/bin
 s52eglw32: LIBS = $(S52_LIBS) -L$(GTKPATH)                    \
                  -lgtk-win32-2.0-0 -lgdk-win32-2.0-0          \
                  -lglib-2.0-0 -lgobject-2.0-0 -lgthread-2.0-0 \
@@ -245,15 +246,15 @@ s52eglw32: LIBS = $(S52_LIBS) -L$(GTKPATH)                    \
 
 s52win32: CFLAGS = -DS52_USE_GLIB2 -DUSE_FAKE_AIS                                                            \
                    -mms-bitfields                                                                            \
-                   -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/include/gtk-2.0      \
-                   -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
-                   -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/include/cairo        \
-                   -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/include/pango-1.0    \
-                   -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/include/atk-1.0      \
-                   -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/lib/glib-2.0/include \
-                   -I$(HOME)/dev/gis/openev-cvs/mingw/gtk+-bundle_2.16.6-20100912_win32/lib/gtk-2.0/include  \
-                   -I$(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/include/gtkglext-1.0              \
-                   -I$(HOME)/dev/gis/openev-cvs/mingw/gtkglext-win32-1.0.6/lib/gtkglext-1.0/include
+                   -I$(HOME)/dev/gis/openev-cvs/mingw//gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/gtk-2.0      \
+                   -I$(HOME)/dev/gis/openev-cvs/mingw//gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
+                   -I$(HOME)/dev/gis/openev-cvs/mingw//gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/cairo        \
+                   -I$(HOME)/dev/gis/openev-cvs/mingw//gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/pango-1.0    \
+                   -I$(HOME)/dev/gis/openev-cvs/mingw//gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/atk-1.0      \
+                   -I$(HOME)/dev/gis/openev-cvs/mingw//gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/lib/glib-2.0/include \
+                   -I$(HOME)/dev/gis/openev-cvs/mingw//gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/lib/gtk-2.0/include  \
+                   -I$(HOME)/dev/gis/openev-cvs/mingw/gtkglext-2011/include/gtkglext-1.0              \
+                   -I$(HOME)/dev/gis/openev-cvs/mingw/gtkglext-2011/lib/gtkglext-1.0/include
 
 s52eglw32:CFLAGS = -DS52_USE_GLIB2                   \
                    -mms-bitfields                    \
