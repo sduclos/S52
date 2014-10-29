@@ -101,10 +101,9 @@ int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double nor
 int   S52_GL_end(S52_GL_cycle cycle);
 // ----------------------------------
 
-
 int   S52_GL_isSupp(S52_obj *obj);
-int   S52_GL_isOFFscreen(S52_obj *obj);
-
+//int   S52_GL_isOFFscreen(S52_obj *obj);
+int   S52_GL_isOFFview(S52_obj *obj);
 
 // delete GL data of object (DL of geo)
 int   S52_GL_del(S52_obj *obj);
