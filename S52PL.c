@@ -229,7 +229,7 @@ typedef struct _LUP {
                                 // hense 'int', but its a string in the specs)
 
     // ---- not a S52 fields ------------------------------------
-    S52_objSup       sup;       // supress display of this object type
+    S52_objSupp  supp;      // suppress display of this object type
     struct _LUP *OBCLnext;  // next LUP with name OBCL
 } _LUP;
 
@@ -1624,7 +1624,7 @@ static int        _parseLUPT(_PL *fp)
                 if ((NULL == LUP->ATTC) && (NULL == LUPtop->ATTC)) {
                     LUP->OBCLnext    = LUPtop->OBCLnext;
                     LUPtop->OBCLnext = NULL;
-                    LUP->sup         = LUPtop->sup; // keep user setting (supression)
+                    LUP->supp        = LUPtop->supp; // keep user setting (suppression)
 
                     g_tree_replace(LUPtype, (gpointer*)LUP->OBCL, (gpointer*)LUP);
                     //S52_tree_replace(LUPtype, (gpointer*)LUP->OBCL, (gpointer*)LUP);
@@ -1650,8 +1650,8 @@ static int        _parseLUPT(_PL *fp)
 
                             replace = TRUE;
 
-                            // keep user setting (supression)
-                            LUP->sup = LUPtmp->sup;
+                            // keep user setting (suppression)
+                            LUP->supp = LUPtmp->supp;
 
                             // link previous LUP to this new one
                             if (NULL != LUPprev)
@@ -2772,10 +2772,12 @@ const char *S52_PL_getOBCL(_S52_obj *obj)
 {
     return_if_null(obj);
 
-    if (NULL == obj->LUP)
+    if (NULL == obj->LUP) {
+        // DISD layer/obj have no LUP
         return S57_getName(obj->geoData);
-    else
+    } else {
         return obj->LUP->OBCL;
+    }
 }
 
 //S52_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
@@ -4057,32 +4059,32 @@ const char *S52_PL_hasCS(_S52_obj *obj)
     return FALSE;
 }
 
-static S52_objSup _toggleObjType(_LUP *LUP)
+static S52_objSupp _toggleObjType(_LUP *LUP)
 // toggle an S57 object type, return state
 // rules on BASE can't be soppressed
 {
     if (DISPLAYBASE == _getDISC(LUP))
-        return S52_SUP_ERR;
+        return S52_SUPP_ERR;
 
-    if (S52_SUP_ERR == LUP->sup)
-        return S52_SUP_ERR;
+    if (S52_SUPP_ERR == LUP->supp)
+        return S52_SUPP_ERR;
 
-    if (S52_SUP_OFF == LUP->sup)
-        LUP->sup = S52_SUP_ON;
+    if (S52_SUPP_OFF == LUP->supp)
+        LUP->supp = S52_SUPP_ON;
     else
-        LUP->sup = S52_SUP_OFF;
+        LUP->supp = S52_SUPP_OFF;
 
-    return LUP->sup;
+    return LUP->supp;
 }
 
-static S52_objSup _toggleLUPlist(_LUP *LUPlist)
+static S52_objSupp _toggleLUPlist(_LUP *LUPlist)
 // toggle all rules that are not in BASE
 {
-    S52_objSup sup = S52_SUP_ERR;
+    S52_objSupp sup = S52_SUPP_ERR;
 
     while (NULL != LUPlist) {
-        S52_objSup ret = _toggleObjType(LUPlist);
-        if (S52_SUP_ERR != ret)
+        S52_objSupp ret = _toggleObjType(LUPlist);
+        if (S52_SUPP_ERR != ret)
             sup = ret;
         LUPlist = LUPlist->OBCLnext;
     }
@@ -4090,10 +4092,10 @@ static S52_objSup _toggleLUPlist(_LUP *LUPlist)
     return sup;
 }
 
-S52_objSup  S52_PL_toggleObjClass(const char *className)
+S52_objSupp S52_PL_toggleObjClass(const char *className)
 // toggle an S57 object class
 {
-    S52_objSup sup = S52_SUP_ERR;
+    S52_objSupp sup = S52_SUPP_ERR;
     _LUP  *LUPlist = NULL;
 
     for (int tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
@@ -4105,17 +4107,17 @@ S52_objSup  S52_PL_toggleObjClass(const char *className)
     return sup;
 }
 
-S52_objSup  S52_PL_getObjClassState(const char *className)
+S52_objSupp S52_PL_getObjClassState(const char *className)
 // get S57 object class supp state (other then DISPLAYBASE)
 {
-    S52_objSup sup = S52_SUP_ERR;
+    S52_objSupp sup = S52_SUPP_ERR;
     _LUP  *LUPlist = NULL;
 
     for (int tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
         LUPlist = (_LUP*)g_tree_lookup(_table[tblType], (gpointer*)className);
         while (NULL != LUPlist) {
             if ('D' != LUPlist->DISC)
-                return LUPlist->sup;
+                return LUPlist->supp;
              LUPlist = LUPlist->OBCLnext;
         }
     }
@@ -4123,10 +4125,10 @@ S52_objSup  S52_PL_getObjClassState(const char *className)
     return sup;
 }
 
-S52_objSup  S52_PL_getToggleState(_S52_obj *obj)
+S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
 {
     if (NULL == obj)
-        return S52_SUP_ERR;
+        return S52_SUPP_ERR;
 
     // debug
     //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "M_QUAL")) {
@@ -4135,7 +4137,7 @@ S52_objSup  S52_PL_getToggleState(_S52_obj *obj)
 
     // META's can't be displayed (ex: C_AGGR)
     if (NULL == obj->LUP)
-        return S52_SUP_ON;
+        return S52_SUPP_ON;
 
     int lupDisp = S52_PL_getDISC(obj);
 
@@ -4146,46 +4148,46 @@ S52_objSup  S52_PL_getToggleState(_S52_obj *obj)
         // off - no rendering of mariners Object
         //if (S52_MAR_DISP_LAYER_LAST_NONE == (int)S52_MP_get(S52_MAR_DISP_LAYER_LAST)) {
         if (S52_MAR_DISP_LAYER_LAST_NONE    & mask) {
-            return S52_SUP_ON;
+            return S52_SUPP_ON;
         }
 
         // MAR Selected choice (override STD & OTHER)
         if (S52_MAR_DISP_LAYER_LAST_SELECT  & mask) {
-            if (S52_SUP_ON == obj->LUP->sup)
-                return S52_SUP_ON;
-            return S52_SUP_OFF;
+            if (S52_SUPP_ON == obj->LUP->supp)
+                return S52_SUPP_ON;
+            return S52_SUPP_OFF;
         }
 
         // MAR STD + OTHER
         if ((S52_MAR_DISP_LAYER_LAST_STD    & mask) &&
             (S52_MAR_DISP_LAYER_LAST_OTHER  & mask) ) {
             if (MARINERS_STANDARD == lupDisp)
-                return S52_SUP_OFF;
-            return S52_SUP_ON;
+                return S52_SUPP_OFF;
+            return S52_SUPP_ON;
         }
 
         // MAR STD
         if (S52_MAR_DISP_LAYER_LAST_STD     & mask) {
             if (MARINERS_STANDARD == lupDisp)
-                return S52_SUP_OFF;
-            return S52_SUP_ON;
+                return S52_SUPP_OFF;
+            return S52_SUPP_ON;
         }
 
         // MAR OTHER
         if (S52_MAR_DISP_LAYER_LAST_OTHER   & mask) {
             if (MARINERS_OTHER == lupDisp)
-                return S52_SUP_OFF;
-            return S52_SUP_ON;
+                return S52_SUPP_OFF;
+            return S52_SUPP_ON;
         }
 
         // 3.0 and above
-        return S52_SUP_OFF;
+        return S52_SUPP_OFF;
     }
 
 
-    // Base - no supression (whatever S52_MAR_DISP_CATEGORY say)
+    // Base - no suppression (whatever S52_MAR_DISP_CATEGORY say)
     if (DISPLAYBASE == lupDisp)
-        return S52_SUP_OFF;
+        return S52_SUPP_OFF;
 
     // ENC objects
     {
@@ -4196,46 +4198,46 @@ S52_objSup  S52_PL_getToggleState(_S52_obj *obj)
         // previous mariner choice is preserve
         //if (FALSE != (S52_MAR_DISP_CATEGORY_SELECT & mask))
         if (0 < (S52_MAR_DISP_CATEGORY_SELECT & mask))
-            return obj->LUP->sup;
+            return obj->LUP->supp;
 
         // case of BASE only - all other cat. are OFF
         //if (S52_MAR_DISP_CATEGORY_BASE   & (int)S52_MP_get(S52_MAR_DISP_CATEGORY)) {
         if (0 == mask) {
             if (DISPLAYBASE == lupDisp)
-                return S52_SUP_OFF;
+                return S52_SUPP_OFF;
 
-            return S52_SUP_ON;
+            return S52_SUPP_ON;
         }
 
         // case of STD + OTHER
         if ((S52_MAR_DISP_CATEGORY_STD    & mask) &&
             (S52_MAR_DISP_CATEGORY_OTHER  & mask) ) {
                 if ((STANDARD==lupDisp) || (OTHER==lupDisp))
-                    return S52_SUP_OFF;
+                    return S52_SUPP_OFF;
 
-            return S52_SUP_ON;
+            return S52_SUPP_ON;
         }
 
         // case of STD only
         if (S52_MAR_DISP_CATEGORY_STD    & mask) {
             if (STANDARD == lupDisp)
-                return S52_SUP_OFF;
+                return S52_SUPP_OFF;
 
-            return S52_SUP_ON;
+            return S52_SUPP_ON;
         }
 
         // case of OTHER only
         if (S52_MAR_DISP_CATEGORY_OTHER  & mask) {
             if (OTHER == lupDisp)
-                return S52_SUP_OFF;
+                return S52_SUPP_OFF;
 
-            return S52_SUP_ON;
+            return S52_SUPP_ON;
         }
     }
 
     // NOTE: this is the standard display with object added (from 'other'
     // category) or removed (from 'standard') but not from the base display.
-    return S52_SUP_ERR;
+    return S52_SUPP_ERR;
 }
 
 int         S52_PL_getOffset(_S52_obj *obj, double *offset_x, double *offset_y)
