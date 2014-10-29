@@ -67,8 +67,8 @@ typedef enum S52MarinerParameter {
     S52_MAR_DEEP_CONTOUR        =  6,   // S52_AREAS: selected deepwater contour (meters) (optional)
     S52_MAR_SHALLOW_PATTERN     =  7,   // flag indicating selection of shallow water highlight (on/off)(optional) [default OFF]
     S52_MAR_SHIPS_OUTLINE       =  8,   // flag indicating selection of ship scale symbol (on/off) [IMO PS 8.4]
-    S52_MAR_DISTANCE_TAGS       =  9,   // -not implemented- selected spacing of "distance to run" tags at a route (nm) [default 0.0 - OFF]
-    S52_MAR_TIME_TAGS           = 10,   // -not implemented- selected spacing of time tags at the past track (min), [ref S52_addPASTRKPosition() bellow]
+    S52_MAR_DISTANCE_TAGS       =  9,   // NOT IMPLEMENTED: selected spacing of "distance to run" tags at a route (nm) [default 0.0 - OFF]
+    S52_MAR_TIME_TAGS           = 10,   // NOT IMPLEMENTED: selected spacing of time tags at the past track (min), [ref S52_addPASTRKPosition() bellow]
     S52_MAR_FULL_SECTORS        = 11,   // show full length light sector lines (on/off) [default ON]
     S52_MAR_SYMBOLIZED_BND      = 12,   // symbolized area boundaries (on/off) [default ON]
     S52_MAR_SYMPLIFIED_PNT      = 13,   // simplified point (on/off) [default ON]
@@ -86,10 +86,10 @@ typedef enum S52MarinerParameter {
 
     //---- experimental variables ----
 
-    S52_MAR_FONT_SOUNDG         = 21,   // use font for sounding (on/off)
+    S52_MAR_FONT_SOUNDG         = 21,   // NOT IMPLEMENTED: use font for sounding (on/off)
 
-    S52_MAR_DATUM_OFFSET        = 22,   // value of chart datum offset (S52_MAR_FONT_SOUNDG must be ON)
-                                        // PROBLEM: 2 datum: sounding / vertical (ex bridge clearance)
+    S52_MAR_DATUM_OFFSET        = 22,   // value of chart datum offset. FIXME: 2 datum: sounding / vertical (ex bridge clearance)
+
     S52_MAR_SCAMIN              = 23,   // flag for using SCAMIN filter (on/off) (default ON)
 
     S52_MAR_ANTIALIAS           = 24,   // flag for color blending (anti-aliasing) (on/off)
@@ -139,6 +139,10 @@ typedef enum S52MarinerParameter {
 
     // FIXME: DISP TEXT SHADOW - 0-7 bit: N NE E SE S SW W NW, 0 - off
 
+    // pickAt(): 4 - pick stack at ownship pos (GUARDZONE_WIDTH x GUARDZONE_HEIGHT) !!
+    //S52_MAR_GUARDZONE_WIDTH   = ,   // FIXME: TODO, Danger/Indication Highlight, S52_checkGuardZone()!
+    //S52_MAR_GUARDZONE_HEIGHT  = ,   // FIXME: TODO, Danger/Indication Highlight, S52_checkGuardZone()!
+
     S52_MAR_NUM                 = 46    // number of parameters
 } S52MarinerParameter;
 
@@ -156,12 +160,13 @@ typedef enum S52_CMD_WRD_FILTER_t {
 // 0x0000000 - DISPLAYBASE: only objects of the DISPLAYBASE category are shown (always ON)
 // 0x0000001 - STANDARD:    only objects of the categorys DISPLAYBASE and STANDARD are shown (default)
 // 0x0000010 - OTHER:       only objects of the categorys DISPLAYBASE and OTHER are shown
-// 0x0000100 - SELECT:      initialy all objects are show (DISPLAYBASE + STANDARD + OHTER.) [2]
+// 0x0000100 - SELECT:      initialy all objects are show (DISPLAYBASE + STANDARD + OHTER.) (see [2])
 // 0x0001000 - MARINERS' NONE:     - when set, a call to S52_drawLast() output nothing
 // 0x0010000 - MARINERS' STANDARD: - (default!)
 // 0x0100000 - MARINERS' OTHER:    -
 // 0x1000000 - MARINERS' SELECT:   - (see [2])
 // [2] the display/supression of objects on STANDARD and/or OHTER is set via S52_toggleObjClass/ON/OFF()
+
 typedef enum S52_MAR_DISP_CATEGORY_t {
     S52_MAR_DISP_CATEGORY_BASE     = 0,        // 0x0000000 - DISPLAY BASE
     S52_MAR_DISP_CATEGORY_STD      = 1 << 0,   // 0x0000001 - STANDARD
@@ -485,7 +490,7 @@ DLL double STD S52_getMarinerParam(S52MarinerParameter paramID);
  * @paramID: (in): ID of Mariners' Object Parameter
  * @val:     (in): value
  *
- * Set the value of the global variables @paramID
+ * XOR the value of the global variables @paramID
  * used by Mariners' Object
  *
  *
