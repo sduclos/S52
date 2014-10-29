@@ -49,14 +49,15 @@
 
 #define NaN         (1.0/0.0)
 
-#ifdef S52_USE_LOG
-static gint     _log = 0;
-static GTimeVal _now;
+#ifdef S52_USE_LOGFILE
+//static gint     _log = 0;
+static gint     _logFile = 0;
 #endif
+static GTimeVal _now;
 
 // internal libS52.so version
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52-1.146\n"
+      "libS52-1.147\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -83,6 +84,9 @@ static char _version[] = "$Revision: 1.126 $\n"
 #endif
 #ifdef S52_USE_LOG
       "S52_USE_LOG\n"
+#endif
+#ifdef S52_USE_LOGFILE
+      "S52_USE_LOGFILE\n"
 #endif
 #ifdef S52_USE_DBUS
       "S52_USE_DBUS\n"
@@ -341,7 +345,6 @@ cchar   *S52_utils_version(void)
     return _version;
 }
 
-#ifdef S52_USE_LOG
 static void     _S52_printf(const gchar *string)
 {
     char str[MAXL];
@@ -353,10 +356,17 @@ static void     _S52_printf(const gchar *string)
     if (NULL != _log_cb) {
         _log_cb(str);
     }
+
+#ifdef S52_USE_LOGFILE
     // log to file
-    write(_log, str, strlen(str));
-}
+    if (NULL != _logFile) {
+        write(_logFile, str, strlen(str));
+    }
 #endif
+
+    // STDOUT
+    g_printf("%s", str);
+}
 
 int      S52_initLog(S52_log_cb log_cb)
 // set print handler
@@ -364,10 +374,10 @@ int      S52_initLog(S52_log_cb log_cb)
 {
     _log_cb = log_cb;
 
-#ifdef S52_USE_LOG
+#ifdef S52_USE_LOGFILE
     GError *error = NULL;
-    _log = g_file_open_tmp("XXXXXX", NULL, &error);
-    if (-1 == _log) {
+    _logFile = g_file_open_tmp("XXXXXX", NULL, &error);
+    if (-1 == _logFile) {
         PRINTF("WARNING: g_file_open_tmp(): failed\n");
     } else {
         PRINTF("DEBUG: tmp dir:%s\n", g_get_tmp_dir());
@@ -376,10 +386,11 @@ int      S52_initLog(S52_log_cb log_cb)
         g_printf("WARNING: g_file_open_tmp() failed (%s)\n", error->message);
         g_error_free(error);
     }
-    _oldPrintHandler = g_set_print_handler(_S52_printf);
-#else
-    PRINTF("DEBUG: no LOG, compiler flags 'S52_USE_LOG' not set\n");
+
 #endif
+
+    _oldPrintHandler = g_set_print_handler(_S52_printf);
+    PRINTF("DEBUG: no LOGFILE, compiler flags 'S52_USE_LOGFILE' not set\n");
 
     return TRUE;
 }
@@ -389,9 +400,9 @@ int      S52_doneLog()
     g_set_print_handler(_oldPrintHandler);
     _log_cb = NULL;
 
-#ifdef S52_USE_LOG
-    if (0 != _log)
-        close(_log);
+#ifdef S52_USE_LOGFILE
+    if (0 != _logFile)
+        close(_logFile);
 #endif
 
     return TRUE;
