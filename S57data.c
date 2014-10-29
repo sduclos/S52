@@ -85,7 +85,7 @@ typedef struct _S57_geo {
     S57_Obj_t    obj_t;       // used in CS
 
     _rect        rect;        // lat/lon extent of object
-    gboolean     supp;         // geo suppression - TRUE if outside view
+    gboolean     supp;        // geo suppression - TRUE if outside view
 
     // length of geo data (POINT, LINE, AREA) currently in buffer
     guint        dataSize;        // max is 1, linexyznbr, ringxyznbr[0]
@@ -860,8 +860,9 @@ int        S57_setExt(_S57_geo *geo, double x1, double y1, double x2, double y2)
 {
     return_if_null(geo);
 
+    // debug
     //if (0 == g_strncasecmp(geo->name->str, "M_COVR", 6)) {
-    //    PRINTF("%s: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
+    //    PRINTF("DEBUG: %s: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
     //}
 
     // canonize lng
@@ -882,6 +883,7 @@ int        S57_setExt(_S57_geo *geo, double x1, double y1, double x2, double y2)
     if (isinf(x1)  && isinf(x2)) {
         PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
         g_assert(0);
+        return FALSE;
     }
 
     geo->rect.x1 = x1;
@@ -1168,9 +1170,11 @@ static void   _printAtt(GQuark key_id, gpointer data, gpointer user_data)
     const gchar *attName  = g_quark_to_string(key_id);
     GString     *attValue = (GString*) data;
 
+#ifdef S52_DEBUG
     // print only S57 attrib - assuming that OGR att are not 6 char in lenght!!
     if (6 == S52_strlen(attName))
         PRINTF("\t%s : %s\n", attName, (char*)attValue->str);
+#endif
 }
 
 gboolean   S57_setSupp(_S57_geo *geo, gboolean supp)
@@ -1182,14 +1186,13 @@ gboolean   S57_setSupp(_S57_geo *geo, gboolean supp)
     return geo->supp;
 }
 
-// FIXME: bellow is an accesor - 'inline' it somehow
 gboolean   S57_getSupp(_S57_geo *geo)
+// FIXME: bellow is an accesor - 'inline' it somehow
 {
     return_if_null(geo);
 
     return geo->supp;
 }
-
 
 int        S57_dumpData(_S57_geo *geo, int dumpCoords)
 // debug
