@@ -228,23 +228,23 @@ static int       _getMaxEdge(pt3 *p)
 
 static void_cb_t _tessError(GLenum err)
 {
+#ifdef S52_DEBUG
     //const GLubyte *str = gluErrorString(err);
     const char *str = "FIXME: no gluErrorString(err)";
-
     PRINTF("%s (%d)\n", str, err);
+#endif
 
     g_assert(0);
 }
 
 static void_cb_t _quadricError(GLenum err)
 {
-
+#ifdef S52_DEBUG
     //const GLubyte *str = gluErrorString(err);
     const char *str = "FIXME: no gluErrorString(err)";
-
     PRINTF("QUADRIC ERROR:%s (%d) (%0x)\n", str, err, err);
+#endif
 
-    // FIXME
     g_assert(0);
 }
 
