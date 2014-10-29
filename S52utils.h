@@ -41,18 +41,19 @@
     // well should be cc
 #define PRINTF printf(__FILE__":%i: : ", __LINE__),printf
 
-#else
+#else  // SOLARIS
 
-#ifdef S52_DEBUG
+#if defined(S52_DEBUG) || defined(S52_USE_LOG)
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
 
 void _printf(const char *file, int line, const char *function, const char *frmt, ...);
 #define PRINTF(...) _printf(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__)
-#else    // S52_DEBUG
+#else    // S52_DEBUG  S52_USE_LOG
 #define PRINTF(...)
-#endif  // S52_DEBUG
+#endif  // S52_DEBUG  S52_USE_LOG
+
 #endif  // SOLARIS
 
 #ifdef S52_USE_GLIB2
