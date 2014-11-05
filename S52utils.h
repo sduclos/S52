@@ -87,9 +87,9 @@ int      S52_getConfig(const char *label, valueBuf *vbuf);
 double   S52_atof   (const char *str);
 int      S52_atoi   (const char *str);
 size_t   S52_strlen (const char *str);
-char*    S52_strstr (const char *haystack, const char *needle);
+char    *S52_strstr (const char *haystack, const char *needle);
 gint     S52_strncmp(const char *s1, const char *s2, gsize n);
-FILE *   S52_fopen  (const char *filename, const char *mode);
+FILE    *S52_fopen  (const char *filename, const char *mode);
 int      S52_fclose (FILE *fd);
 gboolean S52_string_equal(const GString *v, const GString *v2);
 
