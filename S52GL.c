@@ -412,6 +412,7 @@ static int       _getCentroidClose(guint npt, double *ppt)
     if ((p[0] != p[(npt-1) * 3]) || (p[1] != p[((npt-1) * 3)+1])) {
         PRINTF("WARNING: poly end points doesn't match\n");
         g_assert(0);
+        return FALSE;
     }
 
     // compute area
@@ -782,11 +783,10 @@ static int       _win2prj(double *x, double *y)
     float dummy_z = 0.0;
     if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, &u, &v, &dummy_z)) {
         PRINTF("WARNING: UnProjection faild\n");
-
         g_assert(0);
-
         return FALSE;
     }
+
     *x = u;
     *y = v;
 
@@ -952,13 +952,14 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
 // ie _normallinestyle == 'N'
 {
     if (npt < 2) {
-        // line overlap
+        PRINTF("FIXME: found broken LINES (%i)\n", npt);
         return;
     }
 
     if (0 != (npt % 2)) {
         PRINTF("FIXME: found LINES not modulo 2\n");
         g_assert(0);
+        return;
     }
 
 
@@ -1424,7 +1425,7 @@ static GLubyte   _glColor4ub(S52_Color *c)
     return c->trans;
 }
 
-static int       _glCallList(S52_DListData *DListData)
+static int       _glCallList(S52_DList *DListData)
 // get color of each Display List then run it
 {
     if (NULL == DListData) {
@@ -1524,6 +1525,7 @@ static int       _glCallList(S52_DListData *DListData)
         } else {
             PRINTF("WARNING: glIsList() failed\n");
             g_assert(0);
+            return FALSE;
         }
 
 #endif  // S52_USE_OPENGL_VBO
@@ -1722,7 +1724,7 @@ static int       _getVesselVector(S52_obj *obj, double *course, double *speed)
 
 static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rotation)
 {
-    S52_DListData *DListData = S52_PL_getDListData(obj);
+    S52_DList *DListData = S52_PL_getDListData(obj);
 
     //_glMatrixMode  (GL_MODELVIEW);
     _glLoadIdentity(GL_MODELVIEW);
@@ -1754,7 +1756,7 @@ static int       _renderSY_silhoutte(S52_obj *obj)
     if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
-    S52_DListData *DListData = S52_PL_getDListData(obj);
+    S52_DList *DListData = S52_PL_getDListData(obj);
 
     // compute ship symbol size on screen
     // get offset
@@ -1821,7 +1823,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         return FALSE;
     }
 
-    S52_DListData *DListData = S52_PL_getDListData(obj);
+    S52_DList *DListData = S52_PL_getDListData(obj);
 
     // scale bar
     if (0==g_strcmp0(attval->str, "SCALEB10") ||
@@ -2444,7 +2446,7 @@ static int       _renderSY(S52_obj *obj)
                     S52_Color     *colors    = NULL;
                     double         deg       = S52_MP_get(S52_MAR_ROT_BUOY_LIGHT);
 
-                    S52_DListData *DListData = S52_PL_getDListData(obj);
+                    S52_DList *DListData = S52_PL_getDListData(obj);
                     colors = DListData->colors;
                     if (0 == g_strcmp0(colors->colName, "LITRD"))
                         orient = deg + 90.0;
@@ -2560,7 +2562,7 @@ static int       _renderSY(S52_obj *obj)
             // fill area, because other draw might not fill area
             // case of SY();LS(); (ie no AC() fill)
             {
-                S52_DListData *DListData = S52_PL_getDListData(obj);
+                S52_DList *DListData = S52_PL_getDListData(obj);
                 S52_Color *col = DListData->colors;
                 _glColor4ub(col);
 
@@ -3473,7 +3475,7 @@ static int       _renderLC(S52_obj *obj)
 
     // set pen color & size here because values might not
     // be set via call list --short line
-    S52_DListData *DListData = S52_PL_getDListData(obj);
+    S52_DList *DListData = S52_PL_getDListData(obj);
     S52_Color *c = DListData->colors;
     _glColor4ub(c);
 
@@ -3680,7 +3682,7 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
 #endif
 
         // first pass - create VBO
-        S52_DListData *DList = S52_PL_getDListData(obj);
+        S52_DList *DList = S52_PL_getDListData(obj);
         if (NULL == DList) {
             DList = S52_PL_newDListData(obj);
             DList->nbr = 2;
@@ -3766,7 +3768,7 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
         return FALSE;
     }
 
-    S52_DListData *DListData = S52_PL_getDListData(obj);
+    S52_DList *DListData = S52_PL_getDListData(obj);
     if (NULL == DListData) {
         DListData = S52_PL_newDListData(obj);
         DListData->nbr       = 1;
@@ -3803,10 +3805,8 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
     if (FALSE == S57_getPrimData(_diskPrimTmp, &primNbr, &vert, &vertNbr, &DList))
         return FALSE;
 
-
     //_setBlend(TRUE);
 
-    //_glMatrixMode  (GL_MODELVIEW);
     _glLoadIdentity(GL_MODELVIEW);
 
     _glTranslated(ppt[0], ppt[1], 0.0);
@@ -4056,7 +4056,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     // TODO: use 'bsize'
     (void) bsize;
 
-    g_assert(NULL != color);
+    //g_assert(NULL != color);
 
     if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
@@ -4477,7 +4477,6 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
     // debug - check if more than one NEW token - YES
     while (S52_VC_NEW == vcmd) {
         vcmd = S52_PL_getNextVOCmd(vecObj);
-        //g_assert(0);
     }
 
     while ((S52_VC_NONE!=vcmd) && (S52_VC_NEW!=vcmd)) {
@@ -4723,8 +4722,8 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
     // 'data' not used
     (void) data;
 
-    S52_cmdDef    *cmdDef = (S52_cmdDef*)value;
-    S52_DListData *DL     = S52_PL_getDLData(cmdDef);
+    S52_cmdDef *cmdDef = (S52_cmdDef*)value;
+    S52_DList  *DL     = S52_PL_getDLData(cmdDef);
 
     //PRINTF("PATTERN: %s\n", (char*)key);
 
@@ -4822,8 +4821,8 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
     // 'data' not used
     (void) data;
 
-    S52_cmdDef    *cmdDef = (S52_cmdDef*)value;
-    S52_DListData *DL     = S52_PL_getDLData(cmdDef);
+    S52_cmdDef *cmdDef = (S52_cmdDef*)value;
+    S52_DList  *DL     = S52_PL_getDLData(cmdDef);
 
     // is this symbol need to be re-created (update PLib)
     if (FALSE == DL->create)
@@ -4842,6 +4841,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
 
         PRINTF("TODO: debug this code path\n");
         g_assert(0);
+        return FALSE;
     }
 
     //glGenBuffers(DL->nbr, &DL->vboIds[0]);
@@ -5755,6 +5755,7 @@ int        S52_GL_end(S52_GL_cycle cycle)
     if (cycle != _crnt_GL_cycle) {
         PRINTF("WARNING: S52_GL_mode out of sync\n");
         g_assert(0);
+        return FALSE;
     }
     _crnt_GL_cycle = cycle;
 
@@ -5855,6 +5856,7 @@ int        S52_GL_del(S52_obj *obj)
         }else {
             PRINTF("WARNING: ivalid PrimData VBO\n");
             g_assert(0);
+            return FALSE;
         }
 
 #ifdef S52_USE_FREETYPE_GL
@@ -5884,6 +5886,7 @@ int        S52_GL_del(S52_obj *obj)
         } else {
             PRINTF("WARNING: ivalid DL\n");
             g_assert(0);
+            return FALSE;
         }
 #endif  // S52_USE_OPENGL_VBO
     }
@@ -7015,8 +7018,8 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
     //
     //_setBlend(TRUE);
 
-    S52_DListData *DListData = S52_PL_getDListData(objA);
-    S52_Color     *color     = DListData->colors;
+    S52_DList *DListData = S52_PL_getDListData(objA);
+    S52_Color *color     = DListData->colors;
     _glColor4ub(color);
 
 
