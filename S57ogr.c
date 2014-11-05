@@ -116,11 +116,13 @@ static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_
     if (NULL == loadLayer_cb) {
         PRINTF("ERROR: should be using default S52_loadLayer() callback\n");
         g_assert(0);
+        return FALSE;
     }
 
     if (NULL == loadObject_cb) {
         PRINTF("ERROR: should be using default S52_loadObject_cb() callback\n");
         g_assert(0);
+        return FALSE;
     }
 
     //_loadAux(hDS);
@@ -152,6 +154,7 @@ int            S57_ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_
     if (sizeof(geocoord) != sizeof(double)) {
         PRINTF("ERROR: sizeof(geocoord) != sizeof(double)\n");
         g_assert(0);
+        return FALSE;
     }
 
     OGRRegisterAll();
@@ -303,6 +306,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                     PRINTF("ERROR: S-57 ring (AREA) not closed (%s)\n", objname);
 
                     g_assert(0);
+                    continue;
 
                     // Note: to compute area of an open poly
                     //double area = 0;
@@ -330,6 +334,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 if (area > 0.0) {
                     // if first ring reverse winding to CW
                     if (0==iRing) {
+                        // debug
                         //PRINTF("DEBUG: reversing S-57 outer ring to CW (%s)\n", objname);
                         //g_assert(0);
                         for (guint node=0; node<vert_count; ++node) {
