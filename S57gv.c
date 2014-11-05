@@ -52,6 +52,7 @@ static int    _loadAtt(S57_geo *geoData, GvShape *shape)
         if (NULL == propValue) {
             PRINTF("gv_properties_value = null \n");
             g_assert(0);
+            return FALSE;
         }
 
         S57_setAtt(geoData, propName, propValue);
