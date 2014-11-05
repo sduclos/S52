@@ -356,8 +356,8 @@ static int      _renderHelp(GtkWidget *widget)
     S52_drawStr(x, y-=dy, "UINFF", 0, str);
     g_sprintf(str, "S52_MAR_DISP_OVERLAP      z %4.1f", S52_getMarinerParam(S52_MAR_DISP_OVERLAP));
     S52_drawStr(x, y-=dy, "UINFF", 0, str);
-    g_sprintf(str, "S52_MAR_DISP_LAYER_LAST   1 %4.1f", S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST));
-    S52_drawStr(x, y-=dy, "UINFF", 0, str);
+    //g_sprintf(str, "S52_MAR_DISP_LAYER_LAST   1 %4.1f", S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST));
+    //S52_drawStr(x, y-=dy, "UINFF", 0, str);
     g_sprintf(str, "S52_MAR_ROT_BUOY_LIGHT    2 %4.1f", S52_getMarinerParam(S52_MAR_ROT_BUOY_LIGHT));
     S52_drawStr(x, y-=dy, "UINFF", 0, str);
     g_sprintf(str, "S52_MAR_DISP_CRSR_PICK    3 %4.1f", S52_getMarinerParam(S52_MAR_DISP_CRSR_PICK));
@@ -518,7 +518,7 @@ static int      _resetView(S52_view *view)
     return TRUE;
 }
 
-#ifdef USE_AIS
+#if 0
 static gboolean _draw(gpointer data)
 {
     //g_print("start _draw()\n");
@@ -634,7 +634,8 @@ static gboolean _meterDec(S52MarinerParameter paramName)
     return TRUE;
 }
 
-static gboolean _disp(S52MarinerParameter paramName, const char disp)
+//static gboolean _disp(S52MarinerParameter paramName, const char disp)
+static gboolean _disp(S52MarinerParameter paramName, S52_MAR_DISP_CATEGORY_t disp)
 {
     double val = (double) disp;
 
@@ -698,7 +699,11 @@ static gboolean _dumpParam()
     g_print("S52_MAR_ANTIALIAS         i %4.1f\n", S52_getMarinerParam(S52_MAR_ANTIALIAS));
     g_print("S52_MAR_QUAPNT01          j %4.1f\n", S52_getMarinerParam(S52_MAR_QUAPNT01));
     g_print("S52_MAR_DISP_OVERLAP      z %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_OVERLAP));
-    g_print("S52_MAR_DISP_LAYER_LAST   1 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST));
+
+    // FIXME
+    //g_print("S52_MAR_DISP_LAYER_LAST   1 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST));
+    g_print("S52_MAR_DISP_LAYER_LAST     %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST));
+
     g_print("S52_MAR_ROT_BUOY_LIGHT    2 %4.1f\n", S52_getMarinerParam(S52_MAR_ROT_BUOY_LIGHT));
     g_print("S52_MAR_DISP_CRSR_PICK    3 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_CRSR_PICK));
     g_print("S52_MAR_DISP_GRATICULE    4 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_GRATICULE));
@@ -1128,12 +1133,13 @@ static int      _initS52()
     //gdk_screen_get_monitor_geometry(screen, 0, &dest);
     //gdk_screen_get_monitor_geometry(screen, 0, &dest);
 
-    // debug --info from xrandr
+    /* debug --info from xrandr
     w      = 1280;
     h      = 1024;
     wmm    = 376;
     //hmm    = 301; // wrong
     hmm    = 307;
+    */
 
     // debug
     g_print("s52gtk2.c:_initS52(): screen (w/h/wmm/hmm): %i / %i / %i / %i\n", w, h, wmm, hmm);
@@ -1245,10 +1251,10 @@ static int      _initS52()
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND,  1.0);
     S52_setMarinerParam(S52_MAR_SYMPLIFIED_PNT,  1.0);
 
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,  S52_MAR_DISP_CATEGORY_BASE);  // BASE
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,  S52_MAR_DISP_CATEGORY_STD);   // STANDARD (default)
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,  S52_MAR_DISP_CATEGORY_OTHER); // OTHER
-    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);   // SELECT (all)
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_BASE);   // BASE
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_STD);    // STANDARD (default)
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_OTHER);  // OTHER
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT); // SELECT (all)
 
     S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);   // first palette
 
@@ -1320,8 +1326,10 @@ static int      _initS52()
     //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
     S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);     // hide
 
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.2);
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
 
     S52_setMarinerParam(S52_MAR_DISP_CALIB, 1.0);
 
