@@ -287,7 +287,8 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_SOCK                        \
                      -DS52_USE_TXT_SHADOW                  \
                      -DS52_USE_AFGLOW                      \
-                     -DS52_DEBUG
+                     -DS52_USE_LOG                         \
+                     -DS52_DEBUG $(DBG)
 
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
@@ -342,6 +343,7 @@ s52win32 : CFLAGS   = -mms-bitfields                         \
                       -DS52_USE_GLIB2                        \
                       -DS52_USE_PROJ                         \
                       -DS52_USE_OGR_FILECOLLECTOR            \
+                      -DS52_USE_LOG                          \
                       -DG_DISABLE_ASSERT                     \
                       -D_MINGW
 
