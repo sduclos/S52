@@ -339,7 +339,7 @@ static void  *_EGLctx = NULL;
 //
 // USER INPUT VALIDATION
 //
-
+// FIXME: move validation to util
 static double     _validate_bool(double val)
 {
     val = (val==0.0)? 0.0 : 1.0;
@@ -412,12 +412,14 @@ static double     _validate_disp(double val)
         return crntMask;
     }
 
-    PRINTF("Display Priority: current mask:0x%x --> new mask:0x%x)\n", crntMask, newMask);
+    PRINTF("DEBUG: Display Priority before: crntMask:0x%x, newMask:0x%x)\n", crntMask, newMask);
 
     if (crntMask  & newMask)
         crntMask -= newMask;
     else
         crntMask += newMask;
+
+    PRINTF("DEBUG: Display Priority after : crntMask:0x%x, newMask:0x%x)\n", crntMask, newMask);
 
     return (double)crntMask;
 }
@@ -798,9 +800,6 @@ static _cell     *_newCell(const char *filename)
 // add this cell else NULL (if allready loaded)
 // assume filename is not NULL
 {
-    if (NULL == _cellList)
-        _cellList = g_ptr_array_new();
-
     // strip path
     gchar *baseName = g_path_get_basename(filename);
     if (TRUE == _isCellLoaded(baseName)) {
@@ -840,12 +839,6 @@ static _cell     *_newCell(const char *filename)
         cell->OBSTRNlist = g_ptr_array_new();
         cell->RESARElist = g_ptr_array_new();
         cell->WRECKSlist = g_ptr_array_new();
-        */
-
-        /*
-        g_ptr_array_add(_cellList, cell);
-        // sort cell: bigger region (small scale) last (eg 553311)
-        g_ptr_array_sort(_cellList, _cmpCell);
         */
 
         _crntCell = cell;
@@ -1189,7 +1182,6 @@ static void       _trapSIG(int sig)
         PRINTF("other signal(%i) trapped\n", sig);
     }
 
-
     // shouldn't reach this !?
     g_assert_not_reached();  // turn off via G_DISABLE_ASSERT
 
@@ -1334,8 +1326,8 @@ static int        _initSIG(void)
 {
 
 #ifdef _MINGW
-    //signal(SIGINT,  _trapSIG);  //  2 - Interrupt (ANSI).
-    //signal(SIGSEGV, _trapSIG);  // 11 - Segmentation violation (ANSI).
+    signal(SIGINT,  _trapSIG);  //  2 - Interrupt (ANSI).
+    signal(SIGSEGV, _trapSIG);  // 11 - Segmentation violation (ANSI).
 #else
     struct sigaction sa;
 
@@ -1357,7 +1349,7 @@ static int        _initSIG(void)
     //  9 - Kill, unblock-able (POSIX)
     sigaction(SIGKILL, &sa, &_old_signal_handler_SIGKILL);
     // 11 - Segmentation violation (ANSI).
-    sigaction(SIGSEGV, &sa, &_old_signal_handler_SIGSEGV);   // loop in android
+    //sigaction(SIGSEGV, &sa, &_old_signal_handler_SIGSEGV);   // loop in android
     // 15 - Termination (ANSI)
     //sigaction(SIGTERM, &sa, &_old_signal_handler_SIGTERM);
 
@@ -1509,6 +1501,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     if (sizeof(guint64) != sizeof(unsigned long long int)) {
         PRINTF("sizeof(guint64) != sizeof(unsigned long long int)\n");
         g_assert(0);
+        return FALSE;
     }
 #endif
 
@@ -1516,7 +1509,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     // check if run as root
     if (0 == getuid()) {
         PRINTF("ERROR: do NOT run as SUPERUSER (root) .. exiting\n");
-        exit(0);
+        return FALSE;
     }
 #endif
 
@@ -1635,8 +1628,9 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     // objects of this 'cell' will be drawn last (ie on top)
     // NOTE: most Mariners' Object land on the "fast" layer 9
     // But 'pastrk' (and other) are drawn on layer < 9.
-    // So MARINER_CELL must be checked for all chart for
-    // object on layer 0-8 during draw()
+    if (NULL == _cellList)
+        _cellList = g_ptr_array_new();
+
     _marinerCell = _newCell(MARINER_CELL);
     g_ptr_array_add (_cellList, _marinerCell);
     g_ptr_array_sort(_cellList, _cmpCell);
@@ -1871,6 +1865,7 @@ static int        _suppLineOverlap()
                         PRINTF("FIXME: OGR buffer TEMP_BUFFER_SIZE in ogr/ogrfeature.cpp:994 overflow\n");
                         PRINTF("FIXME: apply patch in S52/doc/ogrfeature.cpp.diff to OGR source code\n");
                         g_assert(0);
+                        return FALSE;
                     }
                 }
 
@@ -1924,6 +1919,7 @@ static int        _suppLineOverlap()
                 if (nRCNM != nRCID) {
                     PRINTF("ERROR: nRCNM != nRCID\n");
                     g_assert(0);
+                    return FALSE;
                 }
                 /* check if splitrcnm / splitrcid are valid
                 for (guint i=0; i<nRCNM; ++splitrcnm, ++i) {
@@ -2221,6 +2217,7 @@ static char      *_getSRS(void)
     } else {
         PRINTF("Translating source or target SRS failed:%s\n", prjStr );
         g_assert(0);
+        return NULL;
     }
 
     OSRDestroySpatialReference(hSRS);
@@ -2382,6 +2379,7 @@ int               _loadRaster(const char *fname)
         if (CE_None != GDALGetGeoTransform(datasetDST, (double *) &gt)) {
             PRINTF("WARNING: GDALGetGeoTransform() failed\n");
             g_assert(0);
+            return FALSE;
         }
 
         // store data
@@ -2677,6 +2675,7 @@ exit:
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 static int        _loadEdge(const char *name, void *Edge)
+// FIXME: if fail free mem
 {
     if ((NULL==name) || (NULL==Edge)) {
         PRINTF("ERROR: objname / shape  --> NULL\n");
@@ -2720,6 +2719,7 @@ static int        _loadEdge(const char *name, void *Edge)
         if (NULL==name_rcid_0str || NULL==name_rcid_1str) {
             PRINTF("ERROR: Edge with no end point\n");
             g_assert(0);
+            return FALSE;
         }
 
         guint   npt_0 = 0;
@@ -2728,12 +2728,14 @@ static int        _loadEdge(const char *name, void *Edge)
         if ((name_rcid_0 - _crntCell->baseEdgeRCID) > _crntCell->ConnectedNodes->len) {
             PRINTF("ERROR: Edge end point 0 (%s) and ConnectedNodes array lenght mismatch\n", name_rcid_0str->str);
             g_assert(0);
+            return FALSE;
         }
 
         S57_geo *node_0 =  (S57_geo *)g_ptr_array_index(_crntCell->ConnectedNodes, (name_rcid_0 - _crntCell->baseEdgeRCID));
         if (NULL == node_0) {
             PRINTF("ERROR: got empty node_0 at name_rcid_0 = %i\n", name_rcid_0);
             g_assert(0);
+            return FALSE;
         }
 
         S57_getGeoData(node_0, 0, &npt_0, &ppt_0);
@@ -2745,6 +2747,7 @@ static int        _loadEdge(const char *name, void *Edge)
         if ((name_rcid_1 - _crntCell->baseEdgeRCID) > _crntCell->ConnectedNodes->len) {
             PRINTF("ERROR: Edge end point 1 (%s) and ConnectedNodes array lenght mismatch\n", name_rcid_1str->str);
             g_assert(0);
+            return FALSE;
         }
 
         S57_geo *node_1 =  (S57_geo *)g_ptr_array_index(_crntCell->ConnectedNodes, (name_rcid_1 - _crntCell->baseEdgeRCID));
@@ -2753,6 +2756,7 @@ static int        _loadEdge(const char *name, void *Edge)
             // ptr_array has hold (NULL) because of S57 update
             PRINTF("ERROR: got empty node_1 at name_rcid_1 = %i\n", name_rcid_1);
             g_assert(0);
+            return FALSE;
         }
 
         S57_getGeoData(node_1, 0, &npt_1, &ppt_1);
@@ -2768,10 +2772,12 @@ static int        _loadEdge(const char *name, void *Edge)
             if (name_rcid_0 != rcid_0) {
                 PRINTF("ERROR: name_rcid_0 mismatch\n");
                 g_assert(0);
+                return FALSE;
             }
             if (name_rcid_1 != rcid_1) {
                 PRINTF("ERROR: name_rcid_1 mismatch\n");
                 g_assert(0);
+                return FALSE;
             }
         }
 
@@ -3110,7 +3116,8 @@ static int        _compLNAM(gconstpointer a, gconstpointer b)
     return g_strcmp0(a,b);
 }
 
-DLL int    STD S52_loadObject(const char *objname, void *shape)
+//DLL int    STD S52_loadObject(const char *objname, void *shape)
+int    S52_loadObject(const char *objname, void *shape)
 {
     S57_geo *geoData = NULL;
 
@@ -3341,8 +3348,7 @@ static int        _moveObj(_cell *cell, S52_disPrio oldPrio, S52ObjectType obj_t
     if (idx<oldBin->len)
         obj = (S52_obj *)g_ptr_array_index(oldBin, idx);
     else {
-        //PRINTF("ERROR: render bin index out of bound: %i max: %i\n", idx, oldBin->len);
-        //g_assert(0);
+        PRINTF("WARNING: render bin index out of bound: %i max: %i\n", idx, oldBin->len);
         return FALSE;
     }
 
@@ -3924,10 +3930,10 @@ static int        _draw()
 // draw object inside view
 // then draw object's text
 {
-    //for (guint i=_cellList->len; i>1; --i) {
     for (guint i=_cellList->len; i>0; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
 
+        // FIXME: check atomic for each obj
         g_atomic_int_get(&_atomicAbort);
         if (TRUE == _atomicAbort) {
             PRINTF("abort drawing .. \n");
@@ -3935,7 +3941,7 @@ static int        _draw()
         }
 
         // FIXME: GOURD 1 - face of earth - sort and then glDraw() on a whole surface
-        // APP/CURL must reset sort if color change by user
+        // APP/CULL must reset sort if color change by user
         // draw under radar
         g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
 
@@ -3966,8 +3972,8 @@ DLL int    STD S52_draw(void)
     //static int  cnt = 0;
     //static char drawTag[64];
     //g_snprintf(drawTag, 64, "%s-%i", "DRAW", cnt++);
-    EGL_BEG(DRAW);
     //EGL_BEG(drawTag);
+    EGL_BEG(DRAW);
 
 
     // do not wait if an other thread is allready drawing
@@ -3977,12 +3983,6 @@ DLL int    STD S52_draw(void)
     if (FALSE == g_mutex_trylock(&_mp_mutex)) {
 #endif
         PRINTF("WARNING: trylock failed\n");
-        goto exit;
-    }
-
-    if (NULL == _cellList || 0 == _cellList->len) {
-        PRINTF("WARNING: no cell loaded\n");
-        g_assert(0);
         goto exit;
     }
 
@@ -4159,7 +4159,6 @@ static int        _drawLast(void)
                 return TRUE;
             }
 
-            // in some graphic driver this is expensive
             if (FALSE == S52_GL_isSupp(obj)) {
                 S52_GL_draw(obj, NULL);
                 S52_GL_drawText(obj, NULL);
@@ -4197,12 +4196,6 @@ DLL int    STD S52_drawLast(void)
 #endif
         PRINTF("WARNING: trylock failed\n");
         //g_assert(0);
-        goto exit;
-    }
-
-    if (NULL == _cellList || 0 == _cellList->len) {
-        PRINTF("WARNING: no cell loaded\n");
-        g_assert(0);
         goto exit;
     }
 
@@ -4310,14 +4303,6 @@ DLL int    STD S52_drawLayer(const char *name)
 
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
-
-    if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
-        PRINTF("WARNING: no cell loaded\n");
-        GMUTEXUNLOCK(&_mp_mutex);
-        g_assert(0);
-        return FALSE;
-    }
-
 
     // debug filter out some layer comming from OpenEV
     /*
@@ -4568,15 +4553,6 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
 
     S52_CHECK_MUTX;
 
-    /*
-    if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
-        PRINTF("WARNING: call failed, no cell loaded to project view .. use S52_loadCell() first\n");
-        GMUTEXUNLOCK(&_mp_mutex);
-        g_assert(0);
-        return FALSE;
-    }
-    */
-
     //*
     if (ABS(cLat) > 90.0) {
         PRINTF("WARNING: cLat outside [-90..+90](%f)\n", cLat);
@@ -4648,15 +4624,6 @@ DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *nort
     return_if_null(rNM);
     return_if_null(north);
     S52_CHECK_MUTX;
-
-    /*
-    if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
-        PRINTF("WARNING: call failed, no cell loaded to project view .. use S52_loadCell() first\n");
-        GMUTEXUNLOCK(&_mp_mutex);
-        g_assert(0);
-        return FALSE;
-    }
-    */
 
     // update local var _view
     *cLat  = _view.cLat;
@@ -5117,13 +5084,6 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
 
-    if (NULL == _cellList || 0 == _cellList->len || 1 == _cellList->len) {
-        PRINTF("WARNING: no cell loaded\n");
-        GMUTEXUNLOCK(&_mp_mutex);
-        g_assert(0);
-        return FALSE;
-    }
-
     // check bound
     if (FALSE == _validate_screenPos(&pixels_x, &pixels_y)) {
         PRINTF("WARNING: coord out of scteen\n");
@@ -5195,8 +5155,11 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         _nTotal = 0;
         _nCull  = 0;
 
+        // Note: extent pastrk & afgves grow indefenetly
+
         // filter out objects that don't intersec the pick view
         _cull(ext);
+
         // bebug
         //PRINTF("nbr of object culled: %i (%i)\n", _nCull, _nTotal);
 
@@ -5204,8 +5167,7 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         _draw();
 
         // Mariners' (layer 9 - Last)
-        // FIXME: fail to pick Mariners', no extent for cull()
-        //_drawLast();
+        _drawLast();
 
         S52_GL_end(S52_GL_PICK);
     } else {
@@ -5872,7 +5834,6 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     S52_CHECK_MUTX;
 
     // here we can load mariners' object event if no ENC are loaded yet
-    //if (NULL == _cellList || 0 == _cellList->len) {
     if (NULL == _marinerCell) {
         PRINTF("WARNING: no cell loaded .. no cell to project this object to\n");
         goto exit;
@@ -5921,8 +5882,6 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
             if (FALSE == S57_geo2prj3dv(xyznbr, gxyz)) {
                 PRINTF("WARNING: projection failed\n");
                 g_assert(0);
-                exit(0);
-
                 // FIXME: if we get here free mem
                 return NULL;
             }
@@ -5951,13 +5910,13 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
         default:
             PRINTF("WARNING: unknown object type\n");
             g_assert(0);
-            //return NULL;
+            return NULL;
     }
 
     if (NULL == geo) {
         PRINTF("WARNING: S57 geo object build failed\n");
         g_assert(0);
-        //return NULL;
+        return NULL;
     }
 
     S57_setName(geo, plibObjName);
@@ -6001,9 +5960,9 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     _doCS = TRUE;
 
     // debug
-    //PRINTF("objH:%p, plibObjName:%s, ID:%i, objType:%i, xyznbr:%u, xyz:%p, listAttVal:<%s>\n",
-    //        obj,     plibObjName, S57_getGeoID(geo), objType, xyznbr, gxyz,
-    //       (NULL==listAttVal)?"NULL":listAttVal);
+    PRINTF("objH:%p, plibObjName:%s, ID:%i, objType:%i, xyznbr:%u, xyz:%p, listAttVal:<%s>\n",
+            obj,     plibObjName, S57_getGeoID(geo), objType, xyznbr, gxyz,
+           (NULL==listAttVal)?"NULL":listAttVal);
 
 exit:
     GMUTEXUNLOCK(&_mp_mutex);
@@ -6044,8 +6003,7 @@ DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
 static
     S52ObjectHandle        _updateGeo(S52ObjectHandle objH, double *xyz)
 {
-    // debug
-    /*
+    /* debug
     {
         S52_obj *obj = (S52_obj *) objH;
         S57_geo *geo = S52_PL_getGeo(obj);
@@ -6152,8 +6110,6 @@ DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBeg
     }
 }
 
-//DLL S52ObjectHandle STD S52_iniLEGLIN(int select, double plnspd, double latBegin, double lonBegin, double latEnd, double lonEnd)
-//DLL S52ObjectHandle STD S52_iniLEGLIN(int select, double plnspd, double wholinDist, double latBegin, double lonBegin, double latEnd, double lonEnd)
 DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDist,
                                       double latBegin, double lonBegin, double latEnd, double lonEnd,
                                       S52ObjectHandle previousLEGLIN)
@@ -6367,17 +6323,16 @@ static
 
 #ifdef S52_USE_PROJ
     if (FALSE == S57_geo2prj3dv(1, xyz)) {
-        objH = FALSE;
-        return objH;
+        return FALSE;
     }
 #endif
     _updateGeo(objH, xyz);
 
-    // reset timer for AIS and its aflterglow
+    // reset timer for AIS / afterglow
     if ((0==g_strcmp0("vessel", S57_getName(geo))) ||
         (0==g_strcmp0("afgves", S57_getName(geo)))) {
 
-        S52_PL_setTimeNow(obj);
+        S52_PL_setTimeNow(objH);
 
         // optimisation (out of the blue): set 'orient' obj var directly
         S52_PL_setSYorient((S52_obj *)objH, heading);
@@ -6418,24 +6373,13 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
         goto exit;
     }
 
-    // FIXME: refactor setPos and setExt
     S57_geo *geo = S52_PL_getGeo(obj);
-    if (0 == S57_getGeoSize(geo)) {
-        // init empty geo and extent
-        _setPointPosition(objH, latitude, longitude, data);
-    } else {
-        _extent ext;
-        S57_getExt(geo, &ext.W, &ext.S, &ext.E, &ext.N);
-        double xyz [3*3] = {longitude, latitude, 0.0, ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
-
-        _setExt(geo, 3, xyz);
-    }
 
     // POINT
     if (POINT_T == S57_getObjtype(geo)) {
         _setPointPosition(objH, latitude, longitude, data);
-        /*
-        // experimental: display cursor lat/lng
+
+        /* experimental: display cursor lat/lng
         if (0 == g_strcmp0("cursor", S57_getName(geo))) {
             char attval[80] = {'\0'};
             SNPRINTF(attval, 80, "_cursor_label:%f%c %f%c", fabs(latitude), (latitude<0)? 'S':'N', fabs(longitude), (longitude<0)? 'W':'E');
@@ -6446,17 +6390,12 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
     }
     else // LINE AREA
     {
-        double   xyz[3] = {longitude, latitude, 0.0};
-        guint    sz     = S57_getGeoSize(geo);
+        guint   sz  = S57_getGeoSize(geo);
+        guint   npt = 0;
+        double *ppt = NULL;
+        S57_getGeoData(geo, 0, &npt, &ppt);
 
-        guint    npt    = 0;
-        double  *ppt    = NULL;
-
-        if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
-            objH = FALSE;
-            goto exit;
-        }
-
+        double xyz[3] = {longitude, latitude, 0.0};
 #ifdef S52_USE_PROJ
         if (FALSE == S57_geo2prj3dv(1, xyz)) {
             PRINTF("WARNING: S57_geo2prj3dv() fail\n");
@@ -6477,13 +6416,27 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
             ppt[((npt-1) * 3) + 1] = xyz[1];
             ppt[((npt-1) * 3) + 2] = data;
         }
+
+        //* ajuste extent - use for culling
+        // FIXME: LINES 'pastrk' and 'afgves' have extent that grow in surface indefinitly
+        if (0 == sz) {
+            // first pos set extent directly
+            S57_setExt(geo, longitude, latitude, longitude, latitude);
+        } else {
+            _extent ext;
+            S57_getExt(geo, &ext.W, &ext.S, &ext.E, &ext.N);
+            double xyz[3*3] = {longitude, latitude, 0.0, ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
+
+            _setExt(geo, 3, xyz);
+        }
+        //*/
     }
 
 exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
-    //PRINTF("-1- objH:%#lX, latitude:%f, longitude:%f, data:%f\n", (long unsigned int)objH, latitude, longitude, data);
+    //PRINTF("-3- objH:%p, latitude:%f, longitude:%f, data:%f\n", objH, latitude, longitude, data);
 
     /*
     if (_SELECTED == objH) {
@@ -6531,7 +6484,7 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
         //S52_PL_setTimeNow(vessel);
     }
 
-    PRINTF("vessel objH: %lu\n", vessel);
+    //PRINTF("objH:%p\n", vessel);
 
     return vessel;
 }
@@ -6766,7 +6719,6 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
             // FIXME: get the real value
             lonA = _view.cLon;
             latA = _view.cLat;
-            //g_assert(0);
         }
         break;
     }
