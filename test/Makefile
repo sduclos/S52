@@ -63,7 +63,7 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DS52_USE_RADAR     - when in RADAR mode
 
 #CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2 -DUSE_FAKE_AIS
-CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2
+CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2 -DUSE_AIS
 
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
                       -DS52_USE_GLIB2                                  \
@@ -78,7 +78,9 @@ s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
                      -DS52_USE_MESA3D        \
-                     -DSET_SCREEN_SIZE
+                     -DSET_SCREEN_SIZE       \
+                     -DUSE_AIS               \
+                     -DS52_USE_AFGLOW
 
 # same as s52eglx, but "gtk+-2.0" is added - no AIS
 s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` \
