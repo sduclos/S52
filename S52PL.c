@@ -143,7 +143,7 @@ typedef struct _S52_cmdDef {
 
     // ---- not a S52 fields ------------------------------------
     S52_SMBtblName symType;     // debug
-    S52_DListData  DListData;   // GL Display List / VBO
+    S52_DList      DListData;   // GL Display List / VBO
 
     S52_Color     *col;         // LC: color of last pen
     char           pen_w;       // LC: width in pixel of last pen in (ASCII)
@@ -182,7 +182,7 @@ typedef union _cmdDef {
 
     // because there is no cmdDef for light sector
     // so put VBO here
-    S52_DListData   *DList;     // for pattern in GLES2 this DL will create a texture
+    S52_DList       *DList;     // for pattern in GLES2 this DL will create a texture
 
 } _cmdDef;
 
@@ -730,7 +730,8 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
         if (NULL == LUP->ATTC)
             return LUP;
         else {
-            PRINTF("WARNING: single look-up non-empty attribute, RCID:%i\n", LUPlist->RCID);
+            // debug
+            PRINTF("DEBUG: single look-up non-empty attribute, RCID:%i\n", LUPlist->RCID);
             g_assert(0);
         }
     }
@@ -945,6 +946,7 @@ static _cmdWL    *_parseINST(GString *inst)
         else {
             PRINTF("ERROR: parsing Command Word:%s\n", str);
             g_assert(0);
+            return FALSE;
         }
 
         // append command
@@ -1204,13 +1206,13 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
 
     if (S52_VC_SP!=*str && S52_VC__P!=*(str+1)) {
         PRINTF("FIXME: color command is not the verry first one!\n");
-        //g_assert(0);
     }
 
     // paranoia
     if (NULL == colors) {
         PRINTF("ERROR: no colors\n");
         g_assert(0);
+        return FALSE;
     }
 
     while ('\0' != str[idx]) {
@@ -1234,6 +1236,7 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
                 if (NULL == col) {
                     PRINTF("ERROR: color command not fount (%c)\n", color);
                     g_assert(0);
+                    return FALSE;
                 }
                 *colors = *col;
 
@@ -1324,6 +1327,7 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
     if (MAX_SUBLIST < nList) {
         PRINTF("ERROR: buffer overflow about to occur\n");
         g_assert(0);
+        return FALSE;
     }
 
     return nList;
@@ -1365,7 +1369,7 @@ static _colTable *_findColTbl(const char *tblName)
     return NULL;
 }
 
-static int        _cms_xyL2rgb(S52_Color *c);
+static int        _cms_xyL2rgb(S52_Color *c);  // forward decl
 #if 0
 static int        _readColor(_PL *fp)
 {
@@ -1452,6 +1456,7 @@ static int        _readColor(_PL *fp, GArray *colors)
             if (i >= S52_COL_NUM) {
                 PRINTF("ERROR: color index i >= S52_COL_NUM\n");
                 g_assert(0);
+                return FALSE;
             }
 
             c.cidx = i; // optimisation
@@ -1462,7 +1467,8 @@ static int        _readColor(_PL *fp, GArray *colors)
         } else {
             // PLib 4.0 has 4 more color of MIO's: "MARBL", "MARCY", "MARMG", "MARWH"
             PRINTF("WARNING: color %s not in ref table\n", c.colName);
-            //g_assert(0);
+            g_assert(0);
+            return FALSE;
         }
 
         _readS52Line(fp, _pBuf);
@@ -1487,6 +1493,7 @@ static int        _flushColors()
     } else {
         PRINTF("WARNING: trying to deleted PL Color Table twice!\n");
         g_assert(0);
+        return FALSE;
     }
 
     //_flush_Colors = FALSE;
@@ -1646,6 +1653,7 @@ static int        _parseLUPT(_PL *fp)
                             if (TRUE == replace) {
                                 PRINTF("ERROR: TRUE == replace\n");
                                 g_assert(0);
+                                return FALSE;
                             }
 
                             replace = TRUE;
@@ -1682,6 +1690,7 @@ static int        _parseLUPT(_PL *fp)
                     else {
                         PRINTF("ERROR: should be at the end of the list\n");
                         g_assert(0);
+                        return FALSE;
                     }
                 }
             }
@@ -1726,7 +1735,6 @@ static int        _parseLNST(_PL *fp)
     //_S52_cmdDef *lnst     = g_try_new0(_S52_cmdDef, 1);
     if (NULL == lnst)
         g_assert(0);
-
 
     lnst->symType                = S52_SMB_LINE;
     lnst->exposition.LXPO        = g_string_new('\0');
@@ -1779,7 +1787,6 @@ static int        _parsePATT(_PL *fp)
     //_S52_cmdDef *patt     = g_try_new0(_S52_cmdDef, 1);
     if (NULL == patt)
         g_assert(0);
-
 
     patt->symType                = S52_SMB_PATT;
     patt->exposition.PXPO        = g_string_new('\0');   // field repeat
@@ -2491,6 +2498,7 @@ S52_Color  *S52_PL_getColor(const char *colorName)
     if (NULL == _colTables) {
         PRINTF("ERROR: PL not initialized .. exiting\n");
         g_assert(0);
+        return NULL;
     }
 
     return_if_null(colorName);
@@ -2524,12 +2532,14 @@ S52_Color  *S52_PL_getColorAt(guchar index)
     if (NULL == _colTables) {
         PRINTF("ERROR: PL not initialized .. exiting\n");
         g_assert(0);
+        return NULL;
     }
 
     if (index > S52_COL_NUM-1) {
         PRINTF("ERROR: color index out of bound\n");
         g_assert(0);
         index = 0; // NODTA
+        return NULL;
     }
 
     // getPalette()
@@ -2541,14 +2551,14 @@ S52_Color  *S52_PL_getColorAt(guchar index)
     if (n > _colTables->len-1) {
         PRINTF("ERROR: S52_MAR_COLOR_PALETTE out of range\n");
         g_assert(0);
-
-        n = 0; // failsafe --select DAY_BRIGHT
+        return NULL;
     }
 
     _colTable *ct = &g_array_index(_colTables, _colTable, n);
     if (NULL == ct) {
         PRINTF("ERROR: no COLOR_PALETTE (NULL == ct) \n");
         g_assert(0);
+        return NULL;
     }
 
     S52_Color *c = &g_array_index(ct->colors, S52_Color, index);
@@ -2573,6 +2583,7 @@ static int        _linkLUP(_S52_obj *obj, int alt)
         case _META_T: tblNm = _LUP_NONAM;                         break;
         default     : PRINTF("ERROR: unkown geometry!\n");
                       g_assert(0);
+                      return FALSE;
     }
 
     // get BBtree for this table
@@ -2642,6 +2653,7 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     if (_initTbl) {
         PRINTF("ERROR: PL not loaded  .. do S52_PL_init() first\n");
         g_assert(0);
+        return NULL;
     }
 
     S52_obj *obj  = g_new0(S52_obj, 1);
@@ -2985,7 +2997,7 @@ const char *S52_PL_getCmdText(_S52_obj *obj)
     return cmd->cmd.def->exposition.LXPO->str;
 }
 
-S52_DListData *S52_PL_getDLData(_S52_cmdDef *def)
+S52_DList  *S52_PL_getDLData(_S52_cmdDef *def)
 // TRUE if new (updated)
 {
     if (NULL == def)
@@ -3007,6 +3019,7 @@ int         S52_PL_getLSdata(_S52_obj *obj, char *pen_w, char *style, S52_Color 
     if (S52_CMD_SIM_LN != cmd->cmdWord) {
         PRINTF("ERROR: S52_CMD_SIM_LN != cmd->cmdWord\n");
         g_assert(0);
+        return FALSE;
     }
 
     *pen_w = cmd->param[5];
@@ -3421,7 +3434,7 @@ gint        S52_PL_getTableSz(S52_SMBtblName tableNm)
     return nnodes;
 }
 
-S52_DListData *S52_PL_newDListData(_S52_obj *obj)
+S52_DList  *S52_PL_newDListData(_S52_obj *obj)
 // _renderAC_LIGHTS05() has no cmd->cmd.def / DList
 {
     return_if_null(obj);
@@ -3430,12 +3443,11 @@ S52_DListData *S52_PL_newDListData(_S52_obj *obj)
     if (NULL == cmd) {
         PRINTF("WARNING: internal inconsistency\n");
         g_assert(0);
-
         return NULL;
     }
 
     if ((NULL==cmd->cmd.DList) && (S52_CMD_ARE_CO==cmd->cmdWord)) {
-        cmd->cmd.DList = g_new0(S52_DListData, 1);
+        cmd->cmd.DList = g_new0(S52_DList, 1);
     } else {
         PRINTF("WARNING: internal inconsistency\n");
         g_assert(0);
@@ -3443,11 +3455,10 @@ S52_DListData *S52_PL_newDListData(_S52_obj *obj)
         return NULL;
     }
 
-
     return cmd->cmd.DList;
 }
 
-S52_DListData *S52_PL_getDListData(_S52_obj *obj)
+S52_DList  *S52_PL_getDListData(_S52_obj *obj)
 {
     return_if_null(obj);
 
@@ -3466,6 +3477,7 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
     {
         PRINTF("ERROR: this type of cmd word has no DL!\n");
         g_assert(0);
+        return NULL;
     }
 
 
@@ -3487,6 +3499,7 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
     if (MAX_SUBLIST < nbr) {
         PRINTF("ERROR: color index out of bound\n");
         g_assert(0);
+        return NULL;
     }
 
     for (guint i=0; i<nbr; ++i) {
@@ -3912,15 +3925,18 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
         PRINTF("ERROR: bug, not a text command\n");
         g_assert(0);
+        return NULL;
     }
 
     if (FALSE == obj->textParsed[_getAlt(obj)]) {
 
         if (S52_CMD_TXT_TX == cmd->cmdWord) {
 
-            // FIXME: this should not be needed!
             if (NULL != cmd->cmd.text) {
                 _freeTXT(cmd->cmd.text);
+
+                // FIXME
+                //PRINTF("DEBUG: this should not be needed!\n");
                 //g_assert(0);
             }
 
@@ -3932,9 +3948,11 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
 
         if (S52_CMD_TXT_TE == cmd->cmdWord) {
 
-            // FIXME: this should not occur!
             if (NULL != cmd->cmd.text) {
                 _freeTXT(cmd->cmd.text);
+
+                // FIXME
+                //PRINTF("DEBUG: this should not be needed!\n");
                 //g_assert(0);
             }
 
@@ -4059,7 +4077,8 @@ const char *S52_PL_hasCS(_S52_obj *obj)
     return FALSE;
 }
 
-static S52_objSupp _toggleObjType(_LUP *LUP)
+static
+S52_objSupp       _toggleObjType(_LUP *LUP)
 // toggle an S57 object type, return state
 // rules on BASE can't be soppressed
 {
@@ -4077,7 +4096,8 @@ static S52_objSupp _toggleObjType(_LUP *LUP)
     return LUP->supp;
 }
 
-static S52_objSupp _toggleLUPlist(_LUP *LUPlist)
+static
+S52_objSupp       _toggleLUPlist(_LUP *LUPlist)
 // toggle all rules that are not in BASE
 {
     S52_objSupp sup = S52_SUPP_ERR;
@@ -4401,7 +4421,8 @@ guint       S52_PL_getFreetypeGL_VBO(_S52_obj *obj, guint *len)
     // Note: S52_CMD_SYM_PT pass here - speed text on leg
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord) && (S52_CMD_SYM_PT!=cmd->cmdWord)) {
         PRINTF("DEBUG: logic bug, not a text command [cmdWord:%i]\n", cmd->cmdWord);
-        //g_assert(0);
+        g_assert(0);
+        return FALSE;
     }
 
     *len = cmd->len;
@@ -4421,7 +4442,9 @@ int         S52_PL_setFreetypeGL_VBO(_S52_obj *obj, guint vboID, guint len)
     // Note: S52_CMD_SYM_PT pass here - speed text on leg
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord) && (S52_CMD_SYM_PT!=cmd->cmdWord)) {
         PRINTF("DEBUG: logic bug, not a text command\n");
-        //g_assert(0);
+        g_assert(0);
+
+        return FALSE;
     }
 
     cmd->vboID = vboID;
@@ -4432,7 +4455,7 @@ int         S52_PL_setFreetypeGL_VBO(_S52_obj *obj, guint vboID, guint len)
 #endif
 
 #if 0
-int         S52_PL_setLOD(S52_obj *obj, char LOD)
+int         S52_PL_setLOD(_S52_obj *obj, char LOD)
 {
     return_if_null(obj);
 
@@ -4441,7 +4464,7 @@ int         S52_PL_setLOD(S52_obj *obj, char LOD)
     return TRUE;
 }
 
-char        S52_PL_getLOD(S52_obj *obj)
+char        S52_PL_getLOD(_S52_obj *obj)
 {
     return_if_null(obj);
 
