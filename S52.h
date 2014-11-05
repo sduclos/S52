@@ -307,7 +307,7 @@ DLL const char * STD S52_pickAt(double pixels_x, double pixels_y);
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int    STD S52_xy2LL (double *pixels_x,  double *pixels_y);
+DLL int    STD S52_xy2LL(double *pixels_x,  double *pixels_y);
 
 /**
  * S52_LL2xy:
@@ -318,7 +318,7 @@ DLL int    STD S52_xy2LL (double *pixels_x,  double *pixels_y);
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int    STD S52_LL2xy (double *longitude, double *latitude);
+DLL int    STD S52_LL2xy(double *longitude, double *latitude);
 
 
 //----- NO GL context (can work outside main loop) ----------
@@ -342,7 +342,7 @@ DLL int    STD S52_LL2xy (double *longitude, double *latitude);
  * Return: TRUE on success, else FALSE
  */
 typedef int (*S52_log_cb)(const char *str);
-DLL int   STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_log_cb log_cb);
+DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_log_cb log_cb);
 
 /**
  * S52_version:
@@ -386,7 +386,7 @@ DLL int    STD S52_done(void);
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int   STD S52_loadObject      (const char *objname, /* OGRFeatureH */ void *feature);
+int            S52_loadObject(const char *objname, /* OGRFeatureH */ void *feature);
 
 /**
  * S52_loadObject_cb:
@@ -415,7 +415,7 @@ typedef int (*S52_loadObject_cb)(const char *objname, /* OGRFeatureH */ void *fe
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int    STD S52_loadCell        (const char *encPath,  S52_loadObject_cb loadObject_cb);
+DLL int    STD S52_loadCell(const char *encPath,  S52_loadObject_cb loadObject_cb);
 
 /**
  * S52_doneCell:
