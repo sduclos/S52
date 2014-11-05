@@ -308,10 +308,6 @@ static int       _init_freetype_gl(void)
     texture_font_load_glyphs(_freetype_gl_font[2], cache);
     texture_font_load_glyphs(_freetype_gl_font[3], cache);
 
-    // PL module save VBO ID (a GLuint) as a unsigned int
-    // this check document that
-    //g_assert(sizeof(GLuint) == sizeof(unsigned int));
-
     if (0 == _freetype_gl_textureID)
         glGenBuffers(1, &_freetype_gl_textureID);
 
@@ -909,6 +905,7 @@ static int       _init_gl2(void)
         if (0 == _programObject) {
             PRINTF("ERROR: glCreateProgram() FAILED\n");
             g_assert(0);
+            return FALSE;
         }
 
         // ----------------------------------------------------------------------
@@ -1062,7 +1059,6 @@ static int       _init_gl2(void)
 
 
             g_assert(0);
-            exit(0);
             return FALSE;
         }
 
@@ -1162,7 +1158,7 @@ static int       _init_gl2(void)
     return TRUE;
 }
 
-static int       _renderTile(S52_DListData *DListData) 
+static int       _renderTile(S52_DList *DListData) 
 {
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
@@ -1474,7 +1470,7 @@ static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, doubl
 
     _set_glScaled();
 
-    S52_DListData *DListData = S52_PL_getDListData(obj);
+    S52_DList *DListData = S52_PL_getDListData(obj);
     _renderTile(DListData);
 
     if (0.0 != stagOffsetPix) {
@@ -1507,7 +1503,7 @@ static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, doubl
 
 static int       _renderAP_gl2(S52_obj *obj)
 {
-    S52_DListData *DListData = S52_PL_getDListData(obj);
+    S52_DList *DListData = S52_PL_getDListData(obj);
 
     double x1, y1;   // LL of region of area in world
     double x2, y2;   // UR of region of area in world
