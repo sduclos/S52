@@ -123,13 +123,13 @@ typedef struct S52_Color {
 //#define MAX_SUBLIST 10  // ex: SCALEB10 need to switch color 9 times (2 colors)
 #define MAX_SUBLIST 11  // ex: SCALEB10 need to switch color 9 times (2 colors)
 //#define MAX_SUBLIST 21  // ex: SCALEB10 need to switch color 9 times (2 colors)
-typedef struct S52_DListData {
+typedef struct S52_DList {
     int       create;                // TRUE create new DL
     guint     nbr;                   // number of Display List / VBO
     guint     vboIds[MAX_SUBLIST];   // array of starting index of Display List / VBO ids
     S52_Color colors[MAX_SUBLIST];   // color of each Display List / VBO
     S57_prim *prim  [MAX_SUBLIST];   // hold PLib sym prim info for VBO
-} S52_DListData;
+} S52_DList;
 
 // Vector Command (a la HPGL)
 typedef enum S52_vCmd {
@@ -220,7 +220,7 @@ int            S52_PL_cmpCmdParam(S52_obj *obj, const char *name);
 // get str for the current command (PLib exposition field: LXPO/PXPO/SXPO)
 const char    *S52_PL_getCmdText(S52_obj *obj);
 
-S52_DListData *S52_PL_getDLData(S52_cmdDef *def);
+S52_DList     *S52_PL_getDLData(S52_cmdDef *def);
 
 //-------------------------------------------------------
 // init vector commands parser
@@ -278,8 +278,8 @@ gint           S52_PL_traverse(S52_SMBtblName tableNm, GTraverseFunc callBack);
 //gint       S52_PL_getTableSz(S52_SMBtblName tableNm);
 
 // return a list of Display List --one per color
-S52_DListData *S52_PL_newDListData(S52_obj *obj);
-S52_DListData *S52_PL_getDListData(S52_obj *obj);
+S52_DList     *S52_PL_newDListData(S52_obj *obj);
+S52_DList     *S52_PL_getDListData(S52_obj *obj);
 
 // text parser
 //S52_Text  *S52_PL_parseTX(S57_geo *geoData, S52_CmdL *cmd);
