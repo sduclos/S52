@@ -356,14 +356,12 @@ int        S57_geo2prj3dv(guint npt, double *data)
 
     pt3 *pt = (pt3*)data;
 
-    if (TRUE == _doInit)
+    if (TRUE == _doInit) {
         S57_initPROJ();
+    }
 
     if (NULL == _pjdst) {
-        PRINTF("ERROR: nothing to project to .. load a chart first!\n");
-        // debug
-        g_assert(0);
-
+        PRINTF("WARNING: nothing to project to .. load a chart first!\n");
         return FALSE;
     }
 
@@ -384,10 +382,11 @@ int        S57_geo2prj3dv(guint npt, double *data)
     // rad to cartesian  --mercator
     int ret = pj_transform(_pjsrc, _pjdst, npt, 3, &pt->x, &pt->y, &pt->z);
     if (0 != ret) {
-        PRINTF("ERROR: in transform (%i): %s (%f,%f)\n", ret, pj_strerrno(pj_errno), pt->x, pt->y);
+        PRINTF("WARNING: in transform (%i): %s (%f,%f)\n", ret, pj_strerrno(pj_errno), pt->x, pt->y);
         g_assert(0);
         return FALSE;
     }
+
     return TRUE;
 }
 
@@ -608,6 +607,7 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
         PRINTF("WARNING: invalid ring number requested! \n");
         *npt = 0;
         g_assert(0);
+        return FALSE;
     }
 
     switch (geo->obj_t) {
@@ -638,34 +638,10 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
             } else {
                 *npt = 0;
             }
-            //else
-            //    PRINTF("ERROR: atempt to access a tessed area .. \n"
-            //           "(there is no geo anymore!!)\n");
 
-            // WARNING: check if begin/end vertex are the same
-            // (OpenGIS: closed and simple ring)
-            // If so shorten it to help trace tesss (in combineCB)
-            /*
-            {
-                int     n = 3 * (*npt-1);
-                double *p = *ppt;
-                if (p[0] == p[n+0] &&
-                    p[1] == p[n+1] &&
-                    p[2] == p[n+2]) {
-                    //--(*npt);
-                    // *npt -= 1;          // <<< shorten
-                } else {
-                    PRINTF("not close/simple ring\n");
-                    //PRINTF("    START: x=%f y=%f z=%f\n", p[0],p[1],p[2]);
-                    //PRINTF("    END:   x=%f y=%f z=%f\n", p[n+0],p[n+1],p[n+2]);
-                    //exit(0);
-                }
-
-            }
-            */
-
+            // debug
             //if (geodata->ringnbr > 1) {
-            //    PRINTF("WARNING!!! AREA_T ringnbr:%i only exterior ring used\n", geodata->ringnbr);
+            //    PRINTF("DEBUG: AREA_T ringnbr:%i only exterior ring used\n", geodata->ringnbr);
             //}
             break;
         default:
@@ -680,10 +656,12 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
         return FALSE;
     }
 
-    if (0==*npt)
+    if (0==*npt) {
+        PRINTF("DEBUG: no geo\n");
         return FALSE;
-    else
-        return TRUE;
+    }
+
+    return TRUE;
 }
 
 S57_prim  *S57_initPrim(_S57_prim *prim)
@@ -880,7 +858,7 @@ int        S57_setExt(_S57_geo *geo, double x1, double y1, double x2, double y2)
     }
     */
 
-    if (isinf(x1)  && isinf(x2)) {
+    if (isinf(x1) && isinf(x2)) {
         PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
         g_assert(0);
         return FALSE;
@@ -1168,13 +1146,12 @@ static void   _printAtt(GQuark key_id, gpointer data, gpointer user_data)
     (void) user_data;
 
     const gchar *attName  = g_quark_to_string(key_id);
-    GString     *attValue = (GString*) data;
 
-#ifdef S52_DEBUG
     // print only S57 attrib - assuming that OGR att are not 6 char in lenght!!
-    if (6 == S52_strlen(attName))
-        PRINTF("\t%s : %s\n", attName, (char*)attValue->str);
-#endif
+    if (6 == S52_strlen(attName)) {
+        GString *attValue = (GString*) data;
+        PRINTF("\t%s : %s\n", attName, attValue->str);
+    }
 }
 
 gboolean   S57_setSupp(_S57_geo *geo, gboolean supp)
@@ -1549,14 +1526,17 @@ guint      S57_setGeoSize(_S57_geo *geo, guint size)
     if ((POINT_T==geo->obj_t) && (size > 1)) {
         PRINTF("ERROR: POINT_T size\n");
         g_assert(0);
+        return FALSE;
     }
     if ((LINES_T==geo->obj_t) && (size > geo->linexyznbr)) {
         PRINTF("ERROR: LINES_T size\n");
         g_assert(0);
+        return FALSE;
     }
     if ((AREAS_T==geo->obj_t) && (size > geo->ringxyznbr[0])) {
         PRINTF("ERROR: AREAS_T size\n");
         g_assert(0);
+        return FALSE;
     }
 
     if (_META_T == geo->obj_t) {
@@ -1737,6 +1717,7 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
         if ( tmp < 0) {
             PRINTF("ERROR: tmp < 0\n");
             g_assert(0);
+            return FALSE;
         }
     }
 
@@ -1744,6 +1725,7 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
         if (nptEdge + i > npt) {
             PRINTF("ERROR: nptEdge + i > npt\n");
             g_assert(0);
+            return FALSE;
         }
     }
 
