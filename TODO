@@ -8,6 +8,7 @@ Curent focus (top priority *):
 
     GL:
 **  -alarm safety perimeter (pick GL trick) and route planning -try fast geo route instead of the pick GL trick
+*   -rotate extent when chart rotate
 *   -handle overlaping symbol at the center of the screen (find test case to debug)
     -implement patern scale spacing (PASP field)
     -handle GLU_TESS_MAX_COORD, GLU_TESS_TOLERANCE (LOD)
@@ -19,7 +20,6 @@ Curent focus (top priority *):
     -experimental: supression of overlapping simple lines (ie LS() - not LC()) (also of same disp prio AREAS/LINES)
     -fix breaker color problem in CA49995A.000
     -check/validate QUAPOS of spatial (not attribute) object
-    -dump vector (same as saving display list / VBO!)
     -upgrade to WRECK03 (C_s_md2.pdf: Item No. PL03.0.d02.cl.035)
     -isobath tag
 
