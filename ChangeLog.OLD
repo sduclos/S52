@@ -4,6 +4,11 @@
 #
 
 
+2014NOV05
+    -fix mariner obj extent for culling
+    -mod rename S52_DListData to S52_DList
+    -fix ftgl for dotpitch
+
 2014OCT27
     -fix typo in suppression, Supp, ...
     -mod skip culling mariners' separetly in _cull()
