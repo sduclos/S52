@@ -81,7 +81,6 @@ gboolean SYMBOLIZED_BND  = TRUE;     // symbolized area boundaries
 
 // textual name of mariner's parameter
 // WARNING: must be in sync with S52MarinerParameter
-// WARNING: must be in sync with S52_MARparamName
 static double _MARparamVal[] = {
     0.0,      // 0 - ERROR: 0 - no error,
 
@@ -202,7 +201,11 @@ static double _MARparamVal[] = {
 
     0.0,      // 45 - S52_MAR_DISP_RADAR_LAYER - display Raster: RADAR, Bathy, ... (on/off) (default off)
 
-    46.0      // number of parameter type
+    1852.0,   // 46 - S52_MAR_GUARDZONE_BEAM - Danger/Indication Highlight used by LEGLIN & Position (meters)
+    1852.0*6, // 47 - S52_MAR_GUARDZONE_LENGTH - Danger/Indication Highlight used by Position
+              //(meters, user computed from speed/time or distance) [default 6 NM, 30 min. @ 12kt]
+
+    48.0      // number of parameter type
 };
 
 double S52_MP_get(S52MarinerParameter param)
