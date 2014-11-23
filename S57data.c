@@ -88,7 +88,8 @@ typedef struct _S57_geo {
     gboolean     supp;        // geo suppression - TRUE if outside view
 
     // length of geo data (POINT, LINE, AREA) currently in buffer
-    guint        dataSize;        // max is 1, linexyznbr, ringxyznbr[0]
+    //guint        dataSize;        // max is 1, linexyznbr, ringxyznbr[0]
+    guint        geoSize;        // max is 1, linexyznbr, ringxyznbr[0]
 
     // hold coordinate before and after projection
     geocoord    *pointxyz;    // point
@@ -136,7 +137,9 @@ typedef struct _S57_geo {
     S57_geo     *nextPoly;
 #endif
 
-    int          highlight;  // highlight this geo object (cursor pick - experimental)
+    gboolean     highlight;  // highlight this geo object (cursor pick - experimental)
+
+    gboolean     safetyContour;  // TRUE if a Safety Contour - use by leglin and GUARDZONE
 
 } _S57_geo;
 
@@ -650,7 +653,7 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
             return FALSE;
     }
 
-    if (*npt < geo->dataSize) {
+    if (*npt < geo->geoSize) {
         PRINTF("ERROR: geo lenght greater then npt - internal error\n");
         g_assert(0);
         return FALSE;
@@ -1443,13 +1446,14 @@ guint      S57_getGeoID(S57_geo *geo)
     return  geo->id;
 }
 
-int        S57_isPtInside(int npt, double *xyz, double x, double y, int close)
-// return TRUE if inside else FALSE
+int        S57_isPtInside(int npt, double *xyz, gboolean close, double x, double y)
+// return TRUE if (x,y) inside area (close/open) xyz else FALSE
+// FIXME: CW or CCW or work with either?
 {
+    return_if_null(xyz);
+
     int c = 0;
     pt3 *v = (pt3 *)xyz;
-
-    return_if_null(xyz);
 
     if (0 == npt)
         return FALSE;
@@ -1483,11 +1487,10 @@ int        S57_isPtInside(int npt, double *xyz, double x, double y, int close)
 int        S57_touch(_S57_geo *geoA, _S57_geo *geoB)
 // TRUE if A touch B else FALSE
 {
-    unsigned int  nptA;
-    double       *pptA;
-    unsigned int  nptB;
-    double       *pptB;
-
+    guint   nptA;
+    double *pptA;
+    guint   nptB;
+    double *pptB;
 
     return_if_null(geoA);
     return_if_null(geoB);
@@ -1505,7 +1508,7 @@ int        S57_touch(_S57_geo *geoA, _S57_geo *geoB)
     }
 
     for (guint i=0; i<nptA; ++i, pptA+=3) {
-        if (TRUE == S57_isPtInside(nptB, pptB, pptA[0], pptA[1], TRUE))
+        if (TRUE == S57_isPtInside(nptB, pptB, TRUE, pptA[0], pptA[1]))
             return TRUE;
     }
 
@@ -1516,7 +1519,7 @@ guint      S57_getGeoSize(_S57_geo *geo)
 {
     return_if_null(geo);
 
-    return geo->dataSize;
+    return geo->geoSize;
 }
 
 guint      S57_setGeoSize(_S57_geo *geo, guint size)
@@ -1545,7 +1548,7 @@ guint      S57_setGeoSize(_S57_geo *geo, guint size)
         return FALSE;
     }
 
-    return geo->dataSize = size;
+    return geo->geoSize = size;
 }
 
 int        S57_newCentroid(_S57_geo *geo)
@@ -1774,13 +1777,28 @@ int        S57_highlightOFF(_S57_geo *geo)
     return TRUE;
 }
 
-int        S57_getHighlight(_S57_geo *geo)
+gboolean   S57_getHighlight(_S57_geo *geo)
 {
     return_if_null(geo);
 
     return geo->highlight;
 }
 
+int        S57_setSafetyContour(S57_geo *geo, gboolean isSC)
+{
+    return_if_null(geo);
+
+    geo->safetyContour = isSC;
+
+    return TRUE;
+}
+
+int        S57_getSafetyContour(S57_geo *geo)
+{
+    return_if_null(geo);
+
+    return geo->safetyContour;
+}
 
 
 #if 0
