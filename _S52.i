@@ -100,7 +100,6 @@ static int                 _handleS52method(const gchar *str, char *result, char
     //
 
     //S52ObjectHandle STD S52_newOWNSHP(const char *label);
-    //if (0 == S52_strncmp(cmdName, "S52_newOWNSHP", strlen("S52_newOWNSHP"))) {
     if (0 == g_strcmp0(cmdName, "S52_newOWNSHP")) {
         const char *label = json_array_get_string (paramsArr, 0);
         if ((NULL==label) || (1!=count)) {
