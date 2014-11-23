@@ -186,9 +186,7 @@ int      S52_getConfig(const char *label, valueBuf *vbuf)
 
    ret = fscanf(fp, frmt, lbuf, vbuf);
    while (ret > 0) {
-       //if (('#'!=lbuf[0]) && (0 == strncmp(lbuf, label, strlen(label)))) {
        if (('#'!=lbuf[0]) && (0 == S52_strncmp(lbuf, label, S52_strlen(label)))) {
-               //sscanf(c, "%255[^\n]", *vbuf);
                PRINTF("label:%s value:%s \n", lbuf, *vbuf);
                fclose(fp);
                return TRUE;
@@ -283,6 +281,7 @@ int      S52_fclose (FILE *fd)
     return fclose(fd);
 }
 
+#if 0
 gboolean S52_string_equal(const GString *v, const GString *v2)
 {
 #ifdef S52_USE_GLIB2
@@ -301,6 +300,7 @@ gboolean S52_string_equal(const GString *v, const GString *v2)
 #endif
 
 }
+#endif
 
 void     S52_tree_replace(GTree *tree, gpointer key, gpointer value)
 {
