@@ -44,7 +44,6 @@ gboolean update_cb(void *dummy);
 
 #define  g_print printf     // prevent writing help() / dump() to log
 
-//#if _MINGW
 #ifdef _MINGW
 //#define  g_print printf     // prevent writing help() / dump() to log
 #define  g_sprintf sprintf
@@ -108,7 +107,6 @@ static S52ObjectHandle _leglin2     = NULL;
 static S52ObjectHandle _leglin3     = NULL;
 //static S52ObjectHandle _leglin4     = NULL;
 //static S52ObjectHandle _leglin5     = NULL;
-//static S52ObjectHandle _route[5]    = {NULL, NULL, NULL, NULL, NULL};
 static S52ObjectHandle _waypnt0     = NULL;
 static S52ObjectHandle _waypnt1     = NULL;
 static S52ObjectHandle _waypnt2     = NULL;
@@ -137,7 +135,7 @@ static GtkWidget    *_winArea = NULL;
 static gint     _execOpt = FALSE;
 static gchar   *_version = NULL;
 static gchar   *_outpng  = NULL;
-static gint     _s57id   = 0;
+//static gint     _s57id   = 0;
 static gchar   *_encnm   = NULL;
 
 static int      _usage(const char *arg)
@@ -864,23 +862,6 @@ static int      _setRoute()
     _leglin3  = S52_newLEGLIN(1, 12.0, 0.2, _view.cLat + 0.01, _view.cLon + 0.01, _view.cLat - 0.010, _view.cLon - 0.010);
     _leglin4  = S52_newLEGLIN(1, 12.0, 0.2, _view.cLat - 0.01, _view.cLon + 0.01, _view.cLat - 0.015, _view.cLon + 0.015);
     _leglin5  = S52_newLEGLIN(1, 12.0, 0.2, _view.cLat - 0.01, _view.cLon + 0.01, _view.cLat - 0.005, _view.cLon + 0.015);
-    _route[0] = _leglin1;
-    _route[1] = _leglin2;
-    _route[2] = _leglin3;
-    S52_setRoute(3, _route);
-
-    _route[0] = _leglin2;
-    _route[1] = _leglin3;
-    _route[2] = _leglin4;
-    S52_setRoute(3, _route);
-
-    //_route[0] = _leglin1;
-    //_route[1] = _leglin4;
-    //S52_setRoute(2, _route);
-
-    //_route[0] = _leglin1;
-    //_route[1] = _leglin5;
-    //S52_setRoute(2, _route);
     */
 
     /*
@@ -888,12 +869,6 @@ static int      _setRoute()
     //_leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpW.lat, wpW.lon, wpS.lat, wpS.lon);
     //_leglin3  = S52_newLEGLIN(1, 12.0, 0.2, wpS.lat, wpS.lon, wpE.lat, wpE.lon);
     //_leglin4  = S52_newLEGLIN(1, 12.0, 0.2, wpE.lat, wpE.lon, wpN.lat, wpN.lon);
-
-    _route[0] = _leglin1;
-    _route[1] = _leglin2;
-    _route[2] = _leglin3;
-    _route[3] = _leglin4;
-    S52_setRoute(4, _route);
     */
 
 
@@ -907,18 +882,12 @@ static int      _setRoute()
     // heading change from NW to NE
     _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpS.lat, wpS.lon, wpW.lat, wpW.lon);
     _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpW.lat, wpW.lon, wpN.lat, wpN.lon);
-    _route[0] = _leglin1;
-    _route[1] = _leglin2;
-    S52_setRoute(2, _route);
     //*/
 
     /*
     // heading change from NE to NW
     _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpS.lat, wpS.lon, wpE.lat, wpE.lon);
     _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpE.lat, wpE.lon, wpN.lat, wpN.lon);
-    _route[0] = _leglin1;
-    _route[1] = _leglin2;
-    S52_setRoute(2, _route);
     //*/
 
     //-----------------------------
@@ -926,18 +895,12 @@ static int      _setRoute()
     // heading change from NW to SW
     _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpE.lat, wpE.lon, wpN.lat, wpN.lon);
     _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpN.lat, wpN.lon, wpW.lat, wpW.lon);
-    _route[0] = _leglin1;
-    _route[1] = _leglin2;
-    S52_setRoute(2, _route);
     //*/
 
     /*
     // heading change from SW to NW
     _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpE.lat, wpE.lon, wpS.lat, wpS.lon);
     _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpS.lat, wpS.lon, wpW.lat, wpW.lon);
-    _route[0] = _leglin1;
-    _route[1] = _leglin2;
-    S52_setRoute(2, _route);
     //*/
 
     //-----------------------------
@@ -945,18 +908,12 @@ static int      _setRoute()
     // heading change from SE to NE
     _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpW.lat, wpW.lon, wpS.lat, wpS.lon);
     _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpS.lat, wpS.lon, wpE.lat, wpE.lon);
-    _route[0] = _leglin1;
-    _route[1] = _leglin2;
-    S52_setRoute(2, _route);
     //*/
 
     /*
     // heading change from NE to SE
     _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpW.lat, wpW.lon, wpN.lat, wpN.lon);
     _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpN.lat, wpN.lon, wpE.lat, wpE.lon);
-    _route[0] = _leglin1;
-    _route[1] = _leglin2;
-    S52_setRoute(2, _route);
     //*/
 
     //-----------------------------
@@ -965,12 +922,6 @@ static int      _setRoute()
     _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpN.lat, wpN.lon, wpW.lat, wpW.lon, NULL);
     _leglin2  = S52_newLEGLIN(1, 12.0, 0.2, wpW.lat, wpW.lon, wpS.lat, wpS.lon, _leglin1);
     _leglin3  = S52_newLEGLIN(1, 12.0, 0.3, wpS.lat, wpS.lon, wpE.lat, wpE.lon, _leglin2);
-    //S52_toggleObjSUP(_leglin1);
-    //_route[0] = _leglin1;
-    //_route[1] = _leglin2;
-    //_route[2] = _leglin3;
-    //S52_setRoute(3, _route);
-    //S52_setCurveLeg(_leglin1, _leglin2);
     //*/
 
 
@@ -1521,7 +1472,7 @@ static gboolean expose_event(GtkWidget      *widget,
 
     if (TRUE == _execOpt) {
         if (NULL != _outpng) {
-            S52_dumpS57IDPixels(_outpng, _s57id, 200, 200);
+            //S52_dumpS57IDPixels(_outpng, _s57id, 200, 200);
             gtk_main_quit();
         }
     }
