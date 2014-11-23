@@ -136,4 +136,6 @@ int   S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str);
 int   S52_GL_drawGraticule(void);
 int   S52_GL_movePoint(double *x, double *y, double angle, double dist_m);
 
+int   S52_GL_isHazard(int nxyz, double *xyz);
+
 #endif // _S52GL_H_
