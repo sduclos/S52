@@ -186,7 +186,7 @@ typedef struct { double u, v; } projUV;
 #define DEG_TO_RAD     0.0174532925199432958
 #endif
 
-#define ATAN2TODEG(xyz)   (90.0 - atan2(xyz[4]-xyz[1], xyz[3]-xyz[0]) * RAD_TO_DEG)
+#define ATAN2TODEG(xyz)   (90.0 - (atan2(xyz[4]-xyz[1], xyz[3]-xyz[0]) * RAD_TO_DEG))
 
 #define PICA   0.351
 
@@ -219,6 +219,8 @@ static GLuint   _vboIDaftglwVertID = 0;
 static GLuint   _vboIDaftglwColrID = 0;
 #endif
 
+//expirimental
+static vertex_t _hazardZone[5*3];
 
 static
 inline void      _checkError(const char *msg)
@@ -365,7 +367,8 @@ static int       _getCentroidOpen (guint npt, pt3 *v)
 
         //PRINTF("XY(%s): %f, %f, %i \n", (atmp>=0.0) ? "CW " : "CCW", p.x, p.y, npt);
 
-        if (TRUE == S57_isPtInside(npt, (double*)v, pt.x, pt.y, FALSE)) {
+        //if (TRUE == S57_isPtInside(npt, (double*)v, pt.x, pt.y, FALSE)) {
+        if (TRUE == S57_isPtInside(npt, (double*)v, FALSE, pt.x, pt.y)) {
             g_array_append_val(_centroids, pt);
 
             return TRUE;
@@ -433,7 +436,7 @@ static int       _getCentroidClose(guint npt, double *ppt)
 
         //PRINTF("XY(%s): %f, %f, %i \n", (atmp>=0.0) ? "CCW " : "CW", pt->x, pt->y, npt);
 
-        if (TRUE == S57_isPtInside(npt, ppt, pt.x, pt.y, TRUE)) {
+        if (TRUE == S57_isPtInside(npt, ppt, TRUE, pt.x, pt.y)) {
             g_array_append_val(_centroids, pt);
             //PRINTF("point is inside polygone\n");
 
@@ -1291,7 +1294,7 @@ static int       _fillArea(S57_geo *geoData)
         case '5': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.000001); break;
         case '6': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.000001); break;
         default:
-            gluTessProperty(_tcen, GLU_TESS_TOLERANCE, 0.000001); 
+            gluTessProperty(_tcen, GLU_TESS_TOLERANCE, 0.000001);
         }
         //*/
 
@@ -2358,7 +2361,7 @@ static int       _renderSY_leglin(S52_obj *obj)
             // FIXME: ajuste XY for rotation
             SNPRINTF(str, 80, "%3.1f kt", plnspd);
 
-            // FIXME: get color from TE & TX commad word
+            // FIXME: get color from TE & TX command word
             S52_Color *color = S52_PL_getColor("CHBLK");
 
             //_renderTXTAA(obj, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, str);
@@ -2709,7 +2712,6 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
     if (NULL != orientstr) {
         double orient = S52_atof(orientstr->str);
 
-        //_glMatrixMode  (GL_MODELVIEW);
         _glLoadIdentity(GL_MODELVIEW);
 
         _glTranslated(ppt[0], ppt[1], 0.0);
@@ -2731,7 +2733,6 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
     if (NULL != sectr1str) {
         double sectr1 = S52_atof(sectr1str->str);
 
-        //_glMatrixMode  (GL_MODELVIEW);
         _glLoadIdentity(GL_MODELVIEW);
 
         _glTranslated(ppt[0], ppt[1], 0.0);
@@ -2992,24 +2993,30 @@ static int       _renderLS_vessel(S52_obj *obj)
     return TRUE;
 }
 
+#ifdef S52_USE_AFGLOW
 static int       _renderLS_afterglow(S52_obj *obj)
 {
-    (void)obj;
-
-#ifdef S52_USE_AFGLOW
-
-    S57_geo   *geo = S52_PL_getGeo(obj);
-    GLdouble  *ppt = NULL;
-    guint      npt = 0;
-
     if (0.0 == S52_MP_get(S52_MAR_DISP_AFTERGLOW))
         return TRUE;
+
+    S57_geo   *geo = S52_PL_getGeo(obj);
+    guint      pti = S57_getGeoSize(geo);
+    GLdouble  *ppt = NULL;
+    guint      npt = 0;
 
     if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return TRUE;
 
-    if (0 == npt)
+    if (0 == npt) {
+        PRINTF("DEBUG: afterglow npt = 0\n");
+        g_assert(0);
         return TRUE;
+    }
+    if (0 == pti) {
+        PRINTF("DEBUG: afterglow pti = 0\n");
+        //g_assert(0);
+        return TRUE;
+    }
 
     {   // set color
         S52_Color *col;
@@ -3021,13 +3028,10 @@ static int       _renderLS_afterglow(S52_obj *obj)
 
     //_setBlend(TRUE);
 
-    _checkError("_renderLS_afterglow() .. beg");
+    //_checkError("_renderLS_afterglow() .. beg");
 
     _glPointSize(7.0);
 
-    guint  pti = S57_getGeoSize(geo);
-    if (0 == pti)
-        return TRUE;
 
 #ifdef S52_USE_GL2
     //float   maxAlpha   = 1.0;   // 0.0 - 1.0
@@ -3113,12 +3117,12 @@ static int       _renderLS_afterglow(S52_obj *obj)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 #endif  // S52_USE_GL2
-#endif  // S52_USE_AFGLOW
 
     _checkError("_renderLS_afterglow() .. end");
 
     return TRUE;
 }
+#endif  // S52_USE_AFGLOW
 
 static int       _renderLS(S52_obj *obj)
 // Line Style
@@ -3233,6 +3237,7 @@ static int       _renderLS(S52_obj *obj)
                 _renderLS_ownshp(obj);
                 g_assert(0);
             } else {
+                // afterglow
                 if ((0 == g_strcmp0("afgves", S57_getName(geoData))) ||
                     (0 == g_strcmp0("afgshp", S57_getName(geoData)))
                    ) {
@@ -3243,6 +3248,7 @@ static int       _renderLS(S52_obj *obj)
 #ifdef S52_USE_GL2
                     _d2f(_tessWorkBuf_f, npt, ppt);
 
+                    // alternate planned route
                     if (0 == g_strcmp0("leglin", S57_getName(geoData))) {
                         // FIXME: move to _renderLS_setPatDott()
                         glUniform1f(_uStipOn, 1.0);
@@ -3272,6 +3278,7 @@ static int       _renderLS(S52_obj *obj)
                         glUniform1f(_uStipOn, 0.0);
 
                     } else {
+                        // all other line
                         _glUniformMatrix4fv_uModelview();
                         _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
                     }
@@ -3452,10 +3459,10 @@ static int       _renderLC(S52_obj *obj)
     if (S52_CMD_WRD_FILTER_LC & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
-    GLdouble       symlen_pixl = 0.0;
-    GLdouble       symlen_wrld = 0.0;
-    GLdouble       x1,y1,z1,  x2,y2,z2;
-    S57_geo       *geo = S52_PL_getGeo(obj);
+    GLdouble symlen_pixl = 0.0;
+    GLdouble symlen_wrld = 0.0;
+    GLdouble x1,y1,z1,  x2,y2,z2;
+    S57_geo *geo = S52_PL_getGeo(obj);
 
     // draw arc if this is a leglin
     if (0 == g_strcmp0("leglin", S57_getName(geo))) {
@@ -3466,6 +3473,18 @@ static int       _renderLC(S52_obj *obj)
             if (NULL != objNextLeg)
                 _drawArc(obj, objNextLeg);
         }
+
+        //* draw guard zone if highligthed
+        // FIXME: what about arc!
+        //if (TRUE == S57_getHighlight(geo)) {
+            _glLoadIdentity(GL_MODELVIEW);
+
+#ifdef S52_USE_GL2
+            glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+#endif
+            _DrawArrays_LINE_STRIP(5, _hazardZone);
+        //}
+        //*/
     }
 
     GLdouble *ppt = NULL;
@@ -3561,8 +3580,6 @@ static int       _renderLC(S52_obj *obj)
 
         // draw symb's as long as it fit the line length
         for (int j=0; j<nsym; ++j) {
-            // reset origine
-            //_glMatrixMode  (GL_MODELVIEW);
             _glLoadIdentity(GL_MODELVIEW);
 
             _glTranslated(x1+offset_wrld_x, y1+offset_wrld_y, 0.0);           // move coord sys. at symb pos.
@@ -5318,9 +5335,9 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
         ++_cIdx.color.r;
 
         // stack obj
-        if (1.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
+        if (0.0 != S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
             g_ptr_array_add(_objPick, obj);
-            PRINTF("DEBUG: pick %s\n", S52_PL_getOBCL(obj));
+            PRINTF("DEBUG: %i - pick: %s\n", _cIdx.color.r, S52_PL_getOBCL(obj));
         }
     }
 
@@ -5600,7 +5617,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 #if !defined(S52_USE_MESA3D) && defined(S52_USE_AFGLOW)
     // GL_POINT_SPRITE 0x8861 define only in Mesa3d GL/glext.h also in android tool chain GLES/gl.h
     // but GLSL ES 3.0 say that GL_POINT_SPRITE/gl_PointCoord work
-#define GL_POINT_SPRITE 0x8861  
+#define GL_POINT_SPRITE 0x8861
     //glEnable(GL_POINT_SPRITE);               // Adreno GLSL ES 3.0 say invalid (libGLESv3, libGLESv1_CM)
 #define GL_VERTEX_PROGRAM_POINT_SIZE 0x8642
     //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);  // Adreno GLSL ES 3.0 say invalid
@@ -6238,7 +6255,7 @@ int        S52_GL_setPRJView(double  s, double  w, double  n, double  e)
 int        S52_GL_getPRJView(double *LLv, double *LLu, double *URv, double *URu)
 {
     if (_doInit) {
-        PRINTF("ERROR: S52 GL not initialize\n");
+        PRINTF("WARNING: S52 GL not initialize\n");
         return FALSE;
     }
 
@@ -6263,7 +6280,7 @@ int        S52_GL_setGEOView(double  s, double  w, double  n, double  e)
 int        S52_GL_getGEOView(double *LLv, double *LLu, double *URv, double *URu)
 {
     if (_doInit) {
-        PRINTF("ERROR: S52 GL not initialize\n");
+        PRINTF("WARNING: S52 GL not initialize\n");
         return FALSE;
     }
 
@@ -6327,6 +6344,12 @@ int        S52_GL_getViewPort(int *x, int *y, int *width, int *height)
 const
 char      *S52_GL_getNameObjPick(void)
 {
+    if (S52_GL_NONE != _crnt_GL_cycle) {
+        PRINTF("ERROR: inside a GL cycle\n");
+        g_assert(0);
+        return NULL;
+    }
+
     if (0 == _objPick->len) {
         PRINTF("WARNING: no S57 object found\n");
         return NULL;
@@ -6408,7 +6431,10 @@ char      *S52_GL_getNameObjPick(void)
     }
 
     // hightlight object at the top of the stack
-    //S52_obj *objhighlight = (S52_obj *)g_ptr_array_index(_objPick, _objPick->len-1);
+    if (0==_objPick->len || _objPick->len<=idx) {
+        return NULL;
+    }
+
     S52_obj *objHighLight = (S52_obj *)g_ptr_array_index(_objPick, idx);
     S57_geo *geoHighLight = S52_PL_getGeo(objHighLight);
     S57_highlightON(geoHighLight);
@@ -6717,8 +6743,13 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     //if( CSLFetchBoolean( papszMetadata, GDAL_DCAP_CREATE, FALSE ) )
     */
 
+#ifdef S52_USE_ANDROID
+    char *tmpTif = "/sdcard/s52droid/_tmp.tif";
+#else
+    char *tmpTif = "_tmp.tif";
+#endif
 
-    dataset = GDALCreate(driver, "/sdcard/s52droid/_temp.tif", width, height, 3, GDT_Byte, NULL);
+    dataset = GDALCreate(driver, tmpTif, width, height, 3, GDT_Byte, NULL);
     if (NULL == dataset) {
         PRINTF("WARNING: fail to create GDAL data set\n");
         return FALSE;
@@ -6728,12 +6759,12 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     GDALRasterBandH bandB = GDALGetRasterBand(dataset, 3);
 
     // get framebuffer pixels
-    //guint8 *pixels = g_new0(guint8, width * height * 3); // RGB
-    guint8 *pixels = g_new0(guint8, width * height * 4);  // RGBA
+    guint8 *pixels = g_new0(guint8, width * height * _fb_format);
 
 #ifdef S52_USE_GL2
-    //glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
-    glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    // FIXME: arm adreno will break here
+    glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+    //glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 #else
     glReadBuffer(GL_FRONT);
     glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
@@ -6743,7 +6774,6 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     _checkError("S52_GL_dumpS57IDPixels()");
 
     //FIXME: use something like glPixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
     {   // flip vertically
         guint8 *flipbuf = g_new0(guint8, width * height * 3);
         for (guint i=0; i<height; ++i) {
@@ -6763,10 +6793,9 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     GDALClose(dataset);
     g_free(pixels);
 
-    //gdal.GetDriverByName('PNG').CreateCopy(self.file.get_text(), gdal.Open('_temp.tif'),TRUE)
     GDALDatasetH dst_dataset;
     driver      = GDALGetDriverByName("PNG");
-    dst_dataset = GDALCreateCopy(driver, toFilename, GDALOpen("/sdcard/s52droid/_temp.tif", GA_ReadOnly), FALSE, NULL, NULL, NULL);
+    dst_dataset = GDALCreateCopy(driver, toFilename, GDALOpen(tmpTif, GA_ReadOnly), FALSE, NULL, NULL, NULL);
     GDALClose(dst_dataset);
 
     return TRUE;
@@ -7027,7 +7056,6 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
     if (2.0==S52_MP_get(S52_MAR_DISP_WHOLIN) || 3.0==S52_MP_get(S52_MAR_DISP_WHOLIN)) {
         //nSym  /= 2;
         for (int j=0; j<=nSym; ++j) {
-            //_glMatrixMode  (GL_MODELVIEW);
             _glLoadIdentity(GL_MODELVIEW);
 
             _glTranslated(xx, yy, 0.0);
@@ -7076,6 +7104,89 @@ int        S52_GL_drawArc(S52_obj *objA, S52_obj *objB)
     _checkError("S52_GL_drawArc()");
 
     return TRUE;
+}
+
+#if 0
+int              _intersect(double x1, double y1, double x2, double y2,
+                            double x3, double y3, double x4, double y4)
+// TRUE if line segment intersect, else FALSE
+// inspire from GEM III
+{
+    double Ax = x2-x1;
+    double Bx = x3-x4;
+
+    double Ay = y2-y1;
+    double By = y3-y4;
+
+    double Cx = x1-x3;
+    double Cy = y1-y3;
+
+    // alpha numerator
+    double d  = By*Cx - Bx*Cy;
+    // both denominator
+    double f  = Ay*Bx - Ax*By;
+
+    //é alpha tets
+    if (f > 0) {
+        if (d<0 || d>f)
+            return FALSE;
+    } else {
+        if (d>0 || d<f)
+            return FALSE;
+    }
+
+    // beta numerator
+    double e = Ax*Cy - Ay*Cx;
+
+    // beta tests
+    if (f > 0) {
+        if (e<0 || e>f)
+            return FALSE;
+    } else {
+        if (e>0 || e<f)
+            return FALSE;
+    }
+
+    return TRUE;
+}
+#endif
+
+int        S52_GL_isHazard(int nxyz, double *xyz)
+// TRUE if hazard found
+{
+    // Port
+    //_intersect(x1, y1, x2, y2, x3, y3, x4, y4);
+    // Starboard
+    //_intersect(x1, y1, x2, y2, x3, y3, x4, y4);
+
+#ifdef S52_USE_GL2
+    _d2f(_tessWorkBuf_f, nxyz, xyz);
+    memcpy(_hazardZone, _tessWorkBuf_f->data, sizeof(vertex_t) * nxyz * 3);
+#else
+    memcpy(_hazardZone, xyz, sizeof(vertex_t) * nxyz * 3);
+#endif
+
+    // highlight Hazard
+    int found = FALSE;
+    for (guint i=0; i<_objPick->len; ++i) {
+        S52_obj  *obj = (S52_obj *)g_ptr_array_index(_objPick, i);
+        S57_geo  *geo = S52_PL_getGeo(obj);
+
+        GLdouble *ppt = NULL;
+        guint     npt = 0;
+        if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
+            continue;
+
+        for (guint j=0; j<npt; ++j) {
+            if (TRUE == S57_isPtInside(nxyz, xyz, TRUE, ppt[j*3 + 0], ppt[j*3 + 1])) {
+                S57_highlightON(geo);
+                found = TRUE;
+                break;
+            }
+        }
+    }
+
+    return found;
 }
 
 
