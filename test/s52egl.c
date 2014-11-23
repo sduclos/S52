@@ -105,6 +105,7 @@ static S52ObjectHandle _waypnt4 = NULL;
 static S52ObjectHandle _leglin1 = NULL;
 static S52ObjectHandle _leglin2 = NULL;
 static S52ObjectHandle _leglin3 = NULL;
+static S52ObjectHandle _leglin4 = NULL;
 
 // test - VRMEBL
 // S52 object name:"ebline"
@@ -951,7 +952,7 @@ static int      _s52_setupOWNSHP(s52droid_state_t *state)
 }
 #endif  // USE_FAKE_AIS
 
-static int      _s52_setupLEGLIN(void)
+static int      _s52_setupIceRoute(void)
 {
 /*
 
@@ -987,7 +988,6 @@ route normale de navigation.
         double x,y,z;
     } WPxyz_t;
 
-    //*
     WPxyz_t WPxyz[4] = {
         {-69.33333, 48.33333, 0.0},  // WP1 - ALPHA
         {-68.5,     48.78333, 0.0},  // WP2 - BRAVO
@@ -997,13 +997,7 @@ route normale de navigation.
         //{-66.5,     49.0,     0.0}   // WP4 - test horizontal dot
         //{-66.0,     49.5,     0.0}   // WP4 - test vertical dot
     };
-    //*/
-    /*
-    WPxyz_t WPxyz[4] = {
-        {-69.33333, 48.33333, 0.0},  // WP1 - ALPHA
-        {-66.5,     49.5,     0.0}   // WP2 - BRAVO
-    };
-    */
+
     char attVal1[] = "select:2,OBJNAM:ALPHA";    // waypoint on alternate planned route
     char attVal2[] = "select:2,OBJNAM:BRAVO";    // waypoint on alternate planned route
     char attVal3[] = "select:2,OBJNAM:CHARLIE";  // waypoint on alternate planned route
@@ -1019,7 +1013,6 @@ route normale de navigation.
     _leglin1 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[0].y, WPxyz[0].x, WPxyz[1].y, WPxyz[1].x, NULL);
     _leglin2 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[1].y, WPxyz[1].x, WPxyz[2].y, WPxyz[2].x, _leglin1);
     _leglin3 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[2].y, WPxyz[2].x, WPxyz[3].y, WPxyz[3].x, _leglin2);
-    //_leglin4 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[3].y, WPxyz[3].x, WPxyz[4].y, WPxyz[4].x, _leglin3);
 
     /*
     {// test wholin
@@ -1028,6 +1021,40 @@ route normale de navigation.
         _wholin = S52_newMarObj("wholin", S52_LINES, 2, xyz, attVal);
     }
     */
+
+    return TRUE;
+}
+
+static int      _s52_setupLEGLIN(s52droid_state_t *state)
+{
+    // test vertical route on DEPCNT
+    _leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat - 0.02, state->cLon + 0.00, state->cLat + 0.02, state->cLon + 0.00, NULL);
+
+    // oblique / upbound - alarm
+    //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat + 0.01, state->cLon + 0.00, state->cLat + 0.05, state->cLon + 0.02, NULL);
+
+    // oblique - no alarm
+    //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat + 0.02, state->cLon + 0.00, state->cLat + 0.05, state->cLon + 0.02, NULL);
+
+    // oblique \  upbound - alarm
+    //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat - 0.01, state->cLon + 0.00, state->cLat + 0.02, state->cLon - 0.02, NULL);
+
+    // oblique / downbound - alarm
+    //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat + 0.02, state->cLon + 0.02, state->cLat - 0.05, state->cLon - 0.02, NULL);
+
+    // oblique \  downbound - alarm
+    //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat + 0.02, state->cLon - 0.02, state->cLat - 0.02, state->cLon + 0.02, NULL);
+
+    if (NULL == _leglin4) {
+        LOGI("s52egl:_s52_setupLEGLIN(): failed\n");
+        if (1.0 == S52_getMarinerParam(S52_MAR_ERROR))
+            LOGI("s52egl:_s52_setupLEGLIN(): ALARM ON\n");
+        if (2.0 == S52_getMarinerParam(S52_MAR_ERROR))
+            LOGI("s52egl:_s52_setupLEGLIN(): INDICATION ON\n");
+
+        // clear error
+        S52_setMarinerParam(S52_MAR_ERROR, 0.0);
+    }
 
     return TRUE;
 }
@@ -1429,8 +1456,9 @@ static int      _s52_init       (s52engine *engine)
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
     //S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 0.0);
-    // FIXME: check AIS mmsi when s52ais reconnect
-    S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 700.0); // older AIS - case where s52ais reconect
+    // older AIS - case where s52ais reconnect
+    // FIXME: maybe check AIS mmsi, so that same ohjH is used!
+    S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 700.0);
 
     //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
     S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
@@ -1464,7 +1492,8 @@ static int      _s52_init       (s52engine *engine)
     _s52_setupVRMEBL(&engine->state);
 
     // set route
-    _s52_setupLEGLIN();
+    //_s52_setupIceRoute();
+    _s52_setupLEGLIN(&engine->state);
 
     // wind farme for testing centroids in a concave poly
     _s52_setupPRDARE(&engine->state);
