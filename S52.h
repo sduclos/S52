@@ -58,7 +58,7 @@ typedef enum S52ObjectType {
 
 // global parameter for mariners' selection
 typedef enum S52MarinerParameter {
-    S52_MAR_ERROR               =  0,   // default to 0
+    S52_MAR_ERROR               =  0,   // 0 - no error, 1 - alarm, 2 - indication
     S52_MAR_SHOW_TEXT           =  1,   // flags to show text (see S52_setTextDisp() for details) (on/off) [default ON]
     S52_MAR_TWO_SHADES          =  2,   // flag indicating selection of two depth shades (on/off) [default ON]
     S52_MAR_SAFETY_CONTOUR      =  3,   // S52_LINES: selected safety contour (meters) [IMO PS 3.6]
@@ -139,11 +139,10 @@ typedef enum S52MarinerParameter {
 
     // FIXME: DISP TEXT SHADOW - 0-7 bit: N NE E SE S SW W NW, 0 - off
 
-    // pickAt(): 4 - pick stack at ownship pos (GUARDZONE_WIDTH x GUARDZONE_HEIGHT) !!
-    //S52_MAR_GUARDZONE_WIDTH   = ,   // FIXME: TODO, Danger/Indication Highlight, S52_checkGuardZone()!
-    //S52_MAR_GUARDZONE_HEIGHT  = ,   // FIXME: TODO, Danger/Indication Highlight, S52_checkGuardZone()!
+    S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters)
+    S52_MAR_GUARDZONE_LENGTH    = 47,   // Danger/Indication Highlight used by Position (meters, user computed from speed/time or distance)
 
-    S52_MAR_NUM                 = 46    // number of parameters
+    S52_MAR_NUM                 = 48    // number of parameters
 } S52MarinerParameter;
 
 // [3] debug - command word filter for profiling
@@ -449,7 +448,7 @@ DLL int    STD S52_setView(double  cLat, double  cLon, double  rNM, double  nort
  * @rNM:   (out) (transfer full): range (radius of view (NM), <0 unchange
  * @north: (out) (transfer full): angle from north (deg),     <0 unchange
  *
- * Get center of view / where to place the camera on model
+ * Get center of view / where is the camera on model
  *
  *
  * Return: TRUE on success, else FALSE
@@ -735,7 +734,7 @@ typedef unsigned char * (*S52_RADAR_cb)(double *cLat, double *cLng, double *rNM)
 DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius);
 
 /**
- * S52_dumpS57IDPixels:
+ * S52_dumpS57IDPixels: DEBUG dump region of framebuffer to .PNG
  * @toFilename: (in): PNG file (with full path) to dump pixels to
  * @S57ID:      (in): internal ID of object (return via S52_getObjList() or S52_pickAt())
  * @width:      (in): width of dump in pixels (max viewport width)
@@ -745,7 +744,8 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius);
  * Note: changing the size of the viewport require a call to draw() before this call
  * (ie size of framebuffer must be in sync with the size of the viewport).
  *
- * If @S57ID is zero (0) then the whole framebuffer is dumped (ie @width and @height are ignore)
+ * If @S57ID is zero (0) then the whole framebuffer is dumped (ie @width and @height are ignore).
+ * Note: use glReadPixels() instead to get raw pixles.
  *
  *
  * Return: TRUE on success, else FALSE
@@ -868,7 +868,7 @@ DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBeg
 
 /**
  * S52_newLEGLIN:
- * @select:     (in): Selection: 0 - undefined, 1 - planned, 2 - alternate
+ * @select:     (in): Selection: 1 - planned, 2 - alternate
  * @plnspd:     (in): planned speed (0.0 for no speed label)
  * @wholinDist: (in): distance of the 'wholin' (wheel-over-line) from End in NM
  * @latBegin:   (in): lat of LEGLIN beginning (degdecimal)
@@ -909,7 +909,7 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
  * S52_setDimension:
  * @objH: (in) (transfer none): addressed S52ObjectHandle
  * @a:    (in): dist form foward
- * @b:    (in): dist from aft       (a + b = lenght)
+ * @b:    (in): dist from aft       (a + b = length)
  * @c:    (in): dist from port
  * @d:    (in): dist from starboard (c + d = beam)
  *
