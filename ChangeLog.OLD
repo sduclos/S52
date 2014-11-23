@@ -4,6 +4,17 @@
 #
 
 
+2014NOV23
+    -start handling alarm / indication for GuardZone (LEGLIN)
+    -del unused S52_string_equal()
+
+2014NOV10
+    -fix _tmp.tif path in GL_dumpPixles()
+    -mod remove useles mutex unlock in newLEGLIN()
+
+2014NOV09
+    -fix afterglow VESSEL_DELAY time out
+
 2014NOV05
     -fix mariner obj extent for culling
     -mod rename S52_DListData to S52_DList
