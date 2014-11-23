@@ -339,7 +339,6 @@ static void  *_EGLctx = NULL;
 //
 // USER INPUT VALIDATION
 //
-// FIXME: move validation to util
 static double     _validate_bool(double val)
 {
     val = (val==0.0)? 0.0 : 1.0;
@@ -512,6 +511,7 @@ static double     _validate_lon(double val)
 }
 
 static int        _validate_screenPos(double *xx, double *yy)
+// return TRUE
 {
     int x;
     int y;
@@ -563,9 +563,8 @@ static double     _validate_filter(double mask)
     return (double)crntMask;
 }
 
-static double     _validate_floatPositive(double val)
+static double     _validate_positive(double val)
 {
-    //return fabs(val);
     return ABS(val);
 }
 
@@ -653,8 +652,8 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
 
         case S52_MAR_DISP_LEGEND         : val = _validate_bool(val);                   break;
 
-        case S52_MAR_DOTPITCH_MM_X       : val = _validate_floatPositive(val);          break;
-        case S52_MAR_DOTPITCH_MM_Y       : val = _validate_floatPositive(val);          break;
+        case S52_MAR_DOTPITCH_MM_X       : val = _validate_positive(val);               break;
+        case S52_MAR_DOTPITCH_MM_Y       : val = _validate_positive(val);               break;
 
         case S52_MAR_DISP_CALIB          : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_DRGARE_PATTERN : val = _validate_bool(val);                   break;
@@ -1616,8 +1615,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     // load basic def (ex color, CS, ...)
     S52_PL_init();
 
-    // put an error No in S52_MAR_ERROR
-    S52_MP_set(S52_MAR_ERROR, INFINITY);
+    // put an error No, default to 0 - no error
     //S52_MP_set(S52_MAR_ERROR, 0.0);
 
     // set default to show all text
@@ -3313,10 +3311,8 @@ static int        _intersec(_extent A, _extent B)
     if (B.S > A.N) return FALSE;
 
     // E-W
-    //if (_gmax.u < _gmin.u) {
     if (B.W > B.E) {
         // anti-meridian
-        //if ((x2 < _gmin.u) && (x1 > _gmax.u))
         if (((A.W < B.W) || (A.W > B.E)) && ((A.E < B.W) || (A.E > B.E))) {
         //if ((B.E > A.W) && (B.W > A.E)) {
         //if ((A.W < B.E) && (B.W > A.E))
@@ -3559,13 +3555,8 @@ static int        _cullObj(_cell *c)
     return TRUE;
 }
 
-static int        _cull(_extent ext)
-// FIXME: allow for chart rotation - north != 0.0
-// cull chart not in view extent
-// - viewport
-// - small cell region on top
+static int        _resetJournal(void)
 {
-    // reset journal
     for (guint i=0; i<_cellList->len; ++i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
         g_ptr_array_set_size(c->objList_supp, 0);
@@ -3573,13 +3564,24 @@ static int        _cull(_extent ext)
         g_ptr_array_set_size(c->textList,     0);
     }
 
+    return TRUE;
+}
+
+static int        _cull(_extent ext)
+// FIXME: allow for chart rotation - north != 0.0
+// cull chart not in view extent
+// - viewport
+// - small cell region on top
+{
+    _resetJournal();
+
     // all cells - larger region first (small scale)
     for (guint i=_cellList->len; i>0 ; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
-
+#ifdef S52_USE_WORLD
         if ((0==g_strcmp0(WORLD_SHP, c->filename->str)) && (FALSE==S52_MP_get(S52_MAR_DISP_WORLD)))
             continue;
-
+#endif
         // is this chart visible
         if (TRUE == _intersec(c->ext, ext)) {
             _cullObj(c);
@@ -4015,9 +4017,9 @@ DLL int    STD S52_draw(void)
         projUV uv1, uv2;
         S52_GL_getPRJView(&uv1.v, &uv1.u, &uv2.v, &uv2.u);
 
+        /*
         // test - optimisation using viewPort to draw area
         //    S52_CMD_WRD_FILTER_AC = 1 << 3,   // 001000 - AC
-        /*
         int x, y, width, height;
         if (S52_CMD_WRD_FILTER_AC & (int) S52_MP_get(S52_CMD_WRD_FILTER)) {
             S52_GL_getViewPort(&x, &y, &width, &height);
@@ -4279,7 +4281,6 @@ static int        _drawObj(const char *name)
                     // debug
                     //PRINTF("%s\n", S57_getName(geo));
 
-                    //if (0==S52_strncmp(name, S57_getName(geo), 6))
                     if (0 == g_strcmp0(name, S57_getName(geo)))
                         S52_GL_draw(obj);
 
@@ -4411,6 +4412,7 @@ DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx)
 DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north)
 {
     S52_CHECK_INIT;
+
     EGL_BEG(BLIT);
 
     // FIXME: try lock skip touch - appent when broken EGL does a glFinish() in EGL swap
@@ -4677,9 +4679,10 @@ static int        _getCellsExt(_extent* extSum)
         // for now just skip these pseudo cells
         if (0 == g_strcmp0(MARINER_CELL, c->filename->str))
             continue;
+#ifdef S52_USE_WORLD
         if (0 == g_strcmp0(WORLD_SHP,    c->filename->str))
             continue;
-
+#endif
         // first pass init extent
         if (FALSE == ret) {
             extSum->S = c->ext.S;
@@ -4977,6 +4980,7 @@ DLL int    STD S52_loadPLib(const char *plibName)
     // 1 - load / parse new PLb
     valueBuf PLibPath = {'\0'};
     if (NULL == plibName) {
+        // check in s52.cfg
         if (0 == S52_getConfig(CONF_PLIB, &PLibPath)) {
             PRINTF("default PLIB not found in .cfg (%s)\n", CONF_PLIB);
             GMUTEXUNLOCK(&_mp_mutex);
@@ -5082,6 +5086,8 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 #endif
 
     S52_CHECK_INIT;
+    // FIXME: is call to EGL really usefull for picking
+    EGL_BEG(PICK);
     S52_CHECK_MUTX;
 
     // check bound
@@ -5118,12 +5124,12 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 
         // save current view
         S52_GL_getPRJView(&ps, &pw, &pn, &pe);
-
-        // set view of the pick (PRJ)
+        // set view of the pick
+        S52_GL_setPRJView(ext.S, ext.W, ext.N, ext.E);
         //S52_GL_setViewPort(pixels_x-4, tmp_px_y-4, 8, 8);
         S52_GL_setViewPort(pixels_x, tmp_px_y, 1, 1);
-        S52_GL_setPRJView(ext.S, ext.W, ext.N, ext.E);
         //PRINTF("PICK PRJ EXTENT (swne): %f, %f  %f, %f \n", ext.s, ext.w, ext.n, ext.e);
+
 
 #ifdef S52_USE_PROJ
         {   // extent prj --> geo
@@ -5155,8 +5161,6 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
         _nTotal = 0;
         _nCull  = 0;
 
-        // Note: extent pastrk & afgves grow indefenetly
-
         // filter out objects that don't intersec the pick view
         _cull(ext);
 
@@ -5175,13 +5179,12 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     }
 
     // get object picked
-    const char *name = S52_GL_getNameObjPick();
+    const char *name = NULL;
+    name = S52_GL_getNameObjPick();
     PRINTF("OBJECT PICKED (%6.1f, %6.1f): %s\n", pixels_x, pixels_y, name);
 
 
     // restore view
-    // FIXME: setPRJview is snapped to the current ViewPort aspect ratio
-    // so ViewPort value as to be set before PRJView
     S52_GL_setViewPort(x, y, width, height);
     S52_GL_setPRJView(ps, pw, pn, pe);
     S52_GL_setGEOView(gs, gw, gn, ge);
@@ -5196,7 +5199,10 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     }
 #endif
 
+exit:
     GMUTEXUNLOCK(&_mp_mutex);
+
+    EGL_END(PICK);
 
     //return NULL; // debug
     return name;
@@ -5800,16 +5806,15 @@ static S52_obj   *_getS52obj(unsigned int S57ID)
 }
 
 DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height)
-// FIXME: handle S57ID == 0 (viewport dump)
 {
     S52_CHECK_INIT;
     S52_CHECK_MUTX;
 
     int ret = FALSE;
 
-    if (0 == S57ID)
+    if (0 == S57ID) {
         S52_GL_dumpS57IDPixels(toFilename, NULL, width, height);
-    else {
+    } else {
         S52_obj *obj = _getS52obj(S57ID);
         if (NULL != obj)
             ret = S52_GL_dumpS57IDPixels(toFilename, obj, width, height);
@@ -5923,11 +5928,15 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
 
     // full of coordinate
     if (NULL != xyz) {
+        if (0 == xyznbr)
+            g_assert(0);
         S57_setGeoSize(geo, xyznbr);
         _setExt(geo, xyznbr, xyz);
-    } else {
-        S57_setGeoSize(geo, 0);      // not really needed since geo struct is initialize to 0
     }
+    // not really needed since geo struct is initialize to 0
+    //else {
+    //    S57_setGeoSize(geo, 0);
+    //}
 
     if (NULL != listAttVal)
         _setAtt(geo, listAttVal);
@@ -6115,7 +6124,9 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
                                       S52ObjectHandle previousLEGLIN)
 {
     S52_CHECK_INIT;
-    //S52_CHECK_MUTX; // mutex in S52_newMarObj()
+    // FIXME: is the call to EGL really usefull for picking
+    EGL_BEG(LEGLIN);
+    S52_CHECK_MUTX;
 
     // debug
     PRINTF("select:%i, plnspd:%f, wholinDist:%f, latBegin:%f, lonBegin:%f, latEnd:%f, lonEnd:%f\n",
@@ -6127,23 +6138,236 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         select = 1;
     }
 
-    // FIXME: validate distance; wholinDist is not greater then start-end
-    // FIXME: validate float; plnspd, wholinDist
-
+    // FIXME: validate_distance; wholinDist is not greater then begin-end
+    // FIXME: validate_double; plnspd, wholinDist
     latBegin = _validate_lat(latBegin);
     lonBegin = _validate_lon(lonBegin);
     latEnd   = _validate_lat(latEnd);
     lonEnd   = _validate_lon(lonEnd);
 
+    //*
+    {  // check if DEPCNT intersec
+        double oldCRSR_PICK = S52_MP_get(S52_MAR_DISP_CRSR_PICK);
+        double beam2 = S52_MP_get(S52_MAR_GUARDZONE_BEAM)/2.0;
+        double ps,pw,pn,pe;  // hold PRJ view
+        double gs,gw,gn,ge;  // hold GEO view
+        int    x,y,w,h;      // hold ViewPort
+        _extent ext;
 
-    {
+        // set pick to stack mode
+        S52_MP_set(S52_MAR_DISP_CRSR_PICK, 2.0);
+
+        ext.N = (latBegin > latEnd) ? latBegin : latEnd;
+        ext.S = (latBegin < latEnd) ? latBegin : latEnd;
+        ext.E = (lonBegin < lonEnd) ? lonBegin : lonEnd;
+        ext.W = (lonBegin > lonEnd) ? lonBegin : lonEnd;
+
+                                                                       //   +-------------+
+        // save current view & set view of the pick                    //   |  | beam2    |
+        S52_GL_getViewPort(&x, &y, &w, &h);                            //   |  |          |
+        S52_GL_getPRJView(&ps, &pw, &pn, &pe);                         //   |--o A        |
+        S52_GL_getGEOView(&gs, &gw, &gn, &ge);                         //   |  \\\        |
+                                                                       //   |   \\\       |
+                                                                       //   |    \\\  LEG |
+                                                                       //   |     \\\     |
+        double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};        //   |      \\\    |
+        S57_geo2prj3dv(2, xyz);                                        //   |       \\\   |
+                                                                       //   |        \\\  |
+                                                                       //   |        B o--|
+                                                                       //   |          |  |
+                                                                       //   |    beam2 |  |
+                                                                       //   +-------------+
+
+        S52_GL_setViewPort(w/2, h/2, 1, 1);             // if chart rotated --> x=w/2, y=h/2
+        // FIXME: is -+beam2 the max
+        S52_GL_setPRJView(xyz[1]-beam2, xyz[0]-beam2, xyz[4]+beam2, xyz[3]+beam2);  // snap to viewPort
+        // FIXME: augment GEO for -+beam2
+        S52_GL_setGEOView(ext.S, ext.W, ext.N, ext.E);  // to cull obj
+
+        if (TRUE == S52_GL_begin(S52_GL_PICK)) {
+            // must reset all journal, but only "over" filled
+            _resetJournal();
+
+            _app();
+
+            // cull
+            // all cells - larger region first (small scale)
+            for (guint i=_cellList->len; i>0 ; --i) {
+                _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+#ifdef S52_USE_WORLD
+                if ((0==g_strcmp0(WORLD_SHP, c->filename->str)) && (FALSE==S52_MP_get(S52_MAR_DISP_WORLD)))
+                    continue;
+#endif
+                // is this chart visible
+                if (TRUE == _intersec(c->ext, ext)) {
+                    // layer 8, over radar, BASE, LINE
+                    // FIXME: later check AREA & POINT (OBSTRN04, WRECKS02)
+                    GPtrArray *rbin = c->renderBin[S52_PRIO_HAZRDS][S52_LINES];
+
+                    // for each object
+                    for (guint idx=0; idx<rbin->len; ++idx) {
+                        S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+                        S57_geo *geo = S52_PL_getGeo(obj);
+
+                        if (FALSE == S57_getSafetyContour(geo))
+                            continue;
+
+                        // outside view
+                        // NOTE: object can be inside 'ext' but outside the 'view' (cursor pick)
+                        if (TRUE == S52_GL_isOFFview(obj)) {
+                            ++_nCull;
+                            continue;
+                        }
+
+                        // over radar
+                        g_ptr_array_add(c->objList_over, obj);
+                    }
+                }
+            }
+
+            // render object that fall in the pick view
+            // FIXME: need timer to see if using GPU really faster vs CPU only
+            _draw();
+
+            S52_GL_end(S52_GL_PICK);
+        } else {
+            PRINTF("WARNING:S52_GL_begin() failed\n");
+        }
+
+        // put back original value
+        S52_GL_setViewPort(x, y, w, h);
+        S52_GL_setPRJView(ps, pw, pn, pe);
+        S52_GL_setGEOView(gs, gw, gn, ge);
+
+        S52_MP_set(S52_MAR_DISP_CRSR_PICK, oldCRSR_PICK);
+
+        {
+            double xyz[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
+            S57_geo2prj3dv(2, xyz);
+            double cog = ATAN2TODEG(xyz);
+            double xyz2[5*3];
+
+            // experiment I - align guardzone on lat/lon
+            //  LEG/
+            //    /    /
+            //   /    / beam/2
+            //   |\  /
+            //   | \/
+            //   | /
+            //   |/
+            //   +   lat_beam2
+            //   lon_leg
+
+
+            /* CCW
+            xyz2[ 0] = xyz[0] - beam2/sin((90.0 - cog)*DEG_TO_RAD);  // lonBeg
+            xyz2[ 1] = xyz[1];                                       // latBeg
+            //xyz2[ 0] = xyz[0];  // lonBeg
+            //xyz2[ 1] = xyz[1] - beam2/sin(cog*DEG_TO_RAD);  // latBeg
+            xyz2[ 2] = 0.0;
+
+            //xyz2[ 3] = xyz[3];                                       // lonEnd
+            //xyz2[ 4] = xyz[4] + beam2/sin(cog*DEG_TO_RAD);           // latEnd
+            xyz2[ 3] = xyz[3] + beam2/sin((90.0 - cog)*DEG_TO_RAD);                                       // lonEnd
+            xyz2[ 4] = xyz[4];           // latEnd
+            xyz2[ 5] = 0.0;
+
+            xyz2[ 9] = xyz[0];                                       // lonBeg
+            xyz2[10] = xyz[1] - beam2/sin(cog*DEG_TO_RAD);           // latBeg
+            xyz2[11] = 0.0;
+
+            xyz2[ 6] = xyz[3] + beam2/sin((90.0 - cog)*DEG_TO_RAD);  // lonEnd
+            xyz2[ 7] = xyz[4];                                       // latEnd
+            xyz2[ 8] = 0.0;
+            //*/
+
+            /* CW
+            xyz2[ 0] = xyz[0] - beam2/sin((90.0 - cog)*DEG_TO_RAD);  // lonBeg
+            xyz2[ 1] = xyz[1];                                       // latBeg
+            xyz2[ 2] = 0.0;
+
+            xyz2[ 9] = xyz[3];                                       // lonEnd
+            xyz2[10] = xyz[4] + beam2/sin(cog*DEG_TO_RAD);           // latEnd
+            xyz2[11] = 0.0;
+
+            xyz2[ 3] = xyz[0];                                       // lonBeg
+            xyz2[ 4] = xyz[1] - beam2/sin(cog*DEG_TO_RAD);           // latBeg
+            xyz2[ 5] = 0.0;
+
+            xyz2[ 6] = xyz[3] + beam2/sin((90.0 - cog)*DEG_TO_RAD);  // lonEnd
+            xyz2[ 7] = xyz[4];                                       // latEnd
+            xyz2[ 8] = 0.0;
+
+            xyz2[12] =   // lonEnd
+            xyz2[13] =   // latEnd
+            xyz2[14] = 0.0;
+            //*/
+
+            // experiment II - check rectangular GuardZone then check WP GuardZone
+            // OR add 2 pts (one at each end) beam2 length that extend leg!
+
+            // Corner-case, need rounded end
+            //
+            //    LEG1  *
+            // -------+ *   DEPCNT
+            //        | *
+            //        | *****
+            //     +--+--+
+            //     |  |  |
+            //     |  |  |  LEG2
+            // ----+--+  |
+            //     |     |
+            //     |     |
+
+            double dlon = cos(cog*DEG_TO_RAD) * beam2;
+            double dlat = sin(cog*DEG_TO_RAD) * beam2;
+
+            // CW
+            // starboard
+            xyz2[ 0] = xyz[0] + dlon;  // lonBeg
+            xyz2[ 1] = xyz[1] - dlat;  // latBeg
+            xyz2[ 2] = 0.0;
+
+            // port
+            xyz2[ 3] = xyz[0] - dlon;  // lonBeg
+            xyz2[ 4] = xyz[1] + dlat;  // latBeg
+            xyz2[ 5] = 0.0;
+
+            // port
+            xyz2[ 6] = xyz[3] - dlon;  // lonEnd
+            xyz2[ 7] = xyz[4] + dlat;  // latEnd
+            xyz2[ 8] = 0.0;
+
+            // sarboard
+            xyz2[ 9] = xyz[3] + dlon;  // lonEnd
+            xyz2[10] = xyz[4] - dlat;  // latEnd
+            xyz2[11] = 0.0;
+
+            // loop line
+            xyz2[12] = xyz2[ 0];       //
+            xyz2[13] = xyz2[ 1];       //
+            xyz2[14] = 0.0;
+
+            if (TRUE == S52_GL_isHazard(5, xyz2)) {
+                S52_MP_set(S52_MAR_ERROR, 2.0);  // indication
+            }
+        }
+    }
+
+exit:
+    GMUTEXUNLOCK(&_mp_mutex);
+
+    EGL_END(LEGLIN);
+
+    S52ObjectHandle leglin = NULL;
+
+    {   // create LEGLIN
         char   attval[80];
         double xyz[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
 
         // check if same point
         if (latBegin==latEnd  && lonBegin==lonEnd) {
             PRINTF("WARNING: rejecting this leglin (same point)\n");
-            GMUTEXUNLOCK(&_mp_mutex);
             return FALSE;
         }
 
@@ -6153,24 +6377,26 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
             SNPRINTF(attval, 80, "select:%i,plnspd:%f", select, plnspd);
         }
 
-        S52ObjectHandle leglin = S52_newMarObj("leglin", S52_LINES, 2, xyz, attval);
+        leglin = S52_newMarObj("leglin", S52_LINES, 2, xyz, attval);
 
         // NOTE: FALSE == (VOID*)NULL or FALSE == (int) 0
         if (FALSE != previousLEGLIN) {
             S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)previousLEGLIN);
             if (NULL == obj) {
                 PRINTF("WARNING: previousLEGLIN not a valid S52ObjectHandle\n");
-                previousLEGLIN = FALSE;
             } else {
                 S52_PL_setNextLeg((S52_obj*)previousLEGLIN, (S52_obj*)leglin);
             }
-
         }
 
-        GMUTEXUNLOCK(&_mp_mutex);
-
-        return leglin;
+        // check alram for this leg
+        if (0 != S52_MP_get(S52_MAR_ERROR)) {
+            S57_geo *geo = S52_PL_getGeo((S52_obj *)leglin);
+            S57_highlightON(geo);
+        }
     }
+
+    return leglin;
 }
 
 DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
@@ -6312,48 +6538,39 @@ DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int maxpts)
 static
     S52ObjectHandle STD    _setPointPosition(S52ObjectHandle objH, double latitude, double longitude, double heading)
 {
-    //PRINTF("-0- latitude:%f, longitude:%f, heading:%f\n", latitude, longitude, heading);
     double xyz[3] = {longitude, latitude, 0.0};
 
     // update extent
     S57_geo *geo = S52_PL_getGeo((S52_obj *)objH);
     _setExt(geo, 1, xyz);
 
-    //PRINTF("-1- latitude:%f, longitude:%f, heading:%f\n", latitude, longitude, heading);
-
 #ifdef S52_USE_PROJ
     if (FALSE == S57_geo2prj3dv(1, xyz)) {
         return FALSE;
     }
 #endif
+
     _updateGeo(objH, xyz);
 
-    // reset timer for AIS / afterglow
-    if ((0==g_strcmp0("vessel", S57_getName(geo))) ||
-        (0==g_strcmp0("afgves", S57_getName(geo)))) {
-
+    // reset timer for AIS
+    if (0 == g_strcmp0("vessel", S57_getName(geo))) {
         S52_PL_setTimeNow(objH);
-
         // optimisation (out of the blue): set 'orient' obj var directly
+        // rather then read it from attribut
         S52_PL_setSYorient((S52_obj *)objH, heading);
 
-        //PRINTF("-2- latitude:%f, longitude:%f, heading:%f\n", latitude, longitude, heading);
         {
             char   attval[80];
             SNPRINTF(attval, 80, "headng:%f", heading);
             _setAtt(geo, attval);
         }
-
-        //S52_GL_setOWNSHP(obj, heading);
     }
-
-
-    //PRINTF("-3- latitude:%f, longitude:%f, heading:%f\n", latitude, longitude, heading);
 
     return objH;
 }
 
 DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data)
+// FIXME: if ownshp check alarm
 {
     S52_CHECK_INIT;
 
@@ -6430,6 +6647,14 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
             _setExt(geo, 3, xyz);
         }
         //*/
+
+#ifdef S52_USE_AFGLOW
+        // update time for afterglow LINE
+        if (0 == g_strcmp0("afgves", S57_getName(geo))) {
+            S52_PL_setTimeNow(objH);
+        }
+#endif
+
     }
 
 exit:
@@ -6456,8 +6681,6 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
 
     // FIXME: bug, if 2 newVessel() from different process block on newMarObj()
 
-
-
     // debug
     //label = NULL;
     PRINTF("vesrce:%i, label:%s\n", vesrce, label);
@@ -6480,8 +6703,6 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
         }
 
         vessel = S52_newMarObj("vessel", S52_POINT, 1, xyz, attval);
-
-        //S52_PL_setTimeNow(vessel);
     }
 
     //PRINTF("objH:%p\n", vessel);
@@ -6800,4 +7021,3 @@ DLL int             STD S52_newCSYMB(void)
 
     return TRUE;
 }
-
