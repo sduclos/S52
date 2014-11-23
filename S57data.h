@@ -169,7 +169,7 @@ int       S57_geo2prj3dv(guint npt, double *data);
 int       S57_geo2prj(S57_geo *geo);
 #endif
 
-int       S57_isPtInside(int npt, double *xyz, double x, double y, int close);
+int       S57_isPtInside(int npt, double *xyz, gboolean close, double x, double y);
 int       S57_touch(S57_geo *geoA, S57_geo *geoB);
 
 guint     S57_getGeoSize(S57_geo *geo);
@@ -192,7 +192,10 @@ S57_AW_t  S57_getOrigAW (S57_geo *geo);
 
 int       S57_highlightON (S57_geo *geo);
 int       S57_highlightOFF(S57_geo *geo);
-int       S57_getHighlight(S57_geo *geo);
+gboolean  S57_getHighlight(S57_geo *geo);
+
+int       S57_setSafetyContour(S57_geo *geo, gboolean isSC);
+gboolean  S57_getSafetyContour(S57_geo *geo);
 
 //// returns the window boundary with the current projection. After  the geo2prj and initproj have been public, this function may be moved to application layer.
 //void S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax);
