@@ -270,6 +270,7 @@ s52eglarm : AR     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ar
 s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 
 #                     -DS52_USE_LOG                         \
+#                     -DS52_DEBUG $(DBG)
 
 s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/sysroot/include
 s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
@@ -286,9 +287,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
                      -DS52_USE_TXT_SHADOW                  \
-                     -DS52_USE_AFGLOW                      \
-                     -DS52_USE_LOG                         \
-                     -DS52_DEBUG $(DBG)
+                     -DS52_USE_AFGLOW
 
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
