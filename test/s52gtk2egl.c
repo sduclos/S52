@@ -1232,6 +1232,7 @@ int main (int argc, char** argv)
 
     gtk_widget_show_all(_engine.window);
 
+    // move to configure_event()
     //_egl_init(&_engine);
     //_s52_init(&_engine);
 
