@@ -239,20 +239,21 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
     ////////////////////////////////////////////
     // floating object
     //
-    if (0==g_strcmp0(name, "TOPMAR")) {
+    if (0 == g_strcmp0(name, "TOPMAR")) {
         GString *lnam = S57_getAttVal(geo, "LNAM");
         for (guint i=0; i<local->topmar_list->len; ++i) {
             S57_geo *other = (S57_geo *) g_ptr_array_index(local->topmar_list, i);
-            GString *olnam = S57_getAttVal(other, "LNAM");
 
             // skip if not at same position
             if (FALSE == _intersecGEO(geo, other))
                 continue;
 
-            // skip if it's same S57 object
-            //if (TRUE == g_string_equal(lnam, olnam))
-            if (TRUE == S52_string_equal(lnam, olnam))
-                continue;
+            { // skip if it's same S57 object
+                GString *olnam = S57_getAttVal(other, "LNAM");
+                //if (TRUE == S52_string_equal(lnam, olnam))
+                if (0 == g_strcmp0(lnam->str, olnam->str))
+                    continue;
+            }
 
             if (NULL == S57_getTouchTOPMAR(geo)) {
                 S57_setTouchTOPMAR(geo, other);
@@ -270,7 +271,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
     // experimental:
     // check if this buoy has a lights
     //
-    if (0==g_strcmp0(name, "BOYLAT")) {
+    if (0 == g_strcmp0(name, "BOYLAT")) {
         for (guint i=0; i<local->lights_list->len; ++i) {
             S57_geo *light = (S57_geo *) g_ptr_array_index(local->lights_list, i);
 
@@ -309,7 +310,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
     ////////////////////////////////////////////
     // chaine light at same position
     //
-    if (0==g_strcmp0(name, "LIGHTS")) {
+    if (0 == g_strcmp0(name, "LIGHTS")) {
         GString *lnam = S57_getAttVal(geo, "LNAM");
         //unsigned int i = 0;
 
@@ -321,16 +322,17 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
 
         for (guint i=0; i<local->lights_list->len; ++i) {
             S57_geo *other = (S57_geo *) g_ptr_array_index(local->lights_list, i);
-            GString *olnam = S57_getAttVal(other, "LNAM");
 
             // skip if not at same position
             if (FALSE == _intersecGEO(geo, other))
                 continue;
 
-            // skip if it's same S57 object
-            //if (TRUE == g_string_equal(lnam, olnam))
-            if (TRUE == S52_string_equal(lnam, olnam))
-                continue;
+            {  // skip if it's same S57 object
+                GString *olnam = S57_getAttVal(other, "LNAM");
+                //if (TRUE == S52_string_equal(lnam, olnam))
+                if (0 == g_strcmp0(lnam->str, olnam->str))
+                    continue;
+            }
 
             // chaine lights
             //if (NULL == S57_getTouchLIGHTS(geo)) {
@@ -400,11 +402,10 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         for (guint i=0; i<local->depare_list->len; ++i) {
             S57_geo *other = (S57_geo *) g_ptr_array_index(local->depare_list, i);
             GString *olnam = S57_getAttVal(other, "LNAM");
-            //char    *oname = S57_getName(other);
 
             // skip if it's same S57 object
-            //if (TRUE == g_string_equal(lnam, olnam))
-            if (TRUE == S52_string_equal(lnam, olnam))
+            //if (TRUE == S52_string_equal(lnam, olnam))
+            if (0 == g_strcmp0(lnam->str, olnam->str))
                 continue;
 
             /*
@@ -1151,13 +1152,15 @@ static GString *DEPCNT02 (S57_geo *geo)
     }
 
     if (safe) {
+        S57_setSafetyContour(geo, TRUE);
         S57_setScamin(geo, INFINITY);
         depcnt02 = g_string_prepend(depcnt02, ";OP(8OD13010)");
-    } else
+    } else {
+        S57_setSafetyContour(geo, FALSE);
         depcnt02 = g_string_prepend(depcnt02, ";OP(---33020)");
+    }
 
-    // depth label (facultative in S-52)
-    /*
+    /* depth label (facultative in S-52)
     GString *sndfrm02 = _SNDFRM02(geo, depth_value);
     depcnt02 = g_string_append(depcnt02, sndfrm02->str);
     g_string_free(sndfrm02, TRUE);
@@ -1891,6 +1894,7 @@ static GString *_LITDSN01(S57_geo *geo)
     return litdsn01;
 }
 
+// forward decl.
 static GString *_UDWHAZ03(S57_geo *geo, double depth_value);
 static GString *_QUAPNT01(S57_geo *geo);
 
@@ -3225,7 +3229,6 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
         //}
         //S57_unlinkObj(geo);
 
-        //danger = TRUE;   // true
         if (TRUE == danger) {
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
             if (NULL != watlevstr && ('1' == *watlevstr->str || '2' == *watlevstr->str))
