@@ -1645,8 +1645,8 @@ static int        _parseLUPT(_PL *fp)
                     while (NULL != LUPtmp) {
                         // replace
                         if ((NULL != LUP->ATTC) && (NULL != LUPtmp->ATTC) &&
-                            //(TRUE == g_string_equal(LUPtmp->ATTC, LUP->ATTC)) )
-                            (TRUE == S52_string_equal(LUPtmp->ATTC, LUP->ATTC)) )
+                            //(TRUE == S52_string_equal(LUPtmp->ATTC, LUP->ATTC)) )
+                            (0 == g_strcmp0(LUPtmp->ATTC->str, LUP->ATTC->str)) )
                         {   // can't replace more then one LUP
                             // the compination of LUP NAME & LUP ATTC is unique for all LUP
                             // this is juste to make sure that the list is consistant
@@ -2493,38 +2493,23 @@ int         S52_PL_done()
 }
 
 S52_Color  *S52_PL_getColor(const char *colorName)
-// FIXME: should save index
 {
-    if (NULL == _colTables) {
-        PRINTF("ERROR: PL not initialized .. exiting\n");
-        g_assert(0);
-        return NULL;
-    }
-
     return_if_null(colorName);
 
-    //S52_Color *c   = (S52_Color*) g_tree_lookup(_colref, (gpointer*)colorName);
     gpointer idx = g_tree_lookup(_colref, (gpointer*)colorName);
     if (NULL != idx) {
-        //c = &g_array_index(ct->colors, S52_Color, c->cidx);
-        //c = &g_array_index(ct->colors, S52_Color, i-1);
-        //return c;
 
         // IHO color index start at 1
-        //int i = GPOINTER_TO_INT(idx);
         guchar i = GPOINTER_TO_INT(idx);
 
         // libS52 color index start at 0
         return S52_PL_getColorAt(i-1);
     }
 
-    // failsafe color: 'no data'
-    //S52_Color *c = &g_array_index(ct->colors, S52_Color, 0);
     PRINTF("ERROR: no color name: %s\n", colorName);
     g_assert(0);
 
     return NULL;
-
 }
 
 S52_Color  *S52_PL_getColorAt(guchar index)
@@ -2542,7 +2527,6 @@ S52_Color  *S52_PL_getColorAt(guchar index)
         return NULL;
     }
 
-    // getPalette()
     unsigned int n = (unsigned int) S52_MP_get(S52_MAR_COLOR_PALETTE);
 
     // this has allready taken care off
@@ -3025,16 +3009,21 @@ int         S52_PL_getLSdata(_S52_obj *obj, char *pen_w, char *style, S52_Color 
     *pen_w = cmd->param[5];
     *style = cmd->param[2];
 
-    // visual check for S52_USE_SUPP_LINE_OVERLAP
-    //if (TRUE == obj->highlight)
     if (TRUE == S57_getHighlight(obj->geoData)) {
         *color = S52_PL_getColor("DNGHL");
-        S57_highlightOFF(obj->geoData);
+        //S57_highlightOFF(obj->geoData);
     } else
         *color = S52_PL_getColor(cmd->param+7);
 
-    // make sure that line have no transparency set by S52_PL_getACdata()
-    //(*color)->trans = '0';
+    /*
+    // FIXME: line can't have transparency - check colorAt and then table that
+    // should be set to '0' rather than here
+    if ('0' != color->trans) {
+        PRINTF("ERROR: color->trans != '0'\n");
+        g_assert(0);
+        return FALSE;
+    }
+    */
 
     return TRUE;
 }
@@ -3145,21 +3134,12 @@ int         S52_PL_getSYspeed(_S52_obj *obj, double *speed)
 int         S52_PL_setLCdata(_S52_cmdDef *def, char pen_w)
 {
     return_if_null(def);
-    /*
-    if (NULL == color) {
-        // danger high light
-        def->col = S52_PL_getColor("DNGHL");
-        PRINTF("ERROR: no color .. defaulting to DNGHL\n");
-    } else
-        def->col = color;
-    */
 
     def->pen_w = pen_w;
 
     return TRUE;
 }
 
-//double      S52_PL_getLCdata(S52_obj *obj, double dotpitch_x, char *pen_w)
 int         S52_PL_getLCdata(_S52_obj *obj, double *symlen, char *pen_w)
 // compute symbol run lenght in pixel
 // set pen_w
@@ -3212,22 +3192,17 @@ S52_Color  *S52_PL_getACdata(_S52_obj *obj)
     if (NULL == cmd)
         return NULL;
 
-    //S52_Color *color = S52_PL_getColor(cmd->param);
     S52_Color *color = NULL;
-    //if (TRUE == obj->highlight)
     if (TRUE == S57_getHighlight(obj->geoData)) {
         color = S52_PL_getColor("DNGHL");
-        S57_highlightOFF(obj->geoData);
+        //S57_highlightOFF(obj->geoData);
     } else
         color = S52_PL_getColor(cmd->param);
 
-
-    // FIXME: this will put this object transparancy to
-    // all objects using this color
     if (cmd->param[5] == ',')
         color->trans = cmd->param[6];
     else
-        color->trans = '0';
+        color->trans = '0';  // FIXME: this is useless
 
     return color;
 }
@@ -3495,39 +3470,42 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
         c   = cmd->cmd.def->DListData.colors;
     }
 
-    //debug - trying to nail a curious bug
+    // debug - trying to nail a curious bug
     if (MAX_SUBLIST < nbr) {
         PRINTF("ERROR: color index out of bound\n");
         g_assert(0);
         return NULL;
     }
 
+    // FIXME: refactor this
     for (guint i=0; i<nbr; ++i) {
-            S52_Color *col = S52_PL_getColorAt(c[i].cidx);
+        S52_Color *col = S52_PL_getColorAt(c[i].cidx);
 
-            // ugly: pull transparency from symbol color not from PLib
-            guchar cidx  = c[i].cidx;
-            guchar trans = c[i].trans;
-            guchar pen_w = c[i].pen_w;
+        // FIXME: ugly: pull transparency from symbol color not from PLib
+        guchar cidx  = c[i].cidx;
+        guchar trans = c[i].trans;
+        guchar pen_w = c[i].pen_w;
 
-            // debug --trans is set to a value
-            // but ..
-            //if (0 == trans)
-            //    g_assert(0);
-
-            //if (TRUE == obj->highlight) {
-            if (TRUE == S57_getHighlight(obj->geoData)) {
-                S57_highlightOFF(obj->geoData);
-                S52_Color *colhigh = S52_PL_getColor("DNGHL");
-                c[i] = *colhigh;
-            } else
-                c[i] = *col;    // this will also copy the 'cidx' from the color table
+        if (TRUE == S57_getHighlight(obj->geoData)) {
+            S52_Color *colhigh = S52_PL_getColor("DNGHL");
+            c[i] = *colhigh;
+            //S57_highlightOFF(obj->geoData);
+        } else {
+            // this will also copy the 'cidx' from the color table
+            c[i] = *col;
 
             // FIXME: this is not needed
-            c[i].cidx  = cidx;   // in realty there should be the same
-            // FIXME: this is comming from symb vector
-            c[i].trans = trans;  // overwrite 'trans' with the symbol trans
-            c[i].pen_w = pen_w;
+            // in reality there should be the same
+            if (c[i].cidx != cidx) {
+                PRINTF("ERROR: color index mismatch\n");
+                g_assert(0);
+                return NULL;
+            }
+        }
+
+        // FIXME: this is comming from symb vector
+        c[i].trans = trans;  // overwrite 'trans' with the symbol trans
+        c[i].pen_w = pen_w;
     }
 
     if (S52_CMD_ARE_CO == cmd->cmdWord)
