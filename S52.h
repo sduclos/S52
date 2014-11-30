@@ -74,6 +74,7 @@ typedef enum S52MarinerParameter {
     S52_MAR_SYMPLIFIED_PNT      = 13,   // simplified point (on/off) [default ON]
     S52_MAR_DISP_CATEGORY       = 14,   // display category (see [1] bellow)
     S52_MAR_COLOR_PALETTE       = 15,   // color palette  (0 - DAY_BRIGHT, 1 - DAY_BLACKBACK, 2 - DAY_WHITEBACK, 3 - DUSK, 4 - NIGHT)
+                                        // (call S52_getPalettesNameList() to get the current palette list
 
     S52_MAR_VECPER              = 16,   // vecper: Vector-length time-period (min) (normaly 6 or 12)
     S52_MAR_VECMRK              = 17,   // vecmrk: Vector time-mark interval (0 - none, 1 - 1&6 min, 2 - 6 min)
@@ -139,7 +140,7 @@ typedef enum S52MarinerParameter {
 
     // FIXME: DISP TEXT SHADOW - 0-7 bit: N NE E SE S SW W NW, 0 - off
 
-    S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters)
+    S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters) [0.0 - off]
     S52_MAR_GUARDZONE_LENGTH    = 47,   // Danger/Indication Highlight used by Position (meters, user computed from speed/time or distance)
 
     S52_MAR_NUM                 = 48    // number of parameters
@@ -164,7 +165,7 @@ typedef enum S52_CMD_WRD_FILTER_t {
 // 0x0010000 - MARINERS' STANDARD: - (default!)
 // 0x0100000 - MARINERS' OTHER:    -
 // 0x1000000 - MARINERS' SELECT:   - (see [2])
-// [2] the display/supression of objects on STANDARD and/or OHTER is set via S52_toggleObjClass/ON/OFF()
+// [2] the display/supression of objects on STANDARD and/or OHTER is set via S52_setS57ObjClassSupp()
 
 typedef enum S52_MAR_DISP_CATEGORY_t {
     S52_MAR_DISP_CATEGORY_BASE     = 0,        // 0x0000000 - DISPLAY BASE
@@ -179,8 +180,23 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
     S52_MAR_DISP_LAYER_LAST_SELECT = 1 << 6    // 0x1000000 - MARINERS' SELECT
 } S52_MAR_DISP_CATEGORY_t;
 
+/**
+ * S52_version:
+ *
+ * Internal Version.
+ *
+ * Note: can be called before S52_init()
+ *
+ *
+ * Return: (transfer none): String with the version of libS52 and the '#define' used to build it
+ */
+DLL const char * STD S52_version(void);
 
-//-----need a GL context (main loop) ------------------------
+//
+//----- All call bellow need S52_init() first ----------------
+//
+
+//----- need a GL context / realize event (main loop) --------
 
 /**
  * S52_setEGLcb: register callback use by draw(), drawLast(), drawStr() and drawBlit()
@@ -281,8 +297,6 @@ DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int
  *
  *
  * NOTE:
- *  - BUG: Y is Down, but origin is LL !!
- *  - X is Right and Y is Down to match X11 origin
  *  - in the next frame, the object is drawn with the "DNGHL" color (experimental))
  *  - using 'double' instead of 'unsigned int' because X11 handle mouse in 'double'.
  *
@@ -303,6 +317,8 @@ DLL const char * STD S52_pickAt(double pixels_x, double pixels_y);
  *
  * Convert pixel X/Y to longitude/latitude (deg)
  *
+ * WARNING: need cell loaded to project against
+ *
  *
  * Return: TRUE on success, else FALSE
  */
@@ -314,6 +330,9 @@ DLL int    STD S52_xy2LL(double *pixels_x,  double *pixels_y);
  * @latitude:  (inout): degree (return Y)
  *
  * Convert longitude/latitude to X/Y (pixel - origin LL corner)
+ *
+ * WARNING: need cell loaded to project against
+ *
  *
  * Return: TRUE on success, else FALSE
  */
@@ -342,18 +361,6 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude);
  */
 typedef int (*S52_log_cb)(const char *str);
 DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_w, int screen_mm_h, S52_log_cb log_cb);
-
-/**
- * S52_version:
- *
- * Internal Version.
- *
- * Note: can be called before S52_init()
- *
- *
- * Return: (transfer none): String with the version of libS52 and the '#define' used to build it
- */
-DLL const char * STD S52_version(void);
 
 /**
  * S52_done:
@@ -477,7 +484,7 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
  *
  * Get the value of the Mariners' Parameter @paramID (global variables/system wide)
  *
- * Invalid @paramID will return INFINITY, the value of S52_MAR_ERROR
+ * Invalid @paramID will return the value of S52_MAR_ERROR
  *
  *
  * Return: value
@@ -496,7 +503,6 @@ DLL double STD S52_getMarinerParam(S52MarinerParameter paramID);
  * Return: TRUE on success, else FALSE
  */
 DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
-
 
 /**
  * S52_setTextDisp:
@@ -538,8 +544,9 @@ DLL int    STD S52_getTextDisp(int dispPrioIdx);
  *
  * Return: TRUE if transition ON to OFF or OFF to ON, else FALSE
  */
-DLL int    STD S52_toggleObjClass   (const char *className);
+//DLL int    STD S52_toggleObjClass   (const char *className);
 
+// DEPRECATED
 /**
  * S52_toggleObjClassON:
  * @className: (in): name of the classe of S57 object
@@ -551,8 +558,9 @@ DLL int    STD S52_toggleObjClass   (const char *className);
  *
  * Return: TRUE if transition OFF to ON, else FALSE, error -1 (DISPLAYBASE or invalid className)
  */
-DLL int    STD S52_toggleObjClassON (const char *className);
+//DLL int    STD S52_toggleObjClassON (const char *className);
 
+// DEPRECATED
 /**
  * S52_toggleObjClassOFF:
  * @className: (in): name of the classe of S57 object
@@ -564,13 +572,13 @@ DLL int    STD S52_toggleObjClassON (const char *className);
  *
  * Return: TRUE if transition ON to OFF, else FALSE, error -1 (DISPLAYBASE or invalid className)
  */
-DLL int    STD S52_toggleObjClassOFF(const char *className);
+//DLL int    STD S52_toggleObjClassOFF(const char *className);
 
 /**
  * S52_getS57ObjClassSupp:
  * @className: (in): name of the classe of S57 object
  *
- * get Object class suppression
+ * get Object class suppression state
  *
  *
  * Return: TRUE if suppression is ON else FALSE, error -1 (DISPLAYBASE or invalid className)
@@ -584,8 +592,9 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className);
  *
  * set suppression (TRUE/FALSE) from display of all Objects of the S57 class @className
  *
+ * NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT.
  *
- * Return: TRUE if call successfull else FALSE, error -1 (DISPLAYBASE or invalid className)
+ * Return: TRUE if call successfull to set new value else FALSE, error -1 (DISPLAYBASE or invalid className)
  */
 DLL int    STD S52_setS57ObjClassSupp(const char *className, int value);
 
@@ -595,8 +604,6 @@ DLL int    STD S52_setS57ObjClassSupp(const char *className, int value);
  *
  * If @plibName is NULL look for label 'PLIB' in s52.cfg
  *
- * WARNING: after loadPLib() all S52ObjectHandle are invalid, so user must
- * reload them to get new S52ObjectHandle.
  *
  * Return: TRUE on success, else FALSE
  */
@@ -606,7 +613,8 @@ DLL int    STD S52_loadPLib(const char *plibName);
  * S52_getPLibNameList:
  *
  * List of PLib name loaded delimited by ','
- * WARNING: the return str can be dandling, so raw C call must save
+ *
+ * WARNING: the returned str can become dandling, so raw C call must save
  * the string before calling libS52 again
  *
  *
@@ -618,7 +626,9 @@ DLL const char * STD S52_getPLibNameList(void);
  * S52_getPalettesNameList:
  *
  * List of palettes name loaded separated by ','.
- * WARNING: *BUG*, str can be dandling, so raw C call must save
+ * Note: use S52_MAR_COLOR_PALETTE, as an index, to select one of them.
+ *
+ * WARNING: the returned str can become dandling, so raw C call must save
  * the string before calling libS52 again
  *
  *
@@ -630,7 +640,8 @@ DLL const char * STD S52_getPalettesNameList(void);
  * S52_getCellNameList:
  *
  * List of cells name loaded
- * WARNING: *BUG*, str can be dandling, so raw C call must save
+ *
+ * WARNING: the returned str can become dandling, so raw C call must save
  * the string before calling libS52 again
  *
  *
@@ -645,7 +656,8 @@ DLL const char * STD S52_getCellNameList(void);
  * if @cellName is not NULL then return a list of all S57 class
  * in the cell @cellName. The first element of the list is the cell's name.
  * If @cellName is NULL then all S57 class is return.
- * WARNING: the return str can be dandling, so raw C call must save
+ *
+ * WARNING: the returned str can become dandling, so raw C call must save
  * the string before calling libS52 again
  *
  *
@@ -679,8 +691,9 @@ DLL const char * STD S52_getObjList(const char *cellName, const char *className)
  * S52_getAttList: get Attributes of a S52 object (S57ID)
  * @S57ID:  (in) : a S52 object has a unique S57ID
  *
- * Where the first elementy is the ID, folowed by <key>:<value> pair
- * WARNING: the return str can be dandling, so raw C call must save
+ * Where the first elementy is the ID, folowed by <key>:<value> pair.
+ *
+ * WARNING: the return str can become dandling, so raw C call must save
  * the string before calling libS52 again
  *
  *
@@ -979,7 +992,7 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
 /**
  * S52_setVESSELlabel:
  * @objH:     (in) (transfer none): addressed S52ObjectHandle
- * @newLabel: (in) (allow-none): NULL or a string
+ * @newLabel: (in) (allow-none)   : NULL or a string
  *
  * (re) set label
  * Note: text priority of @newLabel is 76
@@ -1042,13 +1055,15 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
 /**
  * S52_setVRMEBL:
  * @objH:     (in) (transfer none): addressed S52ObjectHandle
- * @pixels_x: (in): origin LL corner
- * @pixels_y: (in): origin LL corner
- * @brg:      (in): bearing from origine (FIXME: no offset from S52_setDimension())
- * @rge:      (in): range   from origine (FIXME: no offset from S52_setDimension())
+ * @pixels_x: (in)                : origin LL corner
+ * @pixels_y: (in)                : origin LL corner
+ * @brg:      (out) (allow-none)  : NULL or bearing from origine (FIXME: no offset from S52_setDimension())
+ * @rge:      (out) (allow-none)  : NULL or range   from origine (FIXME: no offset from S52_setDimension())
  *
- * The first (x,y) will set the origine in the case that this object was
+ * The first (@pixels_x,@pixels_y) will set the origine in the case that this object was
  * created (new) with the parameter @setOrigin set to TRUE
+ *
+ * WARNING: need cell loaded to project against
  *
  *
  * Return: (transfer none): the handle to S52_obj or NULL if call fail
