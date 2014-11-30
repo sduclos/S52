@@ -27,7 +27,6 @@
 #include <math.h>       // INFINITY
 
 #ifdef S52_USE_PROJ
-#include <proj_api.h>   // projUV, projXY, projPJ
 static projPJ      _pjsrc   = NULL;   // projection source
 static projPJ      _pjdst   = NULL;   // projection destination
 static char       *_pjstr   = NULL;
@@ -137,9 +136,9 @@ typedef struct _S57_geo {
     S57_geo     *nextPoly;
 #endif
 
-    gboolean     highlight;  // highlight this geo object (cursor pick - experimental)
+    gboolean     highlight;  // highlight this geo object (cursor pick / hazard - experimental)
 
-    gboolean     safetyContour;  // TRUE if a Safety Contour - use by leglin and GUARDZONE
+    gboolean     hazard;     // TRUE if a Safety Contour / hazard - use by leglin and GUARDZONE
 
 } _S57_geo;
 
@@ -222,13 +221,13 @@ int        S57_doneData   (_S57_geo *geo, gpointer user_data)
     return TRUE;
 }
 
-#ifdef S52_USE_PROJ
 int        S57_initPROJ()
 // NOTE: corrected for PROJ 4.6.0 ("datum=WGS84")
 {
     if (FALSE == _doInit)
         return FALSE;
 
+#ifdef S52_USE_PROJ
     const char *pj_ver = pj_get_release();
     if (NULL != pj_ver)
         PRINTF("PROJ4 VERSION: %s\n", pj_ver);
@@ -239,20 +238,23 @@ int        S57_initPROJ()
         S57_donePROJ();
         return FALSE;
     }
-
-    // FIXME: will need resetting for different projection
-    _doInit = FALSE;
+#endif
 
     if (NULL == _attList)
         _attList = g_string_new("");
+
+    // FIXME: will need resetting for different projection
+    _doInit = FALSE;
 
     return TRUE;
 }
 
 int        S57_donePROJ()
 {
+#ifdef S52_USE_PROJ
     if (NULL != _pjsrc) pj_free(_pjsrc);
     if (NULL != _pjdst) pj_free(_pjdst);
+#endif
 
     _pjsrc  = NULL;
     _pjdst  = NULL;
@@ -311,6 +313,7 @@ PROJCS["WGS 84 / Pseudo-Mercator",
     _pjstr = g_strdup_printf(templ, lat, lon);
     PRINTF("DEBUG: lat:%f, lon:%f [%s]\n", lat, lon, _pjstr);
 
+#ifdef S52_USE_PROJ
     if (NULL != _pjdst)
         pj_free(_pjdst);
 
@@ -319,6 +322,7 @@ PROJCS["WGS 84 / Pseudo-Mercator",
         g_assert(0);
         return FALSE;
     }
+#endif
 
     return TRUE;
 }
@@ -332,9 +336,9 @@ projXY     S57_prj2geo(projUV uv)
 // convert PROJ to geographic (LL)
 {
     if (TRUE == _doInit) return uv;
-
     if (NULL == _pjdst)  return uv;
 
+#ifdef S52_USE_PROJ
     uv = pj_inv(uv, _pjdst);
     if (0 != pj_errno) {
         PRINTF("ERROR: x=%f y=%f %s\n", uv.u, uv.v, pj_strerrno(pj_errno));
@@ -344,6 +348,7 @@ projXY     S57_prj2geo(projUV uv)
 
     uv.u /= DEG_TO_RAD;
     uv.v /= DEG_TO_RAD;
+#endif
 
     return uv;
 }
@@ -368,6 +373,7 @@ int        S57_geo2prj3dv(guint npt, double *data)
         return FALSE;
     }
 
+#ifdef S52_USE_PROJ
     // deg to rad --latlon
     for (guint i=0; i<npt; ++i, ++pt) {
         pt->x *= DEG_TO_RAD,
@@ -389,6 +395,7 @@ int        S57_geo2prj3dv(guint npt, double *data)
         g_assert(0);
         return FALSE;
     }
+#endif
 
     return TRUE;
 }
@@ -400,6 +407,7 @@ int        S57_geo2prj(_S57_geo *geo)
     if (TRUE == _doInit)
         S57_initPROJ();
 
+#ifdef S52_USE_PROJ
     guint nr = S57_getRingNbr(geo);
     for (guint i=0; i<nr; ++i) {
         guint   npt;
@@ -408,10 +416,10 @@ int        S57_geo2prj(_S57_geo *geo)
             if (FALSE == S57_geo2prj3dv(npt, ppt))
                 return FALSE;
     }
+#endif  // S52_USE_PROJ
 
     return TRUE;
 }
-#endif
 
 S57_geo   *S57_setPOINT(geocoord *xyz)
 {
@@ -1777,27 +1785,27 @@ int        S57_highlightOFF(_S57_geo *geo)
     return TRUE;
 }
 
-gboolean   S57_getHighlight(_S57_geo *geo)
+gboolean   S57_isHighlighted(_S57_geo *geo)
 {
     return_if_null(geo);
 
     return geo->highlight;
 }
 
-int        S57_setSafetyContour(S57_geo *geo, gboolean isSC)
+int        S57_setHazard(S57_geo *geo, gboolean hazard)
 {
     return_if_null(geo);
 
-    geo->safetyContour = isSC;
+    geo->hazard = hazard;
 
     return TRUE;
 }
 
-int        S57_getSafetyContour(S57_geo *geo)
+int        S57_isHazard(S57_geo *geo)
 {
     return_if_null(geo);
 
-    return geo->safetyContour;
+    return geo->hazard;
 }
 
 
