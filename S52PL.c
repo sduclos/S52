@@ -2106,10 +2106,8 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
                 double height = S52_atof(value->str);
 
                 // ajust datum if required
-                //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
-                    double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                    height += datum;
-                //}
+                double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
+                height += datum;
                 g_snprintf(buf, 4, "%4.1f", height);
 
                 return str;
@@ -2123,10 +2121,8 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
                 double height = S52_atof(value->str);
 
                 // ajust datum if required
-                //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
-                    double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                    height -= datum;
-                //}
+                double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
+                height -= datum;
                 g_snprintf(buf, 4, "%4.1fm ", height);
 
                 return str;
@@ -2872,11 +2868,11 @@ static int        _getAlt(_S52_obj *obj)
     int alt = 0;
 
     // use alternate point symbol
-    if ((POINT_T==S52_PL_getFTYP(obj)) && (FALSE==S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
+    if ((POINT_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
         alt = 1;
 
     // use alternate area symbol
-    if ((AREAS_T==S52_PL_getFTYP(obj)) && (FALSE==S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
+    if ((AREAS_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
         alt = 1;
 
     return alt;
@@ -3009,7 +3005,7 @@ int         S52_PL_getLSdata(_S52_obj *obj, char *pen_w, char *style, S52_Color 
     *pen_w = cmd->param[5];
     *style = cmd->param[2];
 
-    if (TRUE == S57_getHighlight(obj->geoData)) {
+    if (TRUE == S57_isHighlighted(obj->geoData)) {
         *color = S52_PL_getColor("DNGHL");
         //S57_highlightOFF(obj->geoData);
     } else
@@ -3193,7 +3189,7 @@ S52_Color  *S52_PL_getACdata(_S52_obj *obj)
         return NULL;
 
     S52_Color *color = NULL;
-    if (TRUE == S57_getHighlight(obj->geoData)) {
+    if (TRUE == S57_isHighlighted(obj->geoData)) {
         color = S52_PL_getColor("DNGHL");
         //S57_highlightOFF(obj->geoData);
     } else
@@ -3486,7 +3482,7 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
         guchar trans = c[i].trans;
         guchar pen_w = c[i].pen_w;
 
-        if (TRUE == S57_getHighlight(obj->geoData)) {
+        if (TRUE == S57_isHighlighted(obj->geoData)) {
             S52_Color *colhigh = S52_PL_getColor("DNGHL");
             c[i] = *colhigh;
             //S57_highlightOFF(obj->geoData);
