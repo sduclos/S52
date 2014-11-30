@@ -92,7 +92,9 @@
 #define  LOGI(...)   g_print(__VA_ARGS__)
 #define  LOGE(...)   g_print(__VA_ARGS__)
 
-static int _drawVRMEBLtxt = FALSE;  // ebline draw text flag in X11
+// ebline draw flag in X11 (F4 toggle ON/OFF)
+//static int _drawVRMEBL = TRUE;
+static int _drawVRMEBL = FALSE;
 
 #endif  // S52_USE_ANDROID
 
@@ -107,17 +109,20 @@ static S52ObjectHandle _leglin2 = NULL;
 static S52ObjectHandle _leglin3 = NULL;
 static S52ObjectHandle _leglin4 = NULL;
 
+// lat/lon/begin/end
+static double _leglin4xy[2*2];
+
 // test - VRMEBL
 // S52 object name:"ebline"
-static S52ObjectHandle _vrmeblA       = NULL;
+static S52ObjectHandle _vrmeblA = NULL;
 
 // test - cursor DISP 9 (instead of IHO PLib DISP 8)
 // need to load PLAUX
 // S52 object name:"ebline"
-static S52ObjectHandle _cursor2 = NULL;
+static S52ObjectHandle _cursor2 = NULL;  // 2 - open cursor
 
 // test - centroid
-static S52ObjectHandle _prdare = NULL;
+static S52ObjectHandle _prdare  = NULL;
 
 
 // FIXME: mutex this share data
@@ -628,7 +633,7 @@ static int      _egl_init       (s52engine *engine)
         //wa.colormap         = XCreateColormap(display, RootWindow(display, screen), NULL, AllocNone);
         wa.background_pixel = 0xFFFFFFFF;
         wa.border_pixel     = 0;
-        wa.event_mask       = ExposureMask | StructureNotifyMask | KeyPressMask | ButtonPressMask | ButtonReleaseMask;
+        wa.event_mask       = ExposureMask | StructureNotifyMask | KeyPressMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
 
         window = XCreateWindow(display, RootWindow(display, screen), 0, 0, 1280, 1024,
                                0, visual->depth, InputOutput, visual->visual, mask, &wa);
@@ -1027,8 +1032,18 @@ route normale de navigation.
 
 static int      _s52_setupLEGLIN(s52droid_state_t *state)
 {
+    if (NULL != _leglin4) {
+        _leglin4 = S52_delMarObj(_leglin4);
+        if (NULL != _leglin4) {
+            LOGI("s52egl:_s52_setupLEGLIN(): delMarObj _leglin4 failed\n");
+            g_assert(0);
+        }
+        // clear error
+        S52_setMarinerParam(S52_MAR_ERROR, 0.0);
+    }
+
     // test vertical route on DEPCNT
-    _leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat - 0.02, state->cLon + 0.00, state->cLat + 0.02, state->cLon + 0.00, NULL);
+    //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat - 0.02, state->cLon + 0.00, state->cLat + 0.02, state->cLon + 0.00, NULL);
 
     // oblique / upbound - alarm
     //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat + 0.01, state->cLon + 0.00, state->cLat + 0.05, state->cLon + 0.02, NULL);
@@ -1045,16 +1060,16 @@ static int      _s52_setupLEGLIN(s52droid_state_t *state)
     // oblique \  downbound - alarm
     //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat + 0.02, state->cLon - 0.02, state->cLat - 0.02, state->cLon + 0.02, NULL);
 
-    if (NULL == _leglin4) {
-        LOGI("s52egl:_s52_setupLEGLIN(): failed\n");
+
+    // test LEGLIN setup via cursor
+    _leglin4 = S52_newLEGLIN(1, 0.0, 0.0, _leglin4xy[1], _leglin4xy[0], _leglin4xy[3], _leglin4xy[2], NULL);
+    //if (NULL == _leglin4) {
+    //    LOGI("s52egl:_s52_setupLEGLIN(): failed\n");
         if (1.0 == S52_getMarinerParam(S52_MAR_ERROR))
             LOGI("s52egl:_s52_setupLEGLIN(): ALARM ON\n");
         if (2.0 == S52_getMarinerParam(S52_MAR_ERROR))
             LOGI("s52egl:_s52_setupLEGLIN(): INDICATION ON\n");
-
-        // clear error
-        S52_setMarinerParam(S52_MAR_ERROR, 0.0);
-    }
+    //}
 
     return TRUE;
 }
@@ -1062,7 +1077,8 @@ static int      _s52_setupLEGLIN(s52droid_state_t *state)
 static int      _s52_setupVRMEBL(s52droid_state_t *state)
 {
     //char *attVal   = NULL;      // ordinary cursor
-    char  attVal[] = "cursty:2,_cursor_label:0.0N 0.0W";  // open cursor
+    //char  attVal[] = "cursty:2,_cursor_label:0.0N 0.0W";  // open cursor
+    char  attVal[] = "cursty:2";  // open cursor
     double xyz[3] = {state->cLon, state->cLat, 0.0};
     int S52_VRMEBL_vrm = TRUE;
     int S52_VRMEBL_ebl = TRUE;
@@ -1070,19 +1086,18 @@ static int      _s52_setupVRMEBL(s52droid_state_t *state)
     int S52_VRMEBL_ori = TRUE;  // (user) setOrigin
 
     _cursor2 = S52_newMarObj("cursor", S52_POINT, 1, xyz, attVal);
-    //int ret = S52_toggleObjClassOFF("cursor");
-    //LOGE("_s52_setupVRMEBL(): S52_toggleObjClassOFF('cursor'); ret=%i\n", ret);
-    //int ret = S52_toggleObjClassON("cursor");
-    //LOGE("_s52_setupVRMEBL(): S52_toggleObjClassON('cursor'); ret=%i\n", ret);
 
-
-    _vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, S52_VRMEBL_ebl, S52_VRMEBL_sty, S52_VRMEBL_ori);
+    //_vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, S52_VRMEBL_ebl, S52_VRMEBL_sty, S52_VRMEBL_ori);
+    _vrmeblA = S52_newVRMEBL(!S52_VRMEBL_vrm, S52_VRMEBL_ebl, S52_VRMEBL_sty, S52_VRMEBL_ori);
     //_vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, !S52_VRMEBL_ebl, S52_VRMEBL_sty, !S52_VRMEBL_ori);
     //_vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, !S52_VRMEBL_ebl, S52_VRMEBL_sty,  S52_VRMEBL_ori);
 
-    S52_toggleObjClassON("cursor");  // suppression ON
-    S52_toggleObjClassON("ebline");
-    S52_toggleObjClassON("vrmark");
+    if (FALSE == _drawVRMEBL) {
+        // suppression ON
+        S52_setS57ObjClassSupp("cursor", TRUE);
+        S52_setS57ObjClassSupp("ebline", TRUE);
+        S52_setS57ObjClassSupp("vrmark", TRUE);
+    }
 
     return TRUE;
 }
@@ -1352,7 +1367,7 @@ static int      _s52_init       (s52engine *engine)
 
 
     // debug - remove clutter from this symb in SELECT mode
-    S52_setS57ObjClassSupp("M_QUAL", TRUE);  // supress display of the U pattern
+    S52_setS57ObjClassSupp("M_QUAL", TRUE);  // suppress display of the U pattern
     //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
     //S52_toggleObjClassON ("M_QUAL");           //  suppression ON
     //S52_toggleObjClassOFF("M_QUAL");         //  suppression OFF
@@ -1493,7 +1508,7 @@ static int      _s52_init       (s52engine *engine)
 
     // set route
     //_s52_setupIceRoute();
-    _s52_setupLEGLIN(&engine->state);
+    //_s52_setupLEGLIN(&engine->state);
 
     // wind farme for testing centroids in a concave poly
     _s52_setupPRDARE(&engine->state);
@@ -1525,6 +1540,8 @@ static int      _s52_init       (s52engine *engine)
     engine->do_S52setViewPort = FALSE;
 
     S52_version();
+
+    LOGI("%s\n", S52_getPalettesNameList());
 
     LOGI("s52egl:_s52_init(): end ..\n");
 
@@ -2118,11 +2135,15 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
                 if (FALSE == mode_vrmebl_set) {
                     mode_vrmebl = (TRUE==mode_vrmebl) ? FALSE : TRUE;
                     if (TRUE == mode_vrmebl) {
-                        S52_toggleObjClassOFF("cursor");
-                        S52_toggleObjClassOFF("ebline");
+                        //S52_toggleObjClassOFF("cursor");
+                        //S52_toggleObjClassOFF("ebline");
+                        S52_setS57ObjClassSupp("cursor", FALSE);
+                        S52_setS57ObjClassSupp("ebline", FALSE);
                     } else {
-                        S52_toggleObjClassON("cursor");
-                        S52_toggleObjClassON("ebline");
+                        //S52_toggleObjClassON("cursor");
+                        //S52_toggleObjClassON("ebline");
+                        S52_setS57ObjClassSupp("cursor", TRUE);
+                        S52_setS57ObjClassSupp("ebline", TRUE);
                     }
                     mode_vrmebl_set = TRUE;
                 }
@@ -2172,7 +2193,8 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
                 engine->state.dy_pc = 0.0;
                 engine->state.dz_pc = (start_y - new_y) / engine->height;
                 engine->state.dw_pc = 0.0;
-                engine->do_S52draw  = FALSE;
+
+                engine->do_S52draw     = FALSE;
                 engine->do_S52drawLast = FALSE;
                 engine->do_S52drawBlit = TRUE;
                 //g_async_queue_push(engine->queue, engine);
@@ -2398,8 +2420,12 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
                 _android_init_external_UI(engine);
 
                 // remove VRMEBL (no use in s52ui)
-                S52_toggleObjClassOFF("cursor");
-                S52_toggleObjClassOFF("ebline");
+                //S52_toggleObjClassOFF("cursor");
+                //S52_toggleObjClassOFF("ebline");
+
+                // suppression ON
+                S52_setS57ObjClassSupp("cursor", TRUE);
+                S52_setS57ObjClassSupp("ebline", TRUE);
             }
 
             /*
@@ -2894,10 +2920,55 @@ static int      _X11_handleXevent(gpointer user_data)
 
             break;
 
+        case MotionNotify:
+            {
+                if (FALSE == _drawVRMEBL)
+                    break;
+
+                XMotionEvent *mouseEvent = (XMotionEvent *)&event;
+                double Xlon = mouseEvent->x;
+                double Ylat = engine->height - mouseEvent->y;
+
+                S52_setVRMEBL(_vrmeblA, Xlon, Ylat, NULL, NULL);
+
+                if (TRUE == S52_xy2LL(&Xlon, &Ylat)) {
+                    S52_pushPosition(_cursor2, Ylat, Xlon, 0.0);
+
+                    engine->do_S52draw     = FALSE;
+                    engine->do_S52drawLast = TRUE;
+                    _s52_draw_cb((gpointer) engine);
+                }
+            }
+            break;
+
+        case ButtonPress:
+            {
+                if (FALSE == _drawVRMEBL)
+                    break;
+
+                XMotionEvent *mouseEvent = (XMotionEvent *)&event;
+                double Xlon = mouseEvent->x;
+                double Ylat = engine->height - mouseEvent->y;
+
+                // first call set the origine
+                S52_setVRMEBL(_vrmeblA, Xlon, Ylat, NULL, NULL);
+
+                if (TRUE == S52_xy2LL(&Xlon, &Ylat)) {
+                    S52_pushPosition(_cursor2, Ylat, Xlon, 0.0);
+                    _leglin4xy[1] = Ylat;
+                    _leglin4xy[0] = Xlon;
+                }
+            }
+            break;
+
         case ButtonRelease:
             {
+                if (FALSE == _drawVRMEBL)
+                    break;
+
                 XButtonReleasedEvent *mouseEvent = (XButtonReleasedEvent *)&event;
 
+                /*
                 const char *name = S52_pickAt(mouseEvent->x, engine->height - mouseEvent->y);
                 if (NULL != name) {
                     unsigned int S57ID = atoi(name+7);
@@ -2905,7 +2976,7 @@ static int      _X11_handleXevent(gpointer user_data)
                     g_print("AttList=%s\n", S52_getAttList(S57ID));
 
                     {   // debug:  S52_xy2LL() --> S52_LL2xy() should be the same
-                        // NOTE:  LL (0,0) is the OpenGL origine (not GTK origine)
+                        // NOTE:  LL (0,0) is the OpenGL origine (not X11 origine)
                         double Xlon = 0.0;
                         double Ylat = 0.0;
                         S52_xy2LL(&Xlon, &Ylat);
@@ -2924,12 +2995,27 @@ static int      _X11_handleXevent(gpointer user_data)
                         }
                     }
                 }
+                */
 
+                double Xlon = mouseEvent->x;
+                double Ylat = engine->height - mouseEvent->y;
+
+                S52_setVRMEBL(_vrmeblA, mouseEvent->x, engine->height - mouseEvent->y, NULL, NULL);
+
+                if (TRUE == S52_xy2LL(&Xlon, &Ylat)) {
+                    S52_pushPosition(_cursor2, Ylat, Xlon, 0.0);
+
+                    //
+                    _leglin4xy[3] = Ylat;
+                    _leglin4xy[2] = Xlon;
+                    _s52_setupLEGLIN(&engine->state);
+
+                    // call to draw needed as LEGLIN is on layer 5
+                    engine->do_S52draw     = TRUE;
+                    engine->do_S52drawLast = TRUE;
+                    _s52_draw_cb((gpointer) engine);
+                }
             }
-            engine->do_S52draw     = TRUE;
-            engine->do_S52drawLast = TRUE;
-            //g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0);
-            _s52_draw_cb((gpointer) engine);
             break;
 
         case KeyPress:
@@ -2968,25 +3054,18 @@ static int      _X11_handleXevent(gpointer user_data)
             }
             // VRMEBL toggle
             if (XK_F4 == keysym) {
-                _drawVRMEBLtxt = !_drawVRMEBLtxt;
-                if (TRUE == _drawVRMEBLtxt) {
-                    S52_toggleObjClassOFF("cursor");
-                    S52_toggleObjClassOFF("ebline");
-                    S52_toggleObjClassOFF("vrmark");
+                _drawVRMEBL = !_drawVRMEBL;
+                if (TRUE == _drawVRMEBL) {
+                    S52_setS57ObjClassSupp("cursor", FALSE);
+                    S52_setS57ObjClassSupp("ebline", FALSE);
+                    S52_setS57ObjClassSupp("vrmark", FALSE);
 
-                    {
-                        double brg = 0.0;
-                        double rge = 0.0;
-                        S52_setVRMEBL(_vrmeblA, 100, 100, &brg, &rge);
-                        S52_setVRMEBL(_vrmeblA, 100, 500, &brg, &rge);
-                    }
-
-                    S52_pushPosition(_cursor2, engine->state.cLat, engine->state.cLon, 0.0);
+                    //S52_pushPosition(_cursor2, engine->state.cLat, engine->state.cLon, 0.0);
 
                 } else {
-                    S52_toggleObjClassON("cursor");
-                    S52_toggleObjClassON("ebline");
-                    S52_toggleObjClassON("vrmark");
+                    S52_setS57ObjClassSupp("cursor", TRUE);
+                    S52_setS57ObjClassSupp("ebline", TRUE);
+                    S52_setS57ObjClassSupp("vrmark", TRUE);
                 }
 
                 return TRUE;
