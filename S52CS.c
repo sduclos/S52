@@ -883,11 +883,9 @@ static GString *DEPARE01 (S57_geo *geo)
     drval1 = (NULL == drval1str) ? -1.0        : S52_atof(drval1str->str);
     drval2 = (NULL == drval2str) ? drval1+0.01 : S52_atof(drval2str->str);
 
-    //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
-        double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-        drval1 += datum;
-        drval2 += datum;
-    //}
+    double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
+    drval1 += datum;
+    drval2 += datum;
 
     depare01 = _SEABED01(drval1, drval2);
 
@@ -963,7 +961,7 @@ static GString *DEPCNT02 (S57_geo *geo)
 // only as with other text, or provide the depth value on cursor picking
 {
     GString *depcnt02  = NULL;
-    int      safe      = FALSE;     // initialy not a safety contour
+    gboolean safe      = FALSE;     // initialy not a safety contour
     GString *objlstr   = NULL;
     int      objl      = 0;
     GString *quaposstr = NULL;
@@ -1009,11 +1007,9 @@ static GString *DEPCNT02 (S57_geo *geo)
         }
 
         // adjuste datum
-        //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
-            double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-            drval1 += datum;
-            drval2 += datum;
-        //}
+        double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
+        drval1 += datum;
+        drval2 += datum;
 
         // FIXME: in some case this skip line that is the only one available
         //if ((drval1<=S52_MP_get(S52_MAR_SAFETY_CONTOUR)) && (drval2>=S52_MP_get(S52_MAR_SAFETY_CONTOUR))) {
@@ -1033,10 +1029,8 @@ static GString *DEPCNT02 (S57_geo *geo)
                     double   drval1touch    = (NULL == drval1touchstr) ? 0.0 : S52_atof(drval1touchstr->str);
 
                     // adjuste datum
-                    //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
-                        double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                        drval1 += datum;
-                    //}
+                    double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
+                    drval1 += datum;
 
                     // debug
                     //if (483 == S57_getGeoID(geo)) {
@@ -1084,10 +1078,8 @@ static GString *DEPCNT02 (S57_geo *geo)
         GString *valdcostr = S57_getAttVal(geo, "VALDCO");
         double   valdco    = (NULL == valdcostr) ? 0.0 : S52_atof(valdcostr->str);
 
-        //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
-            double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-            valdco += datum;
-        //}
+        double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
+        valdco += datum;
 
         //depth_value = valdco;
 
@@ -1112,10 +1104,8 @@ static GString *DEPCNT02 (S57_geo *geo)
                 //PRINTF("---------------------------------\n");
 
                 // adjuste datum
-                //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
-                    double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                    drval1 += datum;
-                //}
+                double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
+                drval1 += datum;
 
                 if (NULL == drval1str) {
                     safe = TRUE;
@@ -1152,11 +1142,11 @@ static GString *DEPCNT02 (S57_geo *geo)
     }
 
     if (safe) {
-        S57_setSafetyContour(geo, TRUE);
+        S57_setHazard(geo, TRUE);
         S57_setScamin(geo, INFINITY);
         depcnt02 = g_string_prepend(depcnt02, ";OP(8OD13010)");
     } else {
-        S57_setSafetyContour(geo, FALSE);
+        S57_setHazard(geo, FALSE);
         depcnt02 = g_string_prepend(depcnt02, ";OP(---33020)");
     }
 
@@ -1217,12 +1207,10 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
     //S57_dumpData(geo, FALSE);
 
 
-    //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
-        if (UNKNOWN != drval1) {
-            double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-            drval1 += datum;
-        }
-    //}
+    if (UNKNOWN != drval1) {
+        double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
+        drval1 += datum;
+    }
 
     if (NULL != drval1str) {
         if (UNKNOWN==least_depth || least_depth<drval1)
@@ -1813,7 +1801,6 @@ static GString *_LITDSN01(S57_geo *geo)
     // HEIGHT, xxx.x
     gstr = S57_getAttVal(geo, "HEIGHT");
     if (NULL != gstr) {
-        //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
         if (0.0 != S52_MP_get(S52_MAR_DATUM_OFFSET)) {
             double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
             double height = S52_atof(gstr->str);
@@ -2504,13 +2491,11 @@ static GString *SLCONS03 (S57_geo *geo)
         double      drval2    = (NULL == drval2str)? -UNKNOWN : S52_atof(drval2str->str);
         // NOTE: change sign of infinity (minus) to get out of bound in seabed01
 
-        //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
-            double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-            if ( -UNKNOWN != drval1)
-                drval1 += datum;
-            if ( -UNKNOWN != drval2)
-                drval2 += datum;
-        //}
+        double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
+        if ( -UNKNOWN != drval1)
+            drval1 += datum;
+        if ( -UNKNOWN != drval2)
+            drval2 += datum;
 
         // debug
         //PRINTF("***********drval1=%f drval2=%f \n", drval1, drval2);
@@ -2582,7 +2567,7 @@ static GString *RESARE02 (S57_geo *geo)
                 }
             }
 
-            if (TRUE == S52_MP_get(S52_MAR_SYMBOLIZED_BND))
+            if (TRUE == (int) S52_MP_get(S52_MAR_SYMBOLIZED_BND))
                 line = ";LC(CTYARE51)";
             else
                 line = ";LS(DASH,2,CHMGD)";
@@ -2610,7 +2595,7 @@ static GString *RESARE02 (S57_geo *geo)
                     }
                 }
 
-                if (TRUE == S52_MP_get(S52_MAR_SYMBOLIZED_BND))
+                if (TRUE == (int) S52_MP_get(S52_MAR_SYMBOLIZED_BND))
                     line = ";LC(ACHRES51)";
                 else
                     line = ";LS(DASH,2,CHMGD)";
@@ -2633,7 +2618,7 @@ static GString *RESARE02 (S57_geo *geo)
                         }
                     }
 
-                    if (TRUE == S52_MP_get(S52_MAR_SYMBOLIZED_BND))
+                    if (TRUE == (int) S52_MP_get(S52_MAR_SYMBOLIZED_BND))
                         line = ";LC(FSHRES51)";
                     else
                         line = ";LS(DASH,2,CHMGD)";
@@ -2646,7 +2631,7 @@ static GString *RESARE02 (S57_geo *geo)
                     else
                         symb = ";SY(RSRDEF51)";
 
-                    if (TRUE == S52_MP_get(S52_MAR_SYMBOLIZED_BND))
+                    if (TRUE == (int) S52_MP_get(S52_MAR_SYMBOLIZED_BND))
                         line = ";LC(CTYARE51)";
                     else
                         line = ";LS(DASH,2,CHMGD)";
@@ -2672,7 +2657,7 @@ static GString *RESARE02 (S57_geo *geo)
         } else
             symb = ";SY(RSRDEF51)";
 
-        if (TRUE == S52_MP_get(S52_MAR_SYMBOLIZED_BND))
+        if (TRUE == (int) S52_MP_get(S52_MAR_SYMBOLIZED_BND))
             line = ";LC(CTYARE51)";
         else
             line = ";LS(DASH,2,CHMGD)";
@@ -2815,7 +2800,7 @@ static GString *_SEABED01(double drval1, double drval2)
     if (drval1 >= 0.0 && drval2 > 0.0)
         arecol  = ";AC(DEPVS)";
 
-    if (TRUE == S52_MP_get(S52_MAR_TWO_SHADES)){
+    if (TRUE == (int) S52_MP_get(S52_MAR_TWO_SHADES)){
         if (drval1 >= S52_MP_get(S52_MAR_SAFETY_CONTOUR)  &&
             drval2 >  S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
             arecol  = ";AC(DEPDW)";
@@ -2842,7 +2827,7 @@ static GString *_SEABED01(double drval1, double drval2)
 
     seabed01 = g_string_new(arecol);
 
-    if (TRUE==S52_MP_get(S52_MAR_SHALLOW_PATTERN) && TRUE==shallow)
+    if (TRUE==(int) S52_MP_get(S52_MAR_SHALLOW_PATTERN) && TRUE==shallow)
         g_string_append(seabed01, ";AP(DIAMOND1)");
 
     return seabed01;
@@ -3196,10 +3181,8 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
                 if (NULL == drval2str)
                     return NULL;
 
-                //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
-                    double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                    drval2 += datum;
-                //}
+                double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
+                drval2 += datum;
 
                 if (drval2 > safety_contour) {
                     danger = TRUE;
@@ -3215,10 +3198,8 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
                 if (NULL == drval1str)
                     return NULL;
 
-                //if (TRUE == S52_MP_get(S52_MAR_FONT_SOUNDG)) {
-                    double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                    drval1 += datum;
-                //}
+                double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
+                drval1 += datum;
 
                 if (drval1 >= safety_contour) {
                     danger = TRUE;
