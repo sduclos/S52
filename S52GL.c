@@ -47,6 +47,11 @@ static int          _doHighlight        = FALSE;   // TRUE then _objhighlight po
 static S52_GL_cycle _crnt_GL_cycle      = S52_GL_NONE; // failsafe - keep cycle in sync between begin / end
 static GArray      *_tmpWorkBuffer      = NULL;    // tmp buffer
 
+////////////////////////////////////////////////////////////////////
+// Projection View
+
+// FIXME: call _doProjection()
+static int          _doInitProjView     = TRUE;    // initialize projection view
 // optimisation
 //static int          _identity_MODELVIEW = FALSE;   // TRUE then identity matrix for modelview is on GPU (optimisation for AC())
 //static int          _identity_MODELVIEW_cnt = 0;   // count saving
@@ -78,6 +83,7 @@ typedef enum _VP{
     VP_NUM          // number of coord. systems type
 }VP;
 #define Z_CLIP_PLANE 10000   // clipped beyon this plane
+////////////////////////////////////////////////////////////////////
 
 #define S52_MAX_FONT  4
 
@@ -178,8 +184,10 @@ static guint   _npoly     = 0;     // total polys
 // display list / VBO
 static   int  _symbCreated = FALSE;  // TRUE if PLib symb created (DList/VBO)
 
+#ifdef S52_USE_PROJ
+#include <proj_api.h>   // projUV, projXY, projPJ
+#else
 // same thing as in proj_api.h
-#if !defined(S52_USE_PROJ)
 typedef struct { double u, v; } projUV;
 #define projXY projUV
 #define RAD_TO_DEG    57.29577951308232
@@ -219,7 +227,7 @@ static GLuint   _vboIDaftglwVertID = 0;
 static GLuint   _vboIDaftglwColrID = 0;
 #endif
 
-//expirimental
+// experimental
 static vertex_t _hazardZone[5*3];
 
 static
@@ -784,6 +792,15 @@ static int       _win2prj(double *x, double *y)
     float u       = *x;
     float v       = *y;
     float dummy_z = 0.0;
+
+    /* debug
+    if (TRUE == isnan(_pjm[_pjmTop][0])) {
+        PRINTF("WARNING: broken Projection Matrix\n");
+        g_assert(0);
+        return FALSE;
+    }
+    */
+
     if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, &u, &v, &dummy_z)) {
         PRINTF("WARNING: UnProjection faild\n");
         g_assert(0);
@@ -849,6 +866,9 @@ static projXY    _prj2win(projXY p)
 int        S52_GL_win2prj(double *x, double *y)
 // convert coordinate: window --> projected
 {
+    if (TRUE == _doInitProjView)
+        return FALSE;
+
     _glMatrixSet(VP_PRJ);
 
     int ret = _win2prj(x, y);
@@ -861,6 +881,9 @@ int        S52_GL_win2prj(double *x, double *y)
 int        S52_GL_prj2win(double *x, double *y)
 // convert coordinate: projected --> windows
 {
+    if (TRUE == _doInitProjView)
+        return FALSE;
+
     _glMatrixSet(VP_PRJ);
 
     {
@@ -1347,7 +1370,7 @@ static int       _setBlend(int blend)
 // TRUE turn on blending if AA
 {
     //static int blendstate = FALSE;
-    if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS)) {
+    if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
         if (TRUE == blend) {
             glEnable(GL_BLEND);
 
@@ -1397,7 +1420,7 @@ static GLubyte   _glColor4ub(S52_Color *c)
     if ('0' != c->trans) {
         // FIXME: some symbol allway use blending
         // but now with GLES2 AA its all or nothing
-        if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS))
+        if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS))
             glEnable(GL_BLEND);
 
 #ifdef S52_USE_GL1
@@ -1786,7 +1809,7 @@ static int       _renderSY_silhoutte(S52_obj *obj)
     double shpLenPixel = shplen / _scaley;
 
     // > 10 mm draw to scale
-    if (((shpLenPixel*_dotpitch_mm_y) >= SHIPS_OUTLINE_MM) && (TRUE==S52_MP_get(S52_MAR_SHIPS_OUTLINE))) {
+    if (((shpLenPixel*_dotpitch_mm_y) >= SHIPS_OUTLINE_MM) && (TRUE==(int) S52_MP_get(S52_MAR_SHIPS_OUTLINE))) {
 
         // 3 - compute stretch of symbol (ratio)
         double lenRatio = shpLenPixel / symLenPixel;
@@ -1914,7 +1937,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         return TRUE;
     }
 
-    if (TRUE == S52_MP_get(S52_MAR_DISP_CALIB)) {
+    if (TRUE == (int) S52_MP_get(S52_MAR_DISP_CALIB)) {
         // check symbol physical size, should be 5mm by 5mm
         if (0==g_strcmp0(attval->str, "CHKSYM01")) {
             // FIXME: use _dotpitch_ ..
@@ -2002,7 +2025,7 @@ static int       _renderSY_ownshp(S52_obj *obj)
         double shpLenPixel = shplen / _scaley;
 
         // 10 mm drawn circle if silhoutte to small OR no silhouette at all
-        if ( ((shpLenPixel*_dotpitch_mm_y) < SHIPS_OUTLINE_MM) || (FALSE==S52_MP_get(S52_MAR_SHIPS_OUTLINE))) {
+        if ( ((shpLenPixel*_dotpitch_mm_y) < SHIPS_OUTLINE_MM) || (FALSE==(int) S52_MP_get(S52_MAR_SHIPS_OUTLINE))) {
             _renderSY_POINT_T(obj, ppt[0], ppt[1], orient);
         }
 
@@ -2250,7 +2273,7 @@ static int       _renderSY_vessel(S52_obj *obj)
         // drawn VESSEL symbol
         // 1 - if silhoutte too small
         // 2 - OR no silhouette at all
-        if ( ((shpLenPixel*_dotpitch_mm_y) < SHIPS_OUTLINE_MM) || (FALSE==S52_MP_get(S52_MAR_SHIPS_OUTLINE)) ) {
+        if ( ((shpLenPixel*_dotpitch_mm_y) < SHIPS_OUTLINE_MM) || (FALSE==(int) S52_MP_get(S52_MAR_SHIPS_OUTLINE)) ) {
             // 3 - AND active (ie not sleeping)
             if (NULL!=vestatstr && '1'==*vestatstr->str)
                 _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
@@ -2671,7 +2694,7 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
     //PRINTF("S1: %f, S2:%f\n", sectr1, sectr2);
 
     // this is part of CS
-    if (TRUE == S52_MP_get(S52_MAR_FULL_SECTORS)) {
+    if (TRUE == (int) S52_MP_get(S52_MAR_FULL_SECTORS)) {
         GString  *valnmrstr = S57_getAttVal(geoData, "VALNMR");
         if (NULL != valnmrstr) {
             //PRINTF("FIXME: compute leglen to scale (NM)\n");
@@ -2802,7 +2825,7 @@ static int       _renderLS_ownshp(S52_obj *obj)
 
 
     // draw heading line
-    if ((NULL!=headngstr) && (TRUE==S52_MP_get(S52_MAR_HEADNG_LINE)) && ('1'==pen_w)) {
+    if ((NULL!=headngstr) && (TRUE==(int) S52_MP_get(S52_MAR_HEADNG_LINE)) && ('1'==pen_w)) {
         double orient = S52_PL_getSYorient(obj);
 
         //_glMatrixMode  (GL_MODELVIEW);
@@ -2906,7 +2929,7 @@ static int       _renderLS_vessel(S52_obj *obj)
     // heading line, AIS only
     GString *vesrcestr = S57_getAttVal(geo, "vesrce");
     if (NULL!=vesrcestr && '2'==*vesrcestr->str) {
-        if ((NULL!=headngstr) && (TRUE==S52_MP_get(S52_MAR_HEADNG_LINE)))  {
+        if ((NULL!=headngstr) && (TRUE==(int) S52_MP_get(S52_MAR_HEADNG_LINE)))  {
             GLdouble *ppt = NULL;
             guint     npt = 0;
             if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
@@ -3476,14 +3499,14 @@ static int       _renderLC(S52_obj *obj)
 
         //* draw guard zone if highligthed
         // FIXME: what about arc!
-        //if (TRUE == S57_getHighlight(geo)) {
+        if (TRUE == S57_isHighlighted(geo)) {
             _glLoadIdentity(GL_MODELVIEW);
 
 #ifdef S52_USE_GL2
             glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 #endif
             _DrawArrays_LINE_STRIP(5, _hazardZone);
-        //}
+        }
         //*/
     }
 
@@ -3600,7 +3623,7 @@ static int       _renderLC(S52_obj *obj)
         // FIXME: some Complex Line (LC) symbol allway use blending (ie transparancy)
         // but now with GLES2 AA its all or nothing
         //_setBlend(TRUE);
-        //if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS)) {
+        //if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
         //    glEnable(GL_BLEND);
         //}
 
@@ -4178,7 +4201,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 #endif  // S52_USE_FREETYPE_GL
 
 #ifdef S52_USE_GLC
-    if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS)) {
+    if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
 
         _glMatrixSet(VP_WIN);
 
@@ -4307,7 +4330,7 @@ static int       _renderTXT(S52_obj *obj)
     }
 
     // supress display of text
-    if (FALSE == S52_MP_getTextDisp(disIdx))
+    if (FALSE == (int) S52_MP_getTextDisp(disIdx))
         return FALSE;
 
     // convert offset to PRJ
@@ -4972,7 +4995,7 @@ int        S52_GL_isSupp(S52_obj *obj)
     }
 
     // SCAMIN
-    if (TRUE == S52_MP_get(S52_MAR_SCAMIN)) {
+    if (TRUE == (int) S52_MP_get(S52_MAR_SCAMIN)) {
         S57_geo *geo  = S52_PL_getGeo(obj);
         double scamin = S57_getScamin(geo);
 
@@ -5051,7 +5074,7 @@ static int       _newTexture(S52_GL_ras *raster)
     float min  =  INFINITY;
     float max  = -INFINITY;
 
-    float safe = S52_MP_get(S52_MAR_SAFETY_CONTOUR) * -1.0;  // change signe
+    float safe = (float) S52_MP_get(S52_MAR_SAFETY_CONTOUR) * -1.0;  // change signe
     //unsigned char safe = 100;
 
     float *dataf = (float*) raster->data;
@@ -5401,6 +5424,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
 }
 
 static int       _doProjection(double centerLat, double centerLon, double rangeDeg)
+// use _vp
 {
     //if (isnan(centerLat) || isnan(centerLon) || isnan(rangeDeg))
     //    return FALSE;
@@ -5412,12 +5436,10 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
     SW.y = centerLat - rangeDeg;
     NE.x = SW.x = centerLon;
 
-#ifdef S52_USE_PROJ
     if (FALSE == S57_geo2prj3dv(1, (double*)&NE))
         return FALSE;
     if (FALSE == S57_geo2prj3dv(1, (double*)&SW))
         return FALSE;
-#endif
 
     {
         // get drawing area in pixel
@@ -5456,6 +5478,8 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
     // MPP - Meter Per Pixel
     _scalex = (_pmax.u - _pmin.u) / (double)_vp[2];
     _scaley = (_pmax.v - _pmin.v) / (double)_vp[3];
+
+    _doInitProjView = FALSE;
 
     return TRUE;
 }
@@ -5563,7 +5587,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
         //glShadeModel(GL_FLAT);         // NOT in GLES2
 
     } else {
-        if (TRUE == S52_MP_get(S52_MAR_ANTIALIAS)) {
+        if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
             glEnable(GL_BLEND);
 
 #ifdef S52_USE_GL1
@@ -6115,7 +6139,8 @@ int        S52_GL_init(void)
 
 int        S52_GL_done(void)
 {
-    if (_doInit) return _doInit;
+    if (TRUE == _doInit)
+        return FALSE;
 
     _freeGLU();
 
@@ -6221,6 +6246,8 @@ int        S52_GL_done(void)
     }
 
     _doInit = TRUE;
+
+    _doInitProjView = TRUE;
 
     return _doInit;
 }
