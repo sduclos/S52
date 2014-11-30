@@ -190,12 +190,14 @@ GString  *S57_getRCIDstr(S57_geo *geo);
 S57_AW_t  S57_getOrigAW (S57_geo *geo);
 #endif
 
+// FIXME: setHL() rather than hlON/OFF !
+//int     S57_setHighlight(S57_geo *geo, gboolean highlight);
 int       S57_highlightON (S57_geo *geo);
 int       S57_highlightOFF(S57_geo *geo);
-gboolean  S57_getHighlight(S57_geo *geo);
+gboolean  S57_isHighlighted(S57_geo *geo);
 
-int       S57_setSafetyContour(S57_geo *geo, gboolean isSC);
-gboolean  S57_getSafetyContour(S57_geo *geo);
+int       S57_setHazard(S57_geo *geo, gboolean hazard);
+gboolean  S57_isHazard (S57_geo *geo);
 
 //// returns the window boundary with the current projection. After  the geo2prj and initproj have been public, this function may be moved to application layer.
 //void S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax);
