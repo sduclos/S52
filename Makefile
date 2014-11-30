@@ -178,6 +178,9 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 #
 # MinGW:
 # -D_MINGW
+#
+# PROJ4
+# -DS52_USE_PROJ         - Mercator Projection, used by all but s52gv and s52gv2
 
 
 # default CFLAGS for default target (s52gtk2)
