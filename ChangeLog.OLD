@@ -4,6 +4,17 @@
 #
 
 
+2014NOV29
+    -del unneeded S52.c:_win2prj()
+    -mod move S52_USE_PROJ to S57data PROJ4 stuff
+
+2014NOV28
+    -mod prevent using S52_xy2LL() / S52_LL2xy() before init Projection View
+    -add code in test/s52egl.c to test LEGLIN & guard zone
+
+2014NOV27
+    -mod deprecate S52_toggleObjClass/ON/OFF
+
 2014NOV23
     -start handling alarm / indication for GuardZone (LEGLIN)
     -del unused S52_string_equal()
