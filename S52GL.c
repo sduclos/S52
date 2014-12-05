@@ -39,19 +39,25 @@
 
 ///////////////////////////////////////////////////////////////////
 // state
-static int          _doInit             = TRUE;    // initialize (but GL context --need main loop)
-static int          _ctxValidated       = FALSE;   // validate GL context
-static GPtrArray   *_objPick            = NULL;    // list of object picked
-static GString     *_strPick            = NULL;    // hold temps val
-static int          _doHighlight        = FALSE;   // TRUE then _objhighlight point to the object to hightlight
-static S52_GL_cycle _crnt_GL_cycle      = S52_GL_NONE; // failsafe - keep cycle in sync between begin / end
-static GArray      *_tmpWorkBuffer      = NULL;    // tmp buffer
+static int          _doInit        = TRUE;    // initialize (but GL context --need main loop)
+static int          _ctxValidated  = FALSE;   // validate GL context
+static GPtrArray   *_objPick       = NULL;    // list of object picked
+static GString     *_strPick       = NULL;    // hold temps val
+static int          _doHighlight   = FALSE;   // TRUE then _objhighlight point to the object to hightlight
+static S52_GL_cycle _crnt_GL_cycle = S52_GL_INIT; // state before first S52_GL_DRAW
+
+//    S52_GL_NONE; // failsafe - keep cycle in sync between begin / end
+
+// FIXME: rename to something like _doInitViewFirstTime
+static int          _symbCreated   = FALSE;   // TRUE if PLib symb created (DList/VBO)
+
+// now used by _renderLC() only
+static GArray      *_tmpWorkBuffer = NULL;    // tmp buffer
+
 
 ////////////////////////////////////////////////////////////////////
 // Projection View
 
-// FIXME: call _doProjection()
-static int          _doInitProjView     = TRUE;    // initialize projection view
 // optimisation
 //static int          _identity_MODELVIEW = FALSE;   // TRUE then identity matrix for modelview is on GPU (optimisation for AC())
 //static int          _identity_MODELVIEW_cnt = 0;   // count saving
@@ -72,16 +78,24 @@ static projUV _pmax = {-INFINITY, -INFINITY};
 static projUV _gmin = { INFINITY,  INFINITY};
 static projUV _gmax = {-INFINITY, -INFINITY};
 
+// FIXME:
+typedef struct vp {
+    guint x;
+    guint y;
+    guint w;
+    guint h;
+} vp;
+static vp _vp;
 // current ViewPort
 //static GLuint _vp[4]; // x,y,width,height
-static guint _vp[4]; // x,y,width,height
+//static guint _vp[4]; // x,y,width,height
 
 // GL_PROJECTION matrix
-typedef enum _VP{
+typedef enum _VP {
     VP_PRJ,         // projected coordinate
     VP_WIN,         // window coordinate
     VP_NUM          // number of coord. systems type
-}VP;
+} VP;
 #define Z_CLIP_PLANE 10000   // clipped beyon this plane
 ////////////////////////////////////////////////////////////////////
 
@@ -90,7 +104,7 @@ typedef enum _VP{
 // hold copy of FrameBuffer
 static int            _fb_update      = TRUE;  // TRUE flag that the FB changed
 static unsigned char *_fb_pixels      = NULL;
-static unsigned int   _fb_pixels_size = 0;
+static guint          _fb_pixels_size = 0;
 static guint          _fb_texture_id  = 0;
 
 #define _RGB           3
@@ -180,9 +194,6 @@ static guint   _npoly     = 0;     // total polys
 
 // GL utility
 #include "_GLU.i"
-
-// display list / VBO
-static   int  _symbCreated = FALSE;  // TRUE if PLib symb created (DList/VBO)
 
 #ifdef S52_USE_PROJ
 #include <proj_api.h>   // projUV, projXY, projPJ
@@ -717,8 +728,10 @@ static GLint     _glMatrixSet(VP vpcoord)
             break;
 
         case VP_WIN:
-            left   = _vp[0],       right = _vp[0] + _vp[2],
-            bottom = _vp[1],       top   = _vp[1] + _vp[3];
+            //left   = _vp[0],       right = _vp[0] + _vp[2],
+            //bottom = _vp[1],       top   = _vp[1] + _vp[3];
+            left   = _vp.x,       right = _vp.x + _vp.w,
+            bottom = _vp.y,       top   = _vp.y + _vp.h;
             znear  = Z_CLIP_PLANE, zfar  = -Z_CLIP_PLANE;
             //PRINTF("DEBUG: set VP_WIN\n");
             break;
@@ -801,7 +814,9 @@ static int       _win2prj(double *x, double *y)
     }
     */
 
-    if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, &u, &v, &dummy_z)) {
+    //if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, &u, &v, &dummy_z)) {
+    GLint vp[4] = {_vp.x,_vp.y,_vp.w,_vp.h};
+    if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)vp, &u, &v, &dummy_z)) {
         PRINTF("WARNING: UnProjection faild\n");
         g_assert(0);
         return FALSE;
@@ -821,7 +836,6 @@ static int       _win2prj(double *x, double *y)
 
     return TRUE;
 }
-
 
 static projXY    _prj2win(projXY p)
 // convert coordinate: projected --> window (pixel)
@@ -844,7 +858,9 @@ static projXY    _prj2win(projXY p)
     //_glMatrixMode  (GL_MODELVIEW);
     _glLoadIdentity(GL_MODELVIEW);
 
-    if (GL_FALSE == _gluProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, &u, &v, &dummy_z)) {
+    //if (GL_FALSE == _gluProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, &u, &v, &dummy_z)) {
+    GLint vp[4] = {_vp.x,_vp.y,_vp.w,_vp.h};
+    if (GL_FALSE == _gluProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)vp, &u, &v, &dummy_z)) {
         PRINTF("ERROR\n");
         g_assert(0);
         return p;
@@ -863,10 +879,82 @@ static projXY    _prj2win(projXY p)
     return p;
 }
 
+static int       _doProjection(double centerLat, double centerLon, double rangeDeg)
+// use _vp & PROJ4
+{
+    // set projection
+    // FIXME: check if viewing nowhere (occur at init time)
+    //if (INFINITY==_pmin.u || INFINITY==_pmin.v || -INFINITY==_pmax.u || -INFINITY==_pmax.v) {
+    //    PRINTF("ERROR: view extent not set\n");
+    //    return FALSE;
+    //}
+
+
+    //if (isnan(centerLat) || isnan(centerLon) || isnan(rangeDeg))
+    //    return FALSE;
+
+    pt3 NE = {0.0, 0.0, 0.0};  // Nort/East
+    pt3 SW = {0.0, 0.0, 0.0};  // South/West
+
+    NE.y = centerLat + rangeDeg;
+    SW.y = centerLat - rangeDeg;
+    NE.x = SW.x = centerLon;
+
+    if (FALSE == S57_geo2prj3dv(1, (double*)&NE))
+        return FALSE;
+    if (FALSE == S57_geo2prj3dv(1, (double*)&SW))
+        return FALSE;
+
+    {
+        // get drawing area in pixel
+        // assume round pixel for now
+        //int w = _vp[2];  // width  (pixels)
+        //int h = _vp[3];  // hieght (pixels)
+        int w = _vp.w;  // width  (pixels)
+        int h = _vp.h;  // hieght (pixels)
+        // screen ratio
+        double r = (double)h / (double)w;   // > 1 'h' dominant, < 1 'w' dominant
+        //PRINTF("Viewport pixels (width x height): %i %i (r=%f)\n", w, h, r);
+        double dy = NE.y - SW.y;
+        // assume h dominant (latitude), so range
+        // fit on a landscape screen in latitude
+        // FIXME: in portrait screen logitude is dominant
+        // check if the ratio is the same on Xoom.
+        double dx = dy / r;
+
+        NE.x += (dx / 2.0);
+        SW.x -= (dx / 2.0);
+    }
+
+    _pmin.u = SW.x;  // left
+    _pmin.v = SW.y;  // bottom
+    _pmax.u = NE.x;  // right
+    _pmax.v = NE.y;  // top
+    //PRINTF("PROJ MIN: %f %f  MAX: %f %f\n", _pmin.u, _pmin.v, _pmax.u, _pmax.v);
+
+    // use to cull object base on there extent and view in deg
+    _gmin.u = SW.x;
+    _gmin.v = SW.y;
+    _gmin   = S57_prj2geo(_gmin);
+
+    _gmax.u = NE.x;
+    _gmax.v = NE.y;
+    _gmax   = S57_prj2geo(_gmax);
+
+    // MPP - Meter Per Pixel
+    //_scalex = (_pmax.u - _pmin.u) / (double)_vp[2];
+    //_scaley = (_pmax.v - _pmin.v) / (double)_vp[3];
+    _scalex = (_pmax.u - _pmin.u) / (double)_vp.w;
+    _scaley = (_pmax.v - _pmin.v) / (double)_vp.h;
+
+    return TRUE;
+}
+
 int        S52_GL_win2prj(double *x, double *y)
 // convert coordinate: window --> projected
 {
-    if (TRUE == _doInitProjView)
+    // if symb wher createed imply that projection is OK
+    if (FALSE == _symbCreated)
         return FALSE;
 
     _glMatrixSet(VP_PRJ);
@@ -878,10 +966,12 @@ int        S52_GL_win2prj(double *x, double *y)
     return ret;
 }
 
+
 int        S52_GL_prj2win(double *x, double *y)
 // convert coordinate: projected --> windows
 {
-    if (TRUE == _doInitProjView)
+    // if symbole OK imply that projection is OK
+    if (FALSE == _symbCreated)
         return FALSE;
 
     _glMatrixSet(VP_PRJ);
@@ -1910,7 +2000,8 @@ static int       _renderSY_CSYMB(S52_obj *obj)
     // north arrow
     if (0==g_strcmp0(attval->str, "NORTHAR1")) {
         double x = 30;
-        double y = _vp[3] - 40;
+        //double y = _vp[3] - 40;
+        double y = _vp.w - 40;
         double rotation = 0.0;
 
         _glLoadIdentity(GL_MODELVIEW);
@@ -1941,8 +2032,10 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         // check symbol physical size, should be 5mm by 5mm
         if (0==g_strcmp0(attval->str, "CHKSYM01")) {
             // FIXME: use _dotpitch_ ..
-            double x = _vp[0] + 50;
-            double y = _vp[1] + 50;
+            //double x = _vp[0] + 50;
+            //double y = _vp[1] + 50;
+            double x = _vp.x + 50;
+            double y = _vp.y + 50;
 
             _glLoadIdentity(GL_MODELVIEW);
 
@@ -1965,8 +2058,10 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         if (0==g_strcmp0(attval->str, "BLKADJ01")) {
             // FIXME: use _dotpitch_ ..
             // top left (witch is under CPU usage on Android)
-            double x = _vp[2] - 50;
-            double y = _vp[3] - 50;
+            //double x = _vp[2] - 50;
+            //double y = _vp[3] - 50;
+            double x = _vp.w - 50;
+            double y = _vp.h - 50;
 
             _glLoadIdentity(GL_MODELVIEW);
 
@@ -2267,8 +2362,9 @@ static int       _renderSY_vessel(S52_obj *obj)
         GString *shplenstr = S57_getAttVal(geo, "shplen");
         double   shplen    = (NULL==shplenstr) ? 0.0 : S52_atof(shplenstr->str);
 
-        double scaley      = (_pmax.v - _pmin.v) / (double)_vp[3] ;
-        double shpLenPixel = shplen / scaley;
+        //double scaley      = (_pmax.v - _pmin.v) / (double)_vp[3] ;
+        //double shpLenPixel = shplen / scaley;
+        double shpLenPixel = shplen / _scaley;
 
         // drawn VESSEL symbol
         // 1 - if silhoutte too small
@@ -4956,7 +5052,6 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
 static GLint     _createSymb(void)
 // WARNING: this must be done from inside the main loop!
 {
-
     if (TRUE == _symbCreated)
         return TRUE;
 
@@ -5407,7 +5502,8 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
             //glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
             //glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGB, GL_UNSIGNED_BYTE, &_pixelsRead);
             //glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &_pixelsRead);
-            glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
+            //glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
+            glReadPixels(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
 
             _checkError("S52_GL_draw():glReadPixels()");
 
@@ -5415,71 +5511,11 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
                 g_ptr_array_add(_objPick, obj);
 
                 // debug
-                PRINTF("DEBUG: pixel found (%i, %i): i=%i color=%X\n", _vp[0], _vp[1], 0, _cIdx.color.r);
+                //PRINTF("DEBUG: pixel found (%i, %i): i=%i color=%X\n", _vp[0], _vp[1], 0, _cIdx.color.r);
+                PRINTF("DEBUG: pixel found (%i, %i): i=%i color=%X\n", _vp.x, _vp.y, 0, _cIdx.color.r);
             }
         }
     }
-
-    return TRUE;
-}
-
-static int       _doProjection(double centerLat, double centerLon, double rangeDeg)
-// use _vp
-{
-    //if (isnan(centerLat) || isnan(centerLon) || isnan(rangeDeg))
-    //    return FALSE;
-
-    pt3 NE = {0.0, 0.0, 0.0};  // Nort/East
-    pt3 SW = {0.0, 0.0, 0.0};  // South/West
-
-    NE.y = centerLat + rangeDeg;
-    SW.y = centerLat - rangeDeg;
-    NE.x = SW.x = centerLon;
-
-    if (FALSE == S57_geo2prj3dv(1, (double*)&NE))
-        return FALSE;
-    if (FALSE == S57_geo2prj3dv(1, (double*)&SW))
-        return FALSE;
-
-    {
-        // get drawing area in pixel
-        // assume round pixel for now
-        int w = _vp[2];  // width  (pixels)
-        int h = _vp[3];  // hieght (pixels)
-        // screen ratio
-        double r = (double)h / (double)w;   // > 1 'h' dominant, < 1 'w' dominant
-        //PRINTF("Viewport pixels (width x height): %i %i (r=%f)\n", w, h, r);
-        double dy = NE.y - SW.y;
-        // assume h dominant (latitude), so range
-        // fit on a landscape screen in latitude
-        // FIXME: in portrait screen logitude is dominant
-        // check if the ratio is the same on Xoom.
-        double dx = dy / r;
-
-        NE.x += (dx / 2.0);
-        SW.x -= (dx / 2.0);
-    }
-
-    _pmin.u = SW.x;  // left
-    _pmin.v = SW.y;  // bottom
-    _pmax.u = NE.x;  // right
-    _pmax.v = NE.y;  // top
-    //PRINTF("PROJ MIN: %f %f  MAX: %f %f\n", _pmin.u, _pmin.v, _pmax.u, _pmax.v);
-
-    // use to cull object base on there extent and view in deg
-    _gmin.u = SW.x;
-    _gmin.v = SW.y;
-    _gmin   = S57_prj2geo(_gmin);
-
-    _gmax.u = NE.x;
-    _gmax.v = NE.y;
-    _gmax   = S57_prj2geo(_gmax);
-
-    // MPP - Meter Per Pixel
-    _scalex = (_pmax.u - _pmin.u) / (double)_vp[2];
-    _scaley = (_pmax.v - _pmin.v) / (double)_vp[3];
-
-    _doInitProjView = FALSE;
 
     return TRUE;
 }
@@ -5492,11 +5528,21 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     // GL sanity check before start of init
     _checkError("S52_GL_begin() -0-");
 
-    if (S52_GL_NONE != _crnt_GL_cycle) {
+    //
+    if (S52_GL_INIT==_crnt_GL_cycle && S52_GL_DRAW!=cycle) {
+        PRINTF("WARNING: verry fist GL_begin must start a DRAW\n");
+        g_assert(0);
+        return FALSE;
+    }
+
+    //*
+    if (S52_GL_INIT!=_crnt_GL_cycle && S52_GL_NONE!=_crnt_GL_cycle) {
         PRINTF("WARNING: S52_GL_cycle out of sync\n");
         g_assert(0);
         return FALSE;
     }
+    //*/
+
     _crnt_GL_cycle = cycle;
 
     // optimisation
@@ -5668,29 +5714,9 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
 
 
-    // -------------------- F I X M E (cleanup this mess) --------
-    // FIX: check if this can be done when realize() is called
-    //
-    // now that the main loop and projection are up ..
-    //
-
-    // check if an initial call S52_GL_setViewPort()
-    if (0==_vp[0] && 0==_vp[1] && 0==_vp[2] && 0==_vp[3]) {
-
-        // a viewport cant only have positive, but GL ask for int
-        glGetIntegerv(GL_VIEWPORT, (GLint*)_vp);
-        PRINTF("WARNING: Viewport default to (%i,%i,%i,%i)\n",
-               _vp[0], _vp[1], _vp[2], _vp[3]);
-    }
-
-    glViewport(_vp[0], _vp[1], _vp[2], _vp[3]);
-
-    // set projection
-    // FIXME: check if viewing nowhere (occur at init time)
-    //if (INFINITY==_pmin.u || INFINITY==_pmin.v || -INFINITY==_pmax.u || -INFINITY==_pmax.v) {
-    //    PRINTF("ERROR: view extent not set\n");
-    //    return FALSE;
-    //}
+    // -------set matrix param ---------
+    //glViewport(_vp[0], _vp[1], _vp[2], _vp[3]);
+    glViewport(_vp.x, _vp.y, _vp.w, _vp.h);
 
     // do projection if draw() since the view is the same for all other mode
     if (S52_GL_DRAW == _crnt_GL_cycle) {
@@ -5703,15 +5729,16 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     // _createSymb() might reset line width
     // FIXME: linewidth sould be set *before* rendering any line
-    glLineWidth(1.0);
+    //glLineWidth(1.0);
 
     // -------------------------------------------------------
 
 
     _SCAMIN = _computeSCAMIN() * 10000.0;
 
-    if (_fb_pixels_size < (_vp[2] * _vp[3] * _fb_format) ) {
-        PRINTF("ERROR: pixels buffer overflow: fb_pixels_size=%i, VP=%i \n", _fb_pixels_size, (_vp[2] * _vp[3] * _fb_format));
+    //if (_fb_pixels_size < (_vp[2] * _vp[3] * _fb_format) ) {
+    if (_fb_pixels_size < (_vp.w * _vp.h * _fb_format) ) {
+        PRINTF("ERROR: pixels buffer overflow: fb_pixels_size=%i, VP=%i \n", _fb_pixels_size, (_vp.w * _vp.h * _fb_format));
         // NOTE: since the assert() is removed in the release, draw last can
         // still be called (but does notting) if _fb_pixels is NULL
         g_free(_fb_pixels);
@@ -5802,7 +5829,8 @@ int        S52_GL_end(S52_GL_cycle cycle)
 
     // read once, top object
     if (S52_GL_PICK==_crnt_GL_cycle && 1.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
-        glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
+        //glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
+        glReadPixels(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
         _checkError("S52_GL_end():glReadPixels()");
     }
 
@@ -6089,9 +6117,6 @@ int        S52_GL_init(void)
     if (NULL == _objPick)
         _objPick = g_ptr_array_new();
 
-    // signal to (re)build S52 symbol
-    //_symbCreated = FALSE;
-
     //_DEBUG = TRUE;
 
     // tmp buffer
@@ -6247,8 +6272,6 @@ int        S52_GL_done(void)
 
     _doInit = TRUE;
 
-    _doInitProjView = TRUE;
-
     return _doInit;
 }
 
@@ -6340,13 +6363,20 @@ int        S52_GL_setViewPort(int x, int y, int width, int height)
     //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
     //_checkError("S52_GL_setViewPort()");
 
-    _vp[0] = x;
-    _vp[1] = y;
-    _vp[2] = width;
-    _vp[3] = height;
+    //_vp[0] = x;
+    //_vp[1] = y;
+    //_vp[2] = width;
+    //_vp[3] = height;
+    _vp.x = x;
+    _vp.y = y;
+    _vp.w = width;
+    _vp.h = height;
+    guint sz = width * height * _fb_format;
 
-    if (_fb_pixels_size < (_vp[2] * _vp[3] * _fb_format) ) {
-        _fb_pixels_size =  _vp[2] * _vp[3] * _fb_format;
+    //if (_fb_pixels_size < (_vp[2] * _vp[3] * _fb_format) ) {
+    //    _fb_pixels_size =  _vp[2] * _vp[3] * _fb_format;
+    if (_fb_pixels_size < sz) {
+        _fb_pixels_size = sz;
         _fb_pixels      = g_renew(unsigned char, _fb_pixels, _fb_pixels_size);
         PRINTF("pixels buffer resized (%i)\n", _fb_pixels_size);
     }
@@ -6359,10 +6389,14 @@ int        S52_GL_getViewPort(int *x, int *y, int *width, int *height)
     //glGetIntegerv(GL_VIEWPORT, _vp);
     //_checkError("S52_GL_getViewPort()");
 
-    *x      = _vp[0];
-    *y      = _vp[1];
-    *width  = _vp[2];
-    *height = _vp[3];
+    //*x      = _vp[0];
+    //*y      = _vp[1];
+    //*width  = _vp[2];
+    //*height = _vp[3];
+    *x      = _vp.x;
+    *y      = _vp.y;
+    *width  = _vp.w;
+    *height = _vp.w;
 
     return TRUE;
 }
@@ -6552,7 +6586,8 @@ guchar    *S52_GL_readFBPixels(void)
     //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _vp[2], _vp[3], 0, GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
 
 #else   // S52_USE_TEGRA2
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp.w, _vp.h, 0);
 #endif  // S52_USE_TEGRA2
 
     glBindTexture(GL_TEXTURE_2D, 0);
@@ -6714,17 +6749,23 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     guint x, y;
 
     if (NULL == obj) {
-        x      = _vp[0];
-        y      = _vp[1];
-        width  = _vp[2];
-        height = _vp[3];
+        //x      = _vp[0];
+        //y      = _vp[1];
+        //width  = _vp[2];
+        //height = _vp[3];
+        x      = _vp.x;
+        y      = _vp.y;
+        width  = _vp.w;
+        height = _vp.h;
     } else {
-        if (width > _vp[2]) {
-            PRINTF("WARNING: dump width (%i) exceeded viewport width (%i)\n", width, _vp[2]);
+        //if (width > _vp[2]) {
+        if (width > _vp.w) {
+            PRINTF("WARNING: dump width (%i) exceeded viewport width (%i)\n", width, _vp.w);
             return FALSE;
         }
-        if (height> _vp[3]) {
-            PRINTF("WARNING: dump height (%i) exceeded viewport height (%i)\n", height, _vp[3]);
+        //if (height> _vp[3]) {
+        if (height> _vp.h) {
+            PRINTF("WARNING: dump height (%i) exceeded viewport height (%i)\n", height, _vp.h);
             return FALSE;
         }
 
@@ -6740,18 +6781,27 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
             return FALSE;
 
-        _glMatrixSet(VP_PRJ);
+        //_glMatrixSet(VP_PRJ);
 
-        projUV p = {pt.x, pt.y};
-        p = _prj2win(p);
+        // then MatrixSet in that order
+        //projUV p = {pt.x, pt.y};
+        // p = _prj2win(p);
+        S52_GL_prj2win(&pt.x, &pt.y);
 
-        _glMatrixDel(VP_PRJ);
+        //_glMatrixDel(VP_PRJ);
 
         // FIXME: what happen if the viewport change!!
-        if ((p.u - width/2 ) <      0) x = width/2;
-        if ((x   + width   ) > _vp[2]) x = _vp[2] - width;
-        if ((p.v - height/2) <      0) y = height/2;
-        if ((y   + height  ) > _vp[3]) y = _vp[3] - height;
+        //if ((p.u - width/2 ) <      0) x = width/2;
+        //if ((x   + width   ) > _vp[2]) x = _vp[2] - width;
+        //if ((p.v - height/2) <      0) y = height/2;
+        //if ((y   + height  ) > _vp[3]) y = _vp[3] - height;
+
+        if ((pt.x - width/2 ) <      0) x = width/2;
+        //if ((x    + width   ) > _vp[2]) x = _vp[2] - width;
+        if ((x    + width   ) > _vp.w) x = _vp.w - width;
+        if ((pt.y - height/2) <      0) y = height/2;
+        //if ((y    + height  ) > _vp.h) y = _vp[3] - height;
+        if ((y    + height  ) > _vp.h) y = _vp.h - height;
     }
 
     driver = GDALGetDriverByName("GTiff");
@@ -6887,6 +6937,8 @@ int        S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *s
 int        S52_GL_drawGraticule(void)
 // FIXME: use S52_MAR_DISP_GRATICULE to get the user choice
 {
+    return_if_null(S57_getPrjStr());
+
     // delta lat  / 1852 = height in NM
     // delta long / 1852 = witdh  in NM
     double dlat = (_pmax.v - _pmin.v) / 3.0;
