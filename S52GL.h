@@ -62,11 +62,12 @@ typedef struct S52_GL_ras {
 } S52_GL_ras;
 
 typedef enum S52_GL_cycle {
-    S52_GL_NONE,
+    S52_GL_NONE,              // state between 2 cycles
     S52_GL_DRAW,              // normal  cycle - first pass draw layer 0-8
     S52_GL_LAST,              // normal  cycle - last/top/repeatable draw of layer 9
     S52_GL_BLIT,              // bitblit cycle - blit FB of first pass
-    S52_GL_PICK               // pick    cycle - cursor pick
+    S52_GL_PICK,              // pick    cycle - cursor pick
+    S52_GL_INIT               // state before first S52_GL_DRAW
 } S52_GL_cycle;
 
 int   S52_GL_init(void);
