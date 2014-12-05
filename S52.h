@@ -180,23 +180,69 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
     S52_MAR_DISP_LAYER_LAST_SELECT = 1 << 6    // 0x1000000 - MARINERS' SELECT
 } S52_MAR_DISP_CATEGORY_t;
 
+
 /**
  * S52_version:
  *
  * Internal Version.
- *
- * Note: can be called before S52_init()
  *
  *
  * Return: (transfer none): String with the version of libS52 and the '#define' used to build it
  */
 DLL const char * STD S52_version(void);
 
-//
-//----- All call bellow need S52_init() first ----------------
-//
+/**
+ * S52_getMarinerParam:
+ * @paramID: (in): ID of Mariners' Object Parameter
+ *
+ * Get the value of the Mariners' Parameter @paramID (global variables/system wide)
+ *
+ * Invalid @paramID will return the value of S52_MAR_ERROR
+ *
+ *
+ * Return: value
+ */
+DLL double STD S52_getMarinerParam(S52MarinerParameter paramID);
 
-//----- need a GL context / realize event (main loop) --------
+/**
+ * S52_setMarinerParam:
+ * @paramID: (in): ID of Mariners' Object Parameter
+ * @val:     (in): value
+ *
+ * XOR the value of the global variables @paramID
+ * used by Mariners' Object
+ *
+ *
+ * Return: TRUE on success, else FALSE
+ */
+DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
+
+/**
+ * S52_setTextDisp:
+ * @dispPrioIdx: (in): display priority index  (0..99)
+ * @count:       (in): count
+ * @state:       (in): display state (TRUE/FALSE)
+ *
+ * Set text @state display priority starting from @dispPrioIdx
+ * to @count index.
+ *
+ * 75 - OWNSHP label
+ * 76 - VESSEL label
+ *
+ * Return: TRUE on success, else FALSE
+ */
+DLL int    STD S52_setTextDisp(unsigned int dispPrioIdx, unsigned int count, unsigned int state);
+
+/**
+ * S52_getTextDisp:
+ * @dispPrioIdx: (in): display priority index  (0..99)
+ *
+ * Get the @state of text display priority at @dispPrioIdx
+ *
+ *
+ * Return: state, TRUE / FALSE / -1 (fail)
+ */
+DLL int    STD S52_getTextDisp(unsigned int dispPrioIdx);
 
 /**
  * S52_setEGLcb: register callback use by draw(), drawLast(), drawStr() and drawBlit()
@@ -211,9 +257,40 @@ typedef int (*EGL_cb)(void *EGLctx, const char *tag);
 DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx);
 
 /**
+ * S52_setRADARCallBack:
+ * @cb: (scope call) (allow-none):
+ * @texRadius: (in): texture radius (pixels), if 0 free cb
+ *
+ * S52_RADAR_cb: return alpha texture data
+ * @cLat: (in): center latitude  (deg)
+ * @cLng: (in): center longitude (deg)
+ * @rNM : (in): radar range      (NM)
+ *
+ * Signal that libS52 is at RADAR layer in the layer's sequence in S52_draw()
+ * (compile with S52_USE_RADAR)
+ *
+ *
+ * Return: TRUE on success, else FALSE
+ */
+typedef unsigned char * (*S52_RADAR_cb)(double *cLat, double *cLng, double *rNM);
+DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int textureRadiusPX);
+
+
+//
+//----- All call bellow need S52_init() first ----------------
+//
+
+//----- need a GL context / config event (main loop) --------
+
+/**
  * S52_draw:
  *
  * Draw S57 object (cell) on layer 0-8
+ *
+ * Note: call will fail if no ENC loaded (via S52_loadCell)
+ *
+ * WARNING: At startup, this call must be the verry fist draw call to set S52 symbol
+ *
  *
  * Return: TRUE on success, else FALSE
  */
@@ -224,6 +301,8 @@ DLL int    STD S52_draw(void);
  *
  * Draw layer 9 (last) stuff that change all the time (ex AIS)
  * fast update
+ *
+ * Note: call will fail if no ENC loaded (via S52_loadCell)
  *
  *
  * Return: TRUE on success, else FALSE
@@ -251,6 +330,8 @@ DLL int    STD S52_drawLayer(const char *name);
  * Note: client must register EGL callback via S52_setEGLcb()
  * to handle the framebuffer (or handle FB by hand)
  *
+ * Note: call will fail if no ENC loaded (via S52_loadCell)
+ *
  *
  * Return: TRUE on success, else FALSE
  */
@@ -263,6 +344,8 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y,
  * @scale_y: (in): -1.0 .. 0.0 .. +1.0
  * @scale_z: (in): -1.0 .. 0.0 .. +1.0
  * @north:   (in): [0.0 .. 360.0[      (<0 or >=360 unchage)
+ *
+ * Note: call will fail if no ENC loaded (via S52_loadCell)
  *
  *
  * Return: TRUE on success, else FALSE
@@ -281,10 +364,10 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
  *  Rationale: automatically setting the viewport will interfere with applications
  *   that set it manually. Applications are expected to use onresize handlers to
  *   respond to changes in size of the canvas and set the OpenGL viewport in turn.
- * So this call is simply a wrapper on 'void glViewport(GLint x, GLint y, GLsizei width, GLsizei height)'
  *
  * Use this call in conjuction with S52_setView() and S52_draw() to setup a magnifying glass
  * or an overview
+ *
  *
  * Return: TRUE on success, else FALSE
  */
@@ -300,6 +383,8 @@ DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int
  *  - in the next frame, the object is drawn with the "DNGHL" color (experimental))
  *  - using 'double' instead of 'unsigned int' because X11 handle mouse in 'double'.
  *
+ * Note: call will fail if no ENC loaded (via S52_loadCell)
+ *
  *
  * Return: (transfer none): string '<name>:<S57ID>' or if relationship existe
  * '<name>:<S57ID>:<relationS57IDa>,<S57IDa>,...:<relationS57IDb>,<S57IDb>,...'
@@ -307,6 +392,8 @@ DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int
  */
 DLL const char * STD S52_pickAt(double pixels_x, double pixels_y);
 
+
+//----- NO GL context (can work outside main loop) ----------
 
 // --- Helper ---
 
@@ -317,7 +404,7 @@ DLL const char * STD S52_pickAt(double pixels_x, double pixels_y);
  *
  * Convert pixel X/Y to longitude/latitude (deg)
  *
- * WARNING: need cell loaded to project against
+ * Note: call will fail if no ENC loaded (via S52_loadCell)
  *
  *
  * Return: TRUE on success, else FALSE
@@ -331,29 +418,28 @@ DLL int    STD S52_xy2LL(double *pixels_x,  double *pixels_y);
  *
  * Convert longitude/latitude to X/Y (pixel - origin LL corner)
  *
- * WARNING: need cell loaded to project against
+ * Note: call will fail if no ENC loaded (via S52_loadCell)
  *
  *
  * Return: TRUE on success, else FALSE
  */
 DLL int    STD S52_LL2xy(double *longitude, double *latitude);
-
-
-//----- NO GL context (can work outside main loop) ----------
+// --------------
 
 /**
  * S52_init:
- * @screen_pixels_w: (in): use to compute DOTPITCH X
- * @screen_pixels_h: (in): use to compute DOTPITCH Y
- * @screen_mm_w:     (in): use to compute DOTPITCH X
- * @screen_mm_h:     (in): use to compute DOTPITCH Y
- * @log_cb:          (scope call) (allow-none): callback
+ * @screen_pixels_w: (in): use to compute DOTPITCH X (px)
+ * @screen_pixels_h: (in): use to compute DOTPITCH Y (px)
+ * @screen_mm_w:     (in): use to compute DOTPITCH X (mm)
+ * @screen_mm_h:     (in): use to compute DOTPITCH Y (mm)
+ * @log_cb:          (scope call) (allow-none): log callback
  *
  * Initialize libS52, install SIGINT handler to abort drawing (Ctrl-C)
  * xrandr can be used if framework doesn't do it (ie Clutter)
- * Note: the ratio screen mmw/h and screen mmw/h is used to compute initial DOTPITCH
- *       any number will do if system screen size call can't handle it
- *       overide with S52_MAR_DOTPITCH_MM_X / Y after init().
+ *
+ * Note: the ratio screen mmw/w and screen mm_h/h is used to compute initial DOTPITCH
+ *       overide with S52_MAR_DOTPITCH_MM_X/Y after init().
+ *
  * Note: screen_pixels_w, int screen_pixels_h are used to setViewPort to full-screen
  *
  *
@@ -479,102 +565,6 @@ DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *nort
 DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, double *N, double *E);
 
 /**
- * S52_getMarinerParam:
- * @paramID: (in): ID of Mariners' Object Parameter
- *
- * Get the value of the Mariners' Parameter @paramID (global variables/system wide)
- *
- * Invalid @paramID will return the value of S52_MAR_ERROR
- *
- *
- * Return: value
- */
-DLL double STD S52_getMarinerParam(S52MarinerParameter paramID);
-
-/**
- * S52_setMarinerParam:
- * @paramID: (in): ID of Mariners' Object Parameter
- * @val:     (in): value
- *
- * XOR the value of the global variables @paramID
- * used by Mariners' Object
- *
- *
- * Return: TRUE on success, else FALSE
- */
-DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
-
-/**
- * S52_setTextDisp:
- * @dispPrioIdx: (in): display priority index  (0..99)
- * @count:       (in): count
- * @state:       (in): display state (TRUE/FALSE)
- *
- * Set text @state display priority starting from @dispPrioIdx
- * to @count index.
- *
- * 75 - OWNSHP label
- * 76 - VESSEL label
- *
- * Return: TRUE on success, else FALSE
- */
-DLL int    STD S52_setTextDisp(int dispPrioIdx, int count, int state);
-
-/**
- * S52_getTextDisp:
- * @dispPrioIdx: (in): display priority index  (0..99)
- *
- * Get the @state of text display priority at @dispPrioIdx
- *
- *
- * Return: state, TRUE / FALSE / -1 (fail)
- */
-DLL int    STD S52_getTextDisp(int dispPrioIdx);
-
-// DEPRECATED
-/**
- * S52_toggleObjClass:
- * @className: (in): name of the classe of S57 object
- *
- * Toggle display all S57 objects of class @className.
- *
- * NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT (3).
- *
- *
- *
- * Return: TRUE if transition ON to OFF or OFF to ON, else FALSE
- */
-//DLL int    STD S52_toggleObjClass   (const char *className);
-
-// DEPRECATED
-/**
- * S52_toggleObjClassON:
- * @className: (in): name of the classe of S57 object
- *
- * supress display of Object class (suppression ON.)
- *
- * NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT (3).
- *
- *
- * Return: TRUE if transition OFF to ON, else FALSE, error -1 (DISPLAYBASE or invalid className)
- */
-//DLL int    STD S52_toggleObjClassON (const char *className);
-
-// DEPRECATED
-/**
- * S52_toggleObjClassOFF:
- * @className: (in): name of the classe of S57 object
- *
- * display Object class (suppression OFF.)
- *
- * NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT (3).
- *
- *
- * Return: TRUE if transition ON to OFF, else FALSE, error -1 (DISPLAYBASE or invalid className)
- */
-//DLL int    STD S52_toggleObjClassOFF(const char *className);
-
-/**
  * S52_getS57ObjClassSupp:
  * @className: (in): name of the classe of S57 object
  *
@@ -593,6 +583,7 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className);
  * set suppression (TRUE/FALSE) from display of all Objects of the S57 class @className
  *
  * NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT.
+ *
  *
  * Return: TRUE if call successfull to set new value else FALSE, error -1 (DISPLAYBASE or invalid className)
  */
@@ -728,25 +719,6 @@ DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char
 DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
 
 /**
- * S52_setRADARCallBack:
- * @cb: (scope call) (allow-none):
- * @texRadius: (in): texture radius (pixels), if 0 free cb
- *
- * S52_RADAR_cb: return alpha texture data
- * @cLat: (in): center latutude in deg
- * @cLng: (in): center longitude in deg
- * @rNM : (in): radar range in NM
- *
- * Signal that libS52 is at RADAR layer in the layer's sequence in S52_draw()
- * (compile with S52_USE_RADAR)
- *
- *
- * Return: TRUE on success, else FALSE
- */
-typedef unsigned char * (*S52_RADAR_cb)(double *cLat, double *cLng, double *rNM);
-DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius);
-
-/**
  * S52_dumpS57IDPixels: DEBUG dump region of framebuffer to .PNG
  * @toFilename: (in): PNG file (with full path) to dump pixels to
  * @S57ID:      (in): internal ID of object (return via S52_getObjList() or S52_pickAt())
@@ -758,7 +730,10 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius);
  * (ie size of framebuffer must be in sync with the size of the viewport).
  *
  * If @S57ID is zero (0) then the whole framebuffer is dumped (ie @width and @height are ignore).
+ *
  * Note: use glReadPixels() instead to get raw pixles.
+ *
+ * Note: call will fail if no ENC loaded (via S52_loadCell)
  *
  *
  * Return: TRUE on success, else FALSE
@@ -793,7 +768,7 @@ DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, u
  */
 typedef void* S52ObjectHandle;
 
-// ---- Basic Call (all other call are a specialisation of these) ----
+// ---- Basic Call (all other S52_new*() call are a specialisation of this one) ----
 
 /**
  * S52_newMarObj:
@@ -812,6 +787,8 @@ typedef void* S52ObjectHandle;
  * In 'listAttVal', in S52 attribute name (ex: att1) of 6 lower case letters are reserve
  * for Mariners' Object. Lower case attribute name starting with an unserscore ('_')
  * are reserve for internal libS52 needs.
+ *
+ * Note: call will fail if no ENC loaded (via S52_loadCell)
  *
  *
  * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
@@ -971,6 +948,8 @@ DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int xyznbrmax);
  * 'data' is used to display time (hh.mm) if the object is PASTRK.
  * If the object is VESSEL or OWNSHP then 'data' is the heading.
  *
+ * Note: call will fail if no ENC loaded (via S52_loadCell)
+ *
  *
  * Return: (transfer none): the handle to S52_obj or NULL if call fail
  */
@@ -1063,7 +1042,7 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
  * The first (@pixels_x,@pixels_y) will set the origine in the case that this object was
  * created (new) with the parameter @setOrigin set to TRUE
  *
- * WARNING: need cell loaded to project against
+ * Note: call will fail if no ENC loaded (via S52_loadCell)
  *
  *
  * Return: (transfer none): the handle to S52_obj or NULL if call fail
