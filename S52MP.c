@@ -237,40 +237,43 @@ int    S52_MP_set(S52MarinerParameter param, double val)
     return TRUE;
 }
 
-/*
-int    S52_MP_write(const char *filename)
-// write back param to file
-{
-    const char *fn = NULL;
-
-    PRINTF("FIXME: not implemented\n");
-
-    if (NULL == filename)
-        fn = CONF_NAME;
-    else
-        fn = filename;
-
-    // TODO: write the stuff
-    // ...
-
-    return FALSE;
-}
-*/
-
-
-
 
 // ------ Text Display Priority --------------------------------------------------
 //
 //
 
 #define TEXT_IDX_MAX 100
-static unsigned int _textDisp[TEXT_IDX_MAX]; // assume compiler init to 0 (C99!)
+//static unsigned int _textDisp[TEXT_IDX_MAX]; // assume compiler init to 0 (C99!)
+//static unsigned int _textDisp[TEXT_IDX_MAX] = {[0 ... 99] = 1}; // not ISO C (gcc specific)
+static unsigned int _textDisp[TEXT_IDX_MAX] = {
+    1,1,1,1,1,1,1,1,1,1,   // 00 - 09 reserved for future assignment by IHO
+    1,1,1,1,1,1,1,1,1,1,   // 10 - 19 Important Text
+    1,1,1,1,1,1,1,1,1,1,   // 20 - 29 Other text
+    1,1,1,1,1,1,1,1,1,1,   // 30 - 39 30 - na, 31 - national language text (NOBJNM, NINFOM, NTXTDS)
+    1,1,1,1,1,1,1,1,1,1,   // 40 - 49 32 - 49 reserved for IHO
+    1,1,1,1,1,1,1,1,1,1,   // 50 - 59 mariners text, including planned speed etc.
+    1,1,1,1,1,1,1,1,1,1,   // 60 - 69 manufacturer's text
+    1,1,1,1,1,1,1,1,1,1,   // 70 - 79 future requirements (AIS etc.)
+    1,1,1,1,1,1,1,1,1,1,   // 80 - 89 future requirements (AIS etc.)
+    1,1,1,1,1,1,1,1,1,1    // 90 - 99 future requirements (AIS etc.)
+};
 
 int    S52_MP_setTextDisp(unsigned int prioIdx, unsigned int count, unsigned int state)
 {
-    if (prioIdx+count > TEXT_IDX_MAX)
+    if (TEXT_IDX_MAX < prioIdx) {
+        PRINTF("WARNING: prioIdx out of bound (%i)\n", prioIdx);
         return FALSE;
+    }
+
+    if (TEXT_IDX_MAX < count) {
+        PRINTF("WARNING: count out of bound (%i)\n", count);
+        return FALSE;
+    }
+
+    if (prioIdx+count > TEXT_IDX_MAX) {
+        PRINTF("WARNING: prioIdx + count out of bound (%i)\n", prioIdx + count);
+        return FALSE;
+    }
 
     for (guint i=0; i<count; ++i)
         _textDisp[prioIdx + i] = state;
@@ -283,5 +286,5 @@ int    S52_MP_getTextDisp(unsigned int prioIdx)
     if (prioIdx < TEXT_IDX_MAX)
         return _textDisp[prioIdx];
     else
-        return FALSE;
+        return -1;
 }
