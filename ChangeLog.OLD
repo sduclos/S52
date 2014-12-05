@@ -4,9 +4,23 @@
 #
 
 
+2014DEC04
+    -mod initialize text group to TRUE (ON)
+
+2014DEC03
+    -mod refactor _vp[] to struct x,y,w,h
+
+2014DEC02
+    -add code / doc in S52.h  to validate calls order
+    -add S52_GL_INIT to GL_cycle
+    -add code to guard using GL Projection Matrix before intialisint it
+
+2014DEC01
+    -mod refactor and add guard from calling PROJ4 before initialising it
+
 2014NOV29
     -del unneeded S52.c:_win2prj()
-    -mod move S52_USE_PROJ to S57data PROJ4 stuff
+    -mod move S52_USE_PROJ to S57data.c PROJ4 stuff
 
 2014NOV28
     -mod prevent using S52_xy2LL() / S52_LL2xy() before init Projection View
