@@ -317,7 +317,8 @@ PROJCS["WGS 84 / Pseudo-Mercator",
     if (NULL != _pjdst)
         pj_free(_pjdst);
 
-    if (!(_pjdst = pj_init_plus(_pjstr))) {
+    _pjdst = pj_init_plus(_pjstr);
+    if (FALSE == _pjdst) {
         PRINTF("ERROR: init pjdst PROJ4 (lat:%f) [%s]\n", lat, pj_strerrno(pj_errno));
         g_assert(0);
         return FALSE;
@@ -412,9 +413,10 @@ int        S57_geo2prj(_S57_geo *geo)
     for (guint i=0; i<nr; ++i) {
         guint   npt;
         double *ppt;
-        if (TRUE == S57_getGeoData(geo, i, &npt, &ppt))
+        if (TRUE == S57_getGeoData(geo, i, &npt, &ppt)) {
             if (FALSE == S57_geo2prj3dv(npt, ppt))
                 return FALSE;
+        }
     }
 #endif  // S52_USE_PROJ
 
