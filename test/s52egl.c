@@ -1013,11 +1013,15 @@ route normale de navigation.
     _waypnt3 = S52_newMarObj("waypnt", S52_POINT, 1, (double*)&WPxyz[2], attVal3);
     _waypnt4 = S52_newMarObj("waypnt", S52_POINT, 1, (double*)&WPxyz[3], attVal4);
 
+    // need to turn OFF guard zone because projection not set yet (set via S52_draw())
+    double gz = S52_getMarinerParam(S52_MAR_GUARDZONE_BEAM);
+    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);  // trun off
 #define ALT_RTE 2
     // select: alternate (2) legline for Ice Route 2012-02-12T21:00:00Z
     _leglin1 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[0].y, WPxyz[0].x, WPxyz[1].y, WPxyz[1].x, NULL);
     _leglin2 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[1].y, WPxyz[1].x, WPxyz[2].y, WPxyz[2].x, _leglin1);
     _leglin3 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[2].y, WPxyz[2].x, WPxyz[3].y, WPxyz[3].x, _leglin2);
+    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, gz);  // trun on
 
     /*
     {// test wholin
@@ -1032,6 +1036,8 @@ route normale de navigation.
 
 static int      _s52_setupLEGLIN(s52droid_state_t *state)
 {
+    (void) state;
+
     if (NULL != _leglin4) {
         _leglin4 = S52_delMarObj(_leglin4);
         if (NULL != _leglin4) {
@@ -1133,6 +1139,120 @@ static int      _s52_setupPRDARE(s52droid_state_t *state)
     // PRDARE/WNDFRM51/CATPRA9
     char attVal[] = "CATPRA:9";
     _prdare = S52_newMarObj("PRDARE", S52_AREAS, 6, xyzArea,  attVal);
+
+    return TRUE;
+}
+
+static int      _s52_setupMarPar(void)
+{
+    // -- DEPTH COLOR ------------------------------------
+    S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
+    //S52_setMarinerParam(S52_MAR_TWO_SHADES,      1.0);   // 1.0 --> 2 shades
+
+    // sounding color
+    //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    10.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
+
+
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // for triggering symb ISODGR01 (ODD winding) at Rimouski
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
+
+    //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
+    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
+
+    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
+    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
+
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
+    // -- DEPTH COLOR ------------------------------------
+
+    S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the GPU]
+    //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 0.0);  // off
+
+    S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);
+    S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);
+    S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);
+    //S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);    // (default ON)
+
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // always ON
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // default
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_OTHER);
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE | S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
+    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
+
+    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE );
+    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // default
+    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);
+    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Standard(default) + Other)
+
+    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
+    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
+    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60 - need plib_COLS-3.4.1.rle
+    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60 - need plib_COLS-3.4.1.rle
+
+    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
+    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
+
+    // remove QUAPNT01 symbole (black diagonal and a '?')
+    S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);   // off
+
+    S52_setMarinerParam(S52_MAR_DISP_CALIB,      1.0);
+
+    // cell's legend
+    //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
+    S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);   // hide (default)
+
+    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
+    S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
+
+    S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
+    //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
+
+    // trick to force symbole size
+#ifdef S52_USE_TEGRA2
+    // smaller on xoom so that proportion look the same
+    // as a 'normal' screen - since the eye is closer to the 10" screen of the Xoom
+    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
+    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
+#endif
+
+#ifdef S52_USE_ADRENO
+    // Nexus 7 (2013) [~323 ppi]
+    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.2);
+    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
+#endif
+
+#if !defined(SET_SCREEN_SIZE) && !defined(S52_USE_ANDROID)
+    // NOTE: S52 pixels for symb are 0.3 mm
+    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
+    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
+#endif
+
+    // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
+    //S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 0.0);
+    // older AIS - case where s52ais reconnect
+    // FIXME: maybe check AIS mmsi, so that same ohjH is used!
+    S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 700.0);
+
+    //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
+    S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
+
+    //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
+    S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 1.0);  // on
+
+    //*
+    // debug - use for timing rendering
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
+    //*/
 
     return TRUE;
 }
@@ -1369,127 +1489,12 @@ static int      _s52_init       (s52engine *engine)
     // debug - remove clutter from this symb in SELECT mode
     S52_setS57ObjClassSupp("M_QUAL", TRUE);  // suppress display of the U pattern
     //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
-    //S52_toggleObjClassON ("M_QUAL");           //  suppression ON
-    //S52_toggleObjClassOFF("M_QUAL");         //  suppression OFF
 
+    _s52_setupMarPar();
 
-    // -- DEPTH COLOR ------------------------------------
-    S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
-    //S52_setMarinerParam(S52_MAR_TWO_SHADES,      1.0);   // 1.0 --> 2 shades
-
-    // sounding color
-    //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    10.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
-
-
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // for triggering symb ISODGR01 (ODD winding) at Rimouski
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
-
-    //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
-    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
-
-    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
-    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
-
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
-    // -- DEPTH COLOR ------------------------------------
-
-    S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the GPU]
-    //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 0.0);  // off
-
-    S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);
-    S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);
-    S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);
-    //S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);    // (default ON)
-
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // always ON
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // default
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_OTHER);
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE | S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
-    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
-
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE );
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // default
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);
-    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Standard(default) + Other)
-
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
-    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60 - need plib_COLS-3.4.1.rle
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60 - need plib_COLS-3.4.1.rle
-
-    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
-
-    // remove QUAPNT01 symbole (black diagonal and a '?')
-    S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);   // off
-
-    S52_setMarinerParam(S52_MAR_DISP_CALIB,      1.0);
-
-    // --- TEXT ----------------------------------------------
-    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);  // default
-    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);
-
-    S52_setTextDisp(0, 100, TRUE);                      // show all text
-    //S52_setTextDisp(0, 100, FALSE);                   // no text
-
-    // cell's legend
-    //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
-    S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);   // hide (default)
-    // -------------------------------------------------------
-
-
-    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
-    S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
-
-    S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
-    //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
-
-    // trick to force symbole size
-#ifdef S52_USE_TEGRA2
-    // smaller on xoom so that proportion look the same
-    // as a 'normal' screen - since the eye is closer to the 10" screen of the Xoom
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
-#endif
-
-#ifdef S52_USE_ADRENO
-    // Nexus 7 (2013) [~323 ppi]
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.2);
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
-#endif
-
-#if !defined(SET_SCREEN_SIZE) && !defined(S52_USE_ANDROID)
-    // NOTE: S52 pixels for symb are 0.3 mm
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
-#endif
-
-    // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
-    //S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 0.0);
-    // older AIS - case where s52ais reconnect
-    // FIXME: maybe check AIS mmsi, so that same ohjH is used!
-    S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 700.0);
-
-    //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
-    S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
-
-    //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
-    S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 1.0);  // on
-
-    //*
-    // debug - use for timing rendering
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
-    //*/
+    //S52_setTextDisp(0, 100, TRUE);                // show all text (default)
+    S52_setMarinerParam(S52_MAR_SHOW_TEXT,   1.0);  // default
+    //S52_setMarinerParam(S52_MAR_SHOW_TEXT, 0.0);
 
     // if first start, find where we are looking
     _s52_computeView(&engine->state);
@@ -1507,7 +1512,9 @@ static int      _s52_init       (s52engine *engine)
     _s52_setupVRMEBL(&engine->state);
 
     // set route
-    //_s52_setupIceRoute();
+    _s52_setupIceRoute();
+
+    // can't check guard zone here because projection not set yet (set via S52_draw())
     //_s52_setupLEGLIN(&engine->state);
 
     // wind farme for testing centroids in a concave poly
