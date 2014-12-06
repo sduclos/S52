@@ -238,11 +238,11 @@ static int        _doInit       = TRUE;    // init the lib
 
 // FIXME: reparse CS of the affected MP only (ex: ship outline MP need only to reparse OWNSHP CS)
 static int        _doCS         = FALSE;   // TRUE will recreate *all* CS at next draw() or drawLast()
-                                       // (not only those affected by Marine's Parameter)
+                                           // (not only those affected by Marine's Parameter)
 
-static int        _doCullLights = FALSE; // TRUE will do lights_sector culling when _cellList change
+static int        _doCullLights = FALSE;   // TRUE will do lights_sector culling when _cellList change
 
-#include <locale.h>                    // setlocal()
+#include <locale.h>                        // setlocal()
 static char      *_intl         = NULL;
 
 // statistic
@@ -254,22 +254,6 @@ typedef struct {
     double cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
 } _view_t;
 static _view_t _view = {0.0, 0.0, 0.0, 0.0};
-
-// Note: thread awarness to prenvent two threads from writing into the 'scene graph' at once
-// (ex data comming from gpsd,) so this is mostly Mariners' Object.
-// Note: the mutex never have to do work with the main_loop already serializing call.
-// Note: that DBus and socket/WebSocket are running from the main loop but the handling is done from threads
-
-#if (defined(S52_USE_ANDROID) || defined(_MINGW))
-static GStaticMutex       _mp_mutex = G_STATIC_MUTEX_INIT;
-#define GMUTEXLOCK   g_static_mutex_lock
-#define GMUTEXUNLOCK g_static_mutex_unlock
-#else
-static GMutex             _mp_mutex;
-#define GMUTEXLOCK   g_mutex_lock
-#define GMUTEXUNLOCK g_mutex_unlock
-#endif
-
 
 // CSYMB init scale bar, north arrow, unit, CHKSYM
 static int             _iniCSYMB = TRUE;
@@ -285,17 +269,14 @@ static S52ObjectHandle _UNITMTR1 = FALSE;
 static S52ObjectHandle _CHKSYM01 = FALSE;
 static S52ObjectHandle _BLKADJ01 = FALSE;
 
-//static S52_RADAR_cb  _RADAR_cb   = NULL;
-//static int          _doRADAR  = TRUE;
 static GPtrArray    *_rasterList = NULL;    // list of Raster
-//static S52_GL_ras   *_raster     = NULL;
 
 // callback to eglMakeCurrent() / eglSwapBuffers()
 #ifdef S52_USE_EGL
 static EGL_cb _eglBeg = NULL;
 static EGL_cb _eglEnd = NULL;
 static void  *_EGLctx = NULL;
-// WARNING: call BEFORE mutex
+
 #define EGL_BEG(tag)    if (NULL != _eglBeg) {                    \
                            if (FALSE == _eglBeg(_EGLctx,#tag)) {  \
                                 goto exit;                        \
@@ -303,7 +284,6 @@ static void  *_EGLctx = NULL;
                            }                                      \
 						}
 
-// WARNING: call AFTER mutex
 #define EGL_END(tag)    if (NULL != _eglEnd) _eglEnd(_EGLctx,#tag);
 
 #else  // S52_USE_EGL
@@ -314,13 +294,30 @@ static void  *_EGLctx = NULL;
 #endif  // S52_USE_EGL
 
 
+// Note: thread awarness to prenvent two threads from writing into the 'scene graph' at once
+// (ex data comming from gpsd,) so this is mostly Mariners' Object.
+// Note: the mutex never have to do work with the main_loop already serializing call.
+// Note: that DBus and socket/WebSocket are running from the main loop but the handling is done from threads
+
+#if (defined(S52_USE_ANDROID) || defined(_MINGW))
+static GStaticMutex  _mp_mutex = G_STATIC_MUTEX_INIT;
+#define GMUTEXLOCK   g_static_mutex_lock
+#define GMUTEXUNLOCK g_static_mutex_unlock
+#else
+static GMutex        _mp_mutex;
+#define GMUTEXLOCK   g_mutex_lock
+#define GMUTEXUNLOCK g_mutex_unlock
+#endif
+
+
 // check basic init
 #define S52_CHECK_INIT  if (TRUE == _doInit) {                                                  \
                            PRINTF("WARNING: libS52 not initialized --call S52_init() first\n"); \
+                           goto exit;                                                           \
                            return FALSE;                                                        \
                         }
 
-// check if we are shuting down
+/*
 #define S52_CHECK_MUTX  GMUTEXLOCK(&_mp_mutex);           \
                         if (NULL == _marinerCell) {       \
                            GMUTEXUNLOCK(&_mp_mutex);      \
@@ -329,6 +326,10 @@ static void  *_EGLctx = NULL;
                            exit(0);                       \
                            return FALSE;                  \
                         }
+*/
+#define S52_CHECK_MUTX                   GMUTEXLOCK(&_mp_mutex);
+#define S52_CHECK_MUTX_INIT              GMUTEXLOCK(&_mp_mutex); S52_CHECK_INIT
+#define S52_CHECK_MUTX_INIT_EGLBEG(tag)  GMUTEXLOCK(&_mp_mutex); S52_CHECK_INIT EGL_BEG(tag)
 
 
 ////////////////////////////////////////////////////
@@ -578,7 +579,6 @@ DLL double STD S52_getMarinerParam(S52MarinerParameter paramID)
 // return Mariner parameter or the value in S52_MAR_ERROR if fail
 // FIXME: check mariner param against groups selection
 {
-    //S52_CHECK_INIT;
     S52_CHECK_MUTX;
 
     double val = S52_MP_get(paramID);
@@ -593,7 +593,6 @@ DLL double STD S52_getMarinerParam(S52MarinerParameter paramID)
 DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
 // validate and set Mariner Parameter
 {
-    //S52_CHECK_INIT;
     S52_CHECK_MUTX;
 
     PRINTF("paramID:%i, val:%f\n", paramID, val);
@@ -1474,6 +1473,12 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 {
     //libS52Zdso();
 
+    // check if init already done
+    if (!_doInit) {
+        PRINTF("WARNING: libS52 already initalized\n");
+        return FALSE;
+    }
+
     // debug
     if (NULL != log_cb)
         log_cb("S52_init(): test log\n");
@@ -1506,12 +1511,6 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
         return FALSE;
     }
 #endif
-
-    // check if init already done
-    if (!_doInit) {
-        PRINTF("WARNING: libS52 already initalized\n");
-        return FALSE;
-    }
 
     ///////////////////////////////////////////////////////////
     //
@@ -1628,7 +1627,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     g_ptr_array_sort(_cellList, _cmpCell);
 
     // init extend
-    // FIXME: init struct
+    // FIXME: add init flags in struct !?
     _marinerCell->ext.S = -INFINITY;
     _marinerCell->ext.W = -INFINITY;
     _marinerCell->ext.N =  INFINITY;
@@ -1681,11 +1680,8 @@ DLL cchar *STD S52_version(void)
 DLL int    STD S52_done(void)
 // clear all - shutdown libS52
 {
-    S52_CHECK_INIT;
-    // FIXME: check if we are in the middle of draw() call
-    // (ie user call done() via RADAR_cb)
-    // the client must let the draw() finish before exiting!
-    S52_CHECK_MUTX;
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     if (NULL != _cellList) {
         // FIXME: check if foreach() work here
@@ -1697,7 +1693,7 @@ DLL int    STD S52_done(void)
         //g_ptr_array_unref(_cellList);
         _cellList = NULL;
     }
-    // FIXME: first thingh to do
+
     _marinerCell = NULL;
 
 
@@ -1745,6 +1741,8 @@ DLL int    STD S52_done(void)
     _eglEnd = NULL;
     _EGLctx = NULL;
 #endif
+
+exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -2410,8 +2408,8 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 // GDAL:
 // - GeoTIFF
 {
-    S52_CHECK_INIT;
-    S52_CHECK_MUTX;   // can't load 2 sets of charte at once
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     valueBuf chartPath = {'\0'};
     char    *fname     = NULL;
@@ -2573,6 +2571,8 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     // _app() specific to sector light
     _doCullLights = TRUE;
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
@@ -2583,11 +2583,11 @@ DLL int    STD S52_doneCell(const char *encPath)
 // so loadCell would load a CATALOG then CM would load individual cell
 // to fill the view (and unload cell outside the view)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null(encPath);
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     PRINTF("%s\n", encPath);
 
@@ -2929,6 +2929,8 @@ int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_
 #else
     S57_ogrLoadLayer(layername, layer, loadObject_cb);
 #endif
+
+exit:
 
     return TRUE;
 }
@@ -3279,6 +3281,8 @@ int            S52_loadObject(const char *objname, void *shape)
 
     S52_CS_add(_crntCell->local, geoData);
 
+exit:
+
     return TRUE;
 }
 
@@ -3357,7 +3361,9 @@ static int        _moveObj(_cell *cell, S52_disPrio oldPrio, S52ObjectType obj_t
 }
 
 static int        _app()
-// WARNING: not reentrant
+// FIXME: doCSMar Mariner Only - time the cost of APP
+// -OR-
+// try to move Mariner CS logique in GL
 {
     //PRINTF("_app(): -.0-\n");
     // 1- delete pending mariner
@@ -3977,12 +3983,13 @@ DLL int    STD S52_draw(void)
         goto exit;
     }
 
-    //  check if we are shutting down
+    /*  check if we are shutting down
     if (NULL == _marinerCell) {
         PRINTF("shutting down\n");
         g_assert(0);
         goto exit;
     }
+    */
 
     // debug
     //PRINTF("DRAW: start ..\n");
@@ -4182,12 +4189,13 @@ DLL int    STD S52_drawLast(void)
         goto exit;
     }
 
-    //  check if we are shuting down
+    /*  check if we are shuting down
     if (NULL == _marinerCell) {
         PRINTF("Shutting down\n");
         g_assert(0);
         goto exit;
     }
+    */
 
     g_atomic_int_set(&_atomicAbort, FALSE);
 
@@ -4283,9 +4291,9 @@ DLL int    STD S52_drawLayer(const char *name)
 
 #ifdef S52_USE_GV
 
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
     return_if_null(S57_getPrjStr());
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     // debug filter out some layer comming from OpenEV
     /*
@@ -4334,6 +4342,8 @@ DLL int    STD S52_drawLayer(const char *name)
         S52_GL_end(S52_GL_DRAW);
     }
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 #endif
 
@@ -4342,15 +4352,16 @@ DLL int    STD S52_drawLayer(const char *name)
 
 DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null(colorName);
     return_if_null(str);
     return_if_null(S57_getPrjStr());
 
-    EGL_BEG(STR);
+    //EGL_BEG(STR);
 
-    S52_CHECK_MUTX;
+    //S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT_EGLBEG(STR);
 
     int ret = FALSE;
     if (FALSE == (ret = _validate_screenPos(&pixels_x, &pixels_y))) {
@@ -4392,13 +4403,16 @@ DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx)
 
 DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north)
 {
-    S52_CHECK_INIT;
+
+    //S52_CHECK_INIT;
     return_if_null(S57_getPrjStr());
 
-    EGL_BEG(BLIT);
+    //EGL_BEG(BLIT);
 
-    // FIXME: try lock skip touch - appent when broken EGL does a glFinish() in EGL swap
-    S52_CHECK_MUTX;
+    // FIXME: try lock skip touch -
+    // happen when broken EGL does a glFinish() in EGL swap
+    //S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT_EGLBEG(BLIT);
 
     int ret = FALSE;
 
@@ -4456,9 +4470,9 @@ exit:
 
 DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
     return_if_null(S57_getPrjStr());
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     // check bound
     if (FALSE == _validate_screenPos(pixels_x, pixels_y)) {
@@ -4480,6 +4494,8 @@ DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
     *pixels_x = uv.u;
     *pixels_y = uv.v;
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
@@ -4487,9 +4503,9 @@ DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
 
 DLL int    STD S52_LL2xy(double *longitude, double *latitude)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
     return_if_null(S57_getPrjStr());
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     double xyz[3] = {*longitude, *latitude, 0.0};
     if (FALSE == S57_geo2prj3dv(1, xyz)) {
@@ -4504,6 +4520,8 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude)
     *longitude = xyz[0];
     *latitude  = xyz[1];
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
@@ -4511,12 +4529,11 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude)
 
 DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     // debug
     PRINTF("lat:%f, long:%f, range:%f north:%f\n", cLat, cLon, rNM, north);
-
-    S52_CHECK_MUTX;
 
     //*
     if (ABS(cLat) > 90.0) {
@@ -4576,6 +4593,8 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     _view.rNM   = rNM;
     _view.north = north;
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
@@ -4583,12 +4602,12 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
 
 DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *north)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
     return_if_null(cLat);
     return_if_null(cLon);
     return_if_null(rNM);
     return_if_null(north);
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     // update local var _view
     *cLat  = _view.cLat;
@@ -4611,6 +4630,8 @@ DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *nort
     // debug
     PRINTF("lat:%f, long:%f, range:%f north:%f\n", *cLat, *cLon, *rNM, *north);
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
@@ -4618,14 +4639,16 @@ DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *nort
 
 DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height)
 {
-    S52_CHECK_INIT;
-    S52_CHECK_MUTX;
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     PRINTF("pixels_x:%i, pixels_y:%i, pixels_width:%i, pixels_height:%i\n", pixels_x, pixels_y, pixels_width, pixels_height);
 
     //_validate_screenPos(&x, &y);
 
     S52_GL_setViewPort(pixels_x, pixels_y, pixels_width, pixels_height);
+
+exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -4734,13 +4757,13 @@ static int        _getCellsExt(_extent* extSum)
 
 DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, double *N, double *E)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     if (NULL==S || NULL==W || NULL==N || NULL==E) {
         PRINTF("WARNING: NULL extent S,W,N,E\n");
         return FALSE;
     }
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     if (NULL == filename) {
         _extent ext;
@@ -4787,6 +4810,8 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
         g_free(name);
     }
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
@@ -4818,6 +4843,8 @@ DLL int    STD S52_toggleObjClass(const char *className)
         return FALSE;
     }
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     if (S52_SUPP_ON  == ret)
@@ -4845,6 +4872,8 @@ DLL int    STD S52_toggleObjClassON (const char *className)
     }
 
     // FIXME: use S52_PL_toggleObjClass() !!
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     if (S52_SUPP_OFF == supState) {
@@ -4873,6 +4902,8 @@ DLL int    STD S52_toggleObjClassOFF(const char *className)
     }
 
     // FIXME: use S52_PL_toggleObjClass() !!
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     if (S52_SUPP_ON == supState) {
@@ -4901,6 +4932,8 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className)
     }
 
     // FIXME: use S52_PL_toggleObjClass() !!
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     if (S52_SUPP_ON == supState)
@@ -4911,11 +4944,11 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className)
 
 DLL int    STD S52_setS57ObjClassSupp(const char *className, int value)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null(className);
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     S52_objSupp supState = S52_PL_getObjClassState(className);
     if (S52_SUPP_ERR == supState) {
@@ -4935,6 +4968,8 @@ DLL int    STD S52_setS57ObjClassSupp(const char *className, int value)
 
     S52_PL_toggleObjClass(className);
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     //S52_toggleObjClass(className);
@@ -4953,8 +4988,8 @@ DLL int    STD S52_loadPLib(const char *plibName)
 // * reload them to get new S52ObjectHandle.
 
 {
-    S52_CHECK_INIT;
-    S52_CHECK_MUTX;
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     // 1 - load / parse new PLb
     valueBuf PLibPath = {'\0'};
@@ -5029,6 +5064,8 @@ DLL int    STD S52_loadPLib(const char *plibName)
     // signal to rebuild all cmd
     _doCS = TRUE;
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
@@ -5043,6 +5080,12 @@ DLL int    STD S52_loadPLib(const char *plibName)
 
 DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 {
+    //S52_CHECK_INIT;
+    return_if_null(S57_getPrjStr());
+    // FIXME: is call to EGL really usefull for picking - ReadPixels flush the pipeline
+    //EGL_BEG(PICK);
+    S52_CHECK_MUTX_INIT;
+
     // viewport
     int x;
     int y;
@@ -5054,28 +5097,26 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     double gs,gw,gn,ge;   // hold GEO view
     double oldAA = 0.0;
 
-    if (0.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK))
-        return FALSE;
+    if (0.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
+        //return FALSE;
+        goto exit;
+    }
 
 #if !defined(S52_USE_C_AGGR_C_ASSO)
     if (3.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
         PRINTF("WARNING: mode 3 need -DS52_USE_C_AGGR_C_ASSO\n");
-        return FALSE;
+        //return FALSE;
+        goto exit;
     }
 #endif
-
-    S52_CHECK_INIT;
-    return_if_null(S57_getPrjStr());
-    // FIXME: is call to EGL really usefull for picking
-    EGL_BEG(PICK);
-    S52_CHECK_MUTX;
 
     // check bound
     if (FALSE == _validate_screenPos(&pixels_x, &pixels_y)) {
         PRINTF("WARNING: coord out of scteen\n");
-        GMUTEXUNLOCK(&_mp_mutex);
-        g_assert(0);
-        return FALSE;
+        //GMUTEXUNLOCK(&_mp_mutex);
+        //g_assert(0);
+        //return FALSE;
+        goto exit;
     }
 
     g_timer_reset(_timer);
@@ -5178,7 +5219,7 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 exit:
     GMUTEXUNLOCK(&_mp_mutex);
 
-    EGL_END(PICK);
+    //EGL_END(PICK);
 
     //return NULL; // debug
     return name;
@@ -5186,10 +5227,12 @@ exit:
 
 DLL cchar *STD S52_getPLibNameList(void)
 {
-    S52_CHECK_INIT;
-    S52_CHECK_MUTX;
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
-    const char * str = _plibNameList->str;
+    const char *str = _plibNameList->str;
+
+exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -5199,8 +5242,8 @@ DLL cchar *STD S52_getPLibNameList(void)
 DLL cchar *STD S52_getPalettesNameList(void)
 // return a string of palettes name loaded
 {
-    S52_CHECK_INIT;
-    S52_CHECK_MUTX;
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     const char *str = NULL;
     int palTblsz    = S52_PL_getPalTableSz();
@@ -5213,6 +5256,8 @@ DLL cchar *STD S52_getPalettesNameList(void)
     }
 
     str = _paltNameList->str;
+
+exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -5241,8 +5286,8 @@ static GString   *_getMARINClassList()
 
 DLL cchar *STD S52_getS57ClassList(const char *cellName)
 {
-    S52_CHECK_INIT;
-    S52_CHECK_MUTX;
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     const char * str = NULL;
     g_string_set_size(_S57ClassList, 0);
@@ -5289,6 +5334,8 @@ DLL cchar *STD S52_getS57ClassList(const char *cellName)
     if (0 != _S57ClassList->len)
         str = _S57ClassList->str;
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return str;
@@ -5296,12 +5343,12 @@ DLL cchar *STD S52_getS57ClassList(const char *cellName)
 
 DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null(cellName);
     return_if_null(className);
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     const char *str    = NULL;
     int         header = TRUE;
@@ -5350,6 +5397,8 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
         }
     }
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return NULL;
@@ -5357,8 +5406,8 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
 
 DLL cchar *STD S52_getAttList(unsigned int S57ID)
 {
-    S52_CHECK_INIT;
-    S52_CHECK_MUTX;
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     // FIXME: put in array of s57id  (what to do if ENC is unloaded)
     PRINTF("S57ID: %i\n", S57ID);
@@ -5390,8 +5439,8 @@ exit:
 
 DLL cchar *STD S52_getCellNameList(void)
 {
-    S52_CHECK_INIT;
-    S52_CHECK_MUTX;
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     g_string_set_size(_cellNameList, 0);
 
@@ -5446,6 +5495,8 @@ DLL cchar *STD S52_getCellNameList(void)
     if (0 != _cellNameList->len)
         str = _cellNameList->str;
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return str;
@@ -5456,16 +5507,18 @@ DLL cchar *STD S52_getCellNameList(void)
 
 DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null(colorName);
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     // debug
     PRINTF("colorName:%s, R:%c, G:%c, B:%c\n", colorName, R, G, B);
 
     S52_PL_setRGB(colorName, R, G, B);
+
+exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -5474,19 +5527,21 @@ DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char
 
 DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null(colorName);
     return_if_null(R);
     return_if_null(G);
     return_if_null(B);
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     // debug
     PRINTF("colorName:%s, R:%#lX, G:%#lX, B:%#lX\n", colorName, (long unsigned int)R, (long unsigned int)G, (long unsigned int)B);
 
     S52_PL_getRGB(colorName, R, G, B);
+
+exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -5498,13 +5553,14 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius)
 {
     (void)cb;
     (void)texRadius;
+
 #ifdef S52_USE_RADAR
 
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null(cb);
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     PRINTF("cb:#lX, texRadius:%u\n", (long unsigned int)cb, texRadius);
 
@@ -5533,6 +5589,8 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius)
     raster->npotY      = texRadius * 2;  // E/W
     raster->gdtSz      = 1;    // 1 byte Alpha
     g_ptr_array_add(_rasterList, raster);
+
+exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -5680,14 +5738,16 @@ static S52_obj   *_isObjValid(_cell *c, S52_obj *obj)
 // Used to validate User Mariners' Object
 {
     // FIXME: refactor/optimise - objH could be an index into a GPtrArray of the real struct
-    // - what happend if array is full !
+    // - Q: what happend if array is full (guint)!
+    // - A: this limit (guint) is on all guint like s52id, so
+    // So let the array grow upto guint (at least 2^32 objH - if 64bits system then 2^64)
+    // and signal ARRAY_FULL in S52_MAR_ERROR !
+
     // PROB: if del_fast(array) is used then the last objH in the array has now
     // the index of the deleted one
     // - OR -
-    // else let the array grow upto guint (at least 2^32 objH - if 64bits system then 2^64)
-    // and signal ARRAY_FULL in S52_MAR_ERROR !
-    // - OR -
     // BBtree of objH or index --> objH
+    // PROB: maybe BBtree max out at guint - so this is not a solution to guint!
 
     for (int i=0; i<S52_PRIO_NUM; ++i) {
         for (int j=0; j<N_OBJ_T; ++j) {
@@ -5760,8 +5820,8 @@ static S52_obj   *_getS52obj(unsigned int S57ID)
     }
 
     {   // obj not found - search Mariners' Object List (mostly on layer 9)
+        PRINTF("FIXME: check all layer - not all on layer 9 (S52_PRIO_MARINR) !!\n");
         for (int i=0; i<N_OBJ_T; ++i) {
-            // FIXME: not all on layer 9 (S52_PRIO_MARINR) !!
             GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][i];
 
             for (guint idx=0; idx<rbin->len; ++idx) {
@@ -5786,9 +5846,9 @@ static S52_obj   *_getS52obj(unsigned int S57ID)
 
 DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
     return_if_null(S57_getPrjStr());
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     int ret = FALSE;
 
@@ -5800,44 +5860,21 @@ DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, u
             ret = S52_GL_dumpS57IDPixels(toFilename, obj, width, height);
     }
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return ret;
 }
 
-DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
+S52ObjectHandle            _newMarObj(const char *plibObjName, S52ObjectType objType,
                                       unsigned int xyznbr, double *xyz, const char *listAttVal)
 {
-
     S57_geo     *geo     = NULL;
     double      *gxyz    = NULL;
     double     **ggxyz   = NULL;
     guint       *gxyznbr = NULL;
     S52_obj     *obj     = NULL;
-
-    S52_CHECK_INIT;
-    return_if_null(S57_getPrjStr());
-    S52_CHECK_MUTX;
-
-    // here we can load mariners' object event if no ENC are loaded yet
-    if (NULL == _marinerCell) {
-        PRINTF("WARNING: no cell loaded .. no cell to project this object to\n");
-        goto exit;
-    }
-
-    // FIXME: check that "plibObjName" is a valid name
-    if (NULL == plibObjName) {
-        PRINTF("WARNING: plibObjName NULL\n");
-        goto exit;
-    }
-
-    // debug
-    PRINTF("plibObjName:%s, objType:%i, xyznbr:%u, xyz:%p, listAttVal:<%s>\n",
-            plibObjName, objType, xyznbr, xyz, (NULL==listAttVal)?"NULL":listAttVal );
-
-    // is this really needed? (how about META!!)
-    //if (NULL == xyz)
-    //    return NULL;
 
     if (0 != xyznbr) {
 
@@ -5890,11 +5927,7 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
         case S52_POINT: geo = S57_setPOINT(gxyz);                         break;
         case S52_LINES: geo = S57_setLINES(xyznbr, gxyz);                 break;
         case S52_AREAS: geo = S57_setAREAS(1, gxyznbr, ggxyz, S57_AW_CW); break;
-
-        default:
-            PRINTF("WARNING: unknown object type\n");
-            g_assert(0);
-            return NULL;
+        default: break;  // quiet compiler
     }
 
     if (NULL == geo) {
@@ -5912,16 +5945,9 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
         S57_setGeoSize(geo, xyznbr);
         _setExt(geo, xyznbr, xyz);
     }
-    // not really needed since geo struct is initialize to 0
-    //else {
-    //    S57_setGeoSize(geo, 0);
-    //}
 
     if (NULL != listAttVal)
         _setAtt(geo, listAttVal);
-
-    // SCAMIN Mariners' object
-    //S57_setScamin(geo, 0.0);
 
     // debug - immediatly destroy it
     //S57_doneData(geo);
@@ -5945,12 +5971,43 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     S52_PL_resetParseText(obj);
 
     // redo CS, because some object might have a CS command word (ex leglin)
+    // FIXME: call only on known CS (CLRLIN,LEGLIN,OWNSHP,PASTRK,VESSEL,VRMEBL)
     _doCS = TRUE;
 
+    return obj;
+}
+
+DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
+                                      unsigned int xyznbr, double *xyz, const char *listAttVal)
+{
+    //S52_CHECK_INIT;
+    return_if_null(plibObjName);
+    return_if_null(S57_getPrjStr());
+    S52_CHECK_MUTX_INIT;
+
+
     // debug
-    PRINTF("objH:%p, plibObjName:%s, ID:%i, objType:%i, xyznbr:%u, xyz:%p, listAttVal:<%s>\n",
-            obj,     plibObjName, S57_getGeoID(geo), objType, xyznbr, gxyz,
-           (NULL==listAttVal)?"NULL":listAttVal);
+    PRINTF("plibObjName:%s, objType:%i, xyznbr:%u, xyz:%p, listAttVal:<%s>\n",
+            plibObjName, objType, xyznbr, xyz, (NULL==listAttVal)?"NULL":listAttVal );
+
+    // is this really needed? (how about META!!)
+    //if (NULL == xyz)
+    //    return NULL;
+
+    if (objType<S52__META || S52_POINT<objType) {
+        PRINTF("WARNING: unknown object type\n");
+        g_assert(0);
+        goto exit;
+    }
+
+    S52_obj *obj = NULL;
+    obj = _newMarObj(plibObjName, objType, xyznbr, xyz, listAttVal);
+
+
+    // debug
+    //PRINTF("objH:%p, plibObjName:%s, ID:%i, objType:%i, xyznbr:%u, xyz:%p, listAttVal:<%s>\n",
+    //        obj,     plibObjName, S57_getGeoID(geo), objType, xyznbr, gxyz,
+    //       (NULL==listAttVal)?"NULL":listAttVal);
 
 exit:
     GMUTEXUNLOCK(&_mp_mutex);
@@ -5960,15 +6017,21 @@ exit:
 
 DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
 {
-    S52_CHECK_INIT;
-    S52_CHECK_MUTX;
+    return_if_null((void*)(long unsigned int)S57ID);
 
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
+
+    /*
     if (0 == S57ID) {
         PRINTF("WARNING: invalid S57ID [%i]\n", S57ID);
         GMUTEXUNLOCK(&_mp_mutex);
         return NULL;
     }
+    */
 
+    // FIXME: merge with _getS52obj()
+    // FIXME: use S57ID as idx to array of S52_obj
     for (int i=0; i<S52_PRIO_NUM; ++i) {
         for (int j=0; j<N_OBJ_T; ++j) {
             GPtrArray *rbin = _marinerCell->renderBin[i][j];
@@ -5982,6 +6045,8 @@ DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
             }
         }
     }
+
+exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -6017,11 +6082,11 @@ static
 
 DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null((void*)objH);
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     PRINTF("objH:%p\n", objH);
 
@@ -6037,6 +6102,8 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
     // queue obj for deletion in next APP() cycle
     g_ptr_array_add(_objToDelList, obj);
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return (S52ObjectHandle)NULL;
@@ -6044,11 +6111,11 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
 
 DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null((void*)objH);
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)objH);
     if (NULL != obj) {
@@ -6062,6 +6129,8 @@ DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH)
         objH = FALSE;
     }
 
+exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return objH;
@@ -6069,8 +6138,8 @@ DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH)
 
 DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBegin, double latEnd, double lonEnd)
 {
-    S52_CHECK_INIT;
-    //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     // debug
     PRINTF("catclr:%i, latBegin:%f, lonBegin:%f, latEnd:%f, lonEnd:%f\n",
@@ -6086,27 +6155,28 @@ DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBeg
     latEnd   = _validate_lat(latEnd);
     lonEnd   = _validate_lon(lonEnd);
 
+    S52ObjectHandle clrlin = NULL;
     {
         char attval[80];
         SNPRINTF(attval, 80, "catclr:%i", catclr);
         double xyz[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
 
-
-        S52ObjectHandle clrlin = S52_newMarObj("clrlin", S52_LINES, 2, xyz, attval);
-
-        return clrlin;
+        //clrlin = S52_newMarObj("clrlin", S52_LINES, 2, xyz, attval);
+        clrlin = _newMarObj("clrlin", S52_LINES, 2, xyz, attval);
     }
+
+exit:
+
+    return clrlin;
 }
 
 DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDist,
                                       double latBegin, double lonBegin, double latEnd, double lonEnd,
                                       S52ObjectHandle previousLEGLIN)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
     return_if_null(S57_getPrjStr());
-    // FIXME: is the call to EGL really usefull for picking
-    EGL_BEG(LEGLIN);
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     // debug
     PRINTF("select:%i, plnspd:%f, wholinDist:%f, latBegin:%f, lonBegin:%f, latEnd:%f, lonEnd:%f\n",
@@ -6124,6 +6194,13 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
     lonBegin = _validate_lon(lonBegin);
     latEnd   = _validate_lat(latEnd);
     lonEnd   = _validate_lon(lonEnd);
+
+    // check if same point
+    if (latBegin==latEnd  && lonBegin==lonEnd) {
+        PRINTF("WARNING: rejecting this leglin (same point)\n");
+        //return FALSE;
+        goto exit;
+    }
 
     //* check if hazard inside Guard Zone
     if (0.0 != S52_MP_get(S52_MAR_GUARDZONE_BEAM)) {
@@ -6334,10 +6411,6 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         }
     }
 
-exit:
-    GMUTEXUNLOCK(&_mp_mutex);
-
-    EGL_END(LEGLIN);
 
     S52ObjectHandle leglin = NULL;
 
@@ -6345,19 +6418,14 @@ exit:
         char   attval[80];
         double xyz[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
 
-        // check if same point
-        if (latBegin==latEnd  && lonBegin==lonEnd) {
-            PRINTF("WARNING: rejecting this leglin (same point)\n");
-            return FALSE;
-        }
-
         if (0.0 != wholinDist) {
             SNPRINTF(attval, 80, "select:%i,plnspd:%f,_wholin_dist:%f", select, plnspd, wholinDist);
         } else {
             SNPRINTF(attval, 80, "select:%i,plnspd:%f", select, plnspd);
         }
 
-        leglin = S52_newMarObj("leglin", S52_LINES, 2, xyz, attval);
+        //leglin = S52_newMarObj("leglin", S52_LINES, 2, xyz, attval);
+        leglin = _newMarObj("leglin", S52_LINES, 2, xyz, attval);
 
         // NOTE: FALSE == (VOID*)NULL or FALSE == (int) 0
         if (FALSE != previousLEGLIN) {
@@ -6376,15 +6444,19 @@ exit:
         }
     }
 
+exit:
+
+    GMUTEXUNLOCK(&_mp_mutex);
+
     return leglin;
 }
 
 DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
 {
-    S52_CHECK_INIT;
-    //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
+    return_if_null(label);  // what if we need to erase label!
 
-    return_if_null((void*)label);  // what if we need to erase label!
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     char   attval[80];
 
@@ -6396,19 +6468,25 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
 
     // only one OWNSHP
     // FIXME: what if we want 2 GPS shown
-    if (NULL == _OWNSHP)
-        _OWNSHP = S52_newMarObj("ownshp", S52_POINT, 1, xyz, attval);
+    if (NULL == _OWNSHP) {
+        //_OWNSHP = S52_newMarObj("ownshp", S52_POINT, 1, xyz, attval);
+        _OWNSHP = _newMarObj("ownshp", S52_POINT, 1, xyz, attval);
+    }
+
+exit:
+
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return _OWNSHP;
 }
 
 DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null((void*)objH);
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     PRINTF("objH:%p, a:%f, b:%f, c:%f, d:%f\n", objH, a, b, c, d);
 
@@ -6456,11 +6534,11 @@ exit:
 
 DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH,  int vecstb, double course, double speed)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null((void*)objH);
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     // debug
     PRINTF("objH:%p, vecstb:%i, course:%f, speed:%f\n", objH, vecstb, course, speed);
@@ -6503,15 +6581,21 @@ exit:
 
 DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int maxpts)
 {
-    S52_CHECK_INIT;
-    //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
+    // FIXME: validate catpst
     PRINTF("catpst:%i\n", catpst);
 
     char attval[80];
     SNPRINTF(attval, 80, "catpst:%i", catpst);
 
-    S52ObjectHandle pastrk = S52_newMarObj("pastrk", S52_LINES, maxpts, NULL, attval);
+    //S52ObjectHandle pastrk = S52_newMarObj("pastrk", S52_LINES, maxpts, NULL, attval);
+    S52ObjectHandle pastrk = _newMarObj("pastrk", S52_LINES, maxpts, NULL, attval);
+
+exit:
+
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return pastrk;
 }
@@ -6556,12 +6640,12 @@ static
 DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data)
 // FIXME: if ownshp check alarm
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null(S57_getPrjStr());
     return_if_null((void*)objH);
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     // debug - clutter
     //PRINTF("objH:%p, latitude:%f, longitude:%f, data:%f\n", objH, latitude, longitude, data);
@@ -6660,8 +6744,8 @@ exit:
 
 DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
 {
-    S52_CHECK_INIT;
-    //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     // FIXME: bug, if 2 newVessel() from different process block on newMarObj()
 
@@ -6675,7 +6759,7 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
         vesrce = 2;
     }
 
-    S52ObjectHandle vessel = 0x0;
+    S52ObjectHandle vessel = NULL;
     {
         char   attval[80];
         double xyz[3] = {0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
@@ -6686,22 +6770,27 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
             SNPRINTF(attval, 80, "vesrce:%i,_vessel_label:%s", vesrce, label);
         }
 
-        vessel = S52_newMarObj("vessel", S52_POINT, 1, xyz, attval);
+        //vessel = S52_newMarObj("vessel", S52_POINT, 1, xyz, attval);
+        vessel = _newMarObj("vessel", S52_POINT, 1, xyz, attval);
     }
 
     //PRINTF("objH:%p\n", vessel);
+
+exit:
+
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return vessel;
 }
 
 DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null((void*)objH);
     return_if_null((void*)newLabel);  // what if we need to erase label!
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     if (NULL == _isObjValid(_marinerCell, (S52_obj *)objH)) {
         objH = FALSE;
@@ -6734,11 +6823,11 @@ exit:
 
 DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null((void*)objH);
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     // debug
     PRINTF("vesselSelect:%i, vestat:%i, vesselTurn:%i\n", vesselSelect, vestat, vesselTurn);
@@ -6824,8 +6913,8 @@ exit:
 
 DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin)
 {
-    S52_CHECK_INIT;
-    //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     // debug
     PRINTF("vrm:%i, ebl:%i, normalLineStyle:%i, setOrigin:%i\n", vrm, ebl, normalLineStyle, setOrigin);
@@ -6851,7 +6940,8 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
 
     if (FALSE==vrm && FALSE==ebl) {
         PRINTF("WARNING: nothing to do\n");
-        return FALSE;
+        //return FALSE;
+        goto exit;
     }
 
     //double xyz[6] = {lonA, latA, 0.0, 0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
@@ -6859,23 +6949,29 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
 
     if (TRUE == ebl) {
         //vrmebl = S52_newMarObj("ebline", S52_LINES, 2, xyz, attval);
-        vrmebl = S52_newMarObj("ebline", S52_LINES, 2, NULL, attval);
+        //vrmebl = S52_newMarObj("ebline", S52_LINES, 2, NULL, attval);
+        vrmebl = _newMarObj("ebline", S52_LINES, 2, NULL, attval);
     } else {
         //vrmebl = S52_newMarObj("vrmark", S52_LINES, 2, xyz, attval);
-        vrmebl = S52_newMarObj("vrmark", S52_LINES, 2, NULL, attval);
+        //vrmebl = S52_newMarObj("vrmark", S52_LINES, 2, NULL, attval);
+        vrmebl = _newMarObj("vrmark", S52_LINES, 2, NULL, attval);
     }
+
+exit:
+
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return vrmebl;
 }
 
 DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, double *brg, double *rge)
 {
-    S52_CHECK_INIT;
+    //S52_CHECK_INIT;
 
     return_if_null((void*)objH);
     return_if_null(S57_getPrjStr());
 
-    S52_CHECK_MUTX;
+    S52_CHECK_MUTX_INIT;
 
     if (NULL == _isObjValid(_marinerCell, (S52_obj *)objH)) {
         objH = FALSE;
@@ -6886,8 +6982,6 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
         PRINTF("WARNING: not a 'ebline' or 'vrmark' object\n");
         objH = FALSE;
         goto exit;
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //return FALSE;
     }
 
     double latA = 0.0;
@@ -6898,9 +6992,6 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
         PRINTF("WARNING: S52_GL_win2prj() failed\n");
         objH = FALSE;
         goto exit;
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //g_assert(0);
-        //return FALSE;
     }
 
     guint    npt = 0;
@@ -6971,29 +7062,34 @@ exit:
 
 DLL int             STD S52_newCSYMB(void)
 {
-    S52_CHECK_INIT;
-    //S52_CHECK_MUTX;  // mutex in S52_newMarObj()
+    //S52_CHECK_INIT;
+    S52_CHECK_MUTX_INIT;
 
     const char *attval = NULL;
     double      pos[3] = {0.0, 0.0, 0.0};
 
     if (FALSE == _iniCSYMB) {
-        PRINTF("WARNING: CSYMB allready initialize\n");
-        return FALSE;
+        PRINTF("WARNING: CSYMB fail, allready initialize\n");
+        //return FALSE;
+        goto exit;
     }
 
     // FIXME: should it be global ?
     attval = "$SCODE:SCALEB10";     // 1NM
-    _SCALEB10 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    //_SCALEB10 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    _SCALEB10 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
 
     attval = "$SCODE:SCALEB11";     // 10NM
-    _SCALEB11 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    //_SCALEB11 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    _SCALEB11 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
 
     attval = "$SCODE:NORTHAR1";
-    _NORTHAR1 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    //_NORTHAR1 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    _NORTHAR1 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
 
     attval = "$SCODE:UNITMTR1";
-    _UNITMTR1 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    //_UNITMTR1 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    _UNITMTR1 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
 
     // all depth in S57 sould be in meter so this is not used
     //attval = "$SCODEUNITFTH1";
@@ -7004,13 +7100,19 @@ DLL int             STD S52_newCSYMB(void)
 
     // check symbol should be 5mm by 5mm
     attval = "$SCODE:CHKSYM01";
-    _CHKSYM01 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    //_CHKSYM01 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    _CHKSYM01 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
 
     // symbol to be used for checking and adjusting the brightness and contrast controls
     attval = "$SCODE:BLKADJ01";
-    _BLKADJ01 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    //_BLKADJ01 = S52_newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    _BLKADJ01 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
 
     _iniCSYMB = FALSE;
+
+exit:
+
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return TRUE;
 }
