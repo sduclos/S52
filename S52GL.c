@@ -78,7 +78,7 @@ static projUV _pmax = {-INFINITY, -INFINITY};
 static projUV _gmin = { INFINITY,  INFINITY};
 static projUV _gmax = {-INFINITY, -INFINITY};
 
-// FIXME:
+// current ViewPort
 typedef struct vp {
     guint x;
     guint y;
@@ -86,7 +86,6 @@ typedef struct vp {
     guint h;
 } vp;
 static vp _vp;
-// current ViewPort
 //static GLuint _vp[4]; // x,y,width,height
 //static guint _vp[4]; // x,y,width,height
 
@@ -844,7 +843,7 @@ static projXY    _prj2win(projXY p)
     //PRINTF("_VP[]: %i,%i,%i,%i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
 
 #ifdef S52_USE_GL2
-    // FIXME: find a better way -
+    // FIXME: find a better way to catch non initialyse matrix
     if (0 == _pjm[_pjmTop]) {
         g_assert(0);
         return p;
@@ -882,17 +881,6 @@ static projXY    _prj2win(projXY p)
 static int       _doProjection(double centerLat, double centerLon, double rangeDeg)
 // use _vp & PROJ4
 {
-    // set projection
-    // FIXME: check if viewing nowhere (occur at init time)
-    //if (INFINITY==_pmin.u || INFINITY==_pmin.v || -INFINITY==_pmax.u || -INFINITY==_pmax.v) {
-    //    PRINTF("ERROR: view extent not set\n");
-    //    return FALSE;
-    //}
-
-
-    //if (isnan(centerLat) || isnan(centerLon) || isnan(rangeDeg))
-    //    return FALSE;
-
     pt3 NE = {0.0, 0.0, 0.0};  // Nort/East
     pt3 SW = {0.0, 0.0, 0.0};  // South/West
 
@@ -2804,18 +2792,14 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
             pt.x = x1;  // not used
             pt.y = y1;
             pt.z = 0.0;
-//#ifndef S52_USE_GV
             if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
                 return FALSE;
-//#endif
             // position of end of sector nominal range
             ptlen.x = x1; // not used
             ptlen.y = y1 + (valnmr / 60.0);
             ptlen.z = 0.0;
-//#ifndef S52_USE_GV
             if (FALSE == S57_geo2prj3dv(1, (double*)&ptlen))
                 return FALSE;
-//#endif
             {
                 projUV p = {ptlen.x, ptlen.y};
                 p   = _prj2win(p);
@@ -3249,7 +3233,6 @@ static int       _renderLS(S52_obj *obj)
 // FIX: add clip plane in shader (GLES2)
 {
 #ifdef S52_USE_GV
-    // FIXME
     return FALSE;
 #endif
 
@@ -3570,7 +3553,6 @@ static int       _renderLC(S52_obj *obj)
 
 
 #ifdef S52_USE_GV
-    // FIXME
     return FALSE;
 #endif
 
@@ -4123,7 +4105,6 @@ static int       _renderAP(S52_obj *obj)
 
 
 #ifdef S52_USE_GV
-    // FIXME
     return FALSE;
 #endif
 
