@@ -56,7 +56,7 @@ static GTimeVal _now;
 
 // internal libS52.so version
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52-1.151\n"
+      "libS52-1.152\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
