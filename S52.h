@@ -253,8 +253,8 @@ DLL int    STD S52_getTextDisp(unsigned int dispPrioIdx);
  *
  * Return: TRUE on success, else FALSE
  */
-typedef int (*EGL_cb)(void *EGLctx, const char *tag);
-DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx);
+typedef int (*S52_EGL_cb)(void *EGLctx, const char *tag);
+DLL int    STD S52_setEGLCallBack(S52_EGL_cb eglBeg, S52_EGL_cb eglEnd, void *EGLctx);
 
 /**
  * S52_setRADARCallBack:
@@ -808,16 +808,16 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
 DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
 
 /**
- * S52_getMarObjH: get Mariners' Object handle
+ * S52_getMarObj : get Mariners' Object handle
  * @S57ID: (in)  : a S52 object internal S57ID
  *
  * get the handle of a Mariners' Object from is internal S57ID
  * (return via S52_pickAt())
  *
  *
- * Return: (transfer none): the S52_obj handle or NULL if call fail
+ * Return: (transfer none): @S52ObjectHandle or NULL if call fail
  */
-DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID);
+DLL S52ObjectHandle STD S52_getMarObj(unsigned int S57ID);
 
 /**
  * S52_toggleDispMarObj:
