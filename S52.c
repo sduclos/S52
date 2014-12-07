@@ -273,9 +273,9 @@ static GPtrArray    *_rasterList = NULL;    // list of Raster
 
 // callback to eglMakeCurrent() / eglSwapBuffers()
 #ifdef S52_USE_EGL
-static EGL_cb _eglBeg = NULL;
-static EGL_cb _eglEnd = NULL;
-static void  *_EGLctx = NULL;
+static S52_EGL_cb _eglBeg = NULL;
+static S52_EGL_cb _eglEnd = NULL;
+static void      *_EGLctx = NULL;
 
 #define EGL_BEG(tag)    if (NULL != _eglBeg) {                    \
                            if (FALSE == _eglBeg(_EGLctx,#tag)) {  \
@@ -1680,7 +1680,6 @@ DLL cchar *STD S52_version(void)
 DLL int    STD S52_done(void)
 // clear all - shutdown libS52
 {
-    //S52_CHECK_INIT;
     S52_CHECK_MUTX_INIT;
 
     if (NULL != _cellList) {
@@ -4383,24 +4382,6 @@ exit:
     return ret;
 }
 
-DLL int    STD S52_setEGLcb(EGL_cb eglBeg, EGL_cb eglEnd, void *EGLctx)
-{
-    (void)eglBeg;
-    (void)eglEnd;
-    (void)EGLctx;
-
-#ifdef S52_USE_EGL
-    PRINTF("set EGL_cb .. \n");
-
-    _eglBeg = eglBeg;
-    _eglEnd = eglEnd;
-    _EGLctx = EGLctx;
-
-#endif
-
-    return TRUE;
-}
-
 DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north)
 {
 
@@ -5599,6 +5580,24 @@ exit:
     return TRUE;
 }
 
+DLL int    STD S52_setEGLCallBack(S52_EGL_cb eglBeg, S52_EGL_cb eglEnd, void *EGLctx)
+{
+    (void)eglBeg;
+    (void)eglEnd;
+    (void)EGLctx;
+
+#ifdef S52_USE_EGL
+    PRINTF("set EGL_cb .. \n");
+
+    _eglBeg = eglBeg;
+    _eglEnd = eglEnd;
+    _EGLctx = EGLctx;
+
+#endif
+
+    return TRUE;
+}
+
 static int        _setAtt(S57_geo *geo, const char *listAttVal)
 // must be in name/value pair,
 // FIXME: is this OK .. use '---' for a NULL value for any attribute name
@@ -6015,7 +6014,7 @@ exit:
     return (S52ObjectHandle)obj;
 }
 
-DLL S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID)
+DLL S52ObjectHandle STD S52_getMarObj(unsigned int S57ID)
 {
     return_if_null((void*)(long unsigned int)S57ID);
 
