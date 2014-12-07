@@ -3,6 +3,7 @@
 # SD 2011MAR30 - created
 # SD 2012OCT03 - clean up, restructure
 # SD 2013SEP17 - add s57filecollector.cpp.diff
+# SD 2014DEC07 - update Calls Flow Chart
 
 doc/
 - README                (this file)
@@ -44,7 +45,7 @@ doc/graphic/
 - OWNSHP05.png
 - SCALEB10.dia
 - SCALEB10.png
-- flow.dia              (S52.h calls flow)
-- flow.png
-- libS52-layout.dia     (internal files deps)
+- Call_FlowChart-1.152-2014DEC07.dia  (S52.h calls flow)
+- Call_FlowChart-1.152-2014DEC07.svg
+- libS52-layout.dia                   (old internal files deps)
 - libS52-layout.png
