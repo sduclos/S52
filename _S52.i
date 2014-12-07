@@ -536,15 +536,15 @@ static int                 _handleS52method(const gchar *str, char *result, char
         goto exit;
     }
 
-    // S52ObjectHandle STD S52_getMarObjH(unsigned int S57ID);
-    if (0 == g_strcmp0(cmdName, "S52_getMarObjH")) {
+    // S52ObjectHandle STD S52_getMarObj(unsigned int S57ID);
+    if (0 == g_strcmp0(cmdName, "S52_getMarObj")) {
         if (1 != count) {
             _setErr(err, "params 'S57ID' not found");
             goto exit;
         }
 
         long unsigned int S57ID = (long unsigned int) json_array_get_number(paramsArr, 0);
-        S52ObjectHandle   objH  = S52_getMarObjH(S57ID);
+        S52ObjectHandle   objH  = S52_getMarObj(S57ID);
 
         _encode(result, "[%lu]", (long unsigned int *) objH);
 
