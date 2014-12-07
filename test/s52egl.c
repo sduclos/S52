@@ -1527,7 +1527,7 @@ static int      _s52_init       (s52engine *engine)
 #endif
 
 #ifdef S52_USE_EGL
-    S52_setEGLcb((EGL_cb)_egl_beg, (EGL_cb)_egl_end, engine);
+    S52_setEGLCallBack((S52_EGL_cb)_egl_beg, (S52_EGL_cb)_egl_end, engine);
 #endif
 
 #ifdef USE_AIS
@@ -2995,7 +2995,7 @@ static int      _X11_handleXevent(gpointer user_data)
                         g_print("vessel found\n");
                         unsigned int S57ID = atoi(name+7);
 
-                        S52ObjectHandle vessel = S52_getMarObjH(S57ID);
+                        S52ObjectHandle vessel = S52_getMarObj(S57ID);
                         if (NULL != vessel) {
                             S52_setVESSELstate(vessel, 1, 0, VESSELTURN_UNDEFINED);
                             //g_print("AttList: %s\n", S52_getAttList(S57ID));
