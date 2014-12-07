@@ -4,6 +4,12 @@
 #
 
 
+2014DEC07
+    -mod rename S52_getMarObjH to S52_getMarObj
+    -add doc/Call_FlowChart-1.152-2014DEC07.dia / .svg
+    -mod rename S52_setEGLcb to S52_setEGLCallBack
+    -mod rename EGL_cb to S52_EGL_cb
+
 2014DEC04
     -mod initialize text group to TRUE (ON)
 
