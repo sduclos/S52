@@ -204,7 +204,7 @@ void _updateAIS(int idx, TableCellElement c){
   int vesselSelect = ('block' == c.children[1].style.display) ? 1 : 2;
   // S57ID allway the first
   int S57ID        = int.parse(c.children[1].children[0].text);
-  s52.getMarObjH(S57ID).then((ret) {
+  s52.getMarObj(S57ID).then((ret) {
     // vesselTurn:129 - undefined
     s52.setVESSELstate(ret[0], vesselSelect, 0, 129).then((ret) {});
   });
