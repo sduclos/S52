@@ -314,9 +314,9 @@ class S52 {
 
     return _sndMsg(jsonCmdstr);
   }
-  Future<List> getMarObjH(int S57ID) {
+  Future<List> getMarObj(int S57ID) {
     _data["id"    ] = id;
-    _data["method"] = "S52_getMarObjH";
+    _data["method"] = "S52_getMarObj";
     _data["params"] = [S57ID];
     String jsonCmdstr = JSON.encode(_data);
 
