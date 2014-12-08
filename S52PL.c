@@ -23,17 +23,15 @@
 
 
 #include "S52PL.h"          // --
+
 #include "S52CS.h"          // S52_CS_condTable[]
 #include "S52MP.h"          // S52_MP_get/set()
-#include "S52.h"            // S52MarinerParameter
 #include "S52utils.h"       // PRINTF(), S52_atof()
 #include "S57data.h"        // geocoord, S57_obj_t
 
 #include <glib.h>
 
 #ifdef S52_USE_GLIB2
-//#include <glib/gstdio.h>   // file handling (PLib)
-//#include <glib/gprintf.h>  //
 #include <glib/gstdio.h>     // FILE
 #else
 #include <stdio.h>           // FILE, fopen(), ...
