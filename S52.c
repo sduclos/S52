@@ -21,12 +21,12 @@
 */
 
 
-#include "S52.h"        // S52_view
+#include "S52.h"        // --
 #include "S52utils.h"   // PRINTF(), CONF*, S52_getConfig(), S52_strstr()
 #include "S52PL.h"      // S52_PRIO_NUM
 #include "S52MP.h"      // S52MarinerParameter
 #include "S57data.h"    // S57_prj2geo(), S52_geo2prj*(), projXY, S57_geo
-#include "S52CS.h"      // ObjClass
+#include "S52CS.h"      // S52_CS_*()
 #include "S52GL.h"      // S52_GL_draw()
 
 #ifdef S52_USE_GV
@@ -4963,13 +4963,7 @@ exit:
 DLL int    STD S52_loadPLib(const char *plibName)
 // (re)load a PLib
 // Note: allow to reload a PLib to overwrite rules
-
-// FIXME: S52.h say this .. find out if still true and and doc that if it is
-// * WARNING: after S52_loadPLib() all S52ObjectHandle are invalid, so user must
-// * reload them to get new S52ObjectHandle.
-
 {
-    //S52_CHECK_INIT;
     S52_CHECK_MUTX_INIT;
 
     // 1 - load / parse new PLb
@@ -5061,11 +5055,10 @@ exit:
 
 DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 {
-    //S52_CHECK_INIT;
     return_if_null(S57_getPrjStr());
-    // FIXME: is call to EGL really usefull for picking - ReadPixels flush the pipeline
-    //EGL_BEG(PICK);
-    S52_CHECK_MUTX_INIT;
+
+    //S52_CHECK_MUTX_INIT;
+    S52_CHECK_MUTX_INIT_EGLBEG(PICK);
 
     // viewport
     int x;
@@ -5200,7 +5193,7 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 exit:
     GMUTEXUNLOCK(&_mp_mutex);
 
-    //EGL_END(PICK);
+    EGL_END(PICK);
 
     //return NULL; // debug
     return name;
