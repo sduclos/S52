@@ -175,11 +175,11 @@ Error message and password prompt
 
 <li>libS52 Calls FlowChart - 2014DEC07</li>
 
-<li>libS52 Calls FlowChat 2014DEC07</li>
-
 <li>libS52 Experiment</li>
 
 <li>libS52 MainMenu</li>
+
+<li>pslb03_2.pdf</li>
 
 <li>SiteSubtitle</li>
 
@@ -4777,11 +4777,11 @@ Error message and password prompt
 <div created="20141005130350669" creator="sduclos" modified="20141005130357724" modifier="sduclos" title="$:/SiteTitle">
 <pre>libS52Wiki</pre>
 </div>
-<div modified="20141005143410664" modifier="sduclos" title="$:/state/showeditpreview">
-<pre>yes</pre>
-</div>
-<div modified="20141207174303977" modifier="sduclos" title="$:/state/sidebar">
+<div modified="20141207211046098" modifier="sduclos" title="$:/state/showeditpreview">
 <pre>no</pre>
+</div>
+<div modified="20141208095207045" modifier="sduclos" title="$:/state/sidebar">
+<pre>yes</pre>
 </div>
 <div modified="20141005142125439" modifier="sduclos" title="$:/state/tab--1963855381">
 <pre>$:/themes/tiddlywiki/vanilla/themetweaks</pre>
@@ -4792,11 +4792,11 @@ Error message and password prompt
 <div modified="20141005142209558" modifier="sduclos" title="$:/state/tab-1749438307">
 <pre>$:/core/ui/ControlPanel/Tools</pre>
 </div>
-<div modified="20141005142259356" modifier="sduclos" title="$:/state/tab/moresidebar-401116514">
-<pre>$:/core/ui/MoreSideBar/System</pre>
+<div modified="20141208094814304" modifier="sduclos" title="$:/state/tab/moresidebar-401116514">
+<pre>$:/core/ui/MoreSideBar/All</pre>
 </div>
-<div modified="20141207173956069" modifier="sduclos" title="$:/state/tab/sidebar--1835078512">
-<pre>$:/core/ui/SideBar/Recent</pre>
+<div modified="20141208094944988" modifier="sduclos" title="$:/state/tab/sidebar--1835078512">
+<pre>$:/core/ui/SideBar/Open</pre>
 </div>
 <div modified="20141005142121495" modifier="sduclos" title="$:/state/tabs/controlpanel/toolbars-1345989671">
 <pre>$:/core/ui/ControlPanel/Toolbars/EditToolbar</pre>
@@ -4804,7 +4804,7 @@ Error message and password prompt
 <div created="20141004174659112" creator="s" modified="20141004174701096" modifier="sduclo" title="$:/status/UserName">
 <pre>sduclos</pre>
 </div>
-<div list="[[libS52 MainMenu]] [[libS52 Calls FlowChart - 2014DEC07]]" title="$:/StoryList">
+<div list="$:/ControlPanel [[libS52 MainMenu]]" title="$:/StoryList">
 <pre></pre>
 </div>
 <div plugin-type="info" title="$:/temp/info-plugin" type="application/json">
@@ -4903,61 +4903,55 @@ Error message and password prompt
 <pre>&lt;a href=&quot;../html/S52.html&quot;&gt;libS52 API&lt;/a&gt;
 </pre>
 </div>
-<div created="20141207172658444" creator="sduclos" modified="20141207174330301" modifier="sduclos" title="libS52 Calls FlowChart - 2014DEC07" type="">
+<div created="20141208094900664" creator="sduclos" modified="20141208095138522" modifier="sduclos" title="libS52 Calls FlowChart - 2014DEC07">
 <pre>[img[../graphic/Call_FlowChart-1.152-2014DEC07.svg]]</pre>
 </div>
-<div created="20141207172052345" creator="sduclos" modified="20141207172453115" modifier="sduclos" title="libS52 Calls FlowChat 2014DEC07" type="image/svg+xml">
-<pre>[[../doc/Call_FlowChart-1.152-2014DEC07.svg]]</pre>
-</div>
-<div created="20141005141226614" creator="sduclos" modified="20141005231038862" modifier="sduclos" title="libS52 Experiment" type="text/vnd.tiddlywiki">
-<pre>&lt;li&gt;S52_MAR_FONT_SOUNDG         = 21,   \// use font for sounding (on/off)
+<div created="20141005141226614" creator="sduclos" modified="20141208094425464" modifier="sduclos" title="libS52 Experiment" type="text/vnd.tiddlywiki">
+<pre>These are various experiment performed on top of S-52 Edition / revision 3.2, March 2000 [[pslb03_2.pdf]].
 
-&lt;li&gt;S52_MAR_DATUM_OFFSET        = 22,   // value of chart datum offset (S52_MAR_FONT_SOUNDG must be ON)     // PROBLEM: 2 datum: sounding / vertical (ex bridge clearance)
+&lt;li&gt;[[S52_MAR_DATUM_OFFSET]] (22): value of chart datum offset
+&lt;li&gt;S52_MAR_SCAMIN              = 23, flag for using SCAMIN filter (on|off) (default ON)
 
-&lt;li&gt;S52_MAR_SCAMIN              = 23,   // flag for using SCAMIN filter (on/off) (default ON)
+&lt;li&gt;S52_MAR_ANTIALIAS           = 24, flag for color blending (anti-aliasing) (on|off)
 
-&lt;li&gt;S52_MAR_ANTIALIAS           = 24,   // flag for color blending (anti-aliasing) (on/off)
+&lt;li&gt;S52_MAR_QUAPNT01            = 25, display QUAPNT01 (quality of position symbol) (on/off) (default on)
 
-&lt;li&gt;S52_MAR_QUAPNT01            = 25,   // display QUAPNT01 (quality of position symbol) (on/off) (default on)
+&lt;li&gt;S52_MAR_DISP_OVERLAP        = 26, display overlapping symbol (debug)
 
-&lt;li&gt;S52_MAR_DISP_OVERLAP        = 26,   // display overlapping symbol (debug)
+&lt;li&gt;S52_MAR_DISP_LAYER_LAST     = 27, enable S52_drawLast (see [1] bellow)
 
-&lt;li&gt;S52_MAR_DISP_LAYER_LAST     = 27,   // enable S52_drawLast (see [1] bellow)
+&lt;li&gt;[[S52_MAR_ROT_BUOY_LIGHT]] (28): rotate buoy light (deg from north)
 
-&lt;li&gt;S52_MAR_ROT_BUOY_LIGHT      = 28,   // rotate buoy light (deg from north)
+&lt;li&gt;[[S52_MAR_DISP_CRSR_PICK]] (29): 0 - off, 1 - pick/highlight top object, 2 - pick stack/highlight top, 3 - pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
 
-&lt;li&gt;S52_MAR_DISP_CRSR_POS       = 29,   // NOT IMPLEMENTED: display cursor position (on/off)
+&lt;li&gt;S52_MAR_DISP_WHOLIN         = 31, wholin auto placement: 0 - off, 1 - wholin, 2 - arc, 3 - wholin + arc  (default off)
 
-&lt;li&gt;S52_MAR_DISP_GRATICULE      = 30,   // display graticule (on/off)
+&lt;li&gt;S52_MAR_DISP_LEGEND         = 32, display legend (on/off) (default off)
 
-&lt;li&gt;S52_MAR_DISP_WHOLIN         = 31,   // wholin auto placement: 0 - off, 1 - wholin, 2 - arc, 3 - wholin + arc  (default off)
+&lt;li&gt;S52_CMD_WRD_FILTER          = 33, toggle command word filter mask for profiling
 
-&lt;li&gt;S52_MAR_DISP_LEGEND         = 32,   // display legend (on/off) (default off)
+&lt;li&gt;S52_MAR_DOTPITCH_MM_X       = 34, dotpitch X (mm) - pixel size in X
 
-    S52_CMD_WRD_FILTER          = 33,   // toggle command word filter mask for profiling
+&lt;li&gt;S52_MAR_DOTPITCH_MM_Y       = 35, dotpitch Y (mm) - pixel size in Y
 
-&lt;li&gt;S52_MAR_DOTPITCH_MM_X       = 34,   // dotpitch X (mm) - pixel size in X
+&lt;li&gt;S52_MAR_DISP_CALIB          = 36, display calibration symbol (on/off) (default off)
 
-&lt;li&gt;S52_MAR_DOTPITCH_MM_Y       = 35,   // dotpitch Y (mm) - pixel size in Y
+&lt;li&gt;S52_MAR_DISP_DRGARE_PATTERN = 37, display DRGARE pattern (on/off) (default on)
+&lt;li&gt;S52_MAR_DISP_NODATA_LAYER   = 38, display NODATA layer 0 (on/off) (default on)
 
-&lt;li&gt;S52_MAR_DISP_CALIB          = 36,   // display calibration symbol (on/off) (default off)
+&lt;li&gt;S52_MAR_DISP_VESSEL_DELAY   = 39, time delay (sec) defore deleting old AIS (default 600 sec, 0 - OFF)
 
-&lt;li&gt;S52_MAR_DISP_DRGARE_PATTERN = 37,   // display DRGARE pattern (on/off) (default on)
-&lt;li&gt;S52_MAR_DISP_NODATA_LAYER   = 38,   // display NODATA layer 0 (on/off) (default on)
+&lt;li&gt;S52_MAR_DISP_AFTERGLOW      = 40, display synthetic afterglow (in PLAUX_00.DAI) for OWNSHP &amp; VESSEL (on/off)
 
-&lt;li&gt;S52_MAR_DISP_VESSEL_DELAY   = 39,   // time delay (sec) defore deleting old AIS (default 600 sec, 0 - OFF)
+&lt;li&gt;S52_MAR_DISP_CENTROIDS      = 41, display all centered symb of one area (on/off) (default off)
 
-&lt;li&gt;S52_MAR_DISP_AFTERGLOW      = 40,   // display synthetic afterglow (in PLAUX_00.DAI) for OWNSHP &amp; VESSEL (on/off)
+&lt;li&gt;S52_MAR_DISP_WORLD          = 42, display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
 
-&lt;li&gt;S52_MAR_DISP_CENTROIDS      = 41,   // display all centered symb of one area (on/off) (default off)
+&lt;li&gt;S52_MAR_DISP_RND_LN_END     = 43, display rounded line segment ending (on/off)
 
-&lt;li&gt;S52_MAR_DISP_WORLD          = 42,   // display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
+&lt;li&gt;S52_MAR_DISP_VRMEBL_LABEL   = 44, display bearing / range label on VRMEBL (on/off)
 
-&lt;li&gt;S52_MAR_DISP_RND_LN_END     = 43,   // display rounded line segment ending (on/off)
-
-&lt;li&gt;S52_MAR_DISP_VRMEBL_LABEL   = 44,   // display bearing / range label on VRMEBL (on/off)
-
-&lt;li&gt;S52_MAR_DISP_RADAR_LAYER    = 45,   // display Raster: RADAR, Bathy, ... (on/off) (default off)
+&lt;li&gt;S52_MAR_DISP_RADAR_LAYER    = 45, display Raster: RADAR, Bathy, ... (on/off) (default off)
 </pre>
 </div>
 <div changecount="3" created="20110216200100000" creator="Sylvain Duclos" modified="20141207174353810" modifier="sduclos" title="libS52 MainMenu" type="text/vnd.tiddlywiki">
@@ -4970,6 +4964,9 @@ Error message and password prompt
 [[libS52 API]]
 
 [[libS52 Experiment]]</pre>
+</div>
+<div created="20141207214554797" creator="sduclos" modified="20141207214554797" modifier="sduclos" title="pslb03_2.pdf">
+<pre></pre>
 </div>
 <div changecount="1" created="20110216195400000" creator="Sylvain Duclos" modified="20141005130952195" modifier="sduclos" title="SiteSubtitle" type="text/vnd.tiddlywiki">
 <pre>Programmer's Manual</pre>
