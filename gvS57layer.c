@@ -24,7 +24,6 @@
 
 #include "gvS57layer.h"
 
-//#include "S52.h"            // S52_loadLayer(), S52_drawLayer()
 int S52_init();
 int S52_drawLayer();
 int S52_loadLayer(const char *layername, void *layer);
@@ -52,8 +51,6 @@ static void   _motion_handle_hint(GtkWidget *view, GdkEventMotion *event)
     }
 }
 
-//static void gv_S57_draw_layer(GvShapesLayer *layer)
-//static void gv_S57_draw_layer(GvViewArea *view)
 static void gv_S57_draw_layer(GvLayer *layer, GvViewArea *view)
 {
     //GObject *layer = view->layers;
