@@ -21,7 +21,8 @@
 */
 
 
-#include "S57ogr.h"     // S57_geo
+#include "S57ogr.h"     // --
+
 #include "S52utils.h"   // PRINTF()
 #include "ogr_api.h"    // OGR*
 
