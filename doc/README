@@ -3,27 +3,25 @@
 # SD 2011MAR30 - created
 # SD 2012OCT03 - clean up, restructure
 # SD 2013SEP17 - add s57filecollector.cpp.diff
-# SD 2014DEC07 - update Calls Flow Chart
+# SD 2014DEC07 - update Calls Flow Chart / files deps / move wiki to 'S52/doc/' 
 
 doc/
 - README                (this file)
+- libS52wiki.html       (root doc)
 - OpENCview_project.txt (summery of goals)
 - att.txt               (extract from <FIXME>.pdf: IHO S-57 Ed. 3.1 November 2000, Appendix A)
 - obj.txt               (extract from <FIXME>.pdf: IHO S-57 Ed. 3.1 November 2000, Appendix A)
 - lup.txt               (extract from pslb03_2.pdf, p. I-74)
 - pslb03_2.pdf          (IHO S-52 Users' Manual, Ed. 3.2 March 2000, Annex A of Appendix 2)
-- S52-1.0.gir
+- S52-1.152.gir         (introspection file used to generate S52/doc/html/*)
 - c1-cs.txt
 - c1-cs_mp.txt
 - C1.dispPrioSwitch.txt
 - ogrfeature.cpp.diff       (gdal/ogr patch for -DS52_USE_SUPP_LINE_OVERLAP)
 - s57filecollector.cpp.diff (gdal/ogr patch to fix DOS path in CATALOG.031 on Unix)
 
-doc/wiki/
-- libS52wiki.html       (root doc)
-
 doc/html/
-- index.html            (root of libS52 interface annotation)
+- index.html            (root of libS52 interface (S52.h) annotation)
 - S52.html
 - S52.MarinerParameter.html
 - S52.ObjectType.html
@@ -45,7 +43,7 @@ doc/graphic/
 - OWNSHP05.png
 - SCALEB10.dia
 - SCALEB10.png
-- Call_FlowChart-1.152-2014DEC07.dia  (S52.h calls flow)
+- Call_FlowChart-1.152-2014DEC07.dia     (S52.h calls flow)
 - Call_FlowChart-1.152-2014DEC07.svg
-- libS52-layout.dia                   (old internal files deps)
-- libS52-layout.png
+- libS52_files_deps-1.152-2014DEC08.dia
+- libS52_files_deps-1.152-2014DEC08.svg
