@@ -4,9 +4,27 @@
 #
 
 
+2015DEC14
+    -mod refactor _filterVector()
+    -fix _filterVector() for line width change in symb in VBO code path
+
+2014DEC12
+    -mod logic of S52_MAR_VECMRK in CS moved to GL
+    -fix GL logic of VECMRK, VECPER
+
+2014DEC10
+    -mob resolve mariner SMB CS at creation time (new) rather than in _app()
+
+2014DEC09
+    -mod move libS52wiki.html to doc/ and remove doc/wiki
+
+2014DEC08
+    -mod clean up #include / deps
+    -add doc/graphic/libS52_files_deps-1.152-2014DEC08.dia / .svg
+
 2014DEC07
     -mod rename S52_getMarObjH to S52_getMarObj
-    -add doc/Call_FlowChart-1.152-2014DEC07.dia / .svg
+    -add doc/graphic/Call_FlowChart-1.152-2014DEC07.dia / .svg
     -mod rename S52_setEGLcb to S52_setEGLCallBack
     -mod rename EGL_cb to S52_EGL_cb
 
@@ -19,7 +37,7 @@
 2014DEC02
     -add code / doc in S52.h  to validate calls order
     -add S52_GL_INIT to GL_cycle
-    -add code to guard using GL Projection Matrix before intialisint it
+    -add code to guard using GL Projection Matrix before intialising it
 
 2014DEC01
     -mod refactor and add guard from calling PROJ4 before initialising it
