@@ -2,12 +2,12 @@ TODO: jot pad for libS52.so missing stuff, bug, snag, ... , brain dump
 
 Last update:
 2013JAN - add link to Pavel Kalian RleEditor, add Testing section
+2014DEC - X-Track logic done, add testing using S-64
 
 
 Curent focus (top priority *):
 
     GL:
-**  -alarm safety perimeter (pick GL trick) and route planning -try fast geo route instead of the pick GL trick
 *   -rotate extent when chart rotate
 *   -handle overlaping symbol at the center of the screen (find test case to debug)
     -implement patern scale spacing (PASP field)
@@ -25,13 +25,13 @@ Curent focus (top priority *):
 
     Coding:
 *   -use masked lines field (OGR/S57 MASK/FSPT) to use the line overlap trick
-*   -chart manager / chart extent / CATALOG.031 (client job!)
     -check CRC32 of S57 in CATALOG.031
     -read text referenced by CATALOG.031 (some text in M_NPUB also)
     -write back mariner's parameter to .cfg (client job!)
-    -use the glib "Key-value file parser" to load/save .cfg
+    -chart manager / chart extent / CATALOG.031 (client job!)
 
     Testing:
+    -S-64
     -apitrace: to record gl*() calls / playback / diff / optimisation
     
 In a day:
@@ -52,6 +52,7 @@ DONE
 ====
 (put here TODO's that has been done)
 
+    -alarm safety perimeter (pick GL trick) and route planning -try fast geo route instead of the pick GL trick
     -text shadow
     -WARN: chart no 1 PLib put $LINE in layer 0
     -check handling anti-meridian (need a chart that overlap the meridian to debug)
