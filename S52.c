@@ -623,14 +623,19 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
         case S52_MAR_COLOR_PALETTE       : val = _validate_pal(val);                    break;
 
         case S52_MAR_VECPER              : val = _validate_min(val);                    break;
-        // OWNSHP02; VESSEL01;
-        case S52_MAR_VECMRK              : val = _validate_int(val);   _doCS = TRUE;    break;
+        case S52_MAR_VECMRK              : val = _validate_int(val);                    break;
         case S52_MAR_VECSTB              : val = _validate_int(val);                    break;
 
         case S52_MAR_HEADNG_LINE         : val = _validate_bool(val);                   break;
         case S52_MAR_BEAM_BRG_NM         : val = _validate_nm(val);                     break;
 
-        //---- experimental variables ----
+        case S52_MAR_DISP_GRATICULE      : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_WHOLIN         : val = _validate_int(val);                    break;
+        case S52_MAR_DISP_LEGEND         : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_CALIB          : val = _validate_bool(val);                   break;
+
+        //
+        //---- experimental variables / debug ----
         //
         case S52_MAR_FONT_SOUNDG         : val = _fixme(val);                           break;
         // DEPARE01; DEPCNT02; _DEPVAL01; SLCONS03; _UDWHAZ03;
@@ -643,17 +648,11 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
 
         case S52_MAR_ROT_BUOY_LIGHT      : val = _validate_deg(val);                    break;
 
-        //case S52_MAR_DISP_CRSR_POS       : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_CRSR_PICK      : val = _validate_int(val);                    break;
-        case S52_MAR_DISP_GRATICULE      : val = _validate_bool(val);                   break;
-        case S52_MAR_DISP_WHOLIN         : val = _validate_int(val);                    break;
-
-        case S52_MAR_DISP_LEGEND         : val = _validate_bool(val);                   break;
 
         case S52_MAR_DOTPITCH_MM_X       : val = _validate_positive(val);               break;
         case S52_MAR_DOTPITCH_MM_Y       : val = _validate_positive(val);               break;
 
-        case S52_MAR_DISP_CALIB          : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_DRGARE_PATTERN : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_NODATA_LAYER   : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_VESSEL_DELAY   : val = _validate_int(val);                    break;
@@ -893,7 +892,6 @@ static int        _freeCell(_cell *c)
 
     if (NULL != c->textList) {
         g_ptr_array_free(c->textList, TRUE);
-        //g_ptr_array_unref(_textList);
         c->textList = NULL;
     }
 
@@ -1541,10 +1539,6 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
         _S52ObjNmList = g_string_new("");
     if (NULL == _objToDelList)
         _objToDelList = g_ptr_array_new();
-
-    //if (NULL == _geoList) {
-    //    _geoList = g_ptr_array_sized_new(1000);
-    //}
 
 
     ///////////////////////////////////////////////////////////
@@ -2784,9 +2778,6 @@ static int        _loadEdge(const char *name, void *Edge)
 
     g_ptr_array_add(_crntCell->Edges, geoData);
 
-    // add geo/LNAM
-    //g_ptr_array_add(_geoList, geoData);
-
     // debug
     //PRINTF("%X len:%i\n", _crntCell->Edges->pdata, _crntCell->Edges->len);
     //PRINTF("XXX %s\n", S57_getName(geoData));
@@ -2839,12 +2830,6 @@ static int        _loadConnectedNode(const char *name, void *ConnectedNode)
         _crntCell->ConnectedNodes->pdata[rcid - _crntCell->baseEdgeRCID] = geoData;
     }
 
-    // add geo/LNAM
-    //g_ptr_array_add(_geoList, geoData);
-
-
-    //g_ptr_array_add(_crntCell->ConnectedNodes, geoData);
-    //
     // if this is the first connectednodes get is offset
     // the offset is 1, but in certain case (like update) it can move
     // assume connectednodes continuous
@@ -3387,6 +3372,7 @@ static int        _app()
     // 2 -
     if (TRUE == _doCS) {
         // 2.1 - reparse CS
+        // FIXME: no need to check mariner cell if all mariner CS is in GL (S52_MP_get(S52_MAR_VECMRK))
         for (guint i=0; i<_cellList->len; ++i) {
             _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
             // one cell
@@ -4118,9 +4104,6 @@ static void       _delOldVessel(gpointer data, gpointer user_data)
 
         if (now.tv_sec - old > (int) S52_MP_get(S52_MAR_DISP_VESSEL_DELAY)) {
             GPtrArray *rbin = (GPtrArray *) user_data;
-            // queue obj for deletion in next APP() cycle
-            //g_ptr_array_add(_objToDelList, obj);
-
             // remove obj from 'cell'
             g_ptr_array_remove(rbin, obj);
 
@@ -4271,10 +4254,6 @@ static int        _drawObj(const char *name)
 
                     if (0 == g_strcmp0(name, S57_getName(geo)))
                         S52_GL_draw(obj);
-
-                    //if (TRUE == S52_PL_hasText(obj))
-                    //    g_ptr_array_add(_textList, obj);
-
                 }
             }
         }
@@ -4290,7 +4269,6 @@ DLL int    STD S52_drawLayer(const char *name)
 
 #ifdef S52_USE_GV
 
-    //S52_CHECK_INIT;
     return_if_null(S57_getPrjStr());
     S52_CHECK_MUTX_INIT;
 
@@ -5201,7 +5179,6 @@ exit:
 
 DLL cchar *STD S52_getPLibNameList(void)
 {
-    //S52_CHECK_INIT;
     S52_CHECK_MUTX_INIT;
 
     const char *str = _plibNameList->str;
@@ -5216,11 +5193,9 @@ exit:
 DLL cchar *STD S52_getPalettesNameList(void)
 // return a string of palettes name loaded
 {
-    //S52_CHECK_INIT;
     S52_CHECK_MUTX_INIT;
 
-    const char *str = NULL;
-    int palTblsz    = S52_PL_getPalTableSz();
+    int palTblsz = S52_PL_getPalTableSz();
 
     g_string_set_size(_paltNameList, 0);
 
@@ -5229,7 +5204,7 @@ DLL cchar *STD S52_getPalettesNameList(void)
         g_string_append_printf(_paltNameList, frmt, (char*)S52_PL_getPalTableNm(i));
     }
 
-    str = _paltNameList->str;
+    const char *str = _paltNameList->str;
 
 exit:
 
@@ -5260,10 +5235,8 @@ static GString   *_getMARINClassList()
 
 DLL cchar *STD S52_getS57ClassList(const char *cellName)
 {
-    //S52_CHECK_INIT;
     S52_CHECK_MUTX_INIT;
 
-    const char * str = NULL;
     g_string_set_size(_S57ClassList, 0);
 
     for (guint idx=0; idx<_cellList->len; ++idx) {
@@ -5285,26 +5258,27 @@ DLL cchar *STD S52_getS57ClassList(const char *cellName)
 
                     g_string_free(classList, TRUE);
 
-                    str = _S57ClassList->str;
+                    //str = _S57ClassList->str;
 
-                    GMUTEXUNLOCK(&_mp_mutex);
-
-                    return str;
+                    //GMUTEXUNLOCK(&_mp_mutex);
+                    //return str;
+                    goto exit;
                 }
                 // normal cell
                 if (NULL != c->S57ClassList) {
                     g_string_printf(_S57ClassList, "%s,%s", c->filename->str, c->S57ClassList->str);
 
-                    str = _S57ClassList->str;
+                    //str = _S57ClassList->str;
 
-                    GMUTEXUNLOCK(&_mp_mutex);
-
-                    return str;
+                    //GMUTEXUNLOCK(&_mp_mutex);
+                    //return str;
+                    goto exit;
                 }
             }
         }
     }
 
+    const char *str = NULL;
     if (0 != _S57ClassList->len)
         str = _S57ClassList->str;
 
@@ -5317,8 +5291,6 @@ exit:
 
 DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
 {
-    //S52_CHECK_INIT;
-
     return_if_null(cellName);
     return_if_null(className);
 
@@ -5329,8 +5301,6 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
 
     PRINTF("cellName: %s, className: %s\n", cellName, className);
 
-    // a _S52ObjList in fact
-    //g_string_set_size(_S57ClassList, 0);
     g_string_set_size(_S52ObjNmList, 0);
 
     for (guint cidx=0; cidx<_cellList->len; ++cidx) {
@@ -5345,13 +5315,11 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
                         const char *oname = S52_PL_getOBCL(obj);
                         if (0 == g_strcmp0(className, oname)) {
                             if (TRUE == header) {
-                                //g_string_printf(_S57ClassList, "%s,%s", cellName, className);
                                 g_string_printf(_S52ObjNmList, "%s,%s", cellName, className);
                                 header = FALSE;
                             }
                             S57_geo *geo = S52_PL_getGeo(obj);
                             //  S57ID / geo / disp cat / disp prio
-                            //g_string_append_printf(_S57ClassList, ",%i:%c:%c:%i",
                             g_string_append_printf(_S52ObjNmList, ",%i:%c:%c:%i",
                                                    S57_getGeoID(geo),
                                                    S52_PL_getFTYP(obj),    // same as 'j', but in text equivalent
@@ -5361,13 +5329,11 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
                     }
                 }
             }
-            //PRINTF("%s\n", _S57ClassList->str);
-            //str = _S57ClassList->str;
             PRINTF("%s\n", _S52ObjNmList->str);
             str = _S52ObjNmList->str;
-            GMUTEXUNLOCK(&_mp_mutex);
-
-            return str;
+            //GMUTEXUNLOCK(&_mp_mutex);
+            //return str;
+            break;
         }
     }
 
@@ -5375,12 +5341,12 @@ exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
-    return NULL;
+    //return NULL;
+    return str;
 }
 
 DLL cchar *STD S52_getAttList(unsigned int S57ID)
 {
-    //S52_CHECK_INIT;
     S52_CHECK_MUTX_INIT;
 
     // FIXME: put in array of s57id  (what to do if ENC is unloaded)
@@ -5413,7 +5379,6 @@ exit:
 
 DLL cchar *STD S52_getCellNameList(void)
 {
-    //S52_CHECK_INIT;
     S52_CHECK_MUTX_INIT;
 
     g_string_set_size(_cellNameList, 0);
@@ -5424,13 +5389,6 @@ DLL cchar *STD S52_getCellNameList(void)
         // MARINER_CELL has no encPath
         if (NULL == c->encPath)
             continue;
-
-        /*
-        if (0 == _cellNameList->len)
-            g_string_append_printf(_cellNameList, "\"*%s\"",  c->encPath);
-        else
-            g_string_append_printf(_cellNameList, ",\"*%s\"", c->encPath);
-        */
 
         if (0 == _cellNameList->len)
             g_string_append_printf(_cellNameList, "*%s",  c->encPath);
@@ -5455,7 +5413,6 @@ DLL cchar *STD S52_getCellNameList(void)
                 if ((0==g_strcmp0(file+8, ".000")) && (FALSE==_isCellLoaded(file))) {
                     // check if allready included
                     if (NULL == g_strrstr(_cellNameList->str, file)) {
-                        //g_string_append_printf(_cellNameList, ",\"%s/%s\"", path, file);
                         g_string_append_printf(_cellNameList, ",%s/%s", path, file);
                     }
                 }
@@ -5729,17 +5686,12 @@ static S52_obj   *_isObjValid(_cell *c, S52_obj *obj)
 // return  obj if the oject is in cell else NULL
 // Used to validate User Mariners' Object
 {
-    // FIXME: refactor/optimise - objH could be an index into a GPtrArray of the real struct
+    // FIXME: refactor/optimise - idx (S57ID) of GPtrArray return the real S52_obj struct
     // - Q: what happend if array is full (guint)!
-    // - A: this limit (guint) is on all guint like s52id, so
-    // So let the array grow upto guint (at least 2^32 objH - if 64bits system then 2^64)
-    // and signal ARRAY_FULL in S52_MAR_ERROR !
-
-    // PROB: if del_fast(array) is used then the last objH in the array has now
-    // the index of the deleted one
-    // - OR -
-    // BBtree of objH or index --> objH
-    // PROB: maybe BBtree max out at guint - so this is not a solution to guint!
+    // - A: this limit (guint) is on all guint like s57id.
+    // So let the array grow upto MAX(guint) (ie at least 2^32 - if 64bits system then 2^64)
+    // and signal ARRAY_FULL when S52_g_ptr_array_add() max out guint
+    // WARNING: in this sheme del_fast() mixe up index - can't be used
 
     for (int i=0; i<S52_PRIO_NUM; ++i) {
         for (int j=0; j<N_OBJ_T; ++j) {
@@ -5941,11 +5893,17 @@ S52ObjectHandle            _newMarObj(const char *plibObjName, S52ObjectType obj
     if (NULL != listAttVal)
         _setAtt(geo, listAttVal);
 
-    // debug - immediatly destroy it
+    // debug - immediatly destroy it to see what happen
     //S57_doneData(geo);
 
     obj = S52_PL_newObj(geo);
     _insertS52Obj(_marinerCell, obj);
+
+    // init TX & TE
+    S52_PL_resetParseText(obj);
+
+    // doCS now (intead of _app() - expensive)
+    S52_PL_resloveSMB(obj);
 
     // set timer for afterglow
     if (0 == g_strcmp0("vessel", S57_getName(geo))) {
@@ -5958,13 +5916,6 @@ S52ObjectHandle            _newMarObj(const char *plibObjName, S52ObjectType obj
         }
     }
 #endif
-
-    // init TX & TE
-    S52_PL_resetParseText(obj);
-
-    // redo CS, because some object might have a CS command word (ex leglin)
-    // FIXME: call only on known CS (CLRLIN,LEGLIN,OWNSHP,PASTRK,VESSEL,VRMEBL)
-    _doCS = TRUE;
 
     return obj;
 }
@@ -6524,10 +6475,8 @@ exit:
     return objH;
 }
 
-DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH,  int vecstb, double course, double speed)
+DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH, int vecstb, double course, double speed)
 {
-    //S52_CHECK_INIT;
-
     return_if_null((void*)objH);
 
     S52_CHECK_MUTX_INIT;
@@ -6553,7 +6502,6 @@ DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH,  int vecstb, double 
         //SNPRINTF(attval, 80, "cogcrs:%f,sogspd:%f,ctwcrs:%f,stwspd:%f", course, speed, course, speed);
         SNPRINTF(attval, 80, "vecstb:%i,cogcrs:%f,sogspd:%f,ctwcrs:%f,stwspd:%f", vecstb, course, speed, course, speed);
 
-        //_updateGeoNattVal(objH, NULL, attval);
         S57_geo *geo = S52_PL_getGeo(objH);
         _setAtt(geo, attval);
 
