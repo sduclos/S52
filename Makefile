@@ -437,13 +437,16 @@ s52gtk2gps    : libS52.so    test/s52gtk2gps
 S52raz-3.2.rle.o: S52raz.s
 	$(CC) -c S52raz.s -o $@
 
-%.o: %.c %.h S52.h
+#%.o: %.c %.h S52.h
+%.o: %.c *.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-S52GL.o: S52GL.c _GL1.i _GL2.i _GLU.i S52.h
+#S52GL.o: S52GL.c _GL1.i _GL2.i _GLU.i S52.h
+S52GL.o: S52GL.c _GL1.i _GL2.i _GLU.i *.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-S52.o: S52.c _S52.i S52.h
+#S52.o: S52.c _S52.i S52.h
+S52.o: S52.c _S52.i *.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 ./lib/libtess/%.o: ./lib/libtess/%.c
