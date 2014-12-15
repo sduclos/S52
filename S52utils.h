@@ -63,10 +63,12 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
 #define SNPRINTF snprintf
 #endif
 
-#define return_if_null(ptr) if (NULL==ptr) {                             \
-                                PRINTF("WARNING: '%s' is NULL\n", #ptr); \
-                                return FALSE;                            \
-                            }
+#define return_if_null(ptr)                  \
+if (NULL==ptr) {                             \
+    PRINTF("WARNING: '%s' is NULL\n", #ptr); \
+    g_assert(0);                             \
+    return FALSE;                            \
+}
 
 
 #define cchar const char
