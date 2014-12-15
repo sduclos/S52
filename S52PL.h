@@ -106,8 +106,7 @@ typedef struct S52_Color {
     guchar   cidx;      // index of this color in table,
     guchar   trans;     // place holder --command word can change this
                         // so 'trans' is linked to an object not a color
-    char     pen_w;     // using VBO's we need to know this, Display List store this
-                        // but not VBO
+    char     pen_w;     // using VBO's we need to know this, Display List store this but not VBO
     //--------------------------
 
     char     colName[S52_PL_COLN+1];   // '\0' terminated
@@ -213,7 +212,7 @@ S52_CmdWrd     S52_PL_iniCmd(S52_obj *obj);
 // get next command word in the list
 S52_CmdWrd     S52_PL_getCmdNext(S52_obj *obj);
 // not used
-S52_CmdWrd     S52_PL_getCrntCmd(S52_obj *obj);
+//S52_CmdWrd     S52_PL_getCrntCmd(S52_obj *obj);
 
 // compare name to parameter of current command word
 int            S52_PL_cmpCmdParam(S52_obj *obj, const char *name);
@@ -270,24 +269,18 @@ int            S52_PL_setAPtexID(S52_obj *obj, guint mask_texID);
 guint          S52_PL_getAPtexID(S52_obj *obj);
 #endif
 
-// get symbol offset
-//int        S52_PL_getSymOff(S52_cmdDef* def, int patt, int *off_x, int *off_y);
 // traverse a symbology table calling 'callback' for each entree
 gint           S52_PL_traverse(S52_SMBtblName tableNm, GTraverseFunc callBack);
 // return the number of entree in a symbology table
 //gint       S52_PL_getTableSz(S52_SMBtblName tableNm);
 
-// return a list of Display List --one per color
+// return a list of Display List --one per color/pen_w/trans
 S52_DList     *S52_PL_newDListData(S52_obj *obj);
 S52_DList     *S52_PL_getDListData(S52_obj *obj);
 
 // text parser
-//S52_Text  *S52_PL_parseTX(S57_geo *geoData, S52_CmdL *cmd);
-//S52_Text  *S52_PL_parseTE(S57_geo *geoData, S52_CmdL *cmd);
-//gint       S52_PL_getTEXT(S52_Text  *text, S52_Color **col,
 const char    *S52_PL_getEX(S52_obj *obj, S52_Color **col,
                                int *xoffs, int *yoffs, unsigned int *bsize, unsigned int *weight, int *dis);
-//gint       S52_PL_doneTXT(S52_Text *text);
 
 // TRUE: flag to run the text parser again
 int            S52_PL_resetParseText(S52_obj *obj);
