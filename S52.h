@@ -76,12 +76,12 @@ typedef enum S52MarinerParameter {
     S52_MAR_COLOR_PALETTE       = 15,   // color palette  (0 - DAY_BRIGHT, 1 - DAY_BLACKBACK, 2 - DAY_WHITEBACK, 3 - DUSK, 4 - NIGHT)
                                         // (call S52_getPalettesNameList() to get the current palette list
 
-    S52_MAR_VECPER              = 16,   // vecper: Vector-length time-period (min) (normaly 6 or 12)
-    S52_MAR_VECMRK              = 17,   // vecmrk: Vector time-mark interval (0 - none, 1 - 1&6 min, 2 - 6 min)
-    S52_MAR_VECSTB              = 18,   // vecstb: Vector Stabilization (0 - none, 1 - ground, 2 - water)
+    S52_MAR_VECPER              = 16,   // vecper: OWNSHP & VESSEL: Vector-length time-period (min) (normaly 6 or 12)
+    S52_MAR_VECMRK              = 17,   // vecmrk: OWNSHP & VESSEL: Vector time-mark interval (0 - none, 1 - 1&6 min, 2 - 6 min)
+    S52_MAR_VECSTB              = 18,   // vecstb: OWNSHP         : Vector Stabilization (0 - none, 1 - ground, 2 - water)
 
-    S52_MAR_HEADNG_LINE         = 19,   // all ship (ownshp and AIS) show heading line (on/off)
-    S52_MAR_BEAM_BRG_NM         = 20,   // ownshp beam bearing length (nm)
+    S52_MAR_HEADNG_LINE         = 19,   // OWNSHP & VESSEL: show heading line (on/off)
+    S52_MAR_BEAM_BRG_NM         = 20,   // OWNSHP         : beam bearing length (nm) (0 - off)
 
 
 
@@ -103,14 +103,11 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_ROT_BUOY_LIGHT      = 28,   // rotate buoy light (deg from north)
 
-    //S52_MAR_DISP_CRSR_POS       = 29,   // NOT IMPLEMENTED: display cursor position (on/off)
-    S52_MAR_DISP_CRSR_PICK       = 29,  // 0 - off, 1 - pick/highlight top object, 2 - pick stack/highlight top,
+    S52_MAR_DISP_CRSR_PICK      = 29,   // 0 - off, 1 - pick/highlight top object, 2 - pick stack/highlight top,
                                         // 3 - pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
-
+    // those 3 are in S52 specs
     S52_MAR_DISP_GRATICULE      = 30,   // display graticule (on/off)
-
     S52_MAR_DISP_WHOLIN         = 31,   // wholin auto placement: 0 - off, 1 - wholin, 2 - arc, 3 - wholin + arc  (default off)
-
     S52_MAR_DISP_LEGEND         = 32,   // display legend (on/off) (default off)
 
     S52_CMD_WRD_FILTER          = 33,   // toggle command word filter mask for profiling (see [3] bellow)
@@ -118,6 +115,7 @@ typedef enum S52MarinerParameter {
     S52_MAR_DOTPITCH_MM_X       = 34,   // dotpitch X (mm) - pixel size in X
     S52_MAR_DOTPITCH_MM_Y       = 35,   // dotpitch Y (mm) - pixel size in Y
 
+    // in S52 specs
     S52_MAR_DISP_CALIB          = 36,   // display calibration symbol (on/off) (default off)
 
     S52_MAR_DISP_DRGARE_PATTERN = 37,   // display DRGARE pattern (on/off) (default on)
@@ -289,7 +287,7 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int textureRadiusP
  *
  * Note: call will fail if no ENC loaded (via S52_loadCell)
  *
- * WARNING: At startup, this call must be the verry fist draw call to set S52 symbol
+ * WARNING: At startup, this call must be the very fist draw call to set projection
  *
  *
  * Return: TRUE on success, else FALSE
@@ -605,8 +603,7 @@ DLL int    STD S52_loadPLib(const char *plibName);
  *
  * List of PLib name loaded delimited by ','
  *
- * WARNING: the returned str can become dandling, so raw C call must save
- * the string before calling libS52 again
+ * WARNING: caller must save the string before calling libS52 again (dandling ptr)
  *
  *
  * Return: (transfer none): string
@@ -619,8 +616,7 @@ DLL const char * STD S52_getPLibNameList(void);
  * List of palettes name loaded separated by ','.
  * Note: use S52_MAR_COLOR_PALETTE, as an index, to select one of them.
  *
- * WARNING: the returned str can become dandling, so raw C call must save
- * the string before calling libS52 again
+ * WARNING: caller must save the string before calling libS52 again (dandling ptr)
  *
  *
  * Return: (transfer none): NULL if call fail
@@ -632,8 +628,7 @@ DLL const char * STD S52_getPalettesNameList(void);
  *
  * List of cells name loaded
  *
- * WARNING: the returned str can become dandling, so raw C call must save
- * the string before calling libS52 again
+ * WARNING: caller must save the string before calling libS52 again (dandling ptr)
  *
  *
  * Return: (transfer none): NULL if call fail
@@ -648,8 +643,7 @@ DLL const char * STD S52_getCellNameList(void);
  * in the cell @cellName. The first element of the list is the cell's name.
  * If @cellName is NULL then all S57 class is return.
  *
- * WARNING: the returned str can become dandling, so raw C call must save
- * the string before calling libS52 again
+ * WARNING: caller must save the string before calling libS52 again (dandling ptr)
  *
  *
  * Return: (transfer none): List of all class name separeted by ',', NULL if call fail
@@ -670,8 +664,7 @@ DLL const char * STD S52_getS57ClassList(const char *cellName);
  * <disp cat>  ::= D|S|O|A|T|P|-        (see S52PL.h:S52_DisCat)
  * <disp prio> ::= 0|1|2|3|4|5|6|7|8|9
  *
- * WARNING: the return str can be dandling, so raw C call must save
- * the string before calling libS52 again
+ * WARNING: caller must save the string before calling libS52 again (dandling ptr)
  *
  *
  * Return: (transfer none): string of all element separeted by ',', NULL if call fail
@@ -684,8 +677,7 @@ DLL const char * STD S52_getObjList(const char *cellName, const char *className)
  *
  * Where the first elementy is the ID, folowed by <key>:<value> pair.
  *
- * WARNING: the return str can become dandling, so raw C call must save
- * the string before calling libS52 again
+ * WARNING: caller must save the string before calling libS52 again (dandling ptr)
  *
  *
  * Return: (transfer none): string of all element separeted by ',', NULL if call fail
@@ -911,11 +903,13 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
 DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d);
 
 /**
- * S52_setVector:
+ * S52_setVector: OWNSHP & VESSEL
  * @objH:   (in) (transfer none): addressed S52ObjectHandle
  * @vecstb: (in): 0 - none, 1 - ground, 2 - water
- * @course: (in):
- * @speed:  (in):
+ * @course: (in): (deg)
+ * @speed:  (in): (kt)
+ *
+ * Note: @vecstb apply to VESSEL only, use S52_MAR_VECSTB for OWNSHP
  *
  *
  * Return: (transfer none): the handle to S52_obj or NULL if call fail
