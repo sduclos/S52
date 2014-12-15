@@ -79,15 +79,13 @@ static projUV _gmin = { INFINITY,  INFINITY};
 static projUV _gmax = {-INFINITY, -INFINITY};
 
 // current ViewPort
-typedef struct vp {
+typedef struct vp_t {
     guint x;
     guint y;
     guint w;
     guint h;
-} vp;
-static vp _vp;
-//static GLuint _vp[4]; // x,y,width,height
-//static guint _vp[4]; // x,y,width,height
+} vp_t;
+static vp_t _vp;
 
 // GL_PROJECTION matrix
 typedef enum _VP {
@@ -727,8 +725,6 @@ static GLint     _glMatrixSet(VP vpcoord)
             break;
 
         case VP_WIN:
-            //left   = _vp[0],       right = _vp[0] + _vp[2],
-            //bottom = _vp[1],       top   = _vp[1] + _vp[3];
             left   = _vp.x,       right = _vp.x + _vp.w,
             bottom = _vp.y,       top   = _vp.y + _vp.h;
             znear  = Z_CLIP_PLANE, zfar  = -Z_CLIP_PLANE;
@@ -800,6 +796,7 @@ static GLint     _glMatrixDel(VP vpcoord)
 static int       _win2prj(double *x, double *y)
 // convert coordinate: window --> projected
 {
+    GLint vp[4] = {_vp.x,_vp.y,_vp.w,_vp.h};
 #ifdef S52_USE_GL2
     float u       = *x;
     float v       = *y;
@@ -813,9 +810,7 @@ static int       _win2prj(double *x, double *y)
     }
     */
 
-    //if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, &u, &v, &dummy_z)) {
-    GLint vp[4] = {_vp.x,_vp.y,_vp.w,_vp.h};
-    if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)vp, &u, &v, &dummy_z)) {
+    if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], vp, &u, &v, &dummy_z)) {
         PRINTF("WARNING: UnProjection faild\n");
         g_assert(0);
         return FALSE;
@@ -826,7 +821,7 @@ static int       _win2prj(double *x, double *y)
 
 #else
     GLdouble dummy_z = 0.0;
-    if (GL_FALSE == gluUnProject(*x, *y, dummy_z, _mvm, _pjm, (GLint*)_vp, x, y, &dummy_z)) {
+    if (GL_FALSE == gluUnProject(*x, *y, dummy_z, _mvm, _pjm, vp, x, y, &dummy_z)) {
         PRINTF("WARNING: UnProjection faild\n");
         g_assert(0);
         return FALSE;
@@ -839,9 +834,7 @@ static int       _win2prj(double *x, double *y)
 static projXY    _prj2win(projXY p)
 // convert coordinate: projected --> window (pixel)
 {
-    // debug
-    //PRINTF("_VP[]: %i,%i,%i,%i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
-
+    GLint vp[4] = {_vp.x,_vp.y,_vp.w,_vp.h};
 #ifdef S52_USE_GL2
     // FIXME: find a better way to catch non initialyse matrix
     if (0 == _pjm[_pjmTop]) {
@@ -857,9 +850,7 @@ static projXY    _prj2win(projXY p)
     //_glMatrixMode  (GL_MODELVIEW);
     _glLoadIdentity(GL_MODELVIEW);
 
-    //if (GL_FALSE == _gluProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)_vp, &u, &v, &dummy_z)) {
-    GLint vp[4] = {_vp.x,_vp.y,_vp.w,_vp.h};
-    if (GL_FALSE == _gluProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], (GLint*)vp, &u, &v, &dummy_z)) {
+    if (GL_FALSE == _gluProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], vp, &u, &v, &dummy_z)) {
         PRINTF("ERROR\n");
         g_assert(0);
         return p;
@@ -868,7 +859,7 @@ static projXY    _prj2win(projXY p)
     p.v = v;
 #else
     GLdouble dummy_z = 0.0;
-    if (GL_FALSE == gluProject(p.u, p.v, dummy_z, _mvm, _pjm, (GLint*)_vp, &p.u, &p.v, &dummy_z)) {
+    if (GL_FALSE == gluProject(p.u, p.v, dummy_z, _mvm, _pjm, vp, &p.u, &p.v, &dummy_z)) {
         PRINTF("ERROR\n");
         g_assert(0);
         return p;
@@ -878,8 +869,7 @@ static projXY    _prj2win(projXY p)
     return p;
 }
 
-static int       _doProjection(double centerLat, double centerLon, double rangeDeg)
-// use _vp & PROJ4
+static int       _doProjection(vp_t vp, double centerLat, double centerLon, double rangeDeg)
 {
     pt3 NE = {0.0, 0.0, 0.0};  // Nort/East
     pt3 SW = {0.0, 0.0, 0.0};  // South/West
@@ -894,14 +884,8 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
         return FALSE;
 
     {
-        // get drawing area in pixel
-        // assume round pixel for now
-        //int w = _vp[2];  // width  (pixels)
-        //int h = _vp[3];  // hieght (pixels)
-        int w = _vp.w;  // width  (pixels)
-        int h = _vp.h;  // hieght (pixels)
         // screen ratio
-        double r = (double)h / (double)w;   // > 1 'h' dominant, < 1 'w' dominant
+        double r = (double)vp.h / (double)vp.w;   // > 1 'h' dominant, < 1 'w' dominant
         //PRINTF("Viewport pixels (width x height): %i %i (r=%f)\n", w, h, r);
         double dy = NE.y - SW.y;
         // assume h dominant (latitude), so range
@@ -930,10 +914,8 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
     _gmax   = S57_prj2geo(_gmax);
 
     // MPP - Meter Per Pixel
-    //_scalex = (_pmax.u - _pmin.u) / (double)_vp[2];
-    //_scaley = (_pmax.v - _pmin.v) / (double)_vp[3];
-    _scalex = (_pmax.u - _pmin.u) / (double)_vp.w;
-    _scaley = (_pmax.v - _pmin.v) / (double)_vp.h;
+    _scalex = (_pmax.u - _pmin.u) / (double)vp.w;
+    _scaley = (_pmax.v - _pmin.v) / (double)vp.h;
 
     return TRUE;
 }
@@ -941,7 +923,7 @@ static int       _doProjection(double centerLat, double centerLon, double rangeD
 int        S52_GL_win2prj(double *x, double *y)
 // convert coordinate: window --> projected
 {
-    // if symb wher createed imply that projection is OK
+    // if symb OK imply that projection is OK
     if (FALSE == _symbCreated)
         return FALSE;
 
@@ -956,7 +938,7 @@ int        S52_GL_win2prj(double *x, double *y)
 
 
 int        S52_GL_prj2win(double *x, double *y)
-// convert coordinate: projected --> windows
+// convert coordinate: projected --> window
 {
     // if symbole OK imply that projection is OK
     if (FALSE == _symbCreated)
@@ -1604,13 +1586,14 @@ static int       _glCallList(S52_DList *DListData)
                         // normal draw
                         glDrawArrays(mode, first, count);
 
+                        /*
                         { // debug
                             char str[80];
                             SNPRINTF(str, 80, "_glCallList():glDrawArrays() mode:%i first:%i count:%i", mode, first, count);
                             //_checkError("_glCallList(): -glDrawArrays()-");
                             _checkError(str);
                         }
-
+                        */
                     }
                 }
                 ++j;
@@ -1988,7 +1971,6 @@ static int       _renderSY_CSYMB(S52_obj *obj)
     // north arrow
     if (0==g_strcmp0(attval->str, "NORTHAR1")) {
         double x = 30;
-        //double y = _vp[3] - 40;
         double y = _vp.w - 40;
         double rotation = 0.0;
 
@@ -2020,8 +2002,6 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         // check symbol physical size, should be 5mm by 5mm
         if (0==g_strcmp0(attval->str, "CHKSYM01")) {
             // FIXME: use _dotpitch_ ..
-            //double x = _vp[0] + 50;
-            //double y = _vp[1] + 50;
             double x = _vp.x + 50;
             double y = _vp.y + 50;
 
@@ -2046,8 +2026,6 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         if (0==g_strcmp0(attval->str, "BLKADJ01")) {
             // FIXME: use _dotpitch_ ..
             // top left (witch is under CPU usage on Android)
-            //double x = _vp[2] - 50;
-            //double y = _vp[3] - 50;
             double x = _vp.w - 50;
             double y = _vp.h - 50;
 
@@ -2116,16 +2094,17 @@ static int       _renderSY_ownshp(S52_obj *obj)
     }
 
     // draw vector stabilization
+    // FIXME: use S52_MAR_VECSTB to draw VECGND01 -OR- VECWTR01 (not both)
     if (0 == S52_PL_cmpCmdParam(obj, "VECGND01") ||
         0 == S52_PL_cmpCmdParam(obj, "VECWTR01") ) {
-        double vecper = S52_MP_get(S52_MAR_VECPER);
-        if (0.0 != vecper) {
+        // 1 or 2
+        if (0.0 != S52_MP_get(S52_MAR_VECSTB)) {
             // compute symbol offset due to course and seep
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
 
                 double courseRAD = (90.0 - course)*DEG_TO_RAD;
-                double veclenNM  = vecper   * (speed /60.0);
+                double veclenNM  = S52_MP_get(S52_MAR_VECPER) * (speed /60.0);
                 double veclenM   = veclenNM * NM_METER;
                 double veclenMX  = veclenM  * cos(courseRAD);
                 double veclenMY  = veclenM  * sin(courseRAD);
@@ -2138,10 +2117,14 @@ static int       _renderSY_ownshp(S52_obj *obj)
         return TRUE;
     }
 
+    //
+    // FIXME: OSPSIX02, OSPONE02, pivot seem to be on the base of triangle (it should be at the top!)
+    //
+
     // time marks on vector - 6 min
     if (0 == S52_PL_cmpCmdParam(obj, "OSPSIX02")) {
-        double     vecper = S52_MP_get(S52_MAR_VECPER);
-        if (0.0 != vecper) {
+        // 1 or 2
+        if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
             // compute symbol offset of each 6 min mark
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
@@ -2150,7 +2133,11 @@ static int       _renderSY_ownshp(S52_obj *obj)
                 double veclenM6min  = veclenNM6min * NM_METER;
                 double veclenM6minX = veclenM6min  * cos(orientRAD);
                 double veclenM6minY = veclenM6min  * sin(orientRAD);
-                int    nmrk         = (int) (vecper / 6.0);
+                int    nmrk         = (int) (S52_MP_get(S52_MAR_VECPER) / 6.0);
+
+                // don't draw the last OSPSIX if overright S52_MAR_VECSTB
+                if (0.0!=S52_MP_get(S52_MAR_VECSTB) && 0==(int)S52_MP_get(S52_MAR_VECPER)%6)
+                    --nmrk;
 
                 for (int i=0; i<nmrk; ++i) {
                     double ptx = ppt[0] + veclenM6minX*(i+1);
@@ -2167,8 +2154,7 @@ static int       _renderSY_ownshp(S52_obj *obj)
 
     // time marks on vector - 1 min
     if (0 == S52_PL_cmpCmdParam(obj, "OSPONE02")) {
-        double     vecper = S52_MP_get(S52_MAR_VECPER);
-        if (0.0 != vecper) {
+        if (1.0 == S52_MP_get(S52_MAR_VECMRK)) {
             // compute symbol offset of each 1 min mark
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
@@ -2177,9 +2163,13 @@ static int       _renderSY_ownshp(S52_obj *obj)
                 double veclenM1min  = veclenNM1min * NM_METER;
                 double veclenM1minX = veclenM1min  * cos(orientRAD);
                 double veclenM1minY = veclenM1min  * sin(orientRAD);
-                int    nmrk         = vecper;
+                int    nmrk         = (int)S52_MP_get(S52_MAR_VECPER);
 
                 for (int i=0; i<nmrk; ++i) {
+                    // skip 6 min mark
+                    if (0 == (i+1) % 6)
+                        continue;
+
                     double ptx = ppt[0] + veclenM1minX*(i+1);
                     double pty = ppt[1] + veclenM1minY*(i+1);
 
@@ -2207,9 +2197,6 @@ static int       _renderSY_vessel(S52_obj *obj)
     GString  *vestatstr = S57_getAttVal(geo, "vestat");  // vessel state
     GString  *vecstbstr = S57_getAttVal(geo, "vecstb");  // vector stabilize
     GString  *headngstr = S57_getAttVal(geo, "headng");
-
-    // debug
-    //return TRUE;
 
     if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
@@ -2254,28 +2241,25 @@ static int       _renderSY_vessel(S52_obj *obj)
 #endif
 
     // draw vector stabilization
-    // FIXME: NO VECT STAB if target sleeping
+    // FIXME: NO VECT STAB if target sleeping - (NULL!=vestatstr && '2'==*vestatstr->str)
     if (0 == S52_PL_cmpCmdParam(obj, "VECGND21") ||
         0 == S52_PL_cmpCmdParam(obj, "VECWTR21") ) {
-        double     vecper = S52_MP_get(S52_MAR_VECPER);
-        if (0.0 != vecper) {
+        // 1 or 2
+        if (NULL!=vecstbstr && ('1'==*vecstbstr->str||'2'==*vecstbstr->str)) {
             // compute symbol offset due to course and speed
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
                 double courseRAD = (90.0 - course)*DEG_TO_RAD;
-                double veclenNM  = vecper   * (speed /60.0);
+                double veclenNM  = S52_MP_get(S52_MAR_VECPER) * (speed /60.0);
                 double veclenM   = veclenNM * NM_METER;
                 double veclenMX  = veclenM  * cos(courseRAD);
                 double veclenMY  = veclenM  * sin(courseRAD);
 
-                if ((0==S52_PL_cmpCmdParam(obj, "VECGND21")) &&
-                    (NULL!=vecstbstr && '1'==*vecstbstr->str)
-                   ) {
+                // FIXME: why make this check again!!
+                if ((0==S52_PL_cmpCmdParam(obj, "VECGND21")) && ('1'==*vecstbstr->str) ) {
                     _renderSY_POINT_T(obj, ppt[0]+veclenMX, ppt[1]+veclenMY, course);
                 } else {
-                    if ((0==S52_PL_cmpCmdParam(obj, "VECWTR21")) &&
-                        (NULL!=vecstbstr && '2'==*vecstbstr->str)
-                       ) {
+                    if ((0==S52_PL_cmpCmdParam(obj, "VECWTR21")) && ('2'==*vecstbstr->str) ) {
                         _renderSY_POINT_T(obj, ppt[0]+veclenMX, ppt[1]+veclenMY, course);
                     }
                 }
@@ -2285,11 +2269,15 @@ static int       _renderSY_vessel(S52_obj *obj)
         return TRUE;
     }
 
+    //
+    // FIXME: AISSIX01, AISONE01, pivot seem to be on the base of triangle (it should be at the top!)
+    //
+
     // time marks on vector - 6 min
     if ((0 == S52_PL_cmpCmdParam(obj, "ARPSIX01")) ||
         (0 == S52_PL_cmpCmdParam(obj, "AISSIX01")) ){
-        double     vecper = S52_MP_get(S52_MAR_VECPER);
-        if (0.0 != vecper) {
+        // 1 or 2
+        if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
             // compute symbol offset of each 6 min mark
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
@@ -2298,7 +2286,11 @@ static int       _renderSY_vessel(S52_obj *obj)
                 double veclenM6min  = veclenNM6min * NM_METER;
                 double veclenM6minX = veclenM6min  * cos(orientRAD);
                 double veclenM6minY = veclenM6min  * sin(orientRAD);
-                int    nmrk         = vecper / 6.0;
+                int    nmrk         = (int)(S52_MP_get(S52_MAR_VECPER) / 6.0);
+
+                // don't draw the last AISSIX if overright S52_MAR_VECSTB
+                if (0.0!=S52_MP_get(S52_MAR_VECSTB) && 0==(int)S52_MP_get(S52_MAR_VECPER)%6)
+                    --nmrk;
 
                 for (int i=0; i<nmrk; ++i) {
                     double ptx = ppt[0] + veclenM6minX*(i+1);
@@ -2314,8 +2306,7 @@ static int       _renderSY_vessel(S52_obj *obj)
     // time marks on vector - 1 min
     if ((0 == S52_PL_cmpCmdParam(obj, "ARPONE01")) ||
         (0 == S52_PL_cmpCmdParam(obj, "AISONE01"))  ) {
-        double     vecper = S52_MP_get(S52_MAR_VECPER);
-        if (0.0 != vecper) {
+        if (1.0 == S52_MP_get(S52_MAR_VECMRK)) {
             // compute symbol offset of each 1 min mark
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
@@ -2324,9 +2315,13 @@ static int       _renderSY_vessel(S52_obj *obj)
                 double veclenM1min  = veclenNM1min * NM_METER;
                 double veclenM1minX = veclenM1min  * cos(orientRAD);
                 double veclenM1minY = veclenM1min  * sin(orientRAD);
-                int    nmrk         = vecper;
+                int    nmrk         = (int)S52_MP_get(S52_MAR_VECPER);
 
                 for (int i=0; i<nmrk; ++i) {
+                    // skip 6 min mark
+                    if (0 == (i+1) % 6)
+                        continue;
+
                     double ptx = ppt[0] + veclenM1minX*(i+1);
                     double pty = ppt[1] + veclenM1minY*(i+1);
 
@@ -2350,8 +2345,6 @@ static int       _renderSY_vessel(S52_obj *obj)
         GString *shplenstr = S57_getAttVal(geo, "shplen");
         double   shplen    = (NULL==shplenstr) ? 0.0 : S52_atof(shplenstr->str);
 
-        //double scaley      = (_pmax.v - _pmin.v) / (double)_vp[3] ;
-        //double shpLenPixel = shplen / scaley;
         double shpLenPixel = shplen / _scaley;
 
         // drawn VESSEL symbol
@@ -2362,10 +2355,6 @@ static int       _renderSY_vessel(S52_obj *obj)
             if (NULL!=vestatstr && '1'==*vestatstr->str)
                 _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
         }
-        //double course, speed;
-        //_getVector(obj, &course, &speed);
-
-        //_renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
 
         return TRUE;
     }
@@ -3326,7 +3315,6 @@ static int       _renderLS(S52_obj *obj)
             guint     npt     = 0;
             S57_getGeoData(geoData, 0, &npt, &ppt);
 
-            //*
             // get the current number of positon (this grow as GPS/AIS pos come in)
             if (0 == g_strcmp0("pastrk", S57_getName(geoData))) {
                 npt = S57_getGeoSize(geoData);
@@ -3390,9 +3378,6 @@ static int       _renderLS(S52_obj *obj)
 #endif
                 }
             }
-            //*/
-
-
 
 //#ifdef S52_USE_GL2
             // Not usefull with AA
@@ -4542,13 +4527,12 @@ static int       _renderTXT(S52_obj *obj)
 
 static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 // Display List generator - use for VBO also
-// VBO: collect all vectors for 1 colour
+// VBO: collect all vectors for 1 colour/pen_w/trans
 {
     // Assume: a width of 1 unit is 1 pixel.
-    // WARNING: offet might need adjustment since bounding box
-    // doesn't include line tickness.
+    // WARNING: offet might need adjustment since bounding box doesn't include line tickness.
     // Note: Pattern upto PLib 3.2, use a line width of 1.
-    // Note: transparency: 0=0%(opaque), 1=25%, 2=50%, 3=75%
+    // Note: transparency: '0'=0%(opaque), '1'=25%, '2'=50%, '3'=75%
 
     // FIXME: instruction EP (Edge Polygon), AA (Arc Angle) and SC (Symbol Call)
     //        are not used i PLib/Chart-1 3.1, so not implemented.
@@ -4570,8 +4554,13 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
     //if (0==strncmp("CHKSYM01", S52_PL_getVOname(vecObj), 8)) {
     //    PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
     //}
+    // Note: bbx = 7173, bby = 1445, pivot_x = 7371, pivot_y = 1657
+    // SYMD   39 AISSIX01 V 07371 01657 00405 00214 07173 01445
+    if (0==strncmp("AISSIX01", S52_PL_getVOname(vecObj), 8)) {
+        PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
+    }
 
-    //*
+    /*
     // FIXME: CHRVID01, CHRVID02, CHDATD01 in PLib 4.0 draft as xyz coord. The code should handle
     // wrong input gracefully - xy; instead of xyz; the latter is not apparently in S52 4.0
     if (0==strncmp("CHRVID01", S52_PL_getVOname(vecObj), 8)) {
@@ -4588,9 +4577,6 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
     }
     //*/
 
-    // skip first token if it's S52_VC_NEW
-    //if (S52_VC_NEW == vcmd)
-
     // debug - check if more than one NEW token - YES
     while (S52_VC_NEW == vcmd) {
         vcmd = S52_PL_getNextVOCmd(vecObj);
@@ -4600,11 +4586,11 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 
         switch (vcmd) {
 
-            case S52_VC_NONE: break; //continue;
-
+            case S52_VC_NONE: break;
             case S52_VC_NEW:  break;
 
             case S52_VC_SW: { // this mean there is a change in pen width
+
 #if !defined(S52_USE_OPENGL_VBO)
                 // draw vertex with previous pen width
                 GArray *v = S57_getPrimVertex(vertex);
@@ -4755,6 +4741,9 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                     break;
                 }
                 */
+
+                // FIXME: handle pen width in VBO
+
 
                 {
                     _glBegin(GL_LINES,  vertex);
@@ -5031,13 +5020,11 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
 }
 
 static GLint     _createSymb(void)
-// WARNING: this must be done from inside the main loop!
 {
     if (TRUE == _symbCreated)
         return TRUE;
 
-    // FIXME: what if the screen is to small !?
-    //glGetIntegerv(GL_VIEWPORT, _vp);
+    // FIXME: what if the ViewPort is to small !?
 
     _glMatrixSet(VP_WIN);
 
@@ -5056,7 +5043,7 @@ static GLint     _createSymb(void)
 
     _symbCreated = TRUE;
 
-    PRINTF("INFO: PLib sym created ..\n");
+    PRINTF("DEBUG: PLib sym created ..\n");
 
     return TRUE;
 }
@@ -5509,9 +5496,10 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     // GL sanity check before start of init
     _checkError("S52_GL_begin() -0-");
 
-    //
+    // Projection set in the DRAW cycle - hence need to be first
+    // so that other calls depend on projection
     if (S52_GL_INIT==_crnt_GL_cycle && S52_GL_DRAW!=cycle) {
-        PRINTF("WARNING: verry fist GL_begin must start a DRAW\n");
+        PRINTF("WARNING: very fist GL_begin must start a DRAW\n");
         g_assert(0);
         return FALSE;
     }
@@ -5696,13 +5684,12 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
 
     // -------set matrix param ---------
-    //glViewport(_vp[0], _vp[1], _vp[2], _vp[3]);
     glViewport(_vp.x, _vp.y, _vp.w, _vp.h);
 
     // do projection if draw() since the view is the same for all other mode
     if (S52_GL_DRAW == _crnt_GL_cycle) {
         // this will setup _pmin/_pmax, need a valide _vp
-        _doProjection(_centerLat, _centerLon, _rangeNM/60.0);
+        _doProjection(_vp, _centerLat, _centerLon, _rangeNM/60.0);
     }
 
     // then create all PLib symbol
@@ -5717,7 +5704,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     _SCAMIN = _computeSCAMIN() * 10000.0;
 
-    //if (_fb_pixels_size < (_vp[2] * _vp[3] * _fb_format) ) {
     if (_fb_pixels_size < (_vp.w * _vp.h * _fb_format) ) {
         PRINTF("ERROR: pixels buffer overflow: fb_pixels_size=%i, VP=%i \n", _fb_pixels_size, (_vp.w * _vp.h * _fb_format));
         // NOTE: since the assert() is removed in the release, draw last can
@@ -6652,7 +6638,6 @@ int        S52_GL_drawFBPixels(void)
 
 int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north)
 {
-    //if (S52_GL_PICK==_crnt_GL_cycle || NULL==_fb_pixels) {
     if (S52_GL_PICK == _crnt_GL_cycle) {
         return FALSE;
     }
