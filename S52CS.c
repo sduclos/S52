@@ -55,12 +55,6 @@ typedef struct _localObj {
 // size of attributes value list buffer
 #define LISTSIZE   16   // list size
 
-// system wide for OWNSHP & VESSEL,
-//static int _vecper = 12;  // Vector length time-period (min),
-//static int _vecmrk =  2;  // Vector time-mark interval 0/1/2 (0 - for none, 1 - 1&6 min, 2 - 6 min)
-//static int _vecstb =  2;  // Vector Stabilization      0/1/2 (0 - for none, 1 - ground, 2 - water)
-
-
 static char *_strpbrk(const char *s, const char *list)
 {
     //return strpbrk(s, list);
@@ -97,10 +91,6 @@ localObj *S52_CS_init()
 
     //local->obstrn_list = g_ptr_array_new();
     local->depval_list = g_ptr_array_new();
-
-    //  vecper: Vector length time-period,
-    //  vecmrk: Vector time-mark interval,
-    //  vecstb: Vector Stabilization
 
     return local;
 }
@@ -616,20 +606,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
     //return FALSE;
     return TRUE;
 }
-
-//int        S52_CS_setVectorParam(int vecper, int vecstb, int vecmrk)
-//{
-//    _vecper = vecper;
-//    _vecmrk = vecstb;
-//    _vecstb = vecmrk;
-//
-//    return TRUE;
-//}
-
-//int        S52_CS_getVectorPer()
-//{
-//    return _vecper;
-//}
 
 static int      _sectOverlap(S57_geo *geoA, S57_geo *geoB)
 // TRUE if A overlap B and arc of A is bigger, else FALSE
@@ -1274,6 +1250,7 @@ static GString *LEGLIN02 (S57_geo *geo)
     if ((NULL!=plnspdstr) && (0.0<S52_atof(plnspdstr->str)))
         g_string_append(leglin02, ";TX('leglin',2,1,2,'15110',-1,-1,CHBLK,51)");
 
+    // FIXME: move to GL
     // TX: distance tags
     if (0.0 < S52_MP_get(S52_MAR_DISTANCE_TAGS)) {
         g_string_append(leglin02, ";SY(PLNPOS02);TX('leglin',2,1,2,'15110',-1,-1,CHBLK,51)");
@@ -2246,6 +2223,7 @@ static GString *OWNSHP02 (S57_geo *geo)
     //GString *headngstr = S57_getAttVal(geo, "headng");
     GString *vlabelstr = S57_getAttVal(geo, "_vessel_label");
 
+    // FIXME: move to GL
     // experimental: text label
     if (NULL != vlabelstr) {
         g_string_append(ownshp02, ";TX(_vessel_label,3,3,3,'15110',1,1,SHIPS,75)" );
@@ -2288,16 +2266,17 @@ static GString *OWNSHP02 (S57_geo *geo)
         }
         */
 
+        // FIXME: move to GL
         // time mark (on vector)
-        if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
+        //if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
             // 6 min. and 1 min. symb.
-            if (1.0 == S52_MP_get(S52_MAR_VECMRK))
+            //if (1.0 == S52_MP_get(S52_MAR_VECMRK))
                 g_string_append(ownshp02, ";SY(OSPSIX02);SY(OSPONE02)");
 
             // 6 min. symb
-            if (2.0 == S52_MP_get(S52_MAR_VECMRK))
-                g_string_append(ownshp02, ";SY(OSPSIX02)");
-        }
+            //if (2.0 == S52_MP_get(S52_MAR_VECMRK))
+            //    g_string_append(ownshp02, ";SY(OSPSIX02)");
+        //}
     //}
 
     // beam bearing
@@ -3271,16 +3250,17 @@ static GString *VESSEL01 (S57_geo *geo)
         g_string_append(vessel01, ";SY(arpatg01);LS(SOLD,1,DNGHL)");
 #endif
 
+        // FIXME: move this to GL
         // add time mark (on ARPA vector)
-        if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
+        //if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
             // 6 min. and 1 min. symb.
-            if (1.0 == S52_MP_get(S52_MAR_VECMRK))
+            //if (1.0 == S52_MP_get(S52_MAR_VECMRK))
                 g_string_append(vessel01, ";SY(ARPSIX01);SY(ARPONE01)");
 
             // 6 min. symb
-            if (2.0 == S52_MP_get(S52_MAR_VECMRK))
-                g_string_append(vessel01, ";SY(ARPSIX01)");
-        }
+            //if (2.0 == S52_MP_get(S52_MAR_VECMRK))
+            //    g_string_append(vessel01, ";SY(ARPSIX01)");
+        //}
     }
 
     // AIS
@@ -3307,7 +3287,7 @@ static GString *VESSEL01 (S57_geo *geo)
         //}
 
 #ifdef S52_USE_SYM_VESSEL_DNGHL
-        // experimental: active AIS target & close quarters
+        // experimental: active AIS target & close quarters - aisves01 symb in PLAUX_00.DAI
         //if (NULL!=vestatstr && '3'==*vestatstr->str) {
             g_string_append(vessel01, ";SY(aisves01);LS(SOLD,1,DNGHL)");
         //}
@@ -3318,17 +3298,18 @@ static GString *VESSEL01 (S57_geo *geo)
             g_string_append(vessel01, ";LS(SOLD,1,ARPAT)");
         //}
 
+        // FIXME: move this to GL
         // add time mark (on AIS vector)
-        if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
+        //if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
 
             // 6 min. and 1 min. symb
-            if (1.0 == S52_MP_get(S52_MAR_VECMRK))
+            //if (1.0 == S52_MP_get(S52_MAR_VECMRK))
                 g_string_append(vessel01, ";SY(AISSIX01);SY(AISONE01)");
 
             // 6 min. symb only
-            if (2.0 == S52_MP_get(S52_MAR_VECMRK))
-                g_string_append(vessel01, ";SY(AISSIX01)");
-        }
+            //if (2.0 == S52_MP_get(S52_MAR_VECMRK))
+            //    g_string_append(vessel01, ";SY(AISSIX01)");
+        //}
     }
 
     // VTS
