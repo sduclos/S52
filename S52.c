@@ -4081,6 +4081,7 @@ DLL int    STD S52_draw(void)
 #endif
 
 exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
 #if !defined(S52_USE_RADAR)
@@ -4221,6 +4222,7 @@ DLL int    STD S52_drawLast(void)
 #endif
 
 exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     EGL_END(LAST);
@@ -4420,6 +4422,7 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
 
 
 exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     EGL_END(BLIT);
@@ -5169,6 +5172,7 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 #endif
 
 exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     EGL_END(PICK);
@@ -5372,6 +5376,7 @@ DLL cchar *STD S52_getAttList(unsigned int S57ID)
     }
 
 exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return str;
@@ -5953,6 +5958,7 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
     //       (NULL==listAttVal)?"NULL":listAttVal);
 
 exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return (S52ObjectHandle)obj;
@@ -6109,6 +6115,8 @@ DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBeg
     }
 
 exit:
+
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return clrlin;
 }
@@ -6396,8 +6404,6 @@ exit:
 
 DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
 {
-    return_if_null(label);  // what if we need to erase label!
-
     //S52_CHECK_INIT;
     S52_CHECK_MUTX_INIT;
 
@@ -6407,7 +6413,7 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
     //double xyz[3] = {_view.cLon, _view.cLat, 0.0};      // quiet the warning in S52_newMarObj()
     double xyz[3] = {0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
 
-    SNPRINTF(attval, 80, "_vessel_label:%s", label);
+    SNPRINTF(attval, 80, "_vessel_label:%s", (NULL==label) ? "":label);
 
     // only one OWNSHP
     // FIXME: what if we want 2 GPS shown
@@ -6470,6 +6476,7 @@ DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double 
     }
 
 exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return objH;
@@ -6511,6 +6518,7 @@ DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH, int vecstb, double c
     }
 
 exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     // debug
@@ -6687,11 +6695,9 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
     //S52_CHECK_INIT;
     S52_CHECK_MUTX_INIT;
 
-    // FIXME: bug, if 2 newVessel() from different process block on newMarObj()
-
     // debug
     //label = NULL;
-    PRINTF("vesrce:%i, label:%s\n", vesrce, label);
+    PRINTF("vesrce:%i, label:%s\n", vesrce, (NULL==label) ? "":label);
 
     // vescre: Vessel report source, 1 ARPA target, 2 AIS vessel report, 3 VTS report
     if (1!=vesrce && 2!=vesrce && 3!=vesrce) {
@@ -6728,7 +6734,6 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
     //S52_CHECK_INIT;
 
     return_if_null((void*)objH);
-    return_if_null((void*)newLabel);  // what if we need to erase label!
 
     S52_CHECK_MUTX_INIT;
 
@@ -6755,6 +6760,7 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
     }
 
 exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return objH;
@@ -6838,6 +6844,7 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
     }
 
 exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     /*
@@ -6995,6 +7002,7 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
     }
 
 exit:
+
     GMUTEXUNLOCK(&_mp_mutex);
 
     return objH;
