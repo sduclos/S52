@@ -4,6 +4,14 @@
 #
 
 
+2014DEC18
+    -fix unlock mutex in S52_newCLRLIN()
+    -fix VP in GL1 code path
+
+2014DEC17
+    -fix regression, put back g_string_equal() in utils
+    -fix use VP.h for north arrow
+
 2015DEC14
     -mod refactor _filterVector()
     -fix _filterVector() for line width change in symb in VBO code path
