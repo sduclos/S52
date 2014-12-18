@@ -94,7 +94,7 @@ gint     S52_strncmp(const char *s1, const char *s2, gsize n);
 FILE    *S52_fopen  (const char *filename, const char *mode);
 int      S52_fclose (FILE *fd);
 
-//gboolean S52_string_equal(const GString *v, const GString *v2);
+gboolean S52_string_equal(const GString *v, const GString *v2);
 
 void     S52_tree_replace(GTree *tree, gpointer key, gpointer value);
 
