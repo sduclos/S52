@@ -71,9 +71,7 @@ typedef struct _colTable {
 
 static GArray *_colTables = NULL;
 static GTree  *_colref    = NULL;  // fast indexing of color array
-//static GArray *_colIdxRef = NULL;  // first table loaded used as index ref
-                                   // so that all color are in the same order
-                                   // used sync color fetching in dis. list
+
 typedef enum _colorTableStat {
     _COL_TBL_NOSTAT =  0 , 	// unknown color table status
     _COL_TBL_NIL    = 'N', 	// new edition
@@ -88,7 +86,6 @@ typedef enum _colorTableStat {
 
 // Following 4 additional colors could be made available as alternative colors for non-charted items.
 // Draft PLib 4.0 has 4 more color of MIO's: "MARBL", "MARCY", "MARMG", "MARWH"
-//#define S52_COL_NUM   67     // number of color
 static const char *_colorName[] = {
     "NODTA", "CURSR", "CHBLK", "CHGRD", "CHGRF", "CHRED", "CHGRN", "CHYLW",
     "CHMGD", "CHMGF", "CHBRN", "CHWHT", "SCLBR", "CHCOR", "LITRD", "LITGN",
@@ -101,9 +98,6 @@ static const char *_colorName[] = {
 //    ,"MARBL", "MARCY", "MARMG", "MARWH"
 };
 
-// FIXME: boken optimisation
-//static int _crntPaletteID = -1; // start with out of bound
-//static int _flush_Colors = FALSE; // TRUE if new colors replace old one
 
 //-- SYMBOLISATION MODULE STRUCTURE -----------------------------
 // position parameter:   LINE,    PATTERN, SYMBOL
@@ -143,8 +137,9 @@ typedef struct _S52_cmdDef {
     S52_SMBtblName symType;     // debug
     S52_DList      DListData;   // GL Display List / VBO
 
-    S52_Color     *col;         // LC: color of last pen
-    char           pen_w;       // LC: width in pixel of last pen in (ASCII)
+    // Line Complex Length that don't fit use this info for simple line
+    //S52_Color     *LC_col;         // LC: color of last pen
+    //char           LC_pen_w;       // LC: width in pixel of last pen in (ASCII)
 
 #if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
     guint          mask_texID;  // texture ID of pattern after running VBO
@@ -170,7 +165,7 @@ typedef struct _Text {
 } _Text;
 
 // this 'union' is to highlight that *cmdDef is a pointer to a
-// 1) PLib symbole definition or 2) C function (CS) or 3) text struct
+// 1) PLib symbole definition or 2) C function (CS) or 3) text struct or 4) light sector
 typedef union _cmdDef {
     _S52_cmdDef     *def;
 
@@ -178,23 +173,24 @@ typedef union _cmdDef {
 
     S52_CS_condSymb *CS;
 
-    // because there is no cmdDef for light sector
-    // so put VBO here
+    // because there is no cmdDef for light sector, so put VBO here (ie no need struct _S52_cmdDef)
     S52_DList       *DList;     // for pattern in GLES2 this DL will create a texture
 
 } _cmdDef;
 
 // command word list
 typedef struct _cmdWL {
-    S52_CmdWrd        cmdWord;  // Command Word type
-    char             *param;    // start of parameter for this command
+    S52_CmdWrd     cmdWord;  // Command Word type
+    char          *param;    // start of parameter for this command
 
-    _cmdDef           cmd;      // command word definition or conditional symb func call
+    _cmdDef        cmd;      // command word definition or conditional symb func call
 
 #ifdef S52_USE_FREETYPE_GL
-    guint             vboID;    // ID if the OpenGL VBO text
-    guint             len;      // VBO text length
+    guint          vboID;    // ID if the OpenGL VBO text
+    guint          len;      // VBO text length
 #endif
+
+    guchar         crntPal;  // optimisation: this 'cmd' is setup for 'palette N' colors
 
     struct _cmdWL *next;
 } _cmdWL;
@@ -239,6 +235,7 @@ typedef enum _poly_mode {
 
 // hold state of vector command parser
 typedef struct _S52_vec {
+    char      *name;        // name of this symbology definition
     char      *str;         // VCT field
     char      *colRef;      // CRF field
     S57_prim  *prim;        // x,y,z,x,y,z,... (DrawArray format)
@@ -246,9 +243,8 @@ typedef struct _S52_vec {
     int        bby;         // def->pos.line.bbox_y.LBXR;
     int        pivot_x;     // def->pos.line.pivot_x.LICL;
     int        pivot_y;     // def->pos.line.pivot_y.LIRW;
-    char       pen_w;       // pen width
+    char       pen_w_vo;    // pen width (distinc of pen_w cmdDef)
     double     radius;      // disk radius
-    char      *name;        // name of this symbology definition
     _poly_mode pm;          // polygon mode
 } _S52_vec;
 
@@ -348,13 +344,10 @@ typedef unsigned char u8;
 //static char *pBuf = (char *)&buffer;
 static char _pBuf[MAX_BUF];
 
-//typedef unsigned char *PL;
 typedef struct _PL {
-    //const u8 *data;   // current position in PL
-    gchar *data;        // current position in PL
-    //int       cnt;    // current offset of 'data'
-    gsize       cnt;    // current offset of 'data'
-    gsize       sz;     // total size of PL
+    gchar *data;   // current position in PL
+    gsize  cnt;    // current offset of 'data'
+    gsize  sz;     // total size of PL
 } _PL;
 
 
@@ -409,8 +402,6 @@ static cmsHPROFILE   _xyzp = NULL;
 static cmsHPROFILE   _rgbp = NULL;
 static cmsHTRANSFORM _2RGB = NULL;
 static int           _lcmsError = FALSE;   // TRUE an error occur in lcms
-
-
 
 
 //------------------------
@@ -1183,8 +1174,8 @@ static S52_Color *_parseCol(char c, char *colRef)
         return S52_PL_getColor(colRef+1);
 }
 
-#if 0
-static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
+static guint      _filterVector1(char *str, char *colRef, S52_Color *colors)
+//static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
 // resolve color index
 // move color & transparency & pen_w to 'colors'
 // weed out redundent pen width/trans/color command
@@ -1196,6 +1187,12 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
     char color = 0;
     char pen_w = 0;   // no pen width
     int  idx   = 0;   // pos in 'str'
+
+    // FIXME: check if same color with different pen_w
+    //int  curVecPen =  0;   // check if pen_w change for this color
+    //char oldTrans  = '0';
+    //int  curVecTrn =  0;   // check if trans change for this color
+
 
     if (S52_VC_SP!=*str && S52_VC__P!=*(str+1)) {
         PRINTF("FIXME: color command is not the verry first one!\n");
@@ -1325,14 +1322,13 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
 
     return nList;
 }
-#endif
 
-//#if 0
-static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
+static guint      _filterVector2(char *str, char *colRef, S52_Color *colors)
+//static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
 // fill 'colors' array with color/pen_w/trans
 // weed out redundent color/pen_w/trans command
 //
-// return number of color/pen_w/trans switch (or number of sub-list in DList)
+// return number of color/pen_w/trans switch - number of sub-list in DList (VBO)
 {
     // paranoia
     return_if_null(str);
@@ -1412,6 +1408,20 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
 
         // 'S' 'W' - pen width
         if (S52_VC_SP==*c1 && S52_VC_SW==*c2) {
+            if (0 == desc.cpen_w) {
+                colors->pen_w = *c3;
+                desc.cpen_w   = *c3;
+
+                // initial pen_w replace cmd with NOP cmd
+                *c1 = ';';
+                *c2 = ';';
+                *c3 = ';';
+
+                idx += 4;
+
+                continue;
+            }
+
             if (*c3 == desc.cpen_w) {
                 // same pen_w replace cmd with NOP cmd
                 *c1 = ';';
@@ -1429,6 +1439,10 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
                 }
                 desc.cpen_w = *c3;
             }
+
+            *c1 = ';';
+            *c2 = ';';
+            *c3 = ';';
 
             idx += 4;
 
@@ -1493,7 +1507,175 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
 
     return nList;
 }
-//#endif
+
+//static guint      _filterVector3(char *str, char *colRef, S52_Color *colors)
+static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
+// fill 'colors' array with color/pen_w/trans
+// weed out redundent color/pen_w/trans command
+// also 'S' 'C' - symbol call == NOP - not used in PLib
+//
+// return number of color/pen_w/trans switch - number of sub-list in DList (VBO)
+{
+    // paranoia
+    return_if_null(str);
+    return_if_null(colRef);
+    return_if_null(colors);
+
+    int  nList = 0;   // number sub-list/sub-vector
+
+    int  idx   = 0;   // pos in 'str'
+
+    int newSub = FALSE;
+
+    // descriptor
+    struct {
+        int   newIdx;  // str index of start of new sub-list
+        char  ccolor;
+        char  cpen_w;
+        char  ctrans;
+    } desc = {0,0,'1','0'};
+
+    if (S52_VC_SP!=*str && S52_VC__P!=*(str+1)) {
+        PRINTF("DEBUG: color command is not the very first one\n");
+        g_assert(0);
+        return nList;
+    }
+
+    if (0 == g_strcmp0(colRef, "CCHREDmOUTLW")) {
+        PRINTF("DEBUG: BOYSAW found\n");
+        //g_assert(0);
+    }
+
+    while ('\0' != str[idx]) {
+
+        char *c1 = &str[idx+0];   // first character
+        char *c2 = &str[idx+1];   // secnd character
+        char *c3 = &str[idx+2];   // value
+
+
+        // 'S' 'P' - color
+        if (S52_VC_SP==*c1 && S52_VC__P==*c2) {
+
+            if (*c3 != desc.ccolor) {
+                if (0 == desc.newIdx)
+                    desc.newIdx = idx;
+
+                newSub = TRUE;
+                desc.ccolor = *c3;
+            }
+
+            *c1 = ';';
+            *c2 = ';';
+            *c3 = ';';  // overwright color idx (NOP)
+
+            // advance to next command
+            idx += 4;
+
+            // go right to next command
+            continue;
+        }
+
+        // 'S' 'W' - pen width
+        if (S52_VC_SP==*c1 && S52_VC_SW==*c2) {
+
+            if (*c3 != desc.cpen_w) {
+                if (0 == desc.newIdx)
+                    desc.newIdx = idx;
+
+                newSub = TRUE;
+                desc.cpen_w = *c3;
+            }
+
+            *c1 = ';';
+            *c2 = ';';
+            *c3 = ';';  // overwright color idx (NOP)
+
+            // advance to next command
+            idx += 4;
+
+            continue;
+        }
+
+        // 'S' 'T' - transparency
+        if (S52_VC_SP==*c1 && S52_VC_ST==*c2) {
+            if (*c3 != desc.ctrans) {
+                if (0 == desc.newIdx)
+                    desc.newIdx = idx;
+
+                newSub = TRUE;
+                desc.ctrans = *c3;
+            }
+
+            *c1 = ';';
+            *c2 = ';';
+            *c3 = ';';  // overwright color idx (NOP)
+
+            // advance to next command
+            idx += 4;
+
+            continue;
+        }
+
+        // 'S' 'C' - symbol call == NOP
+        if (S52_VC_SP==*c1 && S52_VC_SC==*c2) {
+            *c1 = ';';
+            *c2 = ';';
+            idx += 2;
+            while (';'!=str[idx] && '\0'!=str[idx]) {
+                str[idx++] = ';';   // overwright Symbol Call (NOP)
+            }
+
+            continue;
+        }
+
+        if (TRUE == newSub) {
+            // copy the S52_Color struct (A <-- B)
+            *colors = *_parseCol(desc.ccolor, colRef);
+            colors->pen_w = desc.cpen_w;
+            colors->trans = desc.ctrans;
+
+            ++colors;
+
+            str[desc.newIdx] = S52_VC_NEW;
+            desc.newIdx = 0;
+
+            ++nList;
+
+            newSub = FALSE;
+        }
+
+        // advance to begining of next command (or '\0')
+        while (';'!=str[idx] && '\0'!=str[idx])
+            ++idx;
+
+        // skip ';'
+        if (';' == str[idx])
+            ++idx;
+    }
+
+
+    // FIXME: is a dynamic structure needed to prevent this!
+    // Note that this will occure immediatly at start-up
+    // and only if a home-made PLib is used.
+    if (MAX_SUBLIST < nList) {
+        PRINTF("ERROR: buffer overflow about to occur\n");
+        g_assert(0);
+        return 0;
+    }
+    if (0 == nList) {
+        PRINTF("ERROR: no list\n");
+        g_assert(0);
+        return 0;
+    }
+
+    if (0 == desc.ccolor) {
+        PRINTF("ERROR: color missing (SP)\n");
+        g_assert(0);
+        return 0;
+    }
+
+    return nList;
+}
 
 static int        _parseLBID(_PL *fp)
 {
@@ -1564,12 +1746,13 @@ static int        _readColor(_PL *fp)
 
                 // check if color already loaded, if so
                 // update color value in table
-                if (63 == ct.colors->len) {
+                //if (63 == ct.colors->len) {
+                if (S52_COL_NUM <= ct.colors->len) {
                     // table full --update color
                     S52_Color *c1 = &g_array_index(ct.colors, S52_Color, cref->cidx);
                     guchar idx = cref->cidx;
-                    *c1      = c;
-                     c1->cidx = idx;
+                    *c1        = c;
+                     c1->cidx  = idx;
                 } else {
                     c.cidx = cref->cidx;
                     g_array_insert_val(ct.colors, cref->cidx, c);
@@ -1807,8 +1990,9 @@ static int        _parseLUPT(_PL *fp)
                     while (NULL != LUPtmp) {
                         // replace
                         if ((NULL != LUP->ATTC) && (NULL != LUPtmp->ATTC) &&
-                            //(TRUE == S52_string_equal(LUPtmp->ATTC, LUP->ATTC)) )
-                            (0 == g_strcmp0(LUPtmp->ATTC->str, LUP->ATTC->str)) )
+                            (TRUE == S52_string_equal(LUPtmp->ATTC, LUP->ATTC)) )
+                            //(0 == g_strcmp0(LUPtmp->ATTC->str, LUP->ATTC->str)) )
+                            //(0 == g_string_equal(LUPtmp->ATTC, LUP->ATTC)) )
                         {   // can't replace more then one LUP
                             // the compination of LUP NAME & LUP ATTC is unique for all LUP
                             // this is juste to make sure that the list is consistant
@@ -2111,14 +2295,6 @@ static int        _initPL()
 
 static int        _loadPL(_PL *fp)
 {
-    //_initPL();
-
-    // FIXME: loading new palette reset "current selected palette"
-    //_crntPaletteID = -1;
-
-    // if colors are found when parsing the PLib
-    // then flush the old one
-    //_flush_Colors = TRUE;
 
     while (-1 != _readS52Line(fp, _pBuf) ) {
         // !!! order important !!!
@@ -2134,12 +2310,12 @@ static int        _loadPL(_PL *fp)
 
         //PRINTF("read:%d %s\n", nRead,_pBuf);
     }
-    //_flush_Colors = FALSE;
 
+#ifdef S52_DEBUG
     /////////////////////////////////
     // statistic
     //
-    /*
+
     PRINTF("lookup table loaded:\n");
     PRINTF("    -Point Simplified  :%i\n", g_tree_nnodes(_selLUP(_LUP_SIMPL)));
     PRINTF("    -Point Paper Chart :%i\n", g_tree_nnodes(_selLUP(_LUP_PAPER)));
@@ -2152,7 +2328,7 @@ static int        _loadPL(_PL *fp)
     PRINTF("    -Pattern           :%i\n", g_tree_nnodes(_selSMB(S52_SMB_PATT)));
     PRINTF("    -Symbol            :%i\n", g_tree_nnodes(_selSMB(S52_SMB_SYMB)));
     PRINTF("    -Conditional       :%i\n", g_tree_nnodes(_selSMB(S52_SMB_COND)));
-    */
+#endif
 
     return TRUE;
 }
@@ -2650,35 +2826,19 @@ int         S52_PL_done()
     return TRUE;
 }
 
-S52_Color  *S52_PL_getColor(const char *colorName)
+//S52_Color  *S52_PL_getColorAt(guchar index)
+static S52_Color *_getColorAt(guchar index)
+// return color at index, for the currently selected color table
 {
-    return_if_null(colorName);
-
-    gpointer idx = g_tree_lookup(_colref, (gpointer*)colorName);
-    if (NULL != idx) {
-
-        // IHO color index start at 1
-        guchar i = GPOINTER_TO_INT(idx);
-
-        // libS52 color index start at 0
-        return S52_PL_getColorAt(i-1);
-    }
-
-    PRINTF("ERROR: no color name: %s\n", colorName);
-    g_assert(0);
-
-    return NULL;
-}
-
-S52_Color  *S52_PL_getColorAt(guchar index)
-{
+    /*
     if (NULL == _colTables) {
         PRINTF("ERROR: PL not initialized .. exiting\n");
         g_assert(0);
         return NULL;
     }
+    */
 
-    if (index > S52_COL_NUM-1) {
+    if (S52_COL_NUM-1 < index) {
         PRINTF("ERROR: color index out of bound\n");
         g_assert(0);
         index = 0; // NODTA
@@ -2690,11 +2850,13 @@ S52_Color  *S52_PL_getColorAt(guchar index)
     // this has allready taken care off
     // but left for safety
     // FIXME: delete this code
+    /*
     if (n > _colTables->len-1) {
         PRINTF("ERROR: S52_MAR_COLOR_PALETTE out of range\n");
         g_assert(0);
         return NULL;
     }
+    */
 
     _colTable *ct = &g_array_index(_colTables, _colTable, n);
     if (NULL == ct) {
@@ -2706,6 +2868,27 @@ S52_Color  *S52_PL_getColorAt(guchar index)
     S52_Color *c = &g_array_index(ct->colors, S52_Color, index);
 
     return c;
+}
+
+S52_Color  *S52_PL_getColor(const char *colorName)
+{
+    return_if_null(colorName);
+
+    gpointer idx = g_tree_lookup(_colref, (gpointer*)colorName);
+    if (NULL != idx) {
+
+        // IHO color index start at 1
+        guchar i = GPOINTER_TO_INT(idx);
+
+        // libS52 color index start at 0
+        //return S52_PL_getColorAt(i-1);
+        return _getColorAt(i-1);
+    }
+
+    PRINTF("ERROR: no color name: %s\n", colorName);
+    g_assert(0);
+
+    return NULL;
 }
 
 static int        _linkLUP(_S52_obj *obj, int alt)
@@ -3079,8 +3262,13 @@ S52_CmdWrd  S52_PL_getCmdNext(_S52_obj *obj)
     if (obj->crntAidx < obj->crntA->len) {
         _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
         // FIXME: can this array call return NULL!
-        if (NULL != cmd)
+        if (NULL == cmd) {
+            PRINTF("WARNING: no cmd\n");
+            g_assert(0);
+            return S52_CMD_NONE;
+        } else {
             return cmd->cmdWord;
+        }
     }
 
     return S52_CMD_NONE;
@@ -3102,20 +3290,6 @@ _cmdWL           *_getCrntCmd(_S52_obj *obj)
 
     return cmd;
 }
-
-#if 0
-S52_CmdWrd  S52_PL_getCrntCmd(_S52_obj *obj)
-// not used
-{
-    return_if_null(obj);
-
-    _cmdWL *cmd = _getCrntCmd(obj);
-    if (NULL != cmd)
-        return cmd->cmdWord;
-
-    return S52_CMD_NONE;
-}
-#endif
 
 int         S52_PL_cmpCmdParam(_S52_obj *obj, const char *name)
 {
@@ -3176,8 +3350,10 @@ int         S52_PL_getLSdata(_S52_obj *obj, char *pen_w, char *style, S52_Color 
     if (TRUE == S57_isHighlighted(obj->geoData)) {
         *color = S52_PL_getColor("DNGHL");
         //S57_highlightOFF(obj->geoData);
-    } else
+    } else {
+        // color can change because of dratf/depth - safety contour
         *color = S52_PL_getColor(cmd->param+7);
+    }
 
     /*
     // FIXME: line can't have transparency - check colorAt and then table that
@@ -3295,6 +3471,7 @@ int         S52_PL_getSYspeed(_S52_obj *obj, double *speed)
     return TRUE;
 }
 
+#if 0
 int         S52_PL_setLCdata(_S52_cmdDef *def, char pen_w)
 {
     return_if_null(def);
@@ -3308,10 +3485,11 @@ int         S52_PL_setLCdata(_S52_cmdDef *def, char pen_w)
     }
     */
 
-    def->pen_w = pen_w;
+    //def->LC_pen_w = pen_w;
 
     return TRUE;
 }
+#endif
 
 int         S52_PL_getLCdata(_S52_obj *obj, double *symlen, char *pen_w)
 // compute symbol run lenght in pixel
@@ -3345,7 +3523,9 @@ int         S52_PL_getLCdata(_S52_obj *obj, double *symlen, char *pen_w)
     }
     //PRINTF("ppx:%i bbx:%i bbw:%i \n", ppx, bbx, bbw);
 
-    *pen_w = cmd->cmd.def->pen_w;
+
+    //*pen_w = cmd->cmd.def->LC_pen_w;
+    *pen_w = cmd->cmd.def->DListData.colors[0].pen_w;
     if (*pen_w < '1' || '9' < *pen_w) {
         PRINTF("WARNING: out of bound pen width for LC (%c)\n", *pen_w);
         g_assert(0);
@@ -3368,9 +3548,10 @@ S52_Color  *S52_PL_getACdata(_S52_obj *obj)
     S52_Color *color = NULL;
     if (TRUE == S57_isHighlighted(obj->geoData)) {
         color = S52_PL_getColor("DNGHL");
-        //S57_highlightOFF(obj->geoData);
-    } else
+    } else {
+        // color of water can change because of dratf/depth
         color = S52_PL_getColor(cmd->param);
+    }
 
     if (cmd->param[5] == ',')
         color->trans = cmd->param[6];
@@ -3538,23 +3719,31 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
     return_if_null(obj);
 
     _cmdWL *cmd = _getCrntCmd(obj);
-    if (NULL == cmd) {
-        PRINTF("ERROR: no 'cmd' .. exiting\n");
-        g_assert(0);
+    if (NULL == cmd)
         return NULL;
-    }
 
     // parano
-    if ((S52_CMD_COM_LN!=cmd->cmdWord) &&
-        (S52_CMD_ARE_PA!=cmd->cmdWord) &&
-        (S52_CMD_ARE_CO!=cmd->cmdWord) &&   // _renderAC_LIGHTS05() pass here now
-        (S52_CMD_SYM_PT!=cmd->cmdWord))
+    //S52_CMD_SYM_PT,     // SY --SHOWPOINT
+    //S52_CMD_SIM_LN,     // LS --SHOWLINE
+    //S52_CMD_COM_LN,     // LC --SHOWLINE
+    //S52_CMD_ARE_CO,     // AC --SHOWAREA`
+    //S52_CMD_ARE_PA,     // AP --SHOWAREA
+
+    //if ((S52_CMD_COM_LN!=cmd->cmdWord) &&
+    //    (S52_CMD_ARE_PA!=cmd->cmdWord) &&
+    //    (S52_CMD_ARE_CO!=cmd->cmdWord) &&   // _renderAC_LIGHTS05() pass here now
+    //    (S52_CMD_SYM_PT!=cmd->cmdWord))
+
+    if (S52_CMD_SIM_LN == cmd->cmdWord)
     {
         PRINTF("ERROR: this type of cmd word has no DL!\n");
         g_assert(0);
         return NULL;
     }
 
+    // FIXME: check if palette as change
+    // -OR-
+    // FIXME: GL get RGB from cidx!
 
     guint      nbr = 0;
     S52_Color *c   = NULL;
@@ -3570,42 +3759,50 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
         c   = cmd->cmd.def->DListData.colors;
     }
 
-    // debug - trying to nail a curious bug
+    /* debug - trying to nail a curious bug
     if (MAX_SUBLIST < nbr) {
         PRINTF("ERROR: color index out of bound\n");
         g_assert(0);
         return NULL;
     }
+    */
 
     // FIXME: refactor this
     for (guint i=0; i<nbr; ++i) {
-        S52_Color *col = S52_PL_getColorAt(c[i].cidx);
+        //S52_Color *col = S52_PL_getColorAt(c[i].cidx);
+        S52_Color *col = _getColorAt(c[i].cidx);
 
         // FIXME: ugly: pull transparency from symbol color not from PLib
-        guchar cidx  = c[i].cidx;
-        guchar trans = c[i].trans;
-        guchar pen_w = c[i].pen_w;
+        //guchar cidx  = c[i].cidx;
+        //guchar trans = c[i].trans;
+        //guchar pen_w = c[i].pen_w;
 
         if (TRUE == S57_isHighlighted(obj->geoData)) {
             S52_Color *colhigh = S52_PL_getColor("DNGHL");
-            c[i] = *colhigh;
-            //S57_highlightOFF(obj->geoData);
+            //c[i] = *colhigh;
+            c[i].R = colhigh->R;
+            c[i].G = colhigh->G;
+            c[i].B = colhigh->B;
         } else {
-            // this will also copy the 'cidx' from the color table
-            c[i] = *col;
+            // this will also copy the 'cidx/trans/pen_w' from the color table
+            //c[i] = *col;
 
-            // FIXME: this is not needed
-            // in reality there should be the same
+            c[i].R = col->R;
+            c[i].G = col->G;
+            c[i].B = col->B;
+
+            /* debug - should be the same
             if (c[i].cidx != cidx) {
                 PRINTF("ERROR: color index mismatch\n");
                 g_assert(0);
                 return NULL;
             }
+            */
         }
 
         // FIXME: this is comming from symb vector
-        c[i].trans = trans;  // overwrite 'trans' with the symbol trans
-        c[i].pen_w = pen_w;
+        //c[i].trans = trans;  // overwrite 'trans' with the symbol trans
+        //c[i].pen_w = pen_w;
     }
 
     if (S52_CMD_ARE_CO == cmd->cmdWord)
@@ -3696,7 +3893,11 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
         switch (c2) {
             // Select Width
             case S52_VC_SW:
-                vecObj->pen_w =  *vecObj->str++;
+                vecObj->pen_w_vo = *vecObj->str++;
+
+                // debug
+                //g_assert(0);
+
                 return S52_VC_SW;
 
             // Pen Up /  Pen Down
@@ -3861,7 +4062,7 @@ S57_prim   *S52_PL_getVOprim(_S52_vec *vecObj)
 char        S52_PL_getVOwidth(_S52_vec *vecObj)
 {
     return_if_null(vecObj);
-    return vecObj->pen_w;
+    return vecObj->pen_w_vo;
 }
 
 double      S52_PL_getVOradius(_S52_vec *vecObj)
@@ -4048,7 +4249,8 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
     if (NULL == cmd->cmd.text)
         return NULL;
 
-    *col    = S52_PL_getColorAt(cmd->cmd.text->col->cidx);
+    //*col    = S52_PL_getColorAt(cmd->cmd.text->col->cidx);
+    *col    = _getColorAt(cmd->cmd.text->col->cidx);
     *xoffs  = cmd->cmd.text->xoffs;
     *yoffs  = cmd->cmd.text->yoffs;
     *bsize  = cmd->cmd.text->bsize;
@@ -4371,21 +4573,11 @@ int         S52_PL_getOffset(_S52_obj *obj, double *offset_x, double *offset_y)
     return TRUE;
 }
 
-//#ifdef S52_USE_SUPP_LINE_OVERLAP
-//int         S52_PL_setNextCN(_S52_obj *objA, S52_obj *objB)
-//{
-//    objA->nextCN = objB;
-//
-//    return TRUE;
-//}
-//#endif
-
 int         S52_PL_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B)
 {
     if (NULL == colorName)
         return FALSE;
 
-    //float dummy;
     S52_Color *c = S52_PL_getColor(colorName);
 
     c->R = R;
