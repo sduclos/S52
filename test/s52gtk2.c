@@ -1308,6 +1308,8 @@ static int      _initS52()
 
     _setPASTRK();
 
+    // guard zone OFF (pick need projection)
+    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
     _setRoute();
 
     _setCLRLIN();
@@ -1903,7 +1905,8 @@ int main(int argc, char **argv)
 
 
 exit:
-    // S52 cleanup
+
+    /* S52 Mariner Obj cleanup by hand - S52_done() do that too
     _ownshp      = S52_delMarObj(_ownshp);
     _vrmeblA     = S52_delMarObj(_vrmeblA);
     _vrmeblB     = S52_delMarObj(_vrmeblB);
@@ -1914,6 +1917,7 @@ exit:
     _leglin2     = S52_delMarObj(_leglin2);
     _leglin3     = S52_delMarObj(_leglin3);
     _clrlin      = S52_delMarObj(_clrlin);
+    */
 
 #ifdef USE_AIS
     s52ais_doneAIS();
