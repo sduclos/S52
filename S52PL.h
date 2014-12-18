@@ -87,9 +87,9 @@ typedef enum S52_CmdWrd {
     S52_CMD_TXT_TE,     // TE --SHOWTEXT
     S52_CMD_SYM_PT,     // SY --SHOWPOINT
     S52_CMD_SIM_LN,     // LS --SHOWLINE
-    S52_CMD_COM_LN,     // LC --SHOWLINE
-    S52_CMD_ARE_CO,     // AC --SHOWAREA`
-    S52_CMD_ARE_PA,     // AP --SHOWAREA
+    S52_CMD_COM_LN,     // LC --SHOWLINE COMPLEX
+    S52_CMD_ARE_CO,     // AC --SHOWAREA
+    S52_CMD_ARE_PA,     // AP --SHOWAREA PATTERN
     S52_CMD_CND_SY,     // CS --CALLSYMPROC (Conditional Symbology)
 
     S52_CMD_OVR_PR      // OVERRIDE PRIORITY (not in S52specs).
@@ -103,10 +103,12 @@ typedef enum S52_CmdWrd {
 // color definition
 typedef struct S52_Color {
     //--- not S52 field --------
-    guchar   cidx;      // index of this color in table,
-    guchar   trans;     // place holder --command word can change this
-                        // so 'trans' is linked to an object not a color
+    // FIXME: index of a GArray - pointer arithmetic - so guchar must be conveted gpointer!
+    // #define 	g_array_index(a, t, i)   (((t*) (a)->data) [(i)])
+    // so i * sizeof(S52_Color)
+    guchar   cidx;      // index of this color in palette [0..63], used as lookup when palette change
     char     pen_w;     // using VBO's we need to know this, Display List store this but not VBO
+    char     trans;     // command word can change this so 'trans' is linked to an object not a color
     //--------------------------
 
     char     colName[S52_PL_COLN+1];   // '\0' terminated
@@ -119,9 +121,8 @@ typedef struct S52_Color {
 } S52_Color;
 
 // symbol's OpenGL Display List sub-list for color switch
-//#define MAX_SUBLIST 10  // ex: SCALEB10 need to switch color 9 times (2 colors)
-#define MAX_SUBLIST 11  // ex: SCALEB10 need to switch color 9 times (2 colors)
-//#define MAX_SUBLIST 21  // ex: SCALEB10 need to switch color 9 times (2 colors)
+#define MAX_SUBLIST 10  // ex: SCALEB10 need to switch color 9 times (2 colors)
+//#define MAX_SUBLIST 11  // ex: SCALEB10 need to switch color 9 times (2 colors)
 typedef struct S52_DList {
     int       create;                // TRUE create new DL
     guint     nbr;                   // number of Display List / VBO
@@ -174,10 +175,6 @@ int            S52_PL_done();
 
 // get RGB from color name, for the currently selected color table
 S52_Color     *S52_PL_getColor(const char *colorName);
-// get currently selected color table
-//GArray        *S52_PL_getColorTable();
-// return color at index, for the currently selected color table
-S52_Color     *S52_PL_getColorAt(guchar index);
 
 // get a rasterising rules for this S57 object
 S52_obj       *S52_PL_newObj(S57_geo *geoData);
