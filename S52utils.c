@@ -56,7 +56,7 @@ static GTimeVal _now;
 
 // internal libS52.so version
 static char _version[] = "$Revision: 1.126 $\n"
-      "libS52-1.153\n"
+      "libS52-1.154\n"
 #ifdef _MINGW
       "_MINGW\n"
 #endif
@@ -281,7 +281,7 @@ int      S52_fclose (FILE *fd)
     return fclose(fd);
 }
 
-#if 0
+//#if 0
 gboolean S52_string_equal(const GString *v, const GString *v2)
 {
 #ifdef S52_USE_GLIB2
@@ -300,7 +300,7 @@ gboolean S52_string_equal(const GString *v, const GString *v2)
 #endif
 
 }
-#endif
+//#endif
 
 void     S52_tree_replace(GTree *tree, gpointer key, gpointer value)
 {
