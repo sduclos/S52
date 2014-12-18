@@ -1038,12 +1038,12 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
 // ie _normallinestyle == 'N'
 {
     if (npt < 2) {
-        PRINTF("FIXME: found broken LINES (%i)\n", npt);
+        PRINTF("FIXME: found wierd LINES (%i)\n", npt);
         return;
     }
 
     if (0 != (npt % 2)) {
-        PRINTF("FIXME: found LINES not modulo 2\n");
+        PRINTF("FIXME: found LINES not modulo 2 (%i)\n", npt);
         g_assert(0);
         return;
     }
@@ -1457,12 +1457,13 @@ static int       _setBlend(int blend)
 static GLubyte   _glColor4ub(S52_Color *c)
 // return transparancy
 {
-    // debug
+    /* debug
     if (NULL == c) {
         PRINTF("DEBUG: no color NULL\n");
         g_assert(0);
         return 0;
     }
+    */
 
     if (S52_GL_PICK == _crnt_GL_cycle) {
         // debug
@@ -1554,6 +1555,7 @@ static int       _glCallList(S52_DList *DListData)
             GLint first = 0;
             GLint count = 0;
 
+            // same color but change in MODE
             while (TRUE == S57_getPrimIdx(DListData->prim[i], j, &mode, &first, &count)) {
                 if (_TRANSLATE == mode) {
                     GArray *vert = S57_getPrimVertex(DListData->prim[i]);
@@ -1813,7 +1815,6 @@ static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rota
 {
     S52_DList *DListData = S52_PL_getDListData(obj);
 
-    //_glMatrixMode  (GL_MODELVIEW);
     _glLoadIdentity(GL_MODELVIEW);
 
     _glTranslated(x, y, 0.0);
@@ -1900,6 +1901,7 @@ static int       _renderSY_silhoutte(S52_obj *obj)
 }
 
 static int       _renderSY_CSYMB(S52_obj *obj)
+// FIXME: use _dotpitch_ for XY placement
 {
     S57_geo *geoData = S52_PL_getGeo(obj);
     char    *attname = "$SCODE";
@@ -1967,24 +1969,23 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         return TRUE;
     }
 
-
     // north arrow
-    if (0==g_strcmp0(attval->str, "NORTHAR1")) {
-        double x = 30;
-        double y = _vp.w - 40;
-        double rotation = 0.0;
+    if (0 == g_strcmp0(attval->str, "NORTHAR1")) {
+        double x   = 30;
+        double y   = _vp.h - 40;
+        double rot = 0.0;
 
         _glLoadIdentity(GL_MODELVIEW);
 
         _win2prj(&x, &y);
 
-        _renderSY_POINT_T(obj, x, y, rotation);
+        _renderSY_POINT_T(obj, x, y, rot);
 
         return TRUE;
     }
 
     // depth unit
-    if (0==g_strcmp0(attval->str, "UNITMTR1")) {
+    if (0 == g_strcmp0(attval->str, "UNITMTR1")) {
         // Note: S52 specs say: left corner, just beside the scalebar [what does that mean in XY]
         double x = 30;
         double y = 20;
@@ -2000,8 +2001,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
     if (TRUE == (int) S52_MP_get(S52_MAR_DISP_CALIB)) {
         // check symbol physical size, should be 5mm by 5mm
-        if (0==g_strcmp0(attval->str, "CHKSYM01")) {
-            // FIXME: use _dotpitch_ ..
+        if (0 == g_strcmp0(attval->str, "CHKSYM01")) {
             double x = _vp.x + 50;
             double y = _vp.y + 50;
 
@@ -2023,7 +2023,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         }
 
         // symbol to be used for checking and adjusting the brightness and contrast controls
-        if (0==g_strcmp0(attval->str, "BLKADJ01")) {
+        if (0 == g_strcmp0(attval->str, "BLKADJ01")) {
             // FIXME: use _dotpitch_ ..
             // top left (witch is under CPU usage on Android)
             double x = _vp.w - 50;
@@ -2542,11 +2542,10 @@ static int       _renderSY(S52_obj *obj)
                 // this light 'touch' a buoy
                 if ((NULL!=other) && (0==g_strcmp0(S57_getName(other), "BOYLAT"))) {
                     // assume that light have a single color in List
-                    S52_Color     *colors    = NULL;
-                    double         deg       = S52_MP_get(S52_MAR_ROT_BUOY_LIGHT);
+                    double deg = S52_MP_get(S52_MAR_ROT_BUOY_LIGHT);
 
                     S52_DList *DListData = S52_PL_getDListData(obj);
-                    colors = DListData->colors;
+                    S52_Color *colors    = DListData->colors;
                     if (0 == g_strcmp0(colors->colName, "LITRD"))
                         orient = deg + 90.0;
                     if (0 == g_strcmp0(colors->colName, "LITGN"))
@@ -3327,13 +3326,17 @@ static int       _renderLS(S52_obj *obj)
                 _renderLS_ownshp(obj);
                 g_assert(0);
             } else {
+#ifdef S52_USE_AFGLOW
                 // afterglow
                 if ((0 == g_strcmp0("afgves", S57_getName(geoData))) ||
                     (0 == g_strcmp0("afgshp", S57_getName(geoData)))
                    ) {
                     //PRINTF("DEBUG: XXXXXXXXXXXXXXX afgves\n");
                     _renderLS_afterglow(obj);
-                } else {
+                }
+                else
+#endif
+                {
 
 #ifdef S52_USE_GL2
                     _d2f(_tessWorkBuf_f, npt, ppt);
@@ -4556,9 +4559,9 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
     //}
     // Note: bbx = 7173, bby = 1445, pivot_x = 7371, pivot_y = 1657
     // SYMD   39 AISSIX01 V 07371 01657 00405 00214 07173 01445
-    if (0==strncmp("AISSIX01", S52_PL_getVOname(vecObj), 8)) {
-        PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
-    }
+    //if (0==strncmp("AISSIX01", S52_PL_getVOname(vecObj), 8)) {
+    //    PRINTF("Vector Object Name: %s  Command: %c\n", S52_PL_getVOname(vecObj), vcmd);
+    //}
 
     /*
     // FIXME: CHRVID01, CHRVID02, CHDATD01 in PLib 4.0 draft as xyz coord. The code should handle
@@ -4589,6 +4592,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
             case S52_VC_NONE: break;
             case S52_VC_NEW:  break;
 
+            //*
             case S52_VC_SW: { // this mean there is a change in pen width
 
 #if !defined(S52_USE_OPENGL_VBO)
@@ -4599,12 +4603,12 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                     _DrawArrays(vertex);
                     S57_initPrim(vertex); //reset
                     glLineWidth(pen_w - '0');
-                    //glLineWidth(pen_w - '0' - 0.5);
                     _glPointSize(pen_w - '0');
                 }
 #endif
                 break;
             }
+            //*/
 
             // NOTE: entering poly mode fill a circle (CI) when a CI command
             // is found between PM0 and PM2
@@ -4628,7 +4632,6 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 // compose symb need translation at render-time
                 // (or add offset everything afterward!)
                 _glBegin(_TRANSLATE, vertex);
-                //_vertex3v(data, vertex);
                 S57_addPrimVertex(vertex, data);
                 _glEnd(vertex);
 #else
@@ -4742,9 +4745,6 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 }
                 */
 
-                // FIXME: handle pen width in VBO
-
-
                 {
                     _glBegin(GL_LINES,  vertex);
                     while ((S52_VC_PD==vcmd) || (S52_VC_PU==vcmd)) {
@@ -4791,9 +4791,10 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
             }
 
             // should not get here since these command
-            // have already been filtered out in _filterVector()
-            case S52_VC_ST: // transparancy
+            // have already been filtered out in _filterVector() & S52_PL_getNextVOCmd()
             case S52_VC_SP: // color
+            //case S52_VC_SW: // pen_w
+            case S52_VC_ST: // transparancy
             case S52_VC_SC: // symbol call
 
             // not used in PLib --not implemented
@@ -4907,11 +4908,12 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
 
 #endif  // S52_USE_OPENGL_VBO
 
+    /*
     {   // save pen width
         char pen_w = S52_PL_getVOwidth(vecObj);
         S52_PL_setLCdata((S52_cmdDef*)value, pen_w);
     }
-
+    */
 
     S52_PL_doneVOCmd(vecObj);
 
@@ -5006,11 +5008,12 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
     }
 #endif // S52_USE_OPENGL_VBO
 
-
+    /*
     {   // save some data for later
         char pen_w = S52_PL_getVOwidth(vecObj);
         S52_PL_setLCdata((S52_cmdDef*)value, pen_w);
     }
+    */
 
     _checkError("_buildSymbDL()");
 
@@ -6542,13 +6545,13 @@ guchar    *S52_GL_readFBPixels(void)
     // copy FB --> MEM
     // RGBA
     //glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    glReadPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
     // RGB
     //glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
 
     // copy MEM --> Texture
     // RGBA
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
     // RGB
     //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _vp[2], _vp[3], 0, GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
 
@@ -6560,7 +6563,7 @@ guchar    *S52_GL_readFBPixels(void)
     glBindTexture(GL_TEXTURE_2D, 0);
 
 #else   // S52_USE_GL2
-    glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    glReadPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
 #endif  // S52_USE_GL2
 
     _checkError("S52_GL_readFBPixels().. -end-");
@@ -6619,7 +6622,7 @@ int        S52_GL_drawFBPixels(void)
 
     // parameter must be in sync with glReadPixels()
     // RGBA
-    glDrawPixels(_vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    glDrawPixels(_vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
     // RGB
     //glDrawPixels(_vp[2], _vp[3], GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
 
