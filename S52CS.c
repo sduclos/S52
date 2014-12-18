@@ -240,8 +240,8 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
 
             { // skip if it's same S57 object
                 GString *olnam = S57_getAttVal(other, "LNAM");
-                //if (TRUE == S52_string_equal(lnam, olnam))
-                if (0 == g_strcmp0(lnam->str, olnam->str))
+                if (TRUE == S52_string_equal(lnam, olnam))
+                //if (0 == g_strcmp0(lnam->str, olnam->str))
                     continue;
             }
 
@@ -319,8 +319,8 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
 
             {  // skip if it's same S57 object
                 GString *olnam = S57_getAttVal(other, "LNAM");
-                //if (TRUE == S52_string_equal(lnam, olnam))
-                if (0 == g_strcmp0(lnam->str, olnam->str))
+                if (TRUE == S52_string_equal(lnam, olnam))
+                //if (0 == g_strcmp0(lnam->str, olnam->str))
                     continue;
             }
 
@@ -394,8 +394,8 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             GString *olnam = S57_getAttVal(other, "LNAM");
 
             // skip if it's same S57 object
-            //if (TRUE == S52_string_equal(lnam, olnam))
-            if (0 == g_strcmp0(lnam->str, olnam->str))
+            if (TRUE == S52_string_equal(lnam, olnam))
+            //if (0 == g_strcmp0(lnam->str, olnam->str))
                 continue;
 
             /*
