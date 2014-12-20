@@ -84,7 +84,7 @@ typedef struct { double u, v; } projUV;
 
 #define ATAN2TODEG(xyz)   (90.0 - atan2(xyz[4]-xyz[1], xyz[3]-xyz[0]) * RAD_TO_DEG)
 
-static GTimer *_timer = NULL;  // debug - lap timer
+static GTimer *_timer = NULL;
 
 // trap signal (ESC abort rendering)
 // must be compiled with -std=gnu99
@@ -99,15 +99,15 @@ static volatile gint G_GNUC_MAY_ALIAS _atomicAbort;
 // 1) SIGHUP	 2) SIGINT	 3) SIGQUIT	 4) SIGILL	 5) SIGTRAP
 // 6) SIGABRT	 7) SIGBUS	 8) SIGFPE	 9) SIGKILL	10) SIGUSR1
 //11) SIGSEGV	12) SIGUSR2	13) SIGPIPE	14) SIGALRM	15) SIGTERM
-static struct   sigaction             _old_signal_handler_SIGINT;   //  2
-static struct   sigaction             _old_signal_handler_SIGQUIT;  //  3
-static struct   sigaction             _old_signal_handler_SIGTRAP;  //  5
-static struct   sigaction             _old_signal_handler_SIGABRT;  //  6
-static struct   sigaction             _old_signal_handler_SIGKILL;  //  9
-static struct   sigaction             _old_signal_handler_SIGUSR1;  // 10
-static struct   sigaction             _old_signal_handler_SIGSEGV;  // 11
-static struct   sigaction             _old_signal_handler_SIGUSR2;  // 12
-static struct   sigaction             _old_signal_handler_SIGTERM;  // 15
+static struct sigaction _old_signal_handler_SIGINT;   //  2
+static struct sigaction _old_signal_handler_SIGQUIT;  //  3
+static struct sigaction _old_signal_handler_SIGTRAP;  //  5
+static struct sigaction _old_signal_handler_SIGABRT;  //  6
+static struct sigaction _old_signal_handler_SIGKILL;  //  9
+static struct sigaction _old_signal_handler_SIGUSR1;  // 10
+static struct sigaction _old_signal_handler_SIGSEGV;  // 11
+static struct sigaction _old_signal_handler_SIGUSR2;  // 12
+static struct sigaction _old_signal_handler_SIGTERM;  // 15
 #endif
 
 // not available on win32
@@ -246,8 +246,8 @@ static int        _doCullLights = FALSE;   // TRUE will do lights_sector culling
 static char      *_intl         = NULL;
 
 // statistic
-static int        _nCull        = 0;
-static int        _nTotal       = 0;
+static guint      _nCull        = 0;
+static guint      _nTotal       = 0;
 
 // helper - save user center of view in degree
 typedef struct {
@@ -2952,18 +2952,6 @@ static S52_obj   *_insertS57Obj(_cell *c, S57_geo *geoData)
 // insert a S52_obj in a cell from a S57_geo
 // return the new S52_obj
 {
-    if (NULL == geoData) {
-        PRINTF("WARNING: S57 object is NULL\n");
-        g_assert(0);
-        return FALSE;
-    }
-
-    if (NULL == c) {
-        PRINTF("WARNING: no cell to add to\n");
-        g_assert(0);
-        return FALSE;
-    }
-
     S52ObjectType obj_t      = S52__META;
     S57_Obj_t     ot         = S57_getObjtype(geoData);
     S52_obj      *obj        = S52_PL_newObj(geoData);
@@ -3451,7 +3439,6 @@ static int        _cullLights(void)
             S52_PL_resloveSMB(obj);
 
             // traverse the cell 'above' to check if extent overlap this light
-            // FIXME: this compare to cell 'above', but len-1 could rollover
             for (guint k=i-1; k>0 ; --k) {
                 _cell *cellAbove = (_cell*) g_ptr_array_index(_cellList, k);
                 // skip if same scale
@@ -3459,7 +3446,8 @@ static int        _cullLights(void)
                     if (TRUE == _intersec(cellAbove->ext, oext)) {
                         // check this: a chart above this light sector
                         // does not have the same lights (this would be a bug in S57)
-                        S57_setSupp(geo, TRUE);
+                        //S57_setSupp(geo, TRUE);
+                        S52_PL_setSupp(obj, TRUE);
                     }
                 }
             }
@@ -3486,7 +3474,6 @@ static int        _cullObj(_cell *c)
             // for each object
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                S57_geo *geo = S52_PL_getGeo(obj);
 
                 ++_nTotal;
 
@@ -3496,7 +3483,8 @@ static int        _cullObj(_cell *c)
                 //}
 
                 // is this object suppressed by user
-                if (TRUE == S57_getSupp(geo)) {
+                //if (TRUE == S57_getSupp(geo)) {
+                if (TRUE == S52_PL_getSupp(obj)) {
                     ++_nCull;
                     continue;
                 }
@@ -3517,12 +3505,14 @@ static int        _cullObj(_cell *c)
                 // store object according to radar flags
                 // note: default to 'over' if something else than 'supp'
                 if (S52_RAD_SUPP == S52_PL_getRPRI(obj)) {
-                    g_ptr_array_add(c->objList_supp, obj);
+                    _g_ptr_array_add(c->objList_supp, obj);
                 } else {
                     g_ptr_array_add(c->objList_over, obj);
+                    S57_geo *geo = S52_PL_getGeo(obj);
 
                     // switch OFF highlight if user acknowledge Alarm / Indication by
                     // resetting S52_MAR_ERROR to 0 (OFF - no error)
+                    // Note: at this time only S52_PRIO_HAZRDS / S52_RAD_OVER
                     if (0.0==S52_MP_get(S52_MAR_ERROR) && TRUE==S57_isHighlighted(geo))
                         S57_highlightOFF(geo);
                 }
@@ -3635,25 +3625,23 @@ static int        _drawLayer(_extent ext, int layer)
                 // one object
                 for (guint idx=0; idx<rbin->len; ++idx) {
                     S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                    S57_geo *geo = S52_PL_getGeo(obj);
+                    //S57_geo *geo = S52_PL_getGeo(obj);
 
                     // debug
                     //PRINTF("%s\n", S57_getName(geo));
 
                     // if display of object is not suppressed
-                    if (TRUE != S57_getSupp(geo)) {
-                            //PRINTF("%s\n", S57_getName(geo));
+                    //if (TRUE != S57_getSupp(geo)) {
+                    if (TRUE == S52_PL_getSupp(obj)) {
+                        //PRINTF("%s\n", S57_getName(geo));
 
-                        //S52_GL_draw(obj);
                         S52_GL_draw(obj, NULL);
 
                         // doing this after the draw because draw() will parse the text
                         if (TRUE == S52_PL_hasText(obj))
                             g_ptr_array_add(c->textList, obj); // not tested
 
-                    } //else
-                        // unsuppress object (for next frame)
-                      //      S57_setSupp(geo, FALSE);
+                    }
                 }
             }
         }
@@ -3692,8 +3680,9 @@ static int        _drawLights(void)
             S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
             // SCAMIN & PLib (disp prio)
             if (TRUE != S52_GL_isSupp(obj)) {
-                S57_geo *geo = S52_PL_getGeo(obj);
-                if (TRUE != S57_getSupp(geo))
+                //S57_geo *geo = S52_PL_getGeo(obj);
+                //if (TRUE != S57_getSupp(geo))
+                if (TRUE != S52_PL_getSupp(obj))
                     S52_GL_draw(obj, NULL);
             }
         }
@@ -4116,11 +4105,8 @@ static void       _delOldVessel(gpointer data, gpointer user_data)
 }
 
 static int        _drawLast(void)
+// draw the Mariners' Object (layer 9)
 {
-    // debug
-    //PRINTF("DRAWLAST: ..  -2-\n");
-
-    // then draw the Mariners' Object on top of it
     for (int i=S52_AREAS; i<N_OBJ_T; ++i) {
         GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][i];
         // FIFO
@@ -4135,10 +4121,46 @@ static int        _drawLast(void)
                 return TRUE;
             }
 
+            /////////////////////////////////////
+            // CULL & DRAW
+            //
+            ++_nTotal;
+
+            // is this object suppressed by user
+            S57_geo *geo = S52_PL_getGeo(obj);
+            //if (TRUE == S57_getSupp(geo)) {
+            if (TRUE == S52_PL_getSupp(obj)) {
+                ++_nCull;
+
+                PRINTF("DEBUG:%i: supp ON - %s\n", _nTotal, S57_getName(geo));
+
+                continue;
+            }
+
+            // outside view
+            // NOTE: object can be inside 'ext' but outside the 'view' (cursor pick)
+            if (TRUE == S52_GL_isOFFview(obj)) {
+                ++_nCull;
+
+                PRINTF("DEBUG:%i: OFF view - %s\n", _nTotal, S57_getName(geo));
+
+                continue;
+            }
+
+            // SCAMIN & PLib (disp cat)
             if (FALSE == S52_GL_isSupp(obj)) {
                 S52_GL_draw(obj, NULL);
                 S52_GL_drawText(obj, NULL);
+
+                //PRINTF("DEBUG:%i: _drawLast() - %s\n", _nTotal, S57_getName(geo));
+            } else {
+                ++_nCull;
+
+                PRINTF("DEBUG:%i: SCAMIN - %s\n", _nTotal, S57_getName(geo));
+
+                continue;
             }
+            /////////////////////////////////////
         }
     }
 
@@ -4147,10 +4169,6 @@ static int        _drawLast(void)
 
 DLL int    STD S52_drawLast(void)
 {
-    // debug
-    //PRINTF("DRAWLAST: .. start -0-\n");
-    //return TRUE;
-
     S52_CHECK_INIT;
     return_if_null(S57_getPrjStr());
 
@@ -4172,42 +4190,30 @@ DLL int    STD S52_drawLast(void)
         goto exit;
     }
 
-    /*  check if we are shuting down
-    if (NULL == _marinerCell) {
-        PRINTF("Shutting down\n");
-        g_assert(0);
-        goto exit;
-    }
-    */
-
     g_atomic_int_set(&_atomicAbort, FALSE);
 
     g_timer_reset(_timer);
 
-    ////////////////////////////////////////////////////////////////////
-    // APP: init the journal flush previous journal
-    // rebuilding CS if need be
-    _app();
-
-    // check stray vessel (occur when s52ais restart)
-    if (0.0 != S52_MP_get(S52_MAR_DISP_VESSEL_DELAY)) {
-        GPtrArray *rbinPT = _marinerCell->renderBin[S52_PRIO_MARINR][S52_POINT];
-        g_ptr_array_foreach(rbinPT, _delOldVessel, rbinPT);
-        GPtrArray *rbinLN = _marinerCell->renderBin[S52_PRIO_MARINR][S52_LINES];
-        g_ptr_array_foreach(rbinLN, _delOldVessel, rbinLN);
-    }
-
-    ////////////////////////////////////////////////////////////////////
-    // no CULL (so no journal)
-    // cull()
-
-
-    ////////////////////////////////////////////////////////////////////
-    // DRAW:
-    //
-
     int ret = FALSE;
     if (TRUE == S52_GL_begin(S52_GL_LAST)) {
+
+        ////////////////////////////////////////////////////////////////////
+        // APP: no CS code for Mariner - all in GL now
+        //_app();
+
+        // check stray vessel (occur when s52ais/gpsd restart)
+        if (0.0 != S52_MP_get(S52_MAR_DISP_VESSEL_DELAY)) {
+            GPtrArray *rbinPT = _marinerCell->renderBin[S52_PRIO_MARINR][S52_POINT];
+            g_ptr_array_foreach(rbinPT, _delOldVessel, rbinPT);
+            GPtrArray *rbinLN = _marinerCell->renderBin[S52_PRIO_MARINR][S52_LINES];
+            g_ptr_array_foreach(rbinLN, _delOldVessel, rbinLN);
+        }
+
+        ////////////////////////////////////////////////////////////////////
+        // CULL / DRAW:
+        //
+        _nCull = 0;
+        _nTotal= 0;
         ret = _drawLast();
         S52_GL_end(S52_GL_LAST);
     } else {
@@ -4217,7 +4223,8 @@ DLL int    STD S52_drawLast(void)
 #ifdef S52_DEBUG
     {
         gdouble sec = g_timer_elapsed(_timer, NULL);
-        PRINTF("DRAWLAST: %.0f msec\n", sec * 1000);
+        //PRINTF("DRAWLAST: %.0f msec\n", sec * 1000);
+        PRINTF("DRAWLAST: %.0f msec (cull/total) %i/%i\n", sec * 1000, _nCull, _nTotal);
     }
 #endif
 
@@ -4906,37 +4913,40 @@ exit:
 
 DLL int    STD S52_setS57ObjClassSupp(const char *className, int value)
 {
-    //S52_CHECK_INIT;
-
     return_if_null(className);
 
     S52_CHECK_MUTX_INIT;
 
+    int ret = FALSE;
     S52_objSupp supState = S52_PL_getObjClassState(className);
     if (S52_SUPP_ERR == supState) {
         PRINTF("WARNING: can't toggle %s\n", className);
-        GMUTEXUNLOCK(&_mp_mutex);
-        return -1;
+        //GMUTEXUNLOCK(&_mp_mutex);
+        //return -1;
+        ret = -1;
+        goto exit;
     }
 
     if (TRUE==value  && S52_SUPP_ON==supState) {
-        GMUTEXUNLOCK(&_mp_mutex);
-        return FALSE;
-    }
-    if (FALSE==value && S52_SUPP_OFF==supState) {
-        GMUTEXUNLOCK(&_mp_mutex);
-        return FALSE;
+        //GMUTEXUNLOCK(&_mp_mutex);
+        //return FALSE;
+        goto exit;
     }
 
-    S52_PL_toggleObjClass(className);
+    if (FALSE==value && S52_SUPP_OFF==supState) {
+        //GMUTEXUNLOCK(&_mp_mutex);
+        //return FALSE;
+        goto exit;
+    }
+
+    ret = S52_PL_toggleObjClass(className);
 
 exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
-    //S52_toggleObjClass(className);
-
-    return TRUE;
+    //return TRUE;
+    return ret;
 }
 // -----------------------------------------------------
 
@@ -4947,28 +4957,31 @@ DLL int    STD S52_loadPLib(const char *plibName)
 {
     S52_CHECK_MUTX_INIT;
 
-    // 1 - load / parse new PLb
+    // 1 - load / parse new PLib
     valueBuf PLibPath = {'\0'};
     if (NULL == plibName) {
         // check in s52.cfg
         if (0 == S52_getConfig(CONF_PLIB, &PLibPath)) {
             PRINTF("default PLIB not found in .cfg (%s)\n", CONF_PLIB);
-            GMUTEXUNLOCK(&_mp_mutex);
-            return FALSE;
+            //GMUTEXUNLOCK(&_mp_mutex);
+            //return FALSE;
+            goto exit;
         } else {
             if (TRUE == S52_PL_load(PLibPath)) {
                 g_string_append_printf(_plibNameList, ",%s", PLibPath);
             } else {
-                GMUTEXUNLOCK(&_mp_mutex);
-                return FALSE;
+                //GMUTEXUNLOCK(&_mp_mutex);
+                //return FALSE;
+                goto exit;
             }
         }
     } else {
         if (TRUE == S52_PL_load(plibName)) {
             g_string_append_printf(_plibNameList, ",%s", plibName);
         } else {
-            GMUTEXUNLOCK(&_mp_mutex);
-            return FALSE;
+            //GMUTEXUNLOCK(&_mp_mutex);
+            //return FALSE;
+            goto exit;
         }
     }
 
@@ -4990,9 +5003,16 @@ DLL int    STD S52_loadPLib(const char *plibName)
             for (int j=0; j<N_OBJ_T; ++j) {
                 GPtrArray *rbin = c->renderBin[i][j];
                 for (guint idx=0; idx<rbin->len; ++idx) {
-                    S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                    S57_geo *geo = S52_PL_delObj(obj);
-                    _insertS57Obj(&n, geo);
+                    S52_obj *objOld = (S52_obj *)g_ptr_array_index(rbin, idx);
+
+                    S57_geo *geo    = S52_PL_getGeo(objOld);
+                    S52_obj *objNew = _insertS57Obj(&n, geo);
+
+                    // FIXME: transfert all field of objObj to objNew
+                    S52_PL_cpyAux(objOld, objNew);
+
+                    // then del old
+                    S52_PL_delObj(objOld);
                 }
                 // flush old rbin
                 g_ptr_array_free(rbin, TRUE);
@@ -5008,9 +5028,16 @@ DLL int    STD S52_loadPLib(const char *plibName)
 
         if (NULL != c->lights_sector) {
             for (guint i=0; i<c->lights_sector->len; ++i) {
-                S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, i);
-                S57_geo *geo = S52_PL_delObj(obj);
-                _insertS57Obj(&n, geo);
+                S52_obj *objOld = (S52_obj *)g_ptr_array_index(c->lights_sector, i);
+
+                S57_geo *geo    = S52_PL_getGeo(objOld);
+                S52_obj *objNew = _insertS57Obj(&n, geo);
+
+                // FIXME: transfert all field of objObj to objNew
+                S52_PL_cpyAux(objOld, objNew);
+
+                // then del old
+                S52_PL_delObj(objOld);
             }
             g_ptr_array_free(c->lights_sector, TRUE);
         }
@@ -6060,21 +6087,24 @@ exit:
 
 DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH)
 {
-    //S52_CHECK_INIT;
-
     return_if_null((void*)objH);
 
     S52_CHECK_MUTX_INIT;
 
     S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)objH);
     if (NULL != obj) {
-        S57_geo *geo = S52_PL_getGeo(obj);
+        //S57_geo *geo = S52_PL_getGeo(obj);
 
-        if (TRUE == S57_getSupp(geo))
-            S57_setSupp(geo, FALSE);
-        else
-            S57_setSupp(geo, TRUE);
+        //if (TRUE == S57_getSupp(geo)) {
+        if (TRUE == S52_PL_getSupp(obj)) {
+            //S57_setSupp(geo, FALSE);
+            S52_PL_setSupp(obj, FALSE);
+        } else {
+            //S57_setSupp(geo, TRUE);
+            S52_PL_setSupp(obj, TRUE);
+        }
     } else {
+        // FALSE == NULL
         objH = FALSE;
     }
 
