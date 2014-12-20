@@ -208,8 +208,6 @@ const char    *S52_PL_getCMDstr(S52_obj *obj);
 S52_CmdWrd     S52_PL_iniCmd(S52_obj *obj);
 // get next command word in the list
 S52_CmdWrd     S52_PL_getCmdNext(S52_obj *obj);
-// not used
-//S52_CmdWrd     S52_PL_getCrntCmd(S52_obj *obj);
 
 // compare name to parameter of current command word
 int            S52_PL_cmpCmdParam(S52_obj *obj, const char *name);
@@ -227,8 +225,6 @@ int         S52_PL_doneVOCmd(S52_vec *vecObj);
 S52_vCmd    S52_PL_getNextVOCmd(S52_vec *vecObj);
 // get vector for this command
 S57_prim   *S52_PL_getVOprim(S52_vec *vecObj);
-// get pen width
-char        S52_PL_getVOwidth(S52_vec *vecObj);
 // get disk radius
 double      S52_PL_getVOradius(S52_vec *vecObj);
 // get vextex array
@@ -249,8 +245,6 @@ int            S52_PL_getSYspeed (S52_obj *obj, double *speed);
 // get Line Style data, width in ASCII (dotpitch 1 pixel=0.32 mm) for a S52/IHO display size viewed at 1 m.
 // Note: that it is more 'natural visualy', for a screen of 300ppi viewed at 10 cm, to go to a smaller dotpitch
 int            S52_PL_getLSdata(S52_obj *obj, char *pen_w, char *style, S52_Color **color);
-// set Line Complex data, width in ASCII (1 pixel=0.32 mm)
-int            S52_PL_setLCdata(S52_cmdDef *def, char pen_w);
 // get Line Complex data
 int            S52_PL_getLCdata(S52_obj *obj, double *symlen, char *pen_w);
 // get Area Color data
@@ -268,8 +262,6 @@ guint          S52_PL_getAPtexID(S52_obj *obj);
 
 // traverse a symbology table calling 'callback' for each entree
 gint           S52_PL_traverse(S52_SMBtblName tableNm, GTraverseFunc callBack);
-// return the number of entree in a symbology table
-//gint       S52_PL_getTableSz(S52_SMBtblName tableNm);
 
 // return a list of Display List --one per color/pen_w/trans
 S52_DList     *S52_PL_newDListData(S52_obj *obj);
@@ -332,5 +324,11 @@ int            S52_PL_setFreetypeGL_VBO(S52_obj *obj, guint vboID, guint len);
 //int            S52_PL_setLOD(S52_obj *obj, char LOD);
 //char           S52_PL_getLOD(S52_obj *obj);
 
+gboolean       S52_PL_setSupp(S52_obj *obj, gboolean supp);
+gboolean       S52_PL_getSupp(S52_obj *obj);
+
+
+// copy Auxiliary Info
+int            S52_PL_cpyAux(S52_obj *objOld, S52_obj *objNew);
 
 #endif // _S52PL_H_
