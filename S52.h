@@ -1,4 +1,4 @@
-// S52.h: top-level interface to libS52.so plug-in
+// S52.h: top-level interface to libS52.so
 //
 // Project:  OpENCview
 
@@ -22,9 +22,11 @@
 
 
 // Summary
-// - static def
-// - call from main loop
+// - def / type / enum
+// - call at any time
 // - call available fater S52_init()
+// - call from main loop / GL context
+// -- call for cell un/loaging
 // -- call to camera movement
 // -- call to PLib state
 // -- call for MIO's
@@ -50,9 +52,9 @@ extern "C" {
 
 typedef enum S52ObjectType {
     S52__META  = 0,         // meta geo stuff (ex: C_AGGR)
-    S52_AREAS  = 1,         // 1
-    S52_LINES  = 2,         // 2
-    S52_POINT  = 3,         // 3
+    S52_AREAS  = 1,
+    S52_LINES  = 2,
+    S52_POINT  = 3,
     S52_N_OBJ  = 4          // number of object type
 } S52ObjectType;
 
@@ -333,8 +335,7 @@ DLL int    STD S52_drawLayer(const char *name);
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int    STD S52_drawStr(double pixels_x, double pixels_y,
-                           const char *colorName, unsigned int bsize, const char *str);
+DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);
 
 /**
  * S52_drawBlit: Blitting
@@ -349,27 +350,6 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y,
  * Return: TRUE on success, else FALSE
  */
 DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, double north);
-
-/**
- * S52_setViewPort:
- * @pixels_x:      (in): origine LL corner
- * @pixels_y:      (in): origine LL corner
- * @pixels_width:  (in): viewport width in pixels
- * @pixels_height: (in): viewport height in pixels
- *
- *  Call this if viewPort change (ex: going full screen)
- *  From WebGL (OpenGL ES 2.0) spec:
- *  Rationale: automatically setting the viewport will interfere with applications
- *   that set it manually. Applications are expected to use onresize handlers to
- *   respond to changes in size of the canvas and set the OpenGL viewport in turn.
- *
- * Use this call in conjuction with S52_setView() and S52_draw() to setup a magnifying glass
- * or an overview
- *
- *
- * Return: TRUE on success, else FALSE
- */
-DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height);
 
 /**
  * S52_pickAt: Cursor pick
@@ -423,6 +403,7 @@ DLL int    STD S52_xy2LL(double *pixels_x,  double *pixels_y);
  */
 DLL int    STD S52_LL2xy(double *longitude, double *latitude);
 // --------------
+
 
 /**
  * S52_init:
@@ -517,6 +498,29 @@ DLL int    STD S52_loadCell(const char *encPath,  S52_loadObject_cb loadObject_c
  * Return: TRUE on success, else FALSE
  */
 DLL int    STD S52_doneCell        (const char *encPath);
+// ---- CHART LOADING (cell) -------------------------------------------
+
+
+/**
+ * S52_setViewPort:
+ * @pixels_x:      (in): origine LL corner
+ * @pixels_y:      (in): origine LL corner
+ * @pixels_width:  (in): viewport width in pixels
+ * @pixels_height: (in): viewport height in pixels
+ *
+ *  Call this if viewPort change (ex: going full screen)
+ *  From WebGL (OpenGL ES 2.0) spec:
+ *  Rationale: automatically setting the viewport will interfere with applications
+ *   that set it manually. Applications are expected to use onresize handlers to
+ *   respond to changes in size of the canvas and set the OpenGL viewport in turn.
+ *
+ * Use this call in conjuction with S52_setView() and S52_draw() to setup a magnifying glass
+ * or an overview
+ *
+ *
+ * Return: TRUE on success, else FALSE
+ */
+DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height);
 
 /**
  * S52_setView:
