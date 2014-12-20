@@ -81,7 +81,7 @@ typedef struct pt2 {
 #define VESSELTURN_UNDEFINED 129
 
 static S52ObjectHandle _vrmeblA     = NULL;
-static S52ObjectHandle _vrmeblB     = NULL;
+//static S52ObjectHandle _vrmeblB     = NULL;
 static int             _originIsSet = FALSE;
 
 #ifdef S52_USE_AFGLOW
@@ -98,7 +98,7 @@ static S52ObjectHandle _vessel_ais_afglow = NULL;
 
 // VESSEL
 static S52ObjectHandle _ownshp      = NULL;
-static S52ObjectHandle _vessel_arpa = NULL;
+//static S52ObjectHandle _vessel_arpa = NULL;
 static S52ObjectHandle _vessel_ais  = NULL;
 static S52ObjectHandle _pastrk      = NULL;
 
@@ -747,6 +747,12 @@ static int      _setOWNSHP()
 
     S52_setVector(_ownshp, 0, 220.0, 6.0);  // ownship use S52_MAR_VECSTB
 
+    // test - supp ON
+    // all obj of a class
+    //S52_setS57ObjClassSupp("ownshp", TRUE);
+    // supp this obj
+    S52_toggleDispMarObj(_ownshp);
+
     return TRUE;
 }
 
@@ -1181,7 +1187,9 @@ static int      _initS52()
     // sounding color
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,   10.0);
 
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  4.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // for triggering symb ISODGR01 (ODD winding) at Rimouski
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  4.0);
+
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
@@ -1249,6 +1257,9 @@ static int      _initS52()
     // setup mariner object (for debugging)
     //
 
+    // test loading objH _before_ loadPLib
+    _setMarFeature();
+
     // load additional PLib (facultative)
     //S52_loadPLib("plib_pilote.rle");
     //S52_loadPLib("plib-test2.rle");
@@ -1304,7 +1315,6 @@ static int      _initS52()
 
     //*
     _setVRMEBL();
-    // FIXME: broken
 
     _setPASTRK();
 
@@ -1314,7 +1324,7 @@ static int      _initS52()
 
     _setCLRLIN();
 
-    _setMarFeature();
+    //_setMarFeature();
     //*/
 
 #ifdef S52_USE_RADAR
@@ -1906,18 +1916,18 @@ int main(int argc, char **argv)
 
 exit:
 
-    /* S52 Mariner Obj cleanup by hand - S52_done() do that too
+    //* S52 Mariner Obj cleanup by hand - S52_done() do that too
     _ownshp      = S52_delMarObj(_ownshp);
-    _vrmeblA     = S52_delMarObj(_vrmeblA);
-    _vrmeblB     = S52_delMarObj(_vrmeblB);
-    _vessel_arpa = S52_delMarObj(_vessel_arpa);
+    //_vrmeblA     = S52_delMarObj(_vrmeblA);  // broken
+    //_vrmeblB     = S52_delMarObj(_vrmeblB);
+    //_vessel_arpa = S52_delMarObj(_vessel_arpa);
     _vessel_ais  = S52_delMarObj(_vessel_ais);
     _pastrk      = S52_delMarObj(_pastrk);
     _leglin1     = S52_delMarObj(_leglin1);
     _leglin2     = S52_delMarObj(_leglin2);
     _leglin3     = S52_delMarObj(_leglin3);
     _clrlin      = S52_delMarObj(_clrlin);
-    */
+    //*/
 
 #ifdef USE_AIS
     s52ais_doneAIS();
