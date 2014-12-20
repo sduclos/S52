@@ -4592,7 +4592,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
             case S52_VC_NONE: break;
             case S52_VC_NEW:  break;
 
-            //*
+            /*
             case S52_VC_SW: { // this mean there is a change in pen width
 
 #if !defined(S52_USE_OPENGL_VBO)
@@ -4793,7 +4793,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
             // should not get here since these command
             // have already been filtered out in _filterVector() & S52_PL_getNextVOCmd()
             case S52_VC_SP: // color
-            //case S52_VC_SW: // pen_w
+            case S52_VC_SW: // pen_w
             case S52_VC_ST: // transparancy
             case S52_VC_SC: // symbol call
 
@@ -4908,13 +4908,6 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
 
 #endif  // S52_USE_OPENGL_VBO
 
-    /*
-    {   // save pen width
-        char pen_w = S52_PL_getVOwidth(vecObj);
-        S52_PL_setLCdata((S52_cmdDef*)value, pen_w);
-    }
-    */
-
     S52_PL_doneVOCmd(vecObj);
 
     _checkError("_buildPatternDL()");
@@ -5008,13 +5001,6 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
     }
 #endif // S52_USE_OPENGL_VBO
 
-    /*
-    {   // save some data for later
-        char pen_w = S52_PL_getVOwidth(vecObj);
-        S52_PL_setLCdata((S52_cmdDef*)value, pen_w);
-    }
-    */
-
     _checkError("_buildSymbDL()");
 
     S52_PL_doneVOCmd(vecObj);
@@ -5090,7 +5076,7 @@ int        S52_GL_isOFFview(S52_obj *obj)
         if (0 == g_strcmp0(attval->str, "BLKADJ01"))
             return FALSE;
 
-        PRINTF("DEBUG: %s:%s\n", S57_getName(geo), attval->str);
+        //PRINTF("DEBUG: %s:%s\n", S57_getName(geo), attval->str);
 
         return FALSE;
     }
