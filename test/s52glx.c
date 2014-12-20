@@ -31,6 +31,9 @@
 #include <stdio.h>      // printf()
 #include <stdlib.h>     // exit(0)
 
+#define WIDTH  800
+#define HEIGHT 600
+
 static int _attr[] = {
     GLX_RGBA,
     GLX_DOUBLEBUFFER,
@@ -99,7 +102,7 @@ static Window       _setXwin(Display *dpy, XVisualInfo *visInfo)
     swa.event_mask   = ExposureMask | ButtonPressMask | StructureNotifyMask;
 
     win = XCreateWindow(dpy, win, 
-                        0, 0, 800, 600, 0, visInfo->depth,
+                        0, 0, WIDTH, HEIGHT, 0, visInfo->depth,
                         InputOutput, visInfo->visual,
                         CWBorderPixel | CWColormap | CWEventMask, &swa);
 
@@ -162,6 +165,7 @@ int main(int argc, char* argv[])
         S52_init(w, h, wmm, hmm, NULL);
     }
 
+    S52_setViewPort(0, 0, WIDTH, HEIGHT);
     S52_loadCell(NULL, NULL);
 
     { // main loop
@@ -179,7 +183,7 @@ int main(int argc, char* argv[])
             } while (XPending(dpy));
             S52_draw();
             // FIXME
-            //S52_drawLast();
+            S52_drawLast();
 
             glXSwapBuffers(dpy,  win);
         }
