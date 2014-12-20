@@ -146,9 +146,9 @@ double    S57_resetScamin(S57_geo *geo);
 int       S57_setRelationship(S57_geo *geo, S57_geo *geoRel);
 S57_geo  *S57_getRelationship(S57_geo *geo);
 
-// suppression
-gboolean  S57_setSupp(S57_geo *geo, gboolean supp);
-gboolean  S57_getSupp(S57_geo *geo);
+// get/set 'display suppression' for THIS S57_obj
+//gboolean  S57_setSupp(S57_geo *geo, gboolean supp);
+//gboolean  S57_getSupp(S57_geo *geo);
 
 // count the number of 'real (6length)' attributes
 //int       S57_getNumAtt(S57_geo *geo);

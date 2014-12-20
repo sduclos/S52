@@ -84,10 +84,12 @@ typedef struct _S57_geo {
     S57_Obj_t    obj_t;       // used in CS
 
     _rect        rect;        // lat/lon extent of object
-    gboolean     supp;        // geo suppression - TRUE if outside view
+
+    // FIXME: move to S52_obj!
+    //gboolean     supp;        // display suppression set by user
+
 
     // length of geo data (POINT, LINE, AREA) currently in buffer
-    //guint        dataSize;        // max is 1, linexyznbr, ringxyznbr[0]
     guint        geoSize;        // max is 1, linexyznbr, ringxyznbr[0]
 
     // hold coordinate before and after projection
@@ -1167,7 +1169,9 @@ static void   _printAtt(GQuark key_id, gpointer data, gpointer user_data)
     }
 }
 
+#if 0
 gboolean   S57_setSupp(_S57_geo *geo, gboolean supp)
+// set display suppression of THIS S57 obj
 {
     return_if_null(geo);
 
@@ -1177,12 +1181,12 @@ gboolean   S57_setSupp(_S57_geo *geo, gboolean supp)
 }
 
 gboolean   S57_getSupp(_S57_geo *geo)
-// FIXME: bellow is an accesor - 'inline' it somehow
 {
     return_if_null(geo);
 
     return geo->supp;
 }
+#endif
 
 int        S57_dumpData(_S57_geo *geo, int dumpCoords)
 // debug
