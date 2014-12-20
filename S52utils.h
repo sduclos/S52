@@ -35,7 +35,19 @@
 #include <stdio.h>        // FILE
 #endif
 
+/* GCC 5.0
+#define _g_ptr_array_add(x,y)                              \
+if (FALSE == __builtin_add_overflow(x->len, 1, &(x->len))) \
+g_assert(0); \
+else         \
+g_ptr_array_add(x,y);
 
+#define _g_ptr_array_add(x,y) \
+if (G_MAXUINT == (x->len+1))  \
+    g_assert(0);              \
+else                          \
+    g_ptr_array_add(x,y);
+*/
 
 #ifdef SOLARIS
     // well should be cc
