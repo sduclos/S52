@@ -1103,6 +1103,10 @@ static int      _s52_setupVRMEBL(s52droid_state_t *state)
         S52_setS57ObjClassSupp("cursor", TRUE);
         S52_setS57ObjClassSupp("ebline", TRUE);
         S52_setS57ObjClassSupp("vrmark", TRUE);
+
+        // or supp one obj
+        //S52_toggleDispMarObj(_cursor2);
+        //S52_toggleDispMarObj(_vrmeblA);
     }
 
     return TRUE;
