@@ -134,12 +134,8 @@ typedef struct _S52_cmdDef {
     union    {GString   *LCRF,   *PCRF,   *SCRF;   } colRef;
 
     // ---- not a S52 fields ------------------------------------
-    S52_SMBtblName symType;     // debug
+    S52_SMBtblName symType;     // debug LINE,PATT,SYMB
     S52_DList      DListData;   // GL Display List / VBO
-
-    // Line Complex Length that don't fit use this info for simple line
-    //S52_Color     *LC_col;         // LC: color of last pen
-    //char           LC_pen_w;       // LC: width in pixel of last pen in (ASCII)
 
 #if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
     guint          mask_texID;  // texture ID of pattern after running VBO
@@ -243,7 +239,6 @@ typedef struct _S52_vec {
     int        bby;         // def->pos.line.bbox_y.LBXR;
     int        pivot_x;     // def->pos.line.pivot_x.LICL;
     int        pivot_y;     // def->pos.line.pivot_y.LIRW;
-    char       pen_w_vo;    // pen width (distinc of pen_w cmdDef)
     double     radius;      // disk radius
     _poly_mode pm;          // polygon mode
 } _S52_vec;
@@ -288,11 +283,6 @@ typedef struct _S52_obj {
     gint         textParsed[2]; // TRUE if parsed, need two flag because there is text for
                                 // two type of point and area
 
-    //char         LOD;           // optimisation: chart purpose: cell->filename->str[2]
-
-    gdouble      orient;        // LIGHT angle (after parsing), heading of 'ownshp'
-    gdouble      speed;         // 'ownshp' speed for drawing vertor lenght
-
     S57_geo     *geoData;       // S-57
 
     // override by CS
@@ -303,18 +293,24 @@ typedef struct _S52_obj {
     int          LUCM;          // Look-Up Comment (PLib3.x put 'groupes' here,
                                 // hense 'int', but its a string in the specs)
 
+    // --- Auxiliary Info --------------------------------
+    //char       LOD;           // optimisation: chart purpose: cell->filename->str[2]
+
+    gdouble      orient;        // LIGHT angle (after parsing), heading of 'ownshp'
+    gdouble      speed;         // 'ownshp' speed for drawing vertor lenght
+    GTimeVal     time;          // store time (use to find age of AIS)
+    gboolean     supp;          // display suppression set by user
+
+    // LEGLIN
     struct _S52_obj *nextLeg;   // link to next leglin (need to draw arc)
     struct _S52_obj *prevLeg;   // link to previous leg so that we can clip the start of this leg
                                 // of the amout of wholin dist of the previous leg
-
+    // WHeel-Over-LINe
     struct _S52_obj *wholin;    // link to wholin obj
-
-    GTimeVal         time;      // store time (use to find age of AIS)
-
 } _S52_obj;
 
 // Tables (LUP+symbology) --BBTree holder
-static gboolean _initTbl        = TRUE;  // will load PLib
+static gboolean _initPLib       = TRUE;  // will init PLib
 static GTree   *_table[TBL_NUM] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
 
 #define CR     '\r'      // carriage return
@@ -339,9 +335,6 @@ typedef unsigned char u8;
 
 // used to parse the PLib
 #define MAX_BUF    1024      // working buffer length
-//#define MAXL       256       // max string 'str' length in buf
-//static char buffer[MAX_BUF];
-//static char *pBuf = (char *)&buffer;
 static char _pBuf[MAX_BUF];
 
 typedef struct _PL {
@@ -352,7 +345,7 @@ typedef struct _PL {
 
 
 #if 0
-char S52AuxSymb[] =
+char _S52AuxSymb[] =
 0001    0
 LUPT   34LU01056NIL$CSYMBP00009OSIMPLIFIED
 ATTC   15$SCODESCALEB10
@@ -403,6 +396,8 @@ static cmsHPROFILE   _rgbp = NULL;
 static cmsHTRANSFORM _2RGB = NULL;
 static int           _lcmsError = FALSE;   // TRUE an error occur in lcms
 
+// optimisation: indexed
+//static GPtrArray    *_objList = NULL;
 
 //------------------------
 //
@@ -1174,341 +1169,6 @@ static S52_Color *_parseCol(char c, char *colRef)
         return S52_PL_getColor(colRef+1);
 }
 
-static guint      _filterVector1(char *str, char *colRef, S52_Color *colors)
-//static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
-// resolve color index
-// move color & transparency & pen_w to 'colors'
-// weed out redundent pen width/trans/color command
-// return number of color switch (or number of sub-list of vector)
-// FIXME: what if there is no color command!
-// FIXME: refactor this whole color handling (trans uglyness)
-{
-    int  nList = 0;   // number sub-list/sub-vector
-    char color = 0;
-    char pen_w = 0;   // no pen width
-    int  idx   = 0;   // pos in 'str'
-
-    // FIXME: check if same color with different pen_w
-    //int  curVecPen =  0;   // check if pen_w change for this color
-    //char oldTrans  = '0';
-    //int  curVecTrn =  0;   // check if trans change for this color
-
-
-    if (S52_VC_SP!=*str && S52_VC__P!=*(str+1)) {
-        PRINTF("FIXME: color command is not the verry first one!\n");
-    }
-
-    // paranoia
-    if (NULL == colors) {
-        PRINTF("ERROR: no colors\n");
-        g_assert(0);
-        return FALSE;
-    }
-
-    while ('\0' != str[idx]) {
-
-        char *c1 = &str[idx+0];   // first character
-        char *c2 = &str[idx+1];   // second character
-
-        // 'S' 'P' --color
-        if (S52_VC_SP==*c1 && S52_VC__P==*c2) {
-            // if same color replace cmd with NOP cmd
-            if (str[idx+2] != color) {
-                // advance to next color if not the fist color cmd
-                if (0 != color)
-                    ++colors;
-
-                // update crnt color
-                color = str[idx+2];
-
-                //S52_Color *col = _parseCol(str[idx+2], colRef);
-                S52_Color *col = _parseCol(color, colRef);
-                if (NULL == col) {
-                    PRINTF("ERROR: color command not fount (%c)\n", color);
-                    g_assert(0);
-                    return FALSE;
-                }
-                *colors = *col;
-
-                // init pen width
-                //col->pen_w = 0;
-
-
-                // to indicate beginning of new sub-vec
-                *c1 = 'X';
-
-                // tally sub list
-                ++nList;
-
-            } else {
-                // same color --NOP
-                *c1 = ';';
-            }
-
-            *c2        = ';';
-            str[idx+2] = ';';  // overwright color (NOP)
-
-            // advance to next command
-            idx += 4;
-
-            // go right to next command
-            continue;
-        }
-
-        // 'S' 'W' --pen width
-        if (S52_VC_SP==*c1 && S52_VC_SW==*c2) {
-            // if same pen width replace cmd with NOP cmd
-            if (str[idx+2] == pen_w) {
-                *c1        = ';';
-                *c2        = ';';
-                str[idx+2] = ';';   // overwright pen_w (NOP)
-
-            } else {
-                pen_w = str[idx+2];
-            }
-
-            // for VBO, change of 'colors' need change in pen width
-            if (0 == colors->pen_w)
-                colors->pen_w = pen_w;
-
-            idx += 4;
-
-            continue;
-        }
-
-        // 'S' 'T' --transparency
-        if (S52_VC_SP==*c1 && S52_VC_ST==*c2) {
-
-            colors->trans = str[idx+2];
-
-            *c1        = ';';
-            *c2        = ';';
-            str[idx+2] = ';';   // overwright trans. (NOP)
-
-            idx += 4;
-
-            continue;
-        }
-
-        // 'S' 'C' --symbol call
-        if (S52_VC_SP==*c1 && S52_VC_SC==*c2) {
-            *c1 = ';';
-            *c2 = ';';
-            idx += 2;
-            while (';'!=str[idx] && '\0'!=str[idx]) {
-                str[idx] = ';';   // overwright symbol call (NOP)
-                ++idx;
-            }
-            continue;
-        }
-
-        // advance to begining of next command (or '\0')
-        while (';'!=str[idx] && '\0'!=str[idx])
-            ++idx;
-
-        if (';' == str[idx])
-            ++idx;
-    }
-
-
-    // FIXME: is a dynamic structure needed to prevent this!
-    // Note that this will occure immediatly at start-up
-    // and only if a home-made PLib is used.
-    if (MAX_SUBLIST < nList) {
-        PRINTF("ERROR: buffer overflow about to occur\n");
-        g_assert(0);
-        return FALSE;
-    }
-
-    return nList;
-}
-
-static guint      _filterVector2(char *str, char *colRef, S52_Color *colors)
-//static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
-// fill 'colors' array with color/pen_w/trans
-// weed out redundent color/pen_w/trans command
-//
-// return number of color/pen_w/trans switch - number of sub-list in DList (VBO)
-{
-    // paranoia
-    return_if_null(str);
-    return_if_null(colRef);
-    return_if_null(colors);
-
-    int  nList = 0;   // number sub-list/sub-vector
-
-    int  idx   = 0;   // pos in 'str'
-
-    // descriptor
-    struct {
-        int   newIdx;  // str index of start of new sub-list
-        char  ccolor;
-        char  cpen_w;
-        char  ctrans;
-    } desc = {0,0,0,0};
-
-    if (S52_VC_SP!=*str && S52_VC__P!=*(str+1)) {
-        PRINTF("DEBUG: color command is not the very first one\n");
-        g_assert(0);
-        return nList;
-    }
-
-    while ('\0' != str[idx]) {
-
-        char *c1 = &str[idx+0];   // first character
-        char *c2 = &str[idx+1];   // secnd character
-        char *c3 = &str[idx+2];   // value
-
-        // 'S' 'P' - color
-        if (S52_VC_SP==*c1 && S52_VC__P==*c2) {
-
-            // assume color first in descriptor
-            desc.newIdx = idx;
-
-            if (*c3 == desc.ccolor) {
-                // same color --NOP
-                *c1 = ';';
-            } else {
-                // *c3 != desc.ccolor
-                // advance to next color if not the fist color cmd
-                if (0 != desc.ccolor) {
-                    // set default if pen_w not found
-                    if (0 == desc.cpen_w)
-                        colors->pen_w = '1';
-
-                    // set default if trans not found
-                    if (0 == desc.ctrans)
-                        colors->trans = '0';
-
-                    ++colors;
-                }
-
-                desc.ccolor = *c3;
-
-                // copy the S52_Color struct (A <-- B)
-                *colors = *_parseCol(desc.ccolor, colRef);
-
-                // set default pen_w & trans
-                colors->pen_w = '1';
-                colors->trans = '0';
-
-                str[desc.newIdx] = S52_VC_NEW;
-                ++nList;
-            }
-
-            *c2 = ';';
-            *c3 = ';';  // overwright color idx (NOP)
-
-            // advance to next command
-            idx += 4;
-
-            // go right to next command
-            continue;
-        }
-
-        // 'S' 'W' - pen width
-        if (S52_VC_SP==*c1 && S52_VC_SW==*c2) {
-            if (0 == desc.cpen_w) {
-                colors->pen_w = *c3;
-                desc.cpen_w   = *c3;
-
-                // initial pen_w replace cmd with NOP cmd
-                *c1 = ';';
-                *c2 = ';';
-                *c3 = ';';
-
-                idx += 4;
-
-                continue;
-            }
-
-            if (*c3 == desc.cpen_w) {
-                // same pen_w replace cmd with NOP cmd
-                *c1 = ';';
-                *c2 = ';';
-                *c3 = ';';
-            } else {
-                // new pen_w --> new sub-list if not allready new col
-                if (S52_VC_NEW != str[desc.newIdx]) {
-                    str[desc.newIdx] = S52_VC_NEW;
-                    *++colors = *_parseCol(desc.ccolor, colRef);
-                    ++nList;
-
-                    colors->pen_w = *c3;
-                    colors->trans = desc.ctrans;
-                }
-                desc.cpen_w = *c3;
-            }
-
-            *c1 = ';';
-            *c2 = ';';
-            *c3 = ';';
-
-            idx += 4;
-
-            continue;
-        }
-
-        // 'S' 'T' - transparency
-        if (S52_VC_SP==*c1 && S52_VC_ST==*c2) {
-            // debug - check if trans change
-            //if (0!=colors->trans && *c3!=colors->trans) {
-            //    PRINTF("FIXME: transparency change NOT handled - new sub-list not created\n");
-            //    g_assert(0);
-            //}
-
-            colors->trans = *c3;
-
-            *c1 = ';';
-            *c2 = ';';
-            *c3 = ';';   // overwright trans. (NOP)
-
-            idx += 4;
-
-            continue;
-        }
-
-        // 'S' 'C' - symbol call == NOP
-        if (S52_VC_SP==*c1 && S52_VC_SC==*c2) {
-            *c1 = ';';
-            *c2 = ';';
-            idx += 2;
-            while (';'!=str[idx] && '\0'!=str[idx]) {
-                str[idx++] = ';';   // overwright Symbol Call (NOP)
-            }
-
-            continue;
-        }
-
-        // advance to begining of next command (or '\0')
-        while (';'!=str[idx] && '\0'!=str[idx])
-            ++idx;
-
-        // skip ';'
-        if (';' == str[idx])
-            ++idx;
-    }
-
-
-    // FIXME: is a dynamic structure needed to prevent this!
-    // Note that this will occure immediatly at start-up
-    // and only if a home-made PLib is used.
-    if (MAX_SUBLIST < nList) {
-        PRINTF("ERROR: buffer overflow about to occur\n");
-        g_assert(0);
-        return 0;
-    }
-
-    if (0 == desc.ccolor) {
-        PRINTF("ERROR: color missing (SP)\n");
-        g_assert(0);
-        return 0;
-    }
-
-    return nList;
-}
-
-//static guint      _filterVector3(char *str, char *colRef, S52_Color *colors)
 static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
 // fill 'colors' array with color/pen_w/trans
 // weed out redundent color/pen_w/trans command
@@ -1535,15 +1195,11 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
         char  ctrans;
     } desc = {0,0,'1','0'};
 
+    // debug - Plib specific (not HPGL)
     if (S52_VC_SP!=*str && S52_VC__P!=*(str+1)) {
         PRINTF("DEBUG: color command is not the very first one\n");
         g_assert(0);
         return nList;
-    }
-
-    if (0 == g_strcmp0(colRef, "CCHREDmOUTLW")) {
-        PRINTF("DEBUG: BOYSAW found\n");
-        //g_assert(0);
     }
 
     while ('\0' != str[idx]) {
@@ -1616,6 +1272,7 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
             continue;
         }
 
+        // FIXME: this could be moved to S52_PL_getNextVOCmd()
         // 'S' 'C' - symbol call == NOP
         if (S52_VC_SP==*c1 && S52_VC_SC==*c2) {
             *c1 = ';';
@@ -2245,9 +1902,8 @@ static int        _parseSYMB(_PL *fp)
     return TRUE;
 }
 
-static int        _initPL()
+static int        _initPLtables()
 {
-
     // init allready done
     if (NULL != _colTables)
         return TRUE;
@@ -2261,8 +1917,6 @@ static int        _initPL()
         gpointer pint = GINT_TO_POINTER(i);
         g_tree_insert(_colref, (gpointer)_colorName[i-1], pint);
     }
-
-
 
 #ifdef S52_USE_GLIB2
     _table[LUP_LINE]     = g_tree_new_full(_cmpLUP, NULL, NULL, _delLUP);
@@ -2677,13 +2331,15 @@ extern int      S52razLen;
 
 int         S52_PL_init()
 {
-    _initPL();
+    if (FALSE == _initPLib)
+        return FALSE;
 
+    _initPLib = FALSE;
+
+    _initPLtables();
     _cms_init();
-    //if (FALSE == _cms_init())
-    //    return FALSE;
 
-    if (_initTbl) {
+    {
         _PL pl;
 
         pl.data  = (gchar*)S52raz;
@@ -2692,19 +2348,18 @@ int         S52_PL_init()
         pl.cnt   = 0;
         _loadPL(&pl);
 
-        /* experiment to load extra
-        pl.data  = (gchar*)S52AuxSymb;
-        pl.sz    = strlen(S52AuxSymb);
+        /* experiment to load extra symb hard coded (see _S52AuxSymb above)
+        pl.data  = (gchar*)_S52AuxSymb;
+        pl.sz    = strlen(_S52AuxSymb);
 
         pl.cnt   = 0;
         _loadPL(&pl);
         */
-
-        _initTbl = FALSE;
     }
 
     _loadCondSymb();
 
+    //_objList = g_ptr_array_new();
 
     return TRUE;
 }
@@ -2822,6 +2477,11 @@ int         S52_PL_done()
     }
 
     _cms_done();
+
+    //g_ptr_array_free(_objList, TRUE);
+    //_objList = NULL;
+
+    _initPLib = TRUE;
 
     return TRUE;
 }
@@ -2975,12 +2635,6 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
 {
     return_if_null(geoData);
 
-    if (_initTbl) {
-        PRINTF("ERROR: PL not loaded  .. do S52_PL_init() first\n");
-        g_assert(0);
-        return NULL;
-    }
-
     S52_obj *obj  = g_new0(S52_obj, 1);
     //S52_obj *obj  = g_try_new0(S52_obj, 1);
     if (NULL == obj)
@@ -3009,18 +2663,20 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     // obj->_LUP will reference the alternate LUP
     // but the field have the same value (theoriticaly)
     _linkLUP(obj, 1);   // alternate symbology
-    // FIX: parse alternate first so that normal LUP reference stay
-    // the default
+    // FIX: parse alternate first so that normal LUP reference stay the default
     _linkLUP(obj, 0);
 
 
     obj->nextLeg = NULL; // this is the default anyway (ie g_new0)
     obj->prevLeg = NULL; // this is the default anyway (ie g_new0)
 
+    // FIXME: can't insert if past array->len !
+    // FIXME: GLib >= 2.40
+    //g_ptr_array_insert(_objList, S57_getGeoID(geoData), obj);
+
     return obj;
 }
 
-//S52_obj    *S52_PL_delDta(_S52_obj *obj)
 S57_geo    *S52_PL_delObj(_S52_obj *obj)
 // free data in S52 obj
 // return S57 obj geoData
@@ -3080,6 +2736,18 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj)
     obj->cmdAfinal[1] = NULL;
     obj->crntA        = NULL;
     obj->crntAidx     = 0;
+
+    /*
+    S52_obj *objFree = (S52_obj *)g_ptr_array_index(_objList, S57_getGeoID(obj->geoData));
+    if (objFree != obj) {
+        PRINTF("ERROR: S52_obj obj/objFree mismatch\n");
+        g_assert(0);
+    } else {
+        // nullify array at index
+        gpointer *objPos = (gpointer *) &g_ptr_array_index(_objList, S57_getGeoID(obj->geoData));
+        objPos = NULL;
+    }
+    */
 
     S57_geo *geo = obj->geoData;
     g_free(obj);
@@ -3458,6 +3126,7 @@ int         S52_PL_setSYspeed(_S52_obj *obj, double speed)
 int         S52_PL_getSYspeed(_S52_obj *obj, double *speed)
 {
     return_if_null(obj);
+    return_if_null(speed);
 
     if (TRUE == isinf(obj->speed)) {
         // FIXME: try to get the speed from att !!
@@ -3470,26 +3139,6 @@ int         S52_PL_getSYspeed(_S52_obj *obj, double *speed)
 
     return TRUE;
 }
-
-#if 0
-int         S52_PL_setLCdata(_S52_cmdDef *def, char pen_w)
-{
-    return_if_null(def);
-
-    /* FIXME: why does it fail here but not in S52_PL_getLCdata()
-    if (pen_w < '1' || '9' < pen_w) {
-        PRINTF("WARNING: out of bound pen width for LC (%c)\n", pen_w);
-        g_assert(0);
-
-        return FALSE;
-    }
-    */
-
-    //def->LC_pen_w = pen_w;
-
-    return TRUE;
-}
-#endif
 
 int         S52_PL_getLCdata(_S52_obj *obj, double *symlen, char *pen_w)
 // compute symbol run lenght in pixel
@@ -3675,20 +3324,6 @@ gint        S52_PL_traverse(S52_SMBtblName tableNm, GTraverseFunc callBack)
 
     return FALSE;
 }
-
-#if 0
-gint        S52_PL_getTableSz(S52_SMBtblName tableNm)
-// return number of entree in a symbology table
-{
-    gint nnodes = 0;
-    GTree *tbl = _selSMB(tableNm);
-
-    if (NULL != tbl)
-        nnodes =  g_tree_nnodes(tbl);
-
-    return nnodes;
-}
-#endif
 
 S52_DList  *S52_PL_newDListData(_S52_obj *obj)
 // _renderAC_LIGHTS05() has no cmd->cmd.def / DList
@@ -3891,14 +3526,16 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
 
         // parse second char
         switch (c2) {
-            // Select Width
+
+            /* Select Width
             case S52_VC_SW:
-                vecObj->pen_w_vo = *vecObj->str++;
+                //vecObj->pen_w_vo = *vecObj->str++;
 
                 // debug
-                //g_assert(0);
+                g_assert(0);
 
                 return S52_VC_SW;
+            */
 
             // Pen Up /  Pen Down
             case S52_VC_PU:
@@ -3945,6 +3582,7 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
 
             case S52_VC_SC: // Symbol Call --not used in PLib
             case S52_VC_AA: // Arc Angle   --not used in PLib
+            case S52_VC_SW: // Select Width        --should not happen now
             case S52_VC_ST: // Select Transparency --should not happen now
             default:
                 PRINTF("ERROR: second vector command unknown (%c)\n", c2);
@@ -4057,12 +3695,6 @@ S57_prim   *S52_PL_getVOprim(_S52_vec *vecObj)
 {
     return_if_null(vecObj);
     return vecObj->prim;
-}
-
-char        S52_PL_getVOwidth(_S52_vec *vecObj)
-{
-    return_if_null(vecObj);
-    return vecObj->pen_w_vo;
 }
 
 double      S52_PL_getVOradius(_S52_vec *vecObj)
@@ -4364,8 +3996,8 @@ const char *S52_PL_hasCS(_S52_obj *obj)
 
 static
 S52_objSupp       _toggleObjType(_LUP *LUP)
-// toggle an S57 object type, return state
-// rules on BASE can't be soppressed
+// toggle an S57 Class, return state
+// rules on BASE can't be suppressed
 {
     if (DISPLAYBASE == _getDISC(LUP))
         return S52_SUPP_ERR;
@@ -4385,16 +4017,16 @@ static
 S52_objSupp       _toggleLUPlist(_LUP *LUPlist)
 // toggle all rules that are not in BASE
 {
-    S52_objSupp sup = S52_SUPP_ERR;
+    S52_objSupp supp = S52_SUPP_ERR;
 
     while (NULL != LUPlist) {
         S52_objSupp ret = _toggleObjType(LUPlist);
         if (S52_SUPP_ERR != ret)
-            sup = ret;
+            supp = ret;
         LUPlist = LUPlist->OBCLnext;
     }
 
-    return sup;
+    return supp;
 }
 
 S52_objSupp S52_PL_toggleObjClass(const char *className)
@@ -4415,11 +4047,11 @@ S52_objSupp S52_PL_toggleObjClass(const char *className)
 S52_objSupp S52_PL_getObjClassState(const char *className)
 // get S57 object class supp state (other then DISPLAYBASE)
 {
-    S52_objSupp sup = S52_SUPP_ERR;
-    _LUP  *LUPlist = NULL;
+    //S52_objSupp supp = S52_SUPP_ERR;
+    //_LUP  *LUPlist = NULL;
 
     for (int tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
-        LUPlist = (_LUP*)g_tree_lookup(_table[tblType], (gpointer*)className);
+        _LUP *LUPlist = (_LUP*)g_tree_lookup(_table[tblType], (gpointer*)className);
         while (NULL != LUPlist) {
             if ('D' != LUPlist->DISC)
                 return LUPlist->supp;
@@ -4427,7 +4059,7 @@ S52_objSupp S52_PL_getObjClassState(const char *className)
         }
     }
 
-    return sup;
+    return S52_SUPP_ERR;
 }
 
 S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
@@ -4746,6 +4378,42 @@ char        S52_PL_getLOD(_S52_obj *obj)
     return obj->LOD;
 }
 #endif
+
+gboolean    S52_PL_setSupp(_S52_obj *obj, gboolean supp)
+// set display suppression of THIS S52 obj
+{
+    return_if_null(obj);
+
+    obj->supp = supp;
+
+    return obj->supp;
+}
+
+gboolean    S52_PL_getSupp(_S52_obj *obj)
+{
+    return_if_null(obj);
+
+    return obj->supp;
+}
+
+int         S52_PL_cpyAux(S52_obj *objOld, S52_obj *objNew)
+// copy Auxiliary Info
+{
+    objNew->orient  = objOld->orient;
+    objNew->speed   = objOld->speed;
+    objNew->time    = objOld->time;
+    objNew->supp    = objOld->supp;
+
+    // LEGLIN
+    objNew->nextLeg = objOld->nextLeg;
+    objNew->prevLeg = objOld->prevLeg;
+
+    // WHeel-Over-LINe
+    objNew->wholin  = objOld->wholin;
+
+    return TRUE;
+}
+
 
 // test broken !?
 #ifdef S52_TEST
