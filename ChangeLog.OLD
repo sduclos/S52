@@ -4,6 +4,17 @@
 #
 
 
+2014DEV20
+    -add S52_PL_cpyAux() to copy S52_obj Aux Info
+    -mod move supp field in S57_geo to S52_obj Aux Info
+    -mod move get/set supp from S57data to S52PL
+
+2014DEC19
+    -mod optimisation, cull obj at drawLast()
+    -mod setViewPort in test/s52glx.c
+    -del pen_w in _S52_vec / _S52_cmdDef
+    -del S52_PL_getVOwidth() / S52_PL_setLCdata()
+
 2014DEC18
     -fix unlock mutex in S52_newCLRLIN()
     -fix VP in GL1 code path
