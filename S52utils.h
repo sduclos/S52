@@ -35,20 +35,6 @@
 #include <stdio.h>        // FILE
 #endif
 
-/* GCC 5.0
-#define _g_ptr_array_add(x,y)                              \
-if (FALSE == __builtin_add_overflow(x->len, 1, &(x->len))) \
-g_assert(0); \
-else         \
-g_ptr_array_add(x,y);
-
-#define _g_ptr_array_add(x,y) \
-if (G_MAXUINT == (x->len+1))  \
-    g_assert(0);              \
-else                          \
-    g_ptr_array_add(x,y);
-*/
-
 #ifdef SOLARIS
     // well should be cc
 #define PRINTF printf(__FILE__":%i: : ", __LINE__),printf
@@ -98,8 +84,8 @@ typedef char    valueBuf[MAXL];
 
 int      S52_getConfig(const char *label, valueBuf *vbuf);
 
-double   S52_atof   (const char *str);
 int      S52_atoi   (const char *str);
+double   S52_atof   (const char *str);
 size_t   S52_strlen (const char *str);
 char    *S52_strstr (const char *haystack, const char *needle);
 gint     S52_strncmp(const char *s1, const char *s2, gsize n);
@@ -120,6 +106,8 @@ int      S52_doneLog(void);
 //
 // Other trick that could be usefull
 //
+
+
 
 // quiet compiler warning on unused param
 #define UNUSED(expr) do { (void)(expr); } while (0)
