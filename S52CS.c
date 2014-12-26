@@ -100,18 +100,14 @@ localObj *S52_CS_done(_localObj *local)
     return_if_null(local);
 
     g_ptr_array_free(local->lights_list, TRUE);
-    //g_ptr_array_unref(local->lights_list);
 
     g_ptr_array_free(local->topmar_list, TRUE);
-    //g_ptr_array_unref(local->topmar_list);
 
     //g_ptr_array_free(local->rigid_list, TRUE);
     g_ptr_array_free(local->depare_list, TRUE);
-    //g_ptr_array_unref(local->depare_list);
 
     //g_ptr_array_free(local->obstrn_list, TRUE);
     g_ptr_array_free(local->depval_list, TRUE);
-    //g_ptr_array_unref(local->depval_list);
 
     g_free(local);
 
@@ -158,7 +154,7 @@ int       S52_CS_add(_localObj *local, S57_geo *geo)
        )
     {
         // FIXME: could object be something else then AREAS_T!
-        if (AREAS_T == S57_getObjtype(geo))
+        if (S57_AREAS_T == S57_getObjtype(geo))
             g_ptr_array_add(local->depare_list, (gpointer) geo);
         //else
         //    PRINTF("NOTE: depare_list: %s not of type AREAS_T\n", name);
@@ -175,7 +171,7 @@ int       S52_CS_add(_localObj *local, S57_geo *geo)
        )
     {
         // FIXME: could object be something else then AREAS_T!
-        if (AREAS_T == S57_getObjtype(geo))
+        if (S57_AREAS_T == S57_getObjtype(geo))
             g_ptr_array_add(local->depval_list, (gpointer) geo);
         //else
         //    PRINTF("NOTE: depval_list: %s not of type AREAS_T\n", name);
@@ -352,7 +348,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
     //
     if ((0==g_strcmp0(name, "DEPCNT")) ||
         (0==g_strcmp0(name, "DEPARE") &&
-         LINES_T==S57_getObjtype(geo))
+         S57_LINES_T==S57_getObjtype(geo))
        )
     {
         GString  *lnam     = S57_getAttVal(geo, "LNAM");
@@ -525,7 +521,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
                 continue;
 
             // BUG: S57_touch() work only for point in poly not point in line
-            if (LINES_T == S57_getObjtype(candidate))
+            if (S57_LINES_T == S57_getObjtype(candidate))
                 continue;
 
             // find if geo 'touch' this DEPARE geo (other)
@@ -968,7 +964,7 @@ static GString *DEPCNT02 (S57_geo *geo)
     S57_resetScamin(geo);
 
     // DEPARE (line)
-    if (DEPARE==objl && LINES_T==S57_getObjtype(geo)) {
+    if (DEPARE==objl && S57_LINES_T==S57_getObjtype(geo)) {
         GString *drval1str = S57_getAttVal(geo, "DRVAL1");
         // NOTE: if drval1 not given then set it to 0.0 (ie. LOW WATER LINE as FAIL-SAFE)
         double   drval1    = (NULL == drval1str) ? 0.0    : S52_atof(drval1str->str);
@@ -1894,7 +1890,7 @@ static GString *OBSTRN04 (S57_geo *geo)
         depth_value = valsou;
         sndfrm02str = _SNDFRM02(geo, depth_value);
     } else {
-        if (AREAS_T == S57_getObjtype(geo))
+        if (S57_AREAS_T == S57_getObjtype(geo))
             least_depth = _DEPVAL01(geo, least_depth);
 
         if (UNKNOWN != least_depth) {
@@ -1923,7 +1919,7 @@ static GString *OBSTRN04 (S57_geo *geo)
 
     udwhaz03str = _UDWHAZ03(geo, depth_value);
 
-    if (POINT_T == S57_getObjtype(geo)) {
+    if (S57_POINT_T == S57_getObjtype(geo)) {
         // Continuation A
         int      sounding    = FALSE;
         GString *quapnt01str = _QUAPNT01(geo);
@@ -2039,7 +2035,7 @@ static GString *OBSTRN04 (S57_geo *geo)
         return obstrn04str;
 
     } else {
-        if (LINES_T == S57_getObjtype(geo)) {
+        if (S57_LINES_T == S57_getObjtype(geo)) {
             // Continuation B
             GString *quaposstr = S57_getAttVal(geo, "QUAPOS");
             int      quapos    = 0;
@@ -2326,7 +2322,7 @@ static GString *QUAPOS01 (S57_geo *geo)
 {
     GString *quapos01 = NULL;
 
-    if (LINES_T == S57_getObjtype(geo))
+    if (S57_LINES_T == S57_getObjtype(geo))
         quapos01 = _QUALIN01(geo);
     else
         quapos01 = _QUAPNT01(geo);
@@ -2421,7 +2417,7 @@ static GString *SLCONS03 (S57_geo *geo)
     GString *quaposstr = S57_getAttVal(geo, "QUAPOS");
     int      quapos    = (NULL == quaposstr)? 0 : S52_atoi(quaposstr->str);
 
-    if (POINT_T == S57_getObjtype(geo)) {
+    if (S57_POINT_T == S57_getObjtype(geo)) {
         if (NULL != quaposstr) {
             if (2 <= quapos && quapos < 10)
                 cmdw =";SY(LOWACC01)";
@@ -2462,7 +2458,7 @@ static GString *SLCONS03 (S57_geo *geo)
     // WARNING: not explicitly specified in S-52 !!
     // FIXME: this is to put AC(DEPIT) --intertidal area
 
-    if (AREAS_T == S57_getObjtype(geo)) {
+    if (S57_AREAS_T == S57_getObjtype(geo)) {
         GString    *seabed01  = NULL;
         GString    *drval1str = S57_getAttVal(geo, "DRVAL1");
         double      drval1    = (NULL == drval1str)? -UNKNOWN : S52_atof(drval1str->str);
@@ -2822,7 +2818,7 @@ static GString *SOUNDG02 (S57_geo *geo)
     guint   npt = 0;
     double *ppt = NULL;
 
-    if (POINT_T != S57_getObjtype(geo)) {
+    if (S57_POINT_T != S57_getObjtype(geo)) {
         PRINTF("invalid object type (not POINT_T)\n");
         g_assert(0);
         return NULL;
@@ -3152,7 +3148,7 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
         //S57_ogrTouche(geoTmp, N_OBJ_T);
         //while (NULL != (geoTmp = S57_nextObj(geoTmp))) {
 
-            if (LINES_T == S57_getObjtype(geoTmp)) {
+            if (S57_LINES_T == S57_getObjtype(geoTmp)) {
                 GString *drval2str = S57_getAttVal(geoTmp, "DRVAL2");
                 //double   drval2    = (NULL == drval2str) ? 0.0 : S52_atof(drval2str->str);
                 double   drval2    = (NULL == drval2str) ? UNKNOWN : S52_atof(drval2str->str);
@@ -3414,7 +3410,7 @@ static GString *WRECKS02 (S57_geo *geo)
         depth_value = valsou;
         sndfrm02str = _SNDFRM02(geo, depth_value);
     } else {
-        if (AREAS_T == S57_getObjtype(geo))
+        if (S57_AREAS_T == S57_getObjtype(geo))
             least_depth = _DEPVAL01(geo, least_depth);
 
         if (least_depth == UNKNOWN) {
@@ -3467,7 +3463,7 @@ static GString *WRECKS02 (S57_geo *geo)
     udwhaz03str = _UDWHAZ03(geo, depth_value);
     quapnt01str = _QUAPNT01(geo);
 
-    if (POINT_T == S57_getObjtype(geo)) {
+    if (S57_POINT_T == S57_getObjtype(geo)) {
         if (NULL != udwhaz03str) {
             wrecks02str = g_string_new(udwhaz03str->str);
 
@@ -3670,9 +3666,9 @@ static GString *QUESMRK1 (S57_geo *geo)
     //S52_Obj_t  ot  = S57_getObjtype(geo);
 
     switch (ot) {
-        case POINT_T: err = g_string_new(";SY(QUESMRK1)"); break;
-        case LINES_T: err = g_string_new(";LC(QUESMRK1)"); break;
-        case AREAS_T: err = g_string_new(";AP(QUESMRK1)"); break;
+        case S57_POINT_T: err = g_string_new(";SY(QUESMRK1)"); break;
+        case S57_LINES_T: err = g_string_new(";LC(QUESMRK1)"); break;
+        case S57_AREAS_T: err = g_string_new(";AP(QUESMRK1)"); break;
         default:
             PRINTF("WARNING: unknown S57 object type for CS(QUESMRK1)\n");
     }
