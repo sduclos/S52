@@ -508,7 +508,6 @@ static GLint     _freeGLU(void)
 {
     //tess
     if (_tmpV) g_ptr_array_free(_tmpV, TRUE);
-    //if (tmpV) g_ptr_array_unref(tmpV);
     if (_tobj) gluDeleteTess(_tobj);
 
 #ifdef S52_USE_OPENGL_VBO
