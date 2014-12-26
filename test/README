@@ -7,6 +7,16 @@ The idea is to put here everything that is not handled as
 part of the core S52.
 
 
+TODO:
+
+    - refactor into:
+        - separate in its own file all the setMarPar (or TOML)
+        - merge gtk2 & gtk3 (mouse & kb handling)
+        - handle EGL 
+        - init/set/load S52 stuff form TOML
+        - populate ./ref_dump/: reference .PNG to check for regression (use IHO S-64)
+
+
 TIP:
 
     - xmap: X11 magnify parts of the screen
@@ -38,7 +48,7 @@ Makefile Target:
 - s52ais
   gpsd cleint to feed AIS to s52eglx and s52droid
 
-- sl4agps (s52ui will replace this eventually)
+- sl4agps
   feed android's GPS/GYRO to s52droid
   also some libS52.so test via Android UI
 
