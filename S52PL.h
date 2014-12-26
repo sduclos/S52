@@ -25,7 +25,7 @@
 #ifndef _S52PL_H_
 #define _S52PL_H_
 
-#include "S57data.h"     // S57_geo, S52_Obj_t
+#include "S57data.h"     // S57_geo, S57_Obj_t
 #include <glib.h>        // GString, GData, GArray
 
 #define S52_PL_NMLN   6  // lookup name lenght
@@ -104,7 +104,7 @@ typedef enum S52_CmdWrd {
 typedef struct S52_Color {
     //--- not S52 field --------
     // FIXME: index of a GArray - pointer arithmetic - so guchar must be conveted gpointer!
-    // #define 	g_array_index(a, t, i)   (((t*) (a)->data) [(i)])
+    // #define g_ptr_array_index(array,index_) ((array)->pdata)[index_]
     // so i * sizeof(S52_Color)
     guchar   cidx;      // index of this color in palette [0..63], used as lookup when palette change
     char     pen_w;     // using VBO's we need to know this, Display List store this but not VBO
@@ -178,7 +178,7 @@ S52_Color     *S52_PL_getColor(const char *colorName);
 
 // get a rasterising rules for this S57 object
 S52_obj       *S52_PL_newObj(S57_geo *geoData);
-S57_geo       *S52_PL_delObj(S52_obj *obj);
+S57_geo       *S52_PL_delObj(S52_obj *obj, gboolean updateObjL);
 // get the geo part (S57) of this S52 object
 S57_geo       *S52_PL_getGeo(S52_obj *obj);
 S57_geo       *S52_PL_setGeo(S52_obj *obj, S57_geo *geoData);
@@ -329,6 +329,10 @@ gboolean       S52_PL_getSupp(S52_obj *obj);
 
 
 // copy Auxiliary Info
-int            S52_PL_cpyAux(S52_obj *objOld, S52_obj *objNew);
+gboolean       S52_PL_cpyAux(S52_obj *objOld, S52_obj *objNew);
+
+//gboolean       S52_PL_isObjValid(S52_obj *obj);
+//gboolean       S52_PL_isObjValid(unsigned int objH);
+S52_obj       *S52_PL_isObjValid(unsigned int objH);
 
 #endif // _S52PL_H_

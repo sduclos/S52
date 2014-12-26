@@ -282,10 +282,7 @@ typedef struct _S52_obj {
 
     gint         textParsed[2]; // TRUE if parsed, need two flag because there is text for
                                 // two type of point and area
-
-    S57_geo     *geoData;       // S-57
-
-    // override by CS
+    // CS override
     int          prioOveride;   // CS overide display priority
     S52_disPrio  DPRI;          // Display Priority
     S52_RadPrio  RPRI;          // 'O' or 'S', Radar Priority
@@ -293,7 +290,11 @@ typedef struct _S52_obj {
     int          LUCM;          // Look-Up Comment (PLib3.x put 'groupes' here,
                                 // hense 'int', but its a string in the specs)
 
+    S57_geo     *geoData;       // S-57
+
     // --- Auxiliary Info --------------------------------
+    // FIXME: make that a struct
+
     //char       LOD;           // optimisation: chart purpose: cell->filename->str[2]
 
     gdouble      orient;        // LIGHT angle (after parsing), heading of 'ownshp'
@@ -397,7 +398,7 @@ static cmsHTRANSFORM _2RGB = NULL;
 static int           _lcmsError = FALSE;   // TRUE an error occur in lcms
 
 // optimisation: indexed
-//static GPtrArray    *_objList = NULL;
+static GPtrArray    *_objList = NULL;
 
 //------------------------
 //
@@ -1486,7 +1487,6 @@ static int        _flushColors()
         for (guint i=0; i<_colTables->len; ++i) {
             _colTable *ct = &g_array_index(_colTables, _colTable, i);
             if (NULL != ct->colors)    g_array_free(ct->colors, TRUE);
-            //if (NULL != ct->colors)    g_array_unref(ct->colors);
             if (NULL != ct->tableName) g_string_free(ct->tableName, TRUE);
             ct->colors    = NULL;
             ct->tableName = NULL;
@@ -2359,7 +2359,7 @@ int         S52_PL_init()
 
     _loadCondSymb();
 
-    //_objList = g_ptr_array_new();
+    _objList = g_ptr_array_new();
 
     return TRUE;
 }
@@ -2417,7 +2417,6 @@ int         S52_PL_done()
     _flushColors();
 
     if (NULL != _colTables) g_array_free(_colTables, TRUE);
-    //if (NULL != _colTables) g_array_unref(_colTables);
     _colTables = NULL;
 
     if (NULL != _colref) g_tree_destroy(_colref);
@@ -2478,8 +2477,8 @@ int         S52_PL_done()
 
     _cms_done();
 
-    //g_ptr_array_free(_objList, TRUE);
-    //_objList = NULL;
+    g_ptr_array_free(_objList, TRUE);
+    _objList = NULL;
 
     _initPLib = TRUE;
 
@@ -2562,10 +2561,10 @@ static int        _linkLUP(_S52_obj *obj, int alt)
 
     // find proper LUP table for this type of S57 object
     switch (S57_getObjtype(obj->geoData)) {
-        case POINT_T: tblNm = (0==alt) ? _LUP_SIMPL : _LUP_PAPER; break;
-        case LINES_T: tblNm = _LUP_LINES;                         break;
-        case AREAS_T: tblNm = (0==alt) ? _LUP_SYMBO : _LUP_PLAIN; break;
-        case _META_T: tblNm = _LUP_NONAM;                         break;
+        case S57_POINT_T: tblNm = (0==alt) ? _LUP_SIMPL : _LUP_PAPER; break;
+        case S57_LINES_T: tblNm = _LUP_LINES;                         break;
+        case S57_AREAS_T: tblNm = (0==alt) ? _LUP_SYMBO : _LUP_PLAIN; break;
+        case S57__META_T: tblNm = _LUP_NONAM;                         break;
         default     : PRINTF("ERROR: unkown geometry!\n");
                       g_assert(0);
                       return FALSE;
@@ -2651,7 +2650,7 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     obj->orient     = (1.0/0.0);   // NaN
     obj->speed      = (1.0/0.0);   // NaN
 
-    obj->geoData    = geoData;
+    obj->geoData    = geoData;     // S57_geo
 
 
     // -- *TRICKY* -- *TRICKY* -- *TRICKY* --
@@ -2670,16 +2669,28 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     obj->nextLeg = NULL; // this is the default anyway (ie g_new0)
     obj->prevLeg = NULL; // this is the default anyway (ie g_new0)
 
-    // FIXME: can't insert if past array->len !
-    // FIXME: GLib >= 2.40
-    //g_ptr_array_insert(_objList, S57_getGeoID(geoData), obj);
+    // check len and set size if too small
+    guint idx = S57_getGeoID(geoData);
+    if (idx >= _objList->len) {
+        PRINTF("DEBUG: extending _objList to %u\n", _objList->len+1024);
+        // GLib BUG: take gint for length instead of guint - an oversight say Philip Withnall
+        // https://mail.gnome.org/archives/gtk-devel-list/2014-December/thread.html
+        // use g_array if in need of > 2^31 objects
+        // tested with -1 (GUINTMAX) and glib barf saying can't alloc 2^35 something bytes
+        g_ptr_array_set_size(_objList, _objList->len+1024);
+    }
+
+    g_ptr_array_index(_objList, idx) = obj;
 
     return obj;
 }
 
-S57_geo    *S52_PL_delObj(_S52_obj *obj)
+S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
 // free data in S52 obj
 // return S57 obj geoData
+// Note: when new PLib loaded, raz rules change hence S52_obj change definition.
+// But not S57 obj. So S57 id stay the same and so is the index. So no NULL because
+// the new obj was just put into the list.
 {
     return_if_null(obj);
 
@@ -2730,24 +2741,21 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj)
 
     if (obj->cmdAfinal[0]) g_array_free(obj->cmdAfinal[0], TRUE);
     if (obj->cmdAfinal[1]) g_array_free(obj->cmdAfinal[1], TRUE);
-    //if (obj->cmdAfinal[0]) g_array_unref(obj->cmdAfinal[0]);
-    //if (obj->cmdAfinal[1]) g_array_unref(obj->cmdAfinal[1]);
     obj->cmdAfinal[0] = NULL;
     obj->cmdAfinal[1] = NULL;
     obj->crntA        = NULL;
     obj->crntAidx     = 0;
 
-    /*
     S52_obj *objFree = (S52_obj *)g_ptr_array_index(_objList, S57_getGeoID(obj->geoData));
-    if (objFree != obj) {
-        PRINTF("ERROR: S52_obj obj/objFree mismatch\n");
+    if (NULL == objFree) {
+        PRINTF("DEBUG: should not be NULL (%u)\n", S57_getGeoID(obj->geoData));
         g_assert(0);
-    } else {
-        // nullify array at index
-        gpointer *objPos = (gpointer *) &g_ptr_array_index(_objList, S57_getGeoID(obj->geoData));
-        objPos = NULL;
     }
-    */
+
+    if (TRUE == updateObjL) {
+        // nullify obj in array at index
+        g_ptr_array_index(_objList, S57_getGeoID(obj->geoData)) = NULL;
+    }
 
     S57_geo *geo = obj->geoData;
     g_free(obj);
@@ -2791,7 +2799,7 @@ S57_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
     return_if_null(obj);
 
     if (NULL == obj->LUP)
-        return _META_T;    // special case --noting to display
+        return S57__META_T;    // special case --noting to display
     else
         return obj->LUP->FTYP;
 }
@@ -2881,11 +2889,11 @@ static int        _getAlt(_S52_obj *obj)
     int alt = 0;
 
     // use alternate point symbol
-    if ((POINT_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
+    if ((S57_POINT_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
         alt = 1;
 
     // use alternate area symbol
-    if ((AREAS_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
+    if ((S57_AREAS_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
         alt = 1;
 
     return alt;
@@ -4396,9 +4404,12 @@ gboolean    S52_PL_getSupp(_S52_obj *obj)
     return obj->supp;
 }
 
-int         S52_PL_cpyAux(S52_obj *objOld, S52_obj *objNew)
+gboolean    S52_PL_cpyAux(_S52_obj *objOld, _S52_obj *objNew)
 // copy Auxiliary Info
 {
+    return_if_null(objOld);
+    return_if_null(objNew);
+
     objNew->orient  = objOld->orient;
     objNew->speed   = objOld->speed;
     objNew->time    = objOld->time;
@@ -4413,6 +4424,28 @@ int         S52_PL_cpyAux(S52_obj *objOld, S52_obj *objNew)
 
     return TRUE;
 }
+
+S52_obj    *S52_PL_isObjValid(unsigned int objH)
+{
+    S52_obj *obj = (S52_obj *)g_ptr_array_index(_objList, objH);
+    if (NULL == obj) {
+        PRINTF("WARNING: obj NULL\n");
+        //g_assert(0);
+        return NULL;
+    }
+
+    if (objH != S57_getGeoID(obj->geoData)) {
+        PRINTF("WARNING: idx obj mismatch obj geoID \n");
+
+        g_assert(0);
+
+        return NULL;
+    }
+
+    return obj;
+
+}
+
 
 
 // test broken !?
