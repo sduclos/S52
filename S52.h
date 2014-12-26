@@ -762,7 +762,8 @@ DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, u
  * Type used for storing references to S52 objects, the S52ObjectHandle
  * is a fully opaque type without any public data members.
  */
-typedef void* S52ObjectHandle;
+//typedef void* S52ObjectHandle;
+typedef unsigned int S52ObjectHandle;
 
 // ---- Basic Call (all other S52_new*() call are a specialisation of this one) ----
 
@@ -770,8 +771,8 @@ typedef void* S52ObjectHandle;
  * S52_newMarObj:
  * @plibObjName: (in) (type gchar*):
  * @objType:     (in): S52ObjectType
- * @xyznbrmax:   (in): maximum number of xyz (point)(see S52_pushPosition())
- * @xyz:         (in) (type gpointer) (allow-none):
+ * @xyznbrmax:   (in): maximum number of xyz (point)(see S52_pushPosition()) (one or more)
+ * @xyz:         (in) (type gpointer):
  * @listAttVal:  (in) (type gchar*): format:  "att1:val1,att2:val2,..."
  *                                        OR "[att1,val1,att2,al2,...]" (JSON array)
  *
@@ -782,12 +783,12 @@ typedef void* S52ObjectHandle;
  *
  * In 'listAttVal', in S52 attribute name (ex: att1) of 6 lower case letters are reserve
  * for Mariners' Object. Lower case attribute name starting with an unserscore ('_')
- * are reserve for internal libS52 needs.
+ * are reserve for internal libS52 use.
  *
  * Note: call will fail if no ENC loaded (via S52_loadCell)
  *
  *
- * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the new S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
                                       unsigned int xyznbrmax, double *xyz, const char *listAttVal);
@@ -799,7 +800,7 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
  * Delete ressources in libS52 for this S52_obj.
  *
  *
- * Return: (transfer none): NULL if S52_obj was deleted successfully, if call fail return the handle
+ * Return: NULL if S52_obj was deleted successfully, if call fail return @S52ObjectHandle
  */
 DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
 
@@ -811,7 +812,7 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
  * (return via S52_pickAt())
  *
  *
- * Return: (transfer none): @S52ObjectHandle or NULL if call fail
+ * Return: @S52ObjectHandle of the adressed S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_getMarObj(unsigned int S57ID);
 
@@ -823,7 +824,7 @@ DLL S52ObjectHandle STD S52_getMarObj(unsigned int S57ID);
  * FIXME: maybe add toggleDispMarObj ON / OFF for clarity as toggleObjClass..
  *
  *
- * Return: (transfer none): the S52_obj handle or NULL if call fail
+ * Return: @S52ObjectHandle of the adressed S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle objH);
 
@@ -848,7 +849,7 @@ DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle objH);
  * 'clrlin': CS(CLRLIN--)
  *
  *
- * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the new S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBegin, double latEnd, double lonEnd);
 
@@ -867,7 +868,7 @@ DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBeg
  * 'leglin': CS(LEGLIN--)
  *
  *
- * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the new S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDist,
                                       double latBegin, double lonBegin, double latEnd, double lonEnd,
@@ -884,7 +885,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
  * Note: text priority of @label is 75
  *
  *
- * Return: (transfer none): an handle to S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the new S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
 
@@ -902,7 +903,7 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
  * conning position - for AIS this is the antenna position
  *
  *
- * Return: (transfer none): the handle to S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the adressed S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double b, double c, double d);
 
@@ -916,19 +917,19 @@ DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double 
  * Note: @vecstb apply to VESSEL only, use S52_MAR_VECSTB for OWNSHP
  *
  *
- * Return: (transfer none): the handle to S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the adressed S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_setVector   (S52ObjectHandle objH, int vecstb, double course, double speed);
 
 /**
  * S52_newPASTRK:
  * @catpst:    (in): Category of past track: 0 - undefined, 1 - primary, 2 - secondary
- * @xyznbrmax: (in): maximum number of PASTRK positon (point)
+ * @xyznbrmax: (in): maximum number of PASTRK positon (point) (one or more)
  *
  * 'pastrk': CS(PASTRK--)
  *
  *
- * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the new S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int xyznbrmax);
 
@@ -949,7 +950,7 @@ DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int xyznbrmax);
  * Note: call will fail if no ENC loaded (via S52_loadCell)
  *
  *
- * Return: (transfer none): the handle to S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the adressed S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, double longitude, double data);
 
@@ -962,7 +963,7 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
  * Note: text priority of @label is 76
  *
  *
- * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the new S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
 
@@ -975,7 +976,7 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
  * Note: text priority of @newLabel is 76
  *
  *
- * Return: (transfer none): the handle to S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the adressed S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel);
 
@@ -998,7 +999,7 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
  * Note: experimental @vestat = 3, compile with S52_USE_SYM_VESSEL_DNGHL, symb in PLAUX_00
  *
  *
- * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the adressed S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelect, int vestat, int vesselTurn);
 
@@ -1025,7 +1026,7 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
  * Note: if @ebl is TRUE then an "ebline" is created else "vrmark"
  *
  *
- * Return: (transfer none): an handle to a new S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the new S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int setOrigin);
 
@@ -1043,7 +1044,7 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
  * Note: call will fail if no ENC loaded (via S52_loadCell)
  *
  *
- * Return: (transfer none): the handle to S52_obj or NULL if call fail
+ * Return: @S52ObjectHandle of the adressed S52_obj or FALSE if call fail
  */
 DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, double pixels_y, double *brg, double *rge);
 
