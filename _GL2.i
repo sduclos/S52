@@ -1333,6 +1333,22 @@ static int       is_power_of_two(guint v)
 
     return (v & (v-1)) == 0;
 }
+
+// lifted from glib garray.c
+/* Returns the smallest power of 2 greater than n, or n if
+ * such power does not fit in a guint
+ */
+static guint g_nearest_pow (gint num)
+{
+  guint n = 1;
+
+  while (n<num && n>0)
+    n <<= 1;
+
+  return n ? n : num;
+}
+
+
 #endif
 
 static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, double stagOffsetPix)
