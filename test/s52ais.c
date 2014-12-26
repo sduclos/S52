@@ -615,15 +615,20 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         if (OWNSHIP == mmsi) {
             gchar *resp = _encodeNsend("S52_newOWNSHP", "\"%s\"", newais.name);
             if (NULL != resp) {
-                sscanf(resp, "[ %lu", (long unsigned int *) &newais.vesselH);
+                //sscanf(resp, "[ %lu", (long unsigned int *) &newais.vesselH);
+                sscanf(resp, "[ %u", newais.vesselH);
             }
-            g_print("s52ais:_getAIS(): new ownshpH:%lu\n", (long unsigned int) newais.vesselH);
+            //g_print("s52ais:_getAIS(): new ownshpH:%lu\n", (long unsigned int) newais.vesselH);
+            g_print("s52ais:_getAIS(): new ownshpH:%u\n", newais.vesselH);
+
         } else {
             gchar *resp = _encodeNsend("S52_newVESSEL", "%i,\"%s\"", 2, newais.name);
             if (NULL != resp) {
-                sscanf(resp, "[ %lu", (long unsigned int *) &newais.vesselH);
+                //sscanf(resp, "[ %lu", (long unsigned int *) &newais.vesselH);
+                sscanf(resp, "[ %u", newais.vesselH);
             }
-            g_print("s52ais:_getAIS(): new vesselH:%lu\n", (long unsigned int) newais.vesselH);
+            //g_print("s52ais:_getAIS(): new vesselH:%lu\n", (long unsigned int) newais.vesselH);
+            g_print("s52ais:_getAIS(): new vesselH:%u\n", newais.vesselH);
         }
 
 #else   // S52_USE_SOCK
@@ -641,7 +646,8 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
 #endif  // S52_USE_SOCK
 
         // new AIS failed
-        if (NULL == newais.vesselH) {
+        //if (NULL == newais.vesselH) {
+        if (FALSE == newais.vesselH) {
             g_print("s52ais:_getAIS(): new vesselH fail\n");
             return NULL;
         }
@@ -652,16 +658,20 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         if (OWNSHIP == mmsi) {
             gchar *resp = _encodeNsend("S52_newMarObj", "\"%s\",%i,%i", "afgshp", S52_LINES, MAX_AFGLOW_PT);
             if (NULL != resp) {
-                sscanf(resp, "[ %lu", (long unsigned int *) &newais.afglowH);
+                //sscanf(resp, "[ %lu", (long unsigned int *) &newais.afglowH);
+                sscanf(resp, "[ %u", newais.afglowH);
             }
-            g_print("s52ais:_getAIS(): new afglowH:%lu\n", (long unsigned int) newais.afglowH);
+            //g_print("s52ais:_getAIS(): new afglowH:%lu\n", (long unsigned int) newais.afglowH);
+            g_print("s52ais:_getAIS(): new afglowH:%u\n", newais.afglowH);
 
         } else {
             gchar *resp = _encodeNsend("S52_newMarObj", "\"%s\",%i,%i", "afgves", S52_LINES, MAX_AFGLOW_PT);
             if (NULL != resp) {
-                sscanf(resp, "[ %lu", (long unsigned int *) &newais.afglowH);
+                //sscanf(resp, "[ %lu", (long unsigned int *) &newais.afglowH);
+                sscanf(resp, "[ %u", newais.afglowH);
             }
-            g_print("s52ais:_getAIS(): new afglowH:%lu\n", (long unsigned int) newais.afglowH);
+            //g_print("s52ais:_getAIS(): new afglowH:%lu\n", (long unsigned int) newais.afglowH);
+            g_print("s52ais:_getAIS(): new afglowH:%u\n", newais.afglowH);
 
         }
 
@@ -675,7 +685,7 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
 
 #endif  // S52_USE_SOCK
 
-        if (NULL == newais.afglowH) {
+        if (FALSE == newais.afglowH) {
             g_print("s52ais:_getAIS(): new afglowH fail\n");
             return NULL;
         }
@@ -889,23 +899,29 @@ static int           _setAISDel (_ais_t *ais)
 #endif
 
 #ifdef S52_USE_SOCK
-    _encodeNsend("S52_delMarObj", "%lu", ais->vesselH);
+    //_encodeNsend("S52_delMarObj", "%lu", ais->vesselH);
+    _encodeNsend("S52_delMarObj", "%u", ais->vesselH);
 #else
     ais->vesselH = S52_delMarObj(ais->vesselH);
-    if (NULL != ais->vesselH) {
+    //if (NULL != ais->vesselH) {
+    if (FALSE != ais->vesselH) {
         g_print("s52ais:_setAISDel(): WARNING: unkown vesselH [%s]\n", ais->name);
-        ais->vesselH = NULL;
+        //ais->vesselH = NULL;
+        ais->vesselH = FALSE;
     }
 #endif
 
 #ifdef S52_USE_AFGLOW
 #ifdef S52_USE_SOCK
-    _encodeNsend("S52_delMarObj", "%lu", ais->afglowH);
+    //_encodeNsend("S52_delMarObj", "%lu", ais->afglowH);
+    _encodeNsend("S52_delMarObj", "%u", ais->afglowH);
 #else
     ais->afglowH = S52_delMarObj(ais->afglowH);
-    if (NULL != ais->afglowH) {
+    //if (NULL != ais->afglowH) {
+    if (FALSE != ais->afglowH) {
         g_print("s52ais:_setAISDel(): WARNING: unkown afglowH [%s]\n", ais->name);
-        ais->afglowH = NULL;
+        //ais->afglowH = NULL;
+        ais->afglowH = FALSE;
     }
 #endif
 #endif
@@ -926,9 +942,7 @@ static int           _removeOldAIS(void)
     for (guint i=0; i<_ais_list->len; ++i) {
         _ais_t *ais = &g_array_index(_ais_list, _ais_t, i);
         // AIS report older then 10 min
-        if ((now.tv_sec > (ais->lastUpdate.tv_sec + AIS_SILENCE_MAX)) ||
-            (TRUE == ais->lost))
-        {
+        if ((now.tv_sec > (ais->lastUpdate.tv_sec + AIS_SILENCE_MAX)) || (TRUE == ais->lost)) {
             _setAISDel(ais);
 
              g_array_remove_index_fast(_ais_list, i);
@@ -989,7 +1003,8 @@ static int           _updateTimeTag(void)
         }
 
 #ifdef S52_USE_SOCK
-        _encodeNsend("S52_setVESSELlabel", "%lu,\"%s\"", ais->vesselH, str);
+        //_encodeNsend("S52_setVESSELlabel", "%lu,\"%s\"", ais->vesselH, str);
+        _encodeNsend("S52_setVESSELlabel", "%ui,\"%s\"", ais->vesselH, str);
 #else
         //Note: can't use _setAISLab() as it update timetag - long str
         if (FALSE == S52_setVESSELlabel(ais->vesselH, str)) {
