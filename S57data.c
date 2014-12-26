@@ -44,7 +44,7 @@ static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 #define UNKNOWN  (1.0/0.0)   //HUGE_VAL   // INFINITY/NAN
 
 // debug: current object's internal ID
-static unsigned int _id = 1;  // start at 1, the number of object loaded
+static unsigned int _ID = 1;  // start at 1, the number of object loaded
 
 typedef struct _pt3 { double x,y,z; } pt3;
 typedef struct _pt2 { double x,y;   } pt2;
@@ -74,33 +74,37 @@ typedef struct _S57_prim {
 } _S57_prim;
 
 // S57 object geo data
+#define S57_NM_LN   6  // S57 Class Name lenght
 typedef struct _S57_geo {
-    guint        id;          // record id (debug)
+    guint        ID;          // record ID - use as index in S52_obj GPtrArray
     //guint        s52objID;       // optimisation: numeric value of OBCL string
 
+    // FIXME: name come from GDAL/OGR s57objectclasses.csv
+    // so it's ASCII *not* S57 UTF
+    //GString     *name;        // object name 6/8 + '\0'; used for S52 LUP
+    // FIXME: explain the 6/8 name length
+    //char         OBCL[S52_PL_NMLN+1]; // LUP name --'\0' terminated
+    char         name[S57_NM_LN+1]; // object name 6 + '\0'
 
-    GString     *name;        // object name 6/8 + '\0'; used for S52 LUP
+
     //S52_Obj_t    obj_t;       // used in CS
     S57_Obj_t    obj_t;       // used in CS
 
     _rect        rect;        // lat/lon extent of object
 
-    // FIXME: move to S52_obj!
-    //gboolean     supp;        // display suppression set by user
-
-
     // length of geo data (POINT, LINE, AREA) currently in buffer
-    guint        geoSize;        // max is 1, linexyznbr, ringxyznbr[0]
+    guint        geoSize;        // max is 1 / linexyznbr / ringxyznbr[0]
 
     // hold coordinate before and after projection
     geocoord    *pointxyz;    // point
 
-    guint        linexyznbr;  // line
-    geocoord    *linexyz;
+    guint        linexyznbr;  // line number of point XYZ (alloc)
+    geocoord    *linexyz;     // line coordinate
 
-    guint        ringnbr;     // area
-    guint       *ringxyznbr;
-    geocoord   **ringxyz;
+    // area
+    guint        ringnbr;     // number of ring
+    guint       *ringxyznbr;  // number coords per ring (alloc)
+    geocoord   **ringxyz;     // coords of rings        (alloc)
 
     // hold tessalated geographic and projected coordinate of area
     // in a format suitable for OpenGL
@@ -209,8 +213,8 @@ int        S57_doneData   (_S57_geo *geo, gpointer user_data)
 
     S57_donePrimGeo(geo);
 
-    if (NULL != geo->name)
-        g_string_free(geo->name, TRUE);
+    //if (NULL != geo->name)
+    //    g_string_free(geo->name, TRUE);
 
     if (NULL != geo->attribs)
         g_datalist_clear(&geo->attribs);
@@ -434,8 +438,8 @@ S57_geo   *S57_setPOINT(geocoord *xyz)
     if (NULL == geo)
         g_assert(0);
 
-    geo->id       = _id++;
-    geo->obj_t    = POINT_T;
+    geo->ID       = _ID++;
+    geo->obj_t    = S57_POINT_T;
     geo->pointxyz = xyz;
 
     geo->rect.x1  =  INFINITY;
@@ -457,7 +461,7 @@ S57_geo   *S57_setGeoLine(_S57_geo *geo, guint xyznbr, geocoord *xyz)
 {
     return_if_null(geo);
 
-    geo->obj_t      = LINES_T;  // because some Edge objet default to _META_T when no geo yet
+    geo->obj_t      = S57_LINES_T;  // because some Edge objet default to _META_T when no geo yet
     geo->linexyznbr = xyznbr;
     geo->linexyz    = xyz;
 
@@ -473,8 +477,8 @@ S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
 
     return_if_null(geo);
 
-    geo->id         = _id++;
-    geo->obj_t      = LINES_T;
+    geo->geoID      = _geoID++;
+    geo->obj_t      = S57_LINES_T;
     geo->linexyznbr = xyznbr;
     geo->linexyz    = xyz;
 
@@ -501,7 +505,7 @@ S57_geo   *S57_setMLINE(guint nLineCount, guint *linexyznbr, geocoord **linexyz)
     if (NULL == geo)
         g_assert(0);
 
-    geo->id         = _id++;
+    geo->ID         = _ID++;
     geo->obj_t      = MLINE_T;
     geo->linenbr    = nLineCount;
     geo->linexyznbr = linexyznbr;
@@ -525,8 +529,8 @@ S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S5
     if (NULL == geo)
         g_assert(0);
 
-    geo->id         = _id++;
-    geo->obj_t      = AREAS_T;
+    geo->ID         = _ID++;
+    geo->obj_t      = S57_AREAS_T;
     geo->ringnbr    = ringnbr;
     geo->ringxyznbr = ringxyznbr;
     geo->ringxyz    = ringxyz;
@@ -558,8 +562,8 @@ S57_geo   *S57_set_META()
     if (NULL == geo)
         g_assert(0);
 
-    geo->id       = _id++;
-    geo->obj_t    = _META_T;
+    geo->ID       = _ID++;
+    geo->obj_t    = S57__META_T;
 
     geo->rect.x1 =  INFINITY;
     geo->rect.y1 =  INFINITY;
@@ -576,13 +580,24 @@ S57_geo   *S57_set_META()
 }
 
 int        S57_setName(_S57_geo *geo, const char *name)
-// NOTE: this is a S57 object name .. UTF-16 or UTF-8
-// use g_string to handle that
+// FIXME: name come from GDAL/OGR s57objectclasses.csv
 {
     return_if_null(geo);
     return_if_null(name);
 
-    geo->name = g_string_new(name);
+    //geo->name = g_string_new(name);
+
+    /*
+    if (S57_NM_LN != strlen(name)) {
+        // DSID pass here
+        PRINTF("DEBUG: S57_geo name: %s\n", name);
+        //g_assert(0);
+    }
+    */
+    int len = strlen(name);
+    len = (S57_NM_LN < len) ? S57_NM_LN : len;
+    memcpy(geo->name, name, len);
+    geo->name[len] = '\0';
 
     return TRUE;
 }
@@ -592,7 +607,8 @@ GCPTR      S57_getName(_S57_geo *geo)
     return_if_null(geo);
     return_if_null(geo->name);
 
-    return geo->name->str;
+    //return geo->name->str;
+    return geo->name;
 }
 
 guint      S57_getRingNbr(_S57_geo *geo)
@@ -602,10 +618,10 @@ guint      S57_getRingNbr(_S57_geo *geo)
     // since this is used with S57_getGeoData
     // META object don't need to be projected for rendering
     switch (geo->obj_t) {
-        case POINT_T:
-        case LINES_T:
+        case S57_POINT_T:
+        case S57_LINES_T:
             return 1;
-        case AREAS_T:
+        case S57_AREAS_T:
             return geo->ringnbr;
         default:
             return 0;
@@ -618,7 +634,7 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
 {
     return_if_null(geo);
 
-    if  (AREAS_T==geo->obj_t && geo->ringnbr<ringNo) {
+    if  (S57_AREAS_T==geo->obj_t && geo->ringnbr<ringNo) {
         PRINTF("WARNING: invalid ring number requested! \n");
         *npt = 0;
         g_assert(0);
@@ -626,9 +642,9 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
     }
 
     switch (geo->obj_t) {
-    	case _META_T: *npt = 0; break;        // meta geo stuff (ex: C_AGGR)
+        case S57__META_T: *npt = 0; break;        // meta geo stuff (ex: C_AGGR)
 
-    	case POINT_T:
+        case S57_POINT_T:
             if (NULL != geo->pointxyz) {
                 *npt = 1;
                 *ppt = geo->pointxyz;
@@ -637,7 +653,7 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
             }
             break;
 
-        case LINES_T:
+        case S57_LINES_T:
             if (NULL != geo->linexyz) {
                 *npt = geo->linexyznbr;
                 *ppt = geo->linexyz;
@@ -646,7 +662,7 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
             }
             break;
 
-        case AREAS_T:
+        case S57_AREAS_T:
             if (NULL != geo->ringxyznbr) {
                 *npt = geo->ringxyznbr[ringNo];
                 *ppt = geo->ringxyz[ringNo];
@@ -665,14 +681,15 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
             return FALSE;
     }
 
+    // alloc'ed mem for xyz vs xyz size
     if (*npt < geo->geoSize) {
         PRINTF("ERROR: geo lenght greater then npt - internal error\n");
         g_assert(0);
         return FALSE;
     }
 
-    if (0==*npt) {
-        PRINTF("DEBUG: no geo\n");
+    if (0 == *npt) {
+        //PRINTF("DEBUG: npt == 0\n");
         return FALSE;
     }
 
@@ -705,13 +722,12 @@ S57_prim  *S57_donePrim(_S57_prim *prim)
     //return_if_null(prim);
     // some symbol (ex Mariners' Object) dont use primitive since
     // not in OpenGL retained mode .. so this warning is a false alarme
+
     if (NULL == prim)
         return NULL;
 
     if (NULL != prim->list)   g_array_free(prim->list,   TRUE);
     if (NULL != prim->vertex) g_array_free(prim->vertex, TRUE);
-    //if (NULL != prim->list)   g_array_unref(prim->list);
-    //if (NULL != prim->vertex) g_array_unref(prim->vertex);
 
     // failsafe
     prim->list   = NULL;
@@ -874,7 +890,8 @@ int        S57_setExt(_S57_geo *geo, double x1, double y1, double x2, double y2)
     */
 
     if (isinf(x1) && isinf(x2)) {
-        PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
+        //PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
+        PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geo->name, x1, y1, x2, y2);
         g_assert(0);
         return FALSE;
     }
@@ -904,7 +921,7 @@ S57_Obj_t  S57_getObjtype(_S57_geo *geo)
 //S52_Obj_t  S57_getObjtype(_S57_geo *geo)
 {
     if (NULL == geo)
-        return _META_T;
+        return S57__META_T;
 
     return geo->obj_t;
 }
@@ -993,7 +1010,8 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
     // display this NOTE once (because of to many warning)
     static int silent = FALSE;
     if (!silent && NULL!=att && 0==att->len) {
-        PRINTF("NOTE: attribute (%s) has no value [obj:%s]\n", att_name, geo->name->str);
+        //PRINTF("NOTE: attribute (%s) has no value [obj:%s]\n", att_name, geo->name->str);
+        PRINTF("NOTE: attribute (%s) has no value [obj:%s]\n", att_name, geo->name);
         PRINTF("      (this msg will not repeat)\n");
         silent = TRUE;
         return NULL;
@@ -1195,8 +1213,9 @@ int        S57_dumpData(_S57_geo *geo, int dumpCoords)
     return_if_null(geo);
 
 
-    PRINTF("S57ID : %i\n", geo->id);
-    PRINTF("NAME  : %s\n", geo->name->str);
+    PRINTF("S57ID : %i\n", geo->ID);
+    //PRINTF("NAME  : %s\n", geo->name->str);
+    PRINTF("NAME  : %s\n", geo->name);
 
     g_datalist_foreach(&geo->attribs, _printAtt, NULL);
 
@@ -1207,10 +1226,10 @@ int        S57_dumpData(_S57_geo *geo, int dumpCoords)
         S57_getGeoData(geo, 0, &npt, &ppt);
 
         switch (geo->obj_t) {
-            case _META_T:  PRINTF("_META_T (%i)\n", npt); break;
-            case POINT_T:  PRINTF("POINT_T (%i)\n", npt); break;
-            case LINES_T:  PRINTF("LINES_T (%i)\n", npt); break;
-            case AREAS_T:  PRINTF("AREAS_T (%i)\n", npt); break;
+            case S57__META_T:  PRINTF("_META_T (%i)\n", npt); break;
+            case S57_POINT_T:  PRINTF("POINT_T (%i)\n", npt); break;
+            case S57_LINES_T:  PRINTF("LINES_T (%i)\n", npt); break;
+            case S57_AREAS_T:  PRINTF("AREAS_T (%i)\n", npt); break;
             default:
                 PRINTF("WARNING: invalid object type; %i\n", geo->obj_t);
         }
@@ -1280,11 +1299,12 @@ GCPTR      S57_getAtt(_S57_geo *geo)
     return_if_null(geo);
 
 
-    PRINTF("S57ID : %i\n", geo->id);
-    PRINTF("NAME  : %s\n", geo->name->str);
+    PRINTF("S57ID : %i\n", geo->ID);
+    //PRINTF("NAME  : %s\n", geo->name->str);
+    PRINTF("NAME  : %s\n", geo->name);
 
     g_string_set_size(_attList, 0);
-    g_string_printf(_attList, "%i", geo->id);
+    g_string_printf(_attList, "%i", geo->ID);
 
     g_datalist_foreach(&geo->attribs, _getAtt, _attList);
 
@@ -1457,7 +1477,7 @@ guint      S57_getGeoID(S57_geo *geo)
 {
     return_if_null(geo);
 
-    return  geo->id;
+    return  geo->ID;
 }
 
 int        S57_isPtInside(int npt, double *xyz, gboolean close, double x, double y)
@@ -1516,8 +1536,8 @@ int        S57_touch(_S57_geo *geoA, _S57_geo *geoB)
         return FALSE;
 
     // FIXME: work only for point in poly not point in line
-    if (LINES_T == S57_getObjtype(geoB)) {
-        PRINTF("FIXME: geoB is a LINES_T .. this algo break on that type\n");
+    if (S57_LINES_T == S57_getObjtype(geoB)) {
+        PRINTF("FIXME: geoB is a S57_LINES_T .. this algo break on that type\n");
         return FALSE;
     }
 
@@ -1540,23 +1560,23 @@ guint      S57_setGeoSize(_S57_geo *geo, guint size)
 {
     return_if_null(geo);
 
-    if ((POINT_T==geo->obj_t) && (size > 1)) {
+    if ((S57_POINT_T==geo->obj_t) && (size > 1)) {
         PRINTF("ERROR: POINT_T size\n");
         g_assert(0);
         return FALSE;
     }
-    if ((LINES_T==geo->obj_t) && (size > geo->linexyznbr)) {
+    if ((S57_LINES_T==geo->obj_t) && (size > geo->linexyznbr)) {
         PRINTF("ERROR: LINES_T size\n");
         g_assert(0);
         return FALSE;
     }
-    if ((AREAS_T==geo->obj_t) && (size > geo->ringxyznbr[0])) {
+    if ((S57_AREAS_T==geo->obj_t) && (size > geo->ringxyznbr[0])) {
         PRINTF("ERROR: AREAS_T size\n");
         g_assert(0);
         return FALSE;
     }
 
-    if (_META_T == geo->obj_t) {
+    if (S57__META_T == geo->obj_t) {
         PRINTF("ERROR: object type invalid (%i)\n", geo->obj_t);
         g_assert(0);
         return FALSE;

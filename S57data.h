@@ -36,11 +36,11 @@
 // internal geo enum used to link S52 to S57 geo
 // S57 object type have a PLib enum: P,L,A
 typedef enum S57_Obj_t {
-    _META_T  =  0 ,       // meta geo stuff (ex: C_AGGR)
-    POINT_T  = 'P',       // 80 (point)
-    LINES_T  = 'L',       // 76 (line)
-    AREAS_T  = 'A',       // 65 (area)
-    N_OBJ_T  =  4         // number of object type
+    S57__META_T  =  0 ,       // meta geo stuff (ex: C_AGGR)
+    S57_POINT_T  = 'P',       // 80 (point)
+    S57_LINES_T  = 'L',       // 76 (line)
+    S57_AREAS_T  = 'A',       // 65 (area)
+    S57_N_OBJ_T  =  4         // number of object type
 } S57_Obj_t;
 
 // experimental (fail - because Edge ID are used to match geo)
@@ -190,7 +190,7 @@ GString  *S57_getRCIDstr(S57_geo *geo);
 S57_AW_t  S57_getOrigAW (S57_geo *geo);
 #endif
 
-// FIXME: setHL() rather than hlON/OFF !
+// FIXME: setHL() rather than hl ON/OFF !
 //int     S57_setHighlight(S57_geo *geo, gboolean highlight);
 int       S57_highlightON (S57_geo *geo);
 int       S57_highlightOFF(S57_geo *geo);
