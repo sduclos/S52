@@ -122,7 +122,6 @@ S57_geo   *S57_gvLoadObject(const char *objname, void *shape)
         case GVSHAPE_POINT: {
             GvPointShape *point  = (GvPointShape *) shape;
             geocoord *pt = &point->x;
-            //geoData = S57_setPOINT((geocoord*)(point + sizeof(guint) + sizeof(guint) + sizeof(GvProperties)));
             geoData = S57_setPOINT(pt);
             break;
         }
