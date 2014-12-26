@@ -41,31 +41,31 @@
 
 #define PATH "/home/sduclos/dev/gis/data"
 #define PLIB "PLAUX_00.DAI"
-#define COLS "plib_COLS-3.4.1.rle"
+#define COLS "plib_COLS-3.4-a.rle"
 
 
 // test - St-Laurent Ice Route
-static S52ObjectHandle _waypnt1 = NULL;
-static S52ObjectHandle _waypnt2 = NULL;
-static S52ObjectHandle _waypnt3 = NULL;
-static S52ObjectHandle _waypnt4 = NULL;
+static S52ObjectHandle _waypnt1 = FALSE;
+static S52ObjectHandle _waypnt2 = FALSE;
+static S52ObjectHandle _waypnt3 = FALSE;
+static S52ObjectHandle _waypnt4 = FALSE;
 
-static S52ObjectHandle _leglin1 = NULL;
-static S52ObjectHandle _leglin2 = NULL;
-static S52ObjectHandle _leglin3 = NULL;
+static S52ObjectHandle _leglin1 = FALSE;
+static S52ObjectHandle _leglin2 = FALSE;
+static S52ObjectHandle _leglin3 = FALSE;
 
 // test - VRMEBL
 // S52 object name:"ebline"
 //static int             _drawVRMEBLtxt = FALSE;
-static S52ObjectHandle _vrmeblA       = NULL;
+static S52ObjectHandle _vrmeblA = FALSE;
 
 // test - cursor DISP 9 (instead of IHO PLib DISP 8)
 // need to load PLAUX
 // S52 object name:"ebline"
-static S52ObjectHandle _cursor2 = NULL;
+static S52ObjectHandle _cursor2 = FALSE;
 
 // test - centroid
-static S52ObjectHandle _prdare = NULL;
+static S52ObjectHandle _prdare  = FALSE;
 
 // FIXME: mutex this share data
 typedef struct s52droid_state_t {
@@ -114,17 +114,17 @@ static s52engine _engine;
 //------ FAKE AIS - DEBUG ----
 // debug - no real AIS, then fake target
 #ifdef USE_FAKE_AIS
-static S52ObjectHandle _vessel_ais        = NULL;
+static S52ObjectHandle _vessel_ais = FALSE;
 #define VESSELLABEL "~~MV Non Such~~ "           // bug: last char will be trimmed
 // test - ownshp
-static S52ObjectHandle _ownshp            = NULL;
+static S52ObjectHandle _ownshp     = FALSE;
 #define OWNSHPLABEL "OWNSHP\\n220 deg / 6.0 kt"
 
 
 #ifdef S52_USE_AFGLOW
 #define MAX_AFGLOW_PT (12 * 20)   // 12 min @ 1 vessel pos per 5 sec
 //#define MAX_AFGLOW_PT 10        // debug
-static S52ObjectHandle _vessel_ais_afglow = NULL;
+static S52ObjectHandle _vessel_ais_afglow = FALSE;
 
 #endif  // S52_USE_AFGLOW
 
@@ -451,18 +451,17 @@ route normale de navigation.
     _waypnt3 = S52_newMarObj("waypnt", S52_POINT, 1, (double*)&WPxyz[2], attVal3);
     _waypnt4 = S52_newMarObj("waypnt", S52_POINT, 1, (double*)&WPxyz[3], attVal4);
 
+    double gz = S52_getMarinerParam(S52_MAR_GUARDZONE_BEAM);
+    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);  // trun off
+
 #define ALT_RTE 2
     // select: alternate (2) legline for Ice Route 2012-02-12T21:00:00Z
-    _leglin1 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[0].y, WPxyz[0].x, WPxyz[1].y, WPxyz[1].x, NULL);
+    _leglin1 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[0].y, WPxyz[0].x, WPxyz[1].y, WPxyz[1].x, FALSE);
     _leglin2 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[1].y, WPxyz[1].x, WPxyz[2].y, WPxyz[2].x, _leglin1);
     _leglin3 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[2].y, WPxyz[2].x, WPxyz[3].y, WPxyz[3].x, _leglin2);
     //_leglin4  = S52_newLEGLIN(1, 0.0, 0.0, WPxyz[3].y, WPxyz[3].x, WPxyz[4].y, WPxyz[4].x, _leglin3);
 
-    //_route[0] = _leglin1;
-    //_route[1] = _leglin2;
-    //_route[2] = _leglin3;
-    //_route[3] = _leglin3;
-    //S52_setRoute(4, _route);
+    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, gz);  // trun on
 
     /*
     {// test wholin
@@ -579,7 +578,7 @@ static int      _s52_init       (s52engine *engine)
     S52_version();
 
 #ifdef S52_USE_EGL
-    S52_setEGLcb((EGL_cb)_egl_beg, (EGL_cb)_egl_end, engine);
+    S52_setEGLCallBack((S52_EGL_cb)_egl_beg, (S52_EGL_cb)_egl_end, engine);
 #endif
 
     // read cell location fron s52.cfg
@@ -722,11 +721,12 @@ static int      _s52_init       (s52engine *engine)
 
     // must be first mariners' object so that the
     // rendering engine place it on top of OWNSHP/VESSEL
-    //_s52_setupVRMEBL(&engine->state);
 
-    //_s52_setupLEGLIN();
+    _s52_setupVRMEBL(&engine->state);
 
-    //_s52_setupPRDARE(&engine->state);
+    _s52_setupLEGLIN();
+
+    _s52_setupPRDARE(&engine->state);
 
 #ifdef USE_FAKE_AIS
     _s52_setupVESSEL(&engine->state);
