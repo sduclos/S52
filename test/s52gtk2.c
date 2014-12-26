@@ -80,9 +80,6 @@ typedef struct pt2 {
 
 #define VESSELTURN_UNDEFINED 129
 
-static S52ObjectHandle _vrmeblA     = NULL;
-//static S52ObjectHandle _vrmeblB     = NULL;
-static int             _originIsSet = FALSE;
 
 #ifdef S52_USE_AFGLOW
 #define MAX_AFGLOW_PT (12 * 20)   // 12 min @ 1 vessel pos per 5 sec
@@ -95,6 +92,10 @@ static S52ObjectHandle _vessel_ais_afglow = NULL;
 #define VESSELLABEL "~~MV Non Such~~ "           // bug: last char will be trimmed
 #define OWNSHPLABEL "OWNSHP\\n220 deg / 6.0 kt"
 
+// VRMEBL
+static S52ObjectHandle _vrmeblA     = NULL;
+//static S52ObjectHandle _vrmeblB     = NULL;
+static int             _originIsSet = FALSE;  //for VRMEBL
 
 // VESSEL
 static S52ObjectHandle _ownshp      = NULL;
@@ -726,6 +727,44 @@ static gboolean _dumpParam()
     return TRUE;
 }
 
+#ifdef S52_USE_RADAR
+static guchar  *_radar_cb(double *cLat, double *cLng, double *rNM)
+{
+    (void)cLat;
+    (void)cLng;
+    (void)rNM;
+
+    //g_print("_radar_cb()\n");
+
+    return NULL;
+}
+#endif  // S52_USE_RADAR
+
+#if 0
+static int      _my_S52_loadObject_cb(const char *objname,   void *shape)
+{
+    //
+    // .. do something cleaver with each object of a layer ..
+    //
+
+    // this fill the terminal
+    //printf("\tOBJECT NAME: %s\n", objname);
+
+    return S52_loadObject(objname, shape);
+
+    //return TRUE;
+}
+#endif
+
+#ifdef S52_USE_LOG
+static int      _err_cb(const char *err)
+{
+    printf("%s\n", err);
+
+    return TRUE;
+}
+#endif
+
 static int      _setOWNSHP()
 {
     //_ownshp = S52_newOWNSHP("OWNSHP");
@@ -925,7 +964,8 @@ static int      _setRoute()
     //-----------------------------
     //*
     // heading change from SW to SE
-    _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpN.lat, wpN.lon, wpW.lat, wpW.lon, NULL);
+    //_leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpN.lat, wpN.lon, wpW.lat, wpW.lon, NULL);
+    _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpN.lat, wpN.lon, wpW.lat, wpW.lon, FALSE);
     _leglin2  = S52_newLEGLIN(1, 12.0, 0.2, wpW.lat, wpW.lon, wpS.lat, wpS.lon, _leglin1);
     _leglin3  = S52_newLEGLIN(1, 12.0, 0.3, wpS.lat, wpS.lon, wpE.lat, wpE.lon, _leglin2);
     //*/
@@ -978,35 +1018,6 @@ static int      _setCLRLIN()
 
     return TRUE;
 }
-
-#ifdef S52_USE_RADAR
-static guchar  *_radar_cb(double *cLat, double *cLng, double *rNM)
-{
-    (void)cLat;
-    (void)cLng;
-    (void)rNM;
-
-    //g_print("_radar_cb()\n");
-
-    return NULL;
-}
-#endif  // S52_USE_RADAR
-
-#if 0
-static int      _my_S52_loadObject_cb(const char *objname,   void *shape)
-{
-    //
-    // .. do something cleaver with each object of a layer ..
-    //
-
-    // this fill the terminal
-    //printf("\tOBJECT NAME: %s\n", objname);
-
-    return S52_loadObject(objname, shape);
-
-    //return TRUE;
-}
-#endif
 
 static int      _setMarFeature()
 // exemple to display something define in the PLib directly
@@ -1255,23 +1266,19 @@ static int      _initS52()
     ////////////////////////////////////////////////////////////
     //
     // setup mariner object (for debugging)
-    //
-
     // test loading objH _before_ loadPLib
     _setMarFeature();
 
     // load additional PLib (facultative)
     //S52_loadPLib("plib_pilote.rle");
     //S52_loadPLib("plib-test2.rle");
-
-    // load auxiliary PLib (fix waypnt/WAYPNT01, OWNSHP vector)
+    // load auxiliary PLib (fix waypnt/WAYPNT01, OWNSHP vector, put cursor on layer 9, ..)
     S52_loadPLib("PLAUX_00.DAI");
-
+    // lastest (S52 ed 6.0) IHO colors from www.ecdisregs.com
+    S52_loadPLib("plib_COLS-3.4-a.rle");
     // load PLib from s52.cfg indication
     //S52_loadPLib(NULL);
 
-    // lastest (S52 ed 6.0) IHO colors from www.ecdisregs.com
-    S52_loadPLib("plib_COLS-3.4.1.rle");
 
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE);  // none
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD);  // Mariner Standard
@@ -1344,15 +1351,6 @@ static int      _initS52()
 
     return TRUE;
 }
-
-#ifdef S52_USE_LOG
-static int      _err_cb(const char *err)
-{
-    printf("%s\n", err);
-
-    return TRUE;
-}
-#endif
 
 static void     realize(GtkWidget *widget, gpointer data)
 {
@@ -1616,17 +1614,16 @@ static gboolean button_release_event(GtkWidget      *widget,
 
     // Ctl + left click: set origine for 'freely movable' VRMEBL
     if ((GDK_CONTROL_MASK & event->state) && (1==event->button)) {
-        double x = event->x;
-        double y = event->y;
-
-        // set origine 
-        //S52_setVRMEBLorigine(_vrmebl, x, y);
-        //S52_setVRMEBL(_vrmebl, x, y, TRUE);
-
+        /*
+        double x   = event->x;
+        double y   = event->y;
         double brg = 0.0;
         double rge = 0.0;
+
         //S52_setVRMEBL(_vrmeblB, x, y, &brg, &rge);
         S52_setVRMEBL(_vrmeblA, x, y, &brg, &rge);
+        */
+
         _originIsSet = TRUE;
 
         return TRUE;
@@ -1705,7 +1702,8 @@ static gboolean motion_notify_event(GtkWidget      *widget,
     if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
         return FALSE;
 
-    if (NULL != _vrmeblA) {
+    //if (NULL != _vrmeblA) {
+    if (FALSE != _vrmeblA) {
         _brg = 0.0;
         _rge = 0.0;
         S52_setVRMEBL(_vrmeblA, _x, _y, &_brg, &_rge);
@@ -1840,6 +1838,13 @@ int main(int argc, char **argv)
 
     gtk_set_locale();
 
+    // debug - GLib ptr array size of gint
+    //GPtrArray *_ptrA = g_ptr_array_new();
+    //g_ptr_array_set_size(_ptrA, -1);
+    // failed to allocate 34359738360 bytes
+    // Note:       2^35 = 34359738368
+
+
 #ifdef S52_USE_MESA3D
     // Mesa3D env - signal no vSync
     g_setenv("vblank_mode", "0", 1);
@@ -1915,6 +1920,35 @@ int main(int argc, char **argv)
 
 
 exit:
+/*
+// VRMEBL
+//static S52ObjectHandle _vrmeblA     = NULL;
+//static S52ObjectHandle _vrmeblB     = NULL;
+// VESSEL
+static S52ObjectHandle _ownshp      = NULL;
+//static S52ObjectHandle _vessel_arpa = NULL;
+static S52ObjectHandle _vessel_ais  = NULL;
+static S52ObjectHandle _pastrk      = NULL;
+
+static S52ObjectHandle _leglin1     = NULL;
+static S52ObjectHandle _leglin2     = NULL;
+static S52ObjectHandle _leglin3     = NULL;
+//static S52ObjectHandle _leglin4     = NULL;
+//static S52ObjectHandle _leglin5     = NULL;
+static S52ObjectHandle _waypnt0     = NULL;
+static S52ObjectHandle _waypnt1     = NULL;
+static S52ObjectHandle _waypnt2     = NULL;
+static S52ObjectHandle _waypnt3     = NULL;
+static S52ObjectHandle _waypnt4     = NULL;
+static S52ObjectHandle _wholin      = NULL;
+
+static S52ObjectHandle _clrlin      = NULL;
+
+//static S52ObjectHandle _marfea_area = NULL;
+//static S52ObjectHandle _marfea_line = NULL;
+static S52ObjectHandle _marfea_point = NULL;
+*/
+
 
     //* S52 Mariner Obj cleanup by hand - S52_done() do that too
     _ownshp      = S52_delMarObj(_ownshp);
@@ -1927,6 +1961,7 @@ exit:
     _leglin2     = S52_delMarObj(_leglin2);
     _leglin3     = S52_delMarObj(_leglin3);
     _clrlin      = S52_delMarObj(_clrlin);
+    _marfea_point= S52_delMarObj(_marfea_point);
     //*/
 
 #ifdef USE_AIS
