@@ -99,30 +99,30 @@ static int _drawVRMEBL = FALSE;
 #endif  // S52_USE_ANDROID
 
 // test - St-Laurent Ice Route
-static S52ObjectHandle _waypnt1 = NULL;
-static S52ObjectHandle _waypnt2 = NULL;
-static S52ObjectHandle _waypnt3 = NULL;
-static S52ObjectHandle _waypnt4 = NULL;
+static S52ObjectHandle _waypnt1 = FALSE;
+static S52ObjectHandle _waypnt2 = FALSE;
+static S52ObjectHandle _waypnt3 = FALSE;
+static S52ObjectHandle _waypnt4 = FALSE;
 
-static S52ObjectHandle _leglin1 = NULL;
-static S52ObjectHandle _leglin2 = NULL;
-static S52ObjectHandle _leglin3 = NULL;
-static S52ObjectHandle _leglin4 = NULL;
+static S52ObjectHandle _leglin1 = FALSE;
+static S52ObjectHandle _leglin2 = FALSE;
+static S52ObjectHandle _leglin3 = FALSE;
+static S52ObjectHandle _leglin4 = FALSE;
 
 // lat/lon/begin/end
 static double _leglin4xy[2*2];
 
 // test - VRMEBL
 // S52 object name:"ebline"
-static S52ObjectHandle _vrmeblA = NULL;
+static S52ObjectHandle _vrmeblA = FALSE;
 
 // test - cursor DISP 9 (instead of IHO PLib DISP 8)
 // need to load PLAUX
 // S52 object name:"ebline"
-static S52ObjectHandle _cursor2 = NULL;  // 2 - open cursor
+static S52ObjectHandle _cursor2 = FALSE;  // 2 - open cursor
 
 // test - centroid
-static S52ObjectHandle _prdare  = NULL;
+static S52ObjectHandle _prdare  = FALSE;
 
 
 // FIXME: mutex this share data
@@ -1018,7 +1018,7 @@ route normale de navigation.
     S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);  // trun off
 #define ALT_RTE 2
     // select: alternate (2) legline for Ice Route 2012-02-12T21:00:00Z
-    _leglin1 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[0].y, WPxyz[0].x, WPxyz[1].y, WPxyz[1].x, NULL);
+    _leglin1 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[0].y, WPxyz[0].x, WPxyz[1].y, WPxyz[1].x, FALSE);
     _leglin2 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[1].y, WPxyz[1].x, WPxyz[2].y, WPxyz[2].x, _leglin1);
     _leglin3 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[2].y, WPxyz[2].x, WPxyz[3].y, WPxyz[3].x, _leglin2);
     S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, gz);  // trun on
@@ -1038,9 +1038,9 @@ static int      _s52_setupLEGLIN(s52droid_state_t *state)
 {
     (void) state;
 
-    if (NULL != _leglin4) {
+    if (FALSE != _leglin4) {
         _leglin4 = S52_delMarObj(_leglin4);
-        if (NULL != _leglin4) {
+        if (FALSE != _leglin4) {
             LOGI("s52egl:_s52_setupLEGLIN(): delMarObj _leglin4 failed\n");
             g_assert(0);
         }
@@ -1068,8 +1068,8 @@ static int      _s52_setupLEGLIN(s52droid_state_t *state)
 
 
     // test LEGLIN setup via cursor
-    _leglin4 = S52_newLEGLIN(1, 0.0, 0.0, _leglin4xy[1], _leglin4xy[0], _leglin4xy[3], _leglin4xy[2], NULL);
-    //if (NULL == _leglin4) {
+    _leglin4 = S52_newLEGLIN(1, 0.0, 0.0, _leglin4xy[1], _leglin4xy[0], _leglin4xy[3], _leglin4xy[2], FALSE);
+    //if (FALSE == _leglin4) {
     //    LOGI("s52egl:_s52_setupLEGLIN(): failed\n");
         if (1.0 == S52_getMarinerParam(S52_MAR_ERROR))
             LOGI("s52egl:_s52_setupLEGLIN(): ALARM ON\n");
@@ -1195,8 +1195,8 @@ static int      _s52_setupMarPar(void)
 
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
-    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60 - need plib_COLS-3.4.1.rle
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60 - need plib_COLS-3.4.1.rle
+    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60 - need plib_COLS-3.4-a.rle
+    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60 - need plib_COLS-3.4-a.rle
 
     //S52_setMarinerParam(S52_MAR_VECPER,         12.0);  // vecper: Vector-length time-period (min) (normaly 6 or 12)
     S52_setMarinerParam(S52_MAR_VECMRK,          1.0);  // vecmrk: Vector time-mark interval (0 - none, 1 - 1&6 min, 2 - 6 min)
