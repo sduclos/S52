@@ -2514,7 +2514,7 @@ static int       _renderSY(S52_obj *obj)
         return FALSE;
     }
 
-    if (POINT_T == S57_getObjtype(geoData)) {
+    if (S57_POINT_T == S57_getObjtype(geoData)) {
 
         if (0 == g_strcmp0(S57_getName(geoData), "ownshp")) {
             _renderSY_ownshp(obj);
@@ -2565,7 +2565,7 @@ static int       _renderSY(S52_obj *obj)
     //return TRUE;
 
     // an SY command on a line object (ex light on power line)
-    if (LINES_T == S57_getObjtype(geoData)) {
+    if (S57_LINES_T == S57_getObjtype(geoData)) {
 
         // computer 'center' of line
         double cView_x = (_pmax.u + _pmin.u) / 2.0;
@@ -2645,7 +2645,7 @@ static int       _renderSY(S52_obj *obj)
     //debug - skip AREAS_T (cost 30msec; from ~110ms to ~80ms on Estuaire du St-L CA279037.000)
     //return TRUE;
 
-    if (AREAS_T == S57_getObjtype(geoData)) {
+    if (S57_AREAS_T == S57_getObjtype(geoData)) {
         guint     npt = 0;
         GLdouble *ppt = NULL;
         if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt)) {
@@ -3280,7 +3280,7 @@ static int       _renderLS(S52_obj *obj)
     {
         S57_geo  *geoData = S52_PL_getGeo(obj);
 
-        if (POINT_T == S57_getObjtype(geoData)) {
+        if (S57_POINT_T == S57_getObjtype(geoData)) {
             if (0 == g_strcmp0("LIGHTS", S57_getName(geoData)))
                 _renderLS_LIGHTS05(obj);
             else {
@@ -3306,7 +3306,7 @@ static int       _renderLS(S52_obj *obj)
         }
         else
         {
-            // LINES_T, AREAS_T
+            // S57_LINES_T, S57_AREAS_T
 
             // FIXME: case of pick AREA where the only commandword is LS()
             // FIX: one more call to fillarea()
@@ -3950,13 +3950,13 @@ static int       _renderAC(S52_obj *obj)
     S57_geo   *geo = S52_PL_getGeo(obj);
 
     // LIGHTS05
-    if (POINT_T == S57_getObjtype(geo)) {
+    if (S57_POINT_T == S57_getObjtype(geo)) {
         _renderAC_LIGHTS05(obj);
         return TRUE;
     }
 
     // VRM
-    if ((LINES_T==S57_getObjtype(geo)) && (0==g_strcmp0("vrmark", S57_getName(geo)))) {
+    if ((S57_LINES_T==S57_getObjtype(geo)) && (0==g_strcmp0("vrmark", S57_getName(geo)))) {
         _renderAC_VRMEBL01(obj);
         return TRUE;
     }
@@ -4404,13 +4404,13 @@ static int       _renderTXT(S52_obj *obj)
 
     //PRINTF("uoffs/voffs: %f/%f %s\n", uoffs, voffs, str);
 
-    if (POINT_T == S57_getObjtype(geoData)) {
+    if (S57_POINT_T == S57_getObjtype(geoData)) {
         _renderTXTAA(obj, color, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
 
         return TRUE;
     }
 
-    if (LINES_T == S57_getObjtype(geoData)) {
+    if (S57_LINES_T == S57_getObjtype(geoData)) {
         if (0 == g_strcmp0("pastrk", S57_getName(geoData))) {
             // past track time
             for (guint i=0; i<npt; ++i) {
@@ -4495,7 +4495,7 @@ static int       _renderTXT(S52_obj *obj)
         return TRUE;
     }
 
-    if (AREAS_T == S57_getObjtype(geoData)) {
+    if (S57_AREAS_T == S57_getObjtype(geoData)) {
 
         _computeCentroid(geoData);
 
@@ -5851,8 +5851,9 @@ int        S52_GL_end(S52_GL_cycle cycle)
     return TRUE;
 }
 
-int        S52_GL_del(S52_obj *obj)
-// delete geo Display List associate to an object
+int        S52_GL_delDL(S52_obj *obj)
+// delete the GL part of S57 geo object (Display List)
+// S52_obj is use only by FREETYPE_GL
 {
     S57_geo  *geoData = S52_PL_getGeo(obj);
     S57_prim *prim    = S57_getPrimGeo(geoData);
@@ -5916,7 +5917,7 @@ int        S52_GL_del(S52_obj *obj)
 #endif  // S52_USE_OPENGL_VBO
     }
 
-    _checkError("S52_GL_del()");
+    _checkError("S52_GL_delDL()");
 
     return TRUE;
 }

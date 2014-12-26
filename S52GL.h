@@ -107,7 +107,7 @@ int   S52_GL_isSupp(S52_obj *obj);
 int   S52_GL_isOFFview(S52_obj *obj);
 
 // delete GL data of object (DL of geo)
-int   S52_GL_del(S52_obj *obj);
+int   S52_GL_delDL(S52_obj *obj);
 // delete raster
 int   S52_GL_delRaster(S52_GL_ras *raster, int texOnly);
 
