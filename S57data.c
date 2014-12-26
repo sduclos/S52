@@ -477,7 +477,7 @@ S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
 
     return_if_null(geo);
 
-    geo->geoID      = _geoID++;
+    geo->ID         = _ID++;
     geo->obj_t      = S57_LINES_T;
     geo->linexyznbr = xyznbr;
     geo->linexyz    = xyz;
