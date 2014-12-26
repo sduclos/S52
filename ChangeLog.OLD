@@ -4,6 +4,17 @@
 #
 
 
+2014DEV26
+    -mob enum S57_Obj_t add prefix S57_
+    -add S52_obj lookup indexed with S5_geo.ID
+    -mod rename S52_GL_del to S52_GL_delDL
+    -del _objToDelList as Mariner obj are del imediatly
+    -mod renderBin[][N_OBJ_T] to [52_N_OBJ]
+    -mod refactor _delObj()
+    -mod layer type max to S52_N_OBJ
+    -mod refactor S52_loadPLib()
+    -mod _isObjValide to check S52_PL_isObjValid()
+    
 2014DEV20
     -add S52_PL_cpyAux() to copy S52_obj Aux Info
     -mod move supp field in S57_geo to S52_obj Aux Info
