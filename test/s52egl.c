@@ -3042,8 +3042,8 @@ static int      _X11_handleXevent(gpointer user_data)
 
             // FIXME: use switch on keysym
 
-            // quit
-            if (XK_Escape == keysym || XK_q == keysym) {
+            // ESC - quit
+            if (XK_Escape == keysym) {
                 g_main_loop_quit(engine->main_loop);
                 return TRUE;
             }

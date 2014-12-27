@@ -190,8 +190,8 @@ int main(int argc, char* argv[])
                         unsigned int keycode = ((XKeyEvent *)&event)->keycode;
                         unsigned int keysym  = XkbKeycodeToKeysym(dpy, keycode, 0, 1);
 
-                        // quit
-                        if (XK_Escape == keysym || XK_q == keysym) {
+                        // ESC - quit
+                        if (XK_Escape == keysym) {
                             goto exit;
                         }
                     }
