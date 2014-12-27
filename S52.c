@@ -5998,13 +5998,6 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
             plibObjName, objType, xyznbr, xyz, (NULL==listAttVal)?"NULL":listAttVal );
 
     // is this really needed? (how about META!!)
-    if (NULL == xyz) {
-        PRINTF("WARNING: xyznbr == 0\n");
-        g_assert(0);
-        goto exit;
-    }
-
-    // is this really needed? (how about META!!)
     if (0 == xyznbr) {
         PRINTF("WARNING: xyznbr == 0\n");
         g_assert(0);
