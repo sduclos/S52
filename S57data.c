@@ -79,16 +79,9 @@ typedef struct _S57_geo {
     guint        ID;          // record ID - use as index in S52_obj GPtrArray
     //guint        s52objID;       // optimisation: numeric value of OBCL string
 
-    // FIXME: name come from GDAL/OGR s57objectclasses.csv
-    // so it's ASCII *not* S57 UTF
-    //GString     *name;        // object name 6/8 + '\0'; used for S52 LUP
-    // FIXME: explain the 6/8 name length
-    //char         OBCL[S52_PL_NMLN+1]; // LUP name --'\0' terminated
     char         name[S57_NM_LN+1]; // object name 6 + '\0'
 
-
-    //S52_Obj_t    obj_t;       // used in CS
-    S57_Obj_t    obj_t;       // used in CS
+    S57_Obj_t    obj_t;       // PL & S57 - P/L/A
 
     _rect        rect;        // lat/lon extent of object
 
@@ -1186,25 +1179,6 @@ static void   _printAtt(GQuark key_id, gpointer data, gpointer user_data)
         PRINTF("\t%s : %s\n", attName, attValue->str);
     }
 }
-
-#if 0
-gboolean   S57_setSupp(_S57_geo *geo, gboolean supp)
-// set display suppression of THIS S57 obj
-{
-    return_if_null(geo);
-
-    geo->supp = supp;
-
-    return geo->supp;
-}
-
-gboolean   S57_getSupp(_S57_geo *geo)
-{
-    return_if_null(geo);
-
-    return geo->supp;
-}
-#endif
 
 int        S57_dumpData(_S57_geo *geo, int dumpCoords)
 // debug
