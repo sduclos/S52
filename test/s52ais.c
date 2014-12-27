@@ -899,8 +899,7 @@ static int           _setAISDel (_ais_t *ais)
 #endif
 
 #ifdef S52_USE_SOCK
-    //_encodeNsend("S52_delMarObj", "%lu", ais->vesselH);
-    _encodeNsend("S52_delMarObj", "%u", ais->vesselH);
+    _encodeNsend("S52_delMarObj", "%lu", ais->vesselH);
 #else
     ais->vesselH = S52_delMarObj(ais->vesselH);
     //if (NULL != ais->vesselH) {
@@ -913,8 +912,7 @@ static int           _setAISDel (_ais_t *ais)
 
 #ifdef S52_USE_AFGLOW
 #ifdef S52_USE_SOCK
-    //_encodeNsend("S52_delMarObj", "%lu", ais->afglowH);
-    _encodeNsend("S52_delMarObj", "%u", ais->afglowH);
+    _encodeNsend("S52_delMarObj", "%lu", ais->afglowH);
 #else
     ais->afglowH = S52_delMarObj(ais->afglowH);
     //if (NULL != ais->afglowH) {
@@ -1003,8 +1001,7 @@ static int           _updateTimeTag(void)
         }
 
 #ifdef S52_USE_SOCK
-        //_encodeNsend("S52_setVESSELlabel", "%lu,\"%s\"", ais->vesselH, str);
-        _encodeNsend("S52_setVESSELlabel", "%ui,\"%s\"", ais->vesselH, str);
+        _encodeNsend("S52_setVESSELlabel", "%lu,\"%s\"", ais->vesselH, str);
 #else
         //Note: can't use _setAISLab() as it update timetag - long str
         if (FALSE == S52_setVESSELlabel(ais->vesselH, str)) {
