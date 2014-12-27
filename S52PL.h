@@ -327,12 +327,6 @@ int            S52_PL_setFreetypeGL_VBO(S52_obj *obj, guint vboID, guint len);
 gboolean       S52_PL_setSupp(S52_obj *obj, gboolean supp);
 gboolean       S52_PL_getSupp(S52_obj *obj);
 
-
-// copy Auxiliary Info
-gboolean       S52_PL_cpyAux(S52_obj *objOld, S52_obj *objNew);
-
-//gboolean       S52_PL_isObjValid(S52_obj *obj);
-//gboolean       S52_PL_isObjValid(unsigned int objH);
 S52_obj       *S52_PL_isObjValid(unsigned int objH);
 
 #endif // _S52PL_H_
