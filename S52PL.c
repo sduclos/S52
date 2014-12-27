@@ -2631,26 +2631,34 @@ static int        _linkLUP(_S52_obj *obj, int alt)
 
 S52_obj    *S52_PL_newObj(S57_geo *geoData)
 // wrap an S52 object around an S57 object
+// create new S52 object or reused it
 {
     return_if_null(geoData);
 
-    S52_obj *obj  = g_new0(S52_obj, 1);
-    //S52_obj *obj  = g_try_new0(S52_obj, 1);
-    if (NULL == obj)
-        g_assert(0);
+    S52_obj *obj = NULL;
+    guint    idx = S57_getGeoID(geoData);
+    if (idx<_objList->len && (NULL != (obj = g_ptr_array_index(_objList, idx)))) {
+        S52_PL_delObj(obj, FALSE);
+    } else {
+        //S52_obj *obj  = g_new0(S52_obj, 1);
+        obj = g_new0(S52_obj, 1);
+        //S52_obj *obj  = g_try_new0(S52_obj, 1);
+        if (NULL == obj)
+            g_assert(0);
+    }
 
-    obj->cmdAfinal[0] = g_array_new(FALSE, FALSE, sizeof(_cmdWL));
-    obj->cmdAfinal[1] = g_array_new(FALSE, FALSE, sizeof(_cmdWL));
-    obj->crntA        = NULL; //obj->cmdAlt[0];  // for safety, point to something
-    obj->crntAidx     = 0;
+    obj->cmdAfinal[0]  = g_array_new(FALSE, FALSE, sizeof(_cmdWL));
+    obj->cmdAfinal[1]  = g_array_new(FALSE, FALSE, sizeof(_cmdWL));
+    obj->crntA         = NULL; //obj->cmdAlt[0];  // for safety, point to something
+    obj->crntAidx      = 0;
 
     obj->textParsed[0] = FALSE;
     obj->textParsed[1] = FALSE;
 
-    obj->orient     = (1.0/0.0);   // NaN
-    obj->speed      = (1.0/0.0);   // NaN
+    obj->orient        = (1.0/0.0);   // NaN
+    obj->speed         = (1.0/0.0);   // NaN
 
-    obj->geoData    = geoData;     // S57_geo
+    obj->geoData       = geoData;     // S57_geo
 
 
     // -- *TRICKY* -- *TRICKY* -- *TRICKY* --
@@ -2666,11 +2674,20 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     _linkLUP(obj, 0);
 
 
-    obj->nextLeg = NULL; // this is the default anyway (ie g_new0)
-    obj->prevLeg = NULL; // this is the default anyway (ie g_new0)
+    /*
+    // init Aux Info - this is the default anyway (ie g_new0)
+    obj->orient = 0;
+    obj->speed  = 0;
+    obj->time   = 0;
+    obj->supp   = 0;
+
+    obj->nextLeg = NULL; 
+    obj->prevLeg = NULL;
+    obj->wholin  = NULL;
+    */
 
     // check len and set size if too small
-    guint idx = S57_getGeoID(geoData);
+    //guint idx = S57_getGeoID(geoData);
     if (idx >= _objList->len) {
         PRINTF("DEBUG: extending _objList to %u\n", _objList->len+1024);
         // GLib BUG: take gint for length instead of guint - an oversight say Philip Withnall
@@ -2680,6 +2697,7 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
         g_ptr_array_set_size(_objList, _objList->len+1024);
     }
 
+    // write or overwrite
     g_ptr_array_index(_objList, idx) = obj;
 
     return obj;
@@ -2688,6 +2706,7 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
 S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
 // free data in S52 obj
 // return S57 obj geoData
+// WARNING: note that Aux Info is not touched - still in 'obj'
 // Note: when new PLib loaded, raz rules change hence S52_obj change definition.
 // But not S57 obj. So S57 id stay the same and so is the index. So no NULL because
 // the new obj was just put into the list.
@@ -2746,6 +2765,10 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
     obj->crntA        = NULL;
     obj->crntAidx     = 0;
 
+    //
+    // WARNING: note that Aux Info is not touched - still in 'obj'
+    //
+
     S52_obj *objFree = (S52_obj *)g_ptr_array_index(_objList, S57_getGeoID(obj->geoData));
     if (NULL == objFree) {
         PRINTF("DEBUG: should not be NULL (%u)\n", S57_getGeoID(obj->geoData));
@@ -2758,7 +2781,8 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
     }
 
     S57_geo *geo = obj->geoData;
-    g_free(obj);
+
+    //g_free(obj);
 
     return geo;
 }
@@ -4402,27 +4426,6 @@ gboolean    S52_PL_getSupp(_S52_obj *obj)
     return_if_null(obj);
 
     return obj->supp;
-}
-
-gboolean    S52_PL_cpyAux(_S52_obj *objOld, _S52_obj *objNew)
-// copy Auxiliary Info
-{
-    return_if_null(objOld);
-    return_if_null(objNew);
-
-    objNew->orient  = objOld->orient;
-    objNew->speed   = objOld->speed;
-    objNew->time    = objOld->time;
-    objNew->supp    = objOld->supp;
-
-    // LEGLIN
-    objNew->nextLeg = objOld->nextLeg;
-    objNew->prevLeg = objOld->prevLeg;
-
-    // WHeel-Over-LINe
-    objNew->wholin  = objOld->wholin;
-
-    return TRUE;
 }
 
 S52_obj    *S52_PL_isObjValid(unsigned int objH)
