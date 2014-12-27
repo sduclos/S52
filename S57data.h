@@ -146,14 +146,12 @@ double    S57_resetScamin(S57_geo *geo);
 int       S57_setRelationship(S57_geo *geo, S57_geo *geoRel);
 S57_geo  *S57_getRelationship(S57_geo *geo);
 
-// get/set 'display suppression' for THIS S57_obj
-//gboolean  S57_setSupp(S57_geo *geo, gboolean supp);
-//gboolean  S57_getSupp(S57_geo *geo);
-
+#if 0
 // count the number of 'real (6length)' attributes
-//int       S57_getNumAtt(S57_geo *geo);
+int       S57_getNumAtt(S57_geo *geo);
 // return the 'real' attributes of the geodata. name and val must be preallocated, and be sufficient large. (use S57_getNumAtt for counting)
-//int       S57_getAttributes(S57_geo *geo, char **name, char **val);
+int       S57_getAttributes(S57_geo *geo, char **name, char **val);
+#endif
 
 // debug
 int       S57_dumpData(S57_geo *geo, int dumpCoords);
