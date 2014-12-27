@@ -843,6 +843,7 @@ static S52_obj   *_delObj(S52_obj *obj)
     S52_GL_delDL(obj);
 
     S57_geo *geo = S52_PL_delObj(obj, TRUE);
+    g_free(obj);
 
     S57_doneData(geo, NULL);
 
@@ -2940,13 +2941,13 @@ static int        _insertLightSec(_cell *c, S52_obj *obj)
     return FALSE;
 }
 
-static S52_obj   *_insertS57geo(_cell *c, S57_geo *geoData)
+static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
 // insert a S52_obj in a cell from a S57_geo
 // return the new S52_obj
 {
     S52ObjectType obj_t      = S52__META;
-    S52_obj      *obj        = S52_PL_newObj(geoData);
-    S57_Obj_t     ot         = S57_getObjtype(geoData);
+    S52_obj      *obj        = S52_PL_newObj(geo);
+    S57_Obj_t     ot         = S57_getObjtype(geo);
     S52_disPrio   disPrioIdx = S52_PL_getDPRI(obj);
 
     if (NULL == obj) {
@@ -2995,11 +2996,11 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geoData)
     }
 
 #ifdef S52_USE_WORLD
-    {
-        S57_geo *geoDataNext = NULL;
-        if (NULL != (geoDataNext = S57_getNextPoly(geoData))) {
+    if (0 == g_strcmp0(S57_getName(geo), WORLD_BASENM)){
+        S57_geo *geoNext = NULL;
+        if (NULL != (geoNext = S57_getNextPoly(geo))) {
             // recurssion
-            _insertS57geo(c, geoDataNext);
+            _insertS57geo(c, geoNext);
         }
     }
 #endif
@@ -3007,9 +3008,8 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geoData)
     return obj;
 }
 
-#if 0
-static S52_obj   *_insertS52Obj(_cell *c, S52_obj *obj)
-// inster 'obj' in cell 'c' (use to store Mariners' Object)
+static S52_obj   *_insertS52obj(_cell *c, S52_obj *obj)
+// inster 'obj' in cell 'c'
 {
     S57_geo      *geo        = S52_PL_getGeo(obj);
     S52_disPrio   disPrioIdx = S52_PL_getDPRI(obj);
@@ -3018,10 +3018,10 @@ static S52_obj   *_insertS52Obj(_cell *c, S52_obj *obj)
 
     // connect S52ObjectType (public enum) to S57 object type (private)
     switch (ot) {
-        case _META_T: obj_t = S52__META; break; // meta geo stuff (ex: C_AGGR)
-        case AREAS_T: obj_t = S52_AREAS; break;
-        case LINES_T: obj_t = S52_LINES; break;
-        case POINT_T: obj_t = S52_POINT; break;
+        case S57__META_T: obj_t = S52__META; break; // meta geo stuff (ex: C_AGGR)
+        case S57_AREAS_T: obj_t = S52_AREAS; break;
+        case S57_LINES_T: obj_t = S52_LINES; break;
+        case S57_POINT_T: obj_t = S52_POINT; break;
         default:
             PRINTF("ERROR: unknown index of addressed object type\n");
             g_assert(0);
@@ -3035,7 +3035,6 @@ static S52_obj   *_insertS52Obj(_cell *c, S52_obj *obj)
 
     return obj;
 }
-#endif
 
 static S52_obj   *_removeObj(_cell *c, S52_obj *obj)
 // remove the S52 object from the cell (not the object itself)
@@ -4984,6 +4983,9 @@ DLL int    STD S52_loadPLib(const char *plibName)
     for (guint k=0; k<_cellList->len; ++k) {
         _cell *cell = (_cell*) g_ptr_array_index(_cellList, k);
 
+        //if (0 == g_strcmp0(, WORLD_BASENM)){
+        //
+
         _cell tmpCell;
         memset(&tmpCell, 0, sizeof(_cell));
 
@@ -5001,19 +5003,21 @@ DLL int    STD S52_loadPLib(const char *plibName)
             for (int j=S52_AREAS; j<S52_N_OBJ; ++j) {
                 GPtrArray *rbin = cell->renderBin[i][j];
                 for (guint idx=0; idx<rbin->len; ++idx) {
-                    S52_obj *oldObj = (S52_obj *)g_ptr_array_index(rbin, idx);
+                    S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
 
-                    S57_geo *geo    = S52_PL_getGeo(oldObj);
-                    S52_obj *newObj = _insertS57geo(&tmpCell, geo);
+                    // 1 - relink to new rules
+                    S57_geo *geo    = S52_PL_getGeo(obj);
+                    //S52_obj *newObj = _insertS57geo(&tmpCell, geo);
+                    S52_obj *tmpObj = S52_PL_newObj(geo);
 
-                    // transfert all field of objObj to objNew
-                    S52_PL_cpyAux(oldObj, newObj);
-                    // then del old
-                    S52_GL_delDL(oldObj);
-                    S52_PL_delObj(oldObj, FALSE);
+                    // debug - should be the same since we relink existing object
+                    g_assert(obj == tmpObj);
 
-                    //S52_obj *newObj = S52_PL_newObj(geo);
-                    //_insertS52Obj(&tmpCell, newObj);
+                    // 2 - flush old Display List / VBO
+                    S52_GL_delDL(obj);
+
+                    // 3 - put in new render bin
+                    _insertS52obj(&tmpCell, obj);
                 }
                 // flush old rbin
                 g_ptr_array_free(rbin, TRUE);
@@ -5030,20 +5034,21 @@ DLL int    STD S52_loadPLib(const char *plibName)
 
         if (NULL != cell->lights_sector) {
             for (guint i=0; i<cell->lights_sector->len; ++i) {
-                S52_obj *oldObj = (S52_obj *)g_ptr_array_index(cell->lights_sector, i);
+                S52_obj *obj = (S52_obj *)g_ptr_array_index(cell->lights_sector, i);
 
-                S57_geo *geo    = S52_PL_getGeo(oldObj);
-                S52_obj *newObj = _insertS57geo(&tmpCell, geo);
+                // 1 - relink to new rules
+                S57_geo *geo    = S52_PL_getGeo(obj);
+                //S52_obj *newObj = _insertS57geo(&tmpCell, geo);
+                S52_obj *tmpObj = S52_PL_newObj(geo);
 
-                // transfert all field of objObj to objNew
-                S52_PL_cpyAux(oldObj, newObj);
+                // debug - should be the same since we relink existing object
+                g_assert(obj == tmpObj);
 
-                // then del old
-                S52_GL_delDL(oldObj);
-                S52_PL_delObj(oldObj, FALSE);
+                // 2 - flush old Display List / VBO
+                S52_GL_delDL(obj);
 
-                //S52_obj *newObj = S52_PL_newObj(geo);
-                //_insertS52Obj(&tmpCell, newObj);
+                // 3 - put in new render bin
+                _insertS52obj(&tmpCell, obj);
             }
             g_ptr_array_free(cell->lights_sector, TRUE);
         }
