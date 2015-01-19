@@ -24,7 +24,7 @@
 #include "S57data.h"    // S57_geo
 #include "S52utils.h"   // PRINTF(), S52_strlen()
 
-#include <math.h>       // INFINITY
+#include <math.h>       // INFINITY, nearbyint()
 
 #ifdef S52_USE_PROJ
 static projPJ      _pjsrc   = NULL;   // projection source
@@ -385,6 +385,7 @@ int        S57_geo2prj3dv(guint npt, double *data)
         //    //g_assert(0);
         //}
     }
+
     // reset to beginning
     pt = (pt3*)data;
 
@@ -395,6 +396,17 @@ int        S57_geo2prj3dv(guint npt, double *data)
         g_assert(0);
         return FALSE;
     }
+
+    // FIXME: try to (and check) reduce the number of points by flushing decimal
+    // reset to beginning
+    pt = (pt3*)data;
+    for (guint i=0; i<npt; ++i, ++pt) {
+        pt->x = nearbyint(pt->x);
+        pt->y = nearbyint(pt->y);
+    }
+
+    // then libtess should remove coincident points.
+    // Other trick, try to reduce more by rounding integer using cell scale
 #endif
 
     return TRUE;
