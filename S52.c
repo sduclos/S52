@@ -3185,17 +3185,21 @@ int            S52_loadObject(const char *objname, void *shape)
             _crntCell->vverdatstr = S57_getAttVal(geoData, "VERDAT");
         }
 #ifdef S52_DEBUG
+        /*
         {   // debug - check for LNAM_REFS in regular S57 object
             GString *key_lnam_refs = S57_getAttVal(geoData, "LNAM_REFS");
             if (NULL != key_lnam_refs) {
                 GString *key_ffpt_rind = S57_getAttVal(geoData, "FFPT_RIND");
                 GString *key_lnam      = S57_getAttVal(geoData, "LNAM");
-                PRINTF("LNAM: %s, LNAM_REFS: %s, FFPT_RIND: %s\n", key_lnam->str, key_lnam_refs->str, key_ffpt_rind->str);
+                PRINTF("DEBUG: LNAM: %s, LNAM_REFS: %s, FFPT_RIND: %s\n", key_lnam->str, key_lnam_refs->str, key_ffpt_rind->str);
             }
         }
+        */
 #endif
     } else {
-        PRINTF("S57__META_T:OBJNAME:%s ###################################################\n", objname);
+        // debug
+        //PRINTF("DEBUG: S57__META_T:OBJNAME:%s ###################################################\n", objname);
+
         // check DSID  (GDAL metadata)
         if (0== g_strcmp0(objname, "DSID")) {
             GString *dsid_sdatstr = S57_getAttVal(geoData, "DSID_SDAT");
