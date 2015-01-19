@@ -2640,7 +2640,6 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     if (idx<_objList->len && (NULL != (obj = g_ptr_array_index(_objList, idx)))) {
         S52_PL_delObj(obj, FALSE);
     } else {
-        //S52_obj *obj  = g_new0(S52_obj, 1);
         obj = g_new0(S52_obj, 1);
         //S52_obj *obj  = g_try_new0(S52_obj, 1);
         if (NULL == obj)
@@ -2670,7 +2669,7 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     // obj->_LUP will reference the alternate LUP
     // but the field have the same value (theoriticaly)
     _linkLUP(obj, 1);   // alternate symbology
-    // FIX: parse alternate first so that normal LUP reference stay the default
+    // FIX: parse alternate first so that normal LUP reference will be the default
     _linkLUP(obj, 0);
 
 
@@ -2686,10 +2685,8 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     obj->wholin  = NULL;
     */
 
-    // check len and set size if too small
-    //guint idx = S57_getGeoID(geoData);
-    if (idx >= _objList->len) {
-        PRINTF("DEBUG: extending _objList to %u\n", _objList->len+1024);
+    while (idx >= _objList->len) {
+        PRINTF("DEBUG: extending _objList size to %u\n", _objList->len+1024);
         // GLib BUG: take gint for length instead of guint - an oversight say Philip Withnall
         // https://mail.gnome.org/archives/gtk-devel-list/2014-December/thread.html
         // use g_array if in need of > 2^31 objects
@@ -2710,6 +2707,7 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
 // Note: when new PLib loaded, raz rules change hence S52_obj change definition.
 // But not S57 obj. So S57 id stay the same and so is the index. So no NULL because
 // the new obj was just put into the list.
+// FIXME: add S52_PL_nilObj() to reset dynamic field then call S52_PL_delObj() to destroy everything
 {
     return_if_null(obj);
 
@@ -2781,8 +2779,6 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
     }
 
     S57_geo *geo = obj->geoData;
-
-    //g_free(obj);
 
     return geo;
 }
