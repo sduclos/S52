@@ -172,10 +172,19 @@ void _clearTable(id) {
   }
 }
 
-/////////////// Close Window //////////////////////////
-void _closeWindow(MouseEvent e) {
-  // FIXME: can't close a window that a script didn't open!
-  window.close();
+/////////////// version //////////////////////////
+void _version(MouseEvent e) {
+  _clearTable("#tableR");
+
+  s52.version().then((ret) {
+    //print('ret: ${ret[0]}');
+    print('ret: ${ret}');
+
+    var Att = ret[0].split(',');
+    for (int i=0; i<Att.length; ++i) {
+      _appendCellRTable(Att[i], null, i);
+    }
+  });
 }
 
 /////////////// Color Palette Button Handling //////////////////////////
@@ -423,9 +432,9 @@ Future<bool> _initUI() {
           });
 
 
-          //querySelector("#td_buttonCell0")
-          //..onClick.listen((ev) => print("id:'td_buttonCell0'"))
-          //..onClick.listen((ev) => _closeWindow(ev));
+          querySelector("#td_buttonCell0")
+          ..onClick.listen((ev) => print("id:'td_buttonCell0'"))
+          ..onClick.listen((ev) => _version(ev));
 
           querySelector("#td_buttonCell1")
           ..onClick.listen((ev) => print("id:'td_buttonCell1'"))
