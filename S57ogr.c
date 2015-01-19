@@ -78,6 +78,7 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
 
             S57_setAtt(geoData, propName, propValue);
 
+            /* debug
             if (0 == g_strcmp0(S57_getName(geoData), "M_NPUB")) {
                 PRINTF("DEBUG: M_NPUB-%i: %s --> %s\n", field_index, propName, propValue);
             }
@@ -87,6 +88,7 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
             if (0 == g_strcmp0(S57_getName(geoData), "C_ASSO")) {
                 PRINTF("DEBUG: C_ASSO-%i: %s --> %s\n", field_index, propName, propValue);
             }
+            */
         }
     }
 
