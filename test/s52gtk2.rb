@@ -23,8 +23,9 @@
 
 require 'gtkglext'
 
-require '../S52' if RUBY_PLATFORM.include?('linux')
-require 'S52'    if RUBY_PLATFORM.include?('mswin')
+#require '../S52' if RUBY_PLATFORM.include?('linux')
+#require 'S52'    if RUBY_PLATFORM.include?('mswin')
+require 'S52'
 
 #Gtk::init
 Gtk::GL.init
@@ -36,15 +37,6 @@ hmm = Gdk::screen_height_mm
 S52.init(w, h, wmm, hmm)
 
 p S52.version
-
-#$FontName = [
-#    #"arial 10",
-#    #"arial 14",
-#    #"arial 20"
-#    "arial  8",
-#    "arial 10",
-#    "arial 14"
-#]
 
 class View
     attr_accessor :cLat, :cLon, :rNM, :north
@@ -483,9 +475,9 @@ def _setupS52()
     S52.setMarinerParam(S52::MAR_SHALLOW_CONTOUR, 5.0)
     S52.setMarinerParam(S52::MAR_DEEP_CONTOUR,   11.0)
     S52.setMarinerParam(S52::MAR_SHALLOW_PATTERN, 0.0)
+    S52.setMarinerParam(S52::MAR_SHIPS_OUTLINE,   1.0)
 
     # not implemented yet
-    S52.setMarinerParam(S52::MAR_SHIPS_OUTLINE,   1.0)
     #S52.setMarinerParam(S52::MAR_DISTANCE_TAGS,   0.0)
     #S52.setMarinerParam(S52::MAR_TIME_TAGS,       0.0)
 
@@ -509,4 +501,3 @@ window.show_all
 Gtk.main
 
 S52.done
-
