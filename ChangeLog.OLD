@@ -4,7 +4,15 @@
 #
 
 
-2014DEV26
+2015JAN18
+    -fix _objList size to increment it until it is greater than S57ID
+    -fix Makefile LIBVERS
+
+2015JAN11
+    -fix S52_version() to return valid JSON
+    -add version check in test/s52ui
+
+2014DEC26
     -mob enum S57_Obj_t add prefix S57_
     -add S52_obj lookup indexed with S5_geo.ID
     -mod rename S52_GL_del to S52_GL_delDL
@@ -15,7 +23,7 @@
     -mod refactor S52_loadPLib()
     -mod _isObjValide to check S52_PL_isObjValid()
     
-2014DEV20
+2014DEC20
     -add S52_PL_cpyAux() to copy S52_obj Aux Info
     -mod move supp field in S57_geo to S52_obj Aux Info
     -mod move get/set supp from S57data to S52PL
