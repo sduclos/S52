@@ -4690,6 +4690,10 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 //fristCoord = data;
                 _g_ptr_array_clear(_tmpV);
 
+                // FIXME: check poly winding - to skip ODD for ISODGR01
+                // ODD needed for symb. ISODGR01 + glDisable(GL_CULL_FACE);
+
+
                 gluTessBeginPolygon(_tobj, vertex);
                 gluTessBeginContour(_tobj);
 
@@ -4727,9 +4731,6 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 //glDisable( GL_LINE_SMOOTH );
                 //glDisable( GL_BLEND );
 
-
-                //S57_initPrim(vertex); //reset
-                //continue;
                 break;
             }
 
