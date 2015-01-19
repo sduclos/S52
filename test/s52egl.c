@@ -92,11 +92,12 @@
 #define  LOGI(...)   g_print(__VA_ARGS__)
 #define  LOGE(...)   g_print(__VA_ARGS__)
 
-// ebline draw flag in X11 (F4 toggle ON/OFF)
+#endif  // S52_USE_ANDROID
+
+// ebline draw flag (F4 toggle ON/OFF)
 //static int _drawVRMEBL = TRUE;
 static int _drawVRMEBL = FALSE;
 
-#endif  // S52_USE_ANDROID
 
 // test - St-Laurent Ice Route
 static S52ObjectHandle _waypnt1 = FALSE;
