@@ -386,6 +386,14 @@ class S52 {
 
     return _sndMsg(jsonCmdstr);
   }
+  Future<List> version() {
+    _data["id"    ] = id;
+    _data["method"] = "S52_version";
+    _data["params"] = [];
+    String jsonCmdstr = JSON.encode(_data);
+
+    return _sndMsg(jsonCmdstr);
+  }
 }
 ////////////////////////////////////////////////////////
 
