@@ -513,7 +513,7 @@ static GLint     _freeGLU(void)
 #ifdef S52_USE_OPENGL_VBO
     if (_qobj) _gluDeleteQuadric(_qobj);
 #else
-    if (_qobj) gluDeleteQuadric(_qobj);
+    if (_qobj)  gluDeleteQuadric(_qobj);
 #endif
     _tmpV = NULL;
     _tobj = NULL;
@@ -525,9 +525,9 @@ static GLint     _freeGLU(void)
     _tcin = NULL;
     if (_centroids) g_array_free(_centroids, TRUE);
     _centroids = NULL;
-    if (_vertexs)   g_array_free(_vertexs, TRUE);
+    if (_vertexs)   g_array_free(_vertexs,   TRUE);
     _vertexs = NULL;
-    if (_nvertex)   g_array_free(_nvertex, TRUE);
+    if (_nvertex)   g_array_free(_nvertex,   TRUE);
     _nvertex = NULL;
 
     return TRUE;
