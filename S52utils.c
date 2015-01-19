@@ -55,103 +55,102 @@ static GTimeVal _now;
 #endif
 
 // internal libS52.so version
-static char _version[] = "$Revision: 1.126 $\n"
-      "libS52-1.157\n"
+static char _version[] = "libS52-2014DEC27-1.157"
 #ifdef _MINGW
-      "_MINGW\n"
+      ",_MINGW"
 #endif
 #ifdef S52_USE_GV
-      "S52_USE_GV\n"
+      ",S52_USE_GV"
 #endif
 #ifdef GV_USE_DOUBLE_PRECISION_COORD
-      "GV_USE_DOUBLE_PRECISION_COORD\n"
+      ",GV_USE_DOUBLE_PRECISION_COORD"
 #endif
 #ifdef S52_USE_GLIB2
-      "S52_USE_GLIB2\n"
+      ",S52_USE_GLIB2"
 #endif
 #ifdef S52_USE_OGR_FILECOLLECTOR
-      "S52_USE_OGR_FILECOLLECTOR\n"
+      ",S52_USE_OGR_FILECOLLECTOR"
 #endif
 #ifdef S52_USE_PROJ
-      "S52_USE_PROJ\n"
+      ",S52_USE_PROJ"
 #endif
 #ifdef S52_USE_SUPP_LINE_OVERLAP
-      "S52_USE_SUPP_LINE_OVERLAP\n"
+      ",S52_USE_SUPP_LINE_OVERLAP"
 #endif
 #ifdef S52_DEBUG
-      "S52_DEBUG\n"
+      ",S52_DEBUG"
 #endif
 #ifdef S52_USE_LOG
-      "S52_USE_LOG\n"
+      ",S52_USE_LOG"
 #endif
 #ifdef S52_USE_LOGFILE
-      "S52_USE_LOGFILE\n"
+      ",S52_USE_LOGFILE"
 #endif
 #ifdef S52_USE_DBUS
-      "S52_USE_DBUS\n"
+      ",S52_USE_DBUS"
 #endif
 #ifdef S52_USE_SOCK
-      "S52_USE_SOCK\n"
+      ",S52_USE_SOCK"
 #endif
 #ifdef S52_USE_GOBJECT
-      "S52_USE_GOBJECT\n"
+      ",S52_USE_GOBJECT"
 #endif
 #ifdef S52_USE_BACKTRACE
-      "S52_USE_BACKTRACE\n"
+      ",S52_USE_BACKTRACE"
 #endif
 #ifdef S52_USE_EGL
-      "S52_USE_EGL\n"
+      ",S52_USE_EGL"
 #endif 
 #ifdef S52_USE_GL1
-      "S52_USE_GL1\n"
+      ",S52_USE_GL1"
 #endif
 #ifdef S52_USE_OPENGL_VBO
-      "S52_USE_OPENGL_VBO\n"
+      ",S52_USE_OPENGL_VBO"
 #endif
 #ifdef S52_USE_GLSC1
-      "S52_USE_GLSC1\n"
+      ",S52_USE_GLSC1"
 #endif
 #ifdef S52_USE_GL2
-      "S52_USE_GL2\n"
+      ",S52_USE_GL2"
 #endif
 #ifdef S52_USE_GLES2
-      "S52_USE_GLES2\n"
+      ",S52_USE_GLES2"
 #endif
 #ifdef S52_USE_ANDROID
-      "S52_USE_ANDROID\n"
+      ",S52_USE_ANDROID"
 #endif
 #ifdef S52_USE_TEGRA2
-      "S52_USE_TEGRA2\n"
+      ",S52_USE_TEGRA2"
 #endif
 #ifdef S52_USE_ADRENO
-      "S52_USE_ADRENO\n"
+      ",S52_USE_ADRENO"
 #endif
 #ifdef S52_USE_COGL
-      "S52_USE_COGL\n"
+      ",S52_USE_COGL"
 #endif
 #ifdef S52_USE_FREETYPE_GL
-      "S52_USE_FREETYPE_GL\n"
+      ",S52_USE_FREETYPE_GL"
 #endif
 #ifdef S52_USE_SYM_AISSEL01
-      "S52_USE_SYM_AISSEL01\n"
+      ",S52_USE_SYM_AISSEL01"
 #endif
 #ifdef S52_USE_WORLD
-      "S52_USE_WORLD\n"
+      ",S52_USE_WORLD"
 #endif
 #ifdef S52_USE_SYM_VESSEL_DNGHL
-      "S52_USE_SYM_VESSEL_DNGHL\n"
+      ",S52_USE_SYM_VESSEL_DNGHL"
 #endif
 #ifdef S52_USE_TXT_SHADOW
-      "S52_USE_TXT_SHADOW\n"
+      ",S52_USE_TXT_SHADOW"
 #endif
 #ifdef S52_USE_RADAR
-      "S52_USE_RADAR\n"
+      ",S52_USE_RADAR"
 #endif
 #ifdef S52_USE_MESA3D
-      "S52_USE_MESA3D\n"
+      ",S52_USE_MESA3D"
 #endif
 #ifdef S52_USE_C_AGGR_C_ASSO
-      "S52_USE_C_AGGR_C_ASSO\n"
+      ",S52_USE_C_AGGR_C_ASSO"
 #endif
 ;
 
