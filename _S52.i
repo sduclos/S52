@@ -85,8 +85,11 @@ static int                 _handleS52method(const gchar *str, char *result, char
 
     // start work - fetch cmdName parameters
     JSON_Array *paramsArr = json_object_get_array(obj, "params");
-    if (NULL == paramsArr)
+    if (NULL == paramsArr) {
+        _setErr(err, "no params");
+        _encode(result, "[0]");
         goto exit;
+    }
 
     // get the number of parameters
     size_t      count     = json_array_get_count(paramsArr);
@@ -261,7 +264,7 @@ static int                 _handleS52method(const gchar *str, char *result, char
         goto exit;
     }
 
-    // FIXME: not all param paresed
+    // FIXME: not all param parsed
     //S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
     //                                     unsigned int xyznbrmax, double *xyz, const char *listAttVal);
     if (0 == g_strcmp0(cmdName, "S52_newMarObj")) {
@@ -665,7 +668,16 @@ static int                 _handleS52method(const gchar *str, char *result, char
         goto exit;
     }
 
+    //DLL const char * STD S52_version(void);
+    if (0 == g_strcmp0(cmdName, "S52_version")) {
+        const char *version = S52_version();
 
+        _encode(result, "[\"%s\"]", version);
+
+        //PRINTF("%s", result);
+
+        goto exit;
+    }
 
     //
     _encode(result, "[0,\"WARNING:%s(): call not found\"]", cmdName);
