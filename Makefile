@@ -35,7 +35,7 @@ all: s52gtk2        # OGR & GTK2 & GL 1.5 (VBO)
 
 SHELL = /bin/sh
 
-.PHONY: test/* clean distclean LIBVERS
+.PHONY: test/* clean distclean LIBS52VERS
 
 
 DBG0   = -O0 -g
@@ -607,19 +607,19 @@ tags:
 err.txt: *.c *.h
 	cppcheck --enable=all $(DEFS) *.c 2> err.txt
 
-#"libS52-1.145\n" --> 1.145
-LIBVERS = $(shell grep libS52- S52utils.c | sed 's/.*"libS52-\(.*\)\\n"/\1/' )
+# "libS52-2014DEC27-1.157" --> 2014DEC27-1.145
+LIBS52VERS = $(shell grep libS52- S52utils.c | sed 's/.*"libS52-\(.*\)"/\1/' )
 
-S52-$(LIBVERS).gir: S52.h
-	g-ir-scanner --verbose --namespace=S52 --nsversion=$(LIBVERS) --library=S52 --no-libtool S52.h -o $@
+S52-$(LIBS52VERS).gir: S52.h
+	g-ir-scanner --verbose --namespace=S52 --nsversion=$(LIBS52VERS) --library=S52 --no-libtool S52.h -o $@
 	sudo cp $@ /usr/share/gir-1.0/
 
-S52-$(LIBVERS).typelib: S52-$(LIBVERS).gir
-	g-ir-compiler S52-$(LIBVERS).gir -o $@
+S52-$(LIBS52VERS).typelib: S52-$(LIBS52VERS).gir
+	g-ir-compiler S52-$(LIBS52VERS).gir -o $@
 	sudo cp $@ /usr/lib/girepository-1.0/
 
 # https://git.gnome.org/browse/introspection-doc-generator
-doc: S52-$(LIBVERS).typelib
+doc: S52-$(LIBS52VERS).typelib
 	(cd /home/sduclos/dev/prog/doc-generator/introspection-doc-generator/; seed docs.js ../tmp S52;)
 	cp /home/sduclos/dev/prog/doc-generator/introspection-doc-generator/tmp/seed/* doc/tmp
 
