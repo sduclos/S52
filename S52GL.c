@@ -36,6 +36,11 @@
 // compiled with -std=gnu99 instead of -std=c99 will define M_PI
 #include <math.h>         // sin(), cos(), atan2(), pow(), sqrt(), floor(), INFINITY, M_PI
 
+// FIXME: for C99
+#ifndef M_PI
+#    define M_PI 3.14159265358979323846
+#endif
+
 
 ///////////////////////////////////////////////////////////////////
 // state
@@ -1352,7 +1357,7 @@ static int       _fillArea(S57_geo *geoData)
 //static int       _fillArea(S57_geo *geoData, char LOD)
 {
     // debug
-    //_S57ID = S57_getGeoID(geoData);
+    //_S57ID = S57_getGeoS57ID(geoData);
     //_npoly++;
     // debug - test optimization
     //if (0 == g_strcmp0("DEPARE", S57_getName(geoData))) {
@@ -5392,11 +5397,11 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //    }
     //}
     //S57_geo *geo = S52_PL_getGeo(obj);
-    //PRINTF("drawing geo ID: %i\n", S57_getGeoID(geo));
-    //if (2184==S57_getGeoID(geo)) {
-    //if (899 == S57_getGeoID(geo)) {
-    //if (103 == S57_getGeoID(geo)) {  // Hawaii ISODNG
-    //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoID(geo));
+    //PRINTF("drawing geo ID: %i\n", S57_getGeoS57ID(geo));
+    //if (2184==S57_getGeoS57ID(geo)) {
+    //if (899 == S57_getGeoS57ID(geo)) {
+    //if (103 == S57_getGeoS57ID(geo)) {  // Hawaii ISODNG
+    //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoS57ID(geo));
     ////    return TRUE;
     //}
     //if (S52_GL_PICK == _crnt_GL_cycle) {
@@ -6399,7 +6404,7 @@ char      *S52_GL_getNameObjPick(void)
             S57_geo *geo = S52_PL_getGeo(obj);
 
             name  = S57_getName(geo);
-            S57ID = S57_getGeoID(geo);
+            S57ID = S57_getGeoS57ID(geo);
 
             PRINTF("%i  : %s\n", i, name);
             PRINTF("LUP : %s\n", S52_PL_getCMDstr(obj));
@@ -6459,7 +6464,7 @@ char      *S52_GL_getNameObjPick(void)
     S57_highlightON(geoHighLight);
 
     name  = S57_getName (geoHighLight);
-    S57ID = S57_getGeoID(geoHighLight);
+    S57ID = S57_getGeoS57ID(geoHighLight);
 
     // Note: compile with S52_USE_C_AGGR_C_ASSO
 #ifdef S52_USE_C_AGGR_C_ASSO
@@ -6487,11 +6492,11 @@ char      *S52_GL_getNameObjPick(void)
                 sscanf(*splitRefs, "%p", (void**)&geoRelAssoc);
                 S57_highlightON(geoRelAssoc);
 
-                guint idAssoc = S57_getGeoID(geoRelAssoc);
+                guint idAssoc = S57_getGeoS57ID(geoRelAssoc);
 
                 if (NULL == geoRelIDs) {
                     geoRelIDs = g_string_new("");
-                    g_string_printf(geoRelIDs, ":%i,%i", S57_getGeoID(geoRel), idAssoc);
+                    g_string_printf(geoRelIDs, ":%i,%i", S57_getGeoS57ID(geoRel), idAssoc);
                 } else {
                     g_string_append_printf(geoRelIDs, ",%i", idAssoc);
                 }
@@ -6706,21 +6711,15 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     guint x, y;
 
     if (NULL == obj) {
-        //x      = _vp[0];
-        //y      = _vp[1];
-        //width  = _vp[2];
-        //height = _vp[3];
         x      = _vp.x;
         y      = _vp.y;
         width  = _vp.w;
         height = _vp.h;
     } else {
-        //if (width > _vp[2]) {
         if (width > _vp.w) {
             PRINTF("WARNING: dump width (%i) exceeded viewport width (%i)\n", width, _vp.w);
             return FALSE;
         }
-        //if (height> _vp[3]) {
         if (height> _vp.h) {
             PRINTF("WARNING: dump height (%i) exceeded viewport height (%i)\n", height, _vp.h);
             return FALSE;
@@ -6748,17 +6747,12 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         //_glMatrixDel(VP_PRJ);
 
         // FIXME: what happen if the viewport change!!
-        //if ((p.u - width/2 ) <      0) x = width/2;
-        //if ((x   + width   ) > _vp[2]) x = _vp[2] - width;
-        //if ((p.v - height/2) <      0) y = height/2;
-        //if ((y   + height  ) > _vp[3]) y = _vp[3] - height;
-
+        x = 0;
+        y = 0;
         if ((pt.x - width/2 ) <      0) x = width/2;
-        //if ((x    + width   ) > _vp[2]) x = _vp[2] - width;
-        if ((x    + width   ) > _vp.w) x = _vp.w - width;
+        if ((x    + width   ) >  _vp.w) x = _vp.w - width;
         if ((pt.y - height/2) <      0) y = height/2;
-        //if ((y    + height  ) > _vp.h) y = _vp[3] - height;
-        if ((y    + height  ) > _vp.h) y = _vp.h - height;
+        if ((y    + height  ) >  _vp.h) y = _vp.h - height;
     }
 
     driver = GDALGetDriverByName("GTiff");
