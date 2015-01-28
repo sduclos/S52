@@ -22,9 +22,13 @@ all: s52gtk3egl     # GTK3 & EGL
                     # also used to build S52/doc/S52-0.1.gir
 
 #CC   = tcc -fPIC
-CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=gnu99
+#CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=gnu99
+#CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=c99
 #CC   = g++ -fPIC -O0 -g -Wall
-CXX   = g++ -O0 -g -Wall
+#CXX   = g++ -O0 -g -Wall
+
+CC   = clang -fPIC
+CXX  = clang -fPIC
 
 MINGW = /usr/bin/i586-mingw32msvc-
 #MINGW = /usr/bin/i686-w64-mingw32-
