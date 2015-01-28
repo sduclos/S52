@@ -41,9 +41,11 @@ SHELL = /bin/sh
 DBG0   = -O0 -g
 DBG1   = -O0 -g1 -Wall -pedantic -Wextra
 DBG2   = -O0 -g2 -Wall -pedantic -Wextra
-DBG3   = -O0 -g3 -Wall -pedantic -Wextra -ggdb3 -rdynamic -fstack-protector-all
+DBG3   = -O0 -g3 -Wall -pedantic -Wextra -ggdb3 -fstack-protector-all
 DBGOFF = -DG_DISABLE_ASSERT
 DBG    = $(DBG3)
+
+# for CLang: no -rdynamic
 
 # from clutter
 # Compiler flags: -Werror -Wall -Wshadow -Wcast-align -Wno-uninitialized -Wempty-body -Wformat-security -Winit-self
@@ -60,9 +62,11 @@ DBG    = $(DBG3)
 #CXX  = tcc -fPIC -fmudflap
 #CC   = gcc -std=c99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
 #CC   = gcc -std=c99 -fPIC
-CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI
+#CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI
+CC   = clang -fPIC
 #CC   = g++ -fPIC
-CXX  = g++ -fPIC
+#CXX  = g++ -fPIC
+CXX  = clang -fPIC
 
 MINGW = /usr/bin/i586-mingw32msvc-
 #MINGW = /usr/bin/i686-w64-mingw32-
@@ -463,14 +467,14 @@ $(S52DROIDLIB)/libS52.a: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARS
 	$(RANLIB)  $(S52DROIDLIB)/libS52.a
 
 libS52.so: $(OBJS_S52) $(OBJ_PARSON) tags
-	$(CXX) -rdynamic -shared $(OBJS_S52) $(OBJ_PARSON) $(LIBS) -o $@
+	$(CXX) -shared $(OBJS_S52) $(OBJ_PARSON) $(LIBS) -o $@
 
 libS52gl2.so:  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
-	$(CXX) -rdynamic -shared  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
+	$(CXX) -shared  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
 	-ln -sf libS52gl2.so libS52.so
 
 libS52egl.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
-	$(CXX) -rdynamic -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
+	$(CXX) -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
 	-ln -sf libS52egl.so libS52.so
 
 libS52gv.so: $(OBJS_S52) $(OBJS_GV)
