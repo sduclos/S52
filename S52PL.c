@@ -1740,8 +1740,8 @@ static int        _parseLNST(_PL *fp)
         g_assert(0);
 
     lnst->symType                = S52_SMB_LINE;
-    lnst->exposition.LXPO        = g_string_new('\0');
-    lnst->shape.line.vector.LVCT = g_string_new('\0');
+    lnst->exposition.LXPO        = g_string_new("");
+    lnst->shape.line.vector.LVCT = g_string_new("");
 
     sscanf(_pBuf+11, "%d", &lnst->RCID);
     //sscanf(_pBuf+11, "%i", &lnst->RCID);
@@ -1792,8 +1792,8 @@ static int        _parsePATT(_PL *fp)
         g_assert(0);
 
     patt->symType                = S52_SMB_PATT;
-    patt->exposition.PXPO        = g_string_new('\0');   // field repeat
-    patt->shape.patt.vector.PVCT = g_string_new('\0');   // field repeat
+    patt->exposition.PXPO        = g_string_new("");   // field repeat
+    patt->shape.patt.vector.PVCT = g_string_new("");   // field repeat
 
     sscanf(_pBuf+11, "%d", &patt->RCID);
     //sscanf(_pBuf+11, "%i", &patt->RCID);
@@ -1847,8 +1847,8 @@ static int        _parseSYMB(_PL *fp)
         g_assert(0);
 
     symb->symType                = S52_SMB_SYMB;
-    symb->exposition.SXPO        = g_string_new('\0');
-    symb->shape.symb.vector.SVCT = g_string_new('\0');
+    symb->exposition.SXPO        = g_string_new("");
+    symb->shape.symb.vector.SVCT = g_string_new("");
 
     sscanf(_pBuf+11, "%d", &symb->RCID);
     //sscanf(_pBuf+11, "%i", &symb->RCID);
@@ -2636,7 +2636,7 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     return_if_null(geoData);
 
     S52_obj *obj = NULL;
-    guint    idx = S57_getGeoID(geoData);
+    guint    idx = S57_getGeoS57ID(geoData);
     if (idx<_objList->len && (NULL != (obj = g_ptr_array_index(_objList, idx)))) {
         S52_PL_delObj(obj, FALSE);
     } else {
@@ -2767,15 +2767,15 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
     // WARNING: note that Aux Info is not touched - still in 'obj'
     //
 
-    S52_obj *objFree = (S52_obj *)g_ptr_array_index(_objList, S57_getGeoID(obj->geoData));
+    S52_obj *objFree = (S52_obj *)g_ptr_array_index(_objList, S57_getGeoS57ID(obj->geoData));
     if (NULL == objFree) {
-        PRINTF("DEBUG: should not be NULL (%u)\n", S57_getGeoID(obj->geoData));
+        PRINTF("DEBUG: should not be NULL (%u)\n", S57_getGeoS57ID(obj->geoData));
         g_assert(0);
     }
 
     if (TRUE == updateObjL) {
         // nullify obj in array at index
-        g_ptr_array_index(_objList, S57_getGeoID(obj->geoData)) = NULL;
+        g_ptr_array_index(_objList, S57_getGeoS57ID(obj->geoData)) = NULL;
     }
 
     S57_geo *geo = obj->geoData;
@@ -4433,7 +4433,7 @@ S52_obj    *S52_PL_isObjValid(unsigned int objH)
         return NULL;
     }
 
-    if (objH != S57_getGeoID(obj->geoData)) {
+    if (objH != S57_getGeoS57ID(obj->geoData)) {
         PRINTF("WARNING: idx obj mismatch obj geoID \n");
 
         g_assert(0);
