@@ -301,7 +301,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         //unsigned int i = 0;
 
         // debug - 1556
-        //if (1555 == S57_getGeoID(geo)) {
+        //if (1555 == S57_getGeoS57ID(geo)) {
         //    PRINTF("lights found\n");
         //    //g_assert(0);
         //}
@@ -378,10 +378,10 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         //drvalmin = drval;
 
         // debug
-        //if (491 == S57_getGeoID(geo)) {
+        //if (491 == S57_getGeoS57ID(geo)) {
         //    PRINTF("491 found\n");
         //}
-        //if (127 == S57_getGeoID(geo)) {
+        //if (127 == S57_getGeoS57ID(geo)) {
         //    PRINTF("127 found\n");
         //}
 
@@ -410,7 +410,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             // on extent overlap
             if (TRUE == _intersecGEO(geo, other)) {
                 // debug
-                //if (551 == S57_getGeoID(other)) {
+                //if (551 == S57_getGeoS57ID(other)) {
                 //    PRINTF("551 found\n");
                 //}
 
@@ -564,7 +564,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
        )
     {
         // debug
-        //if (582 == S57_getGeoID(geo))
+        //if (582 == S57_getGeoS57ID(geo))
         //    PRINTF("OBSTRN found\n");
 
         for (guint i=0; i<local->depval_list->len; ++i) {
@@ -953,10 +953,10 @@ static GString *DEPCNT02 (S57_geo *geo)
 
 
     // debug
-    //if (483 == S57_getGeoID(geo)) {
+    //if (483 == S57_getGeoS57ID(geo)) {
     //    PRINTF("483 found\n");
     //}
-    //if (491 == S57_getGeoID(geo)) {
+    //if (491 == S57_getGeoS57ID(geo)) {
     //    PRINTF("491 found\n");
     //}
 
@@ -1005,10 +1005,10 @@ static GString *DEPCNT02 (S57_geo *geo)
                     drval1 += datum;
 
                     // debug
-                    //if (483 == S57_getGeoID(geo)) {
+                    //if (483 == S57_getGeoS57ID(geo)) {
                     //    PRINTF("XXX 483 found\n");
                     //}
-                    //if (491 == S57_getGeoID(geo)) {
+                    //if (491 == S57_getGeoS57ID(geo)) {
                     //    PRINTF("XXX 491 found\n");
                     //}
 
@@ -1056,7 +1056,7 @@ static GString *DEPCNT02 (S57_geo *geo)
         //depth_value = valdco;
 
         // debug
-        //if (127 == S57_getGeoID(geo)) {
+        //if (127 == S57_getGeoS57ID(geo)) {
         //    PRINTF("127 found\n");
         //}
 
@@ -1322,7 +1322,7 @@ static GString *LIGHTS05 (S57_geo *geo)
     double   sweep             = 0.0;
 
     // debug - 1556
-    //if (1555 == S57_getGeoID(geo)) {
+    //if (1555 == S57_getGeoS57ID(geo)) {
     //    PRINTF("lights found\n");
     //}
 
@@ -1560,7 +1560,7 @@ static GString *_LITDSN01(S57_geo *geo)
     // CATLIT, LITCHR, COLOUR, HEIGHT, LITCHR, SIGGRP, SIGPER, STATUS, VALNMR
 
     // debug
-    //if (3154 == S57_getGeoID(geo)) {
+    //if (3154 == S57_getGeoS57ID(geo)) {
     //    PRINTF("lights found         XXXXXXXXXXXXXXXXXXXXXXX\n");
     //}
 
@@ -2859,7 +2859,7 @@ static GString *_SNDFRM02(S57_geo *geo, double depth_value)
 
     // debug
     //if (7.5 == depth_value) {
-    //    PRINTF("7.5 found ID:%i\n", S57_getGeoID(geo));
+    //    PRINTF("7.5 found ID:%i\n", S57_getGeoS57ID(geo));
     //    g_string_sprintfa(sndfrm02, ";SY(BRIDGE01)");
     //}
 
@@ -3400,7 +3400,7 @@ static GString *WRECKS02 (S57_geo *geo)
     //    PRINTF("%s\n",FIDNstr->str);
     //}
     // CA279037.000
-    //if (6246 == S57_getGeoID(geo)) {
+    //if (6246 == S57_getGeoS57ID(geo)) {
     //    PRINTF("WRECKS found\n");
     //}
 
