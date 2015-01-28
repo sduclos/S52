@@ -155,7 +155,7 @@ int       S57_getAttributes(S57_geo *geo, char **name, char **val);
 
 // debug
 int       S57_dumpData(S57_geo *geo, int dumpCoords);
-guint     S57_getGeoID(S57_geo *geo);
+guint     S57_getGeoS57ID(S57_geo *geo);
 
 #ifdef S52_USE_PROJ
 #include <proj_api.h>   // projXY, projUV, projPJ
