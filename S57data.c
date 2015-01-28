@@ -44,7 +44,7 @@ static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 #define UNKNOWN  (1.0/0.0)   //HUGE_VAL   // INFINITY/NAN
 
 // debug: current object's internal ID
-static unsigned int _ID = 1;  // start at 1, the number of object loaded
+static unsigned int _S57ID = 1;  // start at 1, the number of object loaded
 
 typedef struct _pt3 { double x,y,z; } pt3;
 typedef struct _pt2 { double x,y;   } pt2;
@@ -74,22 +74,27 @@ typedef struct _S57_prim {
 } _S57_prim;
 
 // S57 object geo data
-#define S57_NM_LN   6  // S57 Class Name lenght
+//#define S57_GEO_NM_LN   6  // S57 Class Name lenght
+#define S57_GEO_NM_LN   13   // GDAL/OGR primirive name: ConnectedNode
 typedef struct _S57_geo {
-    guint        ID;          // record ID - use as index in S52_obj GPtrArray
+    guint        S57ID;          // record ID - use as index in S52_obj GPtrArray
     //guint        s52objID;       // optimisation: numeric value of OBCL string
 
-    char         name[S57_NM_LN+1]; // object name 6 + '\0'
+    // FIXME: use VLA of GCC (not C99)
+    char         name[S57_GEO_NM_LN+1]; //  6 - object name    + '\0'
+                                        //  8 - WOLDNM         + '\0'
+                                        // 13 - ConnectedNode  + '\0'
 
     S57_Obj_t    obj_t;       // PL & S57 - P/L/A
 
     _rect        rect;        // lat/lon extent of object
 
     // length of geo data (POINT, LINE, AREA) currently in buffer
-    guint        geoSize;        // max is 1 / linexyznbr / ringxyznbr[0]
+    guint        geoSize;        // max is 1 point / linexyznbr / ringxyznbr[0]
 
     // hold coordinate before and after projection
-    geocoord    *pointxyz;    // point
+    // FIXME: why alloc xyz*1
+    geocoord    *pointxyz;    // point (alloc)
 
     guint        linexyznbr;  // line number of point XYZ (alloc)
     geocoord    *linexyz;     // line coordinate
@@ -397,16 +402,18 @@ int        S57_geo2prj3dv(guint npt, double *data)
         return FALSE;
     }
 
-    // FIXME: try to (and check) reduce the number of points by flushing decimal
-    // reset to beginning
+    /*
+    // FIXME: heuristic to reduce the number of point (for LOD):
+    //try to (and check) reduce the number of points by flushing decimal
+    // then libtess should remove coincident points.
+    // Other trick, try to reduce more by rounding using cell scale
+    // pt->x = nearbyint(pt->x / (? * 10)) / (? * 10);
     pt = (pt3*)data;
     for (guint i=0; i<npt; ++i, ++pt) {
         pt->x = nearbyint(pt->x);
         pt->y = nearbyint(pt->y);
     }
-
-    // then libtess should remove coincident points.
-    // Other trick, try to reduce more by rounding integer using cell scale
+    //*/
 #endif
 
     return TRUE;
@@ -443,7 +450,7 @@ S57_geo   *S57_setPOINT(geocoord *xyz)
     if (NULL == geo)
         g_assert(0);
 
-    geo->ID       = _ID++;
+    geo->S57ID    = _S57ID++;
     geo->obj_t    = S57_POINT_T;
     geo->pointxyz = xyz;
 
@@ -482,7 +489,7 @@ S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
 
     return_if_null(geo);
 
-    geo->ID         = _ID++;
+    geo->S57ID      = _S57ID++;
     geo->obj_t      = S57_LINES_T;
     geo->linexyznbr = xyznbr;
     geo->linexyz    = xyz;
@@ -534,7 +541,7 @@ S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S5
     if (NULL == geo)
         g_assert(0);
 
-    geo->ID         = _ID++;
+    geo->S57ID      = _S57ID++;
     geo->obj_t      = S57_AREAS_T;
     geo->ringnbr    = ringnbr;
     geo->ringxyznbr = ringxyznbr;
@@ -567,8 +574,8 @@ S57_geo   *S57_set_META()
     if (NULL == geo)
         g_assert(0);
 
-    geo->ID       = _ID++;
-    geo->obj_t    = S57__META_T;
+    geo->S57ID   = _S57ID++;
+    geo->obj_t   = S57__META_T;
 
     geo->rect.x1 =  INFINITY;
     geo->rect.y1 =  INFINITY;
@@ -592,15 +599,15 @@ int        S57_setName(_S57_geo *geo, const char *name)
 
     //geo->name = g_string_new(name);
 
-    /*
-    if (S57_NM_LN != strlen(name)) {
-        // DSID pass here
-        PRINTF("DEBUG: S57_geo name: %s\n", name);
-        //g_assert(0);
+    //*
+    if (S57_GEO_NM_LN < strlen(name)) {
+        PRINTF("DEBUG: S57_geo name overflow max S57_NM_LN : %s\n", name);
+        g_assert(0);
     }
-    */
+    //*/
+
     int len = strlen(name);
-    len = (S57_NM_LN < len) ? S57_NM_LN : len;
+    len = (S57_GEO_NM_LN < len) ? S57_GEO_NM_LN : len;
     memcpy(geo->name, name, len);
     geo->name[len] = '\0';
 
@@ -942,7 +949,7 @@ static void   _countItems(GQuark key_id, gpointer data, gpointer user_data)
     }
 }
 
-int        S57_getNumAtt(S57_geo *geo)
+int        S57_getNumAtt(_S57_geo *geo)
 {
     int cnt = 0;
     g_datalist_foreach(&geo->attribs, _countItems, &cnt);
@@ -1199,7 +1206,7 @@ int        S57_dumpData(_S57_geo *geo, int dumpCoords)
     return_if_null(geo);
 
 
-    PRINTF("S57ID : %i\n", geo->ID);
+    PRINTF("S57ID : %i\n", geo->S57ID);
     //PRINTF("NAME  : %s\n", geo->name->str);
     PRINTF("NAME  : %s\n", geo->name);
 
@@ -1285,12 +1292,12 @@ GCPTR      S57_getAtt(_S57_geo *geo)
     return_if_null(geo);
 
 
-    PRINTF("S57ID : %i\n", geo->ID);
+    PRINTF("S57ID : %i\n", geo->S57ID);
     //PRINTF("NAME  : %s\n", geo->name->str);
     PRINTF("NAME  : %s\n", geo->name);
 
     g_string_set_size(_attList, 0);
-    g_string_printf(_attList, "%i", geo->ID);
+    g_string_printf(_attList, "%i", geo->S57ID);
 
     g_datalist_foreach(&geo->attribs, _getAtt, _attList);
 
@@ -1459,11 +1466,11 @@ S57_geo   *S57_delNextPoly(_S57_geo *geo)
 }
 #endif
 
-guint      S57_getGeoID(S57_geo *geo)
+guint      S57_getGeoS57ID(_S57_geo *geo)
 {
     return_if_null(geo);
 
-    return  geo->ID;
+    return  geo->S57ID;
 }
 
 int        S57_isPtInside(int npt, double *xyz, gboolean close, double x, double y)
@@ -1615,7 +1622,7 @@ int        S57_getNextCentroid(_S57_geo *geo, double *x, double *y)
     return FALSE;
 }
 
-int        S57_hasCentroid(S57_geo *geo)
+int        S57_hasCentroid(_S57_geo *geo)
 {
     return_if_null(geo);
     //return_if_null(geo->centroid);
@@ -1770,7 +1777,7 @@ GString   *S57_getRCIDstr(_S57_geo *geo)
     return geo->rcidstr;
 }
 
-S57_AW_t   S57_getOrigAW(S57_geo *geo)
+S57_AW_t   S57_getOrigAW(_S57_geo *geo)
 // debug
 {
     return_if_null(geo);
@@ -1804,7 +1811,7 @@ gboolean   S57_isHighlighted(_S57_geo *geo)
     return geo->highlight;
 }
 
-int        S57_setHazard(S57_geo *geo, gboolean hazard)
+int        S57_setHazard(_S57_geo *geo, gboolean hazard)
 {
     return_if_null(geo);
 
@@ -1813,7 +1820,7 @@ int        S57_setHazard(S57_geo *geo, gboolean hazard)
     return TRUE;
 }
 
-int        S57_isHazard(S57_geo *geo)
+int        S57_isHazard(_S57_geo *geo)
 {
     return_if_null(geo);
 
