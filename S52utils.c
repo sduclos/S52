@@ -323,7 +323,8 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
     // this driver need a buffer of 5K to fit all extesion string
 
     //const int MAX = 1024 + 1024 + 1024 + 1024;
-    const int MAX = 1024 + 1024 + 1024 + 1024 + 1024;
+    //const
+    int MAX = 1024 + 1024 + 1024 + 1024 + 1024;
     char buf[MAX];
     snprintf(buf, MAX, "%s:%i in %s(): ", file, line, function);
 
