@@ -16,7 +16,7 @@ Curent focus (top priority *):
 
     PL:
 *   -view group or somme equivalent functionality
-    -overscale (DATCVR01)
+    -overscale (DATCVR01) (maybe LOD/chart scale/view scale)
     -experimental: supression of overlapping simple lines (ie LS() - not LC()) (also of same disp prio AREAS/LINES)
     -fix breaker color problem in CA49995A.000
     -check/validate QUAPOS of spatial (not attribute) object
@@ -41,7 +41,8 @@ In a day:
     -OGR: IHOOCDD.XXX
     -GL: display 'dipping distance' of light (need the height of eye and sea level)
     -GL: bearing snap to light
-    -GL: optimisation - LOD --> reduce the nbr of vertex in area/line (NP, need heuristique)
+    -GL: optimisation - LOD --> reduce the nbr of vertex in area/line 
+         (NP, need heuristique: http://en.wikipedia.org/wiki/Ramer-Douglas-Peucker_algorithm)
     -PL: implement vector instruction command: symbol call (SC), arc (AA)
     -PL: implement raster instruction for pattern and symbol (PBTM, SBTM)
     -PL: SCAMAX
