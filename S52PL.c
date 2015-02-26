@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -4111,7 +4111,6 @@ S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
         unsigned int mask = (unsigned int)S52_MP_get(S52_MAR_DISP_LAYER_LAST);
 
         // off - no rendering of mariners Object
-        //if (S52_MAR_DISP_LAYER_LAST_NONE == (int)S52_MP_get(S52_MAR_DISP_LAYER_LAST)) {
         if (S52_MAR_DISP_LAYER_LAST_NONE    & mask) {
             return S52_SUPP_ON;
         }
@@ -4123,6 +4122,8 @@ S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
             return S52_SUPP_OFF;
         }
 
+        /* FIXME: why this wrong code was there
+        // (waybe because of old check _validate_mar())
         // MAR STD + OTHER
         if ((S52_MAR_DISP_LAYER_LAST_STD    & mask) &&
             (S52_MAR_DISP_LAYER_LAST_OTHER  & mask) ) {
@@ -4130,6 +4131,7 @@ S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
                 return S52_SUPP_OFF;
             return S52_SUPP_ON;
         }
+        */
 
         // MAR STD
         if (S52_MAR_DISP_LAYER_LAST_STD     & mask) {
@@ -4212,13 +4214,6 @@ int         S52_PL_getOffset(_S52_obj *obj, double *offset_x, double *offset_y)
     _cmdWL *cmd = _getCrntCmd(obj);
     if ((NULL==cmd) || (NULL==cmd->cmd.def))
         return FALSE;
-
-    //int bbw = cmd->def->pos.symb.bbox_w.SYHL;
-    //int bbh = cmd->def->pos.symb.bbox_h.SYVL;
-    //int bbx = cmd->def->pos.symb.bbox_x.SBXC;
-    //int bby = cmd->def->pos.symb.bbox_y.SBXR;
-    //int ppx = cmd->def->pos.symb.pivot_x.SYCL;
-    //int ppy = cmd->def->pos.symb.pivot_y.SYRW;
 
     int bbw = cmd->cmd.def->pos.symb.bbox_w.SYHL;
     int bbh = cmd->cmd.def->pos.symb.bbox_h.SYVL;
@@ -4426,6 +4421,11 @@ gboolean    S52_PL_getSupp(_S52_obj *obj)
 
 S52_obj    *S52_PL_isObjValid(unsigned int objH)
 {
+    if (0 == objH) {
+        PRINTF("WARNING: objH is 0\n");
+        return NULL;
+    }
+
     S52_obj *obj = (S52_obj *)g_ptr_array_index(_objList, objH);
     if (NULL == obj) {
         PRINTF("WARNING: obj NULL\n");
@@ -4442,12 +4442,10 @@ S52_obj    *S52_PL_isObjValid(unsigned int objH)
     }
 
     return obj;
-
 }
 
 
-
-// test broken !?
+// FIXME: add test
 #ifdef S52_TEST
 int main()
 {

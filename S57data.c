@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -33,7 +33,9 @@ static char       *_pjstr   = NULL;
 static int         _doInit  = TRUE;   // will set new src projection
 static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 //static const char *_argsdst = "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
-// Note: ../../../FWTools/FWTools-2.0.6/bin/gdalwarp -t_srs "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs" 46307260_LOD2.tif 46307260_LOD2.merc.tif
+// Note: ../../../FWTools/FWTools-2.0.6/bin/gdalwarp
+//       -t_srs "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs"
+//        46307260_LOD2.tif 46307260_LOD2.merc.tif
 #endif
 
 // MAXINT-6 is how OGR tag an UNKNOWN value
@@ -75,12 +77,11 @@ typedef struct _S57_prim {
 
 // S57 object geo data
 //#define S57_GEO_NM_LN   6  // S57 Class Name lenght
-#define S57_GEO_NM_LN   13   // GDAL/OGR primirive name: ConnectedNode
+#define S57_GEO_NM_LN   13   // GDAL/OGR primitive name: ConnectedNode
 typedef struct _S57_geo {
     guint        S57ID;          // record ID - use as index in S52_obj GPtrArray
-    //guint        s52objID;       // optimisation: numeric value of OBCL string
+    //guint        s52objID;     // optimisation: numeric value of OBCL string
 
-    // FIXME: use VLA of GCC (not C99)
     char         name[S57_GEO_NM_LN+1]; //  6 - object name    + '\0'
                                         //  8 - WOLDNM         + '\0'
                                         // 13 - ConnectedNode  + '\0'
@@ -93,7 +94,7 @@ typedef struct _S57_geo {
     guint        geoSize;        // max is 1 point / linexyznbr / ringxyznbr[0]
 
     // hold coordinate before and after projection
-    // FIXME: why alloc xyz*1
+    // FIXME: why alloc xyz*1, easy to handle like the reste, but fragment mem !?!
     geocoord    *pointxyz;    // point (alloc)
 
     guint        linexyznbr;  // line number of point XYZ (alloc)
@@ -124,6 +125,8 @@ typedef struct _S57_geo {
     } touch;
 
     double       scamin;
+
+    // FIXME: SCAMAX
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
     GString     *rcidstr;     // optimisation: point to Att RCID str value
@@ -408,10 +411,12 @@ int        S57_geo2prj3dv(guint npt, double *data)
     // then libtess should remove coincident points.
     // Other trick, try to reduce more by rounding using cell scale
     // pt->x = nearbyint(pt->x / (? * 10)) / (? * 10);
+    //
+    // test - 1km
     pt = (pt3*)data;
     for (guint i=0; i<npt; ++i, ++pt) {
-        pt->x = nearbyint(pt->x);
-        pt->y = nearbyint(pt->y);
+        pt->x = nearbyint(pt->x / 1000.0) * 1000.0;
+        pt->y = nearbyint(pt->y / 1000.0) * 1000.0;
     }
     //*/
 #endif
@@ -901,12 +906,14 @@ int        S57_setExt(_S57_geo *geo, double x1, double y1, double x2, double y2)
     }
     */
 
+    /* newVRMEBL pass here now, useless anyway
     if (isinf(x1) && isinf(x2)) {
         //PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
         PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geo->name, x1, y1, x2, y2);
         g_assert(0);
         return FALSE;
     }
+    */
 
     geo->rect.x1 = x1;
     geo->rect.y1 = y1;

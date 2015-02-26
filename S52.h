@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -21,7 +21,7 @@
 */
 
 
-// Summary
+// Summary:
 // - def / type / enum
 // - call at any time
 // - call available fater S52_init()
@@ -124,7 +124,7 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_DISP_NODATA_LAYER   = 38,   // display NODATA layer 0 (on/off) (default on)
 
-    S52_MAR_DISP_VESSEL_DELAY   = 39,   // time delay (sec) defore deleting old AIS (default 600 sec, 0 - OFF)
+    S52_MAR_DISP_VESSEL_DELAY   = 39,   // time delay (sec) defore deleting old AIS (default 0 - OFF)
 
     S52_MAR_DISP_AFTERGLOW      = 40,   // display synthetic afterglow (in PLAUX_00.DAI) for OWNSHP & VESSEL (on/off)
 

@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -1183,7 +1183,7 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
         if (NULL != _old_signal_handler_SIGINT.sa_sigaction)
             _old_signal_handler_SIGINT.sa_sigaction(sig, info, secret);
 
-        //return;
+        return;
     }
 
     //  3  - Quit (POSIX)
@@ -1194,7 +1194,7 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
         if (NULL != _old_signal_handler_SIGQUIT.sa_sigaction)
             _old_signal_handler_SIGQUIT.sa_sigaction(sig, info, secret);
 
-        //return;
+        return;
     }
 
     //  5  - Trap (ANSI)
@@ -1227,7 +1227,7 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
         if (NULL != _old_signal_handler_SIGKILL.sa_sigaction)
             _old_signal_handler_SIGKILL.sa_sigaction(sig, info, secret);
 
-        //return;
+        return;
     }
 
     // 11 - Segmentation violation
@@ -1263,7 +1263,7 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
         if (NULL != _old_signal_handler_SIGTERM.sa_sigaction)
             _old_signal_handler_SIGTERM.sa_sigaction(sig, info, secret);
 
-        //return;
+        return;
     }
 
     // 10
@@ -1286,6 +1286,7 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 
 
     // shouldn't reach this !?
+    PRINTF("WARNING: Signal not hangled (%i)\n", sig);
     g_assert_not_reached();  // turn off via G_DISABLE_ASSERT
 
 /*
@@ -1473,9 +1474,12 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
         return FALSE;
     }
 
+#ifdef S52_DEBUG
+    // FIXME: check timming, might be slower, write() immediatly
+    //setbuf(stdout, NULL);
     // FIXME: GIO !
-    setbuf(stdout, NULL);
     //gsetbuf(stdout, NULL);
+#endif
 
     // debug
     if (NULL != log_cb)
@@ -4134,6 +4138,7 @@ static int        _drawLast(void)
                 return TRUE;
             }
 
+
             /////////////////////////////////////
             // CULL & DRAW
             //
@@ -4143,7 +4148,6 @@ static int        _drawLast(void)
             //S57_geo *geo = S52_PL_getGeo(obj);
 
             // is this object suppressed by user
-            //if (TRUE == S57_getSupp(geo)) {
             if (TRUE == S52_PL_getSupp(obj)) {
                 ++_nCull;
 
@@ -5729,7 +5733,7 @@ static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
     return TRUE;
 }
 
-//static S52_obj   *_isObjValid(_cell *c, S52_obj *obj)
+#if 0
 static S52_obj   *_isObjValid(_cell *c, S52ObjectHandle objH)
 // return  obj if the oject is in cell else NULL
 // Used to validate User Mariners' Object
@@ -5768,8 +5772,8 @@ static S52_obj   *_isObjValid(_cell *c, S52ObjectHandle objH)
 
     return obj;
 }
+#endif
 
-//static int        _isObjNameValid(S52ObjectHandle obj, const char *objName)
 static int        _isObjNameValid(S52_obj *obj, const char *objName)
 // return TRUE if the class name of 'obj' is 'objName' else FALSE
 {
@@ -5923,7 +5927,6 @@ static
         PRINTF("WARNING: no xyz nbr\n");
         g_assert(0);
 
-        //return NULL;
         return FALSE;
     }
 
@@ -6065,7 +6068,8 @@ DLL S52ObjectHandle STD S52_getMarObj(unsigned int S57ID)
         }
     }
     */
-    S52_obj *obj = _isObjValid(_marinerCell, S57ID);
+    //S52_obj *obj = _isObjValid(_marinerCell, S57ID);
+    S52_obj *obj = S52_PL_isObjValid(S57ID);
     if (NULL != obj) {
         ret = S57ID;
     }
@@ -6120,7 +6124,8 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
 
     // validate this obj and remove if found
     //S52_obj *obj = (S52_obj *)objH;
-    S52_obj *obj = _isObjValid(_marinerCell, objH);
+    //S52_obj *obj = _isObjValid(_marinerCell, objH);
+    S52_obj *obj = S52_PL_isObjValid(objH);
     if (NULL == obj) {
         goto exit;
     }
@@ -6159,7 +6164,8 @@ DLL S52ObjectHandle STD S52_toggleDispMarObj(S52ObjectHandle  objH)
     S52_CHECK_MUTX_INIT;
 
     //S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)objH);
-    S52_obj *obj = _isObjValid(_marinerCell, objH);
+    //S52_obj *obj = _isObjValid(_marinerCell, objH);
+    S52_obj *obj = S52_PL_isObjValid(objH);
     if (NULL != obj) {
         if (TRUE == S52_PL_getSupp(obj)) {
             S52_PL_setSupp(obj, FALSE);
@@ -6478,13 +6484,15 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         //if (NULL != previousLEGLIN) {
         if (FALSE != previousLEGLIN) {
             //S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)previousLEGLIN);
-            S52_obj *objPrevLeg = _isObjValid(_marinerCell, previousLEGLIN);
+            //S52_obj *objPrevLeg = _isObjValid(_marinerCell, previousLEGLIN);
+            S52_obj *objPrevLeg = S52_PL_isObjValid(previousLEGLIN);
             //if (NULL == obj) {
             if (NULL == objPrevLeg) {
                 PRINTF("WARNING: previousLEGLIN not a valid S52ObjectHandle\n");
             } else {
                 //S52_PL_setNextLeg((S52_obj*)previousLEGLIN, (S52_obj*)leglin);
-                S52_obj *obj = _isObjValid(_marinerCell, leglinH);
+                //S52_obj *obj = _isObjValid(_marinerCell, leglinH);
+                S52_obj *obj = S52_PL_isObjValid(leglinH);
                 if (NULL != obj) {
                     S52_PL_setNextLeg(objPrevLeg, obj);
                 }
@@ -6494,7 +6502,8 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         // check alarm for this leg
         if (0.0 != S52_MP_get(S52_MAR_ERROR)) {
             //S57_geo *geo = S52_PL_getGeo((S52_obj *)leglin);
-            S52_obj *obj = _isObjValid(_marinerCell, leglinH);
+            //S52_obj *obj = _isObjValid(_marinerCell, leglinH);
+            S52_obj *obj = S52_PL_isObjValid(leglinH);
             // this test is not required since the obj has just been created
             if (NULL == obj) {
                 S57_geo *geo = S52_PL_getGeo(obj);
@@ -6557,7 +6566,8 @@ DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double 
     //  stwspd: Speed through water,
 
     //if (NULL == _isObjValid(_marinerCell, (S52_obj *)objH)) {
-    S52_obj *obj = _isObjValid(_marinerCell, objH);
+    //S52_obj *obj = _isObjValid(_marinerCell, objH);
+    S52_obj *obj = S52_PL_isObjValid(objH);
     if (NULL == obj) {
         //objH = NULL;
         objH = FALSE;
@@ -6612,7 +6622,8 @@ DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH, int vecstb, double c
         vecstb = 0;
     }
 
-    S52_obj *obj = _isObjValid(_marinerCell, objH);
+    //S52_obj *obj = _isObjValid(_marinerCell, objH);
+    S52_obj *obj = S52_PL_isObjValid(objH);
     if (NULL == obj) {
         PRINTF("WARNING: invalid S52ObjectHandle objH\n");
         objH = FALSE;
@@ -6735,8 +6746,8 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
     longitude = _validate_lon(longitude);
     //time      = _validate_min(time);
 
-    //S52_obj *obj = _isObjValid(_marinerCell, (S52_obj *)objH);
-    S52_obj *obj = _isObjValid(_marinerCell, objH);
+    //S52_obj *obj = _isObjValid(_marinerCell, objH);
+    S52_obj *obj = S52_PL_isObjValid(objH);
     if (NULL == obj) {
         objH = FALSE;
         goto exit;
@@ -6746,7 +6757,6 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
 
     // POINT
     if (S57_POINT_T == S57_getObjtype(geo)) {
-        //_setPointPosition(objH, latitude, longitude, data);
         _setPointPosition(obj, latitude, longitude, data);
 
         /* experimental: display cursor lat/lng
@@ -6786,7 +6796,8 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
         }
 
         //* ajuste extent - use for culling
-        // FIXME: LINES 'pastrk' and 'afgves' have extent that alllway grow
+        // FIXME: LINES 'pastrk' and 'afgves' have extent that allway grow
+        // but pushPos is stack base, so the extent should be ajusted accordingly
         if (0 == sz) {
             // first pos set extent directly
             S57_setExt(geo, longitude, latitude, longitude, latitude);
@@ -6873,7 +6884,8 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
 
     S52_CHECK_MUTX_INIT;
 
-    S52_obj *obj = _isObjValid(_marinerCell, objH);
+    //S52_obj *obj = _isObjValid(_marinerCell, objH);
+    S52_obj *obj = S52_PL_isObjValid(objH);
     //if (NULL == _isObjValid(_marinerCell, (S52_obj *)objH)) {
     if (NULL == obj) {
         objH = FALSE;
@@ -6921,8 +6933,9 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
 
     //double lat;
     //double lon;
-    S52_obj *obj = _isObjValid(_marinerCell, objH);
+    //S52_obj *obj = _isObjValid(_marinerCell, objH);
     //if (NULL == _isObjValid(_marinerCell, (S52_obj *)objH)) {
+    S52_obj *obj = S52_PL_isObjValid(objH);
     if (NULL == obj) {
         objH = FALSE;
         goto exit;
@@ -6932,7 +6945,6 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
     if (TRUE == _isObjNameValid(obj, "ownshp") || TRUE == _isObjNameValid(obj, "vessel")) {
         char  attval[80] = {'\0'};
         char *attvaltmp  = attval;
-        //S57_geo *geo = S52_PL_getGeo((S52_obj *)objH);
         S57_geo *geo = S52_PL_getGeo(obj);
 
         // validate vesselSelect:
@@ -7030,21 +7042,22 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
 
     if (FALSE==vrm && FALSE==ebl) {
         PRINTF("WARNING: nothing to do\n");
-        //return FALSE;
         goto exit;
     }
 
-    //double xyz[6] = {lonA, latA, 0.0, 0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
-    //double xyz[6] = {INFINITY, INFINITY, 0.0, 0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
-
     if (TRUE == ebl) {
-        //vrmebl = S52_newMarObj("ebline", S52_LINES, 2, xyz, attval);
-        //vrmebl = S52_newMarObj("ebline", S52_LINES, 2, NULL, attval);
         vrmebl = _newMarObj("ebline", S52_LINES, 2, NULL, attval);
     } else {
-        //vrmebl = S52_newMarObj("vrmark", S52_LINES, 2, xyz, attval);
-        //vrmebl = S52_newMarObj("vrmark", S52_LINES, 2, NULL, attval);
         vrmebl = _newMarObj("vrmark", S52_LINES, 2, NULL, attval);
+    }
+
+    {   // set VRMEBL extent to INFINITY
+        double xyz[6] = {-INFINITY, -INFINITY, 0.0, INFINITY, INFINITY, 0.0};
+        //
+        //S52_obj *obj = _isObjValid(_marinerCell, vrmebl);
+        S52_obj *obj = S52_PL_isObjValid(vrmebl);
+        S57_geo *geo = S52_PL_getGeo(obj);
+        _setExt(geo, 2, xyz);
     }
 
 exit:
@@ -7061,13 +7074,13 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
     if (NULL == S57_getPrjStr())
         goto exit;
 
-    S52_obj *obj = _isObjValid(_marinerCell, objH);
+    //S52_obj *obj = _isObjValid(_marinerCell, objH);
+    S52_obj *obj = S52_PL_isObjValid(objH);
     if (NULL == obj) {
         objH = FALSE;
         goto exit;
     }
 
-    //if (TRUE!=_isObjNameValid(objH, "ebline") && TRUE!=_isObjNameValid(objH, "vrmark")) {
     if (TRUE!=_isObjNameValid(obj, "ebline") && TRUE!=_isObjNameValid(obj, "vrmark")) {
         PRINTF("WARNING: not a 'ebline' or 'vrmark' object\n");
         objH = FALSE;
@@ -7086,7 +7099,6 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
 
     guint    npt = 0;
     double  *ppt = NULL;
-    //S57_geo *geo = S52_PL_getGeo((S52_obj *)objH);
     S57_geo *geo = S52_PL_getGeo(obj);
     S57_getGeoData(geo, 0, &npt, &ppt);
 
@@ -7097,18 +7109,18 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
     case 'I':    // Init freely moveable origin
         lonA = lonB;
         latA = latB;
-        _setAtt(geo, "_setOrigin:Y"); // CHECK THIS: does setOriginstr->str become dandling ??
+        _setAtt(geo, "_setOrigin:Y"); // FIXME: does setOriginstr->str become dandling ??
         break;
     case 'Y':    // user set freely moveable origin
         lonA = ppt[0];
         latA = ppt[1];
         break;
     case 'N':    // _OWNSHP origin (FIXME: apply ownshp offset set by S52_setDimension())
-        //if (NULL != _OWNSHP) {
         if (FALSE != _OWNSHP) {
             guint    npt = 0;
             double  *ppt = NULL;
-            S52_obj *obj = _isObjValid(_marinerCell, _OWNSHP);
+            //S52_obj *obj = _isObjValid(_marinerCell, _OWNSHP);
+            S52_obj *obj = S52_PL_isObjValid(_OWNSHP);
             if (NULL == obj)
                 break;
             S57_geo *geo = S52_PL_getGeo(obj);
@@ -7130,7 +7142,6 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
         char   unit   = 'm';
         char attval[80] = {'\0'};
 
-        //_updateGeo(objH, xyz);
         _updateGeo(obj, xyz);
 
         // in Nautical Mile if > 1852m (1NM)
@@ -7144,7 +7155,6 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
 
         SNPRINTF(attval, 80, "_vrmebl_label:%.1f deg / %.1f%c", deg, dist, unit);
         _setAtt(geo, attval);
-        //S52_PL_resetParseText((S52_obj *)objH);
         S52_PL_resetParseText(obj);
 
         if (NULL != brg) *brg = deg;

@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -184,7 +184,8 @@ static double _MARparamVal[] = {
 
     1.0,      // 38 - S52_MAR_DISP_NODATA_LAYER -  display layer 0 (no data) (default on)
 
-    600.0,    // 39 - S52_MAR_DISP_VESSEL_DELAY (sec)
+    //600.0,    // 39 - S52_MAR_DISP_VESSEL_DELAY (sec)
+    0.0,      // 39 - S52_MAR_DISP_VESSEL_DELAY (sec) (default OFF)
 
     0.0,      // 40 - S52_MAR_DISP_AFTERGLOW (default off)
     //1.0,      // 40 - S52_MAR_DISP_AFTERGLOW (on)
