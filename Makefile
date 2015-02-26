@@ -58,15 +58,33 @@ DBG    = $(DBG3)
 # -Weffc++
 # Causes GCC to check for the 50 specific C++ suggestions in Scott Meyers famous book 'Effective C++'
 
+# Qt blog
+# CFLAGS = -fsanitize=address -fno-omit-frame-pointer
+# LFLAGS = -fsanitize=address
+
+# TCC
 #CC   = tcc -fPIC
 #CXX  = tcc -fPIC -fmudflap
-#CC   = gcc -std=c99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
+
+# GCC
 #CC   = gcc -std=c99 -fPIC
-#CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI
-CC   = clang -fPIC
-#CC   = g++ -fPIC
-#CXX  = g++ -fPIC
-CXX  = clang -fPIC
+#CC   = gcc -std=c99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
+CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI
+# test - compile C code as C++
+#CC   = g++ -fPIC -O0 -g -Wall
+CXX  = g++ -fPIC
+
+# CLANG
+#CC   = clang   -fPIC
+#CXX  = clang++ -fPIC
+
+# FIXME: check this
+# LLVM-AddressSanitizer: http://clang.llvm.org/docs/AddressSanitizer.html
+# Compile
+# clang -O1 -g -fsanitize=address -fno-omit-frame-pointer -c example_UseAfterFree.cc
+# Link
+# clang -g -fsanitize=address example_UseAfterFree.o
+
 
 MINGW = /usr/bin/i586-mingw32msvc-
 #MINGW = /usr/bin/i686-w64-mingw32-
@@ -611,7 +629,7 @@ tags:
 err.txt: *.c *.h
 	cppcheck --enable=all $(DEFS) *.c 2> err.txt
 
-# "libS52-2014DEC27-1.157" --> 2014DEC27-1.145
+# get version - "libS52-2014DEC27-1.157" --> 2014DEC27-1.145
 LIBS52VERS = $(shell grep libS52- S52utils.c | sed 's/.*"libS52-\(.*\)"/\1/' )
 
 S52-$(LIBS52VERS).gir: S52.h
@@ -626,6 +644,7 @@ S52-$(LIBS52VERS).typelib: S52-$(LIBS52VERS).gir
 doc: S52-$(LIBS52VERS).typelib
 	(cd /home/sduclos/dev/prog/doc-generator/introspection-doc-generator/; seed docs.js ../tmp S52;)
 	cp /home/sduclos/dev/prog/doc-generator/introspection-doc-generator/tmp/seed/* doc/tmp
+
 
 
 ############### Notes ##############################
