@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -50,7 +50,7 @@
 #define RAD_TO_DEG    57.29577951308232
 #define INCH2MM       25.4
 
-
+// FIXME: suppress output on Android if not in DEBUG, where uers=prg mem grow
 #ifdef S52_USE_ANDROID
 #include <jni.h>
 #include <errno.h>

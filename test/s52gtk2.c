@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2014 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -833,7 +833,6 @@ static int      _setVESSEL()
 
 
 static int      _setVRMEBL()
-// FIXME: broken
 {
     //int vrm             = TRUE;
     //int ebl             = FALSE;
@@ -845,6 +844,11 @@ static int      _setVRMEBL()
 
     // normal VRM (vrmark)
     //--> _vrmeblA = S52_newVRMEBL(vrm, ebl, normalLineStyle, setOrigin);
+
+    // normal EBL
+    //_vrmeblA = S52_newVRMEBL(FALSE, TRUE, TRUE, FALSE);
+    // normal EBL + setOrigin
+    _vrmeblA = S52_newVRMEBL(FALSE, TRUE, TRUE, TRUE);
 
     // alterned VRM/EBL line style
     //_vrmebl = S52_newVRMEBL(TRUE, TRUE, FALSE);
@@ -1283,7 +1287,9 @@ static int      _initS52()
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE);  // none
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD);  // Mariner Standard
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);  // Mariner Other (EBL VRN)
-    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD | S52_MAR_DISP_LAYER_LAST_OTHER);    // All Mariner (Standard + Other)
+    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD | S52_MAR_DISP_LAYER_LAST_OTHER);    // All Mariner (Standard + Other)
+    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Standard(default) + Other)
+
                     
     //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 0.0);  // none
     S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 1.0);  // pick/highlight top object
@@ -1301,6 +1307,8 @@ static int      _initS52()
     //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
 
     S52_setMarinerParam(S52_MAR_DISP_CALIB, 1.0);
+
+    S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 700.0); // (default 0.0 - OFF)
 
     //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
     S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 1.0);  // on
@@ -1622,7 +1630,18 @@ static gboolean button_release_event(GtkWidget      *widget,
 
         //S52_setVRMEBL(_vrmeblB, x, y, &brg, &rge);
         S52_setVRMEBL(_vrmeblA, x, y, &brg, &rge);
-        */
+        //*/
+
+        // set origin
+        if (0 == S52_setVRMEBL(_vrmeblA, 100, 100, NULL, NULL)) {
+            g_print("s52gtk.c:button_release_event(): setVRMEBL 1 failed\n");
+            g_assert(0);
+        } else {
+            if (0 == S52_setVRMEBL(_vrmeblA, 500, 500, NULL, NULL)) {
+                g_print("s52gtk.c:button_release_event(): setVRMEBL 2 failed\n");
+                g_assert(0);
+            }
+        }
 
         _originIsSet = TRUE;
 
@@ -1672,7 +1691,6 @@ static gboolean button_release_event(GtkWidget      *widget,
             g_print("s52gtk.c:button_release_event(): EVENT(%i)\n", event->button);
     }
 
-
     return TRUE;
 }
 
@@ -1702,16 +1720,17 @@ static gboolean motion_notify_event(GtkWidget      *widget,
     if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
         return FALSE;
 
-    //if (NULL != _vrmeblA) {
+    /*
     if (FALSE != _vrmeblA) {
         _brg = 0.0;
         _rge = 0.0;
         S52_setVRMEBL(_vrmeblA, _x, _y, &_brg, &_rge);
 
-        if (TRUE == _originIsSet) {
-            S52_setVRMEBL(_vrmeblA, _x, _y, &_brg, &_rge);
-        }
+        //if (TRUE == _originIsSet) {
+        //    S52_setVRMEBL(_vrmeblA, _x, _y, &_brg, &_rge);
+        //}
     }
+    */
 
     //*
     if (TRUE == S52_drawLast()) {
@@ -1952,7 +1971,7 @@ static S52ObjectHandle _marfea_point = NULL;
 
     //* S52 Mariner Obj cleanup by hand - S52_done() do that too
     _ownshp      = S52_delMarObj(_ownshp);
-    //_vrmeblA     = S52_delMarObj(_vrmeblA);  // broken
+    _vrmeblA     = S52_delMarObj(_vrmeblA);
     //_vrmeblB     = S52_delMarObj(_vrmeblB);
     //_vessel_arpa = S52_delMarObj(_vessel_arpa);
     _vessel_ais  = S52_delMarObj(_vessel_ais);
