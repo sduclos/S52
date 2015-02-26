@@ -4,6 +4,14 @@
 #
 
 
+2015FEB26
+    -mod refactor call _isObjValid() replace by S52_PL_isObjValid()
+
+2015FEB25
+    -fix VRMEBL extent
+    -update copyright years
+    -fix S52_PL_getObjToggleState() wrong check for MAR STD + OTHER
+
 2015JAN28
     -add CLang compiler
     -fix CLang warning
