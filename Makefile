@@ -39,9 +39,9 @@ SHELL = /bin/sh
 
 
 DBG0   = -O0 -g
-DBG1   = -O0 -g1 -Wall -pedantic -Wextra
-DBG2   = -O0 -g2 -Wall -pedantic -Wextra
-DBG3   = -O0 -g3 -Wall -pedantic -Wextra -ggdb3 -fstack-protector-all
+DBG1   = -O0 -g1 -Wall -Wpedantic -Wextra
+DBG2   = -O0 -g2 -Wall -Wpedantic -Wextra
+DBG3   = -O0 -g3 -Wall -Wpedantic -Wextra -ggdb3 -fstack-protector-all
 DBGOFF = -DG_DISABLE_ASSERT
 DBG    = $(DBG3)
 
