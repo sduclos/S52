@@ -77,9 +77,9 @@ typedef struct _S57_prim {
 
 // S57 object geo data
 //#define S57_GEO_NM_LN   6  // S57 Class Name lenght
-#define S57_GEO_NM_LN   13   // GDAL/OGR primitive name: ConnectedNode
+#define S57_GEO_NM_LN   13   // GDAL/OGR primitive name: "ConnectedNode"
 typedef struct _S57_geo {
-    guint        S57ID;          // record ID - use as index in S52_obj GPtrArray
+    guint        S57ID;          // record ID / S52ObjectHandle use as index in S52_obj GPtrArray
     //guint        s52objID;     // optimisation: numeric value of OBCL string
 
     char         name[S57_GEO_NM_LN+1]; //  6 - object name    + '\0'
