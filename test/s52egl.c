@@ -159,10 +159,11 @@ typedef struct s52engine {
 #endif
 
     // EGL - android or X11 window
-    EGLNativeWindowType eglWindow;
+    //EGLNativeWindowType eglWindow;
     EGLDisplay          eglDisplay;
     EGLSurface          eglSurface;
     EGLContext          eglContext;
+    EGLConfig           eglConfig;
 
     //EGLClientBuffer     eglClientBuf;
     //EGLNativePixmapType eglPixmap;       // eglCopyBuffers()
@@ -653,8 +654,8 @@ static int      _egl_init       (s52engine *engine)
     }
 #endif
 
-    eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, (EGLNativeWindowType) eglWindow, NULL);
-    //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig[5], (EGLNativeWindowType) eglWindow, NULL);
+    eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, eglWindow, NULL);
+    //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig[5], eglWindow, NULL);
     if (EGL_NO_SURFACE == eglSurface || EGL_SUCCESS != eglGetError()) {
         LOGE("eglCreateWindowSurface() failed. EGL_NO_SURFACE [0x%x]\n", eglGetError());
         g_assert(0);
@@ -749,7 +750,8 @@ static int      _egl_init       (s52engine *engine)
     engine->eglDisplay = eglDisplay;
     engine->eglContext = eglContext;
     engine->eglSurface = eglSurface;
-    engine->eglWindow  = eglWindow;
+    //engine->eglWindow  = eglWindow;
+    engine->eglConfig  = eglConfig;
 
     LOGI("s52egl:_egl_init(): end ..\n");
 
@@ -759,22 +761,28 @@ static int      _egl_init       (s52engine *engine)
 static void     _egl_done       (s52engine *engine)
 // Tear down the EGL context currently associated with the display.
 {
+    /*
     if (engine->eglDisplay != EGL_NO_DISPLAY) {
         eglMakeCurrent(engine->eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 
         if (engine->eglContext != EGL_NO_CONTEXT) {
             eglDestroyContext(engine->eglDisplay, engine->eglContext);
+            engine->eglContext = EGL_NO_CONTEXT;
         }
 
         if (engine->eglSurface != EGL_NO_SURFACE) {
             eglDestroySurface(engine->eglDisplay, engine->eglSurface);
+            engine->eglSurface = EGL_NO_SURFACE;
         }
 
         eglTerminate(engine->eglDisplay);
+        engine->eglDisplay = EGL_NO_DISPLAY;
     }
+    */
 
-    engine->eglDisplay = EGL_NO_DISPLAY;
-    engine->eglContext = EGL_NO_CONTEXT;
+    eglMakeCurrent(engine->eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+
+    eglDestroySurface(engine->eglDisplay, engine->eglSurface);
     engine->eglSurface = EGL_NO_SURFACE;
 
     return;
@@ -1649,7 +1657,12 @@ static int      _s52_draw_cb    (gpointer user_data)
     }
     */
 
-    if ((NULL==engine->eglDisplay) || (EGL_NO_DISPLAY==engine->eglDisplay)) {
+    if (EGL_NO_SURFACE == engine->eglSurface) {
+        LOGE("_s52_draw_cb(): no Surface ..\n");
+        goto exit;
+    }
+
+    if (EGL_NO_DISPLAY == engine->eglDisplay) {
         LOGE("_s52_draw_cb(): no display ..\n");
         goto exit;
     }
@@ -2531,23 +2544,15 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             // window is being shown, get it ready
             LOGI("s52egl:--> APP_CMD_INIT_WINDOW\n");
 
-            if (NULL != engine->app->window) {
-                /*
-                if (EGL_TRUE == _android_display_init(engine)) {
-                    //_android_init_external_ais();
-                    //_android_init_external_gps();
-                }
-                */
-
+            if (EGL_NO_CONTEXT != engine->eglContext) {
+                //LOGI("APP_CMD_INIT_WINDOW: before eglCreateWindowSurface():EGL error [0x%x]\n", eglGetError());
+                engine->eglSurface = eglCreateWindowSurface(engine->eglDisplay, engine->eglConfig, engine->app->window, NULL);
+                //LOGI("APP_CMD_INIT_WINDOW: EGL error [0x%x]\n", eglGetError());
+                eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext);
+            } else {
                 _android_display_init(engine);
-                /*
-                if (NULL == engine->drawThread) {
-                    // FIXME: g_thread_create has been deprecated since version 2.32 and
-                    // should not be used in newly-written code. Use g_thread_new() instead
-                    engine->drawThread = g_thread_create(_android_display_init, (gpointer)engine, FALSE, NULL);
-                }
-                */
             }
+
             break;
         }
         case APP_CMD_TERM_WINDOW: {
