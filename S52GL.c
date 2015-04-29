@@ -5095,14 +5095,11 @@ int        S52_GL_isOFFview(S52_obj *obj)
     }
     //*/
 
+    // FIXME: AIS + Vector / Heading, also beam bearing
+
     // debug
     //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "pastrk")) {
     //    PRINTF("DEBUG: pastrk FOUND\n");
-    //}
-    // FIXME: find a better way to handle this case is in newVRMEBL()
-    //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "ebline")) {
-    //    //PRINTF("DEBUG: ebline FOUND\n");
-    //    return FALSE;
     //}
 
     {   // geo extent _gmin/max
