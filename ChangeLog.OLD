@@ -4,6 +4,9 @@
 #
 
 
+2015APR29
+    -fix resume on Android
+
 2015FEB26
     -mod refactor call _isObjValid() replace by S52_PL_isObjValid()
 
