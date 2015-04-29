@@ -33,7 +33,7 @@
 #include "S57gv.h"      // S57_gvLoadCell()
 #else
 #include "S57ogr.h"     // S57_ogrLoadCell()
-#endif
+#endif // S52_USE_GV
 
 #include <string.h>     // memmove(), memcpy()
 #include <glib.h>       // GString, GArray, GPtrArray, guint64, ..
@@ -73,7 +73,7 @@ typedef guint64 _S52ObjectHandle;
 #else
 #include <stdio.h>        // FILE, fopen(), ...
 #include <stdlib.h>       // setenv(), putenv()
-#endif
+#endif  // S52_USE_GLIB2
 
 #ifdef S52_USE_PROJ
 #include <proj_api.h>   // projUV, projXY, projPJ
@@ -82,7 +82,7 @@ typedef struct { double u, v; } projUV;
 #define projXY projUV
 #define RAD_TO_DEG    57.29577951308232
 #define DEG_TO_RAD     0.0174532925199432958
-#endif
+#endif  // S52_USE_PROJ
 
 #define ATAN2TODEG(xyz)   (90.0 - atan2(xyz[4]-xyz[1], xyz[3]-xyz[0]) * RAD_TO_DEG)
 
@@ -92,7 +92,8 @@ static GTimer *_timer = NULL;
 // must be compiled with -std=gnu99
 #include <unistd.h>      // getuid()
 #include <sys/types.h>
-#include <signal.h>
+#include <signal.h>      // siginfo_t
+#include <locale.h>      // setlocal()
 static volatile gint G_GNUC_MAY_ALIAS _atomicAbort;
 
 #ifdef _MINGW
@@ -110,7 +111,7 @@ static struct sigaction _old_signal_handler_SIGUSR1;  // 10
 static struct sigaction _old_signal_handler_SIGSEGV;  // 11
 static struct sigaction _old_signal_handler_SIGUSR2;  // 12
 static struct sigaction _old_signal_handler_SIGTERM;  // 15
-#endif
+#endif  // _MINGW
 
 // not available on win32
 #ifdef S52_USE_BACKTRACE
@@ -244,8 +245,7 @@ static int        _doCS         = FALSE;   // TRUE will recreate *all* CS at nex
 
 static int        _doCullLights = FALSE;   // TRUE will do lights_sector culling when _cellList change
 
-#include <locale.h>                        // setlocal()
-static char      *_intl         = NULL;
+static char      *_intl         = NULL;    // setlocal()
 
 // statistic
 static guint      _nCull        = 0;
@@ -1597,6 +1597,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 #endif  // S52_USE_GLIB2
 
 
+    // FIXME: check setlocale (LC_ALL, "");
     _intl = setlocale(LC_ALL, "C");
 
 
@@ -5992,6 +5993,34 @@ static
     //return obj;
 }
 
+static S52_obj            *_updateGeo(S52_obj *obj, double *xyz)
+{
+    /* debug
+    {
+        S52_obj *obj = (S52_obj *) objH;
+        S57_geo *geo = S52_PL_getGeo(obj);
+        PRINTF("plibObjName:%s, ID:%i, xyz:%#lX, listAttVal:<%s>\n",
+               S57_getName(geo), S57_getGeoS57ID(geo), (long unsigned int)xyz,
+               (NULL==listAttVal)?"NULL":listAttVal);
+    }
+    */
+
+    // update geo
+    if (NULL != xyz) {
+        guint    npt = 0;
+        double  *ppt = NULL;
+        //S57_geo *geo = S52_PL_getGeo((S52_obj *)objH);
+        S57_geo *geo = S52_PL_getGeo(obj);
+        S57_getGeoData(geo, 0, &npt, &ppt);
+
+        for (guint i=0; i<(npt*3); ++i)
+            *ppt++ = *xyz++;
+    }
+
+    //return objH;
+    return obj;
+}
+
 DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
                                       unsigned int xyznbr, double *xyz, const char *listAttVal)
 {
@@ -6081,35 +6110,6 @@ exit:
     return ret;
 }
 
-//static S52ObjectHandle        _updateGeo(S52ObjectHandle objH, double *xyz)
-static  S52_obj *_updateGeo(S52_obj *obj, double *xyz)
-{
-    /* debug
-    {
-        S52_obj *obj = (S52_obj *) objH;
-        S57_geo *geo = S52_PL_getGeo(obj);
-        PRINTF("plibObjName:%s, ID:%i, xyz:%#lX, listAttVal:<%s>\n",
-               S57_getName(geo), S57_getGeoS57ID(geo), (long unsigned int)xyz,
-               (NULL==listAttVal)?"NULL":listAttVal);
-    }
-    */
-
-    // update geo
-    if (NULL != xyz) {
-        guint    npt = 0;
-        double  *ppt = NULL;
-        //S57_geo *geo = S52_PL_getGeo((S52_obj *)objH);
-        S57_geo *geo = S52_PL_getGeo(obj);
-        S57_getGeoData(geo, 0, &npt, &ppt);
-
-        for (guint i=0; i<(npt*3); ++i)
-            *ppt++ = *xyz++;
-    }
-
-    //return objH;
-    return obj;
-}
-
 DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
 // contrairy to other call return objH when fail
 // so caller can further process it
@@ -6132,12 +6132,8 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
 
     if (NULL == _removeObj(_marinerCell, obj)) {
         PRINTF("WARNING: couldn't delete .. objH not in Mariners' Object List\n");
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //return objH;
-
         goto exit;
     }
-
 
     // queue obj for deletion in next APP() cycle
     //g_ptr_array_add(_objToDelList, obj);
@@ -6253,6 +6249,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         goto exit;
     }
 
+    // FIXME: call _GuardZoneCheck(), document what object is checked for, right now CS/DEPCNT02
     //* check if hazard inside Guard Zone
     if (0.0 != S52_MP_get(S52_MAR_GUARDZONE_BEAM)) {
         double oldCRSR_PICK = S52_MP_get(S52_MAR_DISP_CRSR_PICK);
