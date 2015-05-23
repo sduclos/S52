@@ -130,8 +130,8 @@ int   S52_GL_getViewPort(int *x, int *y, int *width, int *height);
 const
 char *S52_GL_getNameObjPick(void);
 
-int   S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, unsigned int weight);
-int   S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);
+int   S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight);
+int   S52_GL_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);
 int   S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str);
 
 int   S52_GL_drawGraticule(void);
