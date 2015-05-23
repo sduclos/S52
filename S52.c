@@ -3789,7 +3789,7 @@ static int        _drawLegend()
         } else {
             SNPRINTF(str, 80, "%.8s", c->filename->str);
         }
-        S52_GL_drawStr(xyz[0], xyz[1], str, 1, 3);
+        S52_GL_drawStrWorld(xyz[0], xyz[1], str, 1, 3);
 
         // DSID:DSPM_DUNI: units for depth
         if (NULL == c->dsid_dunistr) {
@@ -3801,7 +3801,7 @@ static int        _drawLegend()
                 SNPRINTF(str, 80, "DEPTH IN :%s", (NULL==c->dsid_dunistr) ? "NULL" : c->dsid_dunistr->str);
             }
         }
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // DSID:DSPM_HUNI: units for height
         if (NULL==c->dsid_hunistr) {
@@ -3813,15 +3813,15 @@ static int        _drawLegend()
                 SNPRINTF(str, 80, "HEIGHT IN :%s", c->dsid_hunistr->str);
             }
         }
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 0);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 0);
 
         //7. value of safety depth       Selected by user. Default is 30 metres.
         SNPRINTF(str, 80, "Safety Depth: %.1f", S52_MP_get(S52_MAR_SAFETY_DEPTH));
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 0);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 0);
 
         //8. value of safety contour     Selected by user. Default is 30 metres.
         SNPRINTF(str, 80, "Safety Contour: %.1f", S52_MP_get(S52_MAR_SAFETY_CONTOUR));
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 0);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 0);
 
         // scale of display
         xyz[1] -= offset_y; // add some room
@@ -3830,34 +3830,34 @@ static int        _drawLegend()
         } else {
             SNPRINTF(str, 80, "Scale 1:%s", (NULL==c->dsid_csclstr) ? "NULL" : c->dsid_csclstr->str);
         }
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 2);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 2);
 
 
         // ----------- DATUM ----------------------------------------------------------
 
         // DSID:DSPM_SDAT: sounding datum
         SNPRINTF(str, 80, "dsid_sdat:%s", (NULL==c->dsid_sdatstr) ? "NULL" : c->dsid_sdatstr->str);
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // vertical datum
         SNPRINTF(str, 80, "dsid_vdat:%s", (NULL==c->dsid_vdatstr) ? "NULL" : c->dsid_vdatstr->str);
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // horizontal datum
         SNPRINTF(str, 80, "dsid_hdat:%s", (NULL==c->dsid_hdatstr) ? "NULL" : c->dsid_hdatstr->str);
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // legend from M_SDAT
         // sounding datum
         if (NULL != c->sverdatstr) {
             SNPRINTF(str, 80, "sverdat:%s", c->sverdatstr->str);
-            S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
         // legend from M_VDAT
         // vertical datum
         if (NULL != c->vverdatstr) {
             SNPRINTF(str, 80, "vverdat:%s", c->vverdatstr->str);
-            S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
 
 
@@ -3865,51 +3865,51 @@ static int        _drawLegend()
 
         // date of latest update
         SNPRINTF(str, 80, "dsid_isdt:%s", (NULL==c->dsid_isdtstr) ? "NULL" : c->dsid_isdtstr->str);
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         // number of latest update
         SNPRINTF(str, 80, "dsid_updn:%s", (NULL==c->dsid_updnstr) ? "NULL" : c->dsid_updnstr->str);
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         // edition number
         SNPRINTF(str, 80, "dsid_edtn:%s", (NULL==c->dsid_edtnstr) ? "NULL" : c->dsid_edtnstr->str);
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         // edition date
         SNPRINTF(str, 80, "dsid_uadt:%s", (NULL==c->dsid_uadtstr) ? "NULL" : c->dsid_uadtstr->str);
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // legend from M_CSCL
         // scale
         if (NULL != c->cscalestr) {
             SNPRINTF(str, 80, "cscale:%s", c->cscalestr->str);
-            S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
 
         // legend from M_QUAL
         // data quality indicator
         SNPRINTF(str, 80, "catzoc:%s", (NULL==c->catzocstr) ? "NULL" : c->catzocstr->str);
-        S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // legend from M_ACCY POSACC
         // data quality indicator
         if (NULL != c->posaccstr) {
             SNPRINTF(str, 80, "posacc:%s", c->posaccstr->str);
-            S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
 
         // legend from MAGVAR
         // magnetic
         if (NULL != c->valmagstr) {
             SNPRINTF(str, 80, "valmag:%s", c->valmagstr->str);
-            S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
 
         if (NULL != c->ryrmgvstr) {
             SNPRINTF(str, 80, "ryrmgv:%s", c->ryrmgvstr->str);
-            S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
 
         if (NULL != c->valacmstr) {
             SNPRINTF(str, 80, "valacm:%s", c->valacmstr->str);
-            S52_GL_drawStr(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
     }
 
@@ -4246,8 +4246,7 @@ DLL int    STD S52_drawLast(void)
 #ifdef S52_DEBUG
     {
         gdouble sec = g_timer_elapsed(_timer, NULL);
-        //PRINTF("DRAWLAST: %.0f msec\n", sec * 1000);
-        PRINTF("DRAWLAST: %.0f msec (cull/total) %i/%i\n", sec * 1000, _nCull, _nTotal);
+        //PRINTF("DRAWLAST: %.0f msec (cull/total) %i/%i\n", sec * 1000, _nCull, _nTotal);
     }
 #endif
 
@@ -4378,7 +4377,7 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
 
     PRINTF("X:%f Y:%f color:%s bsize:%i str:%s\n", pixels_x, pixels_y, colorName, bsize, str);
 
-    ret = S52_GL_drawStrWin(pixels_x, pixels_y, colorName, bsize, str);
+    ret = S52_GL_drawStr(pixels_x, pixels_y, colorName, bsize, str);
 
 
 exit:
@@ -6044,7 +6043,8 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
         goto exit;
     }
 
-    if (objType<S52__META || S52_POINT<objType) {
+    //if (objType<S52__META || S52_POINT<objType) {
+    if (S52_POINT < objType) {
         PRINTF("WARNING: unknown object type\n");
         g_assert(0);
         goto exit;
