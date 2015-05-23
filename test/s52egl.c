@@ -295,7 +295,7 @@ typedef struct {
 
 #define ANGLEmax 2048
 #define Rmax     1280
-static FILE *_fd      = NULL;
+static FILE *_fd = NULL;
 
 typedef struct {
     double x;
@@ -760,6 +760,28 @@ static int      _egl_init       (s52engine *engine)
 
 static void     _egl_done       (s52engine *engine)
 // Tear down the EGL context currently associated with the display.
+{
+    if (engine->eglDisplay != EGL_NO_DISPLAY) {
+        eglMakeCurrent(engine->eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+
+        if (engine->eglContext != EGL_NO_CONTEXT) {
+            eglDestroyContext(engine->eglDisplay, engine->eglContext);
+            engine->eglContext = EGL_NO_CONTEXT;
+        }
+
+        if (engine->eglSurface != EGL_NO_SURFACE) {
+            eglDestroySurface(engine->eglDisplay, engine->eglSurface);
+            engine->eglSurface = EGL_NO_SURFACE;
+        }
+
+        eglTerminate(engine->eglDisplay);
+        engine->eglDisplay = EGL_NO_DISPLAY;
+    }
+
+    return;
+}
+
+static void     _egl_doneSurface(s52engine *engine)
 {
     /*
     if (engine->eglDisplay != EGL_NO_DISPLAY) {
@@ -1566,6 +1588,9 @@ static int      _s52_init       (s52engine *engine)
 
     S52_version();
 
+    // debug: should fail
+    //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test S52_drawStr()");
+
     LOGI("%s\n", S52_getPalettesNameList());
 
     LOGI("s52egl:_s52_init(): end ..\n");
@@ -1630,7 +1655,7 @@ static int      _s52_draw_user  (s52engine *engine)
     */
 
     // test
-    //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test String");
+    //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test S52_drawStr()");
 
     return TRUE;
 }
@@ -1639,6 +1664,7 @@ static int      _s52_draw_cb    (gpointer user_data)
 {
     s52engine *engine = (s52engine*)user_data;
 
+    // debug
     //LOGI("s52egl:_s52_draw_cb(): beg .. \n");
 
     if (NULL == engine) {
@@ -1672,7 +1698,6 @@ static int      _s52_draw_cb    (gpointer user_data)
         S52_drawBlit(engine->state.dx_pc, engine->state.dy_pc, engine->state.dz_pc, engine->state.dw_pc);
         engine->do_S52drawBlit = FALSE;
         goto exit;
-        //continue;
     }
     //*/
 
@@ -2545,8 +2570,15 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             LOGI("s52egl:--> APP_CMD_INIT_WINDOW\n");
 
             if (EGL_NO_CONTEXT != engine->eglContext) {
+                // debug
+                if (NULL == engine->app->window)
+                    LOGI("s52egl:APP_CMD_INIT_WINDOW: ANativeWindow is NULL\n");
+                else
+                    LOGI("s52egl:APP_CMD_INIT_WINDOW: ANativeWindow is NOT NULL\n");
+
                 //LOGI("APP_CMD_INIT_WINDOW: before eglCreateWindowSurface():EGL error [0x%x]\n", eglGetError());
                 engine->eglSurface = eglCreateWindowSurface(engine->eglDisplay, engine->eglConfig, engine->app->window, NULL);
+                //engine->eglSurface = eglCreateWindowSurface(engine->eglDisplay, engine->eglConfig, app->window, NULL);
                 //LOGI("APP_CMD_INIT_WINDOW: EGL error [0x%x]\n", eglGetError());
                 eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext);
             } else {
@@ -2564,7 +2596,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 
             //_android_done_external_sensors();
 
-            _egl_done(engine);
+            _egl_doneSurface(engine);
 
             break;
         }
@@ -2687,6 +2719,13 @@ static void     _onConfigurationChanged(ANativeActivity *activity)
     return;
 }
 
+static void     _onLowMemory(ANativeActivity *activity)
+{
+    LOGI("s52egl:_onLowMemory(): beg ..\n");
+
+    return;
+}
+
 #if 0
 static void     _onNativeWindowResized(ANativeActivity* activity, ANativeWindow* window)
 {
@@ -2738,10 +2777,11 @@ void     android_main(struct android_app *app)
     _engine.configBits = AConfiguration_diff(app->config, _engine.config);
     AConfiguration_copy(_engine.config, app->config);
 
-    // setup callbacks to detect android device orientation
+    // setup callbacks to detect android device orientation and other test
     _engine.callbacks  = _engine.app->activity->callbacks;
     _engine.callbacks->onConfigurationChanged = _onConfigurationChanged;
     //_engine.callbacks->onNativeWindowResized  = _onNativeWindowResized;
+    _engine.callbacks->onLowMemory            = _onLowMemory;
 
     // prepare to monitor sensor
     //engine.sensorManager    = ASensorManager_getInstance();
