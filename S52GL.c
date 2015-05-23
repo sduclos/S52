@@ -828,16 +828,16 @@ static int       _win2prj(double *x, double *y)
     float v       = *y;
     float dummy_z = 0.0;
 
-    /* debug
-    if (TRUE == isnan(_pjm[_pjmTop][0])) {
+    //* debug
+    if (0 == _pjm[_pjmTop][0]) {
         PRINTF("WARNING: broken Projection Matrix\n");
         g_assert(0);
         return FALSE;
     }
-    */
+    //*/
 
     if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], vp, &u, &v, &dummy_z)) {
-        PRINTF("WARNING: UnProjection faild\n");
+        PRINTF("WARNING: UnProjection faild: _mvmTop=%i, _pjmTop=%i\n", _mvmTop, _pjmTop);
         g_assert(0);
         return FALSE;
     }
@@ -4239,7 +4239,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
         _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight);
     }
 
-    // lone text
+    // lone text - S52_drawStr()
     if (S52_GL_NONE == _crnt_GL_cycle) {
         _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight);
     }
@@ -6842,18 +6842,28 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     return TRUE;
 }
 
-int        S52_GL_drawStr(double x, double y, char *str, unsigned int bsize, unsigned int weight)
+int        S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight)
 // draw string in world coords
 {
+    S52_GL_cycle tmpCrntCycle = _crnt_GL_cycle;
+    _crnt_GL_cycle = S52_GL_NONE;
+
     S52_Color *c = S52_PL_getColor("CHBLK");  // black
     _renderTXTAA(NULL, c, x, y, bsize, weight, str);
+
+    _crnt_GL_cycle = tmpCrntCycle;
 
     return TRUE;
 }
 
-int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
+int        S52_GL_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
 // draw a string in window coords
 {
+    if (S52_GL_INIT == _crnt_GL_cycle) {
+        PRINTF("WARNING: init GL first (draw)\n");
+        return FALSE;
+    }
+
     S52_Color *c = S52_PL_getColor(colorName);
 
     _GL_BEGIN = TRUE;
