@@ -68,6 +68,7 @@ public class s52ui extends Activity
         //registerReceiver(receiver, new IntentFilter("nav.ecs.s52droid.s52ui.SHUTDOWN"));
     }
 
+    /*
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         // Check if the key event was the Back button and if there's history
@@ -87,6 +88,7 @@ public class s52ui extends Activity
         // system behavior (probably exit the activity)
         return super.onKeyDown(keyCode, event);
     }
+    */
 }
 
 /*
