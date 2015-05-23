@@ -8,12 +8,10 @@ part of s52ui;
 //
 
 class Cmd {
-  String    _str;
   int       _id;
   Completer _completer;
 
   Cmd(String str, int id, Completer completer) {
-    _str       = str;
     _id        = id;
     _completer = completer;
   }
@@ -21,7 +19,6 @@ class Cmd {
 
 //abstract class S52 {
 class S52 {
-  //Completer _completer = null;
   Map _data = JSON.decode('{"id":1,"method":"???","params":["???"]}');
   int _id   = 1;
 
@@ -36,8 +33,6 @@ class S52 {
   bool  _skipTimer = false;
   set skipTimer(val) => _skipTimer = val;
 
-  // FIXME: use Queue to stack S52 cmd .. what happend if returning out-of-order!
-  //Queue<String> _queue = new Queue<String>();
   Queue<Cmd> _queue = new Queue<Cmd>();
 
   // S52 color for UI element
@@ -154,13 +149,13 @@ class S52 {
     //_skipTimer = false;
 
     if (true == _queue.isNotEmpty) {
-      Cmd cmd = _queue.removeFirst();
-      if (cmd._id != data["id"]) {
-        print('rcvMsg(): failed on key: cmd._id=${cmd._id} data_id=${data["id"]} [data:$data]');
+      Cmd cmd = _queue.firstWhere((c) => c._id == data["id"], orElse: () => null);
+
+      if (cmd == null) {
         throw "rcvMsg(): ID mismatch";
       }
 
-      // drawLas()
+      // drawLast()
       _skipTimer = false;
 
       return cmd._completer.complete(data['result']);
@@ -181,15 +176,7 @@ class S52 {
     Cmd cmd = new Cmd(str, _id, completer);
     _queue.add(cmd);
 
-    if (_ws.bufferedAmount == 0) {
-      //_ws.send(str);
-      _ws.sendString(str);
-
-      // debug
-      //print('_sndMsg:$str');
-    } else {
-      print('_sndMsg: ERROR SOCK FAIL');
-    }
+    _ws.sendString(str);
 
     return completer.future;
   }
