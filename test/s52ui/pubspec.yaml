@@ -2,4 +2,3 @@ name: s52ui
 description: HTML UI for testing s52droid
 dependencies:
   browser: any
-  js: any
