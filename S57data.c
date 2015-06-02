@@ -1298,13 +1298,11 @@ GCPTR      S57_getAtt(_S57_geo *geo)
 {
     return_if_null(geo);
 
-
-    PRINTF("S57ID : %i\n", geo->S57ID);
-    //PRINTF("NAME  : %s\n", geo->name->str);
-    PRINTF("NAME  : %s\n", geo->name);
+    //PRINTF("S57ID : %i\n", geo->S57ID);
+    //PRINTF("NAME  : %s\n", geo->name);
 
     g_string_set_size(_attList, 0);
-    g_string_printf(_attList, "%i", geo->S57ID);
+    g_string_printf(_attList, "%s:%i", geo->name, geo->S57ID);
 
     g_datalist_foreach(&geo->attribs, _getAtt, _attList);
 
