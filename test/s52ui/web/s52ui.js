@@ -86,6 +86,7 @@ Main.prototype.tables = function(html)
                           html.insert(this.buttonCell, ['td_buttonCell1', 'Color Palettes']),
                           html.insert(this.buttonCell, ['td_buttonCell2', 'AIS']),
                           html.insert(this.buttonCell, ['td_buttonCell3', 'ENC']),
+                          html.insert(this.buttonCell, ['td_buttonCell4', 'Switch to Touch']),
 
                           // i - Input checkbox
                           html.insert(this.checkCell, ['i1','Show Text']),
@@ -159,8 +160,9 @@ Main.prototype.render = function(html)
     var SVG = html.SVG();
     SVG.svg({id:'svg1', width:'100%', height:'100%'},
             SVG.g({id:'svg1g'},
-                  SVG.rect({id:'svg1rect', x:'100', y:'100', rx:'10', ry:'10', width:'300', height:'64', style:'fill:rgba(0,0,255, 0.5);stroke-width:1;'}),
-                  SVG.text({id:'svg1text', x:'105', y:'155', style:'fill:rgb(0,255,255);'},'SVG')
+                  SVG.rect({id:'svg1rect', x:'100', y:'100', rx:'10', ry:'10', width:'500', height:'64', style:'fill:rgba(0,0,255, 0.5);stroke-width:1;'}),
+                  SVG.text({id:'svg1text', x:'105', y:'155', style:'fill:rgb(0,255,255);'}, ''),
+                  SVG.text({id:'svg1menu', x:'105', y:'155', style:'fill:rgb(0,255,255);'}, 'Switch To Menu')
                  ),
             SVG.circle({id:'svg1c', r:radius, cx:'50%', cy:'50%', style:'stroke:red;fill:none;stroke-width:1;'})
            );
