@@ -900,7 +900,7 @@ static int       _init_gl2(void)
 
         // ----------------------------------------------------------------------
 
-        PRINTF("DEBUG: re-building '_programObject'\n");
+        PRINTF("DEBUG: building '_programObject'\n");
         _programObject = glCreateProgram();
         if (0 == _programObject) {
             PRINTF("ERROR: glCreateProgram() FAILED\n");
@@ -909,7 +909,7 @@ static int       _init_gl2(void)
         }
 
         // ----------------------------------------------------------------------
-        PRINTF("GL_VERTEX_SHADER\n");
+        PRINTF("DEBUG: GL_VERTEX_SHADER\n");
 
         static const char vertSrc[] =
 #ifdef S52_USE_GLES2
@@ -952,7 +952,7 @@ static int       _init_gl2(void)
 
         // ----------------------------------------------------------------------
 
-        PRINTF("GL_FRAGMENT_SHADER\n");
+        PRINTF("DEBUG: GL_FRAGMENT_SHADER\n");
 
 /*
 #ifdef S52_USE_TEGRA2
@@ -1334,11 +1334,11 @@ static int       is_power_of_two(guint v)
     return (v & (v-1)) == 0;
 }
 
+static guint g_nearest_pow (gint num)
 // lifted from glib garray.c
 /* Returns the smallest power of 2 greater than n, or n if
  * such power does not fit in a guint
  */
-static guint g_nearest_pow (gint num)
 {
   guint n = 1;
 
@@ -1347,8 +1347,6 @@ static guint g_nearest_pow (gint num)
 
   return n ? n : num;
 }
-
-
 #endif
 
 static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, double stagOffsetPix)
