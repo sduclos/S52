@@ -66,7 +66,6 @@ typedef guint64 _S52ObjectHandle;
 
 #endif  // S52_USE_GOBJECT
 
-
 #ifdef S52_USE_GLIB2
 #include <glib/gprintf.h> //
 #include <glib/gstdio.h>  // FILE
@@ -233,9 +232,6 @@ static GString   *_paltNameList = NULL;    // string that gather palette name
 static GString   *_S57ClassList = NULL;    // string that gather cell S57 class name
 static GString   *_S52ObjNmList = NULL;    // string that gather cell S52 obj name
 static GString   *_cellNameList = NULL;    // string that gather cell name
-
-//static GPtrArray *_objToDelList = NULL;    // list of obj to delete in next APP cycle
-
 
 static int        _doInit       = TRUE;    // init the lib
 
@@ -1541,8 +1537,6 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
         _S57ClassList = g_string_new("");
     if (NULL == _S52ObjNmList)
         _S52ObjNmList = g_string_new("");
-    //if (NULL == _objToDelList)
-    //    _objToDelList = g_ptr_array_new();
 
 
     ///////////////////////////////////////////////////////////
@@ -1669,10 +1663,8 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 
 DLL cchar *STD S52_version(void)
 {
-    //PRINTF("%s", _version());
     PRINTF("%s", S52_utils_version());
 
-    //return _version;
     return S52_utils_version();
 }
 
@@ -1721,8 +1713,6 @@ DLL int    STD S52_done(void)
     g_string_free(_cellNameList, TRUE); _cellNameList = NULL;
     g_string_free(_S57ClassList, TRUE); _S57ClassList = NULL;
     g_string_free(_S52ObjNmList, TRUE); _S52ObjNmList = NULL;
-
-    //g_ptr_array_free(_objToDelList, TRUE); _objToDelList = NULL;
 
     // flush raster (bathy,..)
     for (guint i=0; i<_rasterList->len; ++i) {
@@ -3347,26 +3337,6 @@ static int        _app()
 // -OR-
 // try to move Mariner CS logique in GL
 {
-    //PRINTF("_app(): -.0-\n");
-    // 1- delete pending mariner
-    /*
-    for (guint i=0; i<_objToDelList->len; ++i) {
-        S52_obj *obj = (S52_obj *)g_ptr_array_index(_objToDelList, i);
-
-
-        // delete ref to _OWNSHP
-        S57_geo        *geo  = S52_PL_getGeo(obj);
-        S52ObjectHandle objH = S57_getGeoS57ID(geo);
-        //if (obj == _OWNSHP) {
-        if (objH == _OWNSHP) {
-            _OWNSHP = FALSE;  // NULL but S52ObjectHandle can be an gint in some config
-        }
-
-        _delObj(obj);
-    }
-    g_ptr_array_set_size(_objToDelList, 0);
-    */
-
     //PRINTF("_app(): -.1-\n");
 
     // FIXME: resolve CS in S52_setMarinerParam(), then all logic can be move back to CS (where it belong)
@@ -4245,7 +4215,7 @@ DLL int    STD S52_drawLast(void)
 
 #ifdef S52_DEBUG
     {
-        gdouble sec = g_timer_elapsed(_timer, NULL);
+        //gdouble sec = g_timer_elapsed(_timer, NULL);
         //PRINTF("DRAWLAST: %.0f msec (cull/total) %i/%i\n", sec * 1000, _nCull, _nTotal);
     }
 #endif
@@ -5089,7 +5059,8 @@ exit:
 
 DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 {
-    const char *name = NULL;
+    static const char *name;
+    name = NULL;
 
     S52_CHECK_MUTX_INIT_EGLBEG(PICK);
 
@@ -5226,13 +5197,13 @@ exit:
 
     EGL_END(PICK);
 
-    //return NULL; // debug
     return name;
 }
 
 DLL cchar *STD S52_getPLibNameList(void)
 {
-    const char *str = NULL;
+    static const char *str;
+    str = NULL;
 
     S52_CHECK_MUTX_INIT;
 
@@ -5248,14 +5219,14 @@ exit:
 DLL cchar *STD S52_getPalettesNameList(void)
 // return a string of palettes name loaded
 {
-    const char *str = NULL;
+    static const char *str;
+    str = NULL;
 
     S52_CHECK_MUTX_INIT;
 
-    int palTblsz = S52_PL_getPalTableSz();
-
     g_string_set_size(_paltNameList, 0);
 
+    int palTblsz = S52_PL_getPalTableSz();
     for (int i=0; i<palTblsz; ++i) {
         char *frmt = (0 == i) ? "%s" : ",%s";
         g_string_append_printf(_paltNameList, frmt, (char*)S52_PL_getPalTableNm(i));
@@ -5292,7 +5263,8 @@ static GString   *_getMARINClassList()
 
 DLL cchar *STD S52_getS57ClassList(const char *cellName)
 {
-    const char *str = NULL;
+    static const char *str;
+    str = NULL;
 
     S52_CHECK_MUTX_INIT;
 
@@ -5329,10 +5301,10 @@ DLL cchar *STD S52_getS57ClassList(const char *cellName)
         }
     }
 
+exit:
+
     if (0 != _S57ClassList->len)
         str = _S57ClassList->str;
-
-exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -5344,14 +5316,14 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
     return_if_null(cellName);
     return_if_null(className);
 
-    const char *str    = NULL;
+    static const char *str;
+    str = NULL;
 
     S52_CHECK_MUTX_INIT;
 
-    int         header = TRUE;
-
     PRINTF("cellName: %s, className: %s\n", cellName, className);
 
+    int header = TRUE;
     g_string_set_size(_S52ObjNmList, 0);
 
     for (guint cidx=0; cidx<_cellList->len; ++cidx) {
@@ -5395,13 +5367,21 @@ exit:
 
 DLL cchar *STD S52_getAttList(unsigned int S57ID)
 {
-    const char *str = NULL;
+    static const char *str;
+    str = NULL;
 
     S52_CHECK_MUTX_INIT;
 
-    // FIXME: put in array of s57id  (what to do if ENC is unloaded)
     PRINTF("S57ID: %i\n", S57ID);
 
+    S52_obj *obj = S52_PL_isObjValid(S57ID);
+    if (NULL != obj) {
+        S57_geo *geo = S52_PL_getGeo(obj);
+        if (NULL != geo)
+            str = S57_getAtt(geo);
+    }
+
+    /*
     for (guint cidx=0; cidx<_cellList->len; ++cidx) {
         _cell *c = (_cell*)g_ptr_array_index(_cellList, cidx);
 
@@ -5419,6 +5399,7 @@ DLL cchar *STD S52_getAttList(unsigned int S57ID)
             }
         }
     }
+    */
 
 exit:
 
@@ -5429,7 +5410,8 @@ exit:
 
 DLL cchar *STD S52_getCellNameList(void)
 {
-    const char *str = NULL;
+    static const char *str;
+    str = NULL;
 
     S52_CHECK_MUTX_INIT;
 
@@ -5733,47 +5715,6 @@ static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
     return TRUE;
 }
 
-#if 0
-static S52_obj   *_isObjValid(_cell *c, S52ObjectHandle objH)
-// return  obj if the oject is in cell else NULL
-// Used to validate User Mariners' Object
-{
-    // FIXME: refactor/optimise - idx (S57ID) of GPtrArray return the real S52_obj struct
-    // - Q: what happend if array is full (guint)!
-    // - A: this limit (guint) is on all guint like s57id.
-    // So let the array grow upto MAX(guint) (ie at least 2^32 - if 64bits system then 2^64)
-    // and signal ARRAY_FULL when S52_g_ptr_array_add() max out guint
-    // WARNING: in this sheme del_fast() mixe up index - can't be used
-
-    /*
-    for (int i=0; i<S52_PRIO_NUM; ++i) {
-        for (int j=0; j<S52_N_OBJ; ++j) {
-            GPtrArray *rbin = c->renderBin[i][j];
-            for (guint idx=0; idx<rbin->len; ++idx) {
-                S52_obj *o = (S52_obj *)g_ptr_array_index(rbin, idx);
-
-                // FIXME: then call S52_PL_isObjValid(obj)
-                if (obj == o) {
-                    S52_PL_isObjValid(obj);
-                    return obj;
-                }
-            }
-        }
-    }
-    //*/
-
-    // quiet compiler
-    (void)c;
-
-    if (0 == objH)
-        return NULL;
-
-    S52_obj *obj = S52_PL_isObjValid(objH);
-
-    return obj;
-}
-#endif
-
 static int        _isObjNameValid(S52_obj *obj, const char *objName)
 // return TRUE if the class name of 'obj' is 'objName' else FALSE
 {
@@ -5784,72 +5725,6 @@ static int        _isObjNameValid(S52_obj *obj, const char *objName)
     }
 
     return TRUE;
-}
-
-struct _user_data {
-    unsigned int S57ID;
-    S52_obj     *obj;
-};
-struct _user_data udata;
-
-static void       _compS57ID(gpointer data, gpointer user_data)
-{
-    struct _user_data *udata  = (struct _user_data*) user_data;
-
-    // if allready found do nothing
-    if (NULL == udata->obj) {
-        S52_obj *obj = (S52_obj*) data;
-        S57_geo *geo = S52_PL_getGeo(obj);
-
-        if (udata->S57ID == S57_getGeoS57ID(geo)) {
-            udata->obj = obj;
-        }
-    }
-}
-
-static S52_obj   *_getS52obj(unsigned int S57ID)
-// traverse all visible object
-{
-    struct _user_data  udata;
-    udata.S57ID    = S57ID;
-    udata.obj      = NULL;
-
-    //guint n = _cellList->len-1;
-    //for (guint i=n; i>0; --i) {
-    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-    for (guint i=_cellList->len; i>0; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
-        g_ptr_array_foreach(c->objList_supp, (GFunc)_compS57ID, &udata);
-        g_ptr_array_foreach(c->objList_over, (GFunc)_compS57ID, &udata);
-
-        // obj found - no need to go further
-        if (NULL != udata.obj)
-            return udata.obj;
-    }
-
-    {   // obj not found - search Mariners' Object List (mostly on layer 9)
-        PRINTF("FIXME: check all layer - not all on layer 9 (S52_PRIO_MARINR) !!\n");
-        for (int i=0; i<S52_N_OBJ; ++i) {
-            GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][i];
-
-            for (guint idx=0; idx<rbin->len; ++idx) {
-                S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-
-                // if visible
-                if (FALSE == S52_GL_isSupp(obj)) {
-                    S57_geo *geo = S52_PL_getGeo(obj);
-
-                    if (S57ID == S57_getGeoS57ID(geo)) {
-                        return obj;
-                        //udata.obj = obj;
-                        //break;
-                    }
-                }
-            }
-        }
-    }
-
-    return udata.obj;
 }
 
 DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, unsigned int width, unsigned int height)
@@ -5864,7 +5739,8 @@ DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, u
     if (0 == S57ID) {
         S52_GL_dumpS57IDPixels(toFilename, NULL, width, height);
     } else {
-        S52_obj *obj = _getS52obj(S57ID);
+        //S52_obj *obj = _getS52obj(S57ID);
+        S52_obj *obj = S52_PL_isObjValid(S57ID);
         if (NULL != obj)
             ret = S52_GL_dumpS57IDPixels(toFilename, obj, width, height);
     }
@@ -6097,7 +5973,9 @@ DLL S52ObjectHandle STD S52_getMarObj(unsigned int S57ID)
         }
     }
     */
+
     //S52_obj *obj = _isObjValid(_marinerCell, S57ID);
+
     S52_obj *obj = S52_PL_isObjValid(S57ID);
     if (NULL != obj) {
         ret = S57ID;
@@ -6119,12 +5997,9 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
 
     S52_CHECK_MUTX_INIT;
 
-    //PRINTF("objH:%u\n", objH);
     PRINTF("objH:%u\n", objH);
 
     // validate this obj and remove if found
-    //S52_obj *obj = (S52_obj *)objH;
-    //S52_obj *obj = _isObjValid(_marinerCell, objH);
     S52_obj *obj = S52_PL_isObjValid(objH);
     if (NULL == obj) {
         goto exit;
@@ -6134,9 +6009,6 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
         PRINTF("WARNING: couldn't delete .. objH not in Mariners' Object List\n");
         goto exit;
     }
-
-    // queue obj for deletion in next APP() cycle
-    //g_ptr_array_add(_objToDelList, obj);
 
     if (objH == _OWNSHP) {
         _OWNSHP = FALSE;
@@ -6149,7 +6021,6 @@ exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
-    //return (S52ObjectHandle)NULL;
     return objH;
 }
 
