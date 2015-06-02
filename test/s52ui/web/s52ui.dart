@@ -1,4 +1,4 @@
-// s52ui.dart: html/websocket test driver for libS52.so
+// s52ui.dart: html/websocket/async test driver for libS52.so
 
 library s52ui;
 
@@ -6,7 +6,7 @@ import 'dart:html';
 import 'dart:svg';
 import 'dart:async';
 import 'dart:convert';
-import 'dart:collection'; // Queue in s52.dart
+import 'dart:collection'; // Queue in s52.dart, maybe await/async!!
 
 part 's52.dart';
 
@@ -40,7 +40,7 @@ void _handleInput(int param, double value) {
       });
       break;
 
-    case S52.MAR_ROT_BUOY_LIGHT: //=28
+    case S52.MAR_ROT_BUOY_LIGHT:      //=28
       RangeInputElement r = querySelector("#r$param");
       var val = r.valueAsNumber;
       s52.setMarinerParam(param, val).then((ret) {
@@ -59,19 +59,19 @@ void _handleInput(int param, double value) {
       });
       return;
 
-    case S52.MAR_DISP_CATEGORY: //= 14;
-    //S52_MAR_DISP_CATEGORY_BASE     =        0;  //      0; 0000000
-    //S52_MAR_DISP_CATEGORY_STD      =        1;  // 1 << 0; 0000001
-    //S52_MAR_DISP_CATEGORY_OTHER    =        2;  // 1 << 1; 0000010
-    //S52_MAR_DISP_CATEGORY_SELECT   =        4;  // 1 << 2; 0000100
+    case S52.MAR_DISP_CATEGORY:      //= 14;
+      //S52_MAR_DISP_CATEGORY_BASE     =        0;  //      0; 0000000
+      //S52_MAR_DISP_CATEGORY_STD      =        1;  // 1 << 0; 0000001
+      //S52_MAR_DISP_CATEGORY_OTHER    =        2;  // 1 << 1; 0000010
+      //S52_MAR_DISP_CATEGORY_SELECT   =        4;  // 1 << 2; 0000100
 
-    case S52.MAR_DISP_LAYER_LAST: //= 27;
-    //S52_MAR_DISP_LAYER_LAST_NONE   =        8;  // 1 << 3; 0001000
-    //S52_MAR_DISP_LAYER_LAST_STD    =       16;  // 1 << 4; 0010000
-    //S52_MAR_DISP_LAYER_LAST_OTHER  =       32;  // 1 << 5; 0100000
-    //S52_MAR_DISP_LAYER_LAST_SELECT =       64;  // 1 << 5; 1000000
+    case S52.MAR_DISP_LAYER_LAST:    //= 27;
+      //S52_MAR_DISP_LAYER_LAST_NONE   =        8;  // 1 << 3; 0001000
+      //S52_MAR_DISP_LAYER_LAST_STD    =       16;  // 1 << 4; 0010000
+      //S52_MAR_DISP_LAYER_LAST_OTHER  =       32;  // 1 << 5; 0100000
+      //S52_MAR_DISP_LAYER_LAST_SELECT =       64;  // 1 << 5; 1000000
 
-    case S52.CMD_WRD_FILTER: //= 33;
+    case S52.CMD_WRD_FILTER:         //= 33;
       //S52_CMD_WRD_FILTER_SY          =        1;  // 1 << 0; 000001 - SY
       //S52_CMD_WRD_FILTER_LS          =        2;  // 1 << 1; 000010 - LS
       //S52_CMD_WRD_FILTER_LC          =        4;  // 1 << 2; 000100 - LC
@@ -95,21 +95,17 @@ Future<bool> _getS52UIcolor() {
   // get S52 UI background color
   s52.getRGB("UIBCK").then((UIBCK) {
     s52.UIBCK = UIBCK;
-  //});
     // get S52 UI Text Color
     s52.getRGB("UINFF").then((UINFF) {
       s52.UINFF = UINFF;
-    //});
       // get S52 UI Border Color
       s52.getRGB("UIBDR").then((UIBDR) {
         s52.UIBDR = UIBDR;
-      //});
         completer.complete(true);
       });
     });
   });
 
-  //completer.complete(true);
   return completer.future;
 }
 
@@ -345,6 +341,7 @@ List _numButton = [
   S52.MAR_DEEP_CONTOUR
 ];
 
+// FIXME: recursion not needed with Cmd queue - simpler logic
 Future<bool> _initCheckBox(List lst, int idx, String prefix, Completer completer) {
   // need recursion: wait Future of call before calling libS52 again
   // FIXME: MAR_SCAMIN fail on key
@@ -366,7 +363,7 @@ Future<bool> _initCheckBox(List lst, int idx, String prefix, Completer completer
   return completer.future;
 }
 
-//*
+// FIXME: recursion not needed with Cmd queue - simpler logic
 Future<bool> _initNumBox(List lst, int idx, String prefix, Completer completer) {
   // need recursion: wait Future of call before calling libS52 again
   // FIXME: MAR_SCAMIN fail on key
@@ -380,6 +377,7 @@ Future<bool> _initNumBox(List lst, int idx, String prefix, Completer completer) 
       //i.onClick.listen((ev) => print("id:'$prefix$el'"));
       //i.onClick.listen((ev) => _handleInput(el, 0.0));
       i.onInput.listen((ev) => _handleInput(el, 0.0));
+
       // recursion
       _initNumBox(lst, idx + 1, prefix, completer);
     });
@@ -389,13 +387,12 @@ Future<bool> _initNumBox(List lst, int idx, String prefix, Completer completer) 
 
   return completer.future;
 }
-//*/
 
 Future<bool> _initUI() {
 
   print('_initUI(): - start -');
 
-  _setUIcolor().then((ret) {});
+  _setUIcolor();
 
   // S52_MAR_CMD_WRD_FILTER(33)
   s52.getMarinerParam(S52.CMD_WRD_FILTER).then((ret) {
@@ -433,8 +430,7 @@ Future<bool> _initUI() {
         InputElement i = querySelector("#c$el");
         i.checked = (0 == (filter & el)) ? false : true;
         i.onClick.listen((ev) => print("id:'c$el'"));
-        i.onClick
-            .listen((ev) => _handleInput(S52.MAR_DISP_CATEGORY, el.toDouble()));
+        i.onClick.listen((ev) => _handleInput(S52.MAR_DISP_CATEGORY, el.toDouble()));
       }
     });
   });
@@ -451,8 +447,7 @@ Future<bool> _initUI() {
       InputElement i = querySelector("#l$el");
       i.checked = (0 == (filter & el)) ? false : true;
       i.onClick.listen((ev) => print("id:'l$el'"));
-      i.onClick
-          .listen((ev) => _handleInput(S52.MAR_DISP_LAYER_LAST, el.toDouble()));
+      i.onClick.listen((ev) => _handleInput(S52.MAR_DISP_LAYER_LAST, el.toDouble()));
     });
   });
 
@@ -472,9 +467,19 @@ Future<bool> _initUI() {
     ..onClick.listen((ev) => print("id:'td_buttonCell3'"))
     ..onClick.listen((ev) => _listENC(ev));
 
+  // 'Switch to Touch'
+  querySelector("#td_buttonCell4")
+    ..onClick.listen((ev) => print("id:'td_buttonCell4'"))
+    ..onClick.listen((ev) => _toggleUIEvent());
+
   querySelector("#r28")
     ..onClick.listen((ev) => print("id:'r28'"))
     ..onClick.listen((ev) => _handleInput(S52.MAR_ROT_BUOY_LIGHT, 0.0));
+
+  // 'Switch To Menu'
+  querySelector("#svg1menu")
+    ..onClick.listen((ev) => print("id:'svg1menu'"))
+    ..onClick.listen((ev) => _toggleUIEvent());
 
   print('s52ui.dart:_checkButton() - start - ');
 
@@ -505,7 +510,7 @@ void _initTouch() {
 
   int new_x1 = -1;
   int new_y1 = -1;
-  int new_x2 = 0;
+  int new_x2 =  0;
   //int new_y2   =  0;
 
   int    ticks    = 0;
@@ -527,7 +532,7 @@ void _initTouch() {
       newTouch = true;
       modeZoom = false;
       zoom_fac = 0.0;
-      ticks = 0;
+      ticks    = 0;
     }
 
     if (1 == event.touches.length) {
@@ -639,15 +644,15 @@ void _initTouch() {
     // short tap
     if (ticks < 3) {
       // do nothing if object allready displayed
-      if ('inline-block' == querySelector('#svg1g').style.display) return;
+      if ('inline-block' == querySelector('#svg1g').style.display)
+        return;
 
       double x = start_x1 * window.devicePixelRatio;
       double y = (window.innerHeight - start_y1) * window.devicePixelRatio;
       s52.pickAt(x, y).then((ret) {
         TextElement svg1txt = querySelector('#svg1text');
         // set S52 UI Text Color
-        svg1txt.setAttribute('style',
-            'fill:rgba(${s52.UINFF[0]},${s52.UINFF[1]},${s52.UINFF[2]}, 1.0);');
+        svg1txt.setAttribute('style', 'fill:rgba(${s52.UINFF[0]},${s52.UINFF[1]},${s52.UINFF[2]}, 1.0);');
         svg1txt.text = '${ret[0]}';
 
         var x = start_x1 + 5;
@@ -656,7 +661,7 @@ void _initTouch() {
         svg1txt.setAttribute('y', '$y');
 
         var rec = svg1txt.client;
-        var w = rec.width + 10;
+        var w = rec.width  + 10;
         var h = rec.height + 10;
 
         RectElement svg1rec = querySelector('#svg1rect');
@@ -665,8 +670,7 @@ void _initTouch() {
         svg1rec.setAttribute('x', '${start_x1}');
         svg1rec.setAttribute('y', '${start_y1}');
         // set S52 UI background & border color - test:display:inline-block;
-        svg1rec.setAttribute('style',
-            'fill:rgba(${s52.UIBCK[0]},${s52.UIBCK[1]},${s52.UIBCK[2]}, 0.7);stroke:rgb(${s52.UIBDR[0]},${s52.UIBDR[1]},${s52.UIBDR[2]});display:inline-block;');
+        svg1rec.setAttribute('style', 'fill:rgba(${s52.UIBCK[0]},${s52.UIBCK[1]},${s52.UIBCK[2]}, 0.7);stroke:rgb(${s52.UIBDR[0]},${s52.UIBDR[1]},${s52.UIBDR[2]});display:inline-block;');
 
         querySelector('#svg1g').style.display = 'inline-block';
 
@@ -710,7 +714,7 @@ void _initTouch() {
           //print("getView(): cLat:$cLat, cLon:$cLon, rNM:$rNM, north:$north");
 
           double rNMnew = rNM - (rNM * zoom_fac);
-          rNMnew = (0 < rNMnew) ? rNMnew : -rNMnew; // ABS()
+          rNMnew = (rNMnew < 0.0) ? -rNMnew : rNMnew; // ABS()
           s52.setView(cLat, cLon, rNMnew, north).then((ret) {
             s52.draw().then((ret) {
               s52.skipTimer = false;
@@ -726,19 +730,19 @@ void _initTouch() {
           double cLon  = ret[1];
           double rNM   = ret[2];
           double north = ret[3];
-          double x     = new_x1 * window.devicePixelRatio;
+          double x     = new_x1     * window.devicePixelRatio;
           double y     = h - new_y1 * window.devicePixelRatio;
 
           new_x1 = -1;
           new_y1 = -1;
           s52.xy2LL(x, y).then((ret) {
-            double x1 = ret[0]; // lon
-            double y1 = ret[1]; // lat
-            double x  = start_x1 * window.devicePixelRatio;
+            double x1 = ret[0];  // lon
+            double y1 = ret[1];  // lat
+            double x  = start_x1     * window.devicePixelRatio;
             double y  = h - start_y1 * window.devicePixelRatio;
             s52.xy2LL(x, y).then((ret) {
-              double x2 = ret[0]; // lon
-              double y2 = ret[1]; // lat
+              double x2 = ret[0];  // lon
+              double y2 = ret[1];  // lat
               double dx = x2 - x1;
               double dy = y2 - y1;
               s52.setView(cLat + dy, cLon + dx, rNM, north).then((ret) {
@@ -774,7 +778,8 @@ void _toggleUIEvent() {
     querySelector('#tbodyR').style.display = 'none';
     querySelector('#svg1'  ).style.display = 'inline-block';
     querySelector('#svg1c' ).style.display = 'inline-block';
-  } else {
+    querySelector('#svg1g' ).style.display = 'inline-block';
+      } else {
     querySelector('#tbodyL').style.display = 'table';
     querySelector('#tbodyR').style.display = 'table';
     querySelector('#svg1'  ).style.display = 'none';
@@ -795,10 +800,10 @@ void _fullList(evt) {
 
 //////////////// GPS & GYRO ////////////////////////////////////////////////////
 
-int _ownshpID = 0;
+int    _ownshpID  = 0;
 double _devOrient = 0.0;
 
-void posError(PositionError error) {
+void _posError(PositionError error) {
   print("s52ui.dart:posError():Error occurred. Error code: ${error.code}");
 }
 
@@ -806,7 +811,7 @@ void _GPSpos(Geoposition position) {
   //print('GPS new pos: ...');
 
   s52.pushPosition(_ownshpID, position.coords.latitude, position.coords.longitude, _devOrient).then((ret) {
-    s52.setVector(_ownshpID, 1, _devOrient, 16.0).then((ret) {}); // 1 - ground
+    s52.setVector(_ownshpID, 1, _devOrient, 16.0);  // 1 - ground
   });
 }
 
@@ -838,7 +843,7 @@ void _watchPosition(int ownshpID) {
 
   // {'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000}
   window.navigator.geolocation.watchPosition().listen(_GPSpos,
-      onError: (error) => posError(error));
+      onError: (error) => _posError(error));
 
   print('s5ui.dart:_watchPosition(): - end -');
 }
@@ -859,7 +864,7 @@ void main() {
     s52 = new S52();
     s52.initWS(wsUri).then((ret) {
       // here the WebSocket init is completed - all JS loaded
-      _initTouch();
+      //_initTouch();
       _toggleUIEvent();
       s52.newOWNSHP('OWNSHP').then((ret) {
         _watchPosition(ret[0]);
