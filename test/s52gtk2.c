@@ -1349,8 +1349,10 @@ static int      _initS52()
     g_print("PLibList    : %s\n", S52_getPLibNameList());
     g_print("PalettesList: %s\n", S52_getPalettesNameList());
     g_print("CellNameList: %s\n", S52_getCellNameList());
-    g_print("ObjClassList: %s\n", S52_getS57ClassList("CA579016.000"));
-    g_print("ObjList: %s\n",      S52_getObjList("CA579016.000", "ACHARE"));
+    //g_print("ObjClassList: %s\n", S52_getS57ClassList("CA579016.000"));
+    //g_print("ObjList: %s\n",      S52_getObjList("CA579016.000", "ACHARE"));
+    g_print("ObjList: %s\n",      S52_getObjList("CA579041.000", "ACHARE"));
+    g_print("ObjClassList: %s\n", S52_getS57ClassList("CA579041.000"));
     g_print("attList: %s\n",      S52_getAttList(410));
 
     // debug - suppress display of 'waypnt'
