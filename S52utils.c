@@ -21,7 +21,6 @@
 */
 
 
-
 #include "S52utils.h"
 
 #include <glib.h>
@@ -55,7 +54,7 @@ static GTimeVal _now;
 #endif
 
 // internal libS52.so version
-static char _version[] = "libS52-2015MAY23-1.161"
+static const char _version[] = "libS52-2015JUN02-1.162"
 #ifdef _MINGW
       ",_MINGW"
 #endif
