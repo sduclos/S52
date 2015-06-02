@@ -320,9 +320,7 @@ GL_OUT_OF_MEMORY
         PRINTF("from %s: 0x%x (%s)\n", msg, err, name);
 
 #ifdef S52_USE_ANDROID
-        // exit if s52droid restart - tons of error and nothing drawn
-        // so it's useless to keep s52droid running
-        g_assert(0);
+        //g_assert(0);
 #endif
 
     }
