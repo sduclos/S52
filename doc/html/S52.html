@@ -122,7 +122,7 @@
 
      <tr>
             <td class="label">GIR File:</td>
-            <td class="hd-info"><a href="../S52-1.145.gir">S52-1.145.gir</a></td>
+            <td class="hd-info"><a href="../S52-2015JUN02-1.162.gir">S52-2015JUN02-1.162.gir</a></td>
         </tr>
         <tr>
             <td class="label">C documentation:</td>
@@ -168,11 +168,96 @@
     <a id="S52-values"></a>
 		
     
-    
      
     
-     
-    		
+	
+      <table cellspacing="0" class="member-table">   
+      <caption>Values </caption>
+    
+	
+        <tr>
+            <th class="sig-header" colspan="2">Properties</th>
+	    
+        </tr>
+	
+	
+	
+	
+	
+		<tr class="config-row expandable config-row-alt0">
+		   <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
+		    <td class="sig">
+
+			<a id="undefined-cfg-DBUS_OBJ_IFACE" name=".DBUS_OBJ_IFACE"></a>
+			<div class="fixedFont">
+		<a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/String">String</a> S52.<b  class="itemname">DBUS_OBJ_IFACE</b> : null
+			</div>
+		  
+			<div class="mdesc">
+			    <div class="short"></div> 
+			</div>
+			
+			<div class="mdesc">
+			    <div class="long"></div> 
+			</div>
+			
+			
+
+		    </td>
+		   
+		</tr>
+        
+	
+		<tr class="config-row expandable config-row-alt1">
+		   <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
+		    <td class="sig">
+
+			<a id="undefined-cfg-DBUS_OBJ_NAME" name=".DBUS_OBJ_NAME"></a>
+			<div class="fixedFont">
+		<a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/String">String</a> S52.<b  class="itemname">DBUS_OBJ_NAME</b> : null
+			</div>
+		  
+			<div class="mdesc">
+			    <div class="short"></div> 
+			</div>
+			
+			<div class="mdesc">
+			    <div class="long"></div> 
+			</div>
+			
+			
+
+		    </td>
+		   
+		</tr>
+        
+	
+		<tr class="config-row expandable config-row-alt0">
+		   <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
+		    <td class="sig">
+
+			<a id="undefined-cfg-DBUS_OBJ_PATH" name=".DBUS_OBJ_PATH"></a>
+			<div class="fixedFont">
+		<a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/String">String</a> S52.<b  class="itemname">DBUS_OBJ_PATH</b> : null
+			</div>
+		  
+			<div class="mdesc">
+			    <div class="short"></div> 
+			</div>
+			
+			<div class="mdesc">
+			    <div class="long"></div> 
+			</div>
+			
+			
+
+		    </td>
+		   
+		</tr>
+        
+        
+    </table>
+  		
   
   
   
@@ -250,13 +335,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">Convert longitude/latitude to X/Y (pixel - origin LL corner)</div> 
+                   <div class="short">Convert longitude/latitude to X/Y (pixel - origin LL corner)<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				Convert longitude/latitude to X/Y (pixel - origin LL corner)
+				Convert longitude/latitude to X/Y (pixel - origin LL corner)<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)
 		    
 				
 			
@@ -374,11 +459,11 @@
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">delMarObj</b>
 				
-				 (<a href="./void*.html">void*</a> <B><i>objH</i></B>) 
+				 (<a href="./guint32.html">guint32</a> <B><i>objH</i></B>) 
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -405,7 +490,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./void*.html">void*</a></span>  <b>objH</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>objH</b>
                         
                     
                         
@@ -447,8 +532,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    NULL if S52_obj was deleted successfully, if call fail return the handle</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    NULL if S52_obj was deleted successfully, if call fail return <b>S</b>52ObjectHandle</dd>
 				
 				</dl>
 			
@@ -653,13 +738,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">Draw S57 object (cell) on layer 0-8</div> 
+                   <div class="short">Draw S57 object (cell) on layer 0-8<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)<br/><br/>WARNING: At startup, this call must be the very fist draw call to set projection</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				Draw S57 object (cell) on layer 0-8
+				Draw S57 object (cell) on layer 0-8<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)<br/><br/>WARNING: At startup, this call must be the very fist draw call to set projection
 		    
 				
 			
@@ -918,13 +1003,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">Draw layer 9 (last) stuff that change all the time (ex AIS)<br/>fast update</div> 
+                   <div class="short">Draw layer 9 (last) stuff that change all the time (ex AIS)<br/>fast update<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				Draw layer 9 (last) stuff that change all the time (ex AIS)<br/>fast update
+				Draw layer 9 (last) stuff that change all the time (ex AIS)<br/>fast update<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)
 		    
 				
 			
@@ -1084,13 +1169,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">For reference S52 UI color name:<br/>"UINFD", "UINFF", "UIBCK", "UIAFD",<br/>"UINFR", "UINFG", "UINFO", "UINFB",<br/>"UINFM", "UIBDR", "UIAFF"<br/><br/>Note: client must register EGL callback via S52_setEGLcb()<br/>to handle the framebuffer (or handle FB by hand)</div> 
+                   <div class="short">For reference S52 UI color name:<br/>"UINFD", "UINFF", "UIBCK", "UIAFD",<br/>"UINFR", "UINFG", "UINFO", "UINFB",<br/>"UINFM", "UIBDR", "UIAFF"<br/><br/>Note: client must register EGL callback via S52_setEGLcb()<br/>to handle the framebuffer (or handle FB by hand)<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				For reference S52 UI color name:<br/>"UINFD", "UINFF", "UIBCK", "UIAFD",<br/>"UINFR", "UINFG", "UINFO", "UINFB",<br/>"UINFM", "UIBDR", "UIAFF"<br/><br/>Note: client must register EGL callback via S52_setEGLcb()<br/>to handle the framebuffer (or handle FB by hand)
+				For reference S52 UI color name:<br/>"UINFD", "UINFF", "UIBCK", "UIAFD",<br/>"UINFR", "UINFG", "UINFO", "UINFB",<br/>"UINFM", "UIBDR", "UIAFF"<br/><br/>Note: client must register EGL callback via S52_setEGLcb()<br/>to handle the framebuffer (or handle FB by hand)<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)
 		    
 				
 			
@@ -1318,13 +1403,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">Dump (<b>width</b> x <b>height</b>) pixels to PNG <b>toFilename</b> centered on <b>S</b>57ID of the current framebuffer<br/>Note: changing the size of the viewport require a call to draw() before this call<br/>(ie size of framebuffer must be in sync with the size of the viewport).</div> 
+                   <div class="short"></div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				Dump (<b>width</b> x <b>height</b>) pixels to PNG <b>toFilename</b> centered on <b>S</b>57ID of the current framebuffer<br/>Note: changing the size of the viewport require a call to draw() before this call<br/>(ie size of framebuffer must be in sync with the size of the viewport).<br/><br/>If <b>S</b>57ID is zero (0) then the whole framebuffer is dumped (ie <b>width</b> and <b>height</b> are ignore)
+				
 		    
 				
 			
@@ -1353,7 +1438,7 @@
 						
 					</dt>
 					<dd>
-						PNG file (with full path) to dump pixels to
+						
 						
 						
 						
@@ -1386,7 +1471,7 @@
 						
 					</dt>
 					<dd>
-						internal ID of object (return via S52_getObjList() or S52_pickAt())
+						
 						
 						
 						
@@ -1419,7 +1504,7 @@
 						
 					</dt>
 					<dd>
-						width of dump in pixels (max viewport width)
+						
 						
 						
 						
@@ -1452,7 +1537,7 @@
 						
 					</dt>
 					<dd>
-						height of dump in pixels (max viewport height)
+						
 						
 						
 						
@@ -1480,7 +1565,7 @@
 				
 					<dd>
 					 <span class="fixedFont"><a href="./gint32.html">gint32</a></span>  
-					    TRUE on success, else FALSE</dd>
+					    </dd>
 				
 				</dl>
 			
@@ -1785,13 +1870,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">List of cells name loaded<br/>WARNING: *BUG*, str can be dandling, so raw C call must save<br/>the string before calling libS52 again</div> 
+                   <div class="short">List of cells name loaded</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				List of cells name loaded<br/>WARNING: *BUG*, str can be dandling, so raw C call must save<br/>the string before calling libS52 again
+				List of cells name loaded
 		    
 				
 			
@@ -1834,6 +1919,108 @@
 	   
 	   
             <td class="sig">
+                <a id="S52-method-getMarObj"   name=".getMarObj"></a>
+		<div class="fixedFont">
+			<span class="attributes">S52.</span><b class="itemname">getMarObj</b>
+				
+				 (<a href="./guint32.html">guint32</a> <B><i>S57ID</i></B>) 
+			
+				
+					 : 
+					<a href="./guint32.html">guint32</a>
+					
+				
+			
+		</div>
+                <div class="mdesc">
+		
+                   <div class="short"></div> 
+		 
+		 
+		 
+                    <div class="long">
+			
+				
+		    
+				
+			
+			
+			
+			
+				<dl class="detailList">
+				<dt class="heading">Parameters:</dt>
+				
+					<dt>
+                    
+                       
+                        
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>S57ID</b>
+                        
+                    
+                        
+                        
+                            <span style="color:red;">
+                               Required (not null)
+                            </span>
+                        
+                        
+						
+						
+						
+					</dt>
+					<dd>
+						
+						
+						
+						
+					
+					 
+					
+					
+					
+					</dd>
+					
+					
+					
+				
+				</dl>
+			
+			
+			 
+			
+			
+				<dl class="detailList">
+				<dt class="heading">Returns:</dt>
+				
+				
+				
+				
+					<dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    </dd>
+				
+				</dl>
+			
+			 
+		    
+		     
+                    </div>                    
+                </div>
+
+            </td>
+            <td class="msource">
+		
+			S52
+		&nbsp;
+            </td>
+        </tr>
+	
+	  
+          <tr class="method-row config-row-alt0 expandable notInherited">
+            <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
+	   
+	   
+            <td class="sig">
                 <a id="S52-method-getMarinerParam"   name=".getMarinerParam"></a>
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">getMarinerParam</b>
@@ -1849,13 +2036,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">Get the value of the Mariners' Parameter <b>paramID</b> (global variables/system wide)<br/><br/>Invalid <b>paramID</b> will return INFINITY, the value of S52_MAR_ERROR</div> 
+                   <div class="short">Get the value of the Mariners' Parameter <b>paramID</b> (global variables/system wide)<br/><br/>Invalid <b>paramID</b> will return the value of S52_MAR_ERROR</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				Get the value of the Mariners' Parameter <b>paramID</b> (global variables/system wide)<br/><br/>Invalid <b>paramID</b> will return INFINITY, the value of S52_MAR_ERROR
+				Get the value of the Mariners' Parameter <b>paramID</b> (global variables/system wide)<br/><br/>Invalid <b>paramID</b> will return the value of S52_MAR_ERROR
 		    
 				
 			
@@ -1931,7 +2118,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -2066,7 +2253,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -2086,13 +2273,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">List of PLib name loaded delimited by ','<br/>WARNING: the return str can be dandling, so raw C call must save<br/>the string before calling libS52 again</div> 
+                   <div class="short">List of PLib name loaded delimited by ','</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				List of PLib name loaded delimited by ','<br/>WARNING: the return str can be dandling, so raw C call must save<br/>the string before calling libS52 again
+				List of PLib name loaded delimited by ','
 		    
 				
 			
@@ -2130,7 +2317,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -2156,7 +2343,7 @@
 		 
                     <div class="long">
 			
-				List of palettes name loaded separated by ','.<br/>WARNING: *BUG*, str can be dandling, so raw C call must save<br/>the string before calling libS52 again
+				List of palettes name loaded separated by ','.<br/>Note: use S52_MAR_COLOR_PALETTE, as an index, to select one of them.
 		    
 				
 			
@@ -2194,7 +2381,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -2354,7 +2541,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -2456,7 +2643,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -2476,13 +2663,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">get Object class suppression</div> 
+                   <div class="short">get Object class suppression state</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				get Object class suppression
+				get Object class suppression state
 		    
 				
 			
@@ -2558,7 +2745,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -2567,7 +2754,7 @@
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">getTextDisp</b>
 				
-				 (<a href="./gint32.html">gint32</a> <B><i>dispPrioIdx</i></B>) 
+				 (<a href="./guint32.html">guint32</a> <B><i>dispPrioIdx</i></B>) 
 			
 				
 					 : 
@@ -2598,7 +2785,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./gint32.html">gint32</a></span>  <b>dispPrioIdx</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>dispPrioIdx</b>
                         
                     
                         
@@ -2660,7 +2847,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -2680,13 +2867,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">Get center of view / where to place the camera on model</div> 
+                   <div class="short">Get center of view / where is the camera on model</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				Get center of view / where to place the camera on model
+				Get center of view / where is the camera on model
 		    
 				
 			
@@ -2795,7 +2982,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -2815,13 +3002,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">Initialize libS52, install SIGINT handler to abort drawing (Ctrl-C)<br/>xrandr can be used if framework doesn't do it (ie Clutter)<br/>Note: the ratio screen mmw/h and screen mmw/h is used to compute initial DOTPITCH<br/>      any number will do if system screen size call can't handle it<br/>      overide with S52_MAR_DOTPITCH_MM_X / Y after init().</div> 
+                   <div class="short">Initialize libS52, install SIGINT handler to abort drawing (Ctrl-C)<br/>xrandr can be used if framework doesn't do it (ie Clutter)<br/><br/>Note: the ratio screen mmw/w and screen mm_h/h is used to compute initial DOTPITCH<br/>      overide with S52_MAR_DOTPITCH_MM_X/Y after init().</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				Initialize libS52, install SIGINT handler to abort drawing (Ctrl-C)<br/>xrandr can be used if framework doesn't do it (ie Clutter)<br/>Note: the ratio screen mmw/h and screen mmw/h is used to compute initial DOTPITCH<br/>      any number will do if system screen size call can't handle it<br/>      overide with S52_MAR_DOTPITCH_MM_X / Y after init().<br/>Note: screen_pixels_w, int screen_pixels_h are used to setViewPort to full-screen
+				Initialize libS52, install SIGINT handler to abort drawing (Ctrl-C)<br/>xrandr can be used if framework doesn't do it (ie Clutter)<br/><br/>Note: the ratio screen mmw/w and screen mm_h/h is used to compute initial DOTPITCH<br/>      overide with S52_MAR_DOTPITCH_MM_X/Y after init().<br/><br/>Note: screen_pixels_w, int screen_pixels_h are used to setViewPort to full-screen
 		    
 				
 			
@@ -2850,7 +3037,7 @@
 						
 					</dt>
 					<dd>
-						use to compute DOTPITCH X
+						use to compute DOTPITCH X (px)
 						
 						
 						
@@ -2883,7 +3070,7 @@
 						
 					</dt>
 					<dd>
-						use to compute DOTPITCH Y
+						use to compute DOTPITCH Y (px)
 						
 						
 						
@@ -2916,7 +3103,7 @@
 						
 					</dt>
 					<dd>
-						use to compute DOTPITCH X
+						use to compute DOTPITCH X (mm)
 						
 						
 						
@@ -2949,7 +3136,7 @@
 						
 					</dt>
 					<dd>
-						use to compute DOTPITCH Y
+						use to compute DOTPITCH Y (mm)
 						
 						
 						
@@ -2983,7 +3170,7 @@
 						
 					</dt>
 					<dd>
-						callback
+						log callback
 						
 						
 						
@@ -3030,7 +3217,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -3162,7 +3349,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -3297,7 +3484,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -3317,13 +3504,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">If <b>plibName</b> is NULL look for label 'PLIB' in s52.cfg<br/><br/>WARNING: after loadPLib() all S52ObjectHandle are invalid, so user must<br/>reload them to get new S52ObjectHandle.</div> 
+                   <div class="short">If <b>plibName</b> is NULL look for label 'PLIB' in s52.cfg</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				If <b>plibName</b> is NULL look for label 'PLIB' in s52.cfg<br/><br/>WARNING: after loadPLib() all S52ObjectHandle are invalid, so user must<br/>reload them to get new S52ObjectHandle.
+				If <b>plibName</b> is NULL look for label 'PLIB' in s52.cfg
 		    
 				
 			
@@ -3395,7 +3582,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -3408,7 +3595,7 @@
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -3609,8 +3796,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    an handle to a new S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the new S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -3629,7 +3816,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -3693,7 +3880,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -3702,11 +3889,11 @@
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">newLEGLIN</b>
 				
-				 (<a href="./gint32.html">gint32</a> <B><i>select</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>plnspd</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>wholinDist</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>latBegin</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>lonBegin</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>latEnd</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>lonEnd</i></B>, <a href="./void*.html">void*</a> <B><i>previousLEGLIN</i></B>) 
+				 (<a href="./gint32.html">gint32</a> <B><i>select</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>plnspd</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>wholinDist</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>latBegin</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>lonBegin</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>latEnd</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>lonEnd</i></B>, <a href="./guint32.html">guint32</a> <B><i>previousLEGLIN</i></B>) 
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -3748,7 +3935,7 @@
 						
 					</dt>
 					<dd>
-						Selection: 0 - undefined, 1 - planned, 2 - alternate
+						Selection: 1 - planned, 2 - alternate
 						
 						
 						
@@ -3964,7 +4151,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./void*.html">void*</a></span>  <b>previousLEGLIN</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>previousLEGLIN</b>
                         
                     
                         
@@ -4002,8 +4189,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    an handle to a new S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the new S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -4022,7 +4209,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -4035,7 +4222,7 @@
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -4048,7 +4235,7 @@
 		 
                     <div class="long">
 			
-				Create new S52_obj - Basic Call.<br/>All other call of the form S52_new*() are a specialisation of this one.<br/><br/>NOTE: LIFO stack so 'cursor' should be created first to be drawn on top.<br/><br/>In 'listAttVal', in S52 attribute name (ex: att1) of 6 lower case letters are reserve<br/>for Mariners' Object. Lower case attribute name starting with an unserscore ('_')<br/>are reserve for internal libS52 needs.
+				Create new S52_obj - Basic Call.<br/>All other call of the form S52_new*() are a specialisation of this one.<br/><br/>NOTE: LIFO stack so 'cursor' should be created first to be drawn on top.<br/><br/>In 'listAttVal', in S52 attribute name (ex: att1) of 6 lower case letters are reserve<br/>for Mariners' Object. Lower case attribute name starting with an unserscore ('_')<br/>are reserve for internal libS52 use.<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)
 		    
 				
 			
@@ -4143,7 +4330,7 @@
 						
 					</dt>
 					<dd>
-						maximum number of xyz (point)(see S52_pushPosition())
+						maximum number of xyz (point)(see S52_pushPosition()) (one or more)
 						
 						
 						
@@ -4165,6 +4352,10 @@
                         
                     
                         
+                        
+                            <span style="color:red;">
+                               Required (not null)
+                            </span>
                         
                         
 						
@@ -4232,8 +4423,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    an handle to a new S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the new S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -4252,7 +4443,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -4265,7 +4456,7 @@
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -4330,8 +4521,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    an handle to S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the new S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -4350,7 +4541,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -4363,7 +4554,7 @@
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -4438,7 +4629,7 @@
 						
 					</dt>
 					<dd>
-						maximum number of PASTRK positon (point)
+						maximum number of PASTRK positon (point) (one or more)
 						
 						
 						
@@ -4465,8 +4656,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    an handle to a new S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the new S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -4485,7 +4676,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -4498,7 +4689,7 @@
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -4596,8 +4787,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    an handle to a new S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the new S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -4616,7 +4807,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -4629,7 +4820,7 @@
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -4797,8 +4988,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    an handle to a new S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the new S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -4817,7 +5008,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -4952,7 +5143,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -4961,11 +5152,11 @@
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">pushPosition</b>
 				
-				 (<a href="./void*.html">void*</a> <B><i>objH</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>latitude</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>longitude</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>data</i></B>) 
+				 (<a href="./guint32.html">guint32</a> <B><i>objH</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>latitude</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>longitude</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>data</i></B>) 
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -4978,7 +5169,7 @@
 		 
                     <div class="long">
 			
-				Push a position on a FIFO stack. The size of the stack is one for object of type S52_POINT.<br/>For object of type S52_LINES and S52_AREAS the size of the stack is set via 'xyznbrmax'.<br/>S52_AREAS are expected to have the same first and last point (as any S57 area).<br/><br/>'data' is used to display time (hh.mm) if the object is PASTRK.<br/>If the object is VESSEL or OWNSHP then 'data' is the heading.
+				Push a position on a FIFO stack. The size of the stack is one for object of type S52_POINT.<br/>For object of type S52_LINES and S52_AREAS the size of the stack is set via 'xyznbrmax'.<br/>S52_AREAS are expected to have the same first and last point (as any S57 area).<br/><br/>'data' is used to display time (hh.mm) if the object is PASTRK.<br/>If the object is VESSEL or OWNSHP then 'data' is the heading.<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)
 		    
 				
 			
@@ -4992,7 +5183,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./void*.html">void*</a></span>  <b>objH</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>objH</b>
                         
                     
                         
@@ -5133,8 +5324,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    the handle to S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the adressed S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -5153,7 +5344,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -5162,11 +5353,11 @@
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">setDimension</b>
 				
-				 (<a href="./void*.html">void*</a> <B><i>objH</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>a</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>b</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>c</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>d</i></B>) 
+				 (<a href="./guint32.html">guint32</a> <B><i>objH</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>a</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>b</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>c</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>d</i></B>) 
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -5193,7 +5384,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./void*.html">void*</a></span>  <b>objH</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>objH</b>
                         
                     
                         
@@ -5274,7 +5465,7 @@
 						
 					</dt>
 					<dd>
-						dist from aft       (a + b = lenght)
+						dist from aft       (a + b = length)
 						
 						
 						
@@ -5367,8 +5558,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    the handle to S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the adressed S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -5387,7 +5578,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -5407,13 +5598,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">Set the value of the global variables <b>paramID</b><br/>used by Mariners' Object</div> 
+                   <div class="short">XOR the value of the global variables <b>paramID</b><br/>used by Mariners' Object</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				Set the value of the global variables <b>paramID</b><br/>used by Mariners' Object
+				XOR the value of the global variables <b>paramID</b><br/>used by Mariners' Object
 		    
 				
 			
@@ -5522,7 +5713,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -5531,7 +5722,7 @@
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">setRADARCallBack</b>
 				
-				 (<a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/Function">Function</a> <B><i>cb</i></B>, <a href="./guint32.html">guint32</a> <B><i>texRadius</i></B>) 
+				 (<a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/Function">Function</a> <B><i>cb</i></B>, <a href="./guint32.html">guint32</a> <B><i>textureRadiusPX</i></B>) 
 			
 				
 					 : 
@@ -5596,7 +5787,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>texRadius</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>textureRadiusPX</b>
                         
                     
                         
@@ -5611,7 +5802,7 @@
 						
 					</dt>
 					<dd>
-						texture radius (pixels), if 0 free cb
+						
 						
 						
 						
@@ -5658,7 +5849,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -5859,7 +6050,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -5879,13 +6070,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">set suppression (TRUE/FALSE) from display of all Objects of the S57 class <b>className</b></div> 
+                   <div class="short">set suppression (TRUE/FALSE) from display of all Objects of the S57 class <b>className</b><br/><br/>NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT.</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				set suppression (TRUE/FALSE) from display of all Objects of the S57 class <b>className</b>
+				set suppression (TRUE/FALSE) from display of all Objects of the S57 class <b>className</b><br/><br/>NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT.
 		    
 				
 			
@@ -5975,7 +6166,7 @@
 				
 					<dd>
 					 <span class="fixedFont"><a href="./gint32.html">gint32</a></span>  
-					    TRUE if call successfull else FALSE, error -1 (DISPLAYBASE or invalid className)</dd>
+					    TRUE if call successfull to set new value else FALSE, error -1 (DISPLAYBASE or invalid className)</dd>
 				
 				</dl>
 			
@@ -5994,7 +6185,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -6003,7 +6194,7 @@
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">setTextDisp</b>
 				
-				 (<a href="./gint32.html">gint32</a> <B><i>dispPrioIdx</i></B>, <a href="./gint32.html">gint32</a> <B><i>count</i></B>, <a href="./gint32.html">gint32</a> <B><i>state</i></B>) 
+				 (<a href="./guint32.html">guint32</a> <B><i>dispPrioIdx</i></B>, <a href="./guint32.html">guint32</a> <B><i>count</i></B>, <a href="./guint32.html">guint32</a> <B><i>state</i></B>) 
 			
 				
 					 : 
@@ -6034,7 +6225,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./gint32.html">gint32</a></span>  <b>dispPrioIdx</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>dispPrioIdx</b>
                         
                     
                         
@@ -6067,7 +6258,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./gint32.html">gint32</a></span>  <b>count</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>count</b>
                         
                     
                         
@@ -6100,7 +6291,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./gint32.html">gint32</a></span>  <b>state</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>state</b>
                         
                     
                         
@@ -6162,7 +6353,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -6171,11 +6362,11 @@
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">setVESSELlabel</b>
 				
-				 (<a href="./void*.html">void*</a> <B><i>objH</i></B>, <a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/String">String</a> <B><i>newLabel</i></B>) 
+				 (<a href="./guint32.html">guint32</a> <B><i>objH</i></B>, <a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/String">String</a> <B><i>newLabel</i></B>) 
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -6202,7 +6393,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./void*.html">void*</a></span>  <b>objH</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>objH</b>
                         
                     
                         
@@ -6273,8 +6464,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    the handle to S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the adressed S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -6293,7 +6484,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -6302,11 +6493,11 @@
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">setVESSELstate</b>
 				
-				 (<a href="./void*.html">void*</a> <B><i>objH</i></B>, <a href="./gint32.html">gint32</a> <B><i>vesselSelect</i></B>, <a href="./gint32.html">gint32</a> <B><i>vestat</i></B>, <a href="./gint32.html">gint32</a> <B><i>vesselTurn</i></B>) 
+				 (<a href="./guint32.html">guint32</a> <B><i>objH</i></B>, <a href="./gint32.html">gint32</a> <B><i>vesselSelect</i></B>, <a href="./gint32.html">gint32</a> <B><i>vestat</i></B>, <a href="./gint32.html">gint32</a> <B><i>vesselTurn</i></B>) 
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -6333,7 +6524,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./void*.html">void*</a></span>  <b>objH</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>objH</b>
                         
                     
                         
@@ -6474,8 +6665,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    an handle to a new S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the adressed S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -6494,7 +6685,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -6503,24 +6694,24 @@
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">setVRMEBL</b>
 				
-				 (<a href="./void*.html">void*</a> <B><i>objH</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>pixels_x</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>pixels_y</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>brg</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>rge</i></B>) 
+				 (<a href="./guint32.html">guint32</a> <B><i>objH</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>pixels_x</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>pixels_y</i></B>, <a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/Object">Object</a> <B><i>out_values</i></B>) 
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">The first (x,y) will set the origine in the case that this object was<br/>created (new) with the parameter <b>setOrigin</b> set to TRUE</div> 
+                   <div class="short">The first (<b>pixels_x</b>,<b>pixels_y</b>) will set the origine in the case that this object was<br/>created (new) with the parameter <b>setOrigin</b> set to TRUE<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				The first (x,y) will set the origine in the case that this object was<br/>created (new) with the parameter <b>setOrigin</b> set to TRUE
+				The first (<b>pixels_x</b>,<b>pixels_y</b>) will set the origine in the case that this object was<br/>created (new) with the parameter <b>setOrigin</b> set to TRUE<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)
 		    
 				
 			
@@ -6534,7 +6725,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./void*.html">void*</a></span>  <b>objH</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>objH</b>
                         
                     
                         
@@ -6633,14 +6824,10 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./gdouble.html">gdouble</a></span>  <b>brg</b>
+                            <span class="fixedFont"><a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/Object">Object</a></span>  <b>out_values</b>
                         
                     
                         
-                        
-                            <span style="color:red;">
-                               Required (not null)
-                            </span>
                         
                         
 						
@@ -6648,41 +6835,29 @@
 						
 					</dt>
 					<dd>
-						bearing from origine (FIXME: no offset from S52_setDimension())
 						
 						
 						
-					
-					 
-					
-					
-					
-					</dd>
-					
-					
-					
-				
-					<dt>
-                    
-                       
-                        
-                            <span class="fixedFont"><a href="./gdouble.html">gdouble</a></span>  <b>rge</b>
-                        
-                    
-                        
-                        
-                            <span style="color:red;">
-                               Required (not null)
-                            </span>
-                        
-                        
 						
-						
-						
-					</dt>
-					<dd>
-						range   from origine (FIXME: no offset from S52_setDimension())
-						
+						     <dl class="detailList">
+							
+							     <dt>
+								<span class="fixedFont"><a href="./gdouble.html">gdouble</a></span>  <b>brg</b>
+							      </dt>
+							      <dd>
+							      
+								</dd>
+							
+							
+							     <dt>
+								<span class="fixedFont"><a href="./gdouble.html">gdouble</a></span>  <b>rge</b>
+							      </dt>
+							      <dd>
+							      
+								</dd>
+							
+							
+						      </dl>
 						
 						
 					
@@ -6708,8 +6883,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    the handle to S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the adressed S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -6728,7 +6903,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -6737,11 +6912,11 @@
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">setVector</b>
 				
-				 (<a href="./void*.html">void*</a> <B><i>objH</i></B>, <a href="./gint32.html">gint32</a> <B><i>vecstb</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>course</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>speed</i></B>) 
+				 (<a href="./guint32.html">guint32</a> <B><i>objH</i></B>, <a href="./gint32.html">gint32</a> <B><i>vecstb</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>course</i></B>, <a href="./gdouble.html">gdouble</a> <B><i>speed</i></B>) 
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -6768,7 +6943,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./void*.html">void*</a></span>  <b>objH</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>objH</b>
                         
                     
                         
@@ -6783,7 +6958,7 @@
 						
 					</dt>
 					<dd>
-						addressed S52ObjectHandle
+						
 						
 						
 						
@@ -6816,7 +6991,7 @@
 						
 					</dt>
 					<dd>
-						0 - none, 1 - ground, 2 - water
+						
 						
 						
 						
@@ -6909,8 +7084,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    the handle to S52_obj or NULL if call fail</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    </dd>
 				
 				</dl>
 			
@@ -6929,7 +7104,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -7130,7 +7305,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
+          <tr class="method-row config-row-alt0 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -7156,7 +7331,7 @@
 		 
                     <div class="long">
 			
-				Call this if viewPort change (ex: going full screen)<br/> From WebGL (OpenGL ES 2.0) spec:<br/> Rationale: automatically setting the viewport will interfere with applications<br/>  that set it manually. Applications are expected to use onresize handlers to<br/>  respond to changes in size of the canvas and set the OpenGL viewport in turn.<br/>So this call is simply a wrapper on 'void glViewport(GLint x, GLint y, GLsizei width, GLsizei height)'<br/><br/>Use this call in conjuction with S52_setView() and S52_draw() to setup a magnifying glass<br/>or an overview
+				Call this if viewPort change (ex: going full screen)<br/> From WebGL (OpenGL ES 2.0) spec:<br/> Rationale: automatically setting the viewport will interfere with applications<br/>  that set it manually. Applications are expected to use onresize handlers to<br/>  respond to changes in size of the canvas and set the OpenGL viewport in turn.<br/><br/>Use this call in conjuction with S52_setView() and S52_draw() to setup a magnifying glass<br/>or an overview
 		    
 				
 			
@@ -7331,7 +7506,7 @@
         </tr>
 	
 	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
+          <tr class="method-row config-row-alt1 expandable notInherited">
             <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
 	   
 	   
@@ -7340,11 +7515,11 @@
 		<div class="fixedFont">
 			<span class="attributes">S52.</span><b class="itemname">toggleDispMarObj</b>
 				
-				 (<a href="./void*.html">void*</a> <B><i>objH</i></B>) 
+				 (<a href="./guint32.html">guint32</a> <B><i>objH</i></B>) 
 			
 				
 					 : 
-					<a href="./void*.html">void*</a>
+					<a href="./guint32.html">guint32</a>
 					
 				
 			
@@ -7371,7 +7546,7 @@
                     
                        
                         
-                            <span class="fixedFont"><a href="./void*.html">void*</a></span>  <b>objH</b>
+                            <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  <b>objH</b>
                         
                     
                         
@@ -7413,314 +7588,8 @@
 				
 				
 					<dd>
-					 <span class="fixedFont"><a href="./void*.html">void*</a></span>  
-					    the S52_obj handle or NULL if call fail</dd>
-				
-				</dl>
-			
-			 
-		    
-		     
-                    </div>                    
-                </div>
-
-            </td>
-            <td class="msource">
-		
-			S52
-		&nbsp;
-            </td>
-        </tr>
-	
-	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
-            <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
-	   
-	   
-            <td class="sig">
-                <a id="S52-method-toggleObjClass"   name=".toggleObjClass"></a>
-		<div class="fixedFont">
-			<span class="attributes">S52.</span><b class="itemname">toggleObjClass</b>
-				
-				 (<a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/String">String</a> <B><i>className</i></B>) 
-			
-				
-					 : 
-					<a href="./gint32.html">gint32</a>
-					
-				
-			
-		</div>
-                <div class="mdesc">
-		
-                   <div class="short">Toggle display all S57 objects of class <b>className</b>.</div> 
-		 
-		 
-		 
-                    <div class="long">
-			
-				Toggle display all S57 objects of class <b>className</b>.<br/><br/>NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT (3).
-		    
-				
-			
-			
-			
-			
-				<dl class="detailList">
-				<dt class="heading">Parameters:</dt>
-				
-					<dt>
-                    
-                       
-                        
-                            <span class="fixedFont"><a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/String">String</a></span>  <b>className</b>
-                        
-                    
-                        
-                        
-                            <span style="color:red;">
-                               Required (not null)
-                            </span>
-                        
-                        
-						
-						
-						
-					</dt>
-					<dd>
-						name of the classe of S57 object
-						
-						
-						
-					
-					 
-					
-					
-					
-					</dd>
-					
-					
-					
-				
-				</dl>
-			
-			
-			 
-			
-			
-				<dl class="detailList">
-				<dt class="heading">Returns:</dt>
-				
-				
-				
-				
-					<dd>
-					 <span class="fixedFont"><a href="./gint32.html">gint32</a></span>  
-					    TRUE if transition ON to OFF or OFF to ON, else FALSE</dd>
-				
-				</dl>
-			
-			 
-		    
-		     
-                    </div>                    
-                </div>
-
-            </td>
-            <td class="msource">
-		
-			S52
-		&nbsp;
-            </td>
-        </tr>
-	
-	  
-          <tr class="method-row config-row-alt0 expandable notInherited">
-            <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
-	   
-	   
-            <td class="sig">
-                <a id="S52-method-toggleObjClassOFF"   name=".toggleObjClassOFF"></a>
-		<div class="fixedFont">
-			<span class="attributes">S52.</span><b class="itemname">toggleObjClassOFF</b>
-				
-				 (<a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/String">String</a> <B><i>className</i></B>) 
-			
-				
-					 : 
-					<a href="./gint32.html">gint32</a>
-					
-				
-			
-		</div>
-                <div class="mdesc">
-		
-                   <div class="short">display Object class (suppression OFF.</div> 
-		 
-		 
-		 
-                    <div class="long">
-			
-				display Object class (suppression OFF.)<br/><br/>NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT (3).
-		    
-				
-			
-			
-			
-			
-				<dl class="detailList">
-				<dt class="heading">Parameters:</dt>
-				
-					<dt>
-                    
-                       
-                        
-                            <span class="fixedFont"><a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/String">String</a></span>  <b>className</b>
-                        
-                    
-                        
-                        
-                            <span style="color:red;">
-                               Required (not null)
-                            </span>
-                        
-                        
-						
-						
-						
-					</dt>
-					<dd>
-						name of the classe of S57 object
-						
-						
-						
-					
-					 
-					
-					
-					
-					</dd>
-					
-					
-					
-				
-				</dl>
-			
-			
-			 
-			
-			
-				<dl class="detailList">
-				<dt class="heading">Returns:</dt>
-				
-				
-				
-				
-					<dd>
-					 <span class="fixedFont"><a href="./gint32.html">gint32</a></span>  
-					    TRUE if transition ON to OFF, else FALSE, error -1 (DISPLAYBASE or invalid className)</dd>
-				
-				</dl>
-			
-			 
-		    
-		     
-                    </div>                    
-                </div>
-
-            </td>
-            <td class="msource">
-		
-			S52
-		&nbsp;
-            </td>
-        </tr>
-	
-	  
-          <tr class="method-row config-row-alt1 expandable notInherited">
-            <td class="micon"><a class="exi" href="#expand">&nbsp;</a></td>
-	   
-	   
-            <td class="sig">
-                <a id="S52-method-toggleObjClassON"   name=".toggleObjClassON"></a>
-		<div class="fixedFont">
-			<span class="attributes">S52.</span><b class="itemname">toggleObjClassON</b>
-				
-				 (<a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/String">String</a> <B><i>className</i></B>) 
-			
-				
-					 : 
-					<a href="./gint32.html">gint32</a>
-					
-				
-			
-		</div>
-                <div class="mdesc">
-		
-                   <div class="short">supress display of Object class (suppression ON.</div> 
-		 
-		 
-		 
-                    <div class="long">
-			
-				supress display of Object class (suppression ON.)<br/><br/>NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT (3).
-		    
-				
-			
-			
-			
-			
-				<dl class="detailList">
-				<dt class="heading">Parameters:</dt>
-				
-					<dt>
-                    
-                       
-                        
-                            <span class="fixedFont"><a href="https://developer.mozilla.org/en/Core_JavaScript_1.5_Reference/Objects/String">String</a></span>  <b>className</b>
-                        
-                    
-                        
-                        
-                            <span style="color:red;">
-                               Required (not null)
-                            </span>
-                        
-                        
-						
-						
-						
-					</dt>
-					<dd>
-						name of the classe of S57 object
-						
-						
-						
-					
-					 
-					
-					
-					
-					</dd>
-					
-					
-					
-				
-				</dl>
-			
-			
-			 
-			
-			
-				<dl class="detailList">
-				<dt class="heading">Returns:</dt>
-				
-				
-				
-				
-					<dd>
-					 <span class="fixedFont"><a href="./gint32.html">gint32</a></span>  
-					    TRUE if transition OFF to ON, else FALSE, error -1 (DISPLAYBASE or invalid className)</dd>
+					 <span class="fixedFont"><a href="./guint32.html">guint32</a></span>  
+					    <b>S</b>52ObjectHandle of the adressed S52_obj or FALSE if call fail</dd>
 				
 				</dl>
 			
@@ -7765,7 +7634,7 @@
 		 
                     <div class="long">
 			
-				Internal Version.<br/><br/>Note: can be called before S52_init()
+				Internal Version.
 		    
 				
 			
@@ -7823,13 +7692,13 @@
 		</div>
                 <div class="mdesc">
 		
-                   <div class="short">Convert pixel X/Y to longitude/latitude (deg)</div> 
+                   <div class="short">Convert pixel X/Y to longitude/latitude (deg)<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)</div> 
 		 
 		 
 		 
                     <div class="long">
 			
-				Convert pixel X/Y to longitude/latitude (deg)
+				Convert pixel X/Y to longitude/latitude (deg)<br/><br/>Note: call will fail if no ENC loaded (via S52_loadCell)
 		    
 				
 			
@@ -7972,7 +7841,7 @@
 			Documentation generated by 
             <a href="http://git.gnome.org/browse/introspection-doc-generator">Introspection Doc Generator</a> 
 			Loosely Based on 
-			<a href="http://www.jsdoctoolkit.org/" target="_blank">JsDoc Toolkit</a> on Tue Oct 21 2014 15:27:09 GMT-0400 (EDT)
+			<a href="http://www.jsdoctoolkit.org/" target="_blank">JsDoc Toolkit</a> on Tue Jun 02 2015 11:46:46 GMT-0400 (EDT)
 		</div>
 	</body>
 </html>
