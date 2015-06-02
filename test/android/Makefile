@@ -1,11 +1,11 @@
-# Makefile: step to compile source, build package (.apk), install on xoom
+# Makefile: step to compile source, build package (.apk), install on Android
 #
 # SD 2011NOV21
 
 
-# $adb shell bugreport
-# APP_ABI=armeabi-v7a
-# -B, --always-make, Unconditionally make all targets.
+# Note: to start s52ui/s52droid in android by hand
+# adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/.s52ui
+# adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/android.app.NativeActivity
 
 # 07da448e               device usb:2-2 product:razor model:Nexus_7 device:flo
 # 027831c7438020d7       device usb:2-1 product:omni_wingray model:Xoom_Wifi device:wingray
@@ -42,6 +42,10 @@ distclean: clean
 
 .PHONY: all clean distclean
 
+
+# $adb shell bugreport
+# APP_ABI=armeabi-v7a
+# -B, --always-make, Unconditionally make all targets.
 
 # add route to connect to xoom telnetd
 # sudo route add -host 192.168.1.71 gw 192.168.1.254
@@ -144,8 +148,3 @@ distclean: clean
 # mksh
 # export COLUMNS=140
 # export LINES=60
-
-# Note: to start s52ui (the HTML UI that replace sl4agps) in android by hand
-# adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/.s52ui
-# adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/android.app.NativeActivity
-
