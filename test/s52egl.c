@@ -1863,7 +1863,7 @@ static int      _android_init_external_UI(s52engine *engine)
     } else {
         g_print("_android_init_external_UI(): UI started ..\n");
 
-        // stop drawing loop - interfer with Touch in UI
+        // stop drawing loop - interfer with S52 view in Touch UI
         engine->do_S52draw     = FALSE;
         engine->do_S52drawLast = FALSE;
     }
@@ -2030,14 +2030,12 @@ static gpointer _android_display_init(gpointer user_data)
     }
     if (FALSE == _s52_init(engine)) {
         LOGI("DEBUG: S52 allready up\n");
-        // FIXME: when Android restart, re-init only GLES2 part of libS52
-        //extern int   S52_GL_init_GLES2(void);
-        //S52_GL_init_GLES2();
         return FALSE;
     }
 
     engine->do_S52draw     = TRUE;
     engine->do_S52drawLast = TRUE;
+
     _s52_draw_cb(user_data);
 
     g_timeout_add(500, _s52_draw_cb, user_data);  // 0.5 sec
@@ -2045,7 +2043,7 @@ static gpointer _android_display_init(gpointer user_data)
     //g_timeout_add(1000/60, _s52_draw_cb, user_data);  // 16 msec
 
     // debug - init s52ui (HTML5) right at the start
-    //_android_init_external_UI(engine);
+    _android_init_external_UI(engine);
 
     // debug - test with rendering thread
     //GMainContext *c   = g_main_context_get_thread_default();
@@ -2365,6 +2363,10 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             new_y = engine->state.cLat;
             new_z = engine->state.rNM;
             new_r = 0.0;
+
+            // debug - init s52ui (HTML5) right at the start
+            _android_init_external_UI(engine);
+
         } else {
             if (TRUE == mode_rot) {
                 double north = engine->state.north + (90.0 * ((start_x - new_x) / engine->width));
@@ -2624,6 +2626,11 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             // app loses focus, stop monitoring sensor
             // to avoid consuming battery while not being used.
             LOGI("s52egl:--> APP_CMD_LOST_FOCUS\n");
+
+            // the UI now handle the draw
+            engine->do_S52draw     = FALSE;
+            engine->do_S52drawLast = FALSE;
+
 
             break;
         }
