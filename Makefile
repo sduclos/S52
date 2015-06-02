@@ -644,7 +644,7 @@ S52-$(LIBS52VERS).typelib: S52-$(LIBS52VERS).gir
 # https://git.gnome.org/browse/introspection-doc-generator
 doc: S52-$(LIBS52VERS).typelib
 	(cd /home/sduclos/dev/prog/doc-generator/introspection-doc-generator/; seed docs.js ../tmp S52;)
-	cp /home/sduclos/dev/prog/doc-generator/introspection-doc-generator/tmp/seed/* doc/tmp
+	cp /home/sduclos/dev/prog/doc-generator/tmp/seed/* doc/tmp
 
 
 
