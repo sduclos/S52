@@ -4,11 +4,21 @@
 #
 
 
+2015JUN02
+    -mod update doc/
+
+2015MAY31
+    -mod refactor S52_getAttList() to use S52_PL_isObjValid()
+    -mod refactor use S52_PL_isObjValid() instead of _getS52obj()
+
+2015MAY29
+    -fix dandling ptr - remove warning in S52.h
+
 2015MAY23
     -fix legend rendering
     -add gard to prevent S52_drawStr before GL init
-    -mod rename S52_GL_drawStrWin to S52_GL_drawStr
     -mod rename S52_GL_drawStr to S52_GL_drawStrWorld
+    -mod rename S52_GL_drawStrWin to S52_GL_drawStr
 
 2015APR29
     -fix resume on Android
