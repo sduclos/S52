@@ -12,9 +12,9 @@ DARTSDKPATH = /home/sduclos/dev/prog/dart/dart/dart-sdk/bin
 # also add --no_use_inlining to save 1 sec of compilation time
 # --disable-native-live-type-analysis - Disable the optimization that removes unused native types from dart:html
 # --checked 
-#build/web/s52ui.dart.js: web/s52ui.dart web/s52.dart
-#	$(DARTSDKPATH)/dart2js -v web/s52ui.dart -obuild/web/s52ui.dart.js
-build/web/s52ui.dart.js: web/s52ui.dart web/s52.dart
+
+# need (re)build if html change to (re)populate build/web/
+build/web/s52ui.dart.js: web/s52.dart web/s52ui.dart web/s52ui.css web/s52ui.html web/s52ui.js
 	$(DARTSDKPATH)/pub -v build
 
 clean:
