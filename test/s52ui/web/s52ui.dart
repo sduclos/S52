@@ -10,12 +10,12 @@ import 'dart:collection'; // Queue in s52.dart, maybe await/async!!
 
 part 's52.dart';
 
-// FIXME: get this string from ARGV
-var wsUri = 'ws://192.168.1.66:2950';
+// Note: wsUri override: firefox build/web/s52ui.html?ws://192.168.1.66:2950
+//var wsUri = 'ws://192.168.1.66:2950';
 //var wsUri = 'ws://192.168.1.67:2950'; // xoom
 //var wsUri = 'ws://192.168.1.71:2950'; // xoom
 //var wsUri = 'ws://192.168.1.69:2950'; // Nexus
-//var wsUri = 'ws://127.0.0.1:2950';   // localhost
+var wsUri = 'ws://127.0.0.1:2950';    // localhost
 
 S52 s52; // instance of S52 interface (using WebSocket)
 
@@ -816,11 +816,13 @@ void _GPSpos(Geoposition position) {
 }
 
 void _hdg(DeviceOrientationEvent o) {
-  if (null == o.alpha) return;
+  if (null == o.alpha)
+    return;
 
   //_devOrient = 360.0 - 90.0 - o.alpha ;  // landscape
   _devOrient = 90.0 - o.alpha; // reverse landscape
-  if (_devOrient < 0.0) _devOrient += 360.0;
+  if (_devOrient < 0.0)
+    _devOrient += 360.0;
 
   // debug
   //print('s52ui.dart:_hdg(): orient:$_devOrient, a:${o.alpha}, b:${o.beta}, g:${o.gamma}');
@@ -839,11 +841,11 @@ void _watchPosition(int ownshpID) {
   window.onDeviceOrientation.listen(_hdg);
 
   // GPS
-  window.navigator.geolocation.getCurrentPosition().then(_GPSpos);
+  window.navigator.geolocation.getCurrentPosition().then(_GPSpos, onError: (error) => _posError(error));
+;
 
   // {'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000}
-  window.navigator.geolocation.watchPosition().listen(_GPSpos,
-      onError: (error) => _posError(error));
+  window.navigator.geolocation.watchPosition().listen(_GPSpos, onError: (error) => _posError(error));
 
   print('s5ui.dart:_watchPosition(): - end -');
 }
@@ -859,15 +861,18 @@ void main() {
 
   var urlparam = window.location.search.toString();
   print('s52ui.dart:_initMain(): URL:>$urlparam<');
+  if ("" != urlparam)
+    wsUri = urlparam.substring(1, urlparam.length);  // trim '?'
 
   try {
     s52 = new S52();
     s52.initWS(wsUri).then((ret) {
-      // here the WebSocket init is completed - all JS loaded
-      //_initTouch();
-      _toggleUIEvent();
       s52.newOWNSHP('OWNSHP').then((ret) {
         _watchPosition(ret[0]);
+
+        // here the WebSocket init is completed - all JS loaded
+        _initTouch();
+        _toggleUIEvent();
         _initUI();
       }).catchError((e) {
         print(e);
