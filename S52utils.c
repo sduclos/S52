@@ -54,7 +54,7 @@ static GTimeVal _now;
 #endif
 
 // internal libS52.so version
-static const char _version[] = "libS52-2015JUN02-1.162"
+static const char _version[] = "libS52-2015SEP07-1.163"
 #ifdef _MINGW
       ",_MINGW"
 #endif
