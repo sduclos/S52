@@ -11,18 +11,19 @@
     <!-- remove the 300ms delay for touch event -->
     <meta name="viewport" content="width=device-width, user-scalable=no">
 
-    <link rel="stylesheet" type="text/css" href="s52ui.css" />
+    <link rel="stylesheet" type="text/css" href="normalize.css">
+    <link rel="stylesheet" type="text/css" href="s52ui.css"    >
 
     <!-- initial UI layout -->
-    <script type="text/javascript" src="js/tinyjet-0.1.js">  </script>
-    <script type="text/javascript" src="s52ui.js">           </script>
+    <script type="text/javascript"  src="js/tinyjet-0.1.js">        </script>
+    <script type="text/javascript"  src="s52ui.js">                 </script>
 
     <!-- dart code -->
-    <script type="application/dart" src="s52ui.dart">                  </script>
-    <script type="text/javascript"  src="packages/browser/dart.js">    </script>
+    <script type="application/dart" src="s52ui.dart">               </script>
+    <script type="text/javascript"  src="packages/browser/dart.js"> </script>
 
   </head>
-  <body id="mainBody">
+  <body id="mainBody" onload='deviceReady()'>
     <script type="text/javascript">
       /* ambient light
       window.addEventListener('devicelight', function(event) {
@@ -30,10 +31,10 @@
       });
       */
 
-      /* Dart GPS fail if not intialize here
+      // Dart GPS fail if not intialize here - 2015JUN09, Dart SDK 1.11.1-dev3.0
       function deviceReady() {
         console.log("XXXXX s52ui.html:getCurrentPosition(): ..");
-        navigator.geolocation.getCurrentPosition(showPosition, geoError, {maximumAge:60000, timeout:5000, enableHighAccuracy:true});
+        navigator.geolocation.getCurrentPosition(showPosition, geoError, {maximumAge:60000, timeout:60000, enableHighAccuracy:true});
       }
       function showPosition(position) {
         var latlon = "ZZZZZ s52ui.html:showPosition(): " + position.coords.latitude + "," + position.coords.longitude;
@@ -42,9 +43,9 @@
       function geoError(error) {
         console.log('EEEEE s52ui.html:geoError(): code: '    + error.code    + ', ' + 'message: ' + error.message + '\n');
       }
-      */
     </script>
 
+    <!-- used by js/tinyjet-0.1.js -->
     <p id="__beg_mainWindowComponent" hidden="true">id_beg</p>
     <p id="__end_mainWindowComponent" hidden="true">id_end</p>
 
