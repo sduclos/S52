@@ -1559,6 +1559,8 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     // init env stuff for GDAL/OGR/S57
     //
 
+    PRINTF("GDAL VERSION: %s\n", GDAL_RELEASE_NAME);
+
     // GDAL/OGR/S57 options (1: overwrite env)
 
 #ifdef S52_USE_GLIB2
