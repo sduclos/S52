@@ -135,11 +135,11 @@ int       S52_CS_add(_localObj *local, S57_geo *geo)
     }
 
     // set rigid platform --useless
-    //if (0==g_strcmp0(name, "BCN",    3))
+    //if (0 == g_strcmp0(name, "BCN",    3))
     //    g_ptr_array_add(local->rigid_list, (gpointer) geo);
 
     // set light object
-    if (0==g_strcmp0(name, "LIGHTS")) {
+    if (0 == g_strcmp0(name, "LIGHTS")) {
         g_ptr_array_add(local->lights_list, (gpointer) geo);
         return TRUE;
     }
@@ -397,7 +397,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             /*
             {// skip UNSARE
                 char *name = S57_getName(geo);
-                if (0==g_strcmp0(name, "UNSARE", 6)) {
+                if (0 == g_strcmp0(name, "UNSARE", 6)) {
                     PRINTF("WARNING: skipping adjacent UNSARE\n");
                     g_assert(0);
                     continue;
@@ -864,13 +864,14 @@ static GString *DEPARE01 (S57_geo *geo)
     objlstr = S57_getAttVal(geo, "OBJL");
     objl    = (NULL == objlstr) ? 0 : S52_atoi(objlstr->str);
 
-    // debug --this should not trigger an assert since
+    /* debug --this should not trigger an assert since
     // there is no object number zero
     if (0 == objl) {
         PRINTF("ERROR: OBJL == 0 (this is impossible!)\n");
         g_assert(0);
         return depare01;
     }
+    */
 
     if (DRGARE == objl) {
         g_string_append(depare01, ";AP(DRGARE01)");
@@ -956,8 +957,8 @@ static GString *DEPCNT02 (S57_geo *geo)
     //if (483 == S57_getGeoS57ID(geo)) {
     //    PRINTF("483 found\n");
     //}
-    //if (491 == S57_getGeoS57ID(geo)) {
-    //    PRINTF("491 found\n");
+    //if (140 == S57_getGeoS57ID(geo)) {
+    //    PRINTF("140 found\n");
     //}
 
     // first reset original scamin
@@ -1881,7 +1882,7 @@ static GString *OBSTRN04 (S57_geo *geo)
 
     // debug CA49995B.000:305859
     //GString *FIDNstr = S57_getAttVal(geo, "FIDN");
-    //if (0==strcmp("965651", FIDNstr->str)) {
+    //if (0 == strcmp("965651", FIDNstr->str)) {
     //    PRINTF("%s\n",FIDNstr->str);
     //}
 
