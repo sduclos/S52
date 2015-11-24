@@ -2061,7 +2061,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
         }
 
         // special case ENC return an index
-        if (0==strncmp(buf, "NATSUR", S52_PL_NMLN)) {
+        if (0 == strncmp(buf, "NATSUR", S52_PL_NMLN)) {
 #ifdef S52_USE_GLIB2
             gchar** attvalL = g_strsplit_set(value->str, ",", 0);  // can't handle UTF-8, check g_strsplit() if needed
             gchar** freeL   = attvalL;
@@ -3811,7 +3811,7 @@ static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
             if (NULL == parg)
                 return NULL;   // abort
 
-            if (0==strcmp(val, EMPTY_NUMBER_MARKER))
+            if (0 == strcmp(val, EMPTY_NUMBER_MARKER))
                 return NULL;
 
             *t = *pf;       // stuff the '%'
@@ -4428,8 +4428,10 @@ S52_obj    *S52_PL_isObjValid(unsigned int objH)
 
     S52_obj *obj = (S52_obj *)g_ptr_array_index(_objList, objH);
     if (NULL == obj) {
-        PRINTF("WARNING: obj NULL\n");
-        //g_assert(0);
+        // FIXME: why is this still happenning! AIS!!
+        PRINTF("WARNING: objH %i is NULL obj\n", objH);
+        g_assert(0);
+
         return NULL;
     }
 
