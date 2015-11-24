@@ -1,1 +1,0 @@
-../../../../s52ui/web/js/cordova-2.2.0.js
