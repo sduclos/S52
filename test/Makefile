@@ -54,7 +54,7 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 #
 #
 
-# -DUSE_FAKE_AIS      - debug - programmaticaly faked AIS data
+# -DUSE_FAKE_AIS      - debug - programmaticaly faked AIS data (no call to s52ais.c)
 # -DUSE_AIS           - call s52ais.c
 # -DSET_SCREEN_SIZE   - set screen size be hand (hard coded as dual-screen seem to confused the setup)
 
@@ -71,8 +71,8 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 # -DS52_USE_RADAR     - when in RADAR mode
 
-#CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2 -DUSE_FAKE_AIS
-CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2 -DUSE_AIS
+CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2 -DUSE_FAKE_AIS
+#CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2 -DUSE_AIS
 
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
                       -DS52_USE_GLIB2                                  \
@@ -341,10 +341,10 @@ S52-1.0.typelib: S52-1.0.gir
 #
 
 clean:
-	rm -f s52glx s52eglx s52gv s52gv2 s52gtk2 s52gtk2gl2 s52gtk2p s52gtk2.exe s52qt4 *.o *.so \
-    s52gtk2gps S52-1.0.* s52eglx s52ais sl4agps s52gtk2egl s52gtk3egl s52eglw32.exe
+	rm -f s52glx s52eglx s52gv s52gv2 s52gtk2 s52gtk2gl2 s52gtk2p s52gtk2.exe *.o *.so \
+    s52gtk2gps S52-1.0.* s52eglx s52ais s52gtk2egl s52gtk3egl s52eglw32.exe
 
 distclean: clean
-	rm -f sl4agps.cfg android/dist/sdcard/s52droid/bin/s52ais android/dist/sdcard/s52droid/bin/sl4agps
+	rm -f android/dist/sdcard/s52droid/bin/s52ais
 	make -C s52ui   distclean
 	make -C android distclean
