@@ -32,28 +32,58 @@ public class s52ui extends Activity
         webview.getSettings().setGeolocationDatabasePath("/data/data/nav.ecs.s52droid");
 
         // this is required - CSS: body {  background-color : transparent; } alone doesn't do
+        // probably something about gralloc and WM
         webview.setBackgroundColor(Color.TRANSPARENT);
 
         try {
             StatFs stat = new StatFs("/sdcard/s52droid/s52ui/s52ui.html");
             Log.i(TAG, "StatFs: " + stat.getAvailableBlocks());
             // debug - work OK for dev (faster)
-            webview.loadUrl("file:///sdcard/s52droid/s52ui/s52ui.html");
-            webview.clearCache(false);                           // page loading always from file (a bit slower)
+            //webview.loadUrl("file:///sdcard/s52droid/s52ui/s52ui.html");
+            webview.loadUrl("file:///sdcard/s52droid/s52ui/s52ui.html?ws://127.0.0.1:2950");
+
+            // page loading always from file (a bit slower)
+            webview.clearCache(false);
         } catch (IllegalArgumentException e) {
-            webview.loadUrl("file:///android_asset/www/s52ui.html");
+            //webview.loadUrl("file:///android_asset/www/s52ui.html");
+            webview.loadUrl("file:///android_asset/www/s52ui.html?ws://127.0.0.1:2950");
         }
 
         // debug from Chrome
         //webview.setWebContentsDebuggingEnabled(true);
 
         webview.setWebChromeClient(new WebChromeClient() {
-        	public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+            public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 callback.invoke(origin, true, false);
             }
-		});
+        });
 
         Log.i(TAG, "Starting WebView ...");
+
+
+        /* http://developer.android.com/guide/webapps/debugging.html
+        console.log(String)
+        console.info(String)
+        console.warn(String)
+        console.error(String)
+        --
+
+        myWebView.setWebChromeClient(
+            new WebChromeClient() {
+                public boolean onConsoleMessage(ConsoleMessage cm) {
+                    Log.d("MyApplication", cm.message() + " -- From line " + cm.lineNumber() + " of " + cm.sourceId());
+                    return true;
+                }
+            }
+        );
+
+        -- JS
+
+        console.log("Hello World");
+
+        -- logcat
+        => Hello World -- From line 82 of http://www.example.com/hello.html
+        */
 
 
         // shutdown activity
@@ -118,10 +148,10 @@ public class s52ui_API16 extends DroidGap
         //webview.setWebContentsDebuggingEnabled(true);
 
         webview.setWebChromeClient(new WebChromeClient() {
-        	public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
+            public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 callback.invoke(origin, true, false);
             }
-		});
+        });
 
 
         try {
