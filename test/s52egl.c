@@ -769,10 +769,10 @@ static void     _egl_done       (s52engine *engine)
             engine->eglContext = EGL_NO_CONTEXT;
         }
 
-        if (engine->eglSurface != EGL_NO_SURFACE) {
-            eglDestroySurface(engine->eglDisplay, engine->eglSurface);
-            engine->eglSurface = EGL_NO_SURFACE;
-        }
+        //if (engine->eglSurface != EGL_NO_SURFACE) {
+        //    eglDestroySurface(engine->eglDisplay, engine->eglSurface);
+        //    engine->eglSurface = EGL_NO_SURFACE;
+        //}
 
         eglTerminate(engine->eglDisplay);
         engine->eglDisplay = EGL_NO_DISPLAY;
@@ -783,25 +783,6 @@ static void     _egl_done       (s52engine *engine)
 
 static void     _egl_doneSurface(s52engine *engine)
 {
-    /*
-    if (engine->eglDisplay != EGL_NO_DISPLAY) {
-        eglMakeCurrent(engine->eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-
-        if (engine->eglContext != EGL_NO_CONTEXT) {
-            eglDestroyContext(engine->eglDisplay, engine->eglContext);
-            engine->eglContext = EGL_NO_CONTEXT;
-        }
-
-        if (engine->eglSurface != EGL_NO_SURFACE) {
-            eglDestroySurface(engine->eglDisplay, engine->eglSurface);
-            engine->eglSurface = EGL_NO_SURFACE;
-        }
-
-        eglTerminate(engine->eglDisplay);
-        engine->eglDisplay = EGL_NO_DISPLAY;
-    }
-    */
-
     eglMakeCurrent(engine->eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
 
     eglDestroySurface(engine->eglDisplay, engine->eglSurface);
@@ -1189,13 +1170,13 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
 
 
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // for triggering symb ISODGR01 (ODD winding) at Rimouski
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
 
-    //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
-    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
+    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
+    //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
 
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
@@ -2136,8 +2117,10 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
     static double zoom_fac        = 0.0;
 
 #define TICKS_PER_TAP  6
-#define EDGE_X0       50   // 0 at left
-#define EDGE_Y0       50   // 0 at top
+//#define EDGE_X0       50   // 0 at left
+//#define EDGE_Y0       50   // 0 at top
+#define EDGE_X0      100   // 0 at left (Nexus 7)
+#define EDGE_Y0      100   // 0 at top  (Nexus 7)
 #define DELTA          5
 
     //int EDGE_X1 = engine->width - 150;
@@ -2364,8 +2347,8 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             new_z = engine->state.rNM;
             new_r = 0.0;
 
-            // debug - init s52ui (HTML5) right at the start
-            _android_init_external_UI(engine);
+            // debug - init s52ui (HTML5)
+            //_android_init_external_UI(engine);
 
         } else {
             if (TRUE == mode_rot) {
@@ -3032,12 +3015,10 @@ static int      _X11_handleXevent(gpointer user_data)
 
         case ButtonRelease:
             {
-                if (FALSE == _drawVRMEBL)
-                    break;
-
                 XButtonReleasedEvent *mouseEvent = (XButtonReleasedEvent *)&event;
 
-                /*
+                // test pick
+                //*
                 const char *name = S52_pickAt(mouseEvent->x, engine->height - mouseEvent->y);
                 if (NULL != name) {
                     unsigned int S57ID = atoi(name+7);
@@ -3058,13 +3039,18 @@ static int      _X11_handleXevent(gpointer user_data)
                         unsigned int S57ID = atoi(name+7);
 
                         S52ObjectHandle vessel = S52_getMarObj(S57ID);
-                        if (NULL != vessel) {
+                        if (0 != vessel) {
                             S52_setVESSELstate(vessel, 1, 0, VESSELTURN_UNDEFINED);
                             //g_print("AttList: %s\n", S52_getAttList(S57ID));
                         }
                     }
                 }
-                */
+                //*/
+
+                // test LEGLIN on obstruction
+                /*
+                if (FALSE == _drawVRMEBL)
+                    break;
 
                 double Xlon = mouseEvent->x;
                 double Ylat = engine->height - mouseEvent->y;
@@ -3084,6 +3070,7 @@ static int      _X11_handleXevent(gpointer user_data)
                     engine->do_S52drawLast = TRUE;
                     _s52_draw_cb((gpointer) engine);
                 }
+                */
             }
             break;
 
@@ -3304,6 +3291,7 @@ int main(int argc, char *argv[])
 
     _s52_done(&_engine);
 
+    _egl_doneSurface(&_engine);
     _egl_done(&_engine);
 
     //g_mem_profile();
