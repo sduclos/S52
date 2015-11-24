@@ -334,7 +334,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 // CCW winding
                 if (area > 0.0) {
                     // if first ring reverse winding to CW
-                    if (0==iRing) {
+                    if (0 == iRing) {
                         // debug
                         //PRINTF("DEBUG: reversing S-57 outer ring to CW (%s)\n", objname);
                         //g_assert(0);
@@ -353,7 +353,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
 
 
                 } else {  // CW winding
-                    if (0==iRing) {
+                    if (0 == iRing) {
                         for (guint node=0; node<vert_count; ++node) {
                             ringxyz[iRing][node*3+0] = OGR_G_GetX(hRing, node);
                             ringxyz[iRing][node*3+1] = OGR_G_GetY(hRing, node);
@@ -377,7 +377,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
             geoData = S57_setAREAS(nRingCount, ringxyznbr, ringxyz, (area <= 0.0) ? S57_AW_CW : S57_AW_CCW);
             _setExtent(geoData, hGeom);
 
-            if (0==strcmp(WORLD_BASENM, objname)) {
+            if (0 == strcmp(WORLD_BASENM, objname)) {
                 // Note: loading shapefile as a 'marfea' use a transparent fill so NODATA
                 // is still visible (seem better than 'mnufea' wich has no colour fill)
                 S57_setName(geoData, "marfea");
