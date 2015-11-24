@@ -1,1 +1,0 @@
-../../../../s52ui/web/js/websocket.js
