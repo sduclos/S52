@@ -64,8 +64,9 @@ S57_geo  *S57_setLINES(guint xyznbr, geocoord *xyz);
 S57_geo  *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S57_AW_t origAW);
 S57_geo  *S57_set_META();
 
-// used for PASTRK
+#ifdef S52_USE_SUPP_LINE_OVERLAP
 S57_geo  *S57_setGeoLine(S57_geo *geo, guint xyznbr, geocoord *xyz);
+#endif
 
 S57_geo  *S57_getGeoLink(S57_geo *geo);
 S57_geo  *S57_setGeoLink(S57_geo *geo, S57_geo *link);
