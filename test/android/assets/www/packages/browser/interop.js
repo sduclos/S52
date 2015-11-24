@@ -1,1 +1,0 @@
-../../../../../s52ui/packages/browser/interop.js
