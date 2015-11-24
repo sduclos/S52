@@ -217,7 +217,7 @@ double   S52_atof(const char *str)
     if (NULL == str)
         return (1.0/0.0); //nan
 
-    if (0==S52_strlen(str)) {
+    if (0 == S52_strlen(str)) {
         //PRINTF("WARNING: zero length string (inf)\n");
         //g_assert(0);
         return (1.0/0.0); //nan
