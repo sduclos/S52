@@ -473,6 +473,7 @@ S57_geo   *S57_setPOINT(geocoord *xyz)
     return geo;
 }
 
+#ifdef S52_USE_SUPP_LINE_OVERLAP
 // experimental
 S57_geo   *S57_setGeoLine(_S57_geo *geo, guint xyznbr, geocoord *xyz)
 {
@@ -484,6 +485,7 @@ S57_geo   *S57_setGeoLine(_S57_geo *geo, guint xyznbr, geocoord *xyz)
 
     return geo;
 }
+#endif
 
 S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
 {
@@ -1699,7 +1701,7 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
                 break;
             } else {
                 // FIXME: start at end
-                if (0==i) {
+                if (0 == i) {
                     i = npt - 1;
                     //PRINTF("ERROR: edge mismatch\n");
                     //    g_assert(0);
