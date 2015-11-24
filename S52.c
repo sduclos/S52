@@ -1962,7 +1962,7 @@ static int        _suppLineOverlap()
 
 
                 //for ( ; NULL!=*splitrcnm; splitrcnm++, splitrcid++) {
-                for (guint i=0; i<nRCNM; ++i, splitrcnm+=increment,splitrcid+=increment) {
+                for (guint i=0; i<nRCNM; ++i, splitrcnm+=increment, splitrcid+=increment) {
 
                     // the S57 name for Edge (130)
                     if (0 == g_strcmp0(*splitrcnm, "130")) {
@@ -2867,18 +2867,18 @@ int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_
 #ifdef S52_USE_SUPP_LINE_OVERLAP
     // --- trap primitive ---
     // unused low level primitive
-    if (0==g_strcmp0(layername, "IsolatedNode"))
+    if (0 == g_strcmp0(layername, "IsolatedNode"))
         return TRUE;
-    if (0==g_strcmp0(layername, "Face"))
+    if (0 == g_strcmp0(layername, "Face"))
         return TRUE;
 
     // Edge is use to resolve overlapping line
-    if (0==g_strcmp0(layername, "Edge")) {
+    if (0 == g_strcmp0(layername, "Edge")) {
         S57_ogrLoadLayer(layername, layer, _loadEdge);
         return TRUE;
     }
     // Edge is use to resolve overlapping line
-    if (0==g_strcmp0(layername, "ConnectedNode")) {
+    if (0 == g_strcmp0(layername, "ConnectedNode")) {
         S57_ogrLoadLayer(layername, layer, _loadConnectedNode);
         return TRUE;
     }
@@ -2886,9 +2886,9 @@ int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_
 
     // debug: too slow for Lake Superior
     // FIXME
-    //if (0== g_strcmp0(layername, "OBSTRN", 6))
+    //if (0 == g_strcmp0(layername, "OBSTRN", 6))
     //    return 1;
-    //if (0==g_strcmp0(layername, "UWTROC"))
+    //if (0 == g_strcmp0(layername, "UWTROC"))
     //    return 1;
 
     if (NULL == loadObject_cb) {
@@ -2927,7 +2927,7 @@ static int        _insertLightSec(_cell *c, S52_obj *obj)
 
     // keep a reference to lights sector apart from other object
     // because it need different culling rules
-    if (0==g_strcmp0(S52_PL_getOBCL(obj), "LIGHTS")) {
+    if (0 == g_strcmp0(S52_PL_getOBCL(obj), "LIGHTS")) {
         S57_geo *geo       = S52_PL_getGeo(obj);
         GString *sectr1str = S57_getAttVal(geo, "SECTR1");
         GString *sectr2str = S57_getAttVal(geo, "SECTR2");
@@ -3160,15 +3160,15 @@ int            S52_loadObject(const char *objname, void *shape)
         //}
 
         // check M_QUAL:CATZOC
-        if (0== g_strcmp0(objname, "M_QUAL"))
+        if (0 == g_strcmp0(objname, "M_QUAL"))
             _crntCell->catzocstr = S57_getAttVal(geoData, "CATZOC");  // data quality indicator
 
         // check M_ACCY:POSACC
-        if (0== g_strcmp0(objname, "M_ACCY"))
+        if (0 == g_strcmp0(objname, "M_ACCY"))
             _crntCell->posaccstr = S57_getAttVal(geoData, "POSACC");  // data quality indicator
 
         // check MAGVAR
-        if (0== g_strcmp0(objname, "MAGVAR")) {
+        if (0 == g_strcmp0(objname, "MAGVAR")) {
             // MAGVAR:VALMAG and
             _crntCell->valmagstr = S57_getAttVal(geoData, "VALMAG");  //
             // MAGVAR:RYRMGV and
@@ -3178,16 +3178,16 @@ int            S52_loadObject(const char *objname, void *shape)
          }
 
         // check M_CSCL compilation scale
-        if (0== g_strcmp0(objname, "M_CSCL")) {
+        if (0 == g_strcmp0(objname, "M_CSCL")) {
             _crntCell->cscalestr = S57_getAttVal(geoData, "CSCALE");
         }
 
         // check M_SDAT:VERDAT
-        if (0== g_strcmp0(objname, "M_SDAT")) {
+        if (0 == g_strcmp0(objname, "M_SDAT")) {
             _crntCell->sverdatstr = S57_getAttVal(geoData, "VERDAT");
         }
         // check M_VDAT:VERDAT
-        if (0== g_strcmp0(objname, "M_VDAT")) {
+        if (0 == g_strcmp0(objname, "M_VDAT")) {
             _crntCell->vverdatstr = S57_getAttVal(geoData, "VERDAT");
         }
 #ifdef S52_DEBUG
@@ -3207,7 +3207,7 @@ int            S52_loadObject(const char *objname, void *shape)
         //PRINTF("DEBUG: S57__META_T:OBJNAME:%s ###################################################\n", objname);
 
         // check DSID  (GDAL metadata)
-        if (0== g_strcmp0(objname, "DSID")) {
+        if (0 == g_strcmp0(objname, "DSID")) {
             GString *dsid_sdatstr = S57_getAttVal(geoData, "DSID_SDAT");
             GString *dsid_vdatstr = S57_getAttVal(geoData, "DSID_VDAT");
             double   dsid_sdat    = (NULL == dsid_sdatstr) ? 0.0 : S52_atof(dsid_sdatstr->str);
@@ -4277,15 +4277,15 @@ DLL int    STD S52_drawLayer(const char *name)
 
     // debug filter out some layer comming from OpenEV
     /*
-    if (0!=g_strcmp0(name, "DEPARE"))
+    if (0 != g_strcmp0(name, "DEPARE"))
         return FALSE;
-    if (0==g_strcmp0(name, "DSID"))
+    if (0 == g_strcmp0(name, "DSID"))
         return FALSE;
-    if (0==g_strcmp0(name, "M_QUAL"))
+    if (0 == g_strcmp0(name, "M_QUAL"))
         return FALSE;
-    if (0==g_strcmp0(name, "M_COVR"))
+    if (0 == g_strcmp0(name, "M_COVR"))
         return FALSE;
-    if (0==g_strcmp0(name, "M_NPUB"))
+    if (0 == g_strcmp0(name, "M_NPUB"))
         return FALSE;
     */
 
