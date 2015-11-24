@@ -4,6 +4,13 @@
 #
 
 
+2015NOV24
+    -mod code formatting
+    -mod update GIR
+
+2015SEP04
+    -add print GDAL_RELEASE_NAME (version) to S52_init()
+
 2015JUN02
     -mod update doc/
 
