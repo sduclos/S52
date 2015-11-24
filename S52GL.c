@@ -1061,8 +1061,9 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
 // this is used when VRM line style is alternate line style
 // ie _normallinestyle == 'N'
 {
+    // debug
     if (npt < 2) {
-        PRINTF("FIXME: found wierd LINES (%i)\n", npt);
+        //PRINTF("FIXME: found wierd LINES (%i)\n", npt);
         return;
     }
 
@@ -1516,6 +1517,7 @@ static GLubyte   _glColor4ub(S52_Color *c)
         glColor4ub(c->R, c->G, c->B, (4 - (c->trans - '0'))*TRNSP_FAC);
 #endif
 
+        // FIXME: c pen_w not used anymore
         if (0 != c->pen_w) {  // AC, .. doesn't have en pen_w
             glLineWidth (c->pen_w - '0');
             _glPointSize(c->pen_w - '0');
@@ -1963,14 +1965,14 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
         if (_SCAMIN < 80000.0) {
             // scale bar 1 NM
-            if (0==g_strcmp0(attval->str, "SCALEB10")) {
+            if (0 == g_strcmp0(attval->str, "SCALEB10")) {
                 // apply stretch
                 _glScaled(WRatio, HRatio, 1.0);
                 _glCallList(DListData);
             }
         } else {
             // scale bar 10 NM
-            if (0==g_strcmp0(attval->str, "SCALEB11")) {
+            if (0 == g_strcmp0(attval->str, "SCALEB11")) {
                 // apply stretch
                 _glScaled(WRatio, HRatio*10.0, 1.0);
                 _glCallList(DListData);
@@ -2592,7 +2594,7 @@ static int       _renderSY(S52_obj *obj)
             return FALSE;
         }
 
-        if (0==g_strcmp0("ebline", S57_getName(geoData))) {
+        if (0 == g_strcmp0("ebline", S57_getName(geoData))) {
             if (0 == S52_PL_cmpCmdParam(obj, "EBLVRM11")) {
                 _renderSY_POINT_T(obj, ppt[0], ppt[1], orient);
             } else {
@@ -3255,8 +3257,6 @@ static int       _renderLS(S52_obj *obj)
     //glLineWidth(3.5);
 
     //_setBlend(TRUE);
-
-
 
     // Assuming pixel size at 0.3 mm.
     // Note: we can draw coded depth line because
@@ -5410,7 +5410,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //S57_geo *geo = S52_PL_getGeo(obj);
     //PRINTF("drawing geo ID: %i\n", S57_getGeoS57ID(geo));
     //if (2184==S57_getGeoS57ID(geo)) {
-    //if (899 == S57_getGeoS57ID(geo)) {
+    //if (140 == S57_getGeoS57ID(geo)) {
     //if (103 == S57_getGeoS57ID(geo)) {  // Hawaii ISODNG
     //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoS57ID(geo));
     ////    return TRUE;
@@ -5426,11 +5426,10 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     if (S52_GL_PICK == _crnt_GL_cycle) {
         ++_cIdx.color.r;
 
-        // stack obj
-        if (0.0 != S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
-            g_ptr_array_add(_objPick, obj);
-            PRINTF("DEBUG: %i - pick: %s\n", _cIdx.color.r, S52_PL_getOBCL(obj));
-        }
+        g_ptr_array_add(_objPick, obj);
+
+        //S57_geo *geo = S52_PL_getGeo(obj);
+        //PRINTF("DEBUG: %i - pick: %s:%i\n", _cIdx.color.r, S52_PL_getOBCL(obj), S57_getGeoS57ID(geo));
     }
 
     ++_nobj;
