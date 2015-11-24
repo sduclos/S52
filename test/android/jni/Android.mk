@@ -34,8 +34,10 @@ S52DROIDINC      := /home/sduclos/S52/test/android/dist/sysroot/include
 # NDK-BUILD add this: -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
 #                    -DS52_USE_AFGLOW
 LOCAL_CFLAGS     := -g -O0 -std=c99 -Wall -DG_LOG_DOMAIN=\"s52droid\"                 \
-                    -DS52_USE_ANDROID -DS52_USE_TEGRA2                                \
-                    -DS52_USE_EGL -DS52_USE_GLES2                                     \
+                    -DS52_USE_ANDROID                                                 \
+                    -DS52_USE_ADRENO                                                  \
+                    -DS52_USE_EGL                                                     \
+                    -DS52_USE_GLES2                                                   \
                     -DUSE_AIS                                                         \
                     -DS52_USE_AFGLOW                                                  \
                     -I../..                                                           \
