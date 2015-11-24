@@ -1202,10 +1202,13 @@ static int      _initS52()
     // sounding color
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,   10.0);
 
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // for triggering symb ISODGR01 (ODD winding) at Rimouski
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // for triggering symb ISODGR01 (ODD winding) at Rimouski
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  4.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
 
-    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
+    //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
+    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR,10.0);
+
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
     //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);
@@ -1228,7 +1231,7 @@ static int      _initS52()
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_BASE);   // BASE
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_STD);    // STANDARD (default)
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_OTHER);  // OTHER
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT); // SELECT (all)
+    S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT); // SELECT (all)
 
     S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);   // first palette
 
@@ -1308,6 +1311,9 @@ static int      _initS52()
 
     S52_setMarinerParam(S52_MAR_DISP_CALIB, 1.0);
 
+    S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // hide
+    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // show
+
     S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 700.0); // (default 0.0 - OFF)
 
     //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
@@ -1336,6 +1342,9 @@ static int      _initS52()
     // guard zone OFF (pick need projection)
     S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
     _setRoute();
+
+    // clear error
+    S52_setMarinerParam(S52_MAR_ERROR, 0.0);
 
     _setCLRLIN();
 
@@ -1673,12 +1682,21 @@ static gboolean button_release_event(GtkWidget      *widget,
                 if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
                     return FALSE;
 
-                const char *name = S52_pickAt(event->x, _height-event->y);
-                if (NULL != name)
-                    g_print("s52gtk.c:button_release_event(): OBJ PICKED(%.f, %.f): %s\n", event->x, event->y, name);
+                {
+                    const char *name = S52_pickAt(event->x, _height-event->y);
+                    if (NULL != name) {
+                        g_print("s52gtk.c:button_release_event(): OBJ PICKED(%.f, %.f): %s\n", event->x, event->y, name);
+
+                        // display highlight
+                        S52_setMarinerParam(S52_MAR_ERROR, -1.0);
+                    }
+                }
 
                 S52_draw();
                 S52_drawLast();
+
+                // clear error
+                S52_setMarinerParam(S52_MAR_ERROR, 0.0);
 
                 if (gdk_gl_drawable_is_double_buffered(gldrawable))
                     gdk_gl_drawable_swap_buffers(gldrawable);
