@@ -33,6 +33,10 @@
 // it is then turn into a string in gv_properties
 #define EMPTY_NUMBER_MARKER "2147483641"  /* MAXINT-6 */
 
+// push Z in geo (Z not used, alway 0)
+// could be use as a clip plane for LS()
+#define S57_OVERLAP_GEO_Z 9999.0
+
 // internal geo enum used to link S52 to S57 geo
 // S57 object type have a PLib enum: P,L,A
 typedef enum S57_Obj_t {
@@ -52,6 +56,15 @@ typedef enum S57_AW_t {
     S57_AW_MAX  =  3
 } S57_AW_t;
 
+// ReCord NaMe for S57 primitive - use second digit
+typedef enum S57_RCNM_t {
+    S57_RCNM_NONE =  0,
+    S57_RCNM_VI   = '1',  // 110 - isolated node
+    S57_RCNM_VC  =  '2',  // 120 - connected node
+    S57_RCNM_VE  =  '3',  // 130 - edge
+    S57_RCNM_MAX =   4
+} S57_RCNM_t;
+
 typedef double geocoord;
 typedef struct _S57_geo  S57_geo;
 typedef struct _S57_prim S57_prim;
@@ -67,9 +80,6 @@ S57_geo  *S57_set_META();
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 S57_geo  *S57_setGeoLine(S57_geo *geo, guint xyznbr, geocoord *xyz);
 #endif
-
-S57_geo  *S57_getGeoLink(S57_geo *geo);
-S57_geo  *S57_setGeoLink(S57_geo *geo, S57_geo *link);
 
 #ifdef S52_USE_WORLD
 S57_geo  *S57_setNextPoly(S57_geo *geo, S57_geo *nextPoly);
@@ -99,7 +109,6 @@ int       S57_endPrim    (S57_prim *prim);
 
 // GLES2 need float vertex
 #if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
-//#ifdef S52_USE_GLES2
 typedef float  vertex_t;
 #else
 typedef double vertex_t;
@@ -110,7 +119,6 @@ S57_prim *S57_getPrimGeo   (S57_geo  *geo);
 guint     S57_getPrimData  (S57_prim *prim, guint *primNbr, vertex_t **vert, guint *vertNbr, guint *vboID);
 GArray   *S57_getPrimVertex(S57_prim *prim);
 int       S57_getPrimIdx   (S57_prim *prim, unsigned int i, int *mode, int *first, int *count);
-//int       S57_getPrimIdx(S57_prim *prim, guint i, guint *mode, guint *first, guint *count);
 
 int       S57_setPrimDList (S57_prim *prim, guint DList);
 
@@ -152,6 +160,8 @@ S57_geo  *S57_getRelationship(S57_geo *geo);
 int       S57_getNumAtt(S57_geo *geo);
 // return the 'real' attributes of the geodata. name and val must be preallocated, and be sufficient large. (use S57_getNumAtt for counting)
 int       S57_getAttributes(S57_geo *geo, char **name, char **val);
+// returns the window boundary with the current projection. After  the geo2prj and initproj have been public, this function may be moved to application layer.
+//void S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax);
 #endif
 
 // debug
@@ -166,7 +176,7 @@ GCPTR     S57_getPrjStr(void);
 projXY    S57_prj2geo(projUV uv);
 int       S57_geo2prj3dv(guint npt, double *data);
 int       S57_geo2prj(S57_geo *geo);
-#endif
+#endif  // S52_USE_PROJ
 
 int       S57_isPtInside(int npt, double *xyz, gboolean close, double x, double y);
 int       S57_touch(S57_geo *geoA, S57_geo *geoB);
@@ -180,14 +190,13 @@ int       S57_getNextCentroid(S57_geo *geo, double *x, double *y);
 int       S57_hasCentroid(S57_geo *geo);
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
+S57_geo  *S57_getEdgeOwner(S57_geo *geoEdge);
+S57_geo  *S57_setEdgeOwner(S57_geo *geoEdge, S57_geo *owner);
 int       S57_markOverlapGeo(S57_geo *geo, S57_geo *geoEdge);
-GString  *S57_getRCIDstr(S57_geo *geo);
-// experimental (fail)
-//int       S57_sameChainNode(S57_geo *geoA, S57_geo *geoB);
-// experimental (fail)
+gchar    *S57_getRCIDstr(S57_geo *geo);
 // debug - outer ring original Area Winding - info needed to revere S57_att
 S57_AW_t  S57_getOrigAW (S57_geo *geo);
-#endif
+#endif  // S52_USE_SUPP_LINE_OVERLAP
 
 // FIXME: setHL() rather than hl ON/OFF !
 //int     S57_setHighlight(S57_geo *geo, gboolean highlight);
@@ -197,10 +206,5 @@ gboolean  S57_isHighlighted(S57_geo *geo);
 
 int       S57_setHazard(S57_geo *geo, gboolean hazard);
 gboolean  S57_isHazard (S57_geo *geo);
-
-//// returns the window boundary with the current projection. After  the geo2prj and initproj have been public, this function may be moved to application layer.
-//void S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax);
-//#endif
-
 
 #endif // _S57DATA_H_
