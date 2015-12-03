@@ -66,8 +66,8 @@ static double _width  = 0.0;
 static double _height = 0.0;
 static double _x      = 0.0;
 static double _y      = 0.0;
-static double _brg    = 0.0;
-static double _rge    = 0.0;
+//static double _brg    = 0.0;
+//static double _rge    = 0.0;
 
 typedef struct pt2 {
     double lat, lon;
@@ -818,8 +818,12 @@ static int      _setVESSEL()
 
     // (re) set label
     //S52_setVESSELlabel(_vessel_ais, "~~MV Non Such~~");
-    S52_setVESSELstate(_vessel_ais, 1, 1, VESSELTURN_UNDEFINED);
 
+    {
+        int vesselSelect = 1;  // select ON
+        int vestat       = 1;  // AIS active
+        S52_setVESSELstate(_vessel_ais, vesselSelect, vestat, VESSELTURN_UNDEFINED);
+    }
     // AIS sleeping
     //_vessel_ais = S52_newVESSEL(2, 2, "MV Non Such - sleeping"););
     //S52_setPosition(_vessel_ais, _view.cLat - 0.02, _view.cLon + 0.02, 045.0);
@@ -1775,7 +1779,7 @@ static int      _s52_updTimeTag(void)
 {
 
     // fake one AIS
-    if (NULL != _vessel_ais) {
+    if (FALSE != _vessel_ais) {
         gchar         str[80];
         GTimeVal      now;
         static double hdg = 0.0;
