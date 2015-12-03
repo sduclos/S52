@@ -1572,7 +1572,7 @@ static int      _s52_init       (s52engine *engine)
     // debug: should fail
     //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test S52_drawStr()");
 
-    LOGI("%s\n", S52_getPalettesNameList());
+    LOGI("Palettes: %s\n", S52_getPalettesNameList());
 
     LOGI("s52egl:_s52_init(): end ..\n");
 
@@ -3040,7 +3040,9 @@ static int      _X11_handleXevent(gpointer user_data)
 
                         S52ObjectHandle vessel = S52_getMarObj(S57ID);
                         if (0 != vessel) {
-                            S52_setVESSELstate(vessel, 1, 0, VESSELTURN_UNDEFINED);
+                            int vesselSelect = 1;  // ON
+                            int vestat       = 0;  // AIS state undifined
+                            S52_setVESSELstate(vessel, vesselSelect, vestat, VESSELTURN_UNDEFINED);
                             //g_print("AttList: %s\n", S52_getAttList(S57ID));
                         }
                     }
