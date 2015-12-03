@@ -98,7 +98,10 @@ typedef enum _VP {
     VP_WIN,         // window coordinate
     VP_NUM          // number of coord. systems type
 } VP;
-#define Z_CLIP_PLANE 10000   // clipped beyon this plane
+
+//#define Z_CLIP_PLANE 10000   // clipped beyon this plane
+#define Z_CLIP_PLANE S57_OVERLAP_GEO_Z + 1
+
 ////////////////////////////////////////////////////////////////////
 
 #define S52_MAX_FONT  4
@@ -2758,6 +2761,7 @@ static int       _renderSY(S52_obj *obj)
         return TRUE;
     }
 
+    // should not be reach
     PRINTF("DEBUG: don't know how to draw this point symbol\n");
     //g_assert(0);
 
@@ -3232,7 +3236,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
 static int       _renderLS(S52_obj *obj)
 // Line Style
 // FIXME: do overlapping line suppression (need to find a test case - S52_MAR_SYMBOLIZED_BND)
-// FIX: add clip plane in shader (GLES2)
+// check for S57_OVERLAP_GEO_Z
 {
 #ifdef S52_USE_GV
     return FALSE;
@@ -3626,7 +3630,8 @@ static int       _renderLC(S52_obj *obj)
         //
         // overlapping Line Complex (LC) suppression
         //
-        if (z1<0.0 && z2<0.0) {
+        //if (z1<0.0 && z2<0.0) {
+        if (-S57_OVERLAP_GEO_Z==z1 && -S57_OVERLAP_GEO_Z==z2) {
             //PRINTF("NOTE: this line segment (%s) overlap a line segment with higher prioritity (Z=%f)\n", S57_getName(geo), z1);
             continue;
         }
