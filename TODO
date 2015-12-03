@@ -17,7 +17,7 @@ Curent focus (top priority *):
     PL:
 *   -view group or somme equivalent functionality
     -overscale (DATCVR01) (maybe LOD/chart scale/view scale)
-    -experimental: supression of overlapping simple lines (ie LS() - not LC()) (also of same disp prio AREAS/LINES)
+    -experimental: supression of overlapping simple lines (ie overlaping LS() not processed) (also of same disp prio AREAS/LINES)
     -fix breaker color problem in CA49995A.000
     -check/validate QUAPOS of spatial (not attribute) object
     -upgrade to WRECK03 (C_s_md2.pdf: Item No. PL03.0.d02.cl.035)
