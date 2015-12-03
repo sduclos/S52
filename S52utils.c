@@ -55,103 +55,103 @@ static GTimeVal _now;
 
 // internal libS52.so version
 static const char _version[] = "libS52-2015NOV24-1.164"
-#ifdef _MINGW
-      ",_MINGW"
+#ifdef   _MINGW
+      ", _MINGW"
 #endif
-#ifdef S52_USE_GV
-      ",S52_USE_GV"
+#ifdef   S52_USE_GV
+      ", S52_USE_GV"
 #endif
-#ifdef GV_USE_DOUBLE_PRECISION_COORD
-      ",GV_USE_DOUBLE_PRECISION_COORD"
+#ifdef   GV_USE_DOUBLE_PRECISION_COORD
+      ", GV_USE_DOUBLE_PRECISION_COORD"
 #endif
-#ifdef S52_USE_GLIB2
-      ",S52_USE_GLIB2"
+#ifdef   S52_USE_GLIB2
+      ", S52_USE_GLIB2"
 #endif
-#ifdef S52_USE_OGR_FILECOLLECTOR
-      ",S52_USE_OGR_FILECOLLECTOR"
+#ifdef   S52_USE_OGR_FILECOLLECTOR
+      ", S52_USE_OGR_FILECOLLECTOR"
 #endif
-#ifdef S52_USE_PROJ
-      ",S52_USE_PROJ"
+#ifdef   S52_USE_PROJ
+      ", S52_USE_PROJ"
 #endif
-#ifdef S52_USE_SUPP_LINE_OVERLAP
-      ",S52_USE_SUPP_LINE_OVERLAP"
+#ifdef   S52_USE_SUPP_LINE_OVERLAP
+      ", S52_USE_SUPP_LINE_OVERLAP"
 #endif
-#ifdef S52_DEBUG
-      ",S52_DEBUG"
+#ifdef   S52_DEBUG
+      ", S52_DEBUG"
 #endif
-#ifdef S52_USE_LOG
-      ",S52_USE_LOG"
+#ifdef   S52_USE_LOG
+      ", S52_USE_LOG"
 #endif
-#ifdef S52_USE_LOGFILE
-      ",S52_USE_LOGFILE"
+#ifdef   S52_USE_LOGFILE
+      ", S52_USE_LOGFILE"
 #endif
-#ifdef S52_USE_DBUS
-      ",S52_USE_DBUS"
+#ifdef   S52_USE_DBUS
+      ", S52_USE_DBUS"
 #endif
-#ifdef S52_USE_SOCK
-      ",S52_USE_SOCK"
+#ifdef   S52_USE_SOCK
+      ", S52_USE_SOCK"
 #endif
-#ifdef S52_USE_GOBJECT
-      ",S52_USE_GOBJECT"
+#ifdef   S52_USE_GOBJECT
+      ", S52_USE_GOBJECT"
 #endif
-#ifdef S52_USE_BACKTRACE
-      ",S52_USE_BACKTRACE"
+#ifdef   S52_USE_BACKTRACE
+      ", S52_USE_BACKTRACE"
 #endif
-#ifdef S52_USE_EGL
-      ",S52_USE_EGL"
+#ifdef   S52_USE_EGL
+      ", S52_USE_EGL"
 #endif 
-#ifdef S52_USE_GL1
-      ",S52_USE_GL1"
+#ifdef   S52_USE_GL1
+      ", S52_USE_GL1"
 #endif
-#ifdef S52_USE_OPENGL_VBO
-      ",S52_USE_OPENGL_VBO"
+#ifdef   S52_USE_OPENGL_VBO
+      ", S52_USE_OPENGL_VBO"
 #endif
-#ifdef S52_USE_GLSC1
-      ",S52_USE_GLSC1"
+#ifdef   S52_USE_GLSC1
+      ", S52_USE_GLSC1"
 #endif
-#ifdef S52_USE_GL2
-      ",S52_USE_GL2"
+#ifdef   S52_USE_GL2
+      ", S52_USE_GL2"
 #endif
-#ifdef S52_USE_GLES2
-      ",S52_USE_GLES2"
+#ifdef   S52_USE_GLES2
+      ", S52_USE_GLES2"
 #endif
-#ifdef S52_USE_ANDROID
-      ",S52_USE_ANDROID"
+#ifdef   S52_USE_ANDROID
+      ", S52_USE_ANDROID"
 #endif
-#ifdef S52_USE_TEGRA2
-      ",S52_USE_TEGRA2"
+#ifdef   S52_USE_TEGRA2
+      ", S52_USE_TEGRA2"
 #endif
-#ifdef S52_USE_ADRENO
-      ",S52_USE_ADRENO"
+#ifdef   S52_USE_ADRENO
+      ", S52_USE_ADRENO"
 #endif
-#ifdef S52_USE_COGL
-      ",S52_USE_COGL"
+#ifdef   S52_USE_COGL
+      ", S52_USE_COGL"
 #endif
-#ifdef S52_USE_FREETYPE_GL
-      ",S52_USE_FREETYPE_GL"
+#ifdef   S52_USE_FREETYPE_GL
+      ", S52_USE_FREETYPE_GL"
 #endif
-#ifdef S52_USE_SYM_AISSEL01
-      ",S52_USE_SYM_AISSEL01"
+#ifdef   S52_USE_SYM_AISSEL01
+      ", S52_USE_SYM_AISSEL01"
 #endif
-#ifdef S52_USE_WORLD
-      ",S52_USE_WORLD"
+#ifdef   S52_USE_WORLD
+      ", S52_USE_WORLD"
 #endif
-#ifdef S52_USE_SYM_VESSEL_DNGHL
-      ",S52_USE_SYM_VESSEL_DNGHL"
+#ifdef   S52_USE_SYM_VESSEL_DNGHL
+      ", S52_USE_SYM_VESSEL_DNGHL"
 #endif
-#ifdef S52_USE_TXT_SHADOW
-      ",S52_USE_TXT_SHADOW"
+#ifdef   S52_USE_TXT_SHADOW
+      ", S52_USE_TXT_SHADOW"
 #endif
-#ifdef S52_USE_RADAR
-      ",S52_USE_RADAR"
+#ifdef   S52_USE_RADAR
+      ", S52_USE_RADAR"
 #endif
-#ifdef S52_USE_MESA3D
-      ",S52_USE_MESA3D"
+#ifdef   S52_USE_MESA3D
+      ", S52_USE_MESA3D"
 #endif
-#ifdef S52_USE_C_AGGR_C_ASSO
-      ",S52_USE_C_AGGR_C_ASSO"
+#ifdef   S52_USE_C_AGGR_C_ASSO
+      ", S52_USE_C_AGGR_C_ASSO"
 #endif
-;
+"\n";
 
 
 typedef void (*GPrintFunc)(const gchar *string);
@@ -256,9 +256,9 @@ char*    S52_strstr(const char *haystack, const char *needle)
 gint     S52_strncmp(const gchar *s1, const gchar *s2, gsize n)
 {
 #ifdef S52_USE_GLIB2
-    return g_ascii_strncasecmp(s1, s2, n);
-    //return g_strncasecmp(s1, s2, n);
-    //return strncmp(s1, s2, n);
+    //return g_ascii_strncasecmp(s1, s2, n);  // ignor the case, FAIL in PL
+    //return g_strncasecmp(s1, s2, n);        // ignor the case, FAIL in PL
+    return strncmp(s1, s2, n);
 #else
     return strncmp(s1, s2, n);
 #endif
