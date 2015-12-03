@@ -377,7 +377,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
             geoData = S57_setAREAS(nRingCount, ringxyznbr, ringxyz, (area <= 0.0) ? S57_AW_CW : S57_AW_CCW);
             _setExtent(geoData, hGeom);
 
-            if (0 == strcmp(WORLD_BASENM, objname)) {
+            if (0 == g_strcmp0(WORLD_BASENM, objname)) {
                 // Note: loading shapefile as a 'marfea' use a transparent fill so NODATA
                 // is still visible (seem better than 'mnufea' wich has no colour fill)
                 S57_setName(geoData, "marfea");
@@ -458,16 +458,12 @@ S57_geo       *S57_ogrLoadObject(const char *objname, void *feature)
     if (NULL == geoData)
         return NULL;
 
-    if (0 != strcmp(WORLD_BASENM, objname)) {
+    // FIXME: world has no name!
+    //if (0 != g_strcmp0(WORLD_BASENM, objname)) {
         S57_setName(geoData, objname);
-    }
-    _setAtt(geoData, feature);
-
-
-    // debug
-    //if (207 == S57_getGeoS57ID(geoData)) {
-    //    S57_dumpData(geoData, FALSE);
     //}
+
+    _setAtt(geoData, feature);
 
     //PRINTF("DEBUG: finish loading object (%s)\n", objname);
 
