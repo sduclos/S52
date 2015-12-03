@@ -42,13 +42,10 @@
 #define UWTROC  153   // Underwater rock / awash rock
 #define WRECKS  159   // Wreck
 
-// NOTE: rigid_list is useless
 typedef struct _localObj {
     GPtrArray *lights_list;  // list of: LIGHTS
     GPtrArray *topmar_list;  // list of: LITFLT, LITVES, BOY???; to find floating platform
     GPtrArray *depare_list;  // list of: DEPARE, DRGARE
-
-    //GPtrArray *obstrn_list;  // list of: DEPARE, DRGARE, UNSARE
     GPtrArray *depval_list;  // list of: DEPARE, UNSARE
 } _localObj;
 
@@ -57,8 +54,6 @@ typedef struct _localObj {
 
 static char *_strpbrk(const char *s, const char *list)
 {
-    //return strpbrk(s, list);
-
     const char *p;
     const char *r;
 
@@ -86,10 +81,7 @@ localObj *S52_CS_init()
 
     local->lights_list = g_ptr_array_new();
     local->topmar_list = g_ptr_array_new();
-    //local->rigid_list = g_ptr_array_new();
     local->depare_list = g_ptr_array_new();
-
-    //local->obstrn_list = g_ptr_array_new();
     local->depval_list = g_ptr_array_new();
 
     return local;
@@ -100,13 +92,8 @@ localObj *S52_CS_done(_localObj *local)
     return_if_null(local);
 
     g_ptr_array_free(local->lights_list, TRUE);
-
     g_ptr_array_free(local->topmar_list, TRUE);
-
-    //g_ptr_array_free(local->rigid_list, TRUE);
     g_ptr_array_free(local->depare_list, TRUE);
-
-    //g_ptr_array_free(local->obstrn_list, TRUE);
     g_ptr_array_free(local->depval_list, TRUE);
 
     g_free(local);
@@ -134,10 +121,6 @@ int       S52_CS_add(_localObj *local, S57_geo *geo)
         return TRUE;
     }
 
-    // set rigid platform --useless
-    //if (0 == g_strcmp0(name, "BCN",    3))
-    //    g_ptr_array_add(local->rigid_list, (gpointer) geo);
-
     // set light object
     if (0 == g_strcmp0(name, "LIGHTS")) {
         g_ptr_array_add(local->lights_list, (gpointer) geo);
@@ -156,11 +139,6 @@ int       S52_CS_add(_localObj *local, S57_geo *geo)
         // FIXME: could object be something else then AREAS_T!
         if (S57_AREAS_T == S57_getObjtype(geo))
             g_ptr_array_add(local->depare_list, (gpointer) geo);
-        //else
-        //    PRINTF("NOTE: depare_list: %s not of type AREAS_T\n", name);
-
-        //g_ptr_array_add(local->obstrn_list, (gpointer) geo);
-        //return TRUE;
     }
 
     ///////////////////////////////////////////////
@@ -185,12 +163,6 @@ int       S52_CS_add(_localObj *local, S57_geo *geo)
 static int      _intersecGEO(S57_geo *A, S57_geo *B)
 // TRUE if A instersec B, else FALSE
 {
-    /*
-    if (B.n < A.s) return FALSE;
-    if (B.e < A.w) return FALSE;
-    if (B.s > A.n) return FALSE;
-    if (B.w > A.e) return FALSE;
-    */
     double Ax1, Ay1, Ax2, Ay2;
     double Bx1, By1, Bx2, By2;
 
@@ -216,12 +188,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
 
     const char *name = S57_getName(geo);
 
-    // lights reverse the link so this test is bad
-    //if (NULL != S57_getTouch(geo)) {
-    //    PRINTF("ERROR: object (%s) already 'touch' an object\n", name);
-    //    g_assert(0);
-    //}
-
     ////////////////////////////////////////////
     // floating object
     //
@@ -237,7 +203,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             { // skip if it's same S57 object
                 GString *olnam = S57_getAttVal(other, "LNAM");
                 if (TRUE == S52_string_equal(lnam, olnam))
-                //if (0 == g_strcmp0(lnam->str, olnam->str))
                     continue;
             }
 
@@ -397,7 +362,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             /*
             {// skip UNSARE
                 char *name = S57_getName(geo);
-                if (0 == g_strcmp0(name, "UNSARE", 6)) {
+                if (0 == strncmp(name, "UNSARE", 6)) {
                     PRINTF("WARNING: skipping adjacent UNSARE\n");
                     g_assert(0);
                     continue;
@@ -468,51 +433,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         (0==g_strcmp0(name, "WRECKS"))
        )
     {
-
-        // FIXME: UWTROC (OSTRN04) hit this all the time
-        // FIX: commended for now
-        /*
-        for (guint i=0; i<local->obstrn_list->len; ++i) {
-            S57_geo *other = g_ptr_array_index(local->obstrn_list, i);
-
-            if (TRUE == _intersecGEO(geo, other)) {
-                S57_setTouch(geo, other);
-                return TRUE;
-            }
-        }
-        */
-
-        /*
-        for (guint i=0; i<local->depare_list->len; ++i) {
-            S57_geo *other = (S57_geo *) g_ptr_array_index(local->depare_list, i);
-
-            // skip if not overlapping
-            if (FALSE == _intersecGEO(geo, other))
-                continue;
-
-            // link to depthest object
-            // - use DRVAL1 for AREA DEPARE and AREA DRGARE
-            // or
-            // - use DRVAL2 for LINE DEPARE
-            if (LINES_T == S57_getObjtype(other)) {
-                GString *drval2str = S57_getAttVal(other, "DRVAL2");
-                double   drval2    = (NULL == drval2str) ? UNKNOWN : S52_atof(drval2str->str);
-                if (NULL!=drval2str && drval2>drval) {
-                    drval = drval2;
-                    S57_setTouch(geo, other);
-                }
-            } else { // AREA DEPARE and AREA DRGARE
-                GString *drval1str = S57_getAttVal(other, "DRVAL1");
-                double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
-                if (NULL!=drval1str && drval1>drval) {
-                    drval = drval1;
-                    S57_setTouch(geo, other);
-                }
-
-            }
-        }
-        */
-
         for (guint i=0; i<local->depare_list->len; ++i) {
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->depare_list, i);
 
@@ -633,7 +553,6 @@ static int      _sectOverlap(S57_geo *geoA, S57_geo *geoB)
             double Asweep = Asectr2-Asectr1;
             double Bsweep = Bsectr2-Bsectr1;
             // is sector larger
-            //if (Asweep > Bsweep)
             if (Asweep >= Bsweep)
                 return TRUE;
         }
@@ -659,21 +578,11 @@ static int      _parseList(const char *str, char *buf)
                 break;
             }
 
-            /*
-            if (255 <  (unsigned char) atoi(str)) {
-                PRINTF("value overflow (>255)\n");
-                exit(0);
-            }
-            */
-
             buf[i++] = (unsigned char) S52_atoi(str);
 
             // skip digit
-            while('0' <= *str && *str <= '9') str++;
-            //while(isdigit(*str))
-            //    ++str;   // next
-            // glib-2
-            //while( g_ascii_isdigit(c) );   // next
+            while('0'<=*str && *str<='9')
+                str++;
 
         } while(*str++ != '\0');      // skip ',' or exit
     }
