@@ -8,6 +8,9 @@
 # adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/android.app.NativeActivity
 
 # 07da448e               device usb:2-2 product:razor model:Nexus_7 device:flo
+#/etc/udev/rules.d/51-android.rules
+#SUBSYSTEM =="usb", ATTR{idVendor}=="18d1", MODE ="0666", GROUP ="plugdev"
+# restart udev
 # 027831c7438020d7       device usb:2-1 product:omni_wingray model:Xoom_Wifi device:wingray
 
 
