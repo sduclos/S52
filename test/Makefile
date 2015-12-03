@@ -21,6 +21,9 @@ all: s52gtk3egl     # GTK3 & EGL
 #all: s52clutter.js # same as s52gtk2 but use Clutter & Javascript (experimental)
                     # also used to build S52/doc/S52-0.1.gir
 
+# GDB BUG: ImportError: No module named 'libstdcxx'
+# FIX: (gdb) python sys.path.append("/usr/share/gcc-4.8/python");
+
 # TCC
 #CC   = tcc -fPIC
 
