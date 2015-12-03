@@ -129,9 +129,12 @@ typedef struct _S57_geo {
     // FIXME: SCAMAX
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
-    GString     *rcidstr;     // optimisation: point to Att RCID str value
-    S57_geo     *link;        // experimetal, link to auxiliary
-    S57_AW_t     origAW;      // debug - original Area Winding, CW: area < 0,  CCW: area > 0
+    // only for object "Edge"
+    gchar       *name_rcidstr;  // optimisation: point to Att NAME_RCID str value
+
+    S57_geo     *geoOwner;      // s57 obj that use this edge
+
+    S57_AW_t     origAW;        // debug - original Area Winding, CW: area < 0,  CCW: area > 0
 #endif
 
     // centroid - save current centroids of this object
@@ -213,9 +216,6 @@ int        S57_doneData   (_S57_geo *geo, gpointer user_data)
     _doneGeoData(geo);
 
     S57_donePrimGeo(geo);
-
-    //if (NULL != geo->name)
-    //    g_string_free(geo->name, TRUE);
 
     if (NULL != geo->attribs)
         g_datalist_clear(&geo->attribs);
@@ -485,7 +485,7 @@ S57_geo   *S57_setGeoLine(_S57_geo *geo, guint xyznbr, geocoord *xyz)
 
     return geo;
 }
-#endif
+#endif  // S52_USE_SUPP_LINE_OVERLAP
 
 S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
 {
@@ -604,8 +604,6 @@ int        S57_setName(_S57_geo *geo, const char *name)
     return_if_null(geo);
     return_if_null(name);
 
-    //geo->name = g_string_new(name);
-
     //*
     if (S57_GEO_NM_LN < strlen(name)) {
         PRINTF("DEBUG: S57_geo name overflow max S57_NM_LN : %s\n", name);
@@ -626,7 +624,6 @@ GCPTR      S57_getName(_S57_geo *geo)
     return_if_null(geo);
     return_if_null(geo->name);
 
-    //return geo->name->str;
     return geo->name;
 }
 
@@ -1060,7 +1057,10 @@ GData     *S57_setAtt(_S57_geo *geo, const char *name, const char *val)
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
     if ((0==g_strcmp0(S57_getName(geo), "Edge")) && (0==g_strcmp0(name, "RCID"))) {
-         geo->rcidstr = value;
+        geo->name_rcidstr = value->str;
+
+        // FIXME: check for substring ",...)" if found at the end
+        // this mean that TEMP_BUFFER_SIZE in OGR is not large anought.
      }
 #endif
 
@@ -1346,7 +1346,7 @@ void       S57_getGeoWindowBoundary(double lat, double lng, double scale, int wi
 }
 #endif
 
-#ifdef S52_USE_SUPP_LINE_OVERLAP
+#if 0
 int        S57_sameChainNode(_S57_geo *geoA, _S57_geo *geoB)
 {
 
@@ -1416,24 +1416,6 @@ int        S57_sameChainNode(_S57_geo *geoA, _S57_geo *geoB)
         return TRUE;
 
     return FALSE;
-}
-
-S57_geo   *S57_getGeoLink(_S57_geo *geo)
-{
-    // not needed
-    //return_if_null(geo);
-
-    return geo->link;
-}
-
-S57_geo   *S57_setGeoLink(_S57_geo *geo, _S57_geo *link)
-{
-    // not needed
-    //return_if_null(geo);
-
-    geo->link = link;
-
-    return geo;
 }
 #endif
 
@@ -1648,6 +1630,24 @@ int        S57_hasCentroid(_S57_geo *geo)
 }
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
+S57_geo   *S57_getEdgeOwner(_S57_geo *geoEdge)
+{
+    // not needed
+    //return_if_null(geo);
+
+    return geoEdge->geoOwner;
+}
+
+S57_geo   *S57_setEdgeOwner(_S57_geo *geoEdge, _S57_geo *geoOwner)
+{
+    // not needed
+    //return_if_null(geo);
+
+    geoEdge->geoOwner = geoOwner;
+
+    return geoEdge;
+}
+
 int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
 // mark coordinates in geo that match the chaine-node in geoEdge
 {
@@ -1770,18 +1770,21 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
     // FIXME: optimisation: push Z one to many edge
     // FIXME: optimisation: check if moving vertex to clip plane (Z_CLIP_PLANE)
     for (guint j=0; j<nptEdge; ++j) {
-        ppt[i*3 + 2] = -10.0; // not Z_CLIP_PLANE
+        //ppt[i*3 + 2] = -10.0; // not Z_CLIP_PLANE
+        ppt[i*3 + 2] = -S57_OVERLAP_GEO_Z; // not Z_CLIP_PLANE
         i += next;
     }
 
     return TRUE;
 }
 
-GString   *S57_getRCIDstr(_S57_geo *geo)
+//GString   *S57_getRCIDstr(_S57_geo *geo)
+gchar     *S57_getRCIDstr(_S57_geo *geo)
 {
     return_if_null(geo);
 
-    return geo->rcidstr;
+    //return geo->rcidstr;
+    return geo->name_rcidstr;
 }
 
 S57_AW_t   S57_getOrigAW(_S57_geo *geo)
