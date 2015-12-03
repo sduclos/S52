@@ -166,6 +166,8 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_WORLD        - need shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
 # -DS52_USE_RADAR        - skip swapbuffer between DRAW & LAST cycle, skip read/write FB
 # -DS52_USE_AFGLOW       - experimental synthetic after glow
+# -DS52_USE_SYM_VESSEL_DNGHL
+#                        - vestat = 3, close quarter, show AIS in red (DNGHL)
 #
 # Debug:
 # -DS52_DEBUG            - add more info for debugging libS52 (ex _checkError() in S52GL.c)
@@ -274,10 +276,10 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_MESA3D               \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_SOCK                 \
-                  -DS52_USE_SYM_VESSEL_DNGHL     \
                   -DS52_USE_TXT_SHADOW           \
                   -DS52_USE_AFGLOW               \
                   -DS52_USE_SUPP_LINE_OVERLAP    \
+                  -DS52_USE_SYM_VESSEL_DNGHL     \
                   -DS52_DEBUG $(DBG)
 
 # CFLAGS="-mthumb" CXXFLAGS="-mthumb" LIBS="-lstdc++" ./configure --host=arm-eabi \
@@ -294,9 +296,10 @@ s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -fPIC -mt
 s52eglarm : AR     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ar
 s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 
-#                     -DS52_USE_LOG                         \
+#                     -DS52_USE_LOG
 #                     -DS52_DEBUG $(DBG)
 #                     -DG_DISABLE_ASSERT
+#                     -DS52_USE_TEGRA2
 s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/sysroot/include
 s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
 
@@ -307,7 +310,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_FREETYPE_GL                 \
                      -DS52_USE_ANDROID                     \
-                     -DS52_USE_TEGRA2                      \
+                     -DS52_USE_ADRENO                      \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
