@@ -354,7 +354,7 @@ static int      _s52_setupVESSEL(s52droid_state_t *state)
     // (re) set label
     S52_setVESSELlabel(_vessel_ais, VESSELLABEL);
     int vesselSelect = 0;  // OFF
-    int vestat       = 1;
+    int vestat       = 1;  // AIS active
     int vesselTurn   = VESSELTURN_UNDEFINED;
     S52_setVESSELstate(_vessel_ais, vesselSelect, vestat, vesselTurn);
 
