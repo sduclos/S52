@@ -356,13 +356,13 @@ static int       _renderAP_gl1(S52_obj *obj)
 
     //--------------------------------------------------------
     // debug - U pattern
-    //if (0 != g_strcmp0("M_QUAL", S52_PL_getOBCL(obj), 6) ) {
+    //if (0 != g_strcmp0("M_QUAL", S52_PL_getOBCL(obj)) ) {
     ////    //_renderAP_NODATA(obj);
     //    return TRUE;
     //}
     //char *name = S52_PL_getOBCL(obj);
     //PRINTF("%s: ----------------\n", name);
-    //if (0==g_strcmp0("M_QUAL", S52_PL_getOBCL(obj), 6) ) {
+    //if (0==g_strcmp0("M_QUAL", S52_PL_getOBCL(obj)) ) {
     //    PRINTF("M_QUAL found\n");
     //}
     //return 1;
