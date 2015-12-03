@@ -48,10 +48,6 @@ Makefile Target:
 - s52ais
   gpsd cleint to feed AIS to s52eglx and s52droid
 
-- sl4agps
-  feed android's GPS/GYRO to s52droid
-  also some libS52.so test via Android UI
-
 
 ------------------------------------------------------------
 
