@@ -330,7 +330,7 @@ static GTree   *_table[TBL_NUM] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}
 //#define LNFMT  "%1024[^\n]"   // line format
 #define LNFMT  "%[^\n]"   // line format
 
-#define FIELD(str)    if(0==strncmp(#str, _pBuf, 4))
+#define FIELD(str)    if(0==S52_strncmp(#str, _pBuf, 4))
 
 typedef unsigned char u8;
 
@@ -557,7 +557,7 @@ static gint       _cmpCOL(gconstpointer nameA, gconstpointer nameB)
 // compare color name
 {
     //PRINTF("%s - %s\n",(char*)nameA,(char*)nameB);
-    return strncmp((char*)nameA, (char*)nameB, S52_COL_NMLN);
+    return S52_strncmp((char*)nameA, (char*)nameB, S52_COL_NMLN);
 }
 
 #ifdef S52_USE_GLIB2
@@ -573,7 +573,7 @@ static gint       _cmpLUP(gconstpointer nameA, gconstpointer nameB)
 #endif
 
     //PRINTF("%s - %s\n",(char*)nameA,(char*)nameB);
-    return strncmp((char*)nameA, (char*)nameB, S52_PL_NMLN);
+    return S52_strncmp((char*)nameA, (char*)nameB, S52_PL_NMLN);
 }
 
 #ifdef S52_USE_GLIB2
@@ -589,13 +589,13 @@ static gint       _cmpSMB(gconstpointer nameA, gconstpointer nameB)
 #endif
 
 
-    return strncmp((char*)nameA, (char*)nameB, S52_SMB_NMLN);
+    return S52_strncmp((char*)nameA, (char*)nameB, S52_SMB_NMLN);
 }
 
 static gint       _cmpCOND(gconstpointer nameA, gconstpointer nameB)
 // compare Cond Symbology name
 {
-   return strncmp((char*)nameA, (char*)nameB, S52_SMB_NMLN);
+   return S52_strncmp((char*)nameA, (char*)nameB, S52_SMB_NMLN);
 }
 
 
@@ -722,7 +722,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
     }
 
     // special case [S52-A-2:8.3.3.4(iii)]
-    if (0 == strncmp(LUP->OBCL, "TSSLPT", S52_PL_NMLN)){
+    if (0 == S52_strncmp(LUP->OBCL, "TSSLPT", S52_PL_NMLN)){
         if (NULL == S57_getAttVal(geoData, "ORIENT")) {
             // FIXME: hit this in S-64 ENC
             PRINTF("FIXME: TSSLPT found ... check this ... no ORIENT\n");
@@ -771,13 +771,13 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
 
                 // special case [S52-A-2:8.3.3.4(i)]
                 // ie. use any attribute value (except value unknown)
-                if ( (attlv[6] == ' ') && (0!=strcmp(attv->str, EMPTY_NUMBER_MARKER)) ) {
+                if ( (attlv[6] == ' ') && (0!=g_strcmp0(attv->str, EMPTY_NUMBER_MARKER)) ) {
                     ++nATTmatch;
 
                 } else {
                     // special case [S52-A-2:8.3.3.4(ii)]
                     // ie. match if value is unknown
-                    if ( (attlv[6] == '?') && (0==strcmp(attv->str, EMPTY_NUMBER_MARKER)) ) {
+                    if ( (attlv[6] == '?') && (0==g_strcmp0(attv->str, EMPTY_NUMBER_MARKER)) ) {
                     //if ( (attlv[6] == '?') ) {
                         ++nATTmatch;
                         // give DRVAL1 = 0.0
@@ -797,7 +797,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
                             // so '4,3,4' match '4,3,4,7' but not 3,4,3 (4,3 match)
                             // the trick is to use the lenght of of the value of
                             // the PLib *not* from S57
-                            //char *tmpVal = strncmp(attv->str, attlv+6, strlen(attlv)-6);
+                            //char *tmpVal = S52_strncmp(attv->str, attlv+6, strlen(attlv)-6);
                             // FIX: record the max lenght of att val str of a match
                             if (NULL != tmpVal) {
                                 //int len = strlen(tmpVal);
@@ -859,9 +859,9 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
 }
 
 // command word
-#define CMDWRD(s,t)   if (0==strncmp(#s, str, 2)) {  \
-                              str += 3;              \
-                              cmd->cmdWord = t;      \
+#define CMDWRD(s,t)   if (0==S52_strncmp(#s, str, 2)) {  \
+                              str += 3;                  \
+                              cmd->cmdWord = t;          \
                               cmd->param   = str;
 
 #define LOOKUP(dbnm)  cmd->cmd.def = (_S52_cmdDef*)g_tree_lookup(_selSMB(dbnm), str);                     \
@@ -1377,7 +1377,7 @@ static int        _readColor(_PL *fp)
 {
 
     _readS52Line(fp, _pBuf);
-    while ( 0 != strncmp(_pBuf, "****",4)) {
+    while ( 0 != S52_strncmp(_pBuf, "****",4)) {
         S52_Color c;
 
         // debug
@@ -1435,7 +1435,7 @@ static int        _readColor(_PL *fp)
 static int        _readColor(_PL *fp, GArray *colors)
 {
     _readS52Line(fp, _pBuf);
-    while ( 0 != strncmp(_pBuf, "****",4)) {
+    while ( 0 != S52_strncmp(_pBuf, "****",4)) {
         S52_Color c;
 
         memset(&c, 0, sizeof(S52_Color));
@@ -2061,7 +2061,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
         }
 
         // special case ENC return an index
-        if (0 == strncmp(buf, "NATSUR", S52_PL_NMLN)) {
+        if (0 == S52_strncmp(buf, "NATSUR", S52_PL_NMLN)) {
 #ifdef S52_USE_GLIB2
             gchar** attvalL = g_strsplit_set(value->str, ",", 0);  // can't handle UTF-8, check g_strsplit() if needed
             gchar** freeL   = attvalL;
@@ -2773,12 +2773,11 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
         g_assert(0);
     }
 
+    S57_geo *geo = obj->geoData;
     if (TRUE == updateObjL) {
         // nullify obj in array at index
-        g_ptr_array_index(_objList, S57_getGeoS57ID(obj->geoData)) = NULL;
+        g_ptr_array_index(_objList, S57_getGeoS57ID(geo)) = NULL;
     }
-
-    S57_geo *geo = obj->geoData;
 
     return geo;
 }
@@ -3003,7 +3002,7 @@ int         S52_PL_cmpCmdParam(_S52_obj *obj, const char *name)
     if (NULL == cmd)
         return FALSE;
 
-    return strncmp(cmd->param, name, S52_SMB_NMLN);
+    return S52_strncmp(cmd->param, name, S52_SMB_NMLN);
 }
 
 const char *S52_PL_getCmdText(_S52_obj *obj)
@@ -3811,7 +3810,7 @@ static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
             if (NULL == parg)
                 return NULL;   // abort
 
-            if (0 == strcmp(val, EMPTY_NUMBER_MARKER))
+            if (0 == g_strcmp0(val, EMPTY_NUMBER_MARKER))
                 return NULL;
 
             *t = *pf;       // stuff the '%'
