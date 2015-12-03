@@ -4,6 +4,11 @@
 #
 
 
+2015DEC03
+    -mod code formatting, version() in S52utils
+    -mod replace g_ascii_strncasecmp() by strncmp() - FAIL in PL
+    -add def S57_OVERLAP_GEO_Z, enum S57_RCNM_t in S52data.h
+
 2015NOV24
     -mod code formatting
     -mod update GIR
