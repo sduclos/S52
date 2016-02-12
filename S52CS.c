@@ -49,6 +49,9 @@ typedef struct _localObj {
     GPtrArray *depval_list;  // list of: DEPARE, UNSARE
 } _localObj;
 
+// Note: seem useless S52 specs -- no effect !?
+//GPtrArray *rigid_list; // rigid platform
+
 // size of attributes value list buffer
 #define LISTSIZE   16   // list size
 
@@ -96,7 +99,13 @@ localObj *S52_CS_done(_localObj *local)
     g_ptr_array_free(local->depare_list, TRUE);
     g_ptr_array_free(local->depval_list, TRUE);
 
+    local->lights_list = NULL;
+    local->topmar_list = NULL;
+    local->depare_list = NULL;
+    local->depval_list = NULL;
+
     g_free(local);
+    local = NULL;
 
     return NULL;
 }
@@ -120,6 +129,11 @@ int       S52_CS_add(_localObj *local, S57_geo *geo)
         g_ptr_array_add(local->topmar_list, (gpointer) geo);
         return TRUE;
     }
+
+    // Note: seem useless S52 specs -- no effect !?
+    // set rigid platform
+    //if (0 == g_strcmp0(name, "BCN",    3))
+    //    g_ptr_array_add(local->rigid_list, (gpointer) geo);
 
     // set light object
     if (0 == g_strcmp0(name, "LIGHTS")) {
@@ -281,7 +295,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             {  // skip if it's same S57 object
                 GString *olnam = S57_getAttVal(other, "LNAM");
                 if (TRUE == S52_string_equal(lnam, olnam))
-                //if (0 == g_strcmp0(lnam->str, olnam->str))
                     continue;
             }
 
@@ -354,10 +367,12 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             S57_geo *other = (S57_geo *) g_ptr_array_index(local->depare_list, i);
             GString *olnam = S57_getAttVal(other, "LNAM");
 
-            // skip if it's same S57 object
-            if (TRUE == S52_string_equal(lnam, olnam))
-            //if (0 == g_strcmp0(lnam->str, olnam->str))
-                continue;
+            // strcmp0 will fail if NULL - hence no need to go further
+            //if ((NULL!=lnam) && (NULL!=olnam)) {
+                // skip if it's same S57 object
+                if (TRUE == S52_string_equal(lnam, olnam))
+                    continue;
+            //}
 
             /*
             {// skip UNSARE
@@ -773,15 +788,6 @@ static GString *DEPARE01 (S57_geo *geo)
     objlstr = S57_getAttVal(geo, "OBJL");
     objl    = (NULL == objlstr) ? 0 : S52_atoi(objlstr->str);
 
-    /* debug --this should not trigger an assert since
-    // there is no object number zero
-    if (0 == objl) {
-        PRINTF("ERROR: OBJL == 0 (this is impossible!)\n");
-        g_assert(0);
-        return depare01;
-    }
-    */
-
     if (DRGARE == objl) {
         g_string_append(depare01, ";AP(DRGARE01)");
         g_string_append(depare01, ";LS(DASH,1,CHGRF)");
@@ -793,7 +799,6 @@ static GString *DEPARE01 (S57_geo *geo)
                 g_string_free(rescsp01, TRUE);
             }
         }
-
     }
 
     return depare01;
@@ -1011,19 +1016,19 @@ static GString *DEPCNT02 (S57_geo *geo)
     if (NULL != quaposstr) {
         quapos = S52_atoi(quaposstr->str);
         if ( 2 <= quapos && quapos < 10) {
-            if (safe)
+            if (TRUE == safe)
                 depcnt02 = g_string_new(";LS(DASH,2,DEPSC)");
             else
                 depcnt02 = g_string_new(";LS(DASH,1,DEPCN)");
         }
     } else {
-        if (safe)
+        if (TRUE == safe)
             depcnt02 = g_string_new(";LS(SOLD,2,DEPSC)");
         else
             depcnt02 = g_string_new(";LS(SOLD,1,DEPCN)");
     }
 
-    if (safe) {
+    if (TRUE == safe) {
         S57_setHazard(geo, TRUE);
         S57_setScamin(geo, INFINITY);
         depcnt02 = g_string_prepend(depcnt02, ";OP(8OD13010)");
@@ -3573,7 +3578,6 @@ static GString *QUESMRK1 (S57_geo *geo)
 {
     GString   *err = NULL;
     S57_Obj_t  ot  = S57_getObjtype(geo);
-    //S52_Obj_t  ot  = S57_getObjtype(geo);
 
     switch (ot) {
         case S57_POINT_T: err = g_string_new(";SY(QUESMRK1)"); break;
