@@ -1849,6 +1849,9 @@ static int      _s52_draw_cb    (gpointer user_data)
     takeScreenShot = FALSE;
     //*/
 
+    // debug
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
 
     // debug
     //gdouble sec = g_timer_elapsed(_timer, NULL);
