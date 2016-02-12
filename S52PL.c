@@ -207,7 +207,6 @@ typedef enum _LUPtnm {
 typedef struct _LUP {
     int          RCID;          // record identifier
     char         OBCL[S52_PL_NMLN+1]; // LUP name --'\0' terminated
-    //S52_Obj_t    FTYP;          // 'A' Area, 'L' Line, 'P' Point
     S57_Obj_t    FTYP;          // 'A' Area, 'L' Line, 'P' Point
     S52_disPrio  DPRI;          // Display Priority
     S52_RadPrio  RPRI;          // 'O' or 'S', Radar Priority
@@ -1570,7 +1569,6 @@ static int        _parseLUPT(_PL *fp)
     sscanf(_pBuf+11, "%d", &LUP->RCID);
     //sscanf(_pBuf+11, "%i", &LUP->RCID);
     strncpy(LUP->OBCL, _pBuf+19, S52_PL_NMLN);
-    //LUP->FTYP = (S52_Obj_t  )  _pBuf[25];
     LUP->FTYP = (S57_Obj_t  )  _pBuf[25];
     LUP->DPRI = (S52_disPrio) (_pBuf[30] - '0');
     LUP->RPRI = (S52_RadPrio)  _pBuf[31];
@@ -1648,8 +1646,6 @@ static int        _parseLUPT(_PL *fp)
                         // replace
                         if ((NULL != LUP->ATTC) && (NULL != LUPtmp->ATTC) &&
                             (TRUE == S52_string_equal(LUPtmp->ATTC, LUP->ATTC)) )
-                            //(0 == g_strcmp0(LUPtmp->ATTC->str, LUP->ATTC->str)) )
-                            //(0 == g_string_equal(LUPtmp->ATTC, LUP->ATTC)) )
                         {   // can't replace more then one LUP
                             // the compination of LUP NAME & LUP ATTC is unique for all LUP
                             // this is juste to make sure that the list is consistant
@@ -2812,7 +2808,6 @@ const char *S52_PL_getOBCL(_S52_obj *obj)
     }
 }
 
-//S52_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
 S57_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -4429,7 +4424,7 @@ S52_obj    *S52_PL_isObjValid(unsigned int objH)
     if (NULL == obj) {
         // FIXME: why is this still happenning! AIS!!
         PRINTF("WARNING: objH %i is NULL obj\n", objH);
-        g_assert(0);
+        //g_assert(0);
 
         return NULL;
     }
