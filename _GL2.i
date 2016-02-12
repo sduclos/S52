@@ -31,6 +31,7 @@ static int         _glMatrixDel(VP);
 static int         _pushScaletoPixel(int);
 static int         _popScaletoPixel(void);
 static GLubyte     _glColor4ub(S52_Color *);
+static void        _glLineWidth(GLfloat);
 static void        _glPointSize(GLfloat);
 static inline void _checkError(const char *);
 static GLvoid      _DrawArrays_LINE_STRIP(guint, vertex_t *);  // debug pattern
@@ -272,30 +273,30 @@ static int       _init_freetype_gl(void)
         PRINTF("default TTF not found in s52.cfg\n");
         PRINTF("using hard-coded TTF filename: %s\n", _freetype_gl_fontfilename);
     } else {
-
-
-//#if !GLIB_CHECK_VERSION(2,26,0)
-//typedef struct stat GStatBuf;
-//#endif
-        //GStatBuf buf;
-        //if (0 == g_stat(TTFPath, &buf)) {
-
-        if (TRUE == g_file_test(TTFPath, G_FILE_TEST_EXISTS)) {
+       if (TRUE == g_file_test(TTFPath, G_FILE_TEST_EXISTS)) {
             _freetype_gl_fontfilename = TTFPath;
             PRINTF("default TTF found in s52.cfg (%s)\n", TTFPath);
         }
     }
 
+/*
 #ifdef S52_USE_ADRENO
     // bigger font on Nexus 7 (size + 8)
     int basePtSz = 20;
 #else
     int basePtSz = 12;
 #endif
-    _freetype_gl_font[0]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz +  0);
-    _freetype_gl_font[1]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz +  6);
-    _freetype_gl_font[2]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz + 12);
-    _freetype_gl_font[3]  = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz + 18);
+*/
+
+    // 10 points default
+    int basePtSz = 10 * (PICA / S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
+
+    PRINTF("DEBUG: basePtSz = %i, dotp mm=%f\n", basePtSz, _dotpitch_mm_y);
+
+    _freetype_gl_font[0] = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz +  0);
+    _freetype_gl_font[1] = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz +  6);
+    _freetype_gl_font[2] = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz + 12);
+    _freetype_gl_font[3] = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz + 18);
 
     if (NULL == _freetype_gl_font[0]) {
         PRINTF("WARNING: texture_font_new() failed\n");
@@ -1414,8 +1415,8 @@ static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, doubl
         char     pen_w = '1';
         S52_PL_getLCdata(obj, &dummy, &pen_w);
 
-        //glLineWidth (pen_w - '0');
-        glLineWidth (pen_w - '0' + 1.0);  // must enlarge line glsl sampler
+        //_glLineWidth(pen_w - '0');
+        _glLineWidth(pen_w - '0' + 1.0);  // must enlarge line glsl sampler
         _glPointSize(pen_w - '0' + 1.0);  // sampler + AA soften pixel, so need enhencing a bit
     }
 
