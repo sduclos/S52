@@ -55,101 +55,101 @@ static GTimeVal _now;
 
 // internal libS52.so version
 static const char _version[] = "libS52-2015NOV24-1.165"
-#ifdef   _MINGW
-      ", _MINGW"
+#ifdef  _MINGW
+      ",_MINGW"
 #endif
-#ifdef   S52_USE_GV
-      ", S52_USE_GV"
+#ifdef  S52_USE_GV
+      ",S52_USE_GV"
 #endif
-#ifdef   GV_USE_DOUBLE_PRECISION_COORD
-      ", GV_USE_DOUBLE_PRECISION_COORD"
+#ifdef  GV_USE_DOUBLE_PRECISION_COORD
+      ",GV_USE_DOUBLE_PRECISION_COORD"
 #endif
-#ifdef   S52_USE_GLIB2
-      ", S52_USE_GLIB2"
+#ifdef  S52_USE_GLIB2
+      ",S52_USE_GLIB2"
 #endif
-#ifdef   S52_USE_OGR_FILECOLLECTOR
-      ", S52_USE_OGR_FILECOLLECTOR"
+#ifdef  S52_USE_OGR_FILECOLLECTOR
+      ",S52_USE_OGR_FILECOLLECTOR"
 #endif
-#ifdef   S52_USE_PROJ
-      ", S52_USE_PROJ"
+#ifdef  S52_USE_PROJ
+      ",S52_USE_PROJ"
 #endif
-#ifdef   S52_USE_SUPP_LINE_OVERLAP
-      ", S52_USE_SUPP_LINE_OVERLAP"
+#ifdef  S52_USE_SUPP_LINE_OVERLAP
+      ",S52_USE_SUPP_LINE_OVERLAP"
 #endif
-#ifdef   S52_DEBUG
-      ", S52_DEBUG"
+#ifdef  S52_DEBUG
+      ",S52_DEBUG"
 #endif
-#ifdef   S52_USE_LOG
-      ", S52_USE_LOG"
+#ifdef  S52_USE_LOG
+      ",S52_USE_LOG"
 #endif
-#ifdef   S52_USE_LOGFILE
-      ", S52_USE_LOGFILE"
+#ifdef  S52_USE_LOGFILE
+      ",S52_USE_LOGFILE"
 #endif
-#ifdef   S52_USE_DBUS
-      ", S52_USE_DBUS"
+#ifdef  S52_USE_DBUS
+      ",S52_USE_DBUS"
 #endif
-#ifdef   S52_USE_SOCK
-      ", S52_USE_SOCK"
+#ifdef  S52_USE_SOCK
+      ",S52_USE_SOCK"
 #endif
-#ifdef   S52_USE_GOBJECT
-      ", S52_USE_GOBJECT"
+#ifdef  S52_USE_GOBJECT
+      ",S52_USE_GOBJECT"
 #endif
-#ifdef   S52_USE_BACKTRACE
-      ", S52_USE_BACKTRACE"
+#ifdef  S52_USE_BACKTRACE
+      ",S52_USE_BACKTRACE"
 #endif
-#ifdef   S52_USE_EGL
-      ", S52_USE_EGL"
+#ifdef  S52_USE_EGL
+      ",S52_USE_EGL"
 #endif 
-#ifdef   S52_USE_GL1
-      ", S52_USE_GL1"
+#ifdef  S52_USE_GL1
+      ",S52_USE_GL1"
 #endif
-#ifdef   S52_USE_OPENGL_VBO
-      ", S52_USE_OPENGL_VBO"
+#ifdef  S52_USE_OPENGL_VBO
+      ",S52_USE_OPENGL_VBO"
 #endif
-#ifdef   S52_USE_GLSC1
-      ", S52_USE_GLSC1"
+#ifdef  S52_USE_GLSC1
+      ",S52_USE_GLSC1"
 #endif
-#ifdef   S52_USE_GL2
-      ", S52_USE_GL2"
+#ifdef  S52_USE_GL2
+      ",S52_USE_GL2"
 #endif
-#ifdef   S52_USE_GLES2
-      ", S52_USE_GLES2"
+#ifdef  S52_USE_GLES2
+      ",S52_USE_GLES2"
 #endif
-#ifdef   S52_USE_ANDROID
-      ", S52_USE_ANDROID"
+#ifdef  S52_USE_ANDROID
+      ",S52_USE_ANDROID"
 #endif
-#ifdef   S52_USE_TEGRA2
-      ", S52_USE_TEGRA2"
+#ifdef  S52_USE_TEGRA2
+      ",S52_USE_TEGRA2"
 #endif
-#ifdef   S52_USE_ADRENO
-      ", S52_USE_ADRENO"
+#ifdef  S52_USE_ADRENO
+      ",S52_USE_ADRENO"
 #endif
-#ifdef   S52_USE_COGL
-      ", S52_USE_COGL"
+#ifdef  S52_USE_COGL
+      ",S52_USE_COGL"
 #endif
-#ifdef   S52_USE_FREETYPE_GL
-      ", S52_USE_FREETYPE_GL"
+#ifdef  S52_USE_FREETYPE_GL
+      ",S52_USE_FREETYPE_GL"
 #endif
-#ifdef   S52_USE_SYM_AISSEL01
-      ", S52_USE_SYM_AISSEL01"
+#ifdef  S52_USE_SYM_AISSEL01
+      ",S52_USE_SYM_AISSEL01"
 #endif
-#ifdef   S52_USE_WORLD
-      ", S52_USE_WORLD"
+#ifdef  S52_USE_WORLD
+      ",S52_USE_WORLD"
 #endif
-#ifdef   S52_USE_SYM_VESSEL_DNGHL
-      ", S52_USE_SYM_VESSEL_DNGHL"
+#ifdef  S52_USE_SYM_VESSEL_DNGHL
+      ",S52_USE_SYM_VESSEL_DNGHL"
 #endif
-#ifdef   S52_USE_TXT_SHADOW
-      ", S52_USE_TXT_SHADOW"
+#ifdef  S52_USE_TXT_SHADOW
+      ",S52_USE_TXT_SHADOW"
 #endif
-#ifdef   S52_USE_RADAR
-      ", S52_USE_RADAR"
+#ifdef  S52_USE_RADAR
+      ",S52_USE_RADAR"
 #endif
-#ifdef   S52_USE_MESA3D
-      ", S52_USE_MESA3D"
+#ifdef  S52_USE_MESA3D
+      ",S52_USE_MESA3D"
 #endif
-#ifdef   S52_USE_C_AGGR_C_ASSO
-      ", S52_USE_C_AGGR_C_ASSO"
+#ifdef  S52_USE_C_AGGR_C_ASSO
+      ",S52_USE_C_AGGR_C_ASSO"
 #endif
 "\n";
 
@@ -279,26 +279,34 @@ int      S52_fclose (FILE *fd)
     return fclose(fd);
 }
 
-//#if 0
-gboolean S52_string_equal(const GString *v, const GString *v2)
+gboolean S52_string_equal(const GString *s1, const GString *s2)
 {
-#ifdef S52_USE_GLIB2
     // on android glid2 can't handle NULL string
-    if (NULL==v || NULL==v2) {
+    if (NULL==s1 || NULL==s2) {
         PRINTF("S52_string_equal():WARNING: string NULL\n");
+        g_assert(0);
         return FALSE;
     }
-    return g_string_equal(v, v2);
+
+#ifdef S52_USE_GLIB2
+    /* FIXME: why this fail!
+    if (0 == g_strcmp0(s1->str, s2->str))
+        return TRUE;
+    else
+        return FALSE;
+    //*/
+
+    return g_string_equal(s1, s2);
+
 #else
-    if (v->len == v2->len) {
-        if (0 == memcmp(v->str, v2->str, v->len))
+    if (s1->len == s2->len) {
+        if (0 == memcmp(s1->str, s2->str, s1->len))
             return TRUE;
     }
     return FALSE;
 #endif
 
 }
-//#endif
 
 void     S52_tree_replace(GTree *tree, gpointer key, gpointer value)
 {
