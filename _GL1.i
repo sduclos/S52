@@ -159,8 +159,8 @@ static GLint     _initGLC(void)
     glcContext(_GLCctx);
 
     // dot pitch mm to dpi
-    //double dpi = MM2INCH / _dotpitch_mm_x;  // dot per inch
-    double dpi = MM2INCH / _dotpitch_mm_y;  // dot per inch
+    //double dpi = MM2INCH / _dotpitch_mm_y;  // dot per inch
+    double dpi = MM2INCH * _dotpitch_mm_y;  // dot per inch
     glcResolution(dpi);
     //glcResolution(dpi/10.0);
     //glcResolution(12.0);
@@ -252,11 +252,18 @@ static GLint     _initFTGL(void)
     //ftglSetFontFaceSize(_ftglFont[3], 20, 20);
 
     //*
-    int basePtSz = 12.0 / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 0.3);
-    ftglSetFontFaceSize(_ftglFont[0], basePtSz + 0, 72);
-    ftglSetFontFaceSize(_ftglFont[1], basePtSz + 2, 72);
-    ftglSetFontFaceSize(_ftglFont[2], basePtSz + 4, 72);
-    ftglSetFontFaceSize(_ftglFont[3], basePtSz + 8, 72);
+    // dot pitch mm to dpi
+    //int dpi = 72;
+    int dpi = MM2INCH * _dotpitch_mm_y;
+
+    //int basePtSz = 12.0 / (S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 0.3);
+    int basePtSz = 10 * (PICA / S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
+
+    // FIXME: check return -> TRUE
+    ftglSetFontFaceSize(_ftglFont[0], basePtSz + 0, dpi);
+    ftglSetFontFaceSize(_ftglFont[1], basePtSz + 2, dpi);
+    ftglSetFontFaceSize(_ftglFont[2], basePtSz + 4, dpi);
+    ftglSetFontFaceSize(_ftglFont[3], basePtSz + 8, dpi);
     //*/
 
     /*
