@@ -134,7 +134,7 @@ typedef struct _S57_geo {
 
     S57_geo     *geoOwner;      // s57 obj that use this edge
 
-    S57_AW_t     origAW;        // debug - original Area Winding, CW: area < 0,  CCW: area > 0
+    //S57_AW_t     origAW;        // debug - original Area Winding, CW: area < 0,  CCW: area > 0
 #endif
 
     // centroid - save current centroids of this object
@@ -269,6 +269,7 @@ int        S57_donePROJ()
 
     if (NULL != _attList)
         g_string_free(_attList, TRUE);
+    _attList = NULL;
 
     if (NULL != _pjstr)
         g_free(_pjstr);
@@ -538,7 +539,8 @@ S57_geo   *S57_setMLINE(guint nLineCount, guint *linexyznbr, geocoord **linexyz)
 }
 #endif
 
-S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S57_AW_t origAW)
+//S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S57_AW_t origAW)
+S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
 {
     return_if_null(ringxyznbr);
     return_if_null(ringxyz);
@@ -565,11 +567,11 @@ S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S5
     geo->nextPoly   = NULL;
 #endif
 
-#ifdef S52_USE_SUPP_LINE_OVERLAP
-    geo->origAW     = origAW;
-#else
-    (void)origAW;
-#endif
+//#ifdef S52_USE_SUPP_LINE_OVERLAP
+//    geo->origAW     = origAW;
+//#else
+//    (void)origAW;
+//#endif
 
     return geo;
 }
@@ -936,7 +938,6 @@ int        S57_getExt(_S57_geo *geo, double *x1, double *y1, double *x2, double 
 }
 
 S57_Obj_t  S57_getObjtype(_S57_geo *geo)
-//S52_Obj_t  S57_getObjtype(_S57_geo *geo)
 {
     if (NULL == geo)
         return S57__META_T;
@@ -1265,6 +1266,7 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     GString     *attValue = (GString*) data;
     GString     *attList  = (GString*) user_data;
 
+    /*
     // filter out OGR internal S57 info
     if (0 == g_strcmp0("MASK",      attName)) return;
     if (0 == g_strcmp0("USAG",      attName)) return;
@@ -1272,6 +1274,7 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     if (0 == g_strcmp0("NAME_RCNM", attName)) return;
     if (0 == g_strcmp0("NAME_RCID", attName)) return;
     if (0 == g_strcmp0("NINFOM",    attName)) return;
+    */
 
     // save S57 attribute + system attribute (ex vessel name - AIS)
     if (0 != attList->len)
@@ -1326,14 +1329,14 @@ void       S57_getGeoWindowBoundary(double lat, double lng, double scale, int wi
     pc1 = S57_geo2prj(pc1); // mercator center in meters
 
     // lower right
-    pc2.u = (width/2. +0.5)*scale + pc1.u;
-    pc2.v = (height/2. +0.5)*scale + pc1.v;
+    pc2.u = (width/2.  + 0.5)*scale + pc1.u;
+    pc2.v = (height/2. + 0.5)*scale + pc1.v;
     pc2 = S57_prj2geo(pc2);
     *lngMax = pc2.u;
     *latMax = pc2.v;
     // upper left
-    pc2.u = -((width/2.)*scale +0.5) + pc1.u;
-    pc2.v = -((height/2.)*scale +0.5) + pc1.v;
+    pc2.u = -((width/2. )*scale + 0.5) + pc1.u;
+    pc2.v = -((height/2.)*scale + 0.5) + pc1.v;
     pc2 = S57_prj2geo(pc2);
     *lngMin = pc2.u;
     *latMin = pc2.v;
@@ -1614,7 +1617,6 @@ int        S57_getNextCentroid(_S57_geo *geo, double *x, double *y)
 int        S57_hasCentroid(_S57_geo *geo)
 {
     return_if_null(geo);
-    //return_if_null(geo->centroid);
 
     if (NULL == geo->centroid) {
         S57_newCentroid(geo);
@@ -1778,22 +1780,20 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
     return TRUE;
 }
 
-//GString   *S57_getRCIDstr(_S57_geo *geo)
 gchar     *S57_getRCIDstr(_S57_geo *geo)
 {
     return_if_null(geo);
 
-    //return geo->rcidstr;
     return geo->name_rcidstr;
 }
 
-S57_AW_t   S57_getOrigAW(_S57_geo *geo)
-// debug
-{
-    return_if_null(geo);
-
-    return geo->origAW;
-}
+//S57_AW_t   S57_getOrigAW(_S57_geo *geo)
+//// debug
+//{
+//    return_if_null(geo);
+//
+//    return geo->origAW;
+//}
 #endif  // S52_USE_SUPP_LINE_OVERLAP
 
 int        S57_highlightON (_S57_geo *geo)

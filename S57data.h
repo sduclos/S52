@@ -47,7 +47,7 @@ typedef enum S57_Obj_t {
     S57_N_OBJ_T  =  4         // number of object type
 } S57_Obj_t;
 
-// experimental (fail - because Edge ID are used to match geo)
+/* experimental (fail - because Edge ID are used to match geo)
 // outer ring original Area Winding - info needed to revere S57_att
 typedef enum S57_AW_t {
     S57_AW_NONE =  0,
@@ -55,6 +55,7 @@ typedef enum S57_AW_t {
     S57_AW_CCW  =  2,
     S57_AW_MAX  =  3
 } S57_AW_t;
+*/
 
 // ReCord NaMe for S57 primitive - use second digit
 typedef enum S57_RCNM_t {
@@ -74,7 +75,8 @@ int       S57_doneData(S57_geo *geo, gpointer user_data);
 S57_geo  *S57_setPOINT(geocoord *xyz);
 S57_geo  *S57_setLINES(guint xyznbr, geocoord *xyz);
 //S57_geo  *S57_setMLINE(guint linenbr, guint *linexyznbr, geocoord **linexyz);
-S57_geo  *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S57_AW_t origAW);
+S57_geo  *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz);
+//S57_geo  *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S57_AW_t origAW);
 S57_geo  *S57_set_META();
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
@@ -194,8 +196,10 @@ S57_geo  *S57_getEdgeOwner(S57_geo *geoEdge);
 S57_geo  *S57_setEdgeOwner(S57_geo *geoEdge, S57_geo *owner);
 int       S57_markOverlapGeo(S57_geo *geo, S57_geo *geoEdge);
 gchar    *S57_getRCIDstr(S57_geo *geo);
-// debug - outer ring original Area Winding - info needed to revere S57_att
-S57_AW_t  S57_getOrigAW (S57_geo *geo);
+
+// debug - failed experiment - outer ring original Area Winding - info needed to revere S57_att
+//S57_AW_t  S57_getOrigAW (S57_geo *geo);
+
 #endif  // S52_USE_SUPP_LINE_OVERLAP
 
 // FIXME: setHL() rather than hl ON/OFF !
