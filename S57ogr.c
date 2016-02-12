@@ -374,7 +374,8 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 }
             }     // for loop
 
-            geoData = S57_setAREAS(nRingCount, ringxyznbr, ringxyz, (area <= 0.0) ? S57_AW_CW : S57_AW_CCW);
+            //geoData = S57_setAREAS(nRingCount, ringxyznbr, ringxyz, (area <= 0.0) ? S57_AW_CW : S57_AW_CCW);
+            geoData = S57_setAREAS(nRingCount, ringxyznbr, ringxyz);
             _setExtent(geoData, hGeom);
 
             if (0 == g_strcmp0(WORLD_BASENM, objname)) {
