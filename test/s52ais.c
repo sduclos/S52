@@ -37,8 +37,10 @@
 #include <glib/gprintf.h>   // g_sprintf()
 #include <glib/gstdio.h>    // g_stat()
 
-static GThread   *_gpsClientThread = NULL;
-static GMainLoop *_main_loop       = NULL;
+// no thread needed in standalone
+#if !defined(S52AIS_STANDALONE)
+static GThread *_gpsClientThread = NULL;
+#endif
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -1499,12 +1501,6 @@ int            s52ais_doneAIS()
 #endif
 #endif
 
-    if (NULL != _main_loop) {
-        g_print("s52ais:s52ais_doneAIS() .. quit main loop\n");
-
-        g_main_loop_quit(_main_loop);
-    }
-
     return TRUE;
 }
 
@@ -1646,8 +1642,6 @@ int main(int argc, char *argv[])
 
     if (FALSE == s52ais_initAIS())
         return FALSE;
-
-    //_main_loop = g_main_loop_new(NULL, FALSE);
 
     _gpsdClientRead(NULL);
 
