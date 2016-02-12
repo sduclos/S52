@@ -1169,7 +1169,6 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    10.0);
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
 
-
     S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // for triggering symb ISODGR01 (ODD winding) at Rimouski
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
@@ -1207,8 +1206,8 @@ static int      _s52_setupMarPar(void)
 
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
-    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60 - need plib_COLS-3.4-a.rle
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60 - need plib_COLS-3.4-a.rle
+    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60 - need plib_COLS-3.4-a.rle
+    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60 - need plib_COLS-3.4-a.rle
 
     //S52_setMarinerParam(S52_MAR_VECPER,         12.0);  // vecper: Vector-length time-period (min) (normaly 6 or 12)
     S52_setMarinerParam(S52_MAR_VECMRK,          1.0);  // vecmrk: Vector time-mark interval (0 - none, 1 - 1&6 min, 2 - 6 min)
@@ -1416,38 +1415,26 @@ static int      _s52_init       (s52engine *engine)
     // set GDAL data path
     g_setenv("S57_CSV", "/sdcard/s52droid/gdal_data", 1);
 
-
     // read cell location fron s52.cfg
     //S52_loadCell(NULL, NULL);
+
     // Tadoussac
     //S52_loadCell(PATH "/ENC_ROOT/CA379035.000", NULL);
     // load all 3 S57 charts
     //S52_loadCell(PATH "/ENC_ROOT", NULL);
 
-#ifdef S52_USE_ADRENO
-    //S52_loadCell(NULL, NULL);
-    // Rimouski (Nexus)
-    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
+    // Rimouski
+    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
     // Estuaire du St-Laurent
-    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
+    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
+
+    // Bec
+    //S52_loadCell(PATH "/ENC_ROOT/CA579016.000", NULL);
 
     // Portneuf
     //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
     //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
     //S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
-#endif
-
-#ifdef S52_USE_TEGRA2
-    // Rimouski (Xoom)
-    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
-    // Estuaire du St-Laurent
-    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
-
-    // Portneuf
-    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA479017.000", NULL);
-    //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
-    //S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
-#endif
 
 #else  // S52_USE_ANDROID
 
