@@ -60,7 +60,8 @@ typedef enum S52ObjectType {
 
 // global parameter for mariners' selection
 typedef enum S52MarinerParameter {
-    S52_MAR_ERROR               =  0,   // 0 - no error, 1 - alarm, 2 - indication
+    S52_MAR_ERROR               =  0,   // FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
+
     S52_MAR_SHOW_TEXT           =  1,   // flags to show text (see S52_setTextDisp() for details) (on/off) [default ON]
     S52_MAR_TWO_SHADES          =  2,   // flag indicating selection of two depth shades (on/off) [default ON]
     S52_MAR_SAFETY_CONTOUR      =  3,   // S52_LINES: selected safety contour (meters) [IMO PS 3.6]
@@ -142,6 +143,8 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters) [0.0 - off]
     S52_MAR_GUARDZONE_LENGTH    = 47,   // Danger/Indication Highlight used by Position (meters, user computed from speed/time or distance)
+    //S52_MAR_GUARDZONE_ALARM    = 47,  // FIXME: put MAR_ERROR code here
+                                        // FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
 
     S52_MAR_NUM                 = 48    // number of parameters
 } S52MarinerParameter;
@@ -193,7 +196,7 @@ DLL const char * STD S52_version(void);
 
 /**
  * S52_getMarinerParam:
- * @paramID: (in): ID of Mariners' Object Parameter
+ * @paramID: (in): ID of Mariners' Parameter
  *
  * Get the value of the Mariners' Parameter @paramID (global variables/system wide)
  *
@@ -206,11 +209,11 @@ DLL double STD S52_getMarinerParam(S52MarinerParameter paramID);
 
 /**
  * S52_setMarinerParam:
- * @paramID: (in): ID of Mariners' Object Parameter
+ * @paramID: (in): ID of Mariners' Parameter
  * @val:     (in): value
  *
+ * Note: S52_MAR_DISP_CATEGORY, S52_MAR_DISP_LAYER_LAST, S52_CMD_WRD_FILTER,
  * XOR the value of the global variables @paramID
- * used by Mariners' Object
  *
  *
  * Return: TRUE on success, else FALSE
@@ -407,16 +410,16 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude);
 
 /**
  * S52_init:
- * @screen_pixels_w: (in): use to compute DOTPITCH X (px)
- * @screen_pixels_h: (in): use to compute DOTPITCH Y (px)
- * @screen_mm_w:     (in): use to compute DOTPITCH X (mm)
- * @screen_mm_h:     (in): use to compute DOTPITCH Y (mm)
+ * @screen_pixels_w: (in): use to compute DOTPITCH_X (px)
+ * @screen_pixels_h: (in): use to compute DOTPITCH_Y (px)
+ * @screen_mm_w:     (in): use to compute DOTPITCH_X (mm)
+ * @screen_mm_h:     (in): use to compute DOTPITCH_Y (mm)
  * @log_cb:          (scope call) (allow-none): log callback
  *
  * Initialize libS52, install SIGINT handler to abort drawing (Ctrl-C)
  * xrandr can be used if framework doesn't do it (ie Clutter)
  *
- * Note: the ratio screen mmw/w and screen mm_h/h is used to compute initial DOTPITCH
+ * Note: the ratio screen mmw/w and screen mm_h/h is used to compute initial DOTPITCH,
  *       overide with S52_MAR_DOTPITCH_MM_X/Y after init().
  *
  * Note: screen_pixels_w, int screen_pixels_h are used to setViewPort to full-screen
@@ -750,8 +753,7 @@ DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, u
  * Type used for storing references to S52 objects, the S52ObjectHandle
  * is a fully opaque type without any public data members.
  */
-//typedef void* S52ObjectHandle;
-typedef unsigned int S52ObjectHandle;
+typedef unsigned int S52ObjectHandle;  // guint S75ID
 
 // ---- Basic Call (all other S52_new*() call are a specialisation of this one) ----
 
