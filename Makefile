@@ -41,11 +41,16 @@ SHELL = /bin/sh
 DBG0   = -O0 -g
 DBG1   = -O0 -g1 -Wall -Wpedantic -Wextra
 DBG2   = -O0 -g2 -Wall -Wpedantic -Wextra
-DBG3   = -O0 -g3 -Wall -Wpedantic -Wextra -ggdb3 -fstack-protector-all
+DBG3   = -O0 -g3 -Wall -Wpedantic -Wextra -Werror -ggdb3 -fstack-protector-all -Wstrict-aliasing -Wstrict-overflow -Wno-uninitialized
 DBGOFF = -DG_DISABLE_ASSERT
 DBG    = $(DBG3)
 
-# for CLang: no -rdynamic
+
+# GCC 4.9: -fstack-protector-strong
+
+# CLang:
+#    no -rdynamic
+#    -fsanitize=safestack
 
 # from clutter
 # Compiler flags: -Werror -Wall -Wshadow -Wcast-align -Wno-uninitialized -Wempty-body -Wformat-security -Winit-self
@@ -217,7 +222,7 @@ CFLAGS = `pkg-config  --cflags glib-2.0 lcms gl ftgl`  \
          -DS52_USE_SOCK                                \
          -DS52_USE_GLIB2                               \
          -DS52_USE_PROJ                                \
-         -DS52_DEBUG $(DBG2)
+         -DS52_DEBUG $(DBG)
 
 s52gtk2gl2 : CFLAGS =                                  \
          `pkg-config  --cflags glib-2.0 lcms gl freetype2`  \
@@ -310,7 +315,7 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_FREETYPE_GL                 \
                      -DS52_USE_ANDROID                     \
-                     -DS52_USE_ADRENO                      \
+                     -DS52_USE_TEGRA2                      \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
