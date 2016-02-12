@@ -155,6 +155,8 @@ static int _GL_OES_point_sprite = FALSE;
 #error "must define GL1 or GL2"
 #endif
 
+#define MM2INCH  25.4
+#define PICA      0.351  // mm
 
 // GL1.x
 #ifdef S52_USE_GL1
@@ -211,10 +213,6 @@ typedef struct { double u, v; } projUV;
 #endif
 
 #define ATAN2TODEG(xyz)   (90.0 - (atan2(xyz[4]-xyz[1], xyz[3]-xyz[0]) * RAD_TO_DEG))
-
-#define PICA   0.351
-
-#define MM2INCH 25.4
 
 //#define SHIPS_OUTLINE_MM    10.0   // 10 mm
 #define SHIPS_OUTLINE_MM     6.0   // 6 mm
@@ -1010,8 +1008,17 @@ static void      _glLineStipple(GLint  factor,  GLushort  pattern)
     return;
 }
 
+static void      _glLineWidth(GLfloat width)
+{
+    // FIXME: test dotpich correction
+    glLineWidth(width);
+
+    return;
+}
+
 static void      _glPointSize(GLfloat size)
 {
+    // FIXME: test dotpich correction
 #ifdef S52_USE_GL2
     //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     //then 'gl_PointSize' in the shader becomme active
@@ -1522,7 +1529,7 @@ static GLubyte   _glColor4ub(S52_Color *c)
 
         // FIXME: c pen_w not used anymore
         if (0 != c->pen_w) {  // AC, .. doesn't have en pen_w
-            glLineWidth (c->pen_w - '0');
+            _glLineWidth(c->pen_w - '0');
             _glPointSize(c->pen_w - '0');
         }
     }
@@ -3074,7 +3081,7 @@ static int       _renderLS_vessel(S52_obj *obj)
                         sym_n, 1.0
                     };
 
-                    glLineWidth(3);
+                    _glLineWidth(3);
                     glUniform1f(_uStipOn, 1.0);
                     glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
                     glEnableVertexAttribArray(_aUV);
@@ -3236,7 +3243,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
 static int       _renderLS(S52_obj *obj)
 // Line Style
 // FIXME: do overlapping line suppression (need to find a test case - S52_MAR_SYMBOLIZED_BND)
-// check for S57_OVERLAP_GEO_Z
+// check using Z plane to clip S57_OVERLAP_GEO_Z
 {
 #ifdef S52_USE_GV
     return FALSE;
@@ -3251,11 +3258,11 @@ static int       _renderLS(S52_obj *obj)
     S52_PL_getLSdata(obj, &pen_w, &style, &col);
     _glColor4ub(col);
 
-    glLineWidth(pen_w - '0');
-    //glLineWidth(pen_w - '0' + 0.1);  // WARNING: THIS +0.1 SLOW DOWN EVERYTHING
-    //glLineWidth(pen_w - '0' + 0.5);
-    //glLineWidth(pen_w - '0' + 0.375);
-    //glLineWidth(pen_w - '0' - 0.5);
+    _glLineWidth(pen_w - '0');
+    //_glLineWidth(pen_w - '0' + 0.1);  // WARNING: THIS +0.1 SLOW DOWN EVERYTHING
+    //_glLineWidth(pen_w - '0' + 0.5);
+    //_glLineWidth(pen_w - '0' + 0.375);
+    //_glLineWidth(pen_w - '0' - 0.5);
 
     // debug
     //glLineWidth(3.5);
@@ -3606,8 +3613,8 @@ static int       _renderLC(S52_obj *obj)
     GLdouble symlen = 0.0;
     char     pen_w  = 0;
     S52_PL_getLCdata(obj, &symlen, &pen_w);
-    glLineWidth(pen_w - '0');
-    //glLineWidth(pen_w - '0' + 0.375);
+    _glLineWidth(pen_w - '0');
+    //_glLineWidth(pen_w - '0' + 0.375);
 
     symlen_pixl = symlen / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
     symlen_wrld = symlen_pixl * _scalex;
@@ -3912,7 +3919,7 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
 #endif
 
     // the circle has a tickness of 2 pixels
-    glLineWidth(2);
+    _glLineWidth(2);
 
     guint     primNbr = 0;
     vertex_t *vert    = NULL;
@@ -4613,7 +4620,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                     char pen_w = S52_PL_getVOwidth(vecObj);
                     _DrawArrays(vertex);
                     S57_initPrim(vertex); //reset
-                    glLineWidth(pen_w - '0');
+                    _glLineWidth(pen_w - '0');
                     _glPointSize(pen_w - '0');
                 }
 #endif
@@ -4895,7 +4902,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
     S52_vec *vecObj = S52_PL_initVOCmd(cmdDef);
 
     // set default
-    //glLineWidth(1.0);
+    //_glLineWidth(1.0);
 
     if (NULL == DL->prim[0])
         DL->prim[0]  = S57_initPrim(NULL);
@@ -4978,7 +4985,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
 #endif // S52_USE_OPENGL_VBO
 
     // reset line
-    glLineWidth(1.0);
+    _glLineWidth(1.0);
     //_glPointSize(1.0);
 
     S52_vec *vecObj  = S52_PL_initVOCmd(cmdDef);
@@ -5707,7 +5714,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     // _createSymb() might reset line width
     // FIXME: linewidth sould be set *before* rendering any line
-    //glLineWidth(1.0);
+    //_glLineWidth(1.0);
 
     // -------------------------------------------------------
 
@@ -6926,7 +6933,7 @@ int        S52_GL_drawGraticule(void)
     char   str[80];
     S52_Color *black = S52_PL_getColor("CHBLK");
     _glColor4ub(black);
-    glLineWidth(1.0);
+    _glLineWidth(1.0);
 
     //_setBlend(TRUE);
 
