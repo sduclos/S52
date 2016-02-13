@@ -61,7 +61,7 @@ static S52_log_cb _log_cb          = NULL;
 
 
 // internal libS52.so version
-static const char _version[] = "libS52-2016FEB12-1.166"
+static const char _version[] = "libS52-2016FEB13-1.167"
 #ifdef  _MINGW
       ",_MINGW"
 #endif
