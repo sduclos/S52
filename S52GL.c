@@ -28,7 +28,7 @@
 #include "S52GL.h"
 
 #include "S52MP.h"        // S52_MP_get/set()
-#include "S52utils.h"     // PRINTF(), S52_atof(), S52_atoi(), S52_strlen()
+#include "S52utils.h"     // PRINTF()
 
 #include <glib.h>
 #include <glib/gstdio.h>  // g_file_test(),

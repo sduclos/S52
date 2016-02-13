@@ -29,11 +29,11 @@
 
 #include <glib.h>         // g_print()
 
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
 #include <glib/gstdio.h>  // FILE
-#else
-#include <stdio.h>        // FILE
-#endif
+//#else
+//#include <stdio.h>        // FILE
+//#endif
 
 #ifdef SOLARIS
     // well should be cc
@@ -54,12 +54,12 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
 
 #endif  // SOLARIS
 
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
 //#define SNPRINTF g_snprintf
 #define SNPRINTF(b,n,f, ...) if (n <= g_snprintf(b,n,f,__VA_ARGS__)) {PRINTF("WARNING: str overflow\n");g_assert(0);}
-#else
-#define SNPRINTF snprintf
-#endif
+//#else
+//#define SNPRINTF snprintf
+//#endif
 
 #define return_if_null(ptr)                  \
 if (NULL==ptr) {                             \
@@ -82,23 +82,21 @@ if (NULL==ptr) {                             \
 #define MAXL 1024    // MAX lenght of buffer _including_ '\0'
 typedef char    valueBuf[MAXL];
 
-int      S52_getConfig(const char *label, valueBuf *vbuf);
+int      S52_utils_getConfig(const char *label, valueBuf *vbuf);
 
 int      S52_atoi   (const char *str);
 double   S52_atof   (const char *str);
-size_t   S52_strlen (const char *str);
-char    *S52_strstr (const char *haystack, const char *needle);
-gint     S52_strncmp(const char *s1, const char *s2, gsize n);
-FILE    *S52_fopen  (const char *filename, const char *mode);
-int      S52_fclose (FILE *fd);
-
-gboolean S52_string_equal(const GString *s1, const GString *s2);
-
-void     S52_tree_replace(GTree *tree, gpointer key, gpointer value);
+//size_t   S52_strlen (const char *str);
+//char    *S52_strstr (const char *haystack, const char *needle);
+//gint     S52_strncmp(const char *s1, const char *s2, gsize n);
+//FILE    *S52_fopen  (const char *filename, const char *mode);
+//int      S52_fclose (FILE *fd);
+//gboolean S52_string_equal(const GString *s1, const GString *s2);
+//void     S52_tree_replace(GTree *tree, gpointer key, gpointer value);
 
 cchar   *S52_utils_version(void);
-int      S52_initLog(S52_log_cb log_cb);
-int      S52_doneLog(void);
+int      S52_utils_initLog(S52_log_cb log_cb);
+int      S52_utils_doneLog(void);
 
 
 

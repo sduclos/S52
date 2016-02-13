@@ -76,7 +76,7 @@ typedef struct _S57_prim {
 } _S57_prim;
 
 // S57 object geo data
-//#define S57_GEO_NM_LN   6  // S57 Class Name lenght
+#define S57_ATT_NM_LN    6   // S57 Class Attribute Name lenght
 #define S57_GEO_NM_LN   13   // GDAL/OGR primitive name: "ConnectedNode"
 typedef struct _S57_geo {
     guint        S57ID;          // record ID / S52ObjectHandle use as index in S52_obj GPtrArray
@@ -608,7 +608,7 @@ int        S57_setName(_S57_geo *geo, const char *name)
 
     //*
     if (S57_GEO_NM_LN < strlen(name)) {
-        PRINTF("DEBUG: S57_geo name overflow max S57_NM_LN : %s\n", name);
+        PRINTF("DEBUG: S57_geo name overflow max S57_GEO_NM_LN : %s\n", name);
         g_assert(0);
     }
     //*/
@@ -978,7 +978,8 @@ static void   _getAttValues(GQuark key_id, gpointer data, gpointer user_data)
     GString     *attValue = (GString*) data;
     const gchar *attName  = g_quark_to_string(key_id);
 
-    if (6 == S52_strlen(attName)){
+    //if (6 == S52_strlen(attName)){
+    if (S57_ATT_NM_LN == strlen(attName)){
         strcpy(attData->value[attData->currentIdx], attValue->str);
         strcpy(attData->name [attData->currentIdx], attName );
         PRINTF("inserting %s %s %d", attName, attValue->str, attData->currentIdx);
@@ -1203,7 +1204,8 @@ static void   _printAtt(GQuark key_id, gpointer data, gpointer user_data)
     const gchar *attName  = g_quark_to_string(key_id);
 
     // print only S57 attrib - assuming that OGR att are not 6 char in lenght!!
-    if (6 == S52_strlen(attName)) {
+    //if (6 == S52_strlen(attName)) {
+    if (S57_ATT_NM_LN == strlen(attName)) {
         GString *attValue = (GString*) data;
         PRINTF("\t%s : %s\n", attName, attValue->str);
     }

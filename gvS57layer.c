@@ -21,6 +21,8 @@
 */
 
 
+// Note: openev-2 only because openev-1 depend on GLib-1
+//       and libS52 use GLib-2 only now (2016)
 
 #include "gvS57layer.h"
 
@@ -32,12 +34,12 @@ int S52_done();
 
 #include "S52utils.h"       // PRINTF()
 
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
 #include <glib.h>           // g_signal_connect()
 #include <glib-object.h>    // G_TYPE_CHECK_INSTANCE()
-#else
-#include <gtk/gtksignal.h>  // gtk_signal_connect_object()
-#endif
+//#else
+//#include <gtk/gtksignal.h>  // gtk_signal_connect_object()
+//#endif
 
 #include <gmodule.h>        // g_module_init(), g_module_check_init(), g_module_unload()
 
@@ -71,7 +73,7 @@ static void gv_S57_layer_setup(GvShapesLayer *layer, GvViewArea *view)
         return;
     }
 
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
     //g_signal_connect(G_OBJECT(view), "gldraw",
     //                 G_CALLBACK(gv_S57_draw_layer),
     //                 G_OBJECT(view));
@@ -85,7 +87,7 @@ static void gv_S57_layer_setup(GvShapesLayer *layer, GvViewArea *view)
     //                 G_OBJECT(view));
     g_signal_connect(view, "button-release-event", _motion_handle_hint, view);
 
-
+/*
 #else
     gtk_signal_connect_object(GTK_OBJECT(view), "gldraw",
                               GTK_SIGNAL_FUNC(gv_S57_draw_layer),
@@ -95,7 +97,7 @@ static void gv_S57_layer_setup(GvShapesLayer *layer, GvViewArea *view)
                               GTK_SIGNAL_FUNC(_motion_handle_hint),
                               GTK_OBJECT(view));
 #endif
-
+*/
     //printf("S52 name gv_S57_layer_setup\n");
 
     //char *name = (char *)gv_data_get_name(GV_DATA(layer));
@@ -118,16 +120,16 @@ void          _layer_init(GvShapesLayer *layer)
     //printf("from S52 sizeof(GArray)       %i\n", sizeof(GArray));
 
 
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
     //g_signal_connect(G_OBJECT(layer), "setup",
     //                 G_CALLBACK(gv_S57_layer_setup),
     //                 (gpointer)layer);
     g_signal_connect((gpointer)layer, "setup", gv_S57_layer_setup, (gpointer)layer);
-#else
-    gtk_signal_connect_object(GTK_OBJECT(layer), "setup",
-                              GTK_SIGNAL_FUNC(gv_S57_layer_setup),
-                              (gpointer)layer);
-#endif
+//#else
+//    gtk_signal_connect_object(GTK_OBJECT(layer), "setup",
+//                              GTK_SIGNAL_FUNC(gv_S57_layer_setup),
+//                              (gpointer)layer);
+//#endif
 
     //printf("fini _layer_init\n");
 

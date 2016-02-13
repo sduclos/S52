@@ -22,7 +22,7 @@
 
 
 #include "S52.h"        // --
-#include "S52utils.h"   // PRINTF(), CONF*, S52_getConfig(), S52_strstr()
+#include "S52utils.h"   // PRINTF(), CONF*, S52_utils_getConfig()
 #include "S52PL.h"      // S52_PRIO_NUM
 #include "S52MP.h"      // S52MarinerParameter
 #include "S57data.h"    // S57_prj2geo(), S52_geo2prj*(), projXY, S57_geo
@@ -66,13 +66,13 @@ typedef guint64 _S52ObjectHandle;
 
 #endif  // S52_USE_GOBJECT
 
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
 #include <glib/gprintf.h> //
 #include <glib/gstdio.h>  // FILE
-#else
-#include <stdio.h>        // FILE, fopen(), ...
-#include <stdlib.h>       // setenv(), putenv()
-#endif  // S52_USE_GLIB2
+//#else
+//#include <stdio.h>        // FILE, fopen(), ...
+//#include <stdlib.h>       // setenv(), putenv()
+//#endif  // S52_USE_GLIB2
 
 #ifdef S52_USE_PROJ
 #include <proj_api.h>   // projUV, projXY, projPJ
@@ -1474,7 +1474,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     if (NULL != log_cb)
         log_cb("S52_init(): test log\n");
 
-    S52_initLog(log_cb);
+    S52_utils_initLog(log_cb);
 
     PRINTF("screen_pixels_w: %i, screen_pixels_h: %i, screen_mm_w: %i, screen_mm_h: %i\n",
             screen_pixels_w,     screen_pixels_h,     screen_mm_w,     screen_mm_h);
@@ -1556,7 +1556,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 
     // GDAL/OGR/S57 options (1: overwrite env)
 
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
     // make OGR return primitive and linkage
@@ -1569,6 +1569,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
              1);
 #endif // S52_USE_SUPP_LINE_OVERLAP
 
+/*
 #else  // S52_USE_GLIB2
 
     const char *name = "OGR_S57_OPTIONS";
@@ -1582,7 +1583,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
      const char *env = g_getenv("OGR_S57_OPTIONS");
     PRINTF("%s\n", env);
 #endif  // S52_USE_GLIB2
-
+*/
 
     // FIXME: check setlocale (LC_ALL, "");
     _intl = setlocale(LC_ALL, "C");
@@ -1689,7 +1690,7 @@ DLL int    STD S52_done(void)
     //g_mem_profile();
 
 
-    S52_doneLog();
+    S52_utils_doneLog();
 
     g_timer_destroy(_timer);
     _timer = NULL;
@@ -2120,7 +2121,8 @@ static int        _loadCATALOG(char *filename)
     FILE *fd = NULL;
     filename = g_strstrip(filename);
 
-    if (NULL == (fd = S52_fopen(filename, "r"))) {
+    //if (NULL == (fd = S52_fopen(filename, "r"))) {
+    if (NULL == (fd = g_fopen(filename, "r"))) {
         PRINTF("WARNING: CATALOG not found (%s)\n", filename);
 
         return FALSE;
@@ -2172,6 +2174,8 @@ static int        _loadCATALOG(char *filename)
     */
 
     //S57_ogrLoadCell(filename, _catalogLayer);
+
+    fclose(fd);
 
     return TRUE;
 }
@@ -2433,7 +2437,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     // debug - if NULL check in file s52.cfg
     if (NULL == encPath) {
         // FIXME: refactor to return "const char *"
-        if (FALSE == S52_getConfig(CONF_CHART, &chartPath)) {
+        if (FALSE == S52_utils_getConfig(CONF_CHART, &chartPath)) {
             PRINTF("S57 file not found!\n");
             GMUTEXUNLOCK(&_mp_mutex);
             return FALSE;
@@ -2994,11 +2998,11 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
         // will replace the ugly APP() code that handle _doCS
         const char *CSnm = S52_PL_hasCS(obj);
         if (NULL != CSnm) {
-            if (0 == S52_strncmp(CSnm, "DEPARE", 5)) g_ptr_array_add(c->DEPARElist, obj);
-            if (0 == S52_strncmp(CSnm, "DEPCNT", 5)) g_ptr_array_add(c->DEPCNTlist, obj);
-            if (0 == S52_strncmp(CSnm, "OBSTRN", 5)) g_ptr_array_add(c->OBSTRNlist, obj);
-            if (0 == S52_strncmp(CSnm, "RESARE", 5)) g_ptr_array_add(c->RESARElist, obj);
-            if (0 == S52_strncmp(CSnm, "WRECKS", 5)) g_ptr_array_add(c->WRECKSlist, obj);
+            if (0 == strncmp(CSnm, "DEPARE", 5)) g_ptr_array_add(c->DEPARElist, obj);
+            if (0 == strncmp(CSnm, "DEPCNT", 5)) g_ptr_array_add(c->DEPCNTlist, obj);
+            if (0 == strncmp(CSnm, "OBSTRN", 5)) g_ptr_array_add(c->OBSTRNlist, obj);
+            if (0 == strncmp(CSnm, "RESARE", 5)) g_ptr_array_add(c->RESARElist, obj);
+            if (0 == strncmp(CSnm, "WRECKS", 5)) g_ptr_array_add(c->WRECKSlist, obj);
 
             // GPtrArray *DEPARE01L;  MP
             // GPtrArray *DEPCNT02L;  MP, OP()
@@ -4957,7 +4961,7 @@ DLL int    STD S52_loadPLib(const char *plibName)
     valueBuf PLibPath = {'\0'};
     if (NULL == plibName) {
         // check in s52.cfg
-        if (0 == S52_getConfig(CONF_PLIB, &PLibPath)) {
+        if (0 == S52_utils_getConfig(CONF_PLIB, &PLibPath)) {
             PRINTF("default PLIB not found in .cfg (%s)\n", CONF_PLIB);
             goto exit;
         } else {
@@ -5264,7 +5268,8 @@ static GString   *_getMARINClassList()
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj    *obj   = (S52_obj *)g_ptr_array_index(rbin, idx);
                 const char *oname = S52_PL_getOBCL(obj);
-                if (NULL == S52_strstr(classList->str, oname)) {
+                //if (NULL == S52_strstr(classList->str, oname)) {
+                if (NULL == g_strrstr(classList->str, oname)) {
                     g_string_append_printf(classList, ",%s", oname);
                 }
             }
@@ -5583,7 +5588,7 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
 
     gchar delim[4] = {":,\0"};
 
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
     // will split "" into NULL == attvalL[0]
     // DEVHELP: As a special case, the result of splitting the empty string "" is an empty vector,
     // not a vector containing a single string. The reason for this special case is that being able
@@ -5594,10 +5599,10 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
         attvalL = g_strsplit_set(listAttVal, ",[]", 0);  // can't handle UTF-8, check g_strsplit() if needed
     else
         attvalL = g_strsplit_set(listAttVal, delim, 0);  // can't handle UTF-8, check g_strsplit() if needed
-#else
-    // FIXME: this is broken
-    gchar** attvalL = g_strsplit(listAttVal, delim, 0);
-#endif
+//#else
+//    // FIXME: this is broken
+//    gchar** attvalL = g_strsplit(listAttVal, delim, 0);
+//#endif
 
     gchar** freeL   = attvalL;
 
@@ -6731,13 +6736,15 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
             vestat = 1;
         }
 
-        int offset = S52_strlen(attvaltmp);
+        //int offset = S52_strlen(attvaltmp);
+        int offset = strlen(attvaltmp);
         if (1==vestat || 2==vestat || 3==vestat ) {
             SNPRINTF(attvaltmp+offset, 80-offset, "vestat:%i,", vestat);
             // FIXME: _doCS to get the new text (and prio)
         }
 
-        offset = S52_strlen(attvaltmp);
+        //offset = S52_strlen(attvaltmp);
+        offset = strlen(attvaltmp);
         SNPRINTF(attvaltmp+offset, 80-offset, "_vessel_turn:%i", vesselTurn);
 
         _setAtt(geo, attval);

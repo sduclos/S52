@@ -25,19 +25,17 @@
 
 #include <glib.h>
 
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
 #include <glib/gprintf.h> // g_strrstr()
 #include <glib/gstdio.h>  // FILE
-#else
-#include <stdio.h>        // FILE, fopen(), ...
-#include <stdlib.h>       // atof(), atoi()
-#include <string.h>       // strstr(), strlen()
-#endif
+//#else
+//#include <stdio.h>        // FILE, fopen(), ...
+//#include <stdlib.h>       // atof(), atoi()
+//#include <string.h>       // strstr(), strlen()
+//#endif
 
 #include <string.h>       // strlen()
-#include <stdio.h>        // asctime
-#include <time.h>         // time
-#include <unistd.h>       // write
+#include <unistd.h>       // write()
 
 // debug - configuration file
 #ifdef S52_USE_ANDROID
@@ -48,10 +46,19 @@
 
 #define NaN         (1.0/0.0)
 
+void g_get_current_time(GTimeVal *result);
+
 #ifdef S52_USE_LOGFILE
 static gint     _logFile = 0;
 static GTimeVal _now;
 #endif
+#ifdef S52_USE_LOGFILE
+typedef void (*GPrintFunc)(const gchar *string);
+static GPrintFunc _oldPrintHandler = NULL;
+#endif
+
+static S52_log_cb _log_cb          = NULL;
+
 
 // internal libS52.so version
 static const char _version[] = "libS52-2016FEB12-1.166"
@@ -64,9 +71,9 @@ static const char _version[] = "libS52-2016FEB12-1.166"
 #ifdef  GV_USE_DOUBLE_PRECISION_COORD
       ",GV_USE_DOUBLE_PRECISION_COORD"
 #endif
-#ifdef  S52_USE_GLIB2
-      ",S52_USE_GLIB2"
-#endif
+//#ifdef  S52_USE_GLIB2
+//      ",S52_USE_GLIB2"
+//#endif
 #ifdef  S52_USE_OGR_FILECOLLECTOR
       ",S52_USE_OGR_FILECOLLECTOR"
 #endif
@@ -153,14 +160,12 @@ static const char _version[] = "libS52-2016FEB12-1.166"
 #endif
 "\n";
 
+cchar   *S52_utils_version(void)
+{
+    return _version;
+}
 
-typedef void (*GPrintFunc)(const gchar *string);
-static GPrintFunc   _oldPrintHandler = NULL;
-static S52_log_cb   _log_cb          = NULL;
-
-void g_get_current_time(GTimeVal *result);
-
-int      S52_getConfig(const char *label, valueBuf *vbuf)
+int      S52_utils_getConfig(const char *label, valueBuf *vbuf)
 // return TRUE and string value in vbuf for label, FALSE if fail
 {
    FILE *fp;
@@ -170,7 +175,8 @@ int      S52_getConfig(const char *label, valueBuf *vbuf)
    char lbuf[MAXL];
    char frmt[MAXL];
 
-   fp = fopen(CONF_NAME, "r");
+   //fp = fopen(CONF_NAME, "r");
+   fp = g_fopen(CONF_NAME, "r");
    if (NULL == fp) {
        PRINTF("WARNING: conf not found: %s\n", CONF_NAME);
        return FALSE;
@@ -184,7 +190,9 @@ int      S52_getConfig(const char *label, valueBuf *vbuf)
 
    ret = fscanf(fp, frmt, lbuf, vbuf);
    while (ret > 0) {
-       if (('#'!=lbuf[0]) && (0 == S52_strncmp(lbuf, label, S52_strlen(label)))) {
+       //if (('#'!=lbuf[0]) && (0 == S52_strncmp(lbuf, label, S52_strlen(label)))) {
+       //if (('#'!=lbuf[0]) && (0==S52_strncmp(lbuf, label, strlen(label)))) {
+       if (('#'!=lbuf[0]) && (0==strncmp(lbuf, label, strlen(label)))) {
                PRINTF("label:%s value:%s \n", lbuf, *vbuf);
                fclose(fp);
                return TRUE;
@@ -203,36 +211,56 @@ int      S52_getConfig(const char *label, valueBuf *vbuf)
 }
 
 int      S52_atoi(const char *str)
-// replacement of stdlib.h atoi
+// replacement of stdlib.h atoi()
+// use for parsing the PLib and S57 attribute
 {
-    //return atoi(str);
+    /*
+    if (NULL == str) {
+        //PRINTF("WARNING: NULL string\n");
+        g_assert(0);
+        return NaN;
+    }
+
+    //if (0 == S52_strlen(str)) {
+    if (0 == strlen(str)) {
+        //PRINTF("WARNING: zero length string\n");
+        g_assert(0);
+        return NaN;
+    }
+    */
 
     // the to (int) might not be such a great idea!  (no rounding)
-    return (int)S52_atof(str);
+    //return (int)S52_atof(str);
+    return (int)g_strtod(str, NULL);
 }
 
 double   S52_atof(const char *str)
 // relacement of stdlib.h atof
 {
-    if (NULL == str)
-        return (1.0/0.0); //nan
-
-    if (0 == S52_strlen(str)) {
-        //PRINTF("WARNING: zero length string (inf)\n");
-        //g_assert(0);
-        return (1.0/0.0); //nan
+    /*
+    if (NULL == str) {
+        //PRINTF("WARNING: NULL string\n");
+        g_assert(0);
+        return NaN;
     }
 
+    //if (0 == S52_strlen(str)) {
+    if (0 == strlen(str)) {
+        //PRINTF("WARNING: zero length string\n");
+        g_assert(0);
+        return NaN;
+    }
+    */
 
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
     return g_strtod(str, NULL);
-#else
-    return atof(str);
-#endif
+//#else
+//    return atof(str);
+//#endif
 
 }
 
-//int    S52_strlen(const char *str)
+#if 0
 size_t   S52_strlen(const char *str)
 {
     return strlen(str);
@@ -243,42 +271,50 @@ size_t   S52_strlen(const char *str)
 //    return strlen(str);
 //#endif
 }
+#endif
 
+#if 0
 char*    S52_strstr(const char *haystack, const char *needle)
 {
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
     return g_strrstr(haystack, needle);
-#else
+//#else
     return (char *)strstr(haystack, needle);
-#endif
+//#endif
 }
+#endif
 
+#if 0
 gint     S52_strncmp(const gchar *s1, const gchar *s2, gsize n)
 {
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
     //return g_ascii_strncasecmp(s1, s2, n);  // ignor the case, FAIL in PL
     //return g_strncasecmp(s1, s2, n);        // ignor the case, FAIL in PL
     return strncmp(s1, s2, n);
-#else
-    return strncmp(s1, s2, n);
-#endif
+//#else
+//    return strncmp(s1, s2, n);
+//#endif
 }
+#endif
 
-FILE *   S52_fopen (const gchar *filename, const gchar *mode)
+#if 0
+FILE *   S52_fopen(const gchar *filename, const gchar *mode)
 {
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
     return g_fopen(filename, mode);
-#else
-    return fopen(filename, mode);
-#endif
+//#else
+//    return fopen(filename, mode);
+//#endif
 }
 
-int      S52_fclose (FILE *fd)
+int      S52_fclose(FILE *fd)
 {
     // use same call - glib has no g_fclose()
     return fclose(fd);
 }
+#endif
 
+#if 0
 gboolean S52_string_equal(const GString *s1, const GString *s2)
 {
     // on android glid2 can't handle NULL string
@@ -288,7 +324,7 @@ gboolean S52_string_equal(const GString *s1, const GString *s2)
         return FALSE;
     }
 
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
     /* FIXME: why this fail!
     if (0 == g_strcmp0(s1->str, s2->str))
         return TRUE;
@@ -297,7 +333,7 @@ gboolean S52_string_equal(const GString *s1, const GString *s2)
     //*/
 
     return g_string_equal(s1, s2);
-
+/*
 #else
     if (s1->len == s2->len) {
         if (0 == memcmp(s1->str, s2->str, s1->len))
@@ -305,22 +341,20 @@ gboolean S52_string_equal(const GString *s1, const GString *s2)
     }
     return FALSE;
 #endif
-
+*/
 }
+#endif
 
+#if 0
 void     S52_tree_replace(GTree *tree, gpointer key, gpointer value)
 {
-#ifdef S52_USE_GLIB2
+//#ifdef S52_USE_GLIB2
     g_tree_replace(tree, key, value);
-#else
-    g_tree_insert(tree, key, value);
+//#else
+//    g_tree_insert(tree, key, value);
+//#endif
+}
 #endif
-}
-
-cchar   *S52_utils_version(void)
-{
-    return _version;
-}
 
 void _printf(const char *file, int line, const char *function, const char *frmt, ...)
 {
@@ -374,7 +408,7 @@ static void     _S52_printf(const gchar *string)
 }
 #endif
 
-int      S52_initLog(S52_log_cb log_cb)
+int      S52_utils_initLog(S52_log_cb log_cb)
 // set print handler
 // set tmp log file
 {
@@ -402,12 +436,14 @@ int      S52_initLog(S52_log_cb log_cb)
     return TRUE;
 }
 
-int      S52_doneLog()
+int      S52_utils_doneLog()
 {
-    g_set_print_handler(_oldPrintHandler);
     _log_cb = NULL;
 
 #ifdef S52_USE_LOGFILE
+    g_set_print_handler(_oldPrintHandler);
+    _oldPrintHandler = NULL;
+
     if (0 != _logFile)
         close(_logFile);
 #endif
