@@ -220,7 +220,6 @@ CFLAGS = `pkg-config  --cflags glib-2.0 lcms gl ftgl`  \
          -DS52_USE_GL1                                 \
          -DS52_USE_OPENGL_VBO                          \
          -DS52_USE_SOCK                                \
-         -DS52_USE_GLIB2                               \
          -DS52_USE_PROJ                                \
          -DS52_DEBUG $(DBG)
 
@@ -231,7 +230,6 @@ s52gtk2gl2 : CFLAGS =                                  \
          -I./lib/libtess                               \
          -I./lib/parson                                \
          -DS52_USE_PROJ                                \
-         -DS52_USE_GLIB2                               \
          -DS52_USE_OPENGL_VBO                          \
          -DS52_USE_GL2                                 \
          -DS52_USE_FREETYPE_GL                         \
@@ -244,7 +242,6 @@ s52clutter s52clutter.js : CFLAGS =                         \
          `pkg-config  --cflags glib-2.0 lcms glu gl ftgl`   \
          `gdal-config --cflags`                             \
          -I/home/sduclos/dev/gis/gdal/gdal/frmts/iso8211/   \
-         -DS52_USE_GLIB2                                    \
          -DS52_USE_PROJ                                     \
          -DS52_USE_OGR_FILECOLLECTOR                        \
          -DS52_USE_BACKTRACE                                \
@@ -259,7 +256,6 @@ s52gtk2p : CFLAGS += -pg
 s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
                   `gdal-config --cflags`          \
                   -DS52_USE_PROJ                  \
-                  -DS52_USE_GLIB2                 \
                   -DS52_USE_GL1                   \
                   -DS52_USE_FTGL                  \
                   -DS52_DEBUG $(DBG)
@@ -273,7 +269,6 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -I./lib/libtess                \
                   -I./lib/parson                 \
                   -DS52_USE_PROJ                 \
-                  -DS52_USE_GLIB2                \
                   -DS52_USE_BACKTRACE            \
                   -DS52_USE_EGL                  \
                   -DS52_USE_OPENGL_VBO           \
@@ -308,8 +303,7 @@ s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/sysroot/include
 s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
 
-              DEFS = -DS52_USE_GLIB2                       \
-                     -DS52_USE_PROJ                        \
+              DEFS = -DS52_USE_PROJ                        \
                      -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
                      -DS52_USE_OPENGL_VBO                  \
@@ -343,14 +337,12 @@ s52gv  : CFLAGS = `glib-config --cflags`                \
 s52gv2 : CFLAGS = `pkg-config  --cflags glib-2.0 lcms`  \
                   `gdal-config --cflags`                \
                   -DS52_USE_GV                          \
-                  -DS52_USE_GLIB2                       \
                   -DGV_USE_DOUBLE_PRECISION_COORD       \
                   -I$(OPENEV2_HOME)
 
 s52gtk2gps:  CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl dbus-1 dbus-glib-1`   \
                       `gdal-config --cflags`            \
                       -DS52_USE_FTGL                    \
-                      -DS52_USE_GLIB2                   \
                       -DS52_USE_PROJ                    \
                       -DS52_USE_OGR_FILECOLLECTOR       \
                       -DS52_USE_SUPP_LINE_OVERLAP       \
@@ -373,7 +365,6 @@ s52win32 : CFLAGS   = -mms-bitfields                         \
                       -I$(GDALPATH)frmts/iso8211/            \
                       -DS52_USE_FTGL                         \
                       -DS52_USE_GL1                          \
-                      -DS52_USE_GLIB2                        \
                       -DS52_USE_PROJ                         \
                       -DS52_USE_OGR_FILECOLLECTOR            \
                       -DS52_USE_LOG                          \
@@ -394,7 +385,6 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
                       -I./lib/libtess                \
                       -I./lib/parson                 \
                       -DS52_USE_PROJ                 \
-                      -DS52_USE_GLIB2                \
                       -DS52_USE_OPENGL_VBO           \
                       -DS52_USE_EGL                  \
                       -DS52_USE_GL2                  \

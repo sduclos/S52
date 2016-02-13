@@ -61,7 +61,6 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DUSE_AIS           - call s52ais.c
 # -DSET_SCREEN_SIZE   - set screen size be hand (hard coded as dual-screen seem to confused the setup)
 
-# -DS52_USE_GLIB2     -
 # -DS52_USE_LOG       - log every S52_* in tmp file
 # -DS52_USE_MESA3D    - set ENV for Mesa3D MSAA and vblank_mode
 # -DS52_USE_GLES2     - GLES2
@@ -74,11 +73,10 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 # -DS52_USE_RADAR     - when in RADAR mode
 
-CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2 -DUSE_FAKE_AIS
+CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DUSE_FAKE_AIS
 #CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DS52_USE_GLIB2 -DUSE_AIS
 
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
-                      -DS52_USE_GLIB2                                  \
                       -DS52_USE_GL2                                    \
                       -DS52_USE_MESA3D -DUSE_AIS
 
@@ -258,7 +256,7 @@ s52eglw32: LIBS = $(S52_LIBS) -L$(GTKPATH)                    \
 #../../../mingw/libgps.a
 
 
-s52win32: CFLAGS = -DS52_USE_GLIB2 -DUSE_FAKE_AIS                                                            \
+s52win32: CFLAGS = -DUSE_FAKE_AIS                                                            \
                    -mms-bitfields                                                                            \
                    -I$(HOME)/dev/gis/openev-cvs/mingw//gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/gtk-2.0      \
                    -I$(HOME)/dev/gis/openev-cvs/mingw//gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
@@ -270,8 +268,7 @@ s52win32: CFLAGS = -DS52_USE_GLIB2 -DUSE_FAKE_AIS                               
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtkglext-2011/include/gtkglext-1.0              \
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtkglext-2011/lib/gtkglext-1.0/include
 
-s52eglw32:CFLAGS = -DS52_USE_GLIB2                   \
-                   -mms-bitfields                    \
+s52eglw32:CFLAGS = -mms-bitfields                    \
                    -I$(GTKPATH)/../include           \
                    -I$(GTKPATH)/include/gtk-2.0      \
                    -I$(GTKPATH)/include/glib-2.0     \
@@ -320,7 +317,6 @@ libS52-1.0.so: ../libS52.so ../S52.h
 S52-1.0.gir: S52-1.0.h libS52-1.0.so
 	$(GNOME3_SHELL_RUN) g-ir-scanner           \
         -DS52_USE_FTGL                         \
-        -DS52_USE_GLIB2                        \
         -DS52_USE_PROJ                         \
         -DS52_USE_OGR_FILECOLLECTOR            \
         -DS52_USE_SUPP_LINE_OVERLAP            \

@@ -4,6 +4,14 @@
 #
 
 
+2016FEB13
+    -mod comment dead code GLib-1 and GLIB2 ifdef
+    -add utils to func in S52utils
+
+2016FEB12
+    -mod comment experiment origAW
+    -mod code clean up
+
 2015DEC03
     -mod code formatting, version() in S52utils
     -mod replace g_ascii_strncasecmp() by strncmp() - FAIL in PL
