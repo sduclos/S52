@@ -2110,7 +2110,7 @@ static DBusHandlerResult   _dbus_selectCall         (DBusConnection *dbus, DBusM
     PRINTF("path     : %s\n", dbus_message_get_path(message));
     PRINTF("interface: %s\n", dbus_message_get_interface(message));
 
-    if (0 == S52_strncmp(dbus_message_get_member(message), "Disconnected", 12)) {
+    if (0 == strncmp(dbus_message_get_member(message), "Disconnected", 12)) {
         PRINTF("ERROR: received DBus msg member 'Disconnected' .. \n" \
                "DBus force exit if dbus_connection_set_exit_on_disconnect(_dbus, TRUE);!\n");
 
