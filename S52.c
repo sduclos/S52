@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2016 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -66,13 +66,8 @@ typedef guint64 _S52ObjectHandle;
 
 #endif  // S52_USE_GOBJECT
 
-//#ifdef S52_USE_GLIB2
 #include <glib/gprintf.h> //
 #include <glib/gstdio.h>  // FILE
-//#else
-//#include <stdio.h>        // FILE, fopen(), ...
-//#include <stdlib.h>       // setenv(), putenv()
-//#endif  // S52_USE_GLIB2
 
 #ifdef S52_USE_PROJ
 #include <proj_api.h>   // projUV, projXY, projPJ
@@ -1556,8 +1551,6 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 
     // GDAL/OGR/S57 options (1: overwrite env)
 
-//#ifdef S52_USE_GLIB2
-
 #ifdef S52_USE_SUPP_LINE_OVERLAP
     // make OGR return primitive and linkage
     g_setenv("OGR_S57_OPTIONS",
@@ -1568,22 +1561,6 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
              "LNAM_REFS=ON,UPDATES=APPLY,SPLIT_MULTIPOINT=ON,PRESERVE_EMPTY_NUMBERS=ON",
              1);
 #endif // S52_USE_SUPP_LINE_OVERLAP
-
-/*
-#else  // S52_USE_GLIB2
-
-    const char *name = "OGR_S57_OPTIONS";
-    //const char *value= "LNAM_REFS:ON,UPDATES:ON,SPLIT_MULTIPOINT:ON,PRESERVE_EMPTY_NUMBERS:ON,RETURN_LINKAGES:ON";
-    const char *value= "LNAM_REFS:ON,UPDATES:ON,SPLIT_MULTIPOINT:ON,PRESERVE_EMPTY_NUMBERS:ON";
-
-    //setenv("OGR_S57_OPTIONS", "LNAM_REFS:ON,UPDATES:ON,SPLIT_MULTIPOINT:ON", 1);
-#include <stdlib.h>
-    //int setenv(const char *name, const char *value, int overwrite);
-    setenv(name, value, 1);
-     const char *env = g_getenv("OGR_S57_OPTIONS");
-    PRINTF("%s\n", env);
-#endif  // S52_USE_GLIB2
-*/
 
     // FIXME: check setlocale (LC_ALL, "");
     _intl = setlocale(LC_ALL, "C");
@@ -1614,7 +1591,6 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     g_ptr_array_sort(_cellList, _cmpCell);
 
     // init extend
-    // FIXME: add init flags in struct !?
     _marinerCell->ext.S = -INFINITY;
     _marinerCell->ext.W = -INFINITY;
     _marinerCell->ext.N =  INFINITY;
@@ -2121,7 +2097,6 @@ static int        _loadCATALOG(char *filename)
     FILE *fd = NULL;
     filename = g_strstrip(filename);
 
-    //if (NULL == (fd = S52_fopen(filename, "r"))) {
     if (NULL == (fd = g_fopen(filename, "r"))) {
         PRINTF("WARNING: CATALOG not found (%s)\n", filename);
 
@@ -3119,8 +3094,8 @@ int            S52_loadObject(const char *objname, void *shape)
 
         S57_getExt(geoData, &ext.W, &ext.S, &ext.E, &ext.N);
 
-        // FIXME: flag init extent
-        if (isinf(_crntCell->ext.S)) {
+        // +inf
+        if (1 == isinf(_crntCell->ext.S)) {
             _crntCell->ext.S = ext.S;
             _crntCell->ext.W = ext.W;
             _crntCell->ext.N = ext.N;
@@ -3144,8 +3119,8 @@ int            S52_loadObject(const char *objname, void *shape)
                 _crntCell->ext.E = ext.E;
         }
 
-        /*
-        if (isinf(_crntCell->ext.W)) {
+        /* +inf
+        if (1 == isinf(_crntCell->ext.W)) {
             _crntCell->ext.W = ext.W;
             _crntCell->ext.E = ext.E;
         } else {
@@ -3321,7 +3296,7 @@ static int        _moveObj(_cell *cell, S52_disPrio oldPrio, S52ObjectType obj_t
     if (idx<oldBin->len)
         obj = (S52_obj *)g_ptr_array_index(oldBin, idx);
     else {
-        PRINTF("WARNING: render bin index out of bound: %i max: %i\n", idx, oldBin->len);
+        //PRINTF("DEBUG: render bin index out of bound: %i max: %i\n", idx, oldBin->len);
         return FALSE;
     }
 
@@ -3755,10 +3730,6 @@ static int        _drawLegend()
         //double offset_y = 1.0;
         double offset_x = 8.0;
         double offset_y = 8.0;
-
-        // FIXME: isinf()
-        //if (INFINITY==c->ext.W || -INFINITY==c->ext.W)
-        //    return FALSE;
 
         if (FALSE == S57_geo2prj3dv(1, xyz))
             return FALSE;
@@ -5268,7 +5239,6 @@ static GString   *_getMARINClassList()
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj    *obj   = (S52_obj *)g_ptr_array_index(rbin, idx);
                 const char *oname = S52_PL_getOBCL(obj);
-                //if (NULL == S52_strstr(classList->str, oname)) {
                 if (NULL == g_strrstr(classList->str, oname)) {
                     g_string_append_printf(classList, ",%s", oname);
                 }
@@ -5588,7 +5558,6 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
 
     gchar delim[4] = {":,\0"};
 
-//#ifdef S52_USE_GLIB2
     // will split "" into NULL == attvalL[0]
     // DEVHELP: As a special case, the result of splitting the empty string "" is an empty vector,
     // not a vector containing a single string. The reason for this special case is that being able
@@ -5599,12 +5568,8 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
         attvalL = g_strsplit_set(listAttVal, ",[]", 0);  // can't handle UTF-8, check g_strsplit() if needed
     else
         attvalL = g_strsplit_set(listAttVal, delim, 0);  // can't handle UTF-8, check g_strsplit() if needed
-//#else
-//    // FIXME: this is broken
-//    gchar** attvalL = g_strsplit(listAttVal, delim, 0);
-//#endif
 
-    gchar** freeL   = attvalL;
+    gchar** freeL = attvalL;
 
     {   // check that strings comme in pair
         // the other case (ie '"","bla","bla",""') will be catched
@@ -6736,14 +6701,12 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
             vestat = 1;
         }
 
-        //int offset = S52_strlen(attvaltmp);
         int offset = strlen(attvaltmp);
         if (1==vestat || 2==vestat || 3==vestat ) {
             SNPRINTF(attvaltmp+offset, 80-offset, "vestat:%i,", vestat);
             // FIXME: _doCS to get the new text (and prio)
         }
 
-        //offset = S52_strlen(attvaltmp);
         offset = strlen(attvaltmp);
         SNPRINTF(attvaltmp+offset, 80-offset, "_vessel_turn:%i", vesselTurn);
 

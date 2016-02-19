@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2016 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -30,14 +30,7 @@
 #include "S57data.h"        // geocoord, S57_obj_t
 
 #include <glib.h>
-
-//#ifdef S52_USE_GLIB2
-#include <glib/gstdio.h>     // FILE
-//#else
-//#include <stdio.h>           // FILE, fopen(), ...
-//#include <stdlib.h>          // setenv(), putenv(), strtoll(),
-//#include <string.h>          // strstr()
-//#endif
+#include <math.h>           // INFINITY
 
 #define S52_SMB_NMLN   8    // symbology name lenght
 
@@ -295,10 +288,13 @@ typedef struct _S52_obj {
     // FIXME: make that a struct
 
     //char       LOD;           // optimisation: chart purpose: cell->filename->str[2]
-
+    // NOTE: this is a general holder for orient/speed depending on
+    // the object type. So it could be for current, ship, AIS, ...
     gdouble      orient;        // LIGHT angle (after parsing), heading of 'ownshp'
     gdouble      speed;         // 'ownshp' speed for drawing vertor lenght
+
     GTimeVal     time;          // store time (use to find age of AIS)
+
     gboolean     supp;          // display suppression set by user
 
     // LEGLIN
@@ -329,7 +325,6 @@ static GTree   *_table[TBL_NUM] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}
 //#define LNFMT  "%1024[^\n]"   // line format
 #define LNFMT  "%[^\n]"   // line format
 
-//#define FIELD(str)    if(0==S52_strncmp(#str, _pBuf, 4))
 #define FIELD(str)    if(0==strncmp(#str, _pBuf, 4))
 
 typedef unsigned char u8;
@@ -476,13 +471,8 @@ static int        _readS52Line(_PL *fp, char *buf)
    char dst[6];
    strncpy(dst, buf+4, 5);
    dst[5] = '\0';
-   //int reclen = g_ascii_strtoll(buf+6, NULL, 10);
-
-//#ifdef S52_USE_GLIB2
-   int reclen = g_ascii_strtoll(dst, NULL, 10);
-//#else
-//   int reclen = strtoll(dst, NULL, 10);
-//#endif
+   //int reclen = g_ascii_strtoll(dst, NULL, 10);
+   int reclen = S52_atoi(dst);
 
    for (int i=reclen+9; i<=linelen; ++i)
        buf[i] = '\0';
@@ -559,60 +549,36 @@ static gint       _cmpCOL(gconstpointer nameA, gconstpointer nameB)
 // compare color name
 {
     //PRINTF("%s - %s\n",(char*)nameA,(char*)nameB);
-    //return S52_strncmp((char*)nameA, (char*)nameB, S52_COL_NMLN);
     return strncmp((char*)nameA, (char*)nameB, S52_COL_NMLN);
 }
 
-//#ifdef S52_USE_GLIB2
 static gint       _cmpLUP(gconstpointer nameA, gconstpointer nameB, gpointer user_data)
-//#else
-//static gint       _cmpLUP(gconstpointer nameA, gconstpointer nameB)
-//#endif
-
 // compare lookup name
 {
     // 'user_data' useless warning
-//#ifdef S52_USE_GLIB2
     (void) user_data;
-//#endif
 
     //PRINTF("%s - %s\n",(char*)nameA,(char*)nameB);
-    //return S52_strncmp((char*)nameA, (char*)nameB, S52_PL_NMLN);
     return strncmp((char*)nameA, (char*)nameB, S52_PL_NMLN);
 }
 
-//#ifdef S52_USE_GLIB2
 static gint       _cmpSMB(gconstpointer nameA, gconstpointer nameB, gpointer user_data)
-//#else
-//static gint       _cmpSMB(gconstpointer nameA, gconstpointer nameB)
-//#endif
-
 // compare Symbology name
 {
     // 'user_data' useless warning
-//#ifdef S52_USE_GLIB2
     (void) user_data;
-//#endif
 
-
-    //return S52_strncmp((char*)nameA, (char*)nameB, S52_SMB_NMLN);
     return strncmp((char*)nameA, (char*)nameB, S52_SMB_NMLN);
 }
 
 static gint       _cmpCOND(gconstpointer nameA, gconstpointer nameB)
 // compare Cond Symbology name
 {
-   //return S52_strncmp((char*)nameA, (char*)nameB, S52_SMB_NMLN);
    return strncmp((char*)nameA, (char*)nameB, S52_SMB_NMLN);
 }
 
 
-//#ifdef S52_USE_GLIB2
 static void       _delLUP(gpointer value)
-//#else
-//static gint       _delLUP(gpointer key, gpointer value, gpointer data )
-//#endif
-
 // delete lookup
 {
    _LUP *LUP = (_LUP*) value;
@@ -629,18 +595,9 @@ static void       _delLUP(gpointer value)
 
        LUP = crntLUP;
    }
-
-//#ifndef S52_USE_GLIB2
-//   return TRUE;
-//#endif
 }
 
-//#ifdef S52_USE_GLIB2
 static void       _delSMB(gpointer value)
-//#else
-//static gint       _delSMB(gpointer key, gpointer value, gpointer data)
-//#endif
-
 // delete symbol
 {
    _S52_cmdDef *def = (_S52_cmdDef*) value;
@@ -653,10 +610,6 @@ static void       _delSMB(gpointer value)
    g_string_free(def->colRef.LCRF,            TRUE);
 
    g_free(def);
-
-//#ifndef S52_USE_GLIB2
-//   return TRUE;
-//#endif
 }
 
 static gint       _loadCondSymb()
@@ -732,7 +685,6 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
     }
 
     // special case [S52-A-2:8.3.3.4(iii)]
-    //if (0 == S52_strncmp(LUP->OBCL, "TSSLPT", S52_PL_NMLN)){
     if (0 == strncmp(LUP->OBCL, "TSSLPT", S52_PL_NMLN)){
         if (NULL == S57_getAttVal(geoData, "ORIENT")) {
             // FIXME: hit this in S-64 ENC
@@ -808,7 +760,6 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
                             // so '4,3,4' match '4,3,4,7' but not 3,4,3 (4,3 match)
                             // the trick is to use the lenght of of the value of
                             // the PLib *not* from S57
-                            //char *tmpVal = S52_strncmp(attv->str, attlv+6, strlen(attlv)-6);
                             //char *tmpVal = strncmp(attv->str, attlv+6, strlen(attlv)-6);
 
                             // FIX: record the max lenght of att val str of a match
@@ -872,7 +823,6 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
 }
 
 // command word
-//#define CMDWRD(s,t)   if (0==S52_strncmp(#s, str, 2)) {
 #define CMDWRD(s,t)   if (0==strncmp(#s, str, 2)) {  \
                               str += 3;              \
                               cmd->cmdWord = t;      \
@@ -1391,7 +1341,6 @@ static int        _readColor(_PL *fp)
 {
 
     _readS52Line(fp, _pBuf);
-    //while ( 0 != S52_strncmp(_pBuf, "****",4)) {
     while ( 0 != strncmp(_pBuf, "****",4)) {
         S52_Color c;
 
@@ -1450,7 +1399,6 @@ static int        _readColor(_PL *fp)
 static int        _readColor(_PL *fp, GArray *colors)
 {
     _readS52Line(fp, _pBuf);
-    //while ( 0 != S52_strncmp(_pBuf, "****",4)) {
     while ( 0 != strncmp(_pBuf, "****",4)) {
         S52_Color c;
 
@@ -1651,7 +1599,6 @@ static int        _parseLUPT(_PL *fp)
                     LUP->supp        = LUPtop->supp; // keep user setting (suppression)
 
                     g_tree_replace(LUPtype, (gpointer*)LUP->OBCL, (gpointer*)LUP);
-                    //S52_tree_replace(LUPtype, (gpointer*)LUP->OBCL, (gpointer*)LUP);
 
                     LUPtop  = LUP;
                     replace = TRUE;
@@ -1662,7 +1609,6 @@ static int        _parseLUPT(_PL *fp)
                     while (NULL != LUPtmp) {
                         // replace
                         if ((NULL != LUP->ATTC) && (NULL != LUPtmp->ATTC) &&
-                            //(TRUE == S52_string_equal(LUPtmp->ATTC, LUP->ATTC)) )
                             (TRUE == g_string_equal(LUPtmp->ATTC, LUP->ATTC)) )
                         {   // can't replace more then one LUP
                             // the compination of LUP NAME & LUP ATTC is unique for all LUP
@@ -1686,11 +1632,7 @@ static int        _parseLUPT(_PL *fp)
                             LUP->OBCLnext = LUPtmp->OBCLnext;
                             // this stop removing the whole chain
                             LUPtmp->OBCLnext = NULL;
-//#ifdef S52_USE_GLIB2
                             _delLUP(LUPtmp);
-//#else
-//                            _delLUP((gpointer*)LUPtmp->OBCL, (gpointer*)LUP, NULL);
-//#endif
                             LUPtmp = LUP;
                         }
 
@@ -1774,7 +1716,6 @@ static int        _parseLNST(_PL *fp)
 
             // update (replace)
             g_tree_replace(_selSMB(S52_SMB_LINE), (gpointer*)lnst->name.LINM, (gpointer*)lnst);
-            //S52_tree_replace(_selSMB(S52_SMB_LINE), (gpointer*)lnst->name.LINM, (gpointer*)lnst);
 
             inserted = TRUE;
         }
@@ -1831,7 +1772,6 @@ static int        _parsePATT(_PL *fp)
         FIELD(****) {
 
             g_tree_replace(_selSMB(S52_SMB_PATT), (gpointer*)patt->name.PANM, (gpointer*)patt);
-            //S52_tree_replace(_selSMB(S52_SMB_PATT), (gpointer*)patt->name.PANM, (gpointer*)patt);
 
             inserted = TRUE;
         }
@@ -1882,18 +1822,7 @@ static int        _parseSYMB(_PL *fp)
         FIELD(SCRF) { symb->colRef.SCRF            = g_string_new(_pBuf+9); } // CIDX + CTOK
         FIELD(****) {
 
-            // debug
-            //PRINTF("add %s\n", symb->name.SYNM);
-            //if (0==strcmp(symb->name.SYNM, "OWNSHP05")) {
-            //    PRINTF("FOUND SYMBOL: %s \n", symb->name.SYNM);
-            //}
-            //if (0==strcmp(symb->name.SYNM, "SCALEB10")) {
-            //    PRINTF("FOUND SYMBOL: %s \n", symb->name.SYNM);
-            //}
-
-
             g_tree_replace(_selSMB(S52_SMB_SYMB), (gpointer*)symb->name.SYNM, (gpointer*)symb);
-            //S52_tree_replace(_selSMB(S52_SMB_SYMB), (gpointer*)symb->name.SYNM, (gpointer*)symb);
 
             inserted = TRUE;
         }
@@ -1932,7 +1861,6 @@ static int        _initPLtables()
         g_tree_insert(_colref, (gpointer)_colorName[i-1], pint);
     }
 
-//#ifdef S52_USE_GLIB2
     _table[LUP_LINE]     = g_tree_new_full(_cmpLUP, NULL, NULL, _delLUP);
     _table[LUP_AREA_PLN] = g_tree_new_full(_cmpLUP, NULL, NULL, _delLUP);
     _table[LUP_AREA_SYM] = g_tree_new_full(_cmpLUP, NULL, NULL, _delLUP);
@@ -1945,21 +1873,6 @@ static int        _initPLtables()
 
     _table[SMB_COND]     = g_tree_new(_cmpCOND);
 
-/*
-#else
-    _table[LUP_LINE]     = g_tree_new(_cmpLUP);
-    _table[LUP_AREA_PLN] = g_tree_new(_cmpLUP);
-    _table[LUP_AREA_SYM] = g_tree_new(_cmpLUP);
-    _table[LUP_PT_SIMPL] = g_tree_new(_cmpLUP);
-    _table[LUP_PT_PAPER] = g_tree_new(_cmpLUP);
-
-    _table[SMB_LINE]     = g_tree_new(_cmpSMB);
-    _table[SMB_PATT]     = g_tree_new(_cmpSMB);
-    _table[SMB_SYMB]     = g_tree_new(_cmpSMB);
-
-    _table[SMB_COND]     = g_tree_new(_cmpCOND);
-#endif
-*/
     return TRUE;
 }
 
@@ -2077,9 +1990,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
         }
 
         // special case ENC return an index
-        //if (0 == S52_strncmp(buf, "NATSUR", S52_PL_NMLN)) {
         if (0 == strncmp(buf, "NATSUR", S52_PL_NMLN)) {
-//#ifdef S52_USE_GLIB2
             gchar** attvalL = g_strsplit_set(value->str, ",", 0);  // can't handle UTF-8, check g_strsplit() if needed
             gchar** freeL   = attvalL;
             buf[0]          = '\0';
@@ -2100,20 +2011,9 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
             }
 
             g_strfreev(freeL);
-/*
-#else
-            int i = S52_atoi(value->str);
-
-            if (0<=i && i<N_NATSUR)
-                strcpy(buf, natsur[i]);
-            else
-                strcpy(buf, "FIXME:NATSUR");
-#endif
-*/
 
         } else {
             // value from ENC
-            //if (0 == S52_strncmp(buf, "DRVAL1", 6)) {
             if (0 == strncmp(buf, "DRVAL1", 6)) {
                 double height = S52_atof(value->str);
 
@@ -2125,10 +2025,6 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
                 return str;
             }
 
-            //if (0 == S52_strncmp(buf, "VERCSA", 6) ||
-            //    0 == S52_strncmp(buf, "VERCLR", 6) ||
-            //    0 == S52_strncmp(buf, "VERCCL", 6) ||
-            //    0 == S52_strncmp(buf, "VERCOP", 6) )
             if (0 == strncmp(buf, "VERCSA", 6) ||
                 0 == strncmp(buf, "VERCLR", 6) ||
                 0 == strncmp(buf, "VERCCL", 6) ||
@@ -2398,10 +2294,8 @@ int         S52_PL_load(const char *PLib)
         return FALSE;
     }
 
-
     pl.cnt = 0;
 
-//#ifdef S52_USE_GLIB2
     {
         int ret;
         GMappedFile *mf = g_mapped_file_new(PLib, FALSE, NULL);
@@ -2427,13 +2321,7 @@ int         S52_PL_load(const char *PLib)
         //g_mapped_file_free(mf);
         g_mapped_file_unref(mf);
     }
-/*
-#else
-    PRINTF("FIXME: mmap() code missing for glib-1\n");
-    //fd = open(PLib, "r");
-    //mf = mmap(NULL, 0, PROT_READ, MAP_PRIVATE, fd, 0);
-#endif
-*/
+
     return TRUE;
 }
 
@@ -2448,44 +2336,20 @@ int         S52_PL_done()
     _colref = NULL;
 
 
-//#ifndef S52_USE_GLIB2
     // destroy look-up tables
-    //g_tree_traverse(_selLUP(_LUP_LINES),  _delLUP, G_IN_ORDER, NULL);
     g_tree_destroy (_selLUP(_LUP_LINES));
-    //g_tree_unref(_selLUP(_LUP_LINES));
-
-    //g_tree_traverse(_selLUP(_LUP_PLAIN),  _delLUP, G_IN_ORDER, NULL);
     g_tree_destroy (_selLUP(_LUP_PLAIN));
-    //g_tree_unref(_selLUP(_LUP_PLAIN));
-
-    //g_tree_traverse(_selLUP(_LUP_SYMBO),  _delLUP, G_IN_ORDER, NULL);
     g_tree_destroy (_selLUP(_LUP_SYMBO));
-    //g_tree_unref(_selLUP(_LUP_SYMBO));
-
-    //g_tree_traverse(_selLUP(_LUP_SIMPL),  _delLUP, G_IN_ORDER, NULL);
     g_tree_destroy (_selLUP(_LUP_SIMPL));
-    //g_tree_unref(_selLUP(_LUP_SIMPL));
-
-    //g_tree_traverse(_selLUP(_LUP_PAPER),  _delLUP, G_IN_ORDER, NULL);
     g_tree_destroy (_selLUP(_LUP_PAPER));
-    //g_tree_unref(_selLUP(_LUP_PAPER));
 
     // destroy symbology tables
-    //g_tree_traverse(_selSMB(S52_SMB_LINE), _delSMB, G_IN_ORDER, NULL);
     g_tree_destroy (_selSMB(S52_SMB_LINE));
-    //g_tree_unref(_selSMB(S52_SMB_LINE));
-
-    //g_tree_traverse(_selSMB(S52_SMB_PATT), _delSMB, G_IN_ORDER, NULL);
     g_tree_destroy (_selSMB(S52_SMB_PATT));
-    //g_tree_unref(_selSMB(S52_SMB_PATT));
-
-    //g_tree_traverse(_selSMB(S52_SMB_SYMB), _delSMB, G_IN_ORDER, NULL);
     g_tree_destroy (_selSMB(S52_SMB_SYMB));
-    //g_tree_unref(_selSMB(S52_SMB_SYMB));
 
     // CS doesn't have node to free
     g_tree_destroy(_selSMB(S52_SMB_COND));
-//#endif
 
     {   // set table to NULL
         for (int i=0; i<TBL_NUM; ++i)
@@ -2510,7 +2374,6 @@ int         S52_PL_done()
     return TRUE;
 }
 
-//S52_Color  *S52_PL_getColorAt(guchar index)
 static S52_Color *_getColorAt(guchar index)
 // return color at index, for the currently selected color table
 {
@@ -2679,10 +2542,22 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     obj->textParsed[0] = FALSE;
     obj->textParsed[1] = FALSE;
 
-    obj->orient        = (1.0/0.0);   // NaN
-    obj->speed         = (1.0/0.0);   // NaN
+    // NOTE: this is a general holder for orient/speed depending on
+    // the object type. So it could be for current, ship, AIS, ...
+    obj->orient        = INFINITY;
+    obj->speed         = INFINITY;
 
     obj->geoData       = geoData;     // S57_geo
+
+    /*
+    // init Aux Info - this is the default anyway (ie g_new0)
+    obj->time    = 0;
+    obj->supp    = 0;
+
+    obj->nextLeg = NULL;
+    obj->prevLeg = NULL;
+    obj->wholin  = NULL;
+    */
 
 
     // -- *TRICKY* -- *TRICKY* -- *TRICKY* --
@@ -2697,18 +2572,6 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     // FIX: parse alternate first so that normal LUP reference will be the default
     _linkLUP(obj, 0);
 
-
-    /*
-    // init Aux Info - this is the default anyway (ie g_new0)
-    obj->orient = 0;
-    obj->speed  = 0;
-    obj->time   = 0;
-    obj->supp   = 0;
-
-    obj->nextLeg = NULL; 
-    obj->prevLeg = NULL;
-    obj->wholin  = NULL;
-    */
 
     while (idx >= _objList->len) {
         PRINTF("DEBUG: extending _objList size to %u\n", _objList->len+1024);
@@ -3026,7 +2889,6 @@ int         S52_PL_cmpCmdParam(_S52_obj *obj, const char *name)
     if (NULL == cmd)
         return FALSE;
 
-    //return S52_strncmp(cmd->param, name, S52_SMB_NMLN);
     return strncmp(cmd->param, name, S52_SMB_NMLN);
 }
 
@@ -3114,39 +2976,24 @@ double      S52_PL_getSYorient(_S52_obj *obj)
 
     return_if_null(obj);
 
-    if (TRUE == isinf(obj->orient)) {
+    if (1 == isinf(obj->orient)) { // +inf
         if (NULL != obj->crntA) {
-            //return FALSE;
-
-            //if (obj->crnt>=obj->cmdA->len)
-            //    return FALSE;
-
             _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
 
             if (NULL != cmd) {
-                //return FALSE;
-
                 str = cmd->param;
 
                 // check if ORIENT param in symb cmd (ex SY(AAAA01,ORIENT))
                 if (',' == *(str+8)) {
                     str = _getParamVal(obj->geoData, str+9, val, MAXL);
 
-                    if (NULL != str) {
-                        //orient = S52_atof(val) - 90.0;
-                        obj->orient = S52_atof(val);
-                    } else
-                        obj->orient = 0.0;
+                    obj->orient = (NULL==str) ? 0.0 : S52_atof(val);
                 } else
                     obj->orient = 0.0;
             } else
                 obj->orient = 0.0;
         } else
             obj->orient = 0.0;
-
-        // default to upright
-        //if isinf(obj->orient)
-        //   obj->orient = 0;
     }
 
     return obj->orient;
@@ -3180,10 +3027,11 @@ int         S52_PL_getSYspeed(_S52_obj *obj, double *speed)
     return_if_null(obj);
     return_if_null(speed);
 
-    if (TRUE == isinf(obj->speed)) {
+    if (1 == isinf(obj->speed)) {  // +inf
         // FIXME: try to get the speed from att !!
-        // NOTE: this is a general holder for speed depending on
-        // the object type. So it could be for current, ship, AIS, ...
+
+        *speed = 0.0;
+
         return FALSE;
     }
 
@@ -3361,13 +3209,7 @@ gint        S52_PL_traverse(S52_SMBtblName tableNm, GTraverseFunc callBack)
     GTree *tbl = _selSMB(tableNm);
 
     if (NULL != tbl) {
-//#ifdef S52_USE_GLIB2
         g_tree_foreach(tbl, callBack, NULL);
-
-//#else
-//        // deprecated
-//        g_tree_traverse(tbl, callBack, G_IN_ORDER, NULL);
-//#endif
 
         return TRUE;
     }

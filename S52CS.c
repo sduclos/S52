@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2016 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -122,10 +122,9 @@ int       S52_CS_add(_localObj *local, S57_geo *geo)
     // for LIGHTS05
     //
     // set floating platform
-    if ((0==g_strcmp0  (name, "LITFLT")) ||
-        (0==g_strcmp0  (name, "LITVES")) ||
-        //(0==S52_strncmp(name, "BOY", 3)))
-        (0==strncmp(name, "BOY", 3)))
+    if ((0==g_strcmp0(name, "LITFLT")) ||
+        (0==g_strcmp0(name, "LITVES")) ||
+        (0==strncmp  (name, "BOY", 3)))
     {
         g_ptr_array_add(local->topmar_list, (gpointer) geo);
         return TRUE;
@@ -217,7 +216,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
 
             { // skip if it's same S57 object
                 GString *olnam = S57_getAttVal(other, "LNAM");
-                //if (TRUE == S52_string_equal(lnam, olnam))
                 if (TRUE == g_string_equal(lnam, olnam))
                     continue;
             }
@@ -296,7 +294,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
 
             {  // skip if it's same S57 object
                 GString *olnam = S57_getAttVal(other, "LNAM");
-                //if (TRUE == S52_string_equal(lnam, olnam))
                 if (TRUE == g_string_equal(lnam, olnam))
                     continue;
             }
@@ -373,7 +370,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             // strcmp0 will fail if NULL - hence no need to go further
             //if ((NULL!=lnam) && (NULL!=olnam)) {
                 // skip if it's same S57 object
-                //if (TRUE == S52_string_equal(lnam, olnam))
                 if (TRUE == g_string_equal(lnam, olnam))
                     continue;
             //}

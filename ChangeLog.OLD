@@ -4,9 +4,16 @@
 #
 
 
+2016FEB18
+    -fix handling of isinf() call
+    
+2016FEB16
+    -mod code clean up
+    -mod update copyright year
+
 2016FEB13
     -mod comment dead code GLib-1 and GLIB2 ifdef
-    -add utils to func in S52utils
+    -add 'utils' to func name in S52utils
 
 2016FEB12
     -mod comment experiment origAW

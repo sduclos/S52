@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2016 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -22,7 +22,7 @@
 
 
 #include "S57data.h"    // S57_geo
-#include "S52utils.h"   // PRINTF(), S52_strlen()
+#include "S52utils.h"   // PRINTF()
 
 #include <math.h>       // INFINITY, nearbyint()
 
@@ -978,7 +978,6 @@ static void   _getAttValues(GQuark key_id, gpointer data, gpointer user_data)
     GString     *attValue = (GString*) data;
     const gchar *attName  = g_quark_to_string(key_id);
 
-    //if (6 == S52_strlen(attName)){
     if (S57_ATT_NM_LN == strlen(attName)){
         strcpy(attData->value[attData->currentIdx], attValue->str);
         strcpy(attData->name [attData->currentIdx], attName );
@@ -1040,11 +1039,12 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
     return att;
 }
 
-static void   _string_free(gpointer data)
+static void _string_free(gpointer data)
 {
     g_string_free((GString*)data, TRUE);
 }
 
+// FIXME: returning GData useless
 GData     *S57_setAtt(_S57_geo *geo, const char *name, const char *val)
 {
     return_if_null(geo);
@@ -1204,7 +1204,6 @@ static void   _printAtt(GQuark key_id, gpointer data, gpointer user_data)
     const gchar *attName  = g_quark_to_string(key_id);
 
     // print only S57 attrib - assuming that OGR att are not 6 char in lenght!!
-    //if (6 == S52_strlen(attName)) {
     if (S57_ATT_NM_LN == strlen(attName)) {
         GString *attValue = (GString*) data;
         PRINTF("\t%s : %s\n", attName, attValue->str);

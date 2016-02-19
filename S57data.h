@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2016 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -25,7 +25,7 @@
 #ifndef _S57DATA_H_
 #define _S57DATA_H_
 
-#include <glib.h>       // guint, GArray, GData, GString, gconstpointer
+#include <glib.h>       // guint, GArray, GData, GString, gconstpointer, gboolean
 #define GCPTR gconstpointer
 
 // MAXINT-6 is how OGR tag an UNKNOWN value

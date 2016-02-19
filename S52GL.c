@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2015 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2016 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -2528,7 +2528,8 @@ static int       _renderSY(S52_obj *obj)
     // failsafe
     S57_geo *geoData = S52_PL_getGeo(obj);
     GLdouble orient  = S52_PL_getSYorient(obj);
-    if (1 == isinf(orient)) {
+
+    if (1 == isinf(orient)) {  // +inf
         PRINTF("WARNING: no 'orient' for object: %s\n", S57_getName(geoData));
         return FALSE;
     }
