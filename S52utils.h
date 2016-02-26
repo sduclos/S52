@@ -27,9 +27,6 @@
 
 #include "S52.h"          // S52_log_cb
 
-#include <glib.h>         // g_print()
-#include <glib/gstdio.h>  // FILE
-
 #ifdef SOLARIS
     // well should be cc
 #define PRINTF printf(__FILE__":%i: : ", __LINE__),printf
