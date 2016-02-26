@@ -4,9 +4,12 @@
 #
 
 
+2016FEB26
+    -add S52_USE_RASTER code path to handle bathy .tiff
+
 2016FEB18
     -fix handling of isinf() call
-    
+
 2016FEB16
     -mod code clean up
     -mod update copyright year
