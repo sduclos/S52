@@ -53,10 +53,10 @@ typedef struct _pt2 { double x,y;   } pt2;
 
 // assume: extent canonical: x1 < x2, y1 < y2
 typedef struct _rect {
-    double x1;        // W
-    double y1;        // S
-    double x2;        // E
-    double y2;        // N
+    double x1;        // W  LL
+    double y1;        // S  LL
+    double x2;        // E  UR
+    double y2;        // N  UR
 } _rect;
 
 // data for glDrawArrays()
@@ -88,7 +88,7 @@ typedef struct _S57_geo {
 
     S57_Obj_t    obj_t;       // PL & S57 - P/L/A
 
-    _rect        rect;        // lat/lon extent of object
+    _rect        rect;        // lat/lon extent of this S75 object
 
     // length of geo data (POINT, LINE, AREA) currently in buffer
     guint        geoSize;        // max is 1 point / linexyznbr / ringxyznbr[0]
@@ -883,7 +883,7 @@ int        S57_getPrimIdx(_S57_prim *prim, unsigned int i, int *mode, int *first
 }
 
 int        S57_setExt(_S57_geo *geo, double x1, double y1, double x2, double y2)
-// assume: extent canonical
+// assume: extent canonical - W, S, E, N
 {
     return_if_null(geo);
 
@@ -929,10 +929,10 @@ int        S57_getExt(_S57_geo *geo, double *x1, double *y1, double *x2, double 
 {
     return_if_null(geo);
 
-    *x1 = geo->rect.x1; // W
-    *y1 = geo->rect.y1; // S
-    *x2 = geo->rect.x2; // E
-    *y2 = geo->rect.y2; // N
+    *x1 = geo->rect.x1;  // W
+    *y1 = geo->rect.y1;  // S
+    *x2 = geo->rect.x2;  // E
+    *y2 = geo->rect.y2;  // N
 
     return TRUE;
 }
