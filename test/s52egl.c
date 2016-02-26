@@ -1450,7 +1450,7 @@ static int      _s52_init       (s52engine *engine)
 
 
     // read cell location fron s52.cfg
-    S52_loadCell(NULL, NULL);
+    //S52_loadCell(NULL, NULL);
 
     // S-64 ENC
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/GB5X01SE.000", NULL);
@@ -1475,13 +1475,30 @@ static int      _s52_init       (s52engine *engine)
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
 
     // Bathy - experimental Cap Sante / Portneuf
-    //S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479017.000", NULL);
+    S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479017.000", NULL);
+    S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479020.000", NULL);
     //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
+
+    // bathy HD
+    S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4666N7170W_5.tiff", NULL);
+    S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7170W_5.tiff", NULL);
+    S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4662N7170W_5.tiff", NULL);
+
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7172W_5.tiff", NULL);
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4662N7172W_5.tiff", NULL);
+
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7174W_5.tiff", NULL);
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4662N7174W_5.tiff", NULL);
+
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7176W_5.tiff", NULL);
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4662N7176W_5.tiff", NULL);
+
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7178W_5.tiff", NULL);
 
     // RADAR - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/radar/RADAR_imitator/out.raw", NULL);
 
-    //S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
+    S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
 
 #endif  // S52_USE_ANDROID
 
