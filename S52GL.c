@@ -1701,10 +1701,10 @@ static int       _computeCentroid(S57_geo *geoData)
     if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
         return FALSE;
 
-    x1  = xyz[0];
-    y1  = xyz[1];
-    x2  = xyz[3];
-    y2  = xyz[4];
+    x1 = xyz[0];
+    y1 = xyz[1];
+    x2 = xyz[3];
+    y2 = xyz[4];
 
     // extent inside view, compute normal centroid, no clip
     if ((_pmin.u < x1) && (_pmin.v < y1) && (_pmax.u > x2) && (_pmax.v > y2)) {
@@ -2693,7 +2693,6 @@ static int       _renderSY(S52_obj *obj)
 
                 // when in pick mode, fill the area
                 _fillArea(geoData);
-                //_fillArea(geoData, 0);
             }
 
             // centroid offset might put the symb outside the area
@@ -5145,64 +5144,57 @@ int        S52_GL_isOFFview(S52_obj *obj)
 #ifdef S52_USE_GL2
 static int       _newTexture(S52_GL_ras *raster)
 // copy and blend raster 'data' to alpha texture
-// FIXME: test if the use of hader to blend rather than precomputing value here is faster
+// FIXME: test if the use of shader to blend rather than precomputing value here is faster
 {
+    double min  =  INFINITY;
+    double max  = -INFINITY;
     guint npotX = raster->w;
     guint npotY = raster->h;
 
-    float min  =  INFINITY;
-    float max  = -INFINITY;
-
-    float safe = (float) S52_MP_get(S52_MAR_SAFETY_CONTOUR) * -1.0;  // change signe
-    //unsigned char safe = 100;
-
-    float *dataf = (float*) raster->data;
-    //unsigned char *datab = (unsigned char *) raster->data;
+    float safe  = (float) S52_MP_get(S52_MAR_SAFETY_CONTOUR) * -1.0;  // change signe
+    float *dataf= (float*) raster->data;
 
     guint count = raster->w * raster->h;
-    unsigned char *texAlpha = g_new0(unsigned char, count * 4);
+
+    // FIXME: why use RGBA instead of ALPHA only?
     struct rgba {unsigned char r,g,b,a;};
+    guchar *texAlpha = g_new0(guchar, count * sizeof(struct rgba));
     struct rgba *texTmp   = (struct rgba*) texAlpha;
 
+    // debug
+    int nFTLMAX = 0;
+    int nNoData = 0;
     for (guint i=0; i<count; ++i) {
-        //int Yline = i/raster->w;
-        //int k     = i - Yline*raster->w;
-        //int ii    = Yline*potX + k;
-
-        //if (raster->nodata == dataf[i]) {
-        if (-9999 == dataf[i]) {
-            //texTmp[ii] = 0;
+        if (raster->nodata == dataf[i]) {
+            ++nNoData;
+            texTmp[i].a = 0;
+            continue;
+        }
+        if (G_MAXFLOAT == dataf[i]) {
+            ++nFTLMAX;
             texTmp[i].a = 0;
             continue;
         }
 
         min = MIN(dataf[i], min);
         max = MAX(dataf[i], max);
-        //min = MIN(datab[i], min);
-        //max = MAX(datab[i], max);
 
         if ((safe/2.0) <= dataf[i]) {
-        //if ((safe/2.0) <= datab[i]) {
-            // debug
-            //texTmp[Yline*potX + k] = 100;
-
-            // OK
-            //texTmp[ii] = 0;
             texTmp[i].a = 0;
             continue;
         }
         if (safe <= dataf[i]) {
-        //if (safe <= datab[i]) {
-            //texTmp[ii] = 255;
             texTmp[i].a = 255;
             continue;
         }
+        // FIXME: use S52_MAR_DEEP_CONTOUR
         if ((safe-2.0) <= dataf[i]) {
-        //if ((safe-2.0) <= datab[i]) {
-            //texTmp[ii] = 100;
             texTmp[i].a = 100;
             continue;
         }
+
+        // debug
+        //texTmp[i].a = 255;
     }
 
     raster->min      = min;
@@ -5211,13 +5203,15 @@ static int       _newTexture(S52_GL_ras *raster)
     raster->npotY    = npotY;
     raster->texAlpha = texAlpha;
 
+    PRINTF("DEBUG: nFTLMAX=%i nNoData=%i count=%i\n", nFTLMAX, nNoData, count);
+
     return TRUE;
 }
 
 int        S52_GL_drawRaster(S52_GL_ras *raster)
 {
     // bailout if not in view
-    if ((raster->E < _pmin.u) || (raster->S < _pmin.v) || (raster->W > _pmax.u) || (raster->N > _pmax.v)) {
+    if ((raster->pext.E < _pmin.u) || (raster->pext.S < _pmin.v) || (raster->pext.W > _pmax.u) || (raster->pext.N > _pmax.v)) {
         return TRUE;
     }
 
@@ -5238,7 +5232,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
             _checkError("S52_GL_drawRaster() -1.0-");
         } else {
-            // raster
+            // raster / bathy
             _newTexture(raster);
 
             glGenTextures(1, &raster->texID);
@@ -5281,10 +5275,10 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
     // set radar extent
     if (TRUE == raster->isRADAR) {
-        raster->S = raster->cLat - raster->rNM * 1852.0;
-        raster->W = raster->cLng - raster->rNM * 1852.0;
-        raster->N = raster->cLat + raster->rNM * 1852.0;
-        raster->E = raster->cLng + raster->rNM * 1852.0;
+        raster->pext.S = raster->cLat - raster->rNM * 1852.0;
+        raster->pext.W = raster->cLng - raster->rNM * 1852.0;
+        raster->pext.N = raster->cLat + raster->rNM * 1852.0;
+        raster->pext.E = raster->cLng + raster->rNM * 1852.0;
     }
 
     // set colour
@@ -5303,10 +5297,10 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
     float fracX = 1.0;
     float fracY = 1.0;
     vertex_t ppt[4*3 + 4*2] = {
-        raster->W, raster->S, 0.0,        0.0f,  0.0f,
-        raster->E, raster->S, 0.0,        fracX, 0.0f,
-        raster->E, raster->N, 0.0,        fracX, fracY,
-        raster->W, raster->N, 0.0,        0.0f,  fracY
+        raster->pext.W, raster->pext.S, 0.0,        0.0f,  0.0f,
+        raster->pext.E, raster->pext.S, 0.0,        fracX, 0.0f,
+        raster->pext.E, raster->pext.N, 0.0,        fracX, fracY,
+        raster->pext.W, raster->pext.N, 0.0,        0.0f,  fracY
     };
 
     // FIXME: need this for bathy
