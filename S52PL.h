@@ -26,7 +26,8 @@
 #define _S52PL_H_
 
 #include "S57data.h"     // S57_geo, S57_Obj_t
-#include <glib.h>        // GString, GData, GArray
+
+#include <glib.h>        // GArray
 
 #define S52_PL_NMLN   6  // lookup name lenght
 #define S52_PL_COLN   5  // color name lenght
