@@ -40,14 +40,16 @@
 #include <math.h>       // INFINITY
 #include <stdio.h>      // setbuf()
 //#include <gio/gio.h>    // gsetbuf()
+#include <glib/gprintf.h> // g_sprintf()
+//#include <glib/gstdio.h>  // FILE
+
 
 // Network
 #if defined(S52_USE_SOCK) || defined(S52_USE_DBUS) || defined(S52_USE_PIPE)
 #include "_S52.i"
 #endif
 
-
-#include "gdal.h"       // to handle Raster
+#include "gdal.h"       // GDAL_RELEASE_NAME and handle Raster
 
 #ifdef S52_USE_GOBJECT
 // Not really using GObect for now but this emphasize that the
@@ -65,9 +67,6 @@ typedef guint64 _S52ObjectHandle;
 //typedef S52_obj* _S52ObjectHandle;
 
 #endif  // S52_USE_GOBJECT
-
-#include <glib/gprintf.h> //
-#include <glib/gstdio.h>  // FILE
 
 #ifdef S52_USE_PROJ
 #include <proj_api.h>   // projUV, projXY, projPJ
@@ -124,14 +123,15 @@ static struct sigaction _old_signal_handler_SIGTERM;  // 15
 #define ZOOM_FAC   0.1
 #define ZOOM_INI   1.0
 
-#define S57_CELL_NAME_MAX_LEN 8 // cell name maximum lenght
+//#define S57_CELL_NAME_MAX_LEN 8 // cell name maximum lenght
 
-typedef struct _extent {
-    double S,W,N,E;
-} _extent;
+// move to GL
+//typedef struct _extent {
+//    double S,W,N,E;
+//} _extent;
 
 typedef struct _cell {
-    _extent    ext;
+    extent    ext;        // cell geo extent
 
     GString   *filename;  // encName/baseName
     gchar     *encPath;   // original user path/name
@@ -1335,14 +1335,14 @@ static int        _initSIG(void)
     return TRUE;
 }
 
-static int        _getCellsExt(_extent* ext);  // forward decl
+static int        _getCellsExt(extent* ext);  // forward decl
 static int        _initPROJview(void)
 {
     // skip if Projection allready set
     if (NULL != S57_getPrjStr())
         return TRUE;
 
-    _extent ext;
+    extent ext;
     if (FALSE == _getCellsExt(&ext)) {
         PRINTF("WARNING: failed, no cell loaded\n");
         return FALSE;
@@ -2003,7 +2003,6 @@ static int        _suppLineOverlap()
 static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
 {
     _cell *ch = NULL;
-    //FILE  *fd = NULL;
 
     // skip file not terminated by .000
     char *base = g_path_get_basename(filename);
@@ -2157,7 +2156,7 @@ static int        _loadCATALOG(char *filename)
 #endif  // 0
 #endif  // S52_USE_OGR_FILECOLLECTOR
 
-#ifdef S52_USE_RADAR
+#if (defined(S52_USE_RADAR) || defined(S52_USE_RASTER))
 // see http://www.gdal.org/warptut.html
 #include "gdal_alg.h"
 #include "ogr_srs_api.h"
@@ -2165,7 +2164,8 @@ static int        _loadCATALOG(char *filename)
 
 static const char*_getSRS(void)
 {
-    const char *ret    = NULL;
+    //const char *ret    = NULL;
+    char *ret    = NULL;
     const char *prjStr = S57_getPrjStr();
 
     if (NULL == prjStr) {
@@ -2275,7 +2275,7 @@ static int        _warp(GDALDatasetH hSrcDS, GDALDatasetH hDstDS)
 
 int               _loadRaster(const char *fname)
 {
-    char fnameMerc[1024];  // MAXPATH!
+    char fnameMerc[1024];  // FIME: MAXPATH!
     g_sprintf(fnameMerc, "%s%s", fname, ".merc");
 
     // check if allready loaded
@@ -2304,8 +2304,11 @@ int               _loadRaster(const char *fname)
         }
 
         //
-        // FIXME: convert to Merc at draw() time, if no ENC loaded this will fail
+        // FIXME: this will fail if convert to Merc at draw() time and no ENC loaded
+        //        -OR-
+        //        set proj here!
         //
+
 
         // FIXME: check if SRS of merc is same srs_DST if not convert again
         const char *srs_DST = _getSRS();
@@ -2353,11 +2356,35 @@ int               _loadRaster(const char *fname)
         ras->gdtSz      = gdtSz;
         ras->data       = data;
         ras->nodata     = nodata;  // check nodata_set
-        ras->S          = gt[3] + 0 * gt[4] + 0 * gt[5];  // YgeoLL;
-        ras->W          = gt[0] + 0 * gt[1] + 0 * gt[2];  // XgeoLL;
-        ras->N          = gt[3] + w * gt[4] + h * gt[5];  // YgeoUR;
-        ras->E          = gt[0] + w * gt[1] + h * gt[2];  // XgeoUR;
+
+        // FIXME: bug reading bathy.tiff !!
+        int success = FALSE;
+        double _min        = GDALGetRasterMinimum(bandA, &success);
+        if (TRUE == success)
+            ras->min = _min;
+        double _max        = GDALGetRasterMaximum(bandA, &success);
+        if (TRUE == success)
+            ras->min = _max;
+
+
+        ras->pext.S     = gt[3] + 0 * gt[4] + 0 * gt[5];  // YgeoLL;
+        ras->pext.W     = gt[0] + 0 * gt[1] + 0 * gt[2];  // XgeoLL;
+        ras->pext.N     = gt[3] + w * gt[4] + h * gt[5];  // YgeoUR;
+        ras->pext.E     = gt[0] + w * gt[1] + h * gt[2];  // XgeoUR;
         memcpy(ras->gt, gt, sizeof(double) * 6);
+
+        //*
+        {   // convert view extent to deg
+            projUV uv1 = {ras->pext.W,  ras->pext.S};
+            projUV uv2 = {ras->pext.E,  ras->pext.N};
+            uv1 = S57_prj2geo(uv1);
+            uv2 = S57_prj2geo(uv2);
+            ras->gext.S = uv1.v;
+            ras->gext.W = uv1.u;
+            ras->gext.N = uv2.v;
+            ras->gext.E = uv2.u;
+        }
+        //*/
 
         g_ptr_array_add(_rasterList, ras);
     }
@@ -2368,9 +2395,8 @@ int               _loadRaster(const char *fname)
 
     return TRUE;
 }
-#endif  // S52_USE_RADAR
+#endif  // S52_USE_RADAR S52_USE_RASTER
 
-//DLL int    STD S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb);  // forward decl
 int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb);  // forward decl
 DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb)
 // FIXME: handle each type of cell separatly
@@ -2442,11 +2468,12 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     }
 #endif
 
-#ifdef S52_USE_RADAR
+#ifdef S52_USE_RASTER
     {   // experimental - load raster (GeoTIFF)
         gchar *basename = g_path_get_basename(fname);
         int len = strlen(basename);
-        if (0 == g_strcmp0(basename+(len-4), ".tif")) {
+        if ((0==g_strcmp0(basename+(len-4), ".tif" )) ||
+            (0==g_strcmp0(basename+(len-5), ".tiff"))) {
             _loadRaster(fname);
 
             g_free(basename);
@@ -2456,7 +2483,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
             return TRUE;
         }
     }
-#endif  // S52_USE_RADAR
+#endif  // S52_USE_RASTER
 
     /*
     {   // experimental - load raw raster RADAR (RAW)
@@ -2542,9 +2569,6 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 
     if (TRUE == _initPROJview())
         _projectCells();
-
-    // auto generated DEPCNT
-    //_genDEPCNT();
 
     // _app() specific to sector light
     _doCullLights = TRUE;
@@ -3090,7 +3114,7 @@ int            S52_loadObject(const char *objname, void *shape)
     // set cell extent from each object
     // NOTE: should be the same as CATALOG.03x
     if (S57__META_T != S57_getObjtype(geoData)) {
-        _extent ext;
+        extent ext;
 
         S57_getExt(geoData, &ext.W, &ext.S, &ext.E, &ext.N);
 
@@ -3254,7 +3278,7 @@ exit:
 //
 //---------------------------------------------------
 
-static int        _intersec(_extent A, _extent B)
+static int        _intersec(extent A, extent B)
 // TRUE if intersec, FALSE if outside
 // A - ENC ext, B - view ext
 {
@@ -3407,7 +3431,7 @@ static int        _cullLights(void)
         for (guint j=0; j<c->lights_sector->len; ++j) {
             S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
             S57_geo *geo = S52_PL_getGeo(obj);
-            _extent oext;
+            extent   oext;
             S57_getExt(geo, &oext.W, &oext.S, &oext.E, &oext.N);
 
             S52_PL_resloveSMB(obj);
@@ -3514,7 +3538,7 @@ static int        _resetJournal(void)
     return TRUE;
 }
 
-static int        _cull(_extent ext)
+static int        _cull(extent ext)
 // FIXME: allow for chart rotation - north != 0.0
 // cull chart not in view extent
 // - viewport
@@ -3542,44 +3566,53 @@ static int        _cull(_extent ext)
 }
 
 #if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
-static int        _drawRaster()
+static int        _drawRaster(extent *cellExt)
 {
     for (guint i=0; i<_rasterList->len; ++i) {
         S52_GL_ras *raster = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
+
+#ifdef S52_USE_RASTER
         if (FALSE == raster->isRADAR) {
-            // bathy
-            S52_GL_drawRaster(raster);
+
+            if (TRUE == _intersec(*cellExt, raster->gext)) {
+
+                // bathy
+                S52_GL_drawRaster(raster);
+            }
             continue;
         }
+#endif  // S52_USE_RASTER
 
 #ifdef S52_USE_RADAR
-        double cLat = 0.0;
-        double cLng = 0.0;
-        double rNM  = 0.0;
+        if (TRUE == raster->isRADAR) {
+            double cLat = 0.0;
+            double cLng = 0.0;
+            double rNM  = 0.0;
 
-        raster->texAlpha = raster->RADAR_cb(&cLat, &cLng, &rNM);
+            raster->texAlpha = raster->RADAR_cb(&cLat, &cLng, &rNM);
 
-        double xyz[3] = {cLng, cLat, 0.0};
-        if (FALSE == S57_geo2prj3dv(1, xyz)) {
-            PRINTF("WARNING: S57_geo2prj3dv() failed\n");
-            return FALSE;
+            double xyz[3] = {cLng, cLat, 0.0};
+            if (FALSE == S57_geo2prj3dv(1, xyz)) {
+                PRINTF("WARNING: S57_geo2prj3dv() failed\n");
+                return FALSE;
+            }
+            raster->cLng = xyz[0];
+            raster->cLat = xyz[1];
+            raster->rNM  = rNM;
+
+            // DEBUG: set extent for filter in drawRaster()
+            //S52_GL_getPRJView(&raster->S, &raster->W, &raster->N, &raster->E);
+
+            S52_GL_drawRaster(raster);
         }
-        raster->cLng = xyz[0];
-        raster->cLat = xyz[1];
-        raster->rNM  = rNM;
-
-        // set extent for filter in drawRaster()
-        S52_GL_getPRJView(&raster->S, &raster->W, &raster->N, &raster->E);
-
-        S52_GL_drawRaster(raster);
-#endif
+#endif  // S52_USE_RADAR
     }
 
     return TRUE;
 }
-#endif  // S52_USE_GL2
+#endif  // S52_USE_GL2 S52_USE_GLES2
 
-static int        _drawLayer(_extent ext, int layer)
+static int        _drawLayer(extent ext, int layer)
 {
     // all cells --larger region first
     for (guint i=_cellList->len; i>0 ; --i) {
@@ -3889,9 +3922,12 @@ static int        _draw()
         g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
 
 #if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
-        // draw radar (raster)
-        if (1.0 == S52_MP_get(S52_MAR_DISP_RADAR_LAYER))
-            _drawRaster();
+        // draw radar / raster
+        if ((1.0 == S52_MP_get(S52_MAR_DISP_RADAR_LAYER)) &&
+            (0   != g_strcmp0(c->filename->str, MARINER_CELL))
+           ) {
+            _drawRaster(&(c->ext));
+        }
 #endif
 
         // draw over radar
@@ -3945,7 +3981,7 @@ DLL int    STD S52_draw(void)
 
         //////////////////////////////////////////////
         // CULL: .. supress display of object (eg outside view)
-        _extent ext;
+        extent ext;
         projUV uv1, uv2;
         S52_GL_getPRJView(&uv1.v, &uv1.u, &uv2.v, &uv2.u);
 
@@ -4598,7 +4634,7 @@ exit:
     return TRUE;
 }
 
-static int        _getCellsExt(_extent* extSum)
+static int        _getCellsExt(extent* extSum)
 {
     int ret = FALSE;
     for (guint i=0; i<_cellList->len; ++i) {
@@ -4709,7 +4745,7 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
     S52_CHECK_MUTX_INIT;
 
     if (NULL == filename) {
-        _extent ext;
+        extent ext;
         _getCellsExt(&ext);
         *S = ext.S;
         *W = ext.W;
@@ -5060,7 +5096,7 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     int width;
     int height;
 
-    _extent ext;          // pick extent
+    extent ext;          // pick extent
     double ps,pw,pn,pe;   // hold PRJ view
     double gs,gw,gn,ge;   // hold GEO view
     double oldAA = 0.0;
@@ -5401,7 +5437,7 @@ DLL cchar *STD S52_getCellNameList(void)
         gchar  *path  = g_path_get_dirname(c->encPath);
         GDir   *dir   = g_dir_open(path, 0, &error);
         if (NULL != error) {
-            g_printf("WARNING: g_dir_open() failed (%s)\n", error->message);
+            PRINTF("WARNING: g_dir_open() failed (%s)\n", error->message);
             g_error_free(error);
         }
         if (NULL != dir) {
@@ -5654,7 +5690,7 @@ static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
 {
     // FIXME: crossing of anti-meridian
     // FIXME: set a init flag in _extent
-    _extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
+    extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
 
     for (guint i=0; i<xyznbr; ++i) {
         // X - longitude
@@ -6025,7 +6061,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         double ps,pw,pn,pe;  // hold PRJ view
         double gs,gw,gn,ge;  // hold GEO view
         int    x,y,w,h;      // hold ViewPort
-        _extent ext;
+        extent ext;
 
         // set pick to stack mode
         S52_MP_set(S52_MAR_DISP_CRSR_PICK, 2.0);
@@ -6539,7 +6575,7 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
             // first pos set extent directly
             S57_setExt(geo, longitude, latitude, longitude, latitude);
         } else {
-            _extent ext;
+            extent ext;
             S57_getExt(geo, &ext.W, &ext.S, &ext.E, &ext.N);
             double xyz[3*3] = {longitude, latitude, 0.0, ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
 
@@ -6936,7 +6972,7 @@ exit:
     return ret;
 }
 
-/*
+#if 0
 =================================================== J U N K ====================================================
 // forward decl
 static S52ObjectHandle _newMarObj(const char *plibObjName, S52ObjectType objType, unsigned int xyznbr, double *xyz, const char *listAttVal);
@@ -7074,4 +7110,4 @@ static int        _genDEPCNT()
 
     return TRUE;
 }
-*/
+#endif
