@@ -41,7 +41,7 @@ SHELL = /bin/sh
 DBG0   = -O0 -g
 DBG1   = -O0 -g1 -Wall -Wpedantic -Wextra
 DBG2   = -O0 -g2 -Wall -Wpedantic -Wextra
-DBG3   = -O0 -g3 -Wall -Wpedantic -Wextra -Werror -ggdb3 -fstack-protector-all -Wstrict-aliasing -Wstrict-overflow -Wno-uninitialized
+DBG3   = -O0 -g3 -Wall -Wpedantic -Wextra -ggdb3 -fstack-protector-all -Wstrict-aliasing -Wstrict-overflow -Wno-uninitialized
 DBGOFF = -DG_DISABLE_ASSERT
 DBG    = $(DBG3)
 
@@ -169,7 +169,8 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_C_AGGR_C_ASSO- return info C_AGGR C_ASSO on cursor pick (need OGR patch in doc/ogrfeature.cpp.diff)
 # -DS52_USE_SYM_AISSEL01 - need symbol in test/plib-test-priv.rle
 # -DS52_USE_WORLD        - need shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
-# -DS52_USE_RADAR        - skip swapbuffer between DRAW & LAST cycle, skip read/write FB
+# -DS52_USE_RADAR        - skip swapbuffer between DRAW & LAST cycle, skip read/write FB - set S52_MAR_DISP_RADAR_LAYER
+# -DS52_USE_RASTER       - bathy raster (GeoTIFF) - set S52_MAR_DISP_RADAR_LAYER
 # -DS52_USE_AFGLOW       - experimental synthetic after glow
 # -DS52_USE_SYM_VESSEL_DNGHL
 #                        - vestat = 3, close quarter, show AIS in red (DNGHL)
@@ -280,6 +281,7 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_AFGLOW               \
                   -DS52_USE_SUPP_LINE_OVERLAP    \
                   -DS52_USE_SYM_VESSEL_DNGHL     \
+                  -DS52_USE_RASTER               \
                   -DS52_DEBUG $(DBG)
 
 # CFLAGS="-mthumb" CXXFLAGS="-mthumb" LIBS="-lstdc++" ./configure --host=arm-eabi \
