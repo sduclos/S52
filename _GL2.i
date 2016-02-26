@@ -1335,7 +1335,7 @@ static int       is_power_of_two(guint v)
     return (v & (v-1)) == 0;
 }
 
-static guint g_nearest_pow (gint num)
+static guint     g_nearest_pow(gint num)
 // lifted from glib garray.c
 /* Returns the smallest power of 2 greater than n, or n if
  * such power does not fit in a guint

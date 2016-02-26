@@ -992,7 +992,7 @@ static int                 _initSock(void)
     g_object_unref(address);
 
     if (NULL != error) {
-        g_printf("WARNING: g_socket_listener_add_address() failed (%s)\n", error->message);
+        PRINTF("WARNING: g_socket_listener_add_address() failed (%s)\n", error->message);
         g_error_free(error);
         return FALSE;
     }
