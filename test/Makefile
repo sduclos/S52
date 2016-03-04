@@ -334,6 +334,11 @@ S52-1.0.typelib: S52-1.0.gir
 	$(GNOME3_SHELL_RUN) g-ir-compiler S52-1.0.gir -o $@
 	sudo cp S52-1.0.typelib $(GNOME3_SHELL_LIBS)/girepository-1.0/
 
+############### gtk3 test ##############################
+
+gtk3: gtk3test.c
+	gcc `pkg-config --cflags gtk+-3.0` gtk3test.c `pkg-config --libs gtk+-3.0` -o gtk3test
+
 
 ############### clean up ##############################
 #
