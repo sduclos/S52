@@ -563,11 +563,6 @@ static S57_prim *_tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
             gluTessBeginContour(tobj);
             for (guint j=0; j<npt-1; ++j, ppt+=3) {
                 gluTessVertex(tobj, ppt, ppt);
-
-                // debug
-                //if (2186==S57_getGeoS57ID(geoData)) {
-                //    PRINTF("%i: %f, %f, %f\n", j, ppt[0], ppt[1], ppt[2]);
-                //}
             }
             gluTessEndContour(tobj);
         }
