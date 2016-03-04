@@ -965,13 +965,14 @@ static int       _init_gl2(void)
 */
 
 //#ifdef S52_USE_MESA3D         // to get gl_PointCoord when s52_use_afterglow
-//            "#version 120 \n"
+//            "#version 120                               \n"
+//            "#version 100                               \n"
 //#endif
 
 
         static const char fragSrc[] =
 #ifdef S52_USE_GLES2
-//            "precision lowp float;                      \n"
+            //"precision lowp float;                      \n"
             "precision mediump float;                   \n"
 #endif
             "uniform sampler2D uSampler2d;              \n"
