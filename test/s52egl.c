@@ -482,7 +482,6 @@ static int      _egl_init       (s52engine *engine)
 
         // EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
         //EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
         //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
 
@@ -1170,18 +1169,19 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
 
     S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // for triggering symb ISODGR01 (ODD winding) at Rimouski
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);     // for triggering symb ISODGR01 (ODD winding) at Rimouski
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
 
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
 
+    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
-    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
+    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   12.0);
 
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
     // -- DEPTH COLOR ------------------------------------
 
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the GPU]
@@ -1223,8 +1223,8 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_DISP_CALIB,      1.0);
 
     // cell's legend
-    //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
-    S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);   // hide (default)
+    S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
+    //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);   // hide (default)
 
     //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
     S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
@@ -1443,14 +1443,11 @@ static int      _s52_init       (s52engine *engine)
     // iw: Inland Waterway profile add object classe OBCL:17000-17065 (and attributes)
     //g_setenv("S57_PROFILE", "iw", 1);
     //g_setenv("S57_PROFILE", "iw2", 1);
-
     // GDAL debug info ON
     //g_setenv("CPL_DEBUG", "ON", 1);
 
-
-
     // read cell location fron s52.cfg
-    //S52_loadCell(NULL, NULL);
+    S52_loadCell(NULL, NULL);
 
     // S-64 ENC
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/GB5X01SE.000", NULL);
@@ -1474,16 +1471,18 @@ static int      _s52_init       (s52engine *engine)
     // Ice - experimental (HACK: ice symb link to --0WORLD.shp for one shot test)
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
 
+    // ------------ Bathy HD for CA479017.000 ----------------------
     // Bathy - experimental Cap Sante / Portneuf
-    S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479017.000", NULL);
-    S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479020.000", NULL);
+    //S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479017.000", NULL);
+    //S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479020.000", NULL);
     //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
 
-    // bathy HD
-    S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4666N7170W_5.tiff", NULL);
-    S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7170W_5.tiff", NULL);
-    S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4662N7170W_5.tiff", NULL);
+    // bathy overlapping CA479017.000 and CA479020.000
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4666N7170W_5.tiff", NULL);
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7170W_5.tiff", NULL);
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4662N7170W_5.tiff", NULL);
 
+    // CA479017.000
     //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7172W_5.tiff", NULL);
     //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4662N7172W_5.tiff", NULL);
 
@@ -1495,10 +1494,33 @@ static int      _s52_init       (s52engine *engine)
 
     //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7178W_5.tiff", NULL);
 
+    // ------------ Bathy HD for CA579016.000 ----------------------
+    // ENC Bec
+    //S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA579016.000", NULL);
+    // ENC TRV
+    //S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479014.000", NULL);
+
+
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4642N7236W_5.tiff", NULL);
+
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4640N7238W_5.tiff", NULL);
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4642N7238W_5.tiff", NULL);
+
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4640N7240W_5.tiff", NULL);
+
+    // West of CA479017.000
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4636N7246W_5.tiff", NULL);
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4638N7246W_5.tiff", NULL);
+
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4636N7248W_5.tiff", NULL);
+    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4638N7248W_5.tiff", NULL);
+
+
+    S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
+
     // RADAR - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/radar/RADAR_imitator/out.raw", NULL);
 
-    S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
 
 #endif  // S52_USE_ANDROID
 
@@ -1543,7 +1565,7 @@ static int      _s52_init       (s52engine *engine)
     //_s52_setupLEGLIN(&engine->state);
 
     // wind farme for testing centroids in a concave poly
-    _s52_setupPRDARE(&engine->state);
+    //_s52_setupPRDARE(&engine->state);
 
 
 #ifdef USE_FAKE_AIS
@@ -3272,8 +3294,10 @@ int main(int argc, char *argv[])
 #ifdef S52_USE_MESA3D
     // Mesa3D env - signal no vSync
     g_setenv("vblank_mode", "0", 1);
+
     // Mesa3D env - MSAA = 4
     g_setenv("GALLIUM_MSAA", "4", 1);
+    //g_setenv("GALLIUM_MSAA", "2", 1);
 #endif
 
 
