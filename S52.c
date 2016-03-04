@@ -587,6 +587,12 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
 
     PRINTF("paramID:%i, val:%f\n", paramID, val);
 
+    // don't set same value
+    if (val == S52_MP_get(paramID)) {
+        GMUTEXUNLOCK(&_mp_mutex);
+        return FALSE;
+    }
+
     switch (paramID) {
         case S52_MAR_ERROR               : break;
         case S52_MAR_SHOW_TEXT           : val = _validate_bool(val);                   break;
@@ -1945,6 +1951,7 @@ static int        _suppLineOverlap()
 
                 for (guint i=0; i<nRCNM; ++i, splitrcnm+=increment, splitrcid+=increment) {
 
+                    //if (0 == g_strcmp0(*splitrcnm, "130")) {
                     // the S57 name for Edge (130 - S57_RCNM_VE = '3')
                     if (S57_RCNM_VE == *(*splitrcnm+1)) {
                         // search Edges with the same RCID then one of geo RCID
@@ -2355,22 +2362,22 @@ int               _loadRaster(const char *fname)
         ras->h          = h;
         ras->gdtSz      = gdtSz;
         ras->data       = data;
-        ras->nodata     = nodata;  // check nodata_set
+        ras->nodata     = (TRUE==nodata_set) ? nodata : -INFINITY;
 
         // FIXME: bug reading bathy.tiff !!
         int success = FALSE;
-        double _min        = GDALGetRasterMinimum(bandA, &success);
+        double _min = GDALGetRasterMinimum(bandA, &success);
         if (TRUE == success)
             ras->min = _min;
-        double _max        = GDALGetRasterMaximum(bandA, &success);
+        double _max = GDALGetRasterMaximum(bandA, &success);
         if (TRUE == success)
             ras->min = _max;
 
-
-        ras->pext.S     = gt[3] + 0 * gt[4] + 0 * gt[5];  // YgeoLL;
-        ras->pext.W     = gt[0] + 0 * gt[1] + 0 * gt[2];  // XgeoLL;
-        ras->pext.N     = gt[3] + w * gt[4] + h * gt[5];  // YgeoUR;
-        ras->pext.E     = gt[0] + w * gt[1] + h * gt[2];  // XgeoUR;
+        // not canonize because it will flip some bathy
+        ras->pext.S = gt[3] + 0 * gt[4] + 0 * gt[5];
+        ras->pext.W = gt[0] + 0 * gt[1] + 0 * gt[2];
+        ras->pext.N = gt[3] + w * gt[4] + h * gt[5];
+        ras->pext.E = gt[0] + w * gt[1] + h * gt[2];
         memcpy(ras->gt, gt, sizeof(double) * 6);
 
         //*
@@ -2379,10 +2386,26 @@ int               _loadRaster(const char *fname)
             projUV uv2 = {ras->pext.E,  ras->pext.N};
             uv1 = S57_prj2geo(uv1);
             uv2 = S57_prj2geo(uv2);
-            ras->gext.S = uv1.v;
-            ras->gext.W = uv1.u;
-            ras->gext.N = uv2.v;
-            ras->gext.E = uv2.u;
+            double S = uv1.v;
+            double W = uv1.u;
+            double N = uv2.v;
+            double E = uv2.u;
+
+            // canonise geo extent
+            if (S > N) {
+                double tmp = S;
+                S = N;
+                N = tmp;
+            }
+            if (W > E) {
+                double tmp = W;
+                W = E;
+                E = tmp;
+            }
+            ras->gext.S = S;
+            ras->gext.W = W;
+            ras->gext.N = N;
+            ras->gext.E = E;
         }
         //*/
 
@@ -2609,7 +2632,8 @@ DLL int    STD S52_doneCell(const char *encPath)
     // unload .TIF
     basename = g_path_get_basename(fname);
     int len = strlen(basename);
-    if (0 == g_strcmp0(basename+(len-4), ".tif")) {
+    if ((0==g_strcmp0(basename+(len-4), ".tif" )) ||
+        (0==g_strcmp0(basename+(len-5), ".tiff"))) {
         char fnameMerc[1024];
         g_sprintf(fnameMerc, "%s%s", fname, ".merc");
         for (guint i=0; i<_rasterList->len; ++i) {
@@ -2666,7 +2690,7 @@ exit:
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 static int        _loadEdge(const char *name, void *Edge)
 // 2nd - collecte "Edge"
-// ConnectedNode (CN), EdgeNode (EN): resulting edge = CE - NE - NE - CE
+// ConnectedNode (CN), EdgeNode (EN): resulting edge ==> CN - EN - EN - CN
 {
     if ((NULL==name) || (NULL==Edge)) {
         PRINTF("ERROR: objname / shape  --> NULL\n");
@@ -2681,7 +2705,7 @@ static int        _loadEdge(const char *name, void *Edge)
         return FALSE;
     }
 
-    {   // find CE at edge end
+    {   // find CN at edge end
         GString *name_rcid_0str = S57_getAttVal(geoData, "NAME_RCID_0");
         guint    name_rcid_0    = (NULL == name_rcid_0str) ? 1 : atoi(name_rcid_0str->str);
         GString *name_rcid_1str = S57_getAttVal(geoData, "NAME_RCID_1");
@@ -2694,31 +2718,28 @@ static int        _loadEdge(const char *name, void *Edge)
             return FALSE;
         }
 
-        guint   npt_0 = 0;
-        double *ppt_0 = NULL;
+        // node-0
         if ((name_rcid_0 - _crntCell->baseRCID) > _crntCell->ConnectedNodes->len) {
             PRINTF("ERROR: Edge end point 0 (%s) and ConnectedNodes array lenght mismatch\n", name_rcid_0str->str);
             g_assert(0);
             return FALSE;
         }
-
         S57_geo *node_0 =  (S57_geo *)g_ptr_array_index(_crntCell->ConnectedNodes, (name_rcid_0 - _crntCell->baseRCID));
         if (NULL == node_0) {
             PRINTF("ERROR: got empty node_0 at name_rcid_0 = %i\n", name_rcid_0);
             g_assert(0);
             return FALSE;
         }
-
+        guint   npt_0 = 0;
+        double *ppt_0 = NULL;
         S57_getGeoData(node_0, 0, &npt_0, &ppt_0);
 
-        guint   npt_1   = 0;
-        double *ppt_1   = NULL;
+        // node-1
         if ((name_rcid_1 - _crntCell->baseRCID) > _crntCell->ConnectedNodes->len) {
             PRINTF("ERROR: Edge end point 1 (%s) and ConnectedNodes array lenght mismatch\n", name_rcid_1str->str);
             g_assert(0);
             return FALSE;
         }
-
         S57_geo *node_1 =  (S57_geo *)g_ptr_array_index(_crntCell->ConnectedNodes, (name_rcid_1 - _crntCell->baseRCID));
         if (NULL == node_1) {
             // if we land here it meen that there no ConnectedNodes at this index
@@ -2727,7 +2748,8 @@ static int        _loadEdge(const char *name, void *Edge)
             g_assert(0);
             return FALSE;
         }
-
+        guint   npt_1   = 0;
+        double *ppt_1   = NULL;
         S57_getGeoData(node_1, 0, &npt_1, &ppt_1);
 
         {   // check that index are in sync with rcid
@@ -2750,14 +2772,17 @@ static int        _loadEdge(const char *name, void *Edge)
             }
         }
 
-        {   // update geo edge with CEs
+        {   // update geo edge with CNs
 
             // old Edge
             guint   npt         = 0;
             double *ppt         = NULL;
             double *ppt_tmp     = NULL;
-            if (FALSE == S57_getGeoData(geoData, 0, &npt, &ppt))
-                return TRUE;
+
+            // fail! - do not return !!
+            //if (FALSE == S57_getGeoData(geoData, 0, &npt, &ppt))
+            //    return TRUE;
+            S57_getGeoData(geoData, 0, &npt, &ppt);
 
             // new Edge
             guint   npt_new     = npt + 2;  // the new edge will have 2 more point - one at each end
@@ -3114,108 +3139,107 @@ int            S52_loadObject(const char *objname, void *shape)
     // set cell extent from each object
     // NOTE: should be the same as CATALOG.03x
     if (S57__META_T != S57_getObjtype(geoData)) {
-        extent ext;
 
-        S57_getExt(geoData, &ext.W, &ext.S, &ext.E, &ext.N);
+        if ((S57_AREAS_T==S57_getObjtype(geoData)) && (0==g_strcmp0(objname, "M_COVR"))) {
+            extent ext;
+            S57_getExt(geoData, &ext.W, &ext.S, &ext.E, &ext.N);
 
-        // +inf
-        if (1 == isinf(_crntCell->ext.S)) {
-            _crntCell->ext.S = ext.S;
-            _crntCell->ext.W = ext.W;
-            _crntCell->ext.N = ext.N;
-            _crntCell->ext.E = ext.E;
-        } else {
-            // lat
-            if (_crntCell->ext.N < ext.N)
-                _crntCell->ext.N = ext.N;
-            if (_crntCell->ext.S > ext.S)
-                _crntCell->ext.S = ext.S;
-
-            // init W,E limits
-            // put W-E in first quadrant [0..360]
-            //_crntCell->ext.W = ((_crntCell->ext.W + 180.0) < (ext.W + 180.0)) ? (_crntCell->ext.W + 180.0) : (ext.W + 180.0);
-            //_crntCell->ext.E = ((_crntCell->ext.E + 180.0) > (ext.E + 180.0)) ? (_crntCell->ext.E + 180.0) : (ext.E + 180.0);
-            //double W = ((_crntCell->ext.W + 180.0) < (ext.W + 180.0)) ? (_crntCell->ext.W + 180.0) : (ext.W + 180.0);
-            //double E = ((_crntCell->ext.E + 180.0) > (ext.E + 180.0)) ? (_crntCell->ext.E + 180.0) : (ext.E + 180.0);
-            if ((_crntCell->ext.W + 180.0) > (ext.W + 180.0))
-                _crntCell->ext.W = ext.W;
-            if ((_crntCell->ext.E + 180.0) < (ext.E + 180.0))
-                _crntCell->ext.E = ext.E;
-        }
-
-        /* +inf
-        if (1 == isinf(_crntCell->ext.W)) {
-            _crntCell->ext.W = ext.W;
-            _crntCell->ext.E = ext.E;
-        } else {
-            // lng
-            if (_crntCell->ext.W > ext.W)
-                _crntCell->ext.W = ext.W;
-            if (_crntCell->ext.E < ext.E)
-                _crntCell->ext.E = ext.E;
-        }
-        */
-
-        /*
-        // check if this cell is crossing the prime-meridian
-        if ((_crntCell->ext.W < 0.0) && (0.0 < _crntCell->ext.E)) {
-            PRINTF("DEBUG:CELL crossing prime:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->ext.W, _crntCell->ext.S, _crntCell->ext.E, _crntCell->ext.N);
-            g_assert(0);
-        }
-        */
-        // FIXME:
-        // check if this cell is crossing the anti-meridian
-        //if ((_crntCell->ext.W > -180.0) && (180.0 > _crntCell->ext.E)) {
-        //    PRINTF("DEBUG:CELL crossing anti:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->ext.W, _crntCell->ext.S, _crntCell->ext.E, _crntCell->ext.N);
-        //    g_assert(0);
-        //}
-
-        // check M_QUAL:CATZOC
-        if (0 == g_strcmp0(objname, "M_QUAL"))
-            _crntCell->catzocstr = S57_getAttVal(geoData, "CATZOC");  // data quality indicator
-
-        // check M_ACCY:POSACC
-        if (0 == g_strcmp0(objname, "M_ACCY"))
-            _crntCell->posaccstr = S57_getAttVal(geoData, "POSACC");  // data quality indicator
-
-        // check MAGVAR
-        if (0 == g_strcmp0(objname, "MAGVAR")) {
-            // MAGVAR:VALMAG and
-            _crntCell->valmagstr = S57_getAttVal(geoData, "VALMAG");  //
-            // MAGVAR:RYRMGV and
-            _crntCell->ryrmgvstr = S57_getAttVal(geoData, "RYRMGV");  //
-            // MAGVAR:VALACM
-            _crntCell->valacmstr = S57_getAttVal(geoData, "VALACM");  //
-         }
-
-        // check M_CSCL compilation scale
-        if (0 == g_strcmp0(objname, "M_CSCL")) {
-            _crntCell->cscalestr = S57_getAttVal(geoData, "CSCALE");
-        }
-
-        // check M_SDAT:VERDAT
-        if (0 == g_strcmp0(objname, "M_SDAT")) {
-            _crntCell->sverdatstr = S57_getAttVal(geoData, "VERDAT");
-        }
-        // check M_VDAT:VERDAT
-        if (0 == g_strcmp0(objname, "M_VDAT")) {
-            _crntCell->vverdatstr = S57_getAttVal(geoData, "VERDAT");
-        }
-#ifdef S52_DEBUG
-        /*
-        {   // debug - check for LNAM_REFS in regular S57 object
-            GString *key_lnam_refs = S57_getAttVal(geoData, "LNAM_REFS");
-            if (NULL != key_lnam_refs) {
-                GString *key_ffpt_rind = S57_getAttVal(geoData, "FFPT_RIND");
-                GString *key_lnam      = S57_getAttVal(geoData, "LNAM");
-                PRINTF("DEBUG: LNAM: %s, LNAM_REFS: %s, FFPT_RIND: %s\n", key_lnam->str, key_lnam_refs->str, key_ffpt_rind->str);
+            // Note: it is CATCOV, not CATCVR
+            GString *catcovstr = S57_getAttVal(geoData, "CATCOV");
+            if ((NULL==catcovstr) || ((NULL!=catcovstr) && ('1' != *catcovstr->str))) {
+                PRINTF("OBJNAME:%s CATCOV != 1\n", objname);
             }
-        }
-        */
+            else
+            //*/
+
+            {
+                // +inf
+                if (1 == isinf(_crntCell->ext.S)) {
+                    _crntCell->ext.S = ext.S;
+                    _crntCell->ext.W = ext.W;
+                    _crntCell->ext.N = ext.N;
+                    _crntCell->ext.E = ext.E;
+                } else {
+                    // lat
+                    if (_crntCell->ext.N < ext.N)
+                        _crntCell->ext.N = ext.N;
+                    if (_crntCell->ext.S > ext.S)
+                        _crntCell->ext.S = ext.S;
+
+                    // init W,E limits
+                    // put W-E in first quadrant [0..360]
+                    if ((_crntCell->ext.W + 180.0) > (ext.W + 180.0))
+                        _crntCell->ext.W = ext.W;
+                    if ((_crntCell->ext.E + 180.0) < (ext.E + 180.0))
+                        _crntCell->ext.E = ext.E;
+                }
+                /* debug
+                 // check if this cell is crossing the prime-meridian
+                 if ((_crntCell->ext.W < 0.0) && (0.0 < _crntCell->ext.E)) {
+                 PRINTF("DEBUG:CELL crossing prime:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->ext.W, _crntCell->ext.S, _crntCell->ext.E, _crntCell->ext.N);
+                 g_assert(0);
+                 }
+                 // check if this cell is crossing the anti-meridian
+                 if ((_crntCell->ext.W > -180.0) && (180.0 > _crntCell->ext.E)) {
+                 PRINTF("DEBUG:CELL crossing anti:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->ext.W, _crntCell->ext.S, _crntCell->ext.E, _crntCell->ext.N);
+                 g_assert(0);
+                 }
+                 */
+            }  // CATCVR=1
+
+        }  // S57_AREAS_T/M_COVR
+
+        {
+            // check M_QUAL:CATZOC
+            if (0 == g_strcmp0(objname, "M_QUAL"))
+                _crntCell->catzocstr = S57_getAttVal(geoData, "CATZOC");  // data quality indicator
+
+            // check M_ACCY:POSACC
+            if (0 == g_strcmp0(objname, "M_ACCY"))
+                _crntCell->posaccstr = S57_getAttVal(geoData, "POSACC");  // data quality indicator
+
+            // check MAGVAR
+            if (0 == g_strcmp0(objname, "MAGVAR")) {
+                // MAGVAR:VALMAG and
+                _crntCell->valmagstr = S57_getAttVal(geoData, "VALMAG");  //
+                // MAGVAR:RYRMGV and
+                _crntCell->ryrmgvstr = S57_getAttVal(geoData, "RYRMGV");  //
+                // MAGVAR:VALACM
+                _crntCell->valacmstr = S57_getAttVal(geoData, "VALACM");  //
+            }
+
+            // check M_CSCL compilation scale
+            if (0 == g_strcmp0(objname, "M_CSCL")) {
+                _crntCell->cscalestr = S57_getAttVal(geoData, "CSCALE");
+            }
+
+            // check M_SDAT:VERDAT
+            if (0 == g_strcmp0(objname, "M_SDAT")) {
+                _crntCell->sverdatstr = S57_getAttVal(geoData, "VERDAT");
+            }
+            // check M_VDAT:VERDAT
+            if (0 == g_strcmp0(objname, "M_VDAT")) {
+                _crntCell->vverdatstr = S57_getAttVal(geoData, "VERDAT");
+            }
+
+#ifdef S52_DEBUG
+            /*
+             {   // debug - check for LNAM_REFS in regular S57 object
+             GString *key_lnam_refs = S57_getAttVal(geoData, "LNAM_REFS");
+             if (NULL != key_lnam_refs) {
+             GString *key_ffpt_rind = S57_getAttVal(geoData, "FFPT_RIND");
+             GString *key_lnam      = S57_getAttVal(geoData, "LNAM");
+             PRINTF("DEBUG: LNAM: %s, LNAM_REFS: %s, FFPT_RIND: %s\n", key_lnam->str, key_lnam_refs->str, key_ffpt_rind->str);
+             }
+             }
+             */
 #endif
+        }
     } else {
+        // S57__META_T
+
         // debug
-        //PRINTF("DEBUG: S57__META_T:OBJNAME:%s ###################################################\n", objname);
+        //PRINTF("DEBUG: S57__META_T:OBJNAME:%s\n", objname);
 
         // check DSID  (GDAL metadata)
         if (0 == g_strcmp0(objname, "DSID")) {
@@ -3241,7 +3265,7 @@ int            S52_loadObject(const char *objname, void *shape)
             // debug
             //S57_dumpData(geoData, FALSE);
         }
-    }
+    }  // S57__META_T
 
 #ifdef S52_USE_WORLD
     if (0 == g_strcmp0(objname, WORLD_BASENM)) {
@@ -3398,8 +3422,8 @@ static int        _app()
             }
         }
 
-        // 2.3 - flush all texApha, when raster is bathy, if S52_MAR_SAFETY_CONTOUR as change
-        // FIXME: find if SAFETY_CONTOUR as change
+        // 2.3 - flush all texApha, when raster is bathy, if S52_MAR_SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR has change
+        // FIXME: find if SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR has change
         for (guint i=0; i<_rasterList->len; ++i) {
             S52_GL_ras *ras = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
             S52_GL_delRaster(ras, TRUE);
@@ -3869,7 +3893,7 @@ static int        _drawLegend()
             S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
 
-        // legend from M_QUAL
+        // legend from M_QUAL CATZOC
         // data quality indicator
         SNPRINTF(str, 80, "catzoc:%s", (NULL==c->catzocstr) ? "NULL" : c->catzocstr->str);
         S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
