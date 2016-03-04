@@ -3538,91 +3538,21 @@ int        S52_GL_movePoint(double *x, double *y, double angle, double dist_m)
     return TRUE;
 }
 
-static int       _drawArc(S52_obj *objA, S52_obj *objB);  // forward decl
-static int       _renderLC(S52_obj *obj)
-// Line Complex (AREA, LINE)
+static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
 {
-    /*
-        // FIXME: check invariant
-        {   // invariant: just to be sure that things don't explode
-            // the number of tile in pixel is proportional to the number
-            // of tile visible in world coordinate
-            GLdouble tileNbrX = (_vp[2] - _vp[0]) / tileWidthPix;
-            GLdouble tileNbrY = (_vp[3] - _vp[1]) / tileHeightPix;
-            GLdouble tileNbrU = (x2-x1) / w;
-            GLdouble tileNbrV = (y2-y1) / h;
-            // debug
-            //PRINTF("TX: %f TY: %f TU: %f TV: %f\n", tileNbrX,tileNbrY,tileNbrU,tileNbrV);
-            //PRINTF("WORLD: widht: %f height: %f tileW: %f tileH: %f\n", (x2-x1), (y2-y1), w, h);
-            //PRINTF("PIXEL: widht: %i height: %i tileW: %f tileH: %f\n", (_vp[2] - _vp[0]), (_vp[3] - _vp[1]), tileWidthPix, tileHeightPix);
-            if (tileNbrX + 4 < tileNbrU)
-                g_assert(0);
-            if (tileNbrY + 4 < tileNbrV)
-                g_assert(0);
-        }
-    */
-
-
-#ifdef S52_USE_GV
-    return FALSE;
-#endif
-
-
-    if (S52_CMD_WRD_FILTER_LC & (int) S52_MP_get(S52_CMD_WRD_FILTER))
-        return TRUE;
-
-    GLdouble symlen_pixl = 0.0;
-    GLdouble symlen_wrld = 0.0;
-    GLdouble x1,y1,z1,  x2,y2,z2;
-    S57_geo *geo = S52_PL_getGeo(obj);
-
-    // draw arc if this is a leglin
-    if (0 == g_strcmp0("leglin", S57_getName(geo))) {
-        // check if user want to display arc
-        if ((2.0==S52_MP_get(S52_MAR_DISP_WHOLIN)) || (3.0==S52_MP_get(S52_MAR_DISP_WHOLIN))) {
-            S52_obj *objNextLeg = S52_PL_getNextLeg(obj);
-
-            if (NULL != objNextLeg)
-                _drawArc(obj, objNextLeg);
-        }
-
-        //* draw guard zone if highligthed
-        // FIXME: what about arc!
-        if (TRUE == S57_isHighlighted(geo)) {
-            _glLoadIdentity(GL_MODELVIEW);
-
-#ifdef S52_USE_GL2
-            glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
-#endif
-            _DrawArrays_LINE_STRIP(5, _hazardZone);
-        }
-        //*/
-    }
+    g_array_set_size(_tmpWorkBuffer, 0);
 
     GLdouble *ppt = NULL;
     guint     npt = 0;
-    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
+    S57_geo  *geo = S52_PL_getGeo(obj);
+    if (FALSE == S57_getGeoData(geo, ringNo, &npt, &ppt))
         return FALSE;
 
-    // set pen color & size here because values might not
-    // be set via call list --short line
     S52_DList *DListData = S52_PL_getDListData(obj);
-    S52_Color *c = DListData->colors;
-    _glColor4ub(c);
-
-    GLdouble symlen = 0.0;
-    char     pen_w  = 0;
-    S52_PL_getLCdata(obj, &symlen, &pen_w);
-    _glLineWidth(pen_w - '0');
-    //_glLineWidth(pen_w - '0' + 0.375);
-
-    symlen_pixl = symlen / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
-    symlen_wrld = symlen_pixl * _scalex;
-
-    g_array_set_size(_tmpWorkBuffer, 0);
 
     double off_x = ppt[0];
     double off_y = ppt[1];
+    GLdouble x1,y1,z1,  x2,y2,z2;
     for (guint i=1; i<npt; ++i) {
         // set coordinate
         x1 = ppt[0];
@@ -3730,7 +3660,222 @@ static int       _renderLC(S52_obj *obj)
     // render all lines ending
     _DrawArrays_LINES(_tmpWorkBuffer->len, (vertex_t*)_tmpWorkBuffer->data);
 
+    _checkError("_renderLC()");
+
+    return TRUE;
+}
+
+static int       _drawArc(S52_obj *objA, S52_obj *objB);  // forward decl
+static int       _renderLC(S52_obj *obj)
+// Line Complex (AREA, LINE)
+{
+    /*
+        // FIXME: check invariant
+        {   // invariant: just to be sure that things don't explode
+            // the number of tile in pixel is proportional to the number
+            // of tile visible in world coordinate
+            GLdouble tileNbrX = (_vp[2] - _vp[0]) / tileWidthPix;
+            GLdouble tileNbrY = (_vp[3] - _vp[1]) / tileHeightPix;
+            GLdouble tileNbrU = (x2-x1) / w;
+            GLdouble tileNbrV = (y2-y1) / h;
+            // debug
+            //PRINTF("TX: %f TY: %f TU: %f TV: %f\n", tileNbrX,tileNbrY,tileNbrU,tileNbrV);
+            //PRINTF("WORLD: widht: %f height: %f tileW: %f tileH: %f\n", (x2-x1), (y2-y1), w, h);
+            //PRINTF("PIXEL: widht: %i height: %i tileW: %f tileH: %f\n", (_vp[2] - _vp[0]), (_vp[3] - _vp[1]), tileWidthPix, tileHeightPix);
+            if (tileNbrX + 4 < tileNbrU)
+                g_assert(0);
+            if (tileNbrY + 4 < tileNbrV)
+                g_assert(0);
+        }
+    */
+
+
+#ifdef S52_USE_GV
+    return FALSE;
+#endif
+
+
+    if (S52_CMD_WRD_FILTER_LC & (int) S52_MP_get(S52_CMD_WRD_FILTER))
+        return TRUE;
+
+    S57_geo *geo = S52_PL_getGeo(obj);
+    // draw arc if this is a leglin
+    if (0 == g_strcmp0("leglin", S57_getName(geo))) {
+        // check if user want to display arc
+        if ((2.0==S52_MP_get(S52_MAR_DISP_WHOLIN)) || (3.0==S52_MP_get(S52_MAR_DISP_WHOLIN))) {
+            S52_obj *objNextLeg = S52_PL_getNextLeg(obj);
+
+            if (NULL != objNextLeg)
+                _drawArc(obj, objNextLeg);
+        }
+
+        //* draw guard zone if highligthed
+        // FIXME: what about arc!
+        if (TRUE == S57_isHighlighted(geo)) {
+            _glLoadIdentity(GL_MODELVIEW);
+
+#ifdef S52_USE_GL2
+            glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
+#endif
+            _DrawArrays_LINE_STRIP(5, _hazardZone);
+        }
+        //*/
+    }
+
+    // debug
+    if (0 == g_strcmp0("M_COVR", S57_getName(geo))) {
+        PRINTF("DEBUG: M_COVR found, nRing=%i\n", S57_getRingNbr(geo));
+    }
+    if (0 == g_strcmp0("M_NSYS", S57_getName(geo))) {
+        PRINTF("DEBUG: M_NSYS found, nRing=%i\n", S57_getRingNbr(geo));
+    }
+
+    // set pen color & size here because values might not
+    // be set via call list --short line
+    S52_DList *DListData = S52_PL_getDListData(obj);
+    S52_Color *c = DListData->colors;
+    _glColor4ub(c);
+
+    GLdouble symlen_pixl = 0.0;
+    GLdouble symlen_wrld = 0.0;
+
+    GLdouble symlen = 0.0;
+    char     pen_w  = 0;
+    S52_PL_getLCdata(obj, &symlen, &pen_w);
+    _glLineWidth(pen_w - '0');
+    //_glLineWidth(pen_w - '0' + 0.375);
+
+    symlen_pixl = symlen / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
+    symlen_wrld = symlen_pixl * _scalex;
+
+    guint rNbr = S57_getRingNbr(geo);
+    for (guint i=0; i<rNbr; ++i) {
+        _renderLCring(obj, i, symlen_wrld);
+    }
+
+#if 0
+
+    g_array_set_size(_tmpWorkBuffer, 0);
+
+    GLdouble *ppt = NULL;
+    guint     npt = 0;
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
+        return FALSE;
+
+    double off_x = ppt[0];
+    double off_y = ppt[1];
+    GLdouble x1,y1,z1,  x2,y2,z2;
+    for (guint i=1; i<npt; ++i) {
+        // set coordinate
+        x1 = ppt[0];
+        y1 = ppt[1];
+        z1 = ppt[2];
+        ppt += 3;
+        x2 = ppt[0];
+        y2 = ppt[1];
+        z2 = ppt[2];
+
+        //////////////////////////////////////////////////////
+        //
+        // overlapping Line Complex (LC) suppression
+        //
+        //if (z1<0.0 && z2<0.0) {
+        if (-S57_OVERLAP_GEO_Z==z1 && -S57_OVERLAP_GEO_Z==z2) {
+            PRINTF("NOTE: this line segment (%s) overlap a line segment with higher prioritity (Z=%f)\n", S57_getName(geo), z1);
+            continue;
+        }
+        /////////////////////////////////////////////////////
+
+
+        //*
+        // do not draw the rest of leglin if arc drawn
+        if (0 == g_strcmp0("leglin", S57_getName(geo))) {
+            if (2.0==S52_MP_get(S52_MAR_DISP_WHOLIN) || 3.0==S52_MP_get(S52_MAR_DISP_WHOLIN)) {
+                // shorten x1,y1 of wholin_dist of previous leglin
+                GLdouble segangRAD  = atan2(y2-y1, x2-x1);
+                S52_obj *objPrevLeg = S52_PL_getPrevLeg(obj);
+                S57_geo *geoPrev    = S52_PL_getGeo(objPrevLeg);
+                GString *prev_wholin_diststr = S57_getAttVal(geoPrev, "_wholin_dist");
+                if (NULL != prev_wholin_diststr) {
+                    double prev_wholin_dist = S52_atof(prev_wholin_diststr->str) * 1852;
+                    S52_GL_movePoint(&x1, &y1, segangRAD + (180.0 * DEG_TO_RAD), prev_wholin_dist);
+                }
+
+                // shorten x2,y2 if there is a next curve
+                S52_obj *objNextLeg = S52_PL_getNextLeg(obj);
+                if (NULL != objNextLeg) {
+                    GString *wholin_diststr = S57_getAttVal(geo, "_wholin_dist");
+                    if (NULL != wholin_diststr) {
+                        double wholin_dist = S52_atof(wholin_diststr->str) * 1852;
+                        S52_GL_movePoint(&x2, &y2, segangRAD, wholin_dist);
+                    }
+
+                }
+            }
+        }
+        //*/
+
+        if (FALSE == _clipToView(&x1, &y1, &x2, &y2))
+            continue;
+
+        GLdouble seglen_wrld   = sqrt(pow((x1-off_x)-(x2-off_x), 2)  + pow((y1-off_y)-(y2-off_y), 2));
+        GLdouble segang        = atan2(y2-y1, x2-x1);
+        GLdouble symlen_wrld_x = cos(segang) * symlen_wrld;
+        GLdouble symlen_wrld_y = sin(segang) * symlen_wrld;
+        int      nsym          = (int) (seglen_wrld / symlen_wrld);
+
+        segang *= RAD_TO_DEG;
+
+        //PRINTF("segang: %f seglen: %f symlen:%f\n", segang, seglen, symlen);
+        //PRINTF(">> x1: %f y1: %f \n",x1, y1);
+        //PRINTF(">> x2: %f y2: %f \n",x2, y2);
+
+        GLdouble offset_wrld_x = 0.0;
+        GLdouble offset_wrld_y = 0.0;
+
+        // draw symb's as long as it fit the line length
+        for (int j=0; j<nsym; ++j) {
+            _glLoadIdentity(GL_MODELVIEW);
+
+            _glTranslated(x1+offset_wrld_x, y1+offset_wrld_y, 0.0);           // move coord sys. at symb pos.
+            _glRotated(segang, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
+            _glScaled(1.0, -1.0, 1.0);
+
+            _pushScaletoPixel(TRUE);
+
+            _glCallList(DListData);
+
+            _popScaletoPixel();
+
+            offset_wrld_x += symlen_wrld_x;
+            offset_wrld_y += symlen_wrld_y;
+        }
+
+        // FIXME: need this because some 'Display List' reset blending
+        // FIXME: some Complex Line (LC) symbol allway use blending (ie transparancy)
+        // but now with GLES2 AA its all or nothing
+        //_setBlend(TRUE);
+        //if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
+        //    glEnable(GL_BLEND);
+        //}
+
+        {   // complete the rest of the line
+            pt3v pt[2] = {{x1+offset_wrld_x, y1+offset_wrld_y, 0.0}, {x2, y2, 0.0}};
+            g_array_append_val(_tmpWorkBuffer, pt[0]);
+            g_array_append_val(_tmpWorkBuffer, pt[1]);
+        }
+    }
+
+    // set identity matrix
+    _glUniformMatrix4fv_uModelview();
+
+    // render all lines ending
+    _DrawArrays_LINES(_tmpWorkBuffer->len, (vertex_t*)_tmpWorkBuffer->data);
+#endif
     //_setBlend(FALSE);
+
+    // debug
+    //glEnable(GL_BLEND);
 
     _checkError("_renderLC()");
 
@@ -5146,25 +5291,31 @@ static int       _newTexture(S52_GL_ras *raster)
 // copy and blend raster 'data' to alpha texture
 // FIXME: test if the use of shader to blend rather than precomputing value here is faster
 {
-    double min  =  INFINITY;
-    double max  = -INFINITY;
-    guint npotX = raster->w;
-    guint npotY = raster->h;
+    double min   =  INFINITY;
+    double max   = -INFINITY;
+    guint npotX  = raster->w;
+    guint npotY  = raster->h;
+    float *dataf = (float*) raster->data;
+    guint count  = raster->w * raster->h;
 
-    float safe  = (float) S52_MP_get(S52_MAR_SAFETY_CONTOUR) * -1.0;  // change signe
-    float *dataf= (float*) raster->data;
-
-    guint count = raster->w * raster->h;
-
-    // FIXME: why use RGBA instead of ALPHA only?
+    // GLES2/XOOM ALPHA fail and if not POT
     struct rgba {unsigned char r,g,b,a;};
     guchar *texAlpha = g_new0(guchar, count * sizeof(struct rgba));
     struct rgba *texTmp   = (struct rgba*) texAlpha;
+
+    float safe  = (float) S52_MP_get(S52_MAR_SAFETY_CONTOUR) * -1.0;  // change signe
+    float deep  = (float) S52_MP_get(S52_MAR_DEEP_CONTOUR)   * -1.0;  // change signe
 
     // debug
     int nFTLMAX = 0;
     int nNoData = 0;
     for (guint i=0; i<count; ++i) {
+
+        // debug - fill .tiff area with color
+        //texTmp[i].a = 255;
+        //continue;
+
+
         if (raster->nodata == dataf[i]) {
             ++nNoData;
             texTmp[i].a = 0;
@@ -5172,29 +5323,40 @@ static int       _newTexture(S52_GL_ras *raster)
         }
         if (G_MAXFLOAT == dataf[i]) {
             ++nFTLMAX;
+
             texTmp[i].a = 0;
             continue;
+
+            // debug
+            //texTmp[i].a = 255;
+            //continue;
         }
 
         min = MIN(dataf[i], min);
         max = MAX(dataf[i], max);
 
+        // debug
+        //texTmp[i].a = 255;
+        //continue;
+
         if ((safe/2.0) <= dataf[i]) {
             texTmp[i].a = 0;
             continue;
         }
+        // SAFETY CONTOUR
         if (safe <= dataf[i]) {
             texTmp[i].a = 255;
             continue;
         }
-        // FIXME: use S52_MAR_DEEP_CONTOUR
-        if ((safe-2.0) <= dataf[i]) {
+        // DEEP CONTOUR
+        if (deep <= dataf[i]) {
             texTmp[i].a = 100;
             continue;
         }
 
         // debug
         //texTmp[i].a = 255;
+        //continue;
     }
 
     raster->min      = min;
@@ -5211,7 +5373,9 @@ static int       _newTexture(S52_GL_ras *raster)
 int        S52_GL_drawRaster(S52_GL_ras *raster)
 {
     // bailout if not in view
-    if ((raster->pext.E < _pmin.u) || (raster->pext.S < _pmin.v) || (raster->pext.W > _pmax.u) || (raster->pext.N > _pmax.v)) {
+    // FIXME: test anti-meridien
+    //if ((raster->pext.E < _pmin.u) || (raster->pext.N < _pmin.v) || (raster->pext.W > _pmax.u) || (raster->pext.S > _pmax.v)) {
+    if ((raster->gext.E < _gmin.u) || (raster->gext.N < _gmin.v) || (raster->gext.W > _gmax.u) || (raster->gext.S > _gmax.v)) {
         return TRUE;
     }
 
@@ -5553,6 +5717,17 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
 #ifdef S52_USE_GL1
     glPushAttrib(GL_ALL_ATTRIB_BITS);
+
+    glAlphaFunc(GL_ALWAYS, 0);
+
+    // LINE, GL_LINE_SMOOTH_HINT - NOT in GLES2
+    glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE);
+    //glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
+    //glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
+
+    // POLY (not used)
+    //glHint(GL_POLYGON_SMOOTH_HINT, GL_DONT_CARE);
+    //glHint(GL_POLYGON_SMOOTH_HINT, GL_FASTEST);
 #endif
 
     glEnable(GL_BLEND);
@@ -5569,21 +5744,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     //glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
     //glHint(GL_POINT_SMOOTH_HINT, GL_DONT_CARE);
     //glHint(GL_POINT_SMOOTH_HINT, GL_FASTEST);
-
-
-#ifdef S52_USE_GL1
-    glAlphaFunc(GL_ALWAYS, 0);
-
-    // LINE, GL_LINE_SMOOTH_HINT - NOT in GLES2
-    glHint(GL_LINE_SMOOTH_HINT, GL_DONT_CARE);
-    //glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
-    //glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-
-    // POLY (not used)
-    //glHint(GL_POLYGON_SMOOTH_HINT, GL_DONT_CARE);
-    //glHint(GL_POLYGON_SMOOTH_HINT, GL_FASTEST);
-#endif
-
 
     // picking or rendering cycle
     if (S52_GL_PICK == _crnt_GL_cycle) {
@@ -5787,7 +5947,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     }
     //---------------------------------------------------------------
 
-//#endif  // S52_USE_GV
 
     _checkError("S52_GL_begin() - fini");
 
