@@ -1140,8 +1140,8 @@ static int      _initS52()
     //
     // supresse display of adminitrative objects when
     // S52_MAR_DISP_CATEGORY is SELECT, to avoid cluttering
-    //S52_toggleObjClass("M_NSYS");   // cell limit (line complex --A--B-- ), buoyage (IALA)
-    //S52_toggleObjClass("M_COVR");   // ??
+    //S52_toggleObjClass("M_NSYS");   // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
+    //S52_toggleObjClass("M_COVR");   // HO data limit __/__/__ - LC(HODATA01)
     //S52_toggleObjClass("M_NPUB");   // ??
 
     // debug - M_QUAL - the U pattern
