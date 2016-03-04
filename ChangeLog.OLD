@@ -4,6 +4,10 @@
 #
 
 
+2016MAR04
+    -fix regession in SUPP_LINE_OVERLAP after refractoring
+    -add render LC() inner ring
+
 2016FEB26
     -add S52_USE_RASTER code path to handle bathy .tiff
 
