@@ -687,7 +687,7 @@ static GString *DATCVR01 (S57_geo *geo)
     // 2- ENC COVERAGE
     //
     // 2.1- Limit of ENC coverage
-    // FIXME: union of all M_COVR:CATCVR=1
+    // FIXME: CSP union of all M_COVR:CATCOV=1
     datcvr01 = g_string_new(";OP(3OD11060);LC(HODATA01)");
 
     // 2.2- No data areas
