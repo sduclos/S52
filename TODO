@@ -24,6 +24,7 @@ Curent focus (top priority *):
     -isobath tag
 
     Coding:
+*   -combined adjacent areas of M_COVR, CATCOV=1; HODATA01 - boundary marking end of HO data. Use CSG as in _computeCentroid().
 *   -use masked lines field (OGR/S57 MASK/FSPT) to use the line overlap trick
     -check CRC32 of S57 in CATALOG.031
     -read text referenced by CATALOG.031 (some text in M_NPUB also)
