@@ -913,6 +913,7 @@ static int       _init_gl2(void)
         PRINTF("DEBUG: GL_VERTEX_SHADER\n");
 
         static const char vertSrc[] =
+//#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
 #ifdef S52_USE_GLES2
             //"precision lowp float;                                          \n"
             "precision mediump float;                                       \n"
@@ -964,13 +965,22 @@ static int       _init_gl2(void)
 #endif
 */
 
-//#ifdef S52_USE_MESA3D         // to get gl_PointCoord when s52_use_afterglow
-//            "#version 120                               \n"
-//            "#version 100                               \n"
-//#endif
 
+/*
+//#if (defined(S52_USE_GL2) && defined(S52_USE_MESA3D))
+#ifdef S52_USE_GL2
+//#ifdef S52_USE_MESA3D         // to get gl_PointCoord when s52_use_afterglow
+            "#version 120                               \n"
+//            "#version 100                               \n"
+#endif
+*/
 
         static const char fragSrc[] =
+#ifdef S52_USE_MESA3D         // to get gl_PointCoord when s52_use_afterglow
+            //"#version 120                               \n"
+            "#version 100                               \n"
+#endif
+
 #ifdef S52_USE_GLES2
             //"precision lowp float;                      \n"
             "precision mediump float;                   \n"
@@ -994,6 +1004,7 @@ static int       _init_gl2(void)
             "    if (1.0 == uBlitOn) {                  \n"
             "        gl_FragColor = texture2D(uSampler2d, v_texCoord);               \n"
             "    } else {                                                            \n"
+            // FIXME: uStipOn and uPattOn same - diff might be usefull later on ..
             "        if (1.0 == uStipOn) {                                           \n"
             "            gl_FragColor = texture2D(uSampler2d, v_texCoord);           \n"
             "            gl_FragColor.rgb = uColor.rgb;                              \n"
@@ -1344,14 +1355,15 @@ static guint     g_nearest_pow(gint num)
 {
   guint n = 1;
 
-  while (n<num && n>0)
+  //while (n<num && n>0)
+  while (0<n && n<num)
     n <<= 1;
 
   return n ? n : num;
 }
 #endif
 
-static int       _setTexture(S52_obj *obj, double tileWpx, double tileHpx, double stagOffsetPix)
+static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, double stagOffsetPix)
 {
     GLuint mask_texID = 0;
 
@@ -1532,7 +1544,10 @@ static int       _renderAP_gl2(S52_obj *obj)
 
     GLuint mask_texID = S52_PL_getAPtexID(obj);
     if (0 == mask_texID) {
-        mask_texID = _setTexture(obj, tileWpx, tileHpx, stagOffsetPix);
+        // scissor box interfere with texture creation
+        glDisable(GL_SCISSOR_TEST);
+        mask_texID = _renderTexure(obj, tileWpx, tileHpx, stagOffsetPix);
+        glEnable(GL_SCISSOR_TEST);
     }
 
     _glColor4ub(DListData->colors);
@@ -1553,7 +1568,6 @@ static int       _renderAP_gl2(S52_obj *obj)
     glBindTexture(GL_TEXTURE_2D, mask_texID);
 
     _fillArea(S52_PL_getGeo(obj));
-    //_fillArea(S52_PL_getGeo(obj), 0);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
