@@ -23,6 +23,7 @@
 
 
 #include "S52.h"            // S52_init(), S52_loadCell(), ..
+
 #include <gtk/gtk.h>        // gtk_init(), ..
 #include <gdk/gdkkeysyms.h> // GDK_left, ..  (key syms)
 #include <gtk/gtkgl.h>      // gtk_gl_*(), gdk_gl_*()
@@ -1943,17 +1944,11 @@ int main(int argc, char **argv)
 
     g_timeout_add(500, _s52_draw_cb, NULL); // 0.5 sec
 
-//#if S52_USE_GLIB2
     g_signal_connect_after(G_OBJECT(_winArea), "realize",             G_CALLBACK(realize),         NULL);
     g_signal_connect(      G_OBJECT(_winArea), "configure_event",     G_CALLBACK(configure_event), NULL);
     g_signal_connect(      G_OBJECT(_winArea), "expose_event",        G_CALLBACK(expose_event),    NULL);
     g_signal_connect(      G_OBJECT(_winArea), "motion_notify_event", G_CALLBACK(motion_notify_event),  NULL);
     g_signal_connect(      G_OBJECT(_winArea), "button_release_event",G_CALLBACK(button_release_event), NULL);
-//#else
-//    gtk_signal_connect_after(GTK_OBJECT(_winArea), "realize",         GTK_SIGNAL_FUNC(realize),         NULL);
-//    gtk_signal_connect(      GTK_OBJECT(_winArea), "configure_event", GTK_SIGNAL_FUNC(configure_event), NULL);
-//    gtk_signal_connect(      GTK_OBJECT(_winArea), "expose_event",    GTK_SIGNAL_FUNC(expose_event),    NULL);
-//#endif
 
     g_signal_connect_after(G_OBJECT(_win), "key_release_event",   G_CALLBACK(key_release_event),    NULL);
     g_signal_connect(      G_OBJECT(_win), "delete_event",        G_CALLBACK(gtk_main_quit),        NULL);
