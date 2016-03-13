@@ -142,8 +142,9 @@ static int _GL_OES_point_sprite = FALSE;
 
 // sanity checks
 #if defined(S52_USE_GLES2) && !defined(S52_USE_GL2)
-#define S52_USE_GL2  // this signal to load _GL2.i
-#endif
+#define S52_USE_GL2  // this signal to load _GL2.i and
+#endif               // switch to GL2 code path
+
 
 #if defined(S52_USE_FREETYPE_GL) && !(defined(S52_USE_GL2) || defined(S52_USE_GLES2))
 #error "Need GL2 or GLES2 for Freetype GL"
@@ -171,6 +172,11 @@ static int _GL_OES_point_sprite = FALSE;
 // GL3.x, GLES3.x - in a day
 #ifdef S52_USE_GL3
 #include "_GL3.i"
+#endif
+
+// Vulkan - in a day
+#ifdef S52_USE_VULKAN
+#include "_VULKAN.i"
 #endif
 
 
@@ -1723,7 +1729,6 @@ static int       _computeCentroid(S57_geo *geoData)
         g_array_set_size(_centroids, 0);
         g_array_set_size(_vertexs,   0);
         g_array_set_size(_nvertex,   0);
-
 
         //gluTessProperty(_tcen, GLU_TESS_BOUNDARY_ONLY, GLU_TRUE);
 
@@ -3722,13 +3727,14 @@ static int       _renderLC(S52_obj *obj)
         //*/
     }
 
-    // debug
+    /* debug
     if (0 == g_strcmp0("M_COVR", S57_getName(geo))) {
         PRINTF("DEBUG: M_COVR found, nRing=%i\n", S57_getRingNbr(geo));
     }
     if (0 == g_strcmp0("M_NSYS", S57_getName(geo))) {
         PRINTF("DEBUG: M_NSYS found, nRing=%i\n", S57_getRingNbr(geo));
     }
+    */
 
     // set pen color & size here because values might not
     // be set via call list --short line
@@ -5259,7 +5265,7 @@ int        S52_GL_isOFFview(S52_obj *obj)
 
     {   // geo extent _gmin/max
         double x1,y1,x2,y2;
-        S57_geo *geo = S52_PL_getGeo(obj);
+        //S57_geo *geo = S52_PL_getGeo(obj);  // have geo allready
         S57_getExt(geo, &x1, &y1, &x2, &y2);
 
         // S-N limits
@@ -5947,7 +5953,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     }
     //---------------------------------------------------------------
 
-
     _checkError("S52_GL_begin() - fini");
 
     return TRUE;
@@ -6494,26 +6499,14 @@ int        S52_GL_setView(double centerLat, double centerLon, double rangeNM, do
 int        S52_GL_setViewPort(int x, int y, int width, int height)
 {
     // NOTE: width & height are in fact GLsizei, a pseudo unsigned int
-    // it is a 'int' that can't be negative
+    // it is a 'int32' that can't be negative
 
-    // debug
-    //glViewport(x, y, width, height);
-    //glGetIntegerv(GL_VIEWPORT, _vp);
-    //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
-    //_checkError("S52_GL_setViewPort()");
-
-    //_vp[0] = x;
-    //_vp[1] = y;
-    //_vp[2] = width;
-    //_vp[3] = height;
     _vp.x = x;
     _vp.y = y;
     _vp.w = width;
     _vp.h = height;
     guint sz = width * height * _fb_format;
 
-    //if (_fb_pixels_size < (_vp[2] * _vp[3] * _fb_format) ) {
-    //    _fb_pixels_size =  _vp[2] * _vp[3] * _fb_format;
     if (_fb_pixels_size < sz) {
         _fb_pixels_size = sz;
         _fb_pixels      = g_renew(unsigned char, _fb_pixels, _fb_pixels_size);
@@ -6528,10 +6521,6 @@ int        S52_GL_getViewPort(int *x, int *y, int *width, int *height)
     //glGetIntegerv(GL_VIEWPORT, _vp);
     //_checkError("S52_GL_getViewPort()");
 
-    //*x      = _vp[0];
-    //*y      = _vp[1];
-    //*width  = _vp[2];
-    //*height = _vp[3];
     *x      = _vp.x;
     *y      = _vp.y;
     *width  = _vp.w;
@@ -6540,9 +6529,31 @@ int        S52_GL_getViewPort(int *x, int *y, int *width, int *height)
     return TRUE;
 }
 
+int        S52_GL_setScissor(int x, int y, int width, int height)
+// return TRUE;
+// when w & h = GL_INVALID_VALUE is generated if either width or height is negative
+// the turn of glDisable(GL_SCISSOR_TEST)
+{
+    // NOTE: width & height are in fact GLsizei, a pseudo unsigned int
+    // it is a 'int32' that can't be negative
+    if (width<0 || height<0) {
+        glDisable(GL_SCISSOR_TEST);
+        return TRUE;
+    }
 
-const
-char      *S52_GL_getNameObjPick(void)
+    glEnable(GL_SCISSOR_TEST);
+
+    glScissor(x, y, width, height);
+
+    _checkError("S52_GL_setScisor().. -end-");
+
+    return TRUE;
+}
+
+//const
+//char      *S52_GL_getNameObjPick(void)
+cchar     *S52_GL_getNameObjPick(void)
+
 {
     if (S52_GL_NONE != _crnt_GL_cycle) {
         PRINTF("ERROR: inside a GL cycle\n");
@@ -6822,9 +6833,6 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
 #ifdef S52_USE_GL2
-
-    //_glMatrixSet(VP_PRJ);
-
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
 
@@ -6851,8 +6859,6 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     glUniform1f(_uBlitOn, 0.0);
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
-
-    //_glMatrixDel(VP_PRJ);
 
 #else
     (void)scale_x;
@@ -6913,14 +6919,7 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
             return FALSE;
 
-        //_glMatrixSet(VP_PRJ);
-
-        // then MatrixSet in that order
-        //projUV p = {pt.x, pt.y};
-        // p = _prj2win(p);
         S52_GL_prj2win(&pt.x, &pt.y);
-
-        //_glMatrixDel(VP_PRJ);
 
         // FIXME: what happen if the viewport change!!
         x = 0;
