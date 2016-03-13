@@ -4,6 +4,15 @@
 #
 
 
+2016MAR10
+    -add glScissor experiment to clip raster at carte boundary
+
+2016MAR08
+    -fix handling CS for M_COVR:CATCOV=1 / M_COVR:CATCOV=2
+
+2016MAR06
+    -mod refactor, cleanup SUPP_LINE_OVERLAP code
+
 2016MAR04
     -fix regession in SUPP_LINE_OVERLAP after refractoring
     -add render LC() inner ring
