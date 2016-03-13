@@ -31,6 +31,7 @@ static GArray             *_vertexs    = NULL;
 static GArray             *_nvertex    = NULL;     // list of nbr of vertex per poly in _vertexs
 static GArray             *_centroids  = NULL;     // centroids of poly's in _vertexs
 
+// check if centroid is inside the poly
 static GLUtriangulatorObj *_tcin       = NULL;
 static GLboolean           _startEdge  = GL_TRUE;  // start inside edge --for heuristic of centroid in poly
 static int                 _inSeg      = FALSE;    // next vertex will complete an edge
@@ -279,14 +280,6 @@ static void_cb_t _combineCallback(GLdouble   coords[3],
     //g_ptr_array_add(tmpV, (GLdouble*) p);
 
 }
-
-#if 0
-static void_cb_t _combineCallbackCen(void)
-// debug
-{
-    g_assert(0);
-}
-#endif
 
 static void_cb_t _glBegin(GLenum mode, S57_prim *prim)
 {
