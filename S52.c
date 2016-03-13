@@ -131,7 +131,7 @@ static struct sigaction _old_signal_handler_SIGTERM;  // 15
 //} _extent;
 
 typedef struct _cell {
-    extent    ext;        // cell geo extent
+    extent    geoExt;     // cell geo extent
 
     GString   *filename;  // encName/baseName
     gchar     *encPath;   // original user path/name
@@ -180,7 +180,7 @@ typedef struct _cell {
 #ifdef S52_USE_SUPP_LINE_OVERLAP
     guint      baseRCID;        // offset of "ConnectedNode" (first primitive)
     GPtrArray *ConnectedNodes;  // Note: ConnectedNodes rcid are random in some case (CA4579016)
-    GPtrArray *Edges;           //
+    GPtrArray *S57Edges;        // final segment build from ENs and CNs
 #endif
 
     // journal - place holder for object to be drawn (after culling)
@@ -792,18 +792,18 @@ static _cell     *_newCell(const char *filename)
 
     {   // init cell
         _cell *cell = g_new0(_cell, 1);
-        for (S52_disPrio i=0; i<S52_PRIO_NUM; ++i) {
-            for (S52ObjectType j=0; j<S52_N_OBJ; ++j)
+        for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
+            for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j)
                 cell->renderBin[i][j] = g_ptr_array_new();
         }
 
         cell->filename = g_string_new(baseName);
         g_free(baseName);
 
-        cell->ext.S =  INFINITY;
-        cell->ext.W =  INFINITY;
-        cell->ext.N = -INFINITY;
-        cell->ext.E = -INFINITY;
+        cell->geoExt.S =  INFINITY;
+        cell->geoExt.W =  INFINITY;
+        cell->geoExt.N = -INFINITY;
+        cell->geoExt.E = -INFINITY;
 
         cell->local = S52_CS_init();
 
@@ -857,8 +857,8 @@ static int        _freeCell(_cell *c)
     if (NULL != c->encPath)
         g_free(c->encPath);
 
-    for (S52_disPrio j=0; j<S52_PRIO_NUM; ++j) {
-        for (S52ObjectType k=0; k<S52_N_OBJ; ++k) {
+    for (S52_disPrio j=S52_PRIO_NODATA; j<S52_PRIO_NUM; ++j) {
+        for (S52ObjectType k=S52__META; k<S52_N_OBJ; ++k) {
             GPtrArray *rbin = c->renderBin[j][k];
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
@@ -1335,7 +1335,7 @@ static int        _initSIG(void)
 
     // debug - will trigger SIGSEGV for testing
     //_cell *c = 0x0;
-    //c->ext.S = INFINITY;
+    //c->geoExt.S = INFINITY;
 #endif
 
     return TRUE;
@@ -1389,7 +1389,7 @@ static int        _projectCells(void)
     for (guint k=0; k<_cellList->len; ++k) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
         if (FALSE == c->projDone) {
-            for (S52_disPrio i=0; i<S52_PRIO_NUM; ++i) {
+            for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
                 for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
                     GPtrArray *rbin = c->renderBin[i][j];
                     for (guint idx=0; idx<rbin->len; ++idx) {
@@ -1419,7 +1419,7 @@ static int        _projectCells(void)
 static int        _collect_CS_touch(_cell* c)
 // setup object used by CS
 {
-    for (S52_disPrio i=0; i<S52_PRIO_NUM; ++i) {
+    for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
         for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
             GPtrArray *rbin = c->renderBin[i][j];
             for (guint idx=0; idx<rbin->len; ++idx) {
@@ -1597,10 +1597,10 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     g_ptr_array_sort(_cellList, _cmpCell);
 
     // init extend
-    _marinerCell->ext.S = -INFINITY;
-    _marinerCell->ext.W = -INFINITY;
-    _marinerCell->ext.N =  INFINITY;
-    _marinerCell->ext.E =  INFINITY;
+    _marinerCell->geoExt.S = -INFINITY;
+    _marinerCell->geoExt.W = -INFINITY;
+    _marinerCell->geoExt.N =  INFINITY;
+    _marinerCell->geoExt.E =  INFINITY;
 
     // FIXME: def this
     // init raster
@@ -1718,8 +1718,8 @@ exit:
 static int        _linkRel2LNAM(_cell* c)
 // link geo to C_AGGR / C_ASSO geo
 {
-    for (S52_disPrio i=0; i<S52_PRIO_NUM; ++i) {
-        for (S52ObjectType j=0; j<S52_N_OBJ; ++j) {
+    for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
+        for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
 
             GPtrArray *rbin = c->renderBin[i][j];
             for (guint idx=0; idx<rbin->len; ++idx) {
@@ -1792,7 +1792,7 @@ static int        _suppLineOverlap()
 // NAME_RCNM (IntegerList) = (1:130)
 // NAME_RCID (IntegerList) = (1:72)
 {
-    return_if_null(_crntCell->Edges);
+    return_if_null(_crntCell->S57Edges);
     //return_if_null(_crntCell->ConnectedNodes); // not used (yet!)
 
     // assume that there is nothing on layer S52_PRIO_NODATA
@@ -1952,11 +1952,12 @@ static int        _suppLineOverlap()
                 for (guint i=0; i<nRCNM; ++i, splitrcnm+=increment, splitrcid+=increment) {
 
                     //if (0 == g_strcmp0(*splitrcnm, "130")) {
-                    // the S57 name for Edge (130 - S57_RCNM_VE = '3')
-                    if (S57_RCNM_VE == *(*splitrcnm+1)) {
+                    // the S57 name for Edge (130 --> S57_RCNM_VE = '3')
+                    //if (S57_RCNM_VE == *(*splitrcnm+1)) {
+                    if (S57_RCNM_VE == (*splitrcnm)[1]) {
                         // search Edges with the same RCID then one of geo RCID
-                        for (guint j=0; j<_crntCell->Edges->len; ++j) {
-                            S57_geo *geoEdge      = (S57_geo *)g_ptr_array_index(_crntCell->Edges, j);
+                        for (guint j=0; j<_crntCell->S57Edges->len; ++j) {
+                            S57_geo *geoEdge      = (S57_geo *)g_ptr_array_index(_crntCell->S57Edges, j);
                             gchar   *name_rcidstr = S57_getRCIDstr(geoEdge);
 
                             // failsafe
@@ -1992,13 +1993,13 @@ static int        _suppLineOverlap()
         // these are not S52_obj, so no delObj()
         int quiet = TRUE;
 
-        g_ptr_array_foreach(_crntCell->Edges,          (GFunc)S57_doneData, &quiet);
+        g_ptr_array_foreach(_crntCell->S57Edges,       (GFunc)S57_doneData, &quiet);
         g_ptr_array_foreach(_crntCell->ConnectedNodes, (GFunc)S57_doneData, &quiet);
 
-        g_ptr_array_free(_crntCell->Edges,          TRUE);
+        g_ptr_array_free(_crntCell->S57Edges,       TRUE);
         g_ptr_array_free(_crntCell->ConnectedNodes, TRUE);
 
-        _crntCell->Edges          = NULL;
+        _crntCell->S57Edges       = NULL;
         _crntCell->ConnectedNodes = NULL;
         _crntCell->baseRCID       = 0;
     }
@@ -2282,7 +2283,8 @@ static int        _warp(GDALDatasetH hSrcDS, GDALDatasetH hDstDS)
 
 int               _loadRaster(const char *fname)
 {
-    char fnameMerc[1024];  // FIME: MAXPATH!
+    // FIXME: MAXPATH!
+    char fnameMerc[1024];
     g_sprintf(fnameMerc, "%s%s", fname, ".merc");
 
     // check if allready loaded
@@ -2300,7 +2302,11 @@ int               _loadRaster(const char *fname)
         return FALSE;
     }
 
-    // FIXME: what if projected Merc tiff was made from different projection
+    // FIXME: - read file "version.txt" in bathy folder
+    //        - check S52_version()
+    //        - check Mercator Latitude projection
+    //        - delete *.merc if need to project again
+
     GDALDatasetH datasetDST = GDALOpen(fnameMerc, GA_ReadOnly);
     // no Merc on disk, then create it
     if (NULL == datasetDST) {
@@ -2364,7 +2370,7 @@ int               _loadRaster(const char *fname)
         ras->data       = data;
         ras->nodata     = (TRUE==nodata_set) ? nodata : -INFINITY;
 
-        // FIXME: bug reading bathy.tiff !!
+        // FIXME: fail reading bathy.tiff !!
         int success = FALSE;
         double _min = GDALGetRasterMinimum(bandA, &success);
         if (TRUE == success)
@@ -2411,6 +2417,8 @@ int               _loadRaster(const char *fname)
 
         g_ptr_array_add(_rasterList, ras);
     }
+
+    // FIXME: write "version.txt" if abscent
 
     // finish with GDAL
     GDALClose(datasetDST);  // if NULL ?
@@ -2579,9 +2587,9 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         }
     }
 
-#else
+#else    // S52_USE_OGR_FILECOLLECTOR
     ch = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
-#endif
+#endif  // S52_USE_OGR_FILECOLLECTOR
 
     if (NULL == ch) {
         g_free(fname);
@@ -2688,12 +2696,58 @@ exit:
 }
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
+static int        _builS57Edge(S57_geo *geoData, double *ppt_0, double *ppt_1)
+// build a S57 edge (segment) with ENs and CNs
+{
+    // old Edge - ENs
+    guint   npt         = 0;
+    double *ppt         = NULL;
+    // Note: get pointer - not data since geo can be empty!
+    S57_getGeoData(geoData, 0, &npt, &ppt);
+
+    /* debug
+    if (0 == npt) {
+        PRINTF("DEBUG: geoData empty\n");
+        //g_assert(0);
+    }
+    */
+
+    // new S57 Edge = ENs + CNs
+    guint   npt_new     = npt + 2;  // the new edge will have 2 more point - one at each end
+    double *ppt_new     = g_new(double, npt_new*3);
+
+    // set coords at both ends
+    ppt_new[0] = ppt_0[0];                  // CN-0
+    ppt_new[1] = ppt_0[1];
+    ppt_new[(npt_new-1)*3 + 0] = ppt_1[0];  // CN-1
+    ppt_new[(npt_new-1)*3 + 1] = ppt_1[1];
+
+    // transfert ENs coords
+    if (0 != npt) {
+        // +3 step over first pos.
+        memcpy(ppt_new+3, ppt, sizeof(double) * 3 * npt);
+    }
+    if (NULL != ppt)
+        g_free(ppt);
+
+    // update S57 Edge
+    S57_setGeoLine(geoData, npt_new, ppt_new);
+
+    // add to this cell (crntCell)
+    if (NULL == _crntCell->S57Edges)
+        _crntCell->S57Edges = g_ptr_array_new();
+
+    g_ptr_array_add(_crntCell->S57Edges, geoData);
+
+    return TRUE;
+}
+
 static int        _loadEdge(const char *name, void *Edge)
-// 2nd - collecte "Edge"
-// ConnectedNode (CN), EdgeNode (EN): resulting edge ==> CN - EN - EN - CN
+// 2nd - collecte OGR "Edge" shape
+// ConnectedNode (CN), EdgeNode (EN): resulting S57 edge ==> CN - EN - .. -EN - CN
 {
     if ((NULL==name) || (NULL==Edge)) {
-        PRINTF("ERROR: objname / shape  --> NULL\n");
+        PRINTF("DEBUG: objname / shape  --> NULL\n");
         g_assert(0);
         return FALSE;
     }
@@ -2705,115 +2759,76 @@ static int        _loadEdge(const char *name, void *Edge)
         return FALSE;
     }
 
-    {   // find CN at edge end
-        GString *name_rcid_0str = S57_getAttVal(geoData, "NAME_RCID_0");
-        guint    name_rcid_0    = (NULL == name_rcid_0str) ? 1 : atoi(name_rcid_0str->str);
-        GString *name_rcid_1str = S57_getAttVal(geoData, "NAME_RCID_1");
-        guint    name_rcid_1    = (NULL == name_rcid_1str) ? 1 : atoi(name_rcid_1str->str);
+    // get CN at edge end
+    GString *name_rcid_0str = S57_getAttVal(geoData, "NAME_RCID_0");
+    guint    name_rcid_0    = (NULL == name_rcid_0str) ? 1 : atoi(name_rcid_0str->str);
+    GString *name_rcid_1str = S57_getAttVal(geoData, "NAME_RCID_1");
+    guint    name_rcid_1    = (NULL == name_rcid_1str) ? 1 : atoi(name_rcid_1str->str);
 
-        // debug
-        if (NULL==name_rcid_0str || NULL==name_rcid_1str) {
-            PRINTF("ERROR: Edge with no end point\n");
+    // debug
+    if (NULL==name_rcid_0str || NULL==name_rcid_1str) {
+        PRINTF("DEBUG: Edge with no end point\n");
+        g_assert(0);
+        return FALSE;
+    }
+
+    // node-0
+    if ((name_rcid_0 - _crntCell->baseRCID) > _crntCell->ConnectedNodes->len) {
+        PRINTF("DEBUG: Edge end point 0 (%s) and ConnectedNodes array lenght mismatch\n", name_rcid_0str->str);
+        g_assert(0);
+        return FALSE;
+    }
+    S57_geo *node_0 =  (S57_geo *)g_ptr_array_index(_crntCell->ConnectedNodes, (name_rcid_0 - _crntCell->baseRCID));
+    if (NULL == node_0) {
+        PRINTF("DEBUG: got empty node_0 at name_rcid_0 = %i\n", name_rcid_0);
+        g_assert(0);
+        return FALSE;
+    }
+    guint   npt_0 = 0;
+    double *ppt_0 = NULL;
+    S57_getGeoData(node_0, 0, &npt_0, &ppt_0);
+
+    // node-1
+    if ((name_rcid_1 - _crntCell->baseRCID) > _crntCell->ConnectedNodes->len) {
+        PRINTF("DEBUG: Edge end point 1 (%s) and ConnectedNodes array lenght mismatch\n", name_rcid_1str->str);
+        g_assert(0);
+        return FALSE;
+    }
+    S57_geo *node_1 =  (S57_geo *)g_ptr_array_index(_crntCell->ConnectedNodes, (name_rcid_1 - _crntCell->baseRCID));
+    if (NULL == node_1) {
+        // if we land here it meen that there no ConnectedNodes at this index
+        // ptr_array has hold (NULL) because of S57 update
+        PRINTF("DEBUG: got empty node_1 at name_rcid_1 = %i\n", name_rcid_1);
+        g_assert(0);
+        return FALSE;
+    }
+    guint   npt_1   = 0;
+    double *ppt_1   = NULL;
+    S57_getGeoData(node_1, 0, &npt_1, &ppt_1);
+
+    // debug - invariant
+    {   // check that index are in sync with rcid
+        // check assumion that ConnectedNodes are continuous
+        // FIXME: when applying update this is no longer true (ie continuous)
+        GString *rcid_0str = S57_getAttVal(node_0, "RCID");
+        guint    rcid_0    = (NULL == rcid_0str) ? 1 : atoi(rcid_0str->str);
+        GString *rcid_1str = S57_getAttVal(node_1, "RCID");
+        guint    rcid_1    = (NULL == rcid_1str) ? 1 : atoi(rcid_1str->str);
+
+        if (name_rcid_0 != rcid_0) {
+            PRINTF("DEBUG: name_rcid_0 mismatch\n");
             g_assert(0);
             return FALSE;
         }
-
-        // node-0
-        if ((name_rcid_0 - _crntCell->baseRCID) > _crntCell->ConnectedNodes->len) {
-            PRINTF("ERROR: Edge end point 0 (%s) and ConnectedNodes array lenght mismatch\n", name_rcid_0str->str);
+        if (name_rcid_1 != rcid_1) {
+            PRINTF("DEBUG: name_rcid_1 mismatch\n");
             g_assert(0);
             return FALSE;
-        }
-        S57_geo *node_0 =  (S57_geo *)g_ptr_array_index(_crntCell->ConnectedNodes, (name_rcid_0 - _crntCell->baseRCID));
-        if (NULL == node_0) {
-            PRINTF("ERROR: got empty node_0 at name_rcid_0 = %i\n", name_rcid_0);
-            g_assert(0);
-            return FALSE;
-        }
-        guint   npt_0 = 0;
-        double *ppt_0 = NULL;
-        S57_getGeoData(node_0, 0, &npt_0, &ppt_0);
-
-        // node-1
-        if ((name_rcid_1 - _crntCell->baseRCID) > _crntCell->ConnectedNodes->len) {
-            PRINTF("ERROR: Edge end point 1 (%s) and ConnectedNodes array lenght mismatch\n", name_rcid_1str->str);
-            g_assert(0);
-            return FALSE;
-        }
-        S57_geo *node_1 =  (S57_geo *)g_ptr_array_index(_crntCell->ConnectedNodes, (name_rcid_1 - _crntCell->baseRCID));
-        if (NULL == node_1) {
-            // if we land here it meen that there no ConnectedNodes at this index
-            // ptr_array has hold (NULL) because of S57 update
-            PRINTF("ERROR: got empty node_1 at name_rcid_1 = %i\n", name_rcid_1);
-            g_assert(0);
-            return FALSE;
-        }
-        guint   npt_1   = 0;
-        double *ppt_1   = NULL;
-        S57_getGeoData(node_1, 0, &npt_1, &ppt_1);
-
-        {   // check that index are in sync with rcid
-            // check assumion that ConnectedNodes are continuous
-            // FIXME: when applying update this is no longer true (ie continuous)
-            GString *rcid_0str = S57_getAttVal(node_0, "RCID");
-            guint    rcid_0    = (NULL == rcid_0str) ? 1 : atoi(rcid_0str->str);
-            GString *rcid_1str = S57_getAttVal(node_1, "RCID");
-            guint    rcid_1    = (NULL == rcid_1str) ? 1 : atoi(rcid_1str->str);
-
-            if (name_rcid_0 != rcid_0) {
-                PRINTF("ERROR: name_rcid_0 mismatch\n");
-                g_assert(0);
-                return FALSE;
-            }
-            if (name_rcid_1 != rcid_1) {
-                PRINTF("ERROR: name_rcid_1 mismatch\n");
-                g_assert(0);
-                return FALSE;
-            }
-        }
-
-        {   // update geo edge with CNs
-
-            // old Edge
-            guint   npt         = 0;
-            double *ppt         = NULL;
-            double *ppt_tmp     = NULL;
-
-            // fail! - do not return !!
-            //if (FALSE == S57_getGeoData(geoData, 0, &npt, &ppt))
-            //    return TRUE;
-            S57_getGeoData(geoData, 0, &npt, &ppt);
-
-            // new Edge
-            guint   npt_new     = npt + 2;  // the new edge will have 2 more point - one at each end
-            double *ppt_new     = g_new(double, npt_new*3);
-            double *ppt_new_tmp = ppt_new;
-
-            // set coords at both ends
-            ppt_new[0] = ppt_0[0];
-            ppt_new[1] = ppt_0[1];
-            ppt_new[(npt_new-1)*3 + 0] = ppt_1[0];
-            ppt_new[(npt_new-1)*3 + 1] = ppt_1[1];
-
-            // transfert coords
-            // FIXME: use memcpy() - cleaner
-            ppt_tmp      = ppt;
-            ppt_new_tmp += 3;
-            for (guint i=0; i<npt*3; ++i)
-                *ppt_new_tmp++ = *ppt_tmp++;
-
-            if (NULL != ppt)
-                g_free(ppt);
-
-            S57_setGeoLine(geoData, npt_new, ppt_new);
-
-            // add to this cell (crntCell)
-            if (NULL == _crntCell->Edges)
-                _crntCell->Edges = g_ptr_array_new();
-
-            g_ptr_array_add(_crntCell->Edges, geoData);
         }
     }
+
+    // 3rd - build actual chaine node (complete geo edge ready for overlap test - _suppLineOverlap())
+    _builS57Edge(geoData, ppt_0, ppt_1);
 
     // debug
     //PRINTF("%X len:%i\n", _crntCell->Edges->pdata, _crntCell->Edges->len);
@@ -2901,7 +2916,7 @@ int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_
     if (0 == g_strcmp0(layername, "IsolatedNode"))
         return TRUE;
 
-    // ConnectedNode use to complet an Edge
+    // ConnectedNode use to complete an Edge
     if (0 == g_strcmp0(layername, "ConnectedNode")) {
         S57_ogrLoadLayer(layername, layer, _loadConnectedNode);
         return TRUE;
@@ -3085,8 +3100,8 @@ static S52_obj   *_removeObj(_cell *c, S52_obj *obj)
     // NOTE: cannot find the right renderBin from 'obj'
     // because 'obj' could be dandling
 
-    for (S52_disPrio i=0; i<S52_PRIO_NUM; ++i) {
-        for (S52ObjectType j=0; j<S52_N_OBJ; ++j) {
+    for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
+        for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
             GPtrArray *rbin = c->renderBin[i][j];
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj *o = (S52_obj *)g_ptr_array_index(rbin, idx);
@@ -3140,52 +3155,55 @@ int            S52_loadObject(const char *objname, void *shape)
     // NOTE: should be the same as CATALOG.03x
     if (S57__META_T != S57_getObjtype(geoData)) {
 
+        // combine HODATA ==> union gluTessProperty(tobj, ..);
+        // GLU_TESS_WINDING_NONZERO or GLU_TESS_WINDING_POSITIVE winding rules.
+        // LUPT   40LU00102NILM_COVRA00001SPLAIN_BOUNDARIES
+        // LUPT   45LU00357NILM_COVRA00001SSYMBOLIZED_BOUNDARIES
+
         if ((S57_AREAS_T==S57_getObjtype(geoData)) && (0==g_strcmp0(objname, "M_COVR"))) {
             extent ext;
             S57_getExt(geoData, &ext.W, &ext.S, &ext.E, &ext.N);
 
-            // Note: it is CATCOV, not CATCVR
+            // Note: it is CATCOV (not CATCVR as in doc/pslb03_2.pdf)
+            // M_COVR:CATCOV=1, HO data limit
             GString *catcovstr = S57_getAttVal(geoData, "CATCOV");
-            if ((NULL==catcovstr) || ((NULL!=catcovstr) && ('1' != *catcovstr->str))) {
-                PRINTF("OBJNAME:%s CATCOV != 1\n", objname);
-            }
-            else
-            //*/
+            if ((NULL!=catcovstr) && ('1'==*catcovstr->str)) {
+                //PRINTF("DEBUG: OBJNAME:%s CATCOV == 1\n", objname);
 
-            {
                 // +inf
-                if (1 == isinf(_crntCell->ext.S)) {
-                    _crntCell->ext.S = ext.S;
-                    _crntCell->ext.W = ext.W;
-                    _crntCell->ext.N = ext.N;
-                    _crntCell->ext.E = ext.E;
+                if (1 == isinf(_crntCell->geoExt.S)) {
+                    _crntCell->geoExt.S = ext.S;
+                    _crntCell->geoExt.W = ext.W;
+                    _crntCell->geoExt.N = ext.N;
+                    _crntCell->geoExt.E = ext.E;
                 } else {
                     // lat
-                    if (_crntCell->ext.N < ext.N)
-                        _crntCell->ext.N = ext.N;
-                    if (_crntCell->ext.S > ext.S)
-                        _crntCell->ext.S = ext.S;
+                    if (_crntCell->geoExt.N < ext.N)
+                        _crntCell->geoExt.N = ext.N;
+                    if (_crntCell->geoExt.S > ext.S)
+                        _crntCell->geoExt.S = ext.S;
 
                     // init W,E limits
                     // put W-E in first quadrant [0..360]
-                    if ((_crntCell->ext.W + 180.0) > (ext.W + 180.0))
-                        _crntCell->ext.W = ext.W;
-                    if ((_crntCell->ext.E + 180.0) < (ext.E + 180.0))
-                        _crntCell->ext.E = ext.E;
+                    if ((_crntCell->geoExt.W + 180.0) > (ext.W + 180.0))
+                        _crntCell->geoExt.W = ext.W;
+                    if ((_crntCell->geoExt.E + 180.0) < (ext.E + 180.0))
+                        _crntCell->geoExt.E = ext.E;
                 }
-                /* debug
-                 // check if this cell is crossing the prime-meridian
-                 if ((_crntCell->ext.W < 0.0) && (0.0 < _crntCell->ext.E)) {
-                 PRINTF("DEBUG:CELL crossing prime:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->ext.W, _crntCell->ext.S, _crntCell->ext.E, _crntCell->ext.N);
-                 g_assert(0);
-                 }
-                 // check if this cell is crossing the anti-meridian
-                 if ((_crntCell->ext.W > -180.0) && (180.0 > _crntCell->ext.E)) {
-                 PRINTF("DEBUG:CELL crossing anti:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->ext.W, _crntCell->ext.S, _crntCell->ext.E, _crntCell->ext.N);
-                 g_assert(0);
-                 }
-                 */
-            }  // CATCVR=1
+
+                /* debug: check if this cell is crossing the prime-meridian
+                if ((_crntCell->geoExt.W < 0.0) && (0.0 < _crntCell->geoExt.E)) {
+                    PRINTF("DEBUG:CELL crossing prime:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->geoExt.W, _crntCell->geoExt.S, _crntCell->geoExt.E, _crntCell->geoExt.N);
+                    g_assert(0);
+                }
+                // check if this cell is crossing the anti-meridian
+                if ((_crntCell->geoExt.W > -180.0) && (180.0 > _crntCell->geoExt.E)) {
+                    PRINTF("DEBUG:CELL crossing anti:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->geoExt.W, _crntCell->geoExt.S, _crntCell->geoExt.E, _crntCell->geoExt.N);
+                    g_assert(0);
+                }
+                //*/
+
+            }  // CATCOV=1
 
         }  // S57_AREAS_T/M_COVR
 
@@ -3429,6 +3447,22 @@ static int        _app()
             S52_GL_delRaster(ras, TRUE);
         }
 
+        /* 2.4 - compute HO data limit
+        for (guint i=0; i<_cellList->len; ++i) {
+            _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
+            // layer 3, M_COVR:CATCOV=2
+            GPtrArray *rbin = ci->renderBin[S52_PRIO_AREA_2][S52_AREAS];
+            for (guint idx=0; idx<rbin->len; ++idx) {
+                // one object
+                S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+                S57_geo *geo = S52_PL_getGeo(obj);
+
+                if (0 == g_strcmp0(S57_getName(geo), "M_COVR")) {
+                    //S52_GL_addRing(geo);
+                }
+            }
+        }
+        */
     }
 
     //PRINTF("_app(): -1-\n");
@@ -3465,7 +3499,7 @@ static int        _cullLights(void)
                 _cell *cellAbove = (_cell*) g_ptr_array_index(_cellList, k);
                 // skip if same scale
                 if (cellAbove->filename->str[2] > c->filename->str[2]) {
-                    if (TRUE == _intersec(cellAbove->ext, oext)) {
+                    if (TRUE == _intersec(cellAbove->geoExt, oext)) {
                         // check this: a chart above this light sector
                         // does not have the same lights (this would be a bug in S57)
                         //S57_setSupp(geo, TRUE);
@@ -3486,8 +3520,7 @@ static int        _cullObj(_cell *c)
 {
     // for each layers
     // Note: Chart No 1 put object on layer 9 (Mariners' Objects)
-    //for (int j=0; j<S52_PRIO_NUM; ++j) {
-    for (S52_disPrio j=0; j<S52_PRIO_MARINR; ++j) {
+    for (S52_disPrio j=S52_PRIO_NODATA; j<S52_PRIO_MARINR; ++j) {
 
         // for each object type on one layer, skip META
         for (S52ObjectType k=S52_AREAS; k<S52_N_OBJ; ++k) {
@@ -3505,7 +3538,6 @@ static int        _cullObj(_cell *c)
                 //}
 
                 // is this object suppressed by user
-                //if (TRUE == S57_getSupp(geo)) {
                 if (TRUE == S52_PL_getSupp(obj)) {
                     ++_nCull;
                     continue;
@@ -3578,7 +3610,7 @@ static int        _cull(extent ext)
             continue;
 #endif
         // is this chart visible
-        if (TRUE == _intersec(c->ext, ext)) {
+        if (TRUE == _intersec(c->geoExt, ext)) {
             _cullObj(c);
         }
     }
@@ -3646,7 +3678,7 @@ static int        _drawLayer(extent ext, int layer)
     //for (guint i=n; i>0 ; --i) {
     //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
-        if (TRUE == _intersec(c->ext, ext)) {
+        if (TRUE == _intersec(c->geoExt, ext)) {
 
             // one layer
             for (S52ObjectType k=S52_AREAS; k<S52_N_OBJ; ++k) {
@@ -3710,8 +3742,6 @@ static int        _drawLights(void)
             S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
             // SCAMIN & PLib (disp prio)
             if (TRUE != S52_GL_isSupp(obj)) {
-                //S57_geo *geo = S52_PL_getGeo(obj);
-                //if (TRUE != S57_getSupp(geo))
                 if (TRUE != S52_PL_getSupp(obj))
                     S52_GL_draw(obj, NULL);
             }
@@ -3780,7 +3810,7 @@ static int        _drawLegend()
 
     for (guint i=1; i<_cellList->len; ++i) {
         _cell *c        = (_cell*) g_ptr_array_index(_cellList, i);
-        double xyz[3]   = {c->ext.W, c->ext.N, 0.0};
+        double xyz[3]   = {c->geoExt.W, c->geoExt.N, 0.0};
 
         char   str[80]  = {'\0'};
         //double offset_x = 1.0;
@@ -3930,6 +3960,9 @@ static int        _draw()
 // draw object inside view
 // then draw object's text
 {
+    // optimisation: GOURD 1 - face of earth - sort and then glDraw() on a whole surface
+    //               - app/cull must reset sort if color change by user
+
     for (guint i=_cellList->len; i>0; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
 
@@ -3940,25 +3973,44 @@ static int        _draw()
             return TRUE;
         }
 
-        // FIXME: GOURD 1 - face of earth - sort and then glDraw() on a whole surface
-        // APP/CULL must reset sort if color change by user
+        // LL2XY()
+        double xyz[6] = {c->geoExt.W, c->geoExt.S, 0.0, c->geoExt.E, c->geoExt.N, 0.0};
+        if (FALSE == S57_geo2prj3dv(2, xyz)) {
+            PRINTF("WARNING: S57_geo2prj3dv() failed\n");
+            g_assert(0);
+        }
+
+        S52_GL_prj2win(&xyz[0], &xyz[1]);
+        S52_GL_prj2win(&xyz[3], &xyz[4]);
+
+        int x = floor(xyz[0]);
+        int y = floor(xyz[1]);
+        int w = floor(xyz[3] - xyz[0]);
+        int h = floor(xyz[4] - xyz[1]);
+
+        // needed in combining HO DATA limit (check for corner overlap)
+        S52_GL_setScissor(x, y, w, h);
+
         // draw under radar
         g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
 
+        // USE_RASTER/RADAR
 #if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
         // draw radar / raster
-        if ((1.0 == S52_MP_get(S52_MAR_DISP_RADAR_LAYER)) &&
-            (0   != g_strcmp0(c->filename->str, MARINER_CELL))
-           ) {
-            _drawRaster(&(c->ext));
+        // no raster in MARINER_CELL (i==1, cell idx 0)
+        if ((1.0==S52_MP_get(S52_MAR_DISP_RADAR_LAYER)) && (1!=i)) {
+            _drawRaster(&(c->geoExt));
         }
 #endif
 
         // draw over radar
         g_ptr_array_foreach(c->objList_over, (GFunc)S52_GL_draw, NULL);
 
-        // FIXME: implicit call to S52_PL_hasText() again
+        // end scissor test
+        S52_GL_setScissor(0, 0, -1, -1);
+
         // draw text
+        // FIXME: implicit call to S52_PL_hasText() again
         g_ptr_array_foreach(c->textList,     (GFunc)S52_GL_drawText, NULL);
     }
 
@@ -4043,7 +4095,7 @@ DLL int    STD S52_draw(void)
         // DRAW: .. render
 
         if (TRUE == (int) S52_MP_get(S52_MAR_DISP_OVERLAP)) {
-            for (S52_disPrio layer=0; layer<S52_PRIO_NUM; ++layer) {
+            for (S52_disPrio layer=S52_PRIO_NODATA; layer<S52_PRIO_NUM; ++layer) {
                 _drawLayer(ext, layer);
 
                 // draw all lights (of all cells) outside ext
@@ -4273,7 +4325,7 @@ static int        _drawObj(const char *name)
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         // one cell
-        for (S52_disPrio j=0; j<S52_PRIO_NUM; ++j) {
+        for (S52_disPrio j=S52_PRIO_NODATA; j<S52_PRIO_NUM; ++j) {
 
             // one layer
             for (S52ObjectType k=S52_AREAS; k<S52_N_OBJ; ++k) {
@@ -4466,21 +4518,14 @@ DLL int    STD S52_xy2LL(double *pixels_x, double *pixels_y)
     if (NULL == S57_getPrjStr())
         goto exit;
 
-
     // check bound
     if (FALSE == _validate_screenPos(pixels_x, pixels_y)) {
         PRINTF("WARNING: _validate_screenPos() failed\n");
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //g_assert(0);
-        //return FALSE;
         goto exit;
     }
 
     if (FALSE == S52_GL_win2prj(pixels_x, pixels_y)) {
         PRINTF("WARNING: S52_GL_win2prj() failed\n");
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //g_assert(0);
-        //return FALSE;
         goto exit;
     }
 
@@ -4512,9 +4557,6 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude)
     double xyz[3] = {*longitude, *latitude, 0.0};
     if (FALSE == S57_geo2prj3dv(1, xyz)) {
         PRINTF("WARNING: S57_geo2prj3dv() failed\n");
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //g_assert(0);
-        //return FALSE;
         goto exit;
     }
 
@@ -4674,10 +4716,10 @@ static int        _getCellsExt(extent* extSum)
 #endif
         // first pass init extent
         if (FALSE == ret) {
-            extSum->S = c->ext.S;
-            extSum->W = c->ext.W;
-            extSum->N = c->ext.N;
-            extSum->E = c->ext.E;
+            extSum->S = c->geoExt.S;
+            extSum->W = c->geoExt.W;
+            extSum->N = c->geoExt.N;
+            extSum->E = c->geoExt.E;
 
             ret = TRUE;
             continue;
@@ -4686,22 +4728,22 @@ static int        _getCellsExt(extent* extSum)
         // handle the rest
 
         // N-S limits
-        if (extSum->N < c->ext.N)
-            extSum->N = c->ext.N;
-        if (extSum->S > c->ext.S)
-            extSum->S = c->ext.S;
+        if (extSum->N < c->geoExt.N)
+            extSum->N = c->geoExt.N;
+        if (extSum->S > c->geoExt.S)
+            extSum->S = c->geoExt.S;
 
 
         //------------------- E-W limits ------------------------
 
         // new cell allready inside ext
-        if ((extSum->W < c->ext.W) && (c->ext.E < extSum->E))
+        if ((extSum->W < c->geoExt.W) && (c->geoExt.E < extSum->E))
             continue;
 
         // new cell totaly cover ext
-        if ((c->ext.W < extSum->W) && (extSum->E < c->ext.E)) {
-            extSum->W = c->ext.W;
-            extSum->E = c->ext.E;
+        if ((c->geoExt.W < extSum->W) && (extSum->E < c->geoExt.E)) {
+            extSum->W = c->geoExt.W;
+            extSum->E = c->geoExt.E;
             continue;
         }
 
@@ -4719,25 +4761,25 @@ static int        _getCellsExt(extent* extSum)
         //
 
         double Aw  = extSum->W + 180.0;
-        double B1w = c->ext.W  + 180.0;
+        double B1w = c->geoExt.W  + 180.0;
         double B2w = B1w + 360.0;
 
         double Ae  = extSum->E + 180.0;
-        double B1e = c->ext.E  + 180.0;
+        double B1e = c->geoExt.E  + 180.0;
         double B2e = B1e + 360.0;
 
 
         // dist 1  >  dist 2
         if ((Aw - B1w) > (B2w - Aw))
-            extSum->E = c->ext.E;
+            extSum->E = c->geoExt.E;
         else
-            extSum->W = c->ext.W;
+            extSum->W = c->geoExt.W;
 
         // dist 1  >  dist 2
         if ((Ae - B1e) > (B2e - Ae))
-            extSum->E = c->ext.E;
+            extSum->E = c->geoExt.E;
         else
-            extSum->W = c->ext.W;
+            extSum->W = c->geoExt.W;
 
     }
 
@@ -4746,10 +4788,10 @@ static int        _getCellsExt(extent* extSum)
     if (FALSE == ret) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, _cellList->len-1);
 
-        extSum->S = c->ext.S;
-        extSum->W = c->ext.W;
-        extSum->N = c->ext.N;
-        extSum->E = c->ext.E;
+        extSum->S = c->geoExt.S;
+        extSum->W = c->geoExt.W;
+        extSum->N = c->geoExt.N;
+        extSum->E = c->geoExt.E;
 
         ret = TRUE;
     }
@@ -4798,10 +4840,10 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
             _cell *c = (_cell*)g_ptr_array_index(_cellList, idx);
 
             if (0 == g_strcmp0(name, c->filename->str)) {
-                *S = c->ext.S;
-                *W = c->ext.W;
-                *N = c->ext.N;
-                *E = c->ext.E;
+                *S = c->geoExt.S;
+                *W = c->geoExt.W;
+                *N = c->geoExt.N;
+                *E = c->geoExt.E;
                 //PRINTF("%s: %f, %f, %f, %f\n", filename, ext->s, ext->w, ext->n, ext->e);
 
                 // cell found
@@ -5021,13 +5063,13 @@ DLL int    STD S52_loadPLib(const char *plibName)
         memset(&tmpCell, 0, sizeof(_cell));
 
         // init new render bin
-        for (S52_disPrio i=0; i<S52_PRIO_NUM; ++i) {
-            for (S52ObjectType j=0; j<S52_N_OBJ; ++j)
+        for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
+            for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j)
                 tmpCell.renderBin[i][j] = g_ptr_array_new();
         }
 
         // insert obj in new cell
-        for (S52_disPrio i=0; i<S52_PRIO_NUM; ++i) {
+        for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
             // skip META (no META in PLib)
             //FIXME: check all 'foreach' where META is used (ex: C_AGGR)
             for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
@@ -5055,9 +5097,9 @@ DLL int    STD S52_loadPLib(const char *plibName)
         }
 
         // transfert rbin
-        for (S52_disPrio i=0; i<S52_PRIO_NUM; ++i) {
+        for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
             // transfert all rbin - empty META also (prevent mem leak because of lost rbin)
-            for (S52ObjectType j=0; j<S52_N_OBJ; ++j) {
+            for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
                 cell->renderBin[i][j] = tmpCell.renderBin[i][j];
             }
         }
@@ -5293,8 +5335,8 @@ static GString   *_getMARINClassList()
 {
     GString *classList = g_string_new(MARINER_CELL);
 
-    for (S52_disPrio i=0; i<S52_PRIO_NUM; ++i) {
-        for (S52ObjectType j=0; j<S52_N_OBJ; ++j) {
+    for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
+        for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
             GPtrArray *rbin = _marinerCell->renderBin[i][j];
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj    *obj   = (S52_obj *)g_ptr_array_index(rbin, idx);
@@ -5378,8 +5420,8 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
         _cell *c = (_cell*)g_ptr_array_index(_cellList, cidx);
 
         if (0 == g_strcmp0(cellName, c->filename->str)) {
-            for (S52_disPrio i=0; i<S52_PRIO_NUM; ++i) {
-                for (S52ObjectType j=0; j<S52_N_OBJ; ++j) {
+            for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
+                for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
                     GPtrArray *rbin = c->renderBin[i][j];
                     for (guint idx=0; idx<rbin->len; ++idx) {
                         S52_obj    *obj   = (S52_obj *)g_ptr_array_index(rbin, idx);
@@ -6132,7 +6174,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
                     continue;
 #endif
                 // is this chart visible
-                if (TRUE == _intersec(c->ext, ext)) {
+                if (TRUE == _intersec(c->geoExt, ext)) {
                     // layer 8, over radar, BASE, LINE
                     // FIXME: later check AREA & POINT (OBSTRN04/Area,Line,Ppoint, WRECKS02/Area,Point)
                     GPtrArray *rbin = c->renderBin[S52_PRIO_HAZRDS][S52_LINES];
