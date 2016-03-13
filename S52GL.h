@@ -136,7 +136,9 @@ int   S52_GL_prj2win(double *x, double *y);
 int   S52_GL_setViewPort(int  x, int  y, int  width, int  height);
 int   S52_GL_getViewPort(int *x, int *y, int *width, int *height);
 
-// return the name of the top object
+int   S52_GL_setScissor(int x, int y, int width, int height);
+
+// return the name of the stack top object
 const
 char *S52_GL_getNameObjPick(void);
 
