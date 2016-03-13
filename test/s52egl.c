@@ -1475,7 +1475,8 @@ static int      _s52_init       (s52engine *engine)
     // Bathy - experimental Cap Sante / Portneuf
     //S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479017.000", NULL);
     //S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479020.000", NULL);
-    //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
+
+    //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);  // old test bathy
 
     // bathy overlapping CA479017.000 and CA479020.000
     //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4666N7170W_5.tiff", NULL);
