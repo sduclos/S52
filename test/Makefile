@@ -65,6 +65,7 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DS52_USE_MESA3D    - set ENV for Mesa3D MSAA and vblank_mode
 # -DS52_USE_GLES2     - GLES2
 # -DS52_USE_GLES3     - GLES3.x / GLSL ES 3.0
+# -DS52_USE_EGL       - use EGL
 # -DS52_USE_ANDROID   - then set TREGRA2 or ADRENO
 # -DS52_USE_TEGRA2    - Xoom
 # -DS52_USE_ADRENO    - Nexus 7 (2013)
