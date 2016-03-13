@@ -675,8 +675,6 @@ static GString *DATCVR01 (S57_geo *geo)
 {
     // NOTE: this CS apply to object M_COVR and M_CSCL
 
-    // quiet compiler
-    (void) geo;
     GString *datcvr01 = NULL;
 
     ///////////////////////
@@ -688,7 +686,17 @@ static GString *DATCVR01 (S57_geo *geo)
     //
     // 2.1- Limit of ENC coverage
     // FIXME: CSP union of all M_COVR:CATCOV=1
-    datcvr01 = g_string_new(";OP(3OD11060);LC(HODATA01)");
+    if (0 == g_strcmp0(S57_getName(geo), "M_COVR")) {
+        GString *catcovstr = S57_getAttVal(geo, "CATCOV");
+        if ((NULL!=catcovstr) && ('1'==*catcovstr->str)) {
+            datcvr01 = g_string_new(";OP(3OD11060);LC(HODATA01)");
+        } else {
+            // M_COVR:CATCOV=2, link PLib
+            // LUPT   40LU00102NILM_COVRA00001SPLAIN_BOUNDARIES
+            // LUPT   45LU00357NILM_COVRA00001SSYMBOLIZED_BOUNDARIES
+            datcvr01 = g_string_new(";LC(HODATA01)");
+        }
+    }
 
     // 2.2- No data areas
     // FIXME: This can be done outside of CS (ie when clearing the screen)
