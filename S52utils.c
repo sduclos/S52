@@ -47,8 +47,8 @@ static GPrintFunc _oldPrintHandler = NULL;
 
 static S52_log_cb _log_cb          = NULL;
 
-// internal libS52.so version
-static const char _version[] = "libS52-2016MAR13-1.171"
+// internal libS52.so version + build def's
+static const char _version[] = S52_VERSION
 #ifdef  _MINGW
       ",_MINGW"
 #endif
