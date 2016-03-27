@@ -1919,9 +1919,9 @@ static int        _loadPL(_PL *fp)
 static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
 // Symbology Command Word Parameter Value Parser.
 // Put in 'buf' one of:
-//  1- LUP constant value,
-//  2- ENC value,
-//  3- LUP default value.
+//  1 - LUP constant value,
+//  2 - ENC value,
+//  3 - LUP default value.
 // Return pointer to the next field in the string (delim is ','), NULL to abort
 {
     char    *tmp    = buf;
@@ -3928,16 +3928,16 @@ S52_objSupp       _toggleLUPlist(_LUP *LUPlist)
 S52_objSupp S52_PL_toggleObjClass(const char *className)
 // toggle an S57 object class
 {
-    S52_objSupp sup = S52_SUPP_ERR;
+    S52_objSupp supp = S52_SUPP_ERR;
     _LUP  *LUPlist = NULL;
 
-    for (int tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
+    for (_table_t tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
         LUPlist = (_LUP*)g_tree_lookup(_table[tblType], (gpointer*)className);
         if (NULL != LUPlist)
-            sup = _toggleLUPlist(LUPlist);
+            supp = _toggleLUPlist(LUPlist);
     }
 
-    return sup;
+    return supp;
 }
 
 S52_objSupp S52_PL_getObjClassState(const char *className)
@@ -3967,6 +3967,10 @@ S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
     //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "M_QUAL")) {
     //    PRINTF("M_QUAL found\n");
     //}
+    //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: M_COVR found\n");
+    //}
+
 
     // META's can't be displayed (ex: C_AGGR)
     if (NULL == obj->LUP)
