@@ -268,7 +268,7 @@ static int      _renderHelp(GtkWidget *widget)
 
     // S52 say 3 pixel wide, but
     // blending slide everything of by one
-    //glLineWidth(3); 
+    //glLineWidth(3);
     glLineWidth(2);
 
     // not on edge of poly (S52 nothing about that)
@@ -475,7 +475,7 @@ static int      _dumpENV()
         //g_assert(gv_have_S52_support());
 
         // jump into GDB here
-        //g_on_error_query (NULL); 
+        //g_on_error_query (NULL);
     }
 
     return 1;
@@ -776,7 +776,7 @@ static int      _setOWNSHP()
     //_ownshp = S52_setDimension(_ownshp, 100.0, 0.0, 15.0, 0.0);
     _ownshp = S52_setDimension(_ownshp, 0.0, 100.0, 15.0, 0.0);
     //_ownshp = S52_setDimension(_ownshp, 1000.0, 50.0, 15.0, 15.0);
- 
+
     // position 'ownshp' with reasonable value
     _computeView(&_view);
 
@@ -1141,19 +1141,19 @@ static int      _initS52()
     //
     // supresse display of adminitrative objects when
     // S52_MAR_DISP_CATEGORY is SELECT, to avoid cluttering
-    //S52_toggleObjClass("M_NSYS");   // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
-    //S52_toggleObjClass("M_COVR");   // HO data limit __/__/__ - LC(HODATA01)
-    //S52_toggleObjClass("M_NPUB");   // ??
+    //S52_setS57ObjClassSupp("M_NSYS");   // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
+    //S52_setS57ObjClassSupp("M_COVR");   // HO data limit __/__/__ - LC(HODATA01)
+    //S52_setS57ObjClassSupp("M_NPUB");   // ??
 
     // debug - M_QUAL - the U pattern
-    //S52_toggleObjClass("M_QUAL");  
-    //ret = S52_toggleObjClassOFF("M_QUAL");  // OK - ret == TRUE
-    //ret = S52_toggleObjClassON ("M_QUAL");  // OK - ret == TRUE
-    //ret = S52_toggleObjClassON ("M_QUAL");  // OK - ret == FALSE
+    //S52_setS57ObjClassSupp("M_QUAL");
+    //ret = S52_setS57ObjClassSupp("M_QUAL");  // OK - ret == TRUE
+    //ret = S52_setS57ObjClassSupp ("M_QUAL");  // OK - ret == TRUE
+    //ret = S52_setS57ObjClassSupp ("M_QUAL");  // OK - ret == FALSE
     S52_setS57ObjClassSupp("M_QUAL", TRUE);
 
     // test
-    //S52_toggleObjClass("DRGARE");   // drege area
+    //S52_setS57ObjClassSupp("DRGARE");   // drege area
 
 
     ////////////////////////////////////////////////////////////
@@ -1298,7 +1298,7 @@ static int      _initS52()
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD | S52_MAR_DISP_LAYER_LAST_OTHER);    // All Mariner (Standard + Other)
     S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Standard(default) + Other)
 
-                    
+
     //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 0.0);  // none
     S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 1.0);  // pick/highlight top object
     //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 2.0);  // pick stack/highlight top
@@ -1348,8 +1348,9 @@ static int      _initS52()
     S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
     _setRoute();
 
-    // clear error
-    S52_setMarinerParam(S52_MAR_ERROR, 0.0);
+    // clear alarm
+    //S52_setMarinerParam(S52_MAR_ERROR, 0.0);
+    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);
 
     _setCLRLIN();
 
@@ -1677,7 +1678,7 @@ static gboolean button_release_event(GtkWidget      *widget,
 
                 gtk_widget_draw(widget, NULL);
 
-                break; 
+                break;
             }
         case 1: // left click
             {
@@ -1693,15 +1694,17 @@ static gboolean button_release_event(GtkWidget      *widget,
                         g_print("s52gtk.c:button_release_event(): OBJ PICKED(%.f, %.f): %s\n", event->x, event->y, name);
 
                         // display highlight
-                        S52_setMarinerParam(S52_MAR_ERROR, -1.0);
+                        //S52_setMarinerParam(S52_MAR_ERROR, -1.0);
+                        S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, -1.0);
                     }
                 }
 
                 S52_draw();
                 S52_drawLast();
 
-                // clear error
-                S52_setMarinerParam(S52_MAR_ERROR, 0.0);
+                // clear alarm
+                //S52_setMarinerParam(S52_MAR_ERROR, 0.0);
+                S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);
 
                 if (gdk_gl_drawable_is_double_buffered(gldrawable))
                     gdk_gl_drawable_swap_buffers(gldrawable);
