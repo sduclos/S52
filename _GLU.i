@@ -22,11 +22,12 @@ typedef void (_CALLBACK *f2)   (GLint, void*);
 typedef void (_CALLBACK *fp)   (void*);
 typedef void (_CALLBACK *fpp)  (void*, void*);
 
-static GLUtriangulatorObj *_tobj = NULL;
-static GPtrArray          *_tmpV = NULL;  // place holder during tesssalation (GLUtriangulatorObj combineCallback)
+// tesselator for area
+static GLUtriangulatorObj *_tobj       = NULL;
+static GPtrArray          *_tmpV       = NULL;     // place holder during tesssalation (GLUtriangulatorObj combineCallback)
 
 // centroid
-static GLUtriangulatorObj *_tcen       = NULL;     // GLU CSG
+static GLUtriangulatorObj *_tcen       = NULL;     // GLU CSG - Computational Solid Geometry
 static GArray             *_vertexs    = NULL;
 static GArray             *_nvertex    = NULL;     // list of nbr of vertex per poly in _vertexs
 static GArray             *_centroids  = NULL;     // centroids of poly's in _vertexs
@@ -35,6 +36,9 @@ static GArray             *_centroids  = NULL;     // centroids of poly's in _ve
 static GLUtriangulatorObj *_tcin       = NULL;
 static GLboolean           _startEdge  = GL_TRUE;  // start inside edge --for heuristic of centroid in poly
 static int                 _inSeg      = FALSE;    // next vertex will complete an edge
+
+// HO Data Limit
+static GLUtriangulatorObj *_tUnion     = NULL;
 
 // experimental: centroid inside poly heuristic
 static double _dcin;
@@ -252,6 +256,9 @@ static void_cb_t _quadricError(GLenum err)
 static void_cb_t _edgeFlag(GLboolean flag)
 {
     _startEdge = (GL_FALSE == flag)? GL_TRUE : GL_FALSE;
+
+    // debug
+    //PRINTF("%i\n", flag);
 }
 
 
@@ -283,25 +290,32 @@ static void_cb_t _combineCallback(GLdouble   coords[3],
 
 static void_cb_t _glBegin(GLenum mode, S57_prim *prim)
 {
-    // Note: mode=10  is _TRANSLATE, defined as 0x000A
+    // Note: mode=10 is _TRANSLATE, defined as 0x000A
     S57_begPrim(prim, mode);
 }
 
 static void_cb_t _beginCen(GLenum data)
 {
-    // avoid "warning: unused parameter"
+    // quiet compiler
     (void) data;
 
-    // debug  printf
+    // debug
     //PRINTF("%i\n", data);
 }
 
 static void_cb_t _beginCin(GLenum data)
 {
-    // avoid "warning: unused parameter"
+    /* from gl.h
+     #define GL_LINE_LOOP       0x0002
+     #define GL_TRIANGLES       0x0004
+     #define GL_TRIANGLE_STRIP  0x0005
+     #define GL_TRIANGLE_FAN    0x0006
+    */
+
+    // quiet compiler
     (void) data;
 
-    // debug  printf
+    // debug
     //PRINTF("%i\n", data);
 }
 
@@ -342,9 +356,22 @@ static void_cb_t _vertexCen(GLvoid *data)
 {
     pt3 *p = (pt3*) data;
 
+    // debug
     //PRINTF("%f %f\n", p->x, p->y);
 
     g_array_append_val(_vertexs, *p);
+}
+
+static void_cb_t _vertexUnion(GLvoid *data)
+{
+    pt3 *p = (pt3*) data;
+
+    //if (TRUE == _startEdge) {
+        // debug
+        //PRINTF("%f %f\n", p->x, p->y);
+
+        g_array_append_val(_vertexs, *p);
+    //}
 }
 
 static void_cb_t _vertexCin(GLvoid *data)
@@ -396,6 +423,7 @@ static GLint     _initGLU(void)
 
         // ODD needed for symb. ISODGR01 + glDisable(GL_CULL_FACE);
         gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_ODD);
+
         // default
         //gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_NONZERO);
         //gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_POSITIVE);
@@ -434,6 +462,7 @@ static GLint     _initGLU(void)
         //gluTessProperty(_tcen, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_POSITIVE);
         //gluTessProperty(_tcen, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_NEGATIVE);
         gluTessProperty(_tcen, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_ABS_GEQ_TWO);
+
         gluTessProperty(_tcen, GLU_TESS_BOUNDARY_ONLY, GLU_TRUE);
 
         // Note: tolerance not implemented in libtess
@@ -456,7 +485,9 @@ static GLint     _initGLU(void)
             return FALSE;
         }
 
-        //gluTessProperty(_tcin, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_ODD);
+        // default
+        //gluTessProperty(_tobj, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_NONZERO);
+
         gluTessProperty(_tcin, GLU_TESS_BOUNDARY_ONLY, GLU_FALSE);
 
         // Note: tolerance not implemented in libtess
@@ -471,6 +502,33 @@ static GLint     _initGLU(void)
 
         // set poly in x-y plane normal is Z (for performance)
         gluTessNormal(_tcin, 0.0, 0.0, 1.0);
+
+        //-----------------------------------------------------------
+
+        _tUnion = gluNewTess();
+        if (NULL == _tUnion) {
+            PRINTF("ERROR: gluNewTess() failed\n");
+            return FALSE;
+        }
+
+        gluTessProperty(_tUnion, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_NONZERO);
+        //gluTessProperty(_tUnion, GLU_TESS_WINDING_RULE, GLU_TESS_WINDING_POSITIVE);
+
+        gluTessProperty(_tUnion, GLU_TESS_BOUNDARY_ONLY, GLU_TRUE);
+
+        // use _vertexs to hold Union
+        gluTessCallback(_tUnion, GLU_TESS_BEGIN,     (f)_beginCin);  // do nothing
+        gluTessCallback(_tUnion, GLU_TESS_END,       (f)_endCin);    // do nothing
+        gluTessCallback(_tUnion, GLU_TESS_VERTEX,    (f)_vertexUnion);  // fill _vertexs
+        gluTessCallback(_tUnion, GLU_TESS_ERROR,     (f)_tessError);
+        gluTessCallback(_tUnion, GLU_TESS_COMBINE,   (f)_combineCallback);
+
+        // NOTE: _*NOT*_ NULL to trigger GL_TRIANGLES tessallation
+        //gluTessCallback(_tUnion, GLU_TESS_EDGE_FLAG, (f)_edgeFlag);
+        gluTessCallback(_tUnion, GLU_TESS_EDGE_FLAG, (f)NULL);
+
+        // set poly in x-y plane normal is Z (for performance)
+        gluTessNormal(_tUnion, 0.0, 0.0, 1.0);
     }
 
     ////////////////////////////////////////////////////////////////
@@ -565,4 +623,42 @@ static S57_prim *_tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
     //gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) NULL);
 
     return prim;
+}
+
+void      S52_GLU_begUnion(void)
+{
+    _g_ptr_array_clear(_tmpV);
+    g_array_set_size(_vertexs, 0);
+
+    gluTessBeginPolygon(_tUnion, NULL);
+
+    return;
+}
+
+void      S52_GLU_addUnion(S57_geo *geo)
+{
+    guint   npt = 0;
+    double *ppt = NULL;
+    if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
+        gluTessBeginContour(_tUnion);
+        //ppt += npt*3 - 3;
+        //for (guint i=npt; i>0; --i, ppt-=3) {  // CCW
+        for (guint i=0; i<npt; ++i, ppt+=3) {  // CW
+            gluTessVertex(_tUnion, (GLdouble*)ppt, (void*)ppt);
+            //PRINTF("x/y/z %f/%f/%f\n", d[0],d[1],d[2]);
+        }
+        gluTessEndContour(_tUnion);
+    }
+
+    return;
+}
+
+void      S52_GLU_endUnion(guint *npt, double **ppt)
+{
+    gluTessEndPolygon(_tUnion);
+
+    *npt = _vertexs->len;
+    *ppt = (double*)_vertexs->data;
+
+    return;
 }
