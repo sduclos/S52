@@ -978,7 +978,7 @@ static int       _init_gl2(void)
         static const char fragSrc[] =
 #ifdef S52_USE_MESA3D         // to get gl_PointCoord when s52_use_afterglow
             //"#version 120                               \n"
-            "#version 100                               \n"
+            //"#version 100                               \n"
 #endif
 
 #ifdef S52_USE_GLES2
@@ -1544,10 +1544,14 @@ static int       _renderAP_gl2(S52_obj *obj)
 
     GLuint mask_texID = S52_PL_getAPtexID(obj);
     if (0 == mask_texID) {
-        // scissor box interfere with texture creation
-        glDisable(GL_SCISSOR_TEST);
-        mask_texID = _renderTexure(obj, tileWpx, tileHpx, stagOffsetPix);
-        glEnable(GL_SCISSOR_TEST);
+        if (TRUE == glIsEnabled(GL_SCISSOR_TEST)) {
+            // scissor box interfere with texture creation
+            glDisable(GL_SCISSOR_TEST);
+            mask_texID = _renderTexure(obj, tileWpx, tileHpx, stagOffsetPix);
+            glEnable(GL_SCISSOR_TEST);
+        } else {
+            mask_texID = _renderTexure(obj, tileWpx, tileHpx, stagOffsetPix);
+        }
     }
 
     _glColor4ub(DListData->colors);
