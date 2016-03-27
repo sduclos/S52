@@ -156,6 +156,7 @@ typedef struct _cell {
     GString   *dsid_updnstr;       // number of latest update
     GString   *dsid_edtnstr;       // edition number
     GString   *dsid_uadtstr;       // edition date
+    GString   *dsid_intustr;       // intended usage (nav purp)
     double     dsid_heightOffset;  // bring height datum to depth datum
 
     // legend from M_CSCL
@@ -214,7 +215,7 @@ static GTree     *_lnamBBT      = NULL;
 static GPtrArray *_cellList     = NULL;    // list of loaded cells - sorted, big to small scale (small to large region)
 static _cell     *_crntCell     = NULL;    // current cell (passed around when loading --FIXME: global var (dumb))
 static _cell     *_marinerCell  = NULL;    // place holder MIO's, and other (fake) S57 object
-#define MARINER_CELL   "--6MARIN.000"     // a chart purpose 6 (bellow knowm IHO chart pupose)
+#define MARINER_CELL   "--6MARIN.000"     // a chart purpose 6 (bellow knowm IHO chart purpose)
 #define WORLD_SHP_EXT  ".shp"             // shapefile ext
 #define WORLD_BASENM   "--0WORLD"         // '--' - agency (none), 0 - chart purpose (S52 is 1-5 (harbour))
 #define WORLD_SHP      WORLD_BASENM WORLD_SHP_EXT
@@ -229,7 +230,7 @@ static int        _doInit       = TRUE;    // init the lib
 
 // FIXME: reparse CS of the affected MP only (ex: ship outline MP need only to reparse OWNSHP CS)
 static int        _doCS         = FALSE;   // TRUE will recreate *all* CS at next draw() or drawLast()
-                                           // (not only those affected by Marine's Parameter)
+static int        _doDATCVR     = FALSE;   // TRUE will compute HO Data Limit (CSP union), scale boundary, ..
 
 static int        _doCullLights = FALSE;   // TRUE will do lights_sector culling when _cellList change
 
@@ -259,7 +260,11 @@ static S52ObjectHandle _UNITMTR1 = FALSE;
 static S52ObjectHandle _CHKSYM01 = FALSE;
 static S52ObjectHandle _BLKADJ01 = FALSE;
 
-static GPtrArray    *_rasterList = NULL;    // list of Raster
+// union of all HO Data Limit
+static S52ObjectHandle _HODATAUnion = FALSE;
+static GArray    *_sclbdyList = NULL;  // list of scale boundary (system generated DATCVR01-3)
+
+static GPtrArray *_rasterList = NULL;  // list of Raster
 
 // callback to eglMakeCurrent() / eglSwapBuffers()
 #ifdef S52_USE_EGL
@@ -306,17 +311,6 @@ static GMutex        _mp_mutex;
                            goto exit;                                                           \
                            return FALSE;                                                        \
                         }
-
-/*
-#define S52_CHECK_MUTX  GMUTEXLOCK(&_mp_mutex);           \
-                        if (NULL == _marinerCell) {       \
-                           GMUTEXUNLOCK(&_mp_mutex);      \
-                           PRINTF("ERROR: mutex lock\n"); \
-                           g_assert(0);                   \
-                           exit(0);                       \
-                           return FALSE;                  \
-                        }
-*/
 #define S52_CHECK_MUTX                   GMUTEXLOCK(&_mp_mutex);
 #define S52_CHECK_MUTX_INIT              GMUTEXLOCK(&_mp_mutex); S52_CHECK_INIT
 #define S52_CHECK_MUTX_INIT_EGLBEG(tag)  GMUTEXLOCK(&_mp_mutex); S52_CHECK_INIT EGL_BEG(tag)
@@ -663,6 +657,9 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
 
         case S52_MAR_GUARDZONE_BEAM      : val = _validate_positive(val);               break;
         case S52_MAR_GUARDZONE_LENGTH    : val = _validate_positive(val);               break;
+        case S52_MAR_GUARDZONE_ALARM     : val = _validate_positive(val);               break;
+
+    	case S52_MAR_DISP_HODATA         : val = _validate_positive(val);               break;
 
         default:
             PRINTF("WARNING: unknown Mariner's Parameter type (%i)\n", paramID);
@@ -757,6 +754,7 @@ static gint       _cmpCell(gconstpointer a, gconstpointer b)
     _cell *A = *(_cell**) a;
     _cell *B = *(_cell**) b;
 
+    // FIXME: use A->dsid_intustr;       // intended usage (nav purp)
     if (A->filename->str[2] ==  B->filename->str[2])
         return 0;
 
@@ -1602,14 +1600,17 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     _marinerCell->geoExt.N =  INFINITY;
     _marinerCell->geoExt.E =  INFINITY;
 
-    // FIXME: def this
     // init raster
     if (NULL == _rasterList)
         _rasterList = g_ptr_array_new();
 
+    // scale boudary
+    if (NULL == _sclbdyList)
+        _sclbdyList = g_array_new(FALSE, FALSE, sizeof(unsigned int));
+
 
     ///////////////////////////////////////////////////////////
-    // init experimental stuff
+    // init sock stuff
     //
 
 #ifdef S52_USE_DBUS
@@ -1644,6 +1645,8 @@ DLL cchar *STD S52_version(void)
     return S52_utils_version();
 }
 
+// forward decl
+static S52ObjectHandle _delMarObj(S52ObjectHandle objH);
 DLL int    STD S52_done(void)
 // clear all - shutdown libS52
 {
@@ -1698,6 +1701,10 @@ DLL int    STD S52_done(void)
     }
     g_ptr_array_free(_rasterList, TRUE);
     _rasterList = NULL;
+
+    // scale boudary list - obj allready deleted
+    g_array_free(_sclbdyList, TRUE);
+    _sclbdyList = NULL;
 
 #ifdef S52_USE_EGL
     _eglBeg = NULL;
@@ -2072,13 +2079,13 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
                     S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                     S57_geo *geo = S52_PL_getGeo(obj);
 
-                    //
+                    // these render nothing
                     if (0 == g_strcmp0(S57_getName(geo), "DSID"  )) continue;
                     if (0 == g_strcmp0(S57_getName(geo), "C_AGGR")) continue;
                     if (0 == g_strcmp0(S57_getName(geo), "C_ASSO")) continue;
                     if (0 == g_strcmp0(S57_getName(geo), "M_NPUB")) continue;
 
-                    PRINTF("WARNING: object:'%s' type:'%i' is on NODATA layer\n", S57_getName(geo), obj_t);
+                    PRINTF("WARNING: objName:'%s' S52ObjectType:'%i' is on NODATA layer\n", S57_getName(geo), obj_t);
 
                     // debug
                     //S57_dumpData(geo, FALSE);
@@ -2603,7 +2610,8 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 
     // _app() specific to sector light
     _doCullLights = TRUE;
-
+    // _app() - compute HO Data Limit
+    _doDATCVR     = TRUE;
 exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
@@ -2685,6 +2693,9 @@ DLL int    STD S52_doneCell(const char *encPath)
             goto exit;
         }
     }
+
+    // _app() - compute HO Data Limit
+    _doDATCVR = TRUE;
 
 exit:
     g_free(basename);
@@ -3025,7 +3036,9 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
     }
 
     // optimisation: set LOD
+    // FIXME: use A->dsid_intustr;       // intended usage (nav purp)
     //S52_PL_setLOD(obj, c->filename->str[2]);
+    //S52_PL_setLOD[0(obj, *c->dsid_intustr->str);
 
     // special prossesing for light sector
     if (FALSE == _insertLightSec(c, obj)) {
@@ -3137,7 +3150,7 @@ int            S52_loadObject(const char *objname, void *shape)
     }
 
 #ifdef S52_USE_GV
-    // debug: filter out GDAL/OGR metadata
+    // debug: filter out metadata
     if (0 == g_strcmp0("DSID", objname))
         return FALSE;
 
@@ -3259,24 +3272,27 @@ int            S52_loadObject(const char *objname, void *shape)
         // debug
         //PRINTF("DEBUG: S57__META_T:OBJNAME:%s\n", objname);
 
-        // check DSID  (GDAL metadata)
+        // check DSID (Data Set ID - metadata)
         if (0 == g_strcmp0(objname, "DSID")) {
             GString *dsid_sdatstr = S57_getAttVal(geoData, "DSID_SDAT");
             GString *dsid_vdatstr = S57_getAttVal(geoData, "DSID_VDAT");
             double   dsid_sdat    = (NULL == dsid_sdatstr) ? 0.0 : S52_atof(dsid_sdatstr->str);
             double   dsid_vdat    = (NULL == dsid_vdatstr) ? 0.0 : S52_atof(dsid_vdatstr->str);
 
-            // legend
+            // legend DSPM
             _crntCell->dsid_dunistr = S57_getAttVal(geoData, "DSPM_DUNI");  // units for depth
             _crntCell->dsid_hunistr = S57_getAttVal(geoData, "DSPM_HUNI");  // units for height
             _crntCell->dsid_csclstr = S57_getAttVal(geoData, "DSPM_CSCL");  // scale  of display
             _crntCell->dsid_sdatstr = S57_getAttVal(geoData, "DSPM_SDAT");  // sounding datum
             _crntCell->dsid_vdatstr = S57_getAttVal(geoData, "DSPM_VDAT");  // vertical datum
             _crntCell->dsid_hdatstr = S57_getAttVal(geoData, "DSPM_HDAT");  // horizontal datum
+
+            // legend DSID
             _crntCell->dsid_isdtstr = S57_getAttVal(geoData, "DSID_ISDT");  // date of latest update
             _crntCell->dsid_updnstr = S57_getAttVal(geoData, "DSID_UPDN");  // number of latest update
             _crntCell->dsid_edtnstr = S57_getAttVal(geoData, "DSID_EDTN");  // edition number
             _crntCell->dsid_uadtstr = S57_getAttVal(geoData, "DSID_UADT");  // edition date
+            _crntCell->dsid_intustr = S57_getAttVal(geoData, "DSID_INTU");  // intended usage (navigational purpose)
 
             _crntCell->dsid_heightOffset = dsid_vdat - dsid_sdat;
 
@@ -3387,6 +3403,9 @@ static int        _moveObj(_cell *cell, S52_disPrio oldPrio, S52ObjectType obj_t
     return FALSE;
 }
 
+// forward decl
+static S52ObjectHandle _newMarObj(const char *plibObjName, S52ObjectType objType, unsigned int xyznbr, double *xyz, const char *listAttVal);
+static S52_obj        *_updateGeo(S52_obj *obj, double *xyz);
 static int        _app()
 // FIXME: doCSMar Mariner Only - time the cost of APP
 // -OR-
@@ -3440,34 +3459,149 @@ static int        _app()
             }
         }
 
+
         // 2.3 - flush all texApha, when raster is bathy, if S52_MAR_SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR has change
         // FIXME: find if SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR has change
         for (guint i=0; i<_rasterList->len; ++i) {
             S52_GL_ras *ras = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
             S52_GL_delRaster(ras, TRUE);
         }
+        // done rebuilding CS
+        _doCS = FALSE;
+    }
 
-        /* 2.4 - compute HO data limit
+    // CS DATCVR01: compute HO Data Limit, scale boundary, ..
+    if (TRUE == _doDATCVR) {
+        //* 2.4 - compute HO data limit
+        // begin union
+        S52_GLU_begUnion();
+
+        // flush old scale boudary
+        for (guint i=0; i<_sclbdyList->len; ++i) {
+            S52ObjectHandle objH = (S52ObjectHandle) g_array_index(_sclbdyList, unsigned int, i);
+            _delMarObj(objH);
+        }
+
         for (guint i=0; i<_cellList->len; ++i) {
-            _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
-            // layer 3, M_COVR:CATCOV=2
-            GPtrArray *rbin = ci->renderBin[S52_PRIO_AREA_2][S52_AREAS];
+            _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+
+            // M_COVR:CATCOV=1, ";OP(3OD11060);LC(HODATA01)"
+            // PLib AUX link to "m_covr" ;OP(3OD11060);LC(HODATA01)
+            //GPtrArray *rbin = c->renderBin[S52_PRIO_AREA_2][S52_AREAS];
+
+            // M_COVR:CATCOV=2, link to PLib
+            // LUPT   40LU00102NILM_COVRA00001SPLAIN_BOUNDARIES
+            // LUPT   45LU00357NILM_COVRA00001SSYMBOLIZED_BOUNDARIES
+            GPtrArray *rbin = c->renderBin[S52_PRIO_GROUP1][S52_AREAS];
+
             for (guint idx=0; idx<rbin->len; ++idx) {
-                // one object
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                 S57_geo *geo = S52_PL_getGeo(obj);
 
                 if (0 == g_strcmp0(S57_getName(geo), "M_COVR")) {
-                    //S52_GL_addRing(geo);
+                    GString *catcovstr = S57_getAttVal(geo, "CATCOV");
+                    if ((NULL!=catcovstr) && ('1'==*catcovstr->str)) {
+
+                        S52_GLU_addUnion(geo);
+
+                        /* debug
+                        S57_dumpData(geo, FALSE);
+                        // output
+                        S57data.c:1220 in S57_dumpData(): S57ID : 6349
+                        S57data.c:1222 in S57_dumpData(): NAME  : M_COVR
+                        S57data.c:1209 in _printAtt(): 	CATCOV : 1
+                        S57data.c:1209 in _printAtt(): 	SORDAT : 20040723
+                        S57data.c:1209 in _printAtt(): 	SORIND : CA,CA,chart,ch1236
+                        S57data.c:1236 in S57_dumpData(): AREAS_T (88)
+                        S57data.c:1255 in S57_dumpData(): EXTENT: 48.200048, -69.474444  --  49.550040, -66.474462
+                        */
+
+
+                        //* _appSclBdy()
+                        {   // SCALE BOUNDARIES: system generated CS DATCVR01-3
+                            extent ext;
+                            S57_getExt(geo, &ext.W, &ext.S, &ext.E, &ext.N);
+
+                            for (guint j=i+1; j<_cellList->len; ++j) {
+                                _cell *cj = (_cell*) g_ptr_array_index(_cellList, j);
+
+                                // check nav purp (INTU)
+                                if (c->dsid_intustr->str >= cj->dsid_intustr->str)
+                                    continue;
+
+                                //  M_COVR intersect smaller scale extent
+                                if (TRUE == _intersec(cj->geoExt, ext)) {
+                                    // use LUPT 'sclbdy' rule to link to PLib AUX for scale boundary symb.
+                                    // ";OP(3OS21030);LC(SCLBDY51)" or ";OP(3OS21030);LS(SOLD,1,CHGRD)"
+                                    // LUPT   40LU00102NILsclbdyA000030PLAIN_BOUNDARIES
+                                    // LUPT   45LU00357NILsclbdyA00003OSYMBOLIZED_BOUNDARIES
+                                    GPtrArray *rbin = c->renderBin[S52_PRIO_GROUP1][S52_AREAS];
+                                    for (guint idx=0; idx<rbin->len; ++idx) {
+                                        S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+                                        S57_geo *geo = S52_PL_getGeo(obj);
+
+                                        if (0 == g_strcmp0(S57_getName(geo), "M_COVR")) {
+                                            guint   npt = 0;
+                                            double *ppt = NULL;
+                                            S57_getGeoData(geo, 0, &npt, &ppt);
+                                            S52ObjectHandle sclbdy = _newMarObj("sclbdy", S52_AREAS, npt, NULL, NULL);
+                                            S52_obj *obj = S52_PL_isObjValid(sclbdy);
+                                            _updateGeo(obj, ppt);
+                                            g_array_append_val(_sclbdyList, sclbdy);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        //*/
+                    }
                 }
+
             }
         }
-        */
+
+        // get union of HO data
+        struct pt3 {
+            double x;
+            double y;
+            double z;
+        };
+        guint   npt = 0;
+        double *ppt = NULL;
+        S52_GLU_endUnion(&npt, &ppt);
+
+        // debug
+        //PRINTF("npt:%i\n", npt);
+
+        // convert CCW to CW (S57 winding)
+        struct pt3 *ppt3 = (struct pt3 *)ppt;
+        struct pt3 rev[npt];
+        for (guint i=0; i<npt; ++i) {
+            rev[(npt - 1) -i] = ppt3[i];
+        }
+
+        // del previous _HODATAUnion
+        if (FALSE != _HODATAUnion) {
+            S52_obj *obj = S52_PL_isObjValid(_HODATAUnion);
+            _removeObj(_marinerCell, obj);
+            obj  = _delObj(obj);
+            _HODATAUnion = FALSE;
+        }
+
+        if (0 != npt) {
+            // PLib AUX link to "m_covr" ;OP(3OD11060);LC(HODATA01)
+            _HODATAUnion = _newMarObj("m_covr", S52_AREAS, npt, NULL, "CATCOV:1");
+            S52_obj *obj = S52_PL_isObjValid(_HODATAUnion);
+            _updateGeo(obj, (double*)rev);
+
+            // FIXME: setExtent
+            //_setExt(geo, 1, xyz);
+        }
+        _doDATCVR = FALSE;
     }
 
+    // debug
     //PRINTF("_app(): -1-\n");
-    // done rebuilding CS
-    _doCS = FALSE;
 
     return TRUE;
 }
@@ -3498,6 +3632,7 @@ static int        _cullLights(void)
             for (guint k=i-1; k>0 ; --k) {
                 _cell *cellAbove = (_cell*) g_ptr_array_index(_cellList, k);
                 // skip if same scale
+                // FIXME: use A->dsid_intustr;       // intended usage (nav purp)
                 if (cellAbove->filename->str[2] > c->filename->str[2]) {
                     if (TRUE == _intersec(cellAbove->geoExt, oext)) {
                         // check this: a chart above this light sector
@@ -3520,11 +3655,12 @@ static int        _cullObj(_cell *c)
 {
     // for each layers
     // Note: Chart No 1 put object on layer 9 (Mariners' Objects)
-    for (S52_disPrio j=S52_PRIO_NODATA; j<S52_PRIO_MARINR; ++j) {
+    // layer 0-8
+    for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_MARINR; ++i) {
 
-        // for each object type on one layer, skip META
-        for (S52ObjectType k=S52_AREAS; k<S52_N_OBJ; ++k) {
-            GPtrArray *rbin = c->renderBin[j][k];
+        // for each object type, skip META
+        for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
+            GPtrArray *rbin = c->renderBin[i][j];
 
             // for each object
             for (guint idx=0; idx<rbin->len; ++idx) {
@@ -3537,17 +3673,34 @@ static int        _cullObj(_cell *c)
                 //    PRINTF("ISODGR01 found\n");
                 //}
 
-                // is this object suppressed by user
+                // is *this* object suppressed by user
                 if (TRUE == S52_PL_getSupp(obj)) {
                     ++_nCull;
+
                     continue;
                 }
 
-                // SCAMIN & PLib (disp cat)
+                // SCAMIN & PLib (disp cat) & S57 geo class
                 if (TRUE == S52_GL_isSupp(obj)) {
                     ++_nCull;
+
                     continue;
                 }
+                //*
+                else
+                {   // FALSE
+
+                    // is area layer 3
+                    if ((S52_PRIO_AREA_2==i) && (S52_AREAS==j)) {
+                        // "m_covr" - union of M_COVR:CATCOV=1
+                        if ((0   == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) &&
+                            (0.0 == S52_MP_get(S52_MAR_DISP_HODATA))
+                           ) {
+                                continue;
+                        }
+                    }
+                }
+                //*/
 
                 // outside view
                 // NOTE: object can be inside 'ext' but outside the 'view' (cursor pick)
@@ -3565,9 +3718,10 @@ static int        _cullObj(_cell *c)
                     S57_geo *geo = S52_PL_getGeo(obj);
 
                     // switch OFF highlight if user acknowledge Alarm / Indication by
-                    // resetting S52_MAR_ERROR to 0 (OFF - no error)
+                    // resetting S52_MAR_GUARDZONE_ALARM to 0 (OFF - no alarm)
                     // Note: at this time only S52_PRIO_HAZRDS / S52_RAD_OVER
-                    if (0.0==S52_MP_get(S52_MAR_ERROR) && TRUE==S57_isHighlighted(geo))
+                    //if (0.0==S52_MP_get(S52_MAR_ERROR) && TRUE==S57_isHighlighted(geo))
+                    if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_isHighlighted(geo))
                         S57_highlightOFF(geo);
                 }
 
@@ -3601,6 +3755,9 @@ static int        _cull(extent ext)
 // - small cell region on top
 {
     _resetJournal();
+
+    // FIXME: mariner layer must be embeded in each cell
+    // ex: mariner layer[8] for route
 
     // all cells - larger region first (small scale)
     for (guint i=_cellList->len; i>0 ; --i) {
@@ -3915,6 +4072,9 @@ static int        _drawLegend()
         // edition date
         SNPRINTF(str, 80, "dsid_uadt:%s", (NULL==c->dsid_uadtstr) ? "NULL" : c->dsid_uadtstr->str);
         S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
+        // intended usage (navigational purpose)
+        SNPRINTF(str, 80, "dsid_intu:%s", (NULL==c->dsid_intustr) ? "NULL" : c->dsid_intustr->str);
+        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
 
         // legend from M_CSCL
         // scale
@@ -3922,6 +4082,7 @@ static int        _drawLegend()
             SNPRINTF(str, 80, "cscale:%s", c->cscalestr->str);
             S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
         }
+
 
         // legend from M_QUAL CATZOC
         // data quality indicator
@@ -3973,7 +4134,8 @@ static int        _draw()
             return TRUE;
         }
 
-        // LL2XY()
+        // ----------------------------------------------------------------------------
+        // LL2XY(guint npt, double *ppt);
         double xyz[6] = {c->geoExt.W, c->geoExt.S, 0.0, c->geoExt.E, c->geoExt.N, 0.0};
         if (FALSE == S57_geo2prj3dv(2, xyz)) {
             PRINTF("WARNING: S57_geo2prj3dv() failed\n");
@@ -3982,6 +4144,7 @@ static int        _draw()
 
         S52_GL_prj2win(&xyz[0], &xyz[1]);
         S52_GL_prj2win(&xyz[3], &xyz[4]);
+        // ----------------------------------------------------------------------------
 
         int x = floor(xyz[0]);
         int y = floor(xyz[1]);
@@ -4866,100 +5029,9 @@ exit:
 
 // -----------------------------------------------------
 //
-// Toggle Obj Class (some should be deprecated)
 // Selecte object (other then DISPLAYBASE) to display
 // when in User Selected mode
 //
-
-#if 0  // DEPRECATED
-DLL int    STD S52_toggleObjClass(const char *className)
-// DEPRECATED
-{
-    S52_CHECK_INIT;
-
-    return_if_null(className);
-
-    S52_CHECK_MUTX;
-
-    S52_objSupp ret = S52_PL_toggleObjClass(className);
-    if (S52_SUPP_ERR == ret) {
-        PRINTF("WARNING: can't toggle object: %s\n", className);
-        GMUTEXUNLOCK(&_mp_mutex);
-        return FALSE;
-    }
-
-exit:
-
-    GMUTEXUNLOCK(&_mp_mutex);
-
-    if (S52_SUPP_ON  == ret)
-        PRINTF("Suppressing display of object: %s\n", className);
-    else
-        PRINTF("NOT suppressing display of object: %s\n", className);
-
-    return TRUE;
-}
-
-DLL int    STD S52_toggleObjClassON (const char *className)
-// DEPRECATED
-{
-    S52_CHECK_INIT;
-
-    return_if_null(className);
-
-    S52_CHECK_MUTX;
-
-    S52_objSupp supState = S52_PL_getObjClassState(className);
-    if (S52_SUPP_ERR == supState) {
-        PRINTF("WARNING: can't toggle %s\n", className);
-        GMUTEXUNLOCK(&_mp_mutex);
-        return -1;
-    }
-
-    // FIXME: use S52_PL_toggleObjClass() !!
-exit:
-
-    GMUTEXUNLOCK(&_mp_mutex);
-
-    if (S52_SUPP_OFF == supState) {
-        S52_toggleObjClass(className);
-    } else {
-        return FALSE;
-    }
-
-    return TRUE;
-}
-
-DLL int    STD S52_toggleObjClassOFF(const char *className)
-// DEPRECATED
-{
-    S52_CHECK_INIT;
-
-    return_if_null(className);
-
-    S52_CHECK_MUTX;
-
-    S52_objSupp supState = S52_PL_getObjClassState(className);
-    if (S52_SUPP_ERR == supState) {
-        PRINTF("WARNING: can't toggle %s\n", className);
-        GMUTEXUNLOCK(&_mp_mutex);
-        return -1;
-    }
-
-    // FIXME: use S52_PL_toggleObjClass() !!
-exit:
-
-    GMUTEXUNLOCK(&_mp_mutex);
-
-    if (S52_SUPP_ON == supState) {
-        S52_toggleObjClass(className);
-    } else {
-        return FALSE;
-    }
-
-    return TRUE;
-}
-#endif  // DEPRECATED
 
 DLL int    STD S52_getS57ObjClassSupp(const char *className)
 {
@@ -4976,7 +5048,6 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className)
         return -1;
     }
 
-    // FIXME: use S52_PL_toggleObjClass() !!
 exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
@@ -5079,7 +5150,6 @@ DLL int    STD S52_loadPLib(const char *plibName)
 
                     // 1 - relink to new rules
                     S57_geo *geo    = S52_PL_getGeo(obj);
-                    //S52_obj *newObj = _insertS57geo(&tmpCell, geo);
                     S52_obj *tmpObj = S52_PL_newObj(geo);
 
                     // debug - should be the same since we relink existing object
@@ -5110,7 +5180,6 @@ DLL int    STD S52_loadPLib(const char *plibName)
 
                 // 1 - relink to new rules
                 S57_geo *geo    = S52_PL_getGeo(obj);
-                //S52_obj *newObj = _insertS57geo(&tmpCell, geo);
                 S52_obj *tmpObj = S52_PL_newObj(geo);
 
                 // debug - should be the same since we relink existing object
@@ -5883,7 +5952,10 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
         case S52_LINES: geo = S57_setLINES(xyznbr, gxyz);                 break;
         case S52_AREAS: geo = S57_setAREAS(1, gxyznbr, ggxyz);            break;
         //case S52_AREAS: geo = S57_setAREAS(1, gxyznbr, ggxyz, S57_AW_CW); break;
-        default: break;  // quiet compiler
+    default:
+        // FIXME: say something!
+
+        break;  // quiet compiler
     }
 
     if (NULL == geo) {
@@ -5928,8 +6000,8 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
     }
 #endif
 
-    return S57_getGeoS57ID(geo);
     //return obj;
+    return S57_getGeoS57ID(geo);
 }
 
 DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
@@ -5955,7 +6027,7 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
         goto exit;
     }
 
-    //if (objType<S52__META || S52_POINT<objType) {
+    // uint
     if (S52_POINT < objType) {
         PRINTF("WARNING: unknown object type\n");
         g_assert(0);
@@ -5995,6 +6067,25 @@ exit:
     return ret;
 }
 
+static S52ObjectHandle     _delMarObj(S52ObjectHandle objH)
+{
+    // validate this obj and remove if found
+    S52_obj *obj = S52_PL_isObjValid(objH);
+    if (NULL == obj) {
+        return objH;
+    }
+
+    if (NULL == _removeObj(_marinerCell, obj)) {
+        PRINTF("WARNING: couldn't delete .. objH not in Mariners' Object List\n");
+        return objH;
+    }
+
+    obj  = _delObj(obj);
+    objH = FALSE;
+
+    return objH;
+}
+
 DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
 // contrairy to other call return objH when fail
 // so caller can further process it
@@ -6003,6 +6094,13 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
 
     PRINTF("objH:%u\n", objH);
 
+    if (objH == _OWNSHP) {
+        _OWNSHP = FALSE;
+    }
+
+    objH = _delMarObj(objH);
+
+    /*
     // validate this obj and remove if found
     S52_obj *obj = S52_PL_isObjValid(objH);
     if (NULL == obj) {
@@ -6020,6 +6118,7 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
 
     obj  = _delObj(obj);
     objH = FALSE;
+    */
 
 exit:
 
@@ -6123,7 +6222,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
     //* check if hazard inside Guard Zone
     if (0.0 != S52_MP_get(S52_MAR_GUARDZONE_BEAM)) {
         double oldCRSR_PICK = S52_MP_get(S52_MAR_DISP_CRSR_PICK);
-        double beam2 = S52_MP_get(S52_MAR_GUARDZONE_BEAM)/2.0;
+        double beam2        = S52_MP_get(S52_MAR_GUARDZONE_BEAM)/2.0;
         double ps,pw,pn,pe;  // hold PRJ view
         double gs,gw,gn,ge;  // hold GEO view
         int    x,y,w,h;      // hold ViewPort
@@ -6324,7 +6423,8 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
             xyz2[14] = 0.0;
 
             if (TRUE == S52_GL_isHazard(5, xyz2)) {
-                S52_MP_set(S52_MAR_ERROR, 2.0);  // indication
+                //S52_MP_set(S52_MAR_ERROR, 2.0);  // indication
+                S52_MP_set(S52_MAR_GUARDZONE_ALARM, 2.0);  // indication
             }
         }
     }
@@ -6360,7 +6460,8 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         }
 
         // check alarm for this leg
-        if (0.0 != S52_MP_get(S52_MAR_ERROR)) {
+        //if (0.0 != S52_MP_get(S52_MAR_ERROR)) {
+        if (0.0 != S52_MP_get(S52_MAR_GUARDZONE_ALARM)) {
             S52_obj *obj = S52_PL_isObjValid(leglinH);
             // this test is not required since the obj has just been created
             if (NULL == obj) {
@@ -6383,16 +6484,16 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
 
     char   attval[80];
 
-    // FIXME: get the real value
-    //double xyz[3] = {_view.cLon, _view.cLat, 0.0};      // quiet the warning in S52_newMarObj()
-    double xyz[3] = {0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
+    //double xyz[3] = {_view.cLon, _view.cLat, 0.0};
+    //double xyz[3] = {0.0, 0.0, 0.0};
 
     SNPRINTF(attval, 80, "_vessel_label:%s", (NULL==label) ? "":label);
 
     // only one OWNSHP
     // FIXME: what if we want 2 GPS shown
     if (FALSE == _OWNSHP) {
-        _OWNSHP = _newMarObj("ownshp", S52_POINT, 1, xyz, attval);
+        //_OWNSHP = _newMarObj("ownshp", S52_POINT, 1, xyz, attval);
+        _OWNSHP = _newMarObj("ownshp", S52_POINT, 1, NULL, attval);
     }
 
 exit:
@@ -6693,7 +6794,7 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
 
     {
         char   attval[80];
-        double xyz[3] = {0.0, 0.0, 0.0};      // quiet the warning in S52_newMarObj()
+        //double xyz[3] = {0.0, 0.0, 0.0};
 
         if (NULL == label) {
             SNPRINTF(attval, 80, "vesrce:%i,_vessel_label: ", vesrce);
@@ -6701,7 +6802,8 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
             SNPRINTF(attval, 80, "vesrce:%i,_vessel_label:%s", vesrce, label);
         }
 
-        vessel = _newMarObj("vessel", S52_POINT, 1, xyz, attval);
+        //vessel = _newMarObj("vessel", S52_POINT, 1, xyz, attval);
+        vessel = _newMarObj("vessel", S52_POINT, 1, NULL, attval);
     }
 
     //PRINTF("objH:%u\n", vessel);
@@ -6993,7 +7095,7 @@ DLL int             STD S52_newCSYMB(void)
     S52_CHECK_MUTX_INIT;
 
     const char *attval = NULL;
-    double      pos[3] = {0.0, 0.0, 0.0};
+    //double      pos[3] = {0.0, 0.0, 0.0};
 
     if (FALSE == _iniCSYMB) {
         PRINTF("WARNING: CSYMB fail, allready initialize\n");
@@ -7002,16 +7104,20 @@ DLL int             STD S52_newCSYMB(void)
 
     // FIXME: should it be global ?
     attval = "$SCODE:SCALEB10";     // 1NM
-    _SCALEB10 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    //_SCALEB10 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    _SCALEB10 = _newMarObj("$CSYMB", S52_POINT, 1, NULL, attval);
 
     attval = "$SCODE:SCALEB11";     // 10NM
-    _SCALEB11 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    //_SCALEB11 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    _SCALEB11 = _newMarObj("$CSYMB", S52_POINT, 1, NULL, attval);
 
     attval = "$SCODE:NORTHAR1";
-    _NORTHAR1 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    //_NORTHAR1 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    _NORTHAR1 = _newMarObj("$CSYMB", S52_POINT, 1, NULL, attval);
 
     attval = "$SCODE:UNITMTR1";
-    _UNITMTR1 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    //_UNITMTR1 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    _UNITMTR1 = _newMarObj("$CSYMB", S52_POINT, 1, NULL, attval);
 
     // all depth in S57 sould be in meter so this is not used
     //attval = "$SCODEUNITFTH1";
@@ -7022,11 +7128,13 @@ DLL int             STD S52_newCSYMB(void)
 
     // check symbol should be 5mm by 5mm
     attval = "$SCODE:CHKSYM01";
-    _CHKSYM01 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    //_CHKSYM01 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    _CHKSYM01 = _newMarObj("$CSYMB", S52_POINT, 1, NULL, attval);
 
     // symbol to be used for checking and adjusting the brightness and contrast controls
     attval = "$SCODE:BLKADJ01";
-    _BLKADJ01 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    //_BLKADJ01 = _newMarObj("$CSYMB", S52_POINT, 1, pos, attval);
+    _BLKADJ01 = _newMarObj("$CSYMB", S52_POINT, 1, NULL, attval);
 
     _iniCSYMB = FALSE;
     ret       = TRUE;
