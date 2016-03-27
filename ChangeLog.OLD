@@ -4,6 +4,20 @@
 #
 
 
+2016MAR26
+    -mod S57_getExt() return FALSE if extent not set ($CSYMB, ..)
+    -add system generated CS DATCVR01-2 - HO Data Limit, 
+    -mod call to _newMarObj() ok if xyz=NULL
+    -add system generated CS DATCVR01-3 - SCALE BOUNDARIES (sclbdy)
+
+2016MAR20
+    -add S52_MAR_GUARDZONE_ALARM to S52MarinerParameter
+    -add S52_MAR_DISP_HODATA to S52MarinerParameter
+
+2016MAR16
+    -add S52_VERSION in S52.h
+    -mod utils.c _version
+
 2016MAR10
     -add glScissor experiment to clip raster at carte boundary
 
