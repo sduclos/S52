@@ -25,10 +25,10 @@
 #ifndef _S52UTILS_H_
 #define _S52UTILS_H_
 
-#include "S52.h"          // S52_log_cb
+#include "S52.h"          // S52_log_cb, S52_VERSION
 
 #ifdef SOLARIS
-    // well should be cc
+// well should be cc
 #define PRINTF printf(__FILE__":%i: : ", __LINE__),printf
 
 #else  // SOLARIS
@@ -66,7 +66,7 @@ if (NULL==ptr) {                             \
 #define CONF_TTF      "TTF"
 
 #define MAXL 1024    // MAX lenght of buffer _including_ '\0'
-typedef char    valueBuf[MAXL];
+typedef char valueBuf[MAXL];
 
 int      S52_utils_getConfig(cchar *label, valueBuf *vbuf);
 
