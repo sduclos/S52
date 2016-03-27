@@ -60,7 +60,7 @@ typedef enum S52ObjectType {
 
 // global parameter for mariners' selection
 typedef enum S52MarinerParameter {
-    S52_MAR_ERROR               =  0,   // FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
+    S52_MAR_ERROR               =  0,   //
 
     S52_MAR_SHOW_TEXT           =  1,   // flags to show text (see S52_setTextDisp() for details) (on/off) [default ON]
     S52_MAR_TWO_SHADES          =  2,   // flag indicating selection of two depth shades (on/off) [default ON]
@@ -143,10 +143,12 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters) [0.0 - off]
     S52_MAR_GUARDZONE_LENGTH    = 47,   // Danger/Indication Highlight used by Position (meters, user computed from speed/time or distance)
-    //S52_MAR_GUARDZONE_ALARM    = 47,  // FIXME: put MAR_ERROR code here
-                                        // FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
+    S52_MAR_GUARDZONE_ALARM     = 48,   // FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
+                                        // -1 - display highlight
 
-    S52_MAR_NUM                 = 48    // number of parameters
+    S52_MAR_DISP_HODATA         = 49,   // 0 - off, 1 - union HO data limit (default), 2 - HO data limit
+
+    S52_MAR_NUM                 = 50    // number of parameters
 } S52MarinerParameter;
 
 // [3] debug - command word filter for profiling
@@ -192,7 +194,7 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
  *
  * Return: (transfer none): String with the version of libS52 and the '#define' used to build it
  */
-#define S52_VERSION "libS52-2016MAR16-1.172"
+#define S52_VERSION "libS52-2016MAR26-1.173"
 DLL const char * STD S52_version(void);
 
 /**
