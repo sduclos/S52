@@ -745,7 +745,6 @@ static int      _egl_init       (s52engine *engine)
     }
     //--------------------------------------------------------------------------------------------------
 
-
     engine->eglDisplay = eglDisplay;
     engine->eglContext = eglContext;
     engine->eglSurface = eglSurface;
@@ -1055,8 +1054,9 @@ static int      _s52_setupLEGLIN(s52droid_state_t *state)
             LOGI("s52egl:_s52_setupLEGLIN(): delMarObj _leglin4 failed\n");
             g_assert(0);
         }
-        // clear error
-        S52_setMarinerParam(S52_MAR_ERROR, 0.0);
+        // clear alarm
+        //S52_setMarinerParam(S52_MAR_ERROR, 0.0);
+        S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);
     }
 
     // test vertical route on DEPCNT
@@ -1082,9 +1082,9 @@ static int      _s52_setupLEGLIN(s52droid_state_t *state)
     _leglin4 = S52_newLEGLIN(1, 0.0, 0.0, _leglin4xy[1], _leglin4xy[0], _leglin4xy[3], _leglin4xy[2], FALSE);
     //if (FALSE == _leglin4) {
     //    LOGI("s52egl:_s52_setupLEGLIN(): failed\n");
-        if (1.0 == S52_getMarinerParam(S52_MAR_ERROR))
+        if (1.0 == S52_getMarinerParam(S52_MAR_GUARDZONE_ALARM))
             LOGI("s52egl:_s52_setupLEGLIN(): ALARM ON\n");
-        if (2.0 == S52_getMarinerParam(S52_MAR_ERROR))
+        if (2.0 == S52_getMarinerParam(S52_MAR_GUARDZONE_ALARM))
             LOGI("s52egl:_s52_setupLEGLIN(): INDICATION ON\n");
     //}
 
@@ -1223,8 +1223,8 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_DISP_CALIB,      1.0);
 
     // cell's legend
-    S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
-    //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);   // hide (default)
+    //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
+    S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);   // hide (default)
 
     //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
     S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
@@ -1447,7 +1447,7 @@ static int      _s52_init       (s52engine *engine)
     //g_setenv("CPL_DEBUG", "ON", 1);
 
     // read cell location fron s52.cfg
-    S52_loadCell(NULL, NULL);
+    //S52_loadCell(NULL, NULL);
 
     // S-64 ENC
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/GB5X01SE.000", NULL);
@@ -1457,13 +1457,13 @@ static int      _s52_init       (s52engine *engine)
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US1EEZ1M/US1EEZ1M.000", NULL);
 
     // Rimouski
-    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
+    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
 
     // load PLib in s52.cfg
     //S52_loadPLib(NULL);
 
     // Estuaire du St-Laurent
-    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
+    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
 
     //Tadoussac
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA379035.000", NULL);
@@ -1537,6 +1537,14 @@ static int      _s52_init       (s52engine *engine)
     // debug - remove clutter from this symb in SELECT mode
     S52_setS57ObjClassSupp("M_QUAL", TRUE);  // suppress display of the U pattern
     //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
+
+    S52_setS57ObjClassSupp("M_NSYS", TRUE);   // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
+
+    // CS DATCVY01:M_COVR:CATCOV=2, OTHER
+    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 2.0);  // draw all M_COVR individualy
+    //CS DATCVY01:M_COVR:CATCOV=1, BASE
+    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 1.0);  // union: combite M_COVR as one poly 'm_covr'
+    S52_setS57ObjClassSupp("M_COVR", TRUE);         // HO data limit __/__/__ - LC(HODATA01)
 
     _s52_setupMarPar();
 
@@ -2198,13 +2206,9 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
                 if (FALSE == mode_vrmebl_set) {
                     mode_vrmebl = (TRUE==mode_vrmebl) ? FALSE : TRUE;
                     if (TRUE == mode_vrmebl) {
-                        //S52_toggleObjClassOFF("cursor");
-                        //S52_toggleObjClassOFF("ebline");
                         S52_setS57ObjClassSupp("cursor", FALSE);
                         S52_setS57ObjClassSupp("ebline", FALSE);
                     } else {
-                        //S52_toggleObjClassON("cursor");
-                        //S52_toggleObjClassON("ebline");
                         S52_setS57ObjClassSupp("cursor", TRUE);
                         S52_setS57ObjClassSupp("ebline", TRUE);
                     }
@@ -2352,11 +2356,11 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
                 if (TRUE == mode_vrmebl_set) {
                     mode_vrmebl = (TRUE==mode_vrmebl) ? FALSE : TRUE;
                     if (TRUE == mode_vrmebl) {
-                        S52_toggleObjClassOFF("cursor");
-                        S52_toggleObjClassOFF("ebline");
+                        S52_setS57ObjClassSupp("cursor", FALSE);
+                        S52_setS57ObjClassSupp("ebline", FLASE);
                     } else {
-                        S52_toggleObjClassON("cursor");
-                        S52_toggleObjClassON("ebline");
+                        S52_setS57ObjClassSupp("cursor", TRUE);
+                        S52_setS57ObjClassSupp("ebline", TRUE);
                     }
                     mode_vrmebl_set = FALSE;
                 }
@@ -2487,10 +2491,6 @@ static int32_t  _android_handle_input(struct android_app *app, AInputEvent *even
                 _android_init_external_UI(engine);
 
                 // remove VRMEBL (no use in s52ui)
-                //S52_toggleObjClassOFF("cursor");
-                //S52_toggleObjClassOFF("ebline");
-
-                // suppression ON
                 S52_setS57ObjClassSupp("cursor", TRUE);
                 S52_setS57ObjClassSupp("ebline", TRUE);
             }
