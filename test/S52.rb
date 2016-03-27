@@ -90,7 +90,7 @@ if RUBY_PLATFORM.include?('x86_64')
   attach_function(:S52_getMarinerParam, [:int], :double)
   attach_function(:S52_setMarinerParam, [:int, :double], :int)
 
-  attach_function(:S52_toggleObjClass, [:string], :int)
+  attach_function(:S52_setS57ObjClassSupp, [:string, double], :int)
   attach_function(:S52_setViewPort, [:int, :int, :int, :int], :int)
 
   def S52.init(w, h, wmm, hmm) S52.S52_init(w, h, wmm, hmm) end
@@ -108,7 +108,7 @@ if RUBY_PLATFORM.include?('x86_64')
   def S52.getCellExtent(cell, s,w,n,e)    S52.S52_getCellExtent(cell, s,w,n,e)    end
   def S52.getMarinerParam(paramName)      S52.S52_getMarinerParam(paramName)      end
   def S52.setMarinerParam(paramName, val) S52.S52_setMarinerParam(paramName, val) end
-  def S52.toggleObjClass(classname)       S52.S52_toggleObjClass(classname)       end
+  def S52.setS57ObjClassSupp(classname)   S52.S52_setS57ObjClassSupp(classname)   end
   def S52.setViewPort(x,y,w,h)            S52.S52_setViewPort(x,y,w,h)            end
 
 else
@@ -150,28 +150,25 @@ else
   extern 'int    S52_getCellExtent(void *, double *, double *, double *, double *)'
   extern 'double S52_getMarinerParam(int)'
   extern 'int    S52_setMarinerParam(int, double)'
-  extern 'int    S52_toggleObjClass(char *)'
+  extern 'int    S52_setS57ObjClassSupp(char *, double)'
   extern 'int    S52_setViewPort(int, int, int, int)'
 
   # alias for convinence
   # WARNING: need 's52' NOT 'S52' because Ruby DL lower the case
-  # since upper case mean somthing else in Rube (const)
-  def S52.init(w, h, wmm, hmm) S52.s52_init(w, h, wmm, hmm) end
-  def S52.version()            S52.s52_version()            end
-  def S52.done()               S52.s52_done()               end
-  def S52.setFont(int)         S52.s52_setFont(int)         end
-  def S52.loadCell(cell, cb)   S52.s52_loadCell(cell, cb)   end
-  def S52.draw()               S52.s52_draw()               end
-
-  def S52.pickAt(x,y)          S52.s52_pickAt(x,y)          end
-
-  def S52.setView(lat, lon, r, n)         S52.s52_setView(lat, lon, r, n)         end
-
-  def S52.getCellExtent(cell, s,w,n,e)    S52.s52_getCellExtent(cell, s,w,n,e)    end
-  def S52.getMarinerParam(paramName)      S52.s52_getMarinerParam(paramName)      end
-  def S52.setMarinerParam(paramName, val) S52.s52_setMarinerParam(paramName, val) end
-  def S52.toggleObjClass(classname)       S52.s52_toggleObjClass(classname)       end
-  def S52.setViewPort(x,y,w,h)            S52.s52_setViewPort(x,y,w,h)            end
+  # since upper case mean somthing else in Ruby (const)
+  def S52.init(w, h, wmm, hmm)            S52.s52_init(w, h, wmm, hmm)               end
+  def S52.version()                       S52.s52_version()                          end
+  def S52.done()                          S52.s52_done()                             end
+  def S52.setFont(int)                    S52.s52_setFont(int)                       end
+  def S52.loadCell(cell, cb)              S52.s52_loadCell(cell, cb)                 end
+  def S52.draw()                          S52.s52_draw()                             end
+  def S52.pickAt(x,y)                     S52.s52_pickAt(x,y)                        end
+  def S52.setView(lat, lon, r, n)         S52.s52_setView(lat, lon, r, n)            end
+  def S52.getCellExtent(cell, s,w,n,e)    S52.s52_getCellExtent(cell, s,w,n,e)       end
+  def S52.getMarinerParam(paramName)      S52.s52_getMarinerParam(paramName)         end
+  def S52.setMarinerParam(paramName, val) S52.s52_setMarinerParam(paramName, val)    end
+  def S52.setS57ObjClassSupp(classname)   S52.s52_setS57ObjClassSupp(classname, val) end
+  def S52.setViewPort(x,y,w,h)            S52.s52_setViewPort(x,y,w,h)               end
 
 end   # if x86_64
 
