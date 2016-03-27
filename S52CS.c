@@ -678,67 +678,84 @@ static GString *DATCVR01 (S57_geo *geo)
     GString *datcvr01 = NULL;
 
     ///////////////////////
-    // 1- REQUIREMENT
+    // 1 - REQUIREMENT
     // (IMO/IHO specs. explenation)
 
     ///////////////////////
-    // 2- ENC COVERAGE
+    // 2 - ENC COVERAGE
     //
-    // 2.1- Limit of ENC coverage
-    // FIXME: CSP union of all M_COVR:CATCOV=1
+    // 2.1 - Limit of ENC coverage
+    // CSG union of all M_COVR:CATCOV=1
     if (0 == g_strcmp0(S57_getName(geo), "M_COVR")) {
+        /*
         GString *catcovstr = S57_getAttVal(geo, "CATCOV");
         if ((NULL!=catcovstr) && ('1'==*catcovstr->str)) {
+            // M_COVR:CATCOV=1, link to PLib AUX 'm_covr'
+            // Note: this rule apply to the final union poly
+            // not to individual S57 object
             datcvr01 = g_string_new(";OP(3OD11060);LC(HODATA01)");
         } else {
-            // M_COVR:CATCOV=2, link PLib
+            // M_COVR:CATCOV=2, link to PLib 'M_COVR'
             // LUPT   40LU00102NILM_COVRA00001SPLAIN_BOUNDARIES
             // LUPT   45LU00357NILM_COVRA00001SSYMBOLIZED_BOUNDARIES
             datcvr01 = g_string_new(";LC(HODATA01)");
         }
+        //*/
+
+        // debug
+        datcvr01 = g_string_new(";LC(HODATA01)");
+        return datcvr01;
     }
 
-    // 2.2- No data areas
+    // 2.2 - No data areas
     // FIXME: This can be done outside of CS (ie when clearing the screen)
     // FIXME: ";OP(0OD11050);AC(NODATA);AP(NODATA)"
     // FIXME: set geo to cover earth (!)
 
     //////////////////////
-    // 3- SCALE BOUNDARIES
+    // 3 - SCALE BOUNDARIES
     //
-    // 3.1- Chart scale boundaties
-    // FIXME: use Data set identification field,
+    // 3.1 - Chart scale boundaties
+    // FIXME: use Data Set IDentification field,
     // intended usage (navigational purpose) (DSID,INTU)
-    //g_string_append(datcvr01, ";OP(3OS21030);LS(SOLD,1,CHGRD)");
-    // -OR-
-    //g_string_append(datcvr01, ";OP(3OS21030);LC(SCLBDYnn)");
-
-    // 3.2- Graphical index of navigational purpose
+    //if (0 == g_strcmp0(S57_getName(geo), "DSID")) {  // not reached
+    if (0 == g_strcmp0(S57_getName(geo), "M_COVR")) {
+        //GString *intustr = S57_getAttVal(geo, "INTU");
+        //g_string_append(datcvr01, ";OP(3OS21030);LS(SOLD,1,CHGRD)");
+        // -OR-
+        //g_string_append(datcvr01, ";OP(3OS21030);LC(SCLBDYnn)");
+        g_assert(0);
+    }
+    // 3.2 - Graphical index of navigational purpose
     // FIXME: draw extent of available SENC in DB
+    // client job! libS52.so only render cell, it's not DB!!
 
     //////////////////////
-    // 4- OVERSCALE
+    // 4 - OVERSCALE
     //
     // FIXME: get metadata CSCL of DSPM field
     // FIXME: get object M_CSCL or CSCALE
     // in gdal is named:
-    // DSID:DSPM_CSCL (gdal metadata)
+    // DSID:DSPM_CSCL (Data Set ID - metadata)
     // M_CSCL:CSCALE
+    if (0 == g_strcmp0(S57_getName(geo), "M_CSCL")) {
+        PRINTF("DEBUG: M_CSCL found\n");
+        g_assert(0);
+    }
     //
-    // 4.1- Overscale indication
-    // FIXME: compute, scale = [denominator of the compilation scale] /
-    //                         [denominator of the display scale]
+    // 4.1 - Overscale indication
+    // FIXME: compute, scale = [denominator of the compilation scale] / [denominator of the display scale]
     // FIXME: draw overscale indication (ie TX("X%3.1f",scale))
     //        color SCLBR, display base
 
     //
-    // 4.2- Ovescale area at a chart scale boundary
+    // 4.2 - Ovescale area at a chart scale boundary
     // FIXME: to  put on STANDARD DISPLAY but this object
     // is on DISPLAYBASE in section 2
     //g_string_append(datcvr01, ";OP(3OS21030);AP(OVERSC01)");
 
     //
-    // 4.3- Larger scale data available
+    // 4.3 - Larger scale data available
     // FIXME: display indication of better scale available (?)
 
     // FIXME
