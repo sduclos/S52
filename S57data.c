@@ -934,6 +934,10 @@ int        S57_getExt(_S57_geo *geo, double *x1, double *y1, double *x2, double 
     *x2 = geo->rect.x2;  // E
     *y2 = geo->rect.y2;  // N
 
+    // no extent: "m_covr", "$CSYMB", ..
+    if (TRUE == isinf(geo->rect.x1))
+            return FALSE;
+
     return TRUE;
 }
 
@@ -1009,8 +1013,8 @@ int        S57_getAttributes(_S57_geo *geo, char **name, char **val)
 
 GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
 // return attribute string value or NULL if:
-//      1- attribute name abscent
-//      2- its a mandatory attribute but its value is not define (EMPTY_NUMBER_MARKER)
+//      1 - attribute name abscent
+//      2 - its a mandatory attribute but its value is not define (EMPTY_NUMBER_MARKER)
 {
     return_if_null(geo);
     return_if_null(att_name);
@@ -1678,6 +1682,12 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
     //if (0 == g_strcmp0("HRBARE", S57_getName(geo))) {
     //    PRINTF("DEBUG: found HRBARE, nptEdge: %i\n", nptEdge);
     //}
+
+    // M_COVR is used for system generated DATCOVR
+    if (0 == g_strcmp0("M_COVR", S57_getName(geo))) {
+        //PRINTF("DEBUG: found M_COVR, nptEdge: %i - skipped\n", nptEdge);
+        return TRUE;
+    }
 
     // search ppt for first pptEdge
     int   next = 0;
