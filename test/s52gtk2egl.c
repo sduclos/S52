@@ -485,19 +485,15 @@ static int      _s52_setupVRMEBL(s52droid_state_t *state)
     int S52_VRMEBL_ori = TRUE;  // (user) setOrigin
 
     _cursor2 = S52_newMarObj("cursor", S52_POINT, 1, xyz, attVal);
-    //int ret = S52_toggleObjClassOFF("cursor");
-    //g_print("_s52_setupVRMEBL(): S52_toggleObjClassOFF('cursor'); ret=%i\n", ret);
-    //int ret = S52_toggleObjClassON("cursor");
-    //g_print("_s52_setupVRMEBL(): S52_toggleObjClassON('cursor'); ret=%i\n", ret);
+    //int ret = S52_setS57ObjClassSupp("cursor");
+    //g_print("_s52_setupVRMEBL(): S52_setS57ObjClassSupp('cursor'); ret=%i\n", ret);
+    //int ret = S52_setS57ObjClassSupp("cursor");
+    //g_print("_s52_setupVRMEBL(): S52_setS57ObjClassSupp('cursor'); ret=%i\n", ret);
 
 
     _vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, S52_VRMEBL_ebl, S52_VRMEBL_sty, S52_VRMEBL_ori);
     //_vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, !S52_VRMEBL_ebl, S52_VRMEBL_sty, !S52_VRMEBL_ori);
     //_vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, !S52_VRMEBL_ebl, S52_VRMEBL_sty,  S52_VRMEBL_ori);
-
-    //S52_toggleObjClassON("cursor");  // suppression ON
-    //S52_toggleObjClassON("ebline");
-    //S52_toggleObjClassON("vrmark");
 
     // suppression ON
     S52_setS57ObjClassSupp("cursor", TRUE);
@@ -613,8 +609,8 @@ static int      _s52_init       (s52engine *engine)
     // debug - remove clutter from this symb in SELECT mode
     //S52_setS57ObjClassSupp("M_QUAL", TRUE);  // supress display of the U pattern
     //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // displaythe U pattern
-    //S52_toggleObjClassON ("M_QUAL");           //  suppression ON
-    //S52_toggleObjClassOFF("M_QUAL");         //  suppression OFF
+    //S52_setS57ObjClassSupp ("M_QUAL");           //  suppression ON
+    //S52_setS57ObjClassSupp("M_QUAL");         //  suppression OFF
     S52_setS57ObjClassSupp("M_QUAL", TRUE);
 
 
