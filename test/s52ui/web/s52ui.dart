@@ -10,12 +10,14 @@ import 'dart:collection'; // Queue in s52.dart, maybe await/async!!
 
 part 's52.dart';
 
-// Note: wsUri override: firefox build/web/s52ui.html?ws://192.168.1.66:2950
+
+// Note: wsUri is replace, in shell,
+// by calling $firefox build/web/s52ui.html?ws://192.168.1.66:2950
 //var wsUri = 'ws://192.168.1.66:2950';
 //var wsUri = 'ws://192.168.1.67:2950'; // xoom
 //var wsUri = 'ws://192.168.1.71:2950'; // xoom
-//var wsUri = 'ws://192.168.1.69:2950'; // Nexus
-var wsUri = 'ws://127.0.0.1:2950';    // localhost
+var wsUri = 'ws://192.168.1.69:2950'; // Nexus
+//var wsUri = 'ws://127.0.0.1:2950';    // localhost
 
 S52 s52; // instance of S52 interface (using WebSocket)
 
@@ -842,7 +844,6 @@ void _watchPosition(int ownshpID) {
 
   // GPS
   window.navigator.geolocation.getCurrentPosition().then(_GPSpos, onError: (error) => _posError(error));
-;
 
   // {'enableHighAccuracy':true, 'timeout':27000, 'maximumAge':30000}
   window.navigator.geolocation.watchPosition().listen(_GPSpos, onError: (error) => _posError(error));
