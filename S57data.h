@@ -165,7 +165,7 @@ int       S57_getNumAtt(S57_geo *geo);
 // return the 'real' attributes of the geodata. name and val must be preallocated, and be sufficient large. (use S57_getNumAtt for counting)
 int       S57_getAttributes(S57_geo *geo, char **name, char **val);
 // returns the window boundary with the current projection. After  the geo2prj and initproj have been public, this function may be moved to application layer.
-//void S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax);
+//void    S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax);
 #endif
 
 // debug
