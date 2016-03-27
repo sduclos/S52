@@ -34,7 +34,7 @@ let _view = (function()
     return this;
 })();
 
-function _initView() /*FOLD00*/
+function _initView()
 {
     let [ret, R, G, B] = S52.getRGB("NODTA", R, G, B);
     print("NODTA RGB:", R, G, B);
@@ -90,11 +90,11 @@ function _setVESSEL()
     return true;
 }
 
- /*fold00*/
+
 let _marfea_area;
 let _marfea_line;
 let _marfea_point;
-function _setMarFeature() /*FOLD00*/
+function _setMarFeature()
 // exemple to display something define in the PLib directly
 {
     /*
@@ -161,7 +161,7 @@ function _setMarFeature() /*FOLD00*/
 }
 
 //let _my_S52_loadObject_cb = function(feature, objname)
-function _my_S52_loadObject_cb(objname, feature) /*fold00*/
+function _my_S52_loadObject_cb(objname, feature)
 //function _my_S52_loadObject_cb(feature)
 {
     //
@@ -178,7 +178,7 @@ function _my_S52_loadObject_cb(objname, feature) /*fold00*/
     return true;
 }
 
-function _setupS52() /*FOLD00*/
+function _setupS52()
 {
     let ret = false;
 
@@ -195,18 +195,18 @@ function _setupS52() /*FOLD00*/
     //
     // supresse display of adminitrative objects when
     // S52_MAR_DISP_CATEGORY is SELECT, to avoir cluttering
-    //S52_toggleObjClass("M_NSYS");   // cell limit (line complex --A--B-- ), buoyage (IALA)
-    S52.toggleObjClass("M_COVR");   // ??
-    S52.toggleObjClass("M_NPUB");   // ??
-    S52.toggleObjClass("M_QUAL");   // U pattern
+    //S52.toggleObjClass("M_NSYS");   // cell limit (line complex --A--B-- ), buoyage (IALA)
+    S52.setS57ObjClassSupp("M_COVR");   // ??
+    S52.setS57ObjClassSupp("M_NPUB");   // ??
+    S52.setS57ObjClassSupp("M_QUAL");   // U pattern
 
     // debug
-    ret = S52.toggleObjClassOFF("M_QUAL");  // OK - ret == TRUE
-    ret = S52.toggleObjClassON ("M_QUAL");  // OK - ret == TRUE
-    ret = S52.toggleObjClassON ("M_QUAL");  // OK - ret == FALSE
+    ret = S52.setS57ObjClassSupp("M_QUAL");  // OK - ret == TRUE
+    ret = S52.setS57ObjClassSupp ("M_QUAL");  // OK - ret == TRUE
+    ret = S52.setS57ObjClassSupp ("M_QUAL");  // OK - ret == FALSE
 
     // test
-    //S52_toggleObjClass("DRGARE");   // drege area
+    //s52.setS57ObjClassSupp("DRGARE");   // drege area
 
 
 
@@ -369,7 +369,7 @@ function _setupS52() /*FOLD00*/
     return true;
 }
 
-function paint_cb(self) /*FOLD00*/
+function paint_cb(self)
 {
     //Cogl.push_matrix ();
 
