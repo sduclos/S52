@@ -31,6 +31,8 @@
 
 #include "S52PL.h"	// S52_obj
 
+#include <glib.h>   // guchar, guint
+
 // Raster (RADAR, Bathy, ...)
 typedef struct extent {
     double S,W,N,E;
@@ -80,9 +82,10 @@ typedef enum S52_GL_cycle {
     S52_GL_INIT               // state before first S52_GL_DRAW
 } S52_GL_cycle;
 
+
 int   S52_GL_init(void);
+int   S52_GL_done(void);  // flush GL objects, clean up mem
 int   S52_GL_setDotPitch(int w, int h, int wmm, int hmm);
-int   S52_GL_setFontDL(int fontDL);
 
 // -- framebuffer stuff --------------------------------
 // init frame, save OpenGL state
@@ -113,16 +116,12 @@ int   S52_GL_end(S52_GL_cycle cycle);
 // ----------------------------------
 
 int   S52_GL_isSupp(S52_obj *obj);
-//int   S52_GL_isOFFscreen(S52_obj *obj);
 int   S52_GL_isOFFview(S52_obj *obj);
 
 // delete GL data of object (DL of geo)
 int   S52_GL_delDL(S52_obj *obj);
 // delete raster
 int   S52_GL_delRaster(S52_GL_ras *raster, int texOnly);
-
-// flush GL objects, clean up mem
-int   S52_GL_done(void);
 
 int   S52_GL_setView(double centerLat, double centerLon, double rangeNM, double north);
 int   S52_GL_setPRJView(double  s, double  w, double  n, double  e);
@@ -150,5 +149,13 @@ int   S52_GL_drawGraticule(void);
 int   S52_GL_movePoint(double *x, double *y, double angle, double dist_m);
 
 int   S52_GL_isHazard(int nxyz, double *xyz);
+
+//#if 0
+// -------- GLU ------------
+// helper for CS DATCVR01
+void  S52_GLU_begUnion(void);
+void  S52_GLU_addUnion(S57_geo *geo);
+void  S52_GLU_endUnion(guint *npt, double **xyz);
+//#endif  // 0
 
 #endif // _S52GL_H_
