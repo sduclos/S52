@@ -1768,7 +1768,7 @@ static int       _computeCentroid(S57_geo *geoData)
             */
 
             // CW
-            p = d+(3*3);
+            p = d + (3*3);
             gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
             p -= 3;
             gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
@@ -3665,7 +3665,7 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
     // render all lines ending
     _DrawArrays_LINES(_tmpWorkBuffer->len, (vertex_t*)_tmpWorkBuffer->data);
 
-    _checkError("_renderLC()");
+    _checkError("_renderLCring()");
 
     return TRUE;
 }
@@ -3734,7 +3734,11 @@ static int       _renderLC(S52_obj *obj)
     if (0 == g_strcmp0("M_NSYS", S57_getName(geo))) {
         PRINTF("DEBUG: M_NSYS found, nRing=%i\n", S57_getRingNbr(geo));
     }
-    */
+    if (0 == g_strcmp0("sclbdy", S57_getName(geo))) {
+        PRINTF("DEBUG: sclbdy found, nRing=%i\n", S57_getRingNbr(geo));
+        //g_assert(0);
+    }
+    //*/
 
     // set pen color & size here because values might not
     // be set via call list --short line
@@ -3759,125 +3763,6 @@ static int       _renderLC(S52_obj *obj)
         _renderLCring(obj, i, symlen_wrld);
     }
 
-#if 0
-
-    g_array_set_size(_tmpWorkBuffer, 0);
-
-    GLdouble *ppt = NULL;
-    guint     npt = 0;
-    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
-        return FALSE;
-
-    double off_x = ppt[0];
-    double off_y = ppt[1];
-    GLdouble x1,y1,z1,  x2,y2,z2;
-    for (guint i=1; i<npt; ++i) {
-        // set coordinate
-        x1 = ppt[0];
-        y1 = ppt[1];
-        z1 = ppt[2];
-        ppt += 3;
-        x2 = ppt[0];
-        y2 = ppt[1];
-        z2 = ppt[2];
-
-        //////////////////////////////////////////////////////
-        //
-        // overlapping Line Complex (LC) suppression
-        //
-        //if (z1<0.0 && z2<0.0) {
-        if (-S57_OVERLAP_GEO_Z==z1 && -S57_OVERLAP_GEO_Z==z2) {
-            PRINTF("NOTE: this line segment (%s) overlap a line segment with higher prioritity (Z=%f)\n", S57_getName(geo), z1);
-            continue;
-        }
-        /////////////////////////////////////////////////////
-
-
-        //*
-        // do not draw the rest of leglin if arc drawn
-        if (0 == g_strcmp0("leglin", S57_getName(geo))) {
-            if (2.0==S52_MP_get(S52_MAR_DISP_WHOLIN) || 3.0==S52_MP_get(S52_MAR_DISP_WHOLIN)) {
-                // shorten x1,y1 of wholin_dist of previous leglin
-                GLdouble segangRAD  = atan2(y2-y1, x2-x1);
-                S52_obj *objPrevLeg = S52_PL_getPrevLeg(obj);
-                S57_geo *geoPrev    = S52_PL_getGeo(objPrevLeg);
-                GString *prev_wholin_diststr = S57_getAttVal(geoPrev, "_wholin_dist");
-                if (NULL != prev_wholin_diststr) {
-                    double prev_wholin_dist = S52_atof(prev_wholin_diststr->str) * 1852;
-                    S52_GL_movePoint(&x1, &y1, segangRAD + (180.0 * DEG_TO_RAD), prev_wholin_dist);
-                }
-
-                // shorten x2,y2 if there is a next curve
-                S52_obj *objNextLeg = S52_PL_getNextLeg(obj);
-                if (NULL != objNextLeg) {
-                    GString *wholin_diststr = S57_getAttVal(geo, "_wholin_dist");
-                    if (NULL != wholin_diststr) {
-                        double wholin_dist = S52_atof(wholin_diststr->str) * 1852;
-                        S52_GL_movePoint(&x2, &y2, segangRAD, wholin_dist);
-                    }
-
-                }
-            }
-        }
-        //*/
-
-        if (FALSE == _clipToView(&x1, &y1, &x2, &y2))
-            continue;
-
-        GLdouble seglen_wrld   = sqrt(pow((x1-off_x)-(x2-off_x), 2)  + pow((y1-off_y)-(y2-off_y), 2));
-        GLdouble segang        = atan2(y2-y1, x2-x1);
-        GLdouble symlen_wrld_x = cos(segang) * symlen_wrld;
-        GLdouble symlen_wrld_y = sin(segang) * symlen_wrld;
-        int      nsym          = (int) (seglen_wrld / symlen_wrld);
-
-        segang *= RAD_TO_DEG;
-
-        //PRINTF("segang: %f seglen: %f symlen:%f\n", segang, seglen, symlen);
-        //PRINTF(">> x1: %f y1: %f \n",x1, y1);
-        //PRINTF(">> x2: %f y2: %f \n",x2, y2);
-
-        GLdouble offset_wrld_x = 0.0;
-        GLdouble offset_wrld_y = 0.0;
-
-        // draw symb's as long as it fit the line length
-        for (int j=0; j<nsym; ++j) {
-            _glLoadIdentity(GL_MODELVIEW);
-
-            _glTranslated(x1+offset_wrld_x, y1+offset_wrld_y, 0.0);           // move coord sys. at symb pos.
-            _glRotated(segang, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
-            _glScaled(1.0, -1.0, 1.0);
-
-            _pushScaletoPixel(TRUE);
-
-            _glCallList(DListData);
-
-            _popScaletoPixel();
-
-            offset_wrld_x += symlen_wrld_x;
-            offset_wrld_y += symlen_wrld_y;
-        }
-
-        // FIXME: need this because some 'Display List' reset blending
-        // FIXME: some Complex Line (LC) symbol allway use blending (ie transparancy)
-        // but now with GLES2 AA its all or nothing
-        //_setBlend(TRUE);
-        //if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
-        //    glEnable(GL_BLEND);
-        //}
-
-        {   // complete the rest of the line
-            pt3v pt[2] = {{x1+offset_wrld_x, y1+offset_wrld_y, 0.0}, {x2, y2, 0.0}};
-            g_array_append_val(_tmpWorkBuffer, pt[0]);
-            g_array_append_val(_tmpWorkBuffer, pt[1]);
-        }
-    }
-
-    // set identity matrix
-    _glUniformMatrix4fv_uModelview();
-
-    // render all lines ending
-    _DrawArrays_LINES(_tmpWorkBuffer->len, (vertex_t*)_tmpWorkBuffer->data);
-#endif
     //_setBlend(FALSE);
 
     // debug
@@ -4314,9 +4199,7 @@ static int       _traceOP(S52_obj *obj)
     (void) obj;
 
     // debug:
-    //PRINTF("OVERRIDE PRIORITY: %s, TYPE: %s\n", S52_PL_getOBCL(obj), S52_PL_infoLUP(obj));
-
-    //S52_PL_cmpCmdParam(obj, NULL);
+    //PRINTF("DEBUG: OVERRIDE PRIORITY: %s, TYPE: %s\n", S52_PL_getOBCL(obj), S52_PL_infoLUP(obj));
 
     return TRUE;
 }
@@ -4862,7 +4745,6 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 // FIXME: check poly winding - to skip ODD for ISODGR01
                 // ODD needed for symb. ISODGR01 + glDisable(GL_CULL_FACE);
 
-
                 gluTessBeginPolygon(_tobj, vertex);
                 gluTessBeginContour(_tobj);
 
@@ -4870,9 +4752,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 _f2d(_tessWorkBuf_d, vec->len, data);
                 double *dptr = (double*)_tessWorkBuf_d->data;
                 for (guint i=0; i<_tessWorkBuf_d->len; ++i, dptr+=3) {
-                //for (guint i=0; i<vec->len; ++i, data+=3) {
                     gluTessVertex(_tobj, (GLdouble*)dptr, (void*)dptr);
-                    //gluTessVertex(_tobj, data, (void*)data);
                     //PRINTF("x/y/z %f/%f/%f\n", dptr[0], dptr[1], dptr[2]);
                 }
 #else
@@ -5233,28 +5113,7 @@ int        S52_GL_isSupp(S52_obj *obj)
 int        S52_GL_isOFFview(S52_obj *obj)
 // TRUE if object not in view
 {
-    //*
     // FIXME: handle this case like extent in VRMEBL!
-    // debug: CHKSYM01 land here because it is on layer 8, other use layer 9
-    S57_geo *geo  = S52_PL_getGeo(obj);
-    if (0 == g_strcmp0("$CSYMB", S57_getName(geo))) {
-
-        /*
-        // this is just to quiet this the PRINTF msg bellow
-        // as CHKSYM01/BLKADJ01 pass here (this is normal)
-        // draw() cycle
-        GString *attval = S57_getAttVal(geo, "$SCODE");
-        if (0 == g_strcmp0(attval->str, "CHKSYM01"))
-            return FALSE;
-        if (0 == g_strcmp0(attval->str, "BLKADJ01"))
-            return FALSE;
-
-        PRINTF("DEBUG: %s:%s\n", S57_getName(geo), attval->str);
-        */
-
-        return FALSE;
-    }
-    //*/
 
     // FIXME: AIS + Vector / Heading, also beam bearing
 
@@ -5263,29 +5122,32 @@ int        S52_GL_isOFFview(S52_obj *obj)
     //    PRINTF("DEBUG: pastrk FOUND\n");
     //}
 
-    {   // geo extent _gmin/max
-        double x1,y1,x2,y2;
-        //S57_geo *geo = S52_PL_getGeo(obj);  // have geo allready
-        S57_getExt(geo, &x1, &y1, &x2, &y2);
+    // geo extent _gmin/max
+    double x1,y1,x2,y2;
+    S57_geo *geo = S52_PL_getGeo(obj);
+    if (FALSE == S57_getExt(geo, &x1, &y1, &x2, &y2))
+        return FALSE;
 
-        // S-N limits
-        if ((y2 < _gmin.v) || (y1 > _gmax.v)) {
+    // FIXME: look for trick to bailout if func fail
+    //(S57_getExt(geo, &x1, &y1, &x2, &y2)? TRUE : return FALSE;
+
+    // S-N limits
+    if ((y2 < _gmin.v) || (y1 > _gmax.v)) {
+        ++_oclip;
+        return TRUE;
+    }
+
+    // E-W limits
+    if (_gmax.u < _gmin.u) {
+        // anti-meridian E-W limits
+        if ((x2 < _gmin.u) && (x1 > _gmax.u)) {
             ++_oclip;
             return TRUE;
         }
-
-        // E-W limits
-        if (_gmax.u < _gmin.u) {
-            // anti-meridian E-W limits
-            if ((x2 < _gmin.u) && (x1 > _gmax.u)) {
-                ++_oclip;
-                return TRUE;
-            }
-        } else {
-            if ((x2 < _gmin.u) || (x1 > _gmax.u)) {
-                ++_oclip;
-                return TRUE;
-            }
+    } else {
+        if ((x2 < _gmin.u) || (x1 > _gmax.u)) {
+            ++_oclip;
+            return TRUE;
         }
     }
 
@@ -5576,6 +5438,9 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //}
     //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "pastrk")) {
     //    PRINTF("DEBUG: pastrk FOUND\n");
+    //}
+    //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: M_COVR FOUND\n");
     //}
     //if (S52_GL_PICK == _crnt_GL_cycle) {
     //    S57_geo *geo = S52_PL_getGeo(obj);
