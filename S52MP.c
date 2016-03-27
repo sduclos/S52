@@ -204,38 +204,44 @@ static double _MARparamVal[] = {
 
     1852.0,   // 46 - S52_MAR_GUARDZONE_BEAM - Danger/Indication Highlight used by LEGLIN & Position (meters)
     1852.0*6, // 47 - S52_MAR_GUARDZONE_LENGTH - Danger/Indication Highlight used by Position
-              //(meters, user computed from speed/time or distance) [default 6 NM, 30 min. @ 12kt]
+              //      (meters, user computed from speed/time or distance) [default 6 NM, 30 min. @ 12kt]
+    0.0,      // 48 - S52_MAR_GUARDZONE_ALARM  // FIXME: put MAR_ERROR code here
+              //      FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
 
-    48.0      // number of parameter type
+    1.0,      // 49 - S52_MAR_DISP_HODATA, 0 - off, 1 - union HO data limit (default), 2 - all HO data limit
+
+    50.0      // number of parameter type
 };
 
 double S52_MP_get(S52MarinerParameter param)
 // return Mariner parameter or S52_MAR_ERROR if fail
 // FIXME: check mariner param against groups selection
 {
-    if (param<S52_MAR_ERROR || S52_MAR_NUM<=param) {
-    //if (S52_MAR_ERROR<=param && param<S52_MAR_NUM) {
+    //if (param<S52_MAR_ERROR || S52_MAR_NUM<=param) {
+    if (S52_MAR_ERROR<=param && param<S52_MAR_NUM) {
+        return _MARparamVal[param];
+    } else {
         PRINTF("WARNING: param invalid(%f)\n", param);
         g_assert(0);
 
         return _MARparamVal[S52_MAR_ERROR];
     }
 
-    return _MARparamVal[param];
 }
 
 int    S52_MP_set(S52MarinerParameter param, double val)
 {
-    if (param<S52_MAR_ERROR || S52_MAR_NUM<=param) {
+    //if (param<S52_MAR_ERROR || S52_MAR_NUM<=param) {
+    if (S52_MAR_ERROR<=param && param<S52_MAR_NUM) {
+        _MARparamVal[param] = val;
+
+        return TRUE;
+    } else {
         PRINTF("WARNING: param invalid(%f)\n", param);
         g_assert(0);
 
         return FALSE;
     }
-
-    _MARparamVal[param] = val;
-
-    return TRUE;
 }
 
 
@@ -244,7 +250,6 @@ int    S52_MP_set(S52MarinerParameter param, double val)
 //
 
 #define TEXT_IDX_MAX 100
-//static unsigned int _textDisp[TEXT_IDX_MAX]; // assume compiler init to 0 (C99!)
 //static unsigned int _textDisp[TEXT_IDX_MAX] = {[0 ... 99] = 1}; // not ISO C (gcc specific)
 static unsigned int _textDisp[TEXT_IDX_MAX] = {
     1,1,1,1,1,1,1,1,1,1,   // 00 - 09 reserved for future assignment by IHO
