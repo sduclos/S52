@@ -237,9 +237,11 @@ static int      _egl_init       (s52engine *engine)
         g_print("ERROR: EGLNativeWindowType is NULL (can't draw)\n");
         g_assert(0);
     }
-    g_print("DEBUG: eglDisplay  =0X%X\n", (guint)eglDisplay);
-    g_print("DEBUG: eglConfig   =0X%X\n", (guint)eglConfig);
-    g_print("DEBUG: eglWindowXID=0X%X\n", (guint)GDK_WINDOW_XID(eglWindow));
+
+    // debug
+    //g_print("DEBUG: eglDisplay  =0X%X\n", eglDisplay);
+    //g_print("DEBUG: eglConfig   =0X%X\n", eglConfig);
+    //g_print("DEBUG: eglWindowXID=0X%X\n", eglWindow);
 
     eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, GDK_WINDOW_XID(gtk_widget_get_window(engine->window)), NULL);
     if (EGL_NO_SURFACE == eglSurface || EGL_SUCCESS != eglGetError())
@@ -788,7 +790,8 @@ static int      _s52_draw_cb(GtkWidget *widget,
     (void)widget;
     (void)event;
 
-    struct s52engine *engine = (struct s52engine*)user_data;
+    s52engine *engine = (s52engine*)user_data;
+
     //g_print("s52egl:_s52_draw_cb(): begin .. \n");
 
     /*
@@ -1050,7 +1053,6 @@ static gboolean configure_event(GtkWidget         *widget,
     (void)event;
     (void)data;
 
-
     // FIXME: find the new screen size
     GtkAllocation allocation;
     gtk_widget_get_allocation(GTK_WIDGET(widget), &allocation);
@@ -1069,6 +1071,9 @@ static gboolean configure_event(GtkWidget         *widget,
     S52_setViewPort(0, 0, allocation.width, allocation.height);
 
     _engine.do_S52draw = TRUE;
+
+    // debug
+    //g_print("'configure_event' .. done\n");
 
     return TRUE;
 }
@@ -1201,36 +1206,40 @@ static gboolean key_release_event(GtkWidget   *widget,
     return TRUE;
 }
 
-static gboolean step (gpointer data)
+static gboolean step(gpointer data)
 {
     gdk_window_invalidate_rect(GDK_WINDOW(data), NULL, TRUE);
+
+    //g_print("step()..\n");
 
     return TRUE;
 }
 
-int main (int argc, char** argv)
+int main(int argc, char** argv)
 {
     gtk_init(&argc, &argv);
 
     _engine.window = GTK_WIDGET(gtk_window_new(GTK_WINDOW_TOPLEVEL));
     gtk_window_set_default_size(GTK_WINDOW(_engine.window), 800, 600);
-    gtk_window_set_title(GTK_WINDOW(_engine.window), "OpenGL ES2 in GTK3 application");
+    gtk_window_set_title       (GTK_WINDOW(_engine.window), "EGL / OpenGL ES2 in GTK3 application");
 
-    gtk_widget_show_all(_engine.window);
-
-    _egl_init(&_engine);
-    _s52_init(&_engine);
-
-    gtk_widget_set_app_paintable     (_engine.window, TRUE );
-    gtk_widget_set_double_buffered   (_engine.window, FALSE);
-    gtk_widget_set_redraw_on_allocate(_engine.window, TRUE );
+    gtk_widget_set_app_paintable     (GTK_WIDGET(_engine.window), TRUE );
+    gtk_widget_set_double_buffered   (GTK_WIDGET(_engine.window), FALSE);
+    gtk_widget_set_redraw_on_allocate(GTK_WIDGET(_engine.window), TRUE );
 
     g_signal_connect(G_OBJECT(_engine.window), "destroy",           G_CALLBACK(gtk_main_quit),     NULL);
     g_signal_connect(G_OBJECT(_engine.window), "draw",              G_CALLBACK(_s52_draw_cb),     &_engine);
     g_signal_connect(G_OBJECT(_engine.window), "key_release_event", G_CALLBACK(key_release_event), NULL);
     g_signal_connect(G_OBJECT(_engine.window), "configure_event",   G_CALLBACK(configure_event),   NULL);
 
-    g_timeout_add(500, step, gtk_widget_get_window(_engine.window)); // 0.5 sec
+    gtk_widget_show_all(_engine.window);
+
+    // call after show_all() witch call conf eve
+    g_timeout_add(500, step, gtk_widget_get_window(_engine.window));  // 0.5 sec
+
+    _egl_init(&_engine);
+    _s52_init(&_engine);
+
 
     gtk_main();
 
