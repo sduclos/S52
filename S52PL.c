@@ -2674,7 +2674,7 @@ S57_geo    *S52_PL_getGeo(_S52_obj *obj)
 {
     // OPTIMISATION: seem this is called everywhere, so this test
     // might slow down a bit (must mesure)
-    return_if_null(obj);
+    //return_if_null(obj);
 
     return obj->geoData;
 }
@@ -2688,12 +2688,14 @@ S57_geo    *S52_PL_setGeo(_S52_obj *obj, S57_geo *geoData)
 
 const char *S52_PL_getOBCL(_S52_obj *obj)
 // NOTE: geoData.name is the same as LUP.OBCL
+// but not all geoData.name has LUP.OBCL
+// ex: DSID, EdjeNode, ConnectedNode, ..
 // (ie S57_getName(geo))
 {
     return_if_null(obj);
 
     if (NULL == obj->LUP) {
-        // DISD layer/obj have no LUP
+        // DSID layer/obj have no LUP
         return S57_getName(obj->geoData);
     } else {
         return obj->LUP->OBCL;
@@ -2757,11 +2759,11 @@ int         S52_PL_getLUCM(_S52_obj *obj)
 }
 
 S52_RadPrio S52_PL_getRPRI(_S52_obj *obj)
-
 {
-    if (NULL==obj) {
-        return S52_RAD_OVER;
-    }
+    // obj can't be NULL because of previous check
+    //if (NULL == obj) {
+    //    return S52_RAD_OVER;
+    //}
 
     return obj->RPRI;
 }
@@ -3825,6 +3827,7 @@ int         S52_PL_hasText(_S52_obj *obj)
 // return TRUE if there is at least one TEXT command word
 // NOTE: the text itself could be unvailable yet!
 {
+    // called from foreach() so can it be NULL?
     return_if_null(obj);
 
     // debug
@@ -4286,7 +4289,8 @@ gboolean    S52_PL_setSupp(_S52_obj *obj, gboolean supp)
 
 gboolean    S52_PL_getSupp(_S52_obj *obj)
 {
-    return_if_null(obj);
+    // this test is in the CULL loop
+    //return_if_null(obj);
 
     return obj->supp;
 }
