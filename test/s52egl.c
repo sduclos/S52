@@ -1155,6 +1155,11 @@ static int      _s52_setupPRDARE(s52droid_state_t *state)
     char attVal[] = "CATPRA:9";
     _prdare = S52_newMarObj("PRDARE", S52_AREAS, 6, xyzArea,  attVal);
 
+    // debug: test layer ordering when mixing cell and mariners object
+    //LUPT   29LU00672NILmnufeaL00005OLINES
+    //char attVal[] = "CATPRA:9";
+    //_prdare = S52_newMarObj("mnufea", S52_LINES, 6, xyzArea,  NULL);
+
     return TRUE;
 }
 
@@ -1416,7 +1421,7 @@ static int      _s52_init       (s52engine *engine)
     g_setenv("S57_CSV", "/sdcard/s52droid/gdal_data", 1);
 
     // read cell location fron s52.cfg
-    //S52_loadCell(NULL, NULL);
+    S52_loadCell(NULL, NULL);
 
     // Tadoussac
     //S52_loadCell(PATH "/ENC_ROOT/CA379035.000", NULL);
@@ -1426,7 +1431,7 @@ static int      _s52_init       (s52engine *engine)
     // Rimouski
     //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
     // Estuaire du St-Laurent
-    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
+    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
 
     // Bec
     //S52_loadCell(PATH "/ENC_ROOT/CA579016.000", NULL);
@@ -1446,8 +1451,8 @@ static int      _s52_init       (s52engine *engine)
     // GDAL debug info ON
     //g_setenv("CPL_DEBUG", "ON", 1);
 
-    // read cell location fron s52.cfg
-    //S52_loadCell(NULL, NULL);
+    // read cell location from s52.cfg
+    S52_loadCell(NULL, NULL);
 
     // S-64 ENC
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/GB5X01SE.000", NULL);
@@ -1457,13 +1462,13 @@ static int      _s52_init       (s52engine *engine)
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US1EEZ1M/US1EEZ1M.000", NULL);
 
     // Rimouski
-    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
+    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
 
     // load PLib in s52.cfg
     //S52_loadPLib(NULL);
 
     // Estuaire du St-Laurent
-    S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
+    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
 
     //Tadoussac
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA379035.000", NULL);
@@ -1540,11 +1545,19 @@ static int      _s52_init       (s52engine *engine)
 
     S52_setS57ObjClassSupp("M_NSYS", TRUE);   // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
 
-    // CS DATCVY01:M_COVR:CATCOV=2, OTHER
-    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 2.0);  // draw all M_COVR individualy
-    //CS DATCVY01:M_COVR:CATCOV=1, BASE
-    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 1.0);  // union: combite M_COVR as one poly 'm_covr'
-    S52_setS57ObjClassSupp("M_COVR", TRUE);         // HO data limit __/__/__ - LC(HODATA01)
+    // CS DATCVY01:M_COVR:CATCOV=2, "M_COVR" OTHER
+    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 1.0);  // draw all M_COVR individualy
+    //CS DATCVY01:M_COVR:CATCOV=1, "m_covr" BASE
+    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 0.0);  // union: combite M_COVR as one poly 'm_covr' (default)
+
+    //S52_setS57ObjClassSupp("M_COVR", TRUE);         // HO data limit __/__/__ - LC(HODATA01)
+    //S52_setS57ObjClassSupp("M_COVR", FALSE);        // default
+
+    // Note: "m_covr" is on BASE, so display can't be suppressed
+    //S52_setS57ObjClassSupp("m_covr", TRUE);   // fail
+
+    //S52_setS57ObjClassSupp("sclbdy", TRUE);
+    //S52_setS57ObjClassSupp("sclbdy", FALSE);  // default
 
     _s52_setupMarPar();
 
@@ -1574,7 +1587,7 @@ static int      _s52_init       (s52engine *engine)
     //_s52_setupLEGLIN(&engine->state);
 
     // wind farme for testing centroids in a concave poly
-    //_s52_setupPRDARE(&engine->state);
+    _s52_setupPRDARE(&engine->state);
 
 
 #ifdef USE_FAKE_AIS
@@ -2987,15 +3000,17 @@ static int      _X11_handleXevent(gpointer user_data)
             engine->width  = event.xconfigure.width;
             engine->height = event.xconfigure.height;
             S52_setViewPort(0, 0, event.xconfigure.width, event.xconfigure.height);
+            g_print("DEBUG: ConfigureNotify Event\n");
 
             break;
 
         case Expose:
+            // event fired when the window is first expose - draw() finish
             engine->do_S52draw     = TRUE;
             engine->do_S52drawLast = TRUE;
             //g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0);
-            _s52_draw_cb((gpointer) engine);
-            g_print("DEBUG: Expose Event\n");
+            //_s52_draw_cb((gpointer) engine);
+            //g_print("DEBUG: Expose Event\n");
 
             break;
 
