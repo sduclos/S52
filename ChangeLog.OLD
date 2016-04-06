@@ -4,6 +4,9 @@
 #
 
 
+2016APR06
+    -mod draw mariners' during cells rendering rather than last cell in draw()
+
 2016MAR26
     -mod S57_getExt() return FALSE if extent not set ($CSYMB, ..)
     -add system generated CS DATCVR01-2 - HO Data Limit, 
