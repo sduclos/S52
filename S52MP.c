@@ -208,7 +208,7 @@ static double _MARparamVal[] = {
     0.0,      // 48 - S52_MAR_GUARDZONE_ALARM  // FIXME: put MAR_ERROR code here
               //      FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
 
-    1.0,      // 49 - S52_MAR_DISP_HODATA, 0 - off, 1 - union HO data limit (default), 2 - all HO data limit
+    0.0,      // 49 - S52_MAR_DISP_HODATA, 0 - union HO data limit "m_covr" (default), 1 - all HO data limit (M_COVR+m_covr)
 
     50.0      // number of parameter type
 };
