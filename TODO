@@ -24,7 +24,6 @@ Curent focus (top priority *):
     -isobath tag
 
     Coding:
-*   -combined adjacent areas of M_COVR, CATCOV=1; HODATA01 - boundary marking end of HO data. Use CSG as in _computeCentroid().
 *   -use masked lines field (OGR/S57 MASK/FSPT) to use the line overlap trick
     -check CRC32 of S57 in CATALOG.031
     -read text referenced by CATALOG.031 (some text in M_NPUB also)
@@ -54,6 +53,7 @@ DONE
 ====
 (put here TODO's that has been done)
 
+*   -combined adjacent areas of M_COVR, CATCOV=1; HODATA01 - boundary marking end of HO data. Use CSG as in _computeCentroid().
     -alarm safety perimeter (pick GL trick) and route planning -try fast geo route instead of the pick GL trick
     -text shadow
     -WARN: chart no 1 PLib put $LINE in layer 0
