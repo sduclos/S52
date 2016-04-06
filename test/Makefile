@@ -97,7 +97,7 @@ s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
                      -DS52_USE_EGL -DS52_USE_GLES2
 # same as s52eglx, but "gtk+-3.0" is added
 s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-3.0` \
-                     -DS52_USE_SOCK -DS52_USE_AFGLOW -DS52_USE_EGL -DS52_USE_GLES2
+                     -DS52_USE_EGL -DS52_USE_GLES2
 
 s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`      \
                       -I$(OPENEV_HOME) -DGV_USE_DOUBLE_PRECISION_COORD \
@@ -161,7 +161,6 @@ s52gtk2egl: s52gtk2egl.c
 
 s52gtk3egl: s52gtk3egl.c s52ais.c
 	$(CC) $(CFLAGS) s52gtk3egl.c $(LIBS) -o $@
-	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) `pkg-config --cflags --libs libgps` -o s52ais
 
 s52gv:  LIBS = $(S52_LIBS) $(GTK_LIBS) $(GV_LIBS) $(OGR_LIBS)
 s52gv:  s52gv.c
