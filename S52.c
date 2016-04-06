@@ -1842,22 +1842,23 @@ static int        _suppLineOverlap()
                 */
 
 
-                /////////////////////// MASK ////////////////////////////////////////////////
+                /////////////////////// DEBUG MASK ////////////////////////////////////////////////
                 //
                 // CA379035.000 Tadoussac has Mask on TSSLPT:5339,5340
                 // but TSSLPT has no LC() or LS() to mask !
                 // TSSLPT:5339 : MASK (IntegerList) = (7:1,2,255,255,255,255,2)
                 // 1 - mask, 2 - show, 255 - NULL, Masking is no relevant (exterior boundary truncated by the data limit)
-                /*
+                //*
                 GString *maskstr = S57_getAttVal(geo, "MASK");
                 if (NULL != maskstr) {
+                    // check if buff is large enough
                     gchar *substr = ",...)";
                     gchar *found1 = g_strrstr(maskstr->str, substr);
                     if (NULL != found1) {
                         PRINTF("ERROR: OGR buffer TEMP_BUFFER_SIZE in ogr/ogrfeature.cpp:994 overflow\n");
                         g_assert(0);
                     } else {
-
+                        // buff size OK
                         gchar **splitMASK = g_strsplit_set(maskstr->str+1, "():,", 0);
                         gchar **topMASK   = splitMASK;
 
@@ -1868,7 +1869,7 @@ static int        _suppLineOverlap()
                                 PRINTF("FIXME: 'MASK' FOUND ---> %s : %s\n", S57_getName(geo), maskstr->str);
                                 // TSSLPT:5339 : (7:1,2,255,255,255,255,2)
                                 // TSSLPT:5340 : (5:1,2,255,255,2)
-                                //g_assert(0);
+                                g_assert(0);
                             }
                         }
                         g_strfreev(topMASK);
@@ -3470,7 +3471,10 @@ static int        _app()
         _doCS = FALSE;
     }
 
+    ////////////////////////////////////////////////////
+    //
     // CS DATCVR01: compute HO Data Limit, scale boundary, ..
+    //
     if (TRUE == _doDATCVR) {
         //* 2.4 - compute HO data limit
         // begin union
@@ -3606,6 +3610,18 @@ static int        _app()
     return TRUE;
 }
 
+static int        _resetJournal(void)
+{
+    for (guint i=0; i<_cellList->len; ++i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+        g_ptr_array_set_size(c->objList_supp, 0);
+        g_ptr_array_set_size(c->objList_over, 0);
+        g_ptr_array_set_size(c->textList,     0);
+    }
+
+    return TRUE;
+}
+
 static int        _cullLights(void)
 // CULL (first draw() after APP, on all cells)
 {
@@ -3648,7 +3664,81 @@ static int        _cullLights(void)
     return TRUE;
 }
 
-static int        _cullObj(_cell *c)
+static int        _cullObj(_cell *c, GPtrArray *rbin)
+// cull object out side the view and object supressed
+// object culled are not inserted in the list of object to draw (journal)
+// Note: extent are taken from the obj itself
+{
+    // for each object
+    for (guint idx=0; idx<rbin->len; ++idx) {
+        S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+
+        // debug: can this happen!
+        if (NULL == obj) {
+            PRINTF("DEBUG: skip NULL obj\n");
+            g_assert(0);
+            continue;
+        }
+
+        ++_nTotal;
+
+        // debug - anti-meridian, US5HA06M/US5HA06M.000
+        //if (103 == S57_getGeoS57ID(geo)) {
+        //    PRINTF("ISODGR01 found\n");
+        //}
+        // debug - layer drawing order
+        //if (0 == g_strcmp0("mnufea", S52_PL_getOBCL(obj))) {
+        //    PRINTF("mnufea found\n");
+        //}
+        //if (0 == g_strcmp0("PIPSOL", S52_PL_getOBCL(obj))) {
+        //    PRINTF("PIPSOL found\n");
+        //}
+
+        // is *this* object suppressed by user
+        if (TRUE == S52_PL_getSupp(obj)) {
+            ++_nCull;
+            continue;
+        }
+
+        // SCAMIN & PLib (disp cat) & S57 class
+        if (TRUE == S52_GL_isSupp(obj)) {
+            ++_nCull;
+            continue;
+        }
+
+        // outside view
+        // NOTE: object can be inside 'ext' but outside the 'view' (cursor pick)
+        if (TRUE == S52_GL_isOFFview(obj)) {
+            ++_nCull;
+            continue;
+        }
+
+        // store object according to radar flags
+        // note: default to 'over' if something else than 'supp'
+        if (S52_RAD_SUPP == S52_PL_getRPRI(obj)) {
+            g_ptr_array_add(c->objList_supp, obj);
+        } else {
+            g_ptr_array_add(c->objList_over, obj);
+            S57_geo *geo = S52_PL_getGeo(obj);
+
+            // switch OFF highlight if user acknowledge Alarm / Indication by
+            // resetting S52_MAR_GUARDZONE_ALARM to 0 (OFF - no alarm)
+            // Note: at this time only S52_PRIO_HAZRDS / S52_RAD_OVER
+            //if (0.0==S52_MP_get(S52_MAR_ERROR) && TRUE==S57_isHighlighted(geo))
+            if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_isHighlighted(geo))
+                S57_highlightOFF(geo);
+        }
+
+        // if this object has TX or TE, draw text last (on top)
+        if (TRUE == S52_PL_hasText(obj)) {
+            g_ptr_array_add(c->textList, obj);
+        }
+    }
+
+    return TRUE;
+}
+
+static int        _cullLayer(_cell *c)
 // one cell, cull object out side the view and object supressed
 // object culled are not inserted in the list of object to draw (journal)
 // Note: extent are taken from the obj itself
@@ -3657,92 +3747,20 @@ static int        _cullObj(_cell *c)
     // Note: Chart No 1 put object on layer 9 (Mariners' Objects)
     // layer 0-8
     for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_MARINR; ++i) {
-
-        // for each object type, skip META
+        // for each object type
+        // Note: skip META
         for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
-            GPtrArray *rbin = c->renderBin[i][j];
 
-            // for each object
-            for (guint idx=0; idx<rbin->len; ++idx) {
-                S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+            //GPtrArray *rbin = c->renderBin[i][j];
+            //_cullObj(rbin);
 
-                ++_nTotal;
-
-                // debug - anti-meridian, US5HA06M/US5HA06M.000
-                //if (103 == S57_getGeoS57ID(geo)) {
-                //    PRINTF("ISODGR01 found\n");
-                //}
-
-                // is *this* object suppressed by user
-                if (TRUE == S52_PL_getSupp(obj)) {
-                    ++_nCull;
-
-                    continue;
-                }
-
-                // SCAMIN & PLib (disp cat) & S57 geo class
-                if (TRUE == S52_GL_isSupp(obj)) {
-                    ++_nCull;
-
-                    continue;
-                }
-                //*
-                else
-                {   // FALSE
-
-                    // is area layer 3
-                    if ((S52_PRIO_AREA_2==i) && (S52_AREAS==j)) {
-                        // "m_covr" - union of M_COVR:CATCOV=1
-                        if ((0   == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) &&
-                            (0.0 == S52_MP_get(S52_MAR_DISP_HODATA))
-                           ) {
-                                continue;
-                        }
-                    }
-                }
-                //*/
-
-                // outside view
-                // NOTE: object can be inside 'ext' but outside the 'view' (cursor pick)
-                if (TRUE == S52_GL_isOFFview(obj)) {
-                    ++_nCull;
-                    continue;
-                }
-
-                // store object according to radar flags
-                // note: default to 'over' if something else than 'supp'
-                if (S52_RAD_SUPP == S52_PL_getRPRI(obj)) {
-                    g_ptr_array_add(c->objList_supp, obj);
-                } else {
-                    g_ptr_array_add(c->objList_over, obj);
-                    S57_geo *geo = S52_PL_getGeo(obj);
-
-                    // switch OFF highlight if user acknowledge Alarm / Indication by
-                    // resetting S52_MAR_GUARDZONE_ALARM to 0 (OFF - no alarm)
-                    // Note: at this time only S52_PRIO_HAZRDS / S52_RAD_OVER
-                    //if (0.0==S52_MP_get(S52_MAR_ERROR) && TRUE==S57_isHighlighted(geo))
-                    if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_isHighlighted(geo))
-                        S57_highlightOFF(geo);
-                }
-
-                // if this object has TX or TE, draw text last (on top)
-                if (TRUE == S52_PL_hasText(obj)) {
-                    g_ptr_array_add(c->textList, obj);
-                }
-            }
-        } // type
-    }  // layer
-
-    return TRUE;
-}
-
-static int        _resetJournal(void)
-{
-    for (guint i=0; i<_cellList->len; ++i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-        g_ptr_array_set_size(c->objList_supp, 0);
-        g_ptr_array_set_size(c->objList_over, 0);
-        g_ptr_array_set_size(c->textList,     0);
+            //*
+            GPtrArray *c_rbin = c->renderBin[i][j];
+            _cullObj(c, c_rbin);
+            GPtrArray *m_rbin = _marinerCell->renderBin[i][j];
+            _cullObj(c, m_rbin);
+            //*/
+        }
     }
 
     return TRUE;
@@ -3758,9 +3776,12 @@ static int        _cull(extent ext)
 
     // FIXME: mariner layer must be embeded in each cell
     // ex: mariner layer[8] for route
+    // cull mariners' at each layer glScissor() will clip
+
 
     // all cells - larger region first (small scale)
-    for (guint i=_cellList->len; i>0 ; --i) {
+    //for (guint i=_cellList->len; i>0; --i) {
+    for (guint i=_cellList->len; i>1; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
 #ifdef S52_USE_WORLD
         if ((0==g_strcmp0(WORLD_SHP, c->filename->str)) && (FALSE==S52_MP_get(S52_MAR_DISP_WORLD)))
@@ -3768,7 +3789,8 @@ static int        _cull(extent ext)
 #endif
         // is this chart visible
         if (TRUE == _intersec(c->geoExt, ext)) {
-            _cullObj(c);
+            //_cullObj(c);
+            _cullLayer(c);
         }
     }
 
@@ -3846,6 +3868,14 @@ static int        _drawLayer(extent ext, int layer)
                     S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                     //S57_geo *geo = S52_PL_getGeo(obj);
 
+                    /* debug: can this happen!
+                    if (NULL == obj) {
+                        PRINTF("DEBUG: skip obj NULL\n");
+                        g_assert(0);
+                        continue;
+                    }
+                    */
+
                     // debug
                     //PRINTF("%s\n", S57_getName(geo));
 
@@ -3897,6 +3927,14 @@ static int        _drawLights(void)
         // FIXME: use for_each()
         for (guint j=0; j<c->lights_sector->len; ++j) {
             S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
+
+            // debug: can this happen!
+            if (NULL == obj) {
+                PRINTF("DEBUG: skip obj NULL\n");
+                g_assert(0);
+                continue;
+            }
+
             // SCAMIN & PLib (disp prio)
             if (TRUE != S52_GL_isSupp(obj)) {
                 if (TRUE != S52_PL_getSupp(obj))
@@ -4124,7 +4162,8 @@ static int        _draw()
     // optimisation: GOURD 1 - face of earth - sort and then glDraw() on a whole surface
     //               - app/cull must reset sort if color change by user
 
-    for (guint i=_cellList->len; i>0; --i) {
+    // skip mariner
+    for (guint i=_cellList->len; i>1; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
 
         // FIXME: check atomic for each obj
@@ -4352,6 +4391,13 @@ static int        _drawLast(void)
         // LIFO: so that 'cursor' is drawn last (on top)
         for (guint idx=rbin->len; idx>0; --idx) {
             S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx-1);
+
+            // debug: can this happen!
+            if (NULL == obj) {
+                PRINTF("DEBUG: skip NULL obj\n");
+                g_assert(0);
+                continue;
+            }
 
             g_atomic_int_get(&_atomicAbort);
             if (TRUE == _atomicAbort) {
