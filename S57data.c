@@ -927,6 +927,8 @@ int        S57_setExt(_S57_geo *geo, double x1, double y1, double x2, double y2)
 int        S57_getExt(_S57_geo *geo, double *x1, double *y1, double *x2, double *y2)
 // assume: extent canonical
 {
+    // inside cull loop this check is useless
+    // but other are not
     return_if_null(geo);
 
     *x1 = geo->rect.x1;  // W
@@ -1062,7 +1064,7 @@ GData     *S57_setAtt(_S57_geo *geo, const char *name, const char *val)
         g_datalist_init(&geo->attribs);
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
-    if ((0==g_strcmp0(S57_getName(geo), "Edge")) && (0==g_strcmp0(name, "RCID"))) {
+    if ((0==g_strcmp0(geo->name, "Edge")) && (0==g_strcmp0(name, "RCID"))) {
         geo->name_rcidstr = value->str;
 
         // FIXME: check for substring ",...)" if found at the end
@@ -1656,11 +1658,17 @@ S57_geo   *S57_setEdgeOwner(_S57_geo *geoEdge, _S57_geo *geoOwner)
 }
 
 int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
-// mark coordinates in geo that match the chaine-node in geoEdge
+// experimental: mark coordinates in geo that match the chaine-node in geoEdge
 {
 
     return_if_null(geo);
     return_if_null(geoEdge);
+
+    // M_COVR is used for system generated DATCOVR
+    if (0 == g_strcmp0("M_COVR", geo->name)) {
+        //PRINTF("DEBUG: found M_COVR, nptEdge: %i - skipped\n", nptEdge);
+        return TRUE;
+    }
 
     guint   npt = 0;
     double *ppt;
@@ -1679,15 +1687,9 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
     }
 
     // debug
-    //if (0 == g_strcmp0("HRBARE", S57_getName(geo))) {
+    //if (0 == g_strcmp0("HRBARE", geo->name)) {
     //    PRINTF("DEBUG: found HRBARE, nptEdge: %i\n", nptEdge);
     //}
-
-    // M_COVR is used for system generated DATCOVR
-    if (0 == g_strcmp0("M_COVR", S57_getName(geo))) {
-        //PRINTF("DEBUG: found M_COVR, nptEdge: %i - skipped\n", nptEdge);
-        return TRUE;
-    }
 
     // search ppt for first pptEdge
     int   next = 0;
