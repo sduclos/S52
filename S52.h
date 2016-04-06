@@ -146,7 +146,7 @@ typedef enum S52MarinerParameter {
     S52_MAR_GUARDZONE_ALARM     = 48,   // FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
                                         // -1 - display highlight
 
-    S52_MAR_DISP_HODATA         = 49,   // 0 - off, 1 - union HO data limit (default), 2 - HO data limit
+    S52_MAR_DISP_HODATA         = 49,   // 0 - union HO data limit "m_covr"(default), 1 - all HO data limit (M_COVR+m_covr)
 
     S52_MAR_NUM                 = 50    // number of parameters
 } S52MarinerParameter;
@@ -194,7 +194,7 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
  *
  * Return: (transfer none): String with the version of libS52 and the '#define' used to build it
  */
-#define S52_VERSION "libS52-2016MAR26-1.173"
+#define S52_VERSION "libS52-2016APR06-1.174"
 DLL const char * STD S52_version(void);
 
 /**
