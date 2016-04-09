@@ -4,6 +4,9 @@
 #
 
 
+2016APR09
+    -fix line overlap for simple line (LS())
+
 2016APR06
     -mod draw mariners' during cells rendering rather than last cell in draw()
 
