@@ -33,11 +33,11 @@
 // it is then turn into a string in gv_properties
 #define EMPTY_NUMBER_MARKER "2147483641"  /* MAXINT-6 */
 
-#define S57_CELL_NAME_MAX_LEN 8 // cell name maximum lenght
+#define S57_CELL_NAME_MAX_LEN 8  // cell name maximum lenght
 
 // push Z in geo (Z not used, alway 0)
 // could be use as a clip plane for LS()
-#define S57_OVERLAP_GEO_Z 9999.0
+#define S57_OVERLAP_GEO_Z 10.0
 
 // internal geo enum used to link S52 to S57 geo
 // S57 object type have a PLib enum: P,L,A
