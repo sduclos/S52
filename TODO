@@ -17,16 +17,15 @@ Curent focus (top priority *):
     PL:
 *   -view group or somme equivalent functionality
     -overscale (DATCVR01) (maybe LOD/chart scale/view scale)
-    -experimental: supression of overlapping simple lines (ie overlaping LS() not processed) (also of same disp prio AREAS/LINES)
     -fix breaker color problem in CA49995A.000
     -check/validate QUAPOS of spatial (not attribute) object
     -upgrade to WRECK03 (C_s_md2.pdf: Item No. PL03.0.d02.cl.035)
     -isobath tag
 
     Coding:
-*   -use masked lines field (OGR/S57 MASK/FSPT) to use the line overlap trick
+*   -use masked lines field (OGR/S57 MASK/FSPT) to use the line overlap trick (test case CA379035.000)
     -check CRC32 of S57 in CATALOG.031
-    -read text referenced by CATALOG.031 (some text in M_NPUB also)
+    -read text referenced by CATALOG.031 (some text in M_NPUB/M_COVR also)
     -write back mariner's parameter to .cfg (client job!)
     -chart manager / chart extent / CATALOG.031 (client job!)
 
@@ -53,7 +52,8 @@ DONE
 ====
 (put here TODO's that has been done)
 
-*   -combined adjacent areas of M_COVR, CATCOV=1; HODATA01 - boundary marking end of HO data. Use CSG as in _computeCentroid().
+    -experimental: supression of overlapping simple lines (ie overlaping LS() not processed) (also of same disp prio AREAS/LINES)
+    -combined adjacent areas of M_COVR, CATCOV=1; HODATA01 - boundary marking end of HO data. Use CSG as in _computeCentroid().
     -alarm safety perimeter (pick GL trick) and route planning -try fast geo route instead of the pick GL trick
     -text shadow
     -WARN: chart no 1 PLib put $LINE in layer 0
