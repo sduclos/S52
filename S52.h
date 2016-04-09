@@ -100,7 +100,7 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_QUAPNT01            = 25,   // display QUAPNT01 (quality of position symbol) (on/off) (default on)
 
-    S52_MAR_DISP_OVERLAP        = 26,   // display overlapping symbol (debug)
+    S52_MAR_DISP_OVERLAP        = 26,   // display cells, overlapping layer (debug)
 
     S52_MAR_DISP_LAYER_LAST     = 27,   // enable S52_drawLast (see [1] bellow)
 
@@ -194,7 +194,7 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
  *
  * Return: (transfer none): String with the version of libS52 and the '#define' used to build it
  */
-#define S52_VERSION "libS52-2016APR06-1.174"
+#define S52_VERSION "libS52-2016APR09-1.175"
 DLL const char * STD S52_version(void);
 
 /**
