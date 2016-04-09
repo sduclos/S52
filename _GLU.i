@@ -613,6 +613,7 @@ static S57_prim *_tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
         if (TRUE == S57_getGeoData(geoData, i, &npt, &ppt)) {
             gluTessBeginContour(tobj);
             for (guint j=0; j<npt-1; ++j, ppt+=3) {
+                ppt[2] = 0.0;  // delete possible S57_OVERLAP_GEO_Z
                 gluTessVertex(tobj, ppt, ppt);
             }
             gluTessEndContour(tobj);
@@ -644,6 +645,7 @@ void      S52_GLU_addUnion(S57_geo *geo)
         //ppt += npt*3 - 3;
         //for (guint i=npt; i>0; --i, ppt-=3) {  // CCW
         for (guint i=0; i<npt; ++i, ppt+=3) {  // CW
+            ppt[2] = 0.0;  // delete possible S57_OVERLAP_GEO_Z
             gluTessVertex(_tUnion, (GLdouble*)ppt, (void*)ppt);
             //PRINTF("x/y/z %f/%f/%f\n", d[0],d[1],d[2]);
         }
