@@ -214,12 +214,12 @@ static GArray *_freetype_gl_buffer    = NULL;
 
 static int       _f2d(GArray *tessWorkBuf_d, guint npt, vertex_t *ppt)
 // convert array of float (vertex_t with GLES2) to array of double
-// as the tesselator work on double for OGR with has coord. in double
+// as the tesselator work on double for OGR witch has coord. in double
 {
     g_array_set_size(tessWorkBuf_d, 0);
 
     for (guint i=0; i<npt; i++) {
-        double d[3] = {ppt[0], ppt[1], ppt[2]};
+        double d[3] = {ppt[0], ppt[1], 0.0};  // flush S57_OVERLAP_GEO_Z
         g_array_append_val(tessWorkBuf_d, d);
 
         ppt += 3;
@@ -233,7 +233,7 @@ static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt)
     g_array_set_size(tessWorkBuf_f, 0);
 
     for (guint i=0; i<npt; ++i) {
-        float f[3] = {ppt[0], ppt[1], ppt[2]};
+        float f[3] = {ppt[0], ppt[1], 0.0};  // flush S57_OVERLAP_GEO_Z
         g_array_append_val(tessWorkBuf_f, f);
         ppt += 3;
     }
