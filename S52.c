@@ -1846,18 +1846,23 @@ static int        _suppLineOverlap()
                 //
                 // CA379035.000 Tadoussac has Mask on TSSLPT:5339,5340
                 // but TSSLPT has no LC() or LS() to mask !
+                // Note: RESARE02 has LC()!
                 // TSSLPT:5339 : MASK (IntegerList) = (7:1,2,255,255,255,255,2)
                 // 1 - mask, 2 - show, 255 - NULL, Masking is no relevant (exterior boundary truncated by the data limit)
+
+                // Note: use clip plane - Z_CLIP_PLANE = S57_OVERLAP_GEO_Z + 1
+
                 //*
                 GString *maskstr = S57_getAttVal(geo, "MASK");
                 if (NULL != maskstr) {
                     // check if buff is large enough
-                    gchar *substr = ",...)";
-                    gchar *found1 = g_strrstr(maskstr->str, substr);
-                    if (NULL != found1) {
-                        PRINTF("ERROR: OGR buffer TEMP_BUFFER_SIZE in ogr/ogrfeature.cpp:994 overflow\n");
-                        g_assert(0);
-                    } else {
+                    // the check will be done previously (see above)
+                    //gchar *substr = ",...)";
+                    //gchar *found1 = g_strrstr(maskstr->str, substr);
+                    //if (NULL != found1) {
+                    //    PRINTF("ERROR: OGR buffer TEMP_BUFFER_SIZE in ogr/ogrfeature.cpp:994 overflow\n");
+                    //    g_assert(0);
+                    //} else {
                         // buff size OK
                         gchar **splitMASK = g_strsplit_set(maskstr->str+1, "():,", 0);
                         gchar **topMASK   = splitMASK;
@@ -1866,14 +1871,15 @@ static int        _suppLineOverlap()
                         guint n = atoi(*splitMASK++);
                         for (guint i=0; i<n; ++splitMASK, ++i) {
                             if (('1'==*splitMASK[0]) || ('5'==*splitMASK[1])) {
-                                PRINTF("FIXME: 'MASK' FOUND ---> %s : %s\n", S57_getName(geo), maskstr->str);
+                                // debug
+                                PRINTF("DEBUG: 'MASK' FOUND ---> %s:%i : %s\n", S57_getName(geo), S57_getGeoS57ID(geo), maskstr->str);
                                 // TSSLPT:5339 : (7:1,2,255,255,255,255,2)
                                 // TSSLPT:5340 : (5:1,2,255,255,2)
-                                g_assert(0);
+                                //g_assert(0);
                             }
                         }
                         g_strfreev(topMASK);
-                    }
+                    //}
                 }
                 //*/
                 ///////////////////////////////////////////////////////////////////////////
@@ -3686,6 +3692,7 @@ static int        _cullObj(_cell *c, GPtrArray *rbin)
         //if (103 == S57_getGeoS57ID(geo)) {
         //    PRINTF("ISODGR01 found\n");
         //}
+
         // debug - layer drawing order
         //if (0 == g_strcmp0("mnufea", S52_PL_getOBCL(obj))) {
         //    PRINTF("mnufea found\n");
@@ -4191,6 +4198,7 @@ static int        _draw()
         int h = floor(xyz[4] - xyz[1]);
 
         // needed in combining HO DATA limit (check for corner overlap)
+        // also mariners obj that overlapp cells
         S52_GL_setScissor(x, y, w, h);
 
         // draw under radar
