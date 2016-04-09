@@ -233,8 +233,7 @@ static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt)
     g_array_set_size(tessWorkBuf_f, 0);
 
     for (guint i=0; i<npt; ++i) {
-        //float f[3] = {ppt[0], ppt[1], ppt[2]};
-        float f[3] = {ppt[0], ppt[1], 0.0};
+        float f[3] = {ppt[0], ppt[1], ppt[2]};
         g_array_append_val(tessWorkBuf_f, f);
         ppt += 3;
     }
