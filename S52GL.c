@@ -100,7 +100,8 @@ typedef enum _VP {
 } VP;
 
 //#define Z_CLIP_PLANE 10000   // clipped beyon this plane
-#define Z_CLIP_PLANE S57_OVERLAP_GEO_Z + 1
+//#define Z_CLIP_PLANE (S57_OVERLAP_GEO_Z + 1)
+#define Z_CLIP_PLANE (S57_OVERLAP_GEO_Z - 1)
 
 ////////////////////////////////////////////////////////////////////
 
@@ -1088,7 +1089,6 @@ static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
         g_assert(0);
         return;
     }
-
 
 #ifdef S52_USE_GL2
     glEnableVertexAttribArray(_aPosition);
@@ -3129,12 +3129,12 @@ static int       _renderLS_afterglow(S52_obj *obj)
         return TRUE;
 
     if (0 == npt) {
-        PRINTF("DEBUG: afterglow npt = 0\n");
+        PRINTF("DEBUG: afterglow npt = 0, .. exit\n");
         g_assert(0);
         return TRUE;
     }
     if (0 == pti) {
-        PRINTF("DEBUG: afterglow pti = 0\n");
+        PRINTF("DEBUG: afterglow pti = 0, .. exit\n");
         //g_assert(0);
         return TRUE;
     }
@@ -3247,8 +3247,6 @@ static int       _renderLS_afterglow(S52_obj *obj)
 
 static int       _renderLS(S52_obj *obj)
 // Line Style
-// FIXME: do overlapping line suppression (need to find a test case - S52_MAR_SYMBOLIZED_BND)
-// check using Z plane to clip S57_OVERLAP_GEO_Z
 {
 #ifdef S52_USE_GV
     return FALSE;
@@ -3653,9 +3651,9 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
         //}
 
         {   // complete the rest of the line
-            pt3v pt[2] = {{x1+offset_wrld_x, y1+offset_wrld_y, 0.0}, {x2, y2, 0.0}};
-            g_array_append_val(_tmpWorkBuffer, pt[0]);
-            g_array_append_val(_tmpWorkBuffer, pt[1]);
+            pt3v pt[2] = {{x1+offset_wrld_x, y1+offset_wrld_y, z1}, {x2, y2, z2}};
+            g_array_append_val(_tmpWorkBuffer, pt[0]);  // x1 y1 z1
+            g_array_append_val(_tmpWorkBuffer, pt[1]);  // x2 y2 z2
         }
     }
 
@@ -6396,8 +6394,8 @@ int        S52_GL_getViewPort(int *x, int *y, int *width, int *height)
 
 int        S52_GL_setScissor(int x, int y, int width, int height)
 // return TRUE;
-// when w & h = GL_INVALID_VALUE is generated if either width or height is negative
-// the turn of glDisable(GL_SCISSOR_TEST)
+// when w & h < 0, GL_INVALID_VALUE is generated
+// so if either width or height is negative the turn of glDisable(GL_SCISSOR_TEST)
 {
     // NOTE: width & height are in fact GLsizei, a pseudo unsigned int
     // it is a 'int32' that can't be negative
@@ -6415,8 +6413,6 @@ int        S52_GL_setScissor(int x, int y, int width, int height)
     return TRUE;
 }
 
-//const
-//char      *S52_GL_getNameObjPick(void)
 cchar     *S52_GL_getNameObjPick(void)
 
 {
