@@ -1189,7 +1189,7 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
     // -- DEPTH COLOR ------------------------------------
 
-    S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the GPU]
+    S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the CPU/GPU]
     //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 0.0);  // off
 
     S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);
@@ -1268,6 +1268,9 @@ static int      _s52_setupMarPar(void)
 
     //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
     S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 1.0);  // on
+
+    S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 0.0);
+    //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 1.0);
 
     //*
     // debug - use for timing rendering
