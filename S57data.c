@@ -537,7 +537,7 @@ S57_geo   *S57_setMLINE(guint nLineCount, guint *linexyznbr, geocoord **linexyz)
 
     return geo;
 }
-#endif
+#endif  // 0
 
 //S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S57_AW_t origAW)
 S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
@@ -1785,7 +1785,6 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
     // FIXME: optimisation: push Z one to many edge
     // FIXME: optimisation: check if moving vertex to clip plane (Z_CLIP_PLANE)
     for (guint j=0; j<nptEdge; ++j) {
-        //ppt[i*3 + 2] = -10.0; // not Z_CLIP_PLANE
         ppt[i*3 + 2] = -S57_OVERLAP_GEO_Z; // not Z_CLIP_PLANE
         i += next;
     }
