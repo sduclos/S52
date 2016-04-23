@@ -1469,10 +1469,6 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     //gsetbuf(stdout, NULL);
 #endif
 
-    // debug
-    if (NULL != log_cb)
-        log_cb("S52_init(): test log\n");
-
     S52_utils_initLog(log_cb);
 
     PRINTF("screen_pixels_w: %i, screen_pixels_h: %i, screen_mm_w: %i, screen_mm_h: %i\n",
@@ -1823,7 +1819,7 @@ static int        _suppLineOverlap()
                     break;
                 }
 
-                /* FIXME: overkill, find a better way . maybe when loading att
+                //* FIXME: overkill, find a better way . maybe when loading att
                 {   // check for substring ",...)" if found at the end
                     // this mean that TEMP_BUFFER_SIZE in OGR is not large anought.
                     // see ogr/ogrfeature.cpp:994
@@ -1839,7 +1835,7 @@ static int        _suppLineOverlap()
                         return FALSE;
                     }
                 }
-                */
+                //*/
 
 
                 /////////////////////// DEBUG MASK ////////////////////////////////////////////////
@@ -1852,7 +1848,7 @@ static int        _suppLineOverlap()
 
                 // Note: use clip plane - Z_CLIP_PLANE = S57_OVERLAP_GEO_Z + 1
 
-                //*
+                /*
                 GString *maskstr = S57_getAttVal(geo, "MASK");
                 if (NULL != maskstr) {
                     // check if buff is large enough
@@ -2316,7 +2312,7 @@ int               _loadRaster(const char *fname)
         return FALSE;
     }
 
-    // FIXME: - read file "version.txt" in bathy folder
+    // FIXME: - read file "version.txt" in bathy
     //        - check S52_version()
     //        - check Mercator Latitude projection
     //        - delete *.merc if need to project again
