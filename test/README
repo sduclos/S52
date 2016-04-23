@@ -19,7 +19,7 @@ TODO:
 
 TIP:
 
-    - xmap: X11 magnify parts of the screen
+    - xmag: X11 magnify parts of the screen
 
 
 ------------------------------------------------------------
@@ -68,6 +68,8 @@ Other Files:
 - s52.cfg
   CHART & PLIB path for testing
 
+- _s52_setupMarPar.i
+  common setup for: s52egl.c, s52gtk2, s52gtk2egl, s52gtk3egl
 
 ------------------------------------------------------------
 
