@@ -15,6 +15,7 @@ LOCAL_SRC_FILES  := ../../s52egl.c ../../s52ais.c
 
 # -DUSE_FAKE_AIS     - fake AIS (debug)
 # -DUSE_AIS          - get AIS data from gpsd running on a host machine
+# -DUSE_LOG_CB       - use log_cb in init to get log send to STDOUT (usefull on non-rooted device)
 
 # -DS52_USE_AFGLOW   - add afterglow to target (VESSEL/OWNSHP), need symbole in PLAUX_00.DAI
 # -DS52_USE_SL4A     - SL4A is a RPC bridge to the Android framework
@@ -25,7 +26,6 @@ LOCAL_SRC_FILES  := ../../s52egl.c ../../s52ais.c
 # -DS52_USE_ADRENO   - need GLES2 (Nexus)
 # -DS52_USE_WORLD    - experimental - load world Shapefile
 # -DS52_USE_SOCK     - send call to S52_*() via socket
-# -DS52_USE_LOG      - use S52_error_cb in init to get log send to STDOUT (usefull on non-rooted device)
 # -DS52_USE_RADAR    -
 
 ARMTOOLCHAINPATH := /home/sduclos/dev/prog/Android/dev/android-19-toolchain
@@ -35,11 +35,12 @@ S52DROIDINC      := /home/sduclos/S52/test/android/dist/sysroot/include
 #                    -DS52_USE_AFGLOW
 LOCAL_CFLAGS     := -g -O0 -std=c99 -Wall -DG_LOG_DOMAIN=\"s52droid\"                 \
                     -DS52_USE_ANDROID                                                 \
-                    -DS52_USE_TEGRA2                                                  \
+                    -DS52_USE_ADRENO                                                  \
                     -DS52_USE_EGL                                                     \
                     -DS52_USE_GLES2                                                   \
-                    -DUSE_AIS                                                         \
                     -DS52_USE_AFGLOW                                                  \
+                    -DUSE_LOG_CB                                                      \
+                    -DUSE_AIS                                                         \
                     -I../..                                                           \
                     -I$(S52DROIDINC)                                                  \
                     -I$(S52DROIDINC)/glib-2.0                                         \
