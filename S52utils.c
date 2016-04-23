@@ -70,9 +70,6 @@ static const char _version[] = S52_VERSION
 #ifdef  S52_DEBUG
       ",S52_DEBUG"
 #endif
-#ifdef  S52_USE_LOG
-      ",S52_USE_LOG"
-#endif
 #ifdef  S52_USE_LOGFILE
       ",S52_USE_LOGFILE"
 #endif
@@ -222,6 +219,13 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
 	}
 
     g_print("%s", buf);
+
+    // if user set a callback .. call it
+    if (NULL != _log_cb) {
+        _log_cb(str);
+    }
+
+
 }
 
 #ifdef S52_USE_LOGFILE
@@ -251,7 +255,10 @@ int      S52_utils_initLog(S52_log_cb log_cb)
 // set print handler
 // set tmp log file
 {
-    _log_cb = log_cb;
+    if (NULL != log_cb) {
+        log_cb("S52_utils_initLog(): init logging\n");
+        _log_cb = log_cb;
+    }
 
 #ifdef S52_USE_LOGFILE
     GError *error = NULL;
@@ -259,7 +266,7 @@ int      S52_utils_initLog(S52_log_cb log_cb)
     if (-1 == _logFile) {
         PRINTF("WARNING: g_file_open_tmp(): failed\n");
     } else {
-        PRINTF("DEBUG: tmp dir:%s\n", g_get_tmp_dir());
+        PRINTF("DEBUG: logfile tmp dir:%s\n", g_get_tmp_dir());
     }
     if (NULL != error) {
         g_printf("WARNING: g_file_open_tmp() failed (%s)\n", error->message);
