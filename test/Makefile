@@ -9,7 +9,7 @@
 
 #all: s52glx        # GLX & OGR
 #all: s52eglx       # EGL & GLX & OGR
-#DEPRECATED: all: s52eglarm     # EGL & GLES2 & ARM/Android & OGR - S52_USE_ADRENO for Nexus / S52_USE_TEGRA2 for Xoom
+#DEPRECATED: all: s52eglarm     # EGL & GLES2 & ARM/Android & OGR - now build from android
 #all: s52gv         # GV  (OpenEV  / GTK )
 #all: s52gv2        # GV2 (OpenEV2 / GTK2)  broken
 #all: s52gtk2       # GTK2 & OGR
@@ -60,8 +60,8 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DUSE_FAKE_AIS      - debug - programmaticaly faked AIS data (no call to s52ais.c)
 # -DUSE_AIS           - call s52ais.c
 # -DSET_SCREEN_SIZE   - set screen size be hand (hard coded as dual-screen seem to confused the setup)
+# -DUSE_LOG_CB        - log every S52_* in tmp file
 
-# -DS52_USE_LOG       - log every S52_* in tmp file
 # -DS52_USE_MESA3D    - set ENV for Mesa3D MSAA and vblank_mode
 # -DS52_USE_GLES2     - GLES2
 # -DS52_USE_GLES3     - GLES3.x / GLSL ES 3.0
@@ -77,10 +77,12 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DUSE_FAKE_AIS
 
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
-                      -DS52_USE_GL2                                    \
-                      -DS52_USE_MESA3D -DUSE_AIS
+                      -DS52_USE_GL2          \
+                      -DS52_USE_MESA3D       \
+                      -DUSE_AIS
 
-s52gtk2gps: CFLAGS += -DS52GTK2_USE_GPSD -DS52_USE_DBUS `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1`
+s52gtk2gps: CFLAGS += `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1` \
+                      -DS52_USE_DBUS
 
 s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 
@@ -93,11 +95,18 @@ s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
                      -DS52_USE_AFGLOW
 
 # same as s52eglx, but "gtk+-2.0" is added - no AIS
-s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` \
-                     -DS52_USE_EGL -DS52_USE_GLES2
+s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-2.0` \
+                     -DS52_USE_EGL           \
+                     -DS52_USE_GLES2         \
+                     -DS52_USE_MESA3D        \
+                     -DSET_SCREEN_SIZE       \
+                     -DUSE_AIS               \
+                     -DS52_USE_AFGLOW
+
 # same as s52eglx, but "gtk+-3.0" is added
 s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-3.0` \
-                     -DS52_USE_EGL -DS52_USE_GLES2
+                     -DS52_USE_EGL           \
+                     -DS52_USE_GLES2
 
 s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`      \
                       -I$(OPENEV_HOME) -DGV_USE_DOUBLE_PRECISION_COORD \
@@ -136,10 +145,10 @@ OGR_LIBS  = `gdal-config --libs`
 s52eglx   : LIBS    = `pkg-config --libs egl x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS) -lm
 
 # same as s52eglx, add "gtk+-2.0"
-s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-2.0` $(S52_LIBS)
+s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-2.0 libgps` $(S52_LIBS) -lm
 
 # same as s52eglx, add "gtk+-3.0"
-s52gtk3egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-3.0` $(S52_LIBS)
+s52gtk3egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-3.0 libgps` $(S52_LIBS) -lm
 
 
 ############### build ##############################
@@ -156,11 +165,11 @@ s52glx: s52glx.c
 s52eglx: s52egl.c s52ais.c
 	$(CC) $(CFLAGS) s52egl.c s52ais.c $(LIBS) -o $@
 
-s52gtk2egl: s52gtk2egl.c
-	$(CC) $(CFLAGS) s52gtk2egl.c $(LIBS) -o $@
+s52gtk2egl: s52gtk2egl.c s52ais.c
+	$(CC) $(CFLAGS) s52gtk2egl.c s52ais.c $(LIBS) -o $@
 
 s52gtk3egl: s52gtk3egl.c s52ais.c
-	$(CC) $(CFLAGS) s52gtk3egl.c $(LIBS) -o $@
+	$(CC) $(CFLAGS) s52gtk3egl.c s52ais.c $(LIBS) -o $@
 
 s52gv:  LIBS = $(S52_LIBS) $(GTK_LIBS) $(GV_LIBS) $(OGR_LIBS)
 s52gv:  s52gv.c
