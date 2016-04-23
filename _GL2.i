@@ -1183,6 +1183,10 @@ static int       _renderTile(S52_DList *DListData)
         GLint first = 0;
         GLint count = 0;
 
+        // debug: how can this be !?
+        if (NULL == DListData->prim[i])
+            continue;
+
         GArray *vert = S57_getPrimVertex(DListData->prim[i]);
         vertex_t *v = (vertex_t*)vert->data;
 
