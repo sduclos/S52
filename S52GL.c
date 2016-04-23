@@ -1588,6 +1588,11 @@ static int       _glCallList(S52_DList *DListData)
 
             // same color but change in MODE
             while (TRUE == S57_getPrimIdx(DListData->prim[i], j, &mode, &first, &count)) {
+
+                // debug: how can this be !?
+                if (NULL == DListData->prim[i])
+                    continue;
+
                 if (_TRANSLATE == mode) {
                     GArray *vert = S57_getPrimVertex(DListData->prim[i]);
 
