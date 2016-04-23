@@ -145,7 +145,7 @@ MAKEFILE BUILD FLAGS:
 # -DS52_USE_FTGL             : text rendering
 # -DS52_USE_GLC              : text rendering
 # -DS52_USE_FREETYPE_GL      : text rendering, need -DS52_USE_GLES2
-# -DS52_USE_LOG              : log every S52_* in tmp file
+# -DS52_USE_LOGFILE          : log every S52_* in tmp file
 # -DS52_USE_SUPP_LINE_OVERLAP: suppress display of overlapping line (gdal/ogr need patching, see doc/ogrfeature.cpp.diff)
 # -DS52_USE_OGR_FILECOLLECTOR: call OGR S57FileCollector() to apply S57 update
 # -DS52_USE_DBUS             : mimic S52.h
