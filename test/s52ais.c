@@ -211,9 +211,10 @@ static struct sigaction _old_signal_handler_SIGTERM;
 #endif
 
 #ifdef S52_USE_ANDROID
-#define GPSD_HOST "192.168.1.66"  // connect to GPSD on local network
+//#define GPSD_HOST "192.168.1.66"  // connect to GPSD on local network
 //#define GPSD_HOST "192.168.1.68"  // connect to GPSD on local network
 //#define GPSD_HOST "192.168.1.70"  // connect to GPSD on local network
+#define GPSD_HOST "192.168.1.73"  // connect to GPSD on local network
 #else
 #define GPSD_HOST "localhost"     // connect to local GPSD
 #endif
