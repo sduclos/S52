@@ -117,6 +117,8 @@ static s52engine _engine;
 // Common stuff
 //
 
+#include "_s52_setupMarPar.i"       // _s52_setupMarPar()
+
 #define VESSELTURN_UNDEFINED 129
 
 //------ FAKE AIS - DEBUG ----
@@ -619,95 +621,10 @@ static int      _s52_init       (s52engine *engine)
     S52_loadPLib(PLIB);
     S52_loadPLib(COLS);
 
-    // -- DEPTH COLOR ------------------------------------
-    S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
-    //S52_setMarinerParam(S52_MAR_TWO_SHADES,      1.0);   // 1.0 --> 2 shades
-
-    // sounding color
-    //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    10.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
-
-
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);
-
-    //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
-    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
-
-    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
-    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
-
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON
-    // -- DEPTH COLOR ------------------------------------
-
-
-
-    S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);
-    S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);
-    S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);
-    //S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);    // (default ON)
-
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // always ON
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // default
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_OTHER);
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE | S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
-    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
-
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE );
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // default
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);
-    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Standard(default) + Other)
-
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
-    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60
-
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
-
-    // remove QUAPNT01 symbole (black diagonal and a '?')
-    S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);   // off
-
-    S52_setMarinerParam(S52_MAR_DISP_CALIB,      1.0);
-
-    // --- TEXT ----------------------------------------------
-    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);
-    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);
+    _s52_setupMarPar();
 
     S52_setTextDisp(0, 100, TRUE);                      // show all text
     //S52_setTextDisp(0, 100, FALSE);                   // no text
-
-    // cell's legend
-    //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
-    S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);   // hide (default)
-    // -------------------------------------------------------
-
-
-    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
-    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
-
-    S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
-    //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
-
-    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
-
-    // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
-    //S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 0.0);
-
-    //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
-    S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 1.0);  // on
-
-    // debug - use for timing redering
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
 
 
     // if first start find where we are looking
