@@ -177,7 +177,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 #
 # Debug:
 # -DS52_DEBUG            - add more info for debugging libS52 (ex _checkError() in S52GL.c)
-# -DS52_USE_LOG          - log every S52_* in tmp file
+# -DS52_USE_LOGFILE      - log every S52_* in tmp file
 # -DS52_USE_BACKTRACE    - debug
 # -DG_DISABLE_ASSERT     - glib - disable g_assert()
 #
@@ -298,7 +298,6 @@ s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -fPIC -mt
 s52eglarm : AR     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ar
 s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 
-#                     -DS52_USE_LOG
 #                     -DS52_DEBUG $(DBG)
 #                     -DG_DISABLE_ASSERT
 #                     -DS52_USE_TEGRA2
@@ -311,12 +310,13 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_OPENGL_VBO                  \
                      -DS52_USE_FREETYPE_GL                 \
                      -DS52_USE_ANDROID                     \
-                     -DS52_USE_TEGRA2                      \
+                     -DS52_USE_ADRENO                      \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK                        \
                      -DS52_USE_TXT_SHADOW                  \
                      -DS52_USE_AFGLOW                      \
+                     -DS52_USE_LOGFILE                     \
                      -DS52_DEBUG
 
 
@@ -369,7 +369,7 @@ s52win32 : CFLAGS   = -mms-bitfields                         \
                       -DS52_USE_GL1                          \
                       -DS52_USE_PROJ                         \
                       -DS52_USE_OGR_FILECOLLECTOR            \
-                      -DS52_USE_LOG                          \
+                      -DS52_USE_LOGFILE                      \
                       -DG_DISABLE_ASSERT                     \
                       -D_MINGW
 
@@ -394,7 +394,7 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
                       -DS52_USE_FREETYPE_GL          \
                       -DS52_USE_OGR_FILECOLLECTOR    \
                       -DS52_USE_SYM_VESSEL_DNGHL     \
-                      -DS52_USE_LOG                  \
+                      -DS52_USE_LOGFILE              \
                       -DG_DISABLE_ASSERT             \
                       -D_MINGW                       \
                       -DS52_DEBUG $(DBG2)
