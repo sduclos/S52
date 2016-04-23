@@ -204,6 +204,7 @@ static s52engine    _engine;
 // Common stuff
 //
 
+#include "_s52_setupMarPar.i"       // _s52_setupMarPar()
 
 // debug - lap timer
 static GTimer *_timer = NULL;
@@ -967,7 +968,7 @@ static int      _s52_setupOWNSHP(s52droid_state_t *state)
 }
 #endif  // USE_FAKE_AIS
 
-static int      _s52_setupIceRoute(void)
+static int      _s52_setupIceRte(void)
 {
 /*
 
@@ -1163,130 +1164,8 @@ static int      _s52_setupPRDARE(s52droid_state_t *state)
     return TRUE;
 }
 
-static int      _s52_setupMarPar(void)
-{
-    // -- DEPTH COLOR ------------------------------------
-    S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
-    //S52_setMarinerParam(S52_MAR_TWO_SHADES,      1.0);   // 1.0 --> 2 shades
-
-    // sounding color
-    //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    10.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
-
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);     // for triggering symb ISODGR01 (ODD winding) at Rimouski
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
-
-    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
-    //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
-
-    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
-    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
-    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   12.0);
-
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
-    // -- DEPTH COLOR ------------------------------------
-
-    S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the CPU/GPU]
-    //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 0.0);  // off
-
-    S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);
-    S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);
-    S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);
-    //S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);    // (default ON)
-
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // always ON
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // default
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_OTHER);
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE | S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
-    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
-
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE );
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // default
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);
-    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Standard(default) + Other)
-
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60 - need plib_COLS-3.4-a.rle
-    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60 - need plib_COLS-3.4-a.rle
-
-    //S52_setMarinerParam(S52_MAR_VECPER,         12.0);  // vecper: Vector-length time-period (min) (normaly 6 or 12)
-    S52_setMarinerParam(S52_MAR_VECMRK,          1.0);  // vecmrk: Vector time-mark interval (0 - none, 1 - 1&6 min, 2 - 6 min)
-    //S52_setMarinerParam(S52_MAR_VECMRK,          2.0);  // vecmrk: Vector time-mark interval (0 - none, 1 - 1&6 min, 2 - 6 min)
-    //S52_setMarinerParam(S52_MAR_VECSTB,          0.0);  // vecstb: Vector Stabilization (0 - none, 1 - ground, 2 - water)
-
-    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
-
-    // remove QUAPNT01 symbole (black diagonal and a '?')
-    S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);   // off
-
-    S52_setMarinerParam(S52_MAR_DISP_CALIB,      1.0);
-
-    // cell's legend
-    //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
-    S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);   // hide (default)
-
-    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
-    S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
-
-    S52_setMarinerParam(S52_MAR_ANTIALIAS,       1.0);   // on
-    //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
-
-    // trick to force symbole size
-#ifdef S52_USE_TEGRA2
-    // smaller on xoom so that proportion look the same
-    // as a 'normal' screen - since the eye is closer to the 10" screen of the Xoom
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
-#endif
-
-#ifdef S52_USE_ADRENO
-    // Nexus 7 (2013) [~323 ppi]
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.2);
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
-#endif
-
-#if !defined(SET_SCREEN_SIZE) && !defined(S52_USE_ANDROID)
-    // NOTE: S52 pixels for symb are 0.3 mm
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-    S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
-#endif
-
-    // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
-    //S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 0.0);
-    // older AIS - case where s52ais reconnect
-    // FIXME: maybe check AIS mmsi, so that same ohjH is used!
-    S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 700.0);
-
-    //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
-    S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
-
-    //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
-    S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 1.0);  // on
-
-    S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 0.0);
-    //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 1.0);
-
-    //*
-    // debug - use for timing rendering
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
-    //*/
-
-    return TRUE;
-}
-
-#ifdef S52_USE_LOG
-static int      _s52_error_cb   (const char *err)
+#ifdef USE_LOG_CB
+static int      _s52_log_cb     (const char *err)
 {
     LOGI("%s", err);
     return TRUE;
@@ -1323,7 +1202,7 @@ static guchar  *_s52_radar_cb2  (double *cLat, double *cLng, double *rNM)
     return (unsigned char *)_RADARtex;
     //return (unsigned char *)NULL;
 }
-#endif
+#endif  // S52_USE_RADAR
 
 static int      _s52_init       (s52engine *engine)
 {
@@ -1389,9 +1268,9 @@ static int      _s52_init       (s52engine *engine)
 #endif  // SET_SCREEN_SIZE
 #endif  // S52_USE_ANDROID
 
-#ifdef S52_USE_LOG
+#ifdef USE_LOG_CB
         // Nexus: no root, can't do: $ su -c "setprop log.redirect-stdio true"
-        if (FALSE == S52_init(w, h, wmm, hmm, _s52_error_cb))
+        if (FALSE == S52_init(w, h, wmm, hmm, _s52_log_cb))
 #else
         if (FALSE == S52_init(w, h, wmm, hmm, NULL))
 #endif
@@ -1424,7 +1303,7 @@ static int      _s52_init       (s52engine *engine)
     g_setenv("S57_CSV", "/sdcard/s52droid/gdal_data", 1);
 
     // read cell location fron s52.cfg
-    S52_loadCell(NULL, NULL);
+    //S52_loadCell(NULL, NULL);
 
     // Tadoussac
     //S52_loadCell(PATH "/ENC_ROOT/CA379035.000", NULL);
@@ -1432,7 +1311,7 @@ static int      _s52_init       (s52engine *engine)
     //S52_loadCell(PATH "/ENC_ROOT", NULL);
 
     // Rimouski
-    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
+    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
     // Estuaire du St-Laurent
     //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
 
@@ -1548,10 +1427,6 @@ static int      _s52_init       (s52engine *engine)
 
     S52_setS57ObjClassSupp("M_NSYS", TRUE);   // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
 
-    // CS DATCVY01:M_COVR:CATCOV=2, "M_COVR" OTHER
-    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 1.0);  // draw all M_COVR individualy
-    //CS DATCVY01:M_COVR:CATCOV=1, "m_covr" BASE
-    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 0.0);  // union: combite M_COVR as one poly 'm_covr' (default)
 
     //S52_setS57ObjClassSupp("M_COVR", TRUE);         // HO data limit __/__/__ - LC(HODATA01)
     //S52_setS57ObjClassSupp("M_COVR", FALSE);        // default
@@ -1565,8 +1440,6 @@ static int      _s52_init       (s52engine *engine)
     _s52_setupMarPar();
 
     //S52_setTextDisp(0, 100, TRUE);                // show all text (default)
-    S52_setMarinerParam(S52_MAR_SHOW_TEXT,   1.0);  // default
-    //S52_setMarinerParam(S52_MAR_SHOW_TEXT, 0.0);
 
     // if first start, find where we are looking
     _s52_computeView(&engine->state);
@@ -1584,7 +1457,7 @@ static int      _s52_init       (s52engine *engine)
     _s52_setupVRMEBL(&engine->state);
 
     // set route
-    _s52_setupIceRoute();
+    _s52_setupIceRte();
 
     // can't check guard zone here because projection not set yet (set via S52_draw())
     //_s52_setupLEGLIN(&engine->state);
