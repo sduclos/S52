@@ -33,16 +33,16 @@
 
 #else  // SOLARIS
 
-#if defined(S52_DEBUG) || defined(S52_USE_LOG)
+#if defined(S52_DEBUG) || defined(S52_USE_LOGFILE)
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
 
 void _printf(const char *file, int line, const char *function, const char *frmt, ...);
 #define PRINTF(...) _printf(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__)
-#else    // S52_DEBUG  S52_USE_LOG
+#else    // S52_DEBUG  S52_USE_LOGFILE
 #define PRINTF(...)
-#endif  // S52_DEBUG  S52_USE_LOG
+#endif  // S52_DEBUG  S52_USE_LOGFILE
 #endif  // SOLARIS
 
 #define SNPRINTF(b,n,f, ...) if (n <= g_snprintf(b,n,f,__VA_ARGS__)) {PRINTF("WARNING: str overflow\n");g_assert(0);}
