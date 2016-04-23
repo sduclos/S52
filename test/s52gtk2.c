@@ -26,8 +26,8 @@
 
 #include <gtk/gtk.h>        // gtk_init(), ..
 #include <gdk/gdkkeysyms.h> // GDK_left, ..  (key syms)
-#include <gtk/gtkgl.h>      // gtk_gl_*(), gdk_gl_*()
-#include <gdk/gdkgl.h>      // gtk_gl_*(), gdk_gl_*()
+#include <gtk/gtkgl.h>      // gtk_gl_*()
+#include <gdk/gdkgl.h>      // gdk_gl_*()
 
 //#if !defined(S52_USE_GLES2)
 //// FIXME: work on GL1.x only
@@ -40,7 +40,6 @@
 
 #ifdef USE_AIS
 #include "s52ais.h"
-gboolean update_cb(void *dummy);
 #endif
 
 #define  g_print printf     // prevent writing help() / dump() to log
@@ -79,8 +78,15 @@ typedef struct pt2 {
 #define ZOOM_FAC   2.0
 #define ZOOM_INI   1.0
 
-#define VESSELTURN_UNDEFINED 129
+//----------------------------------------------
+//
+// Common stuff
+//
 
+#include "_s52_setupMarPar.i"       // _s52_setupMarPar()
+
+
+#define VESSELTURN_UNDEFINED 129
 
 #ifdef S52_USE_AFGLOW
 #define MAX_AFGLOW_PT (12 * 20)   // 12 min @ 1 vessel pos per 5 sec
@@ -757,10 +763,10 @@ static int      _my_S52_loadObject_cb(const char *objname,   void *shape)
 }
 #endif
 
-#ifdef S52_USE_LOG
-static int      _err_cb(const char *err)
+#ifdef USE_LOG_CB
+static int      _s52_log_cb(const char *msg)
 {
-    printf("%s\n", err);
+    printf("%s\n", msg);
 
     return TRUE;
 }
@@ -1124,8 +1130,8 @@ static int      _initS52()
     // can be used before S52_init()
     g_print("%s\n", S52_version());
 
-#ifdef S52_USE_LOG
-    S52_init(w, h, wmm, hmm, _err_cb);
+#ifdef USE_LOG_CB
+    S52_init(w, h, wmm, hmm, _s52_log_cb);
 #else
     S52_init(w, h, wmm, hmm, NULL);
 #endif
@@ -1155,126 +1161,6 @@ static int      _initS52()
     // test
     //S52_setS57ObjClassSupp("DRGARE");   // drege area
 
-
-    ////////////////////////////////////////////////////////////
-    //
-    // setup internal variable to decent value for debugging
-    //
-    /*
-    S52_setMarinerParam("S52_MAR_SHOW_TEXT",       1.0);
-    S52_setMarinerParam("S52_MAR_TWO_SHADES",      0.0);
-    S52_setMarinerParam("S52_MAR_SAFETY_CONTOUR", 10.0);
-    S52_setMarinerParam("S52_MAR_SAFETY_DEPTH",   10.0);
-    S52_setMarinerParam("S52_MAR_SHALLOW_CONTOUR", 5.0);
-    S52_setMarinerParam("S52_MAR_DEEP_CONTOUR",   11.0);
-
-    S52_setMarinerParam("S52_MAR_SHALLOW_PATTERN", 0.0);
-    //S52_setMarinerParam("S52_MAR_SHALLOW_PATTERN", 1.0);
-
-    S52_setMarinerParam("S52_MAR_SHIPS_OUTLINE",   1.0);
-    S52_setMarinerParam("S52_MAR_DISTANCE_TAGS",   0.0);
-    S52_setMarinerParam("S52_MAR_TIME_TAGS",       0.0);
-    S52_setMarinerParam("S52_MAR_BEAM_BRG_NM",     1.0);
-
-    S52_setMarinerParam("S52_MAR_FULL_SECTORS",    1.0);
-    S52_setMarinerParam("S52_MAR_SYMBOLIZED_BND",  1.0);
-    S52_setMarinerParam("S52_MAR_SYMPLIFIED_PNT",  1.0);
-
-    S52_setMarinerParam("S52_MAR_DISP_CATEGORY",   S52_MAR_DISP_CATEGORY_STD);  // STANDARD (default)
-
-    S52_setMarinerParam("S52_MAR_COLOR_PALETTE",   0.0);  // first palette
-
-    //S52_setMarinerParam("S52_MAR_FONT_SOUNDG",    1.0);
-    S52_setMarinerParam("S52_MAR_FONT_SOUNDG",     0.0);
-
-    S52_setMarinerParam("S52_MAR_DATUM_OFFSET",    0.0);
-    //S52_setMarinerParam("S52_MAR_DATUM_OFFSET",    5.0);
-
-    S52_setMarinerParam("S52_MAR_SCAMIN",          1.0);
-    //S52_setMarinerParam("S52_MAR_SCAMIN",          0.0);
-
-    // remove clutter
-    S52_setMarinerParam("S52_MAR_QUAPNT01",        0.0);
-    */
-
-    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);
-    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);
-    S52_setTextDisp(0, 100, TRUE);                      // show all text
-    // debug
-    //S52_setTextDisp(21, 1, FALSE);                      // BOYLAT
-
-    S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);
-    // sounding color
-    S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,   10.0);
-
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // for triggering symb ISODGR01 (ODD winding) at Rimouski
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  4.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
-
-    //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
-    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR,10.0);
-
-    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
-
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);
-
-    S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);
-
-    //S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   1.0);
-    S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   0.0);
-    S52_setMarinerParam(S52_MAR_TIME_TAGS,       0.0);
-    S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);
-    //S52_setMarinerParam(S52_MAR_HEADNG_LINE,     0.0);
-    S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);
-
-    //S52_setMarinerParam(S52_MAR_FULL_SECTORS,    1.0);
-    S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);
-    S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND,  1.0);
-    S52_setMarinerParam(S52_MAR_SYMPLIFIED_PNT,  1.0);
-
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_BASE);   // BASE
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_STD);    // STANDARD (default)
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_OTHER);  // OTHER
-    S52_setMarinerParam(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_SELECT); // SELECT (all)
-
-    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);   // first palette
-
-    //S52_setMarinerParam(S52_MAR_FONT_SOUNDG,    1.0);
-    S52_setMarinerParam(S52_MAR_FONT_SOUNDG,     0.0);
-
-    S52_setMarinerParam(S52_MAR_DATUM_OFFSET,    0.0);
-    //S52_setMarinerParam(S52_MAR_DATUM_OFFSET,    5.0);
-
-    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);    // on
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // off
-
-    // remove QUAPNT01 symbole (black diagonal and a '?')
-    S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);
-
-
-    //--------  SETTING FOR CHART NO 1 (PLib C1 3.1) --------
-    // Soundings      ON
-    // Text           ON
-    // Depth Shades    4
-    // Safety Contour 10 m
-    // Safety Depth    7 m
-    // Shallow         5 m
-    // Deep           30 m
-    /*
-    S52_setMarinerParam("S52_MAR_SHOW_TEXT",        1.0);
-    S52_setMarinerParam("S52_MAR_DISP_CATEGORY",    S52_MAR_DISP_CATEGORY_OTHER); // OTHER
-    S52_setMarinerParam("S52_MAR_TWO_SHADES",       0.0); // Depth Shades
-    S52_setMarinerParam("S52_MAR_SAFETY_CONTOUR",  10.0);
-    S52_setMarinerParam("S52_MAR_SAFETY_DEPTH",     7.0);
-    S52_setMarinerParam("S52_MAR_SHALLOW_CONTOUR",  5.0);
-    S52_setMarinerParam("S52_MAR_DEEP_CONTOUR",    30.0);
-    */
-    //-------------------------------------------------------
-
-    S52_setMarinerParam(S52_MAR_ANTIALIAS,        1.0);
-
-
     ////////////////////////////////////////////////////////////
     //
     // setup mariner object (for debugging)
@@ -1291,46 +1177,11 @@ static int      _initS52()
     // load PLib from s52.cfg indication
     //S52_loadPLib(NULL);
 
+    _s52_setupMarPar();
 
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE);  // none
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD);  // Mariner Standard
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);  // Mariner Other (EBL VRN)
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD | S52_MAR_DISP_LAYER_LAST_OTHER);    // All Mariner (Standard + Other)
-    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Standard(default) + Other)
-
-
-    //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 0.0);  // none
-    S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 1.0);  // pick/highlight top object
-    //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 2.0);  // pick stack/highlight top
-    //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 3.0);  // pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
-
-
-    // cell's legend
-    //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
-    S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);     // hide
-
-    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
-    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
-    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.2);
-    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
-
-    S52_setMarinerParam(S52_MAR_DISP_CALIB, 1.0);
-
-    S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // hide
-    //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // show
-
-    S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 700.0); // (default 0.0 - OFF)
-
-    //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
-    S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 1.0);  // on
-
-    // debug - use for timing rendering
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
+    S52_setTextDisp(0, 100, TRUE);                      // show all text
+    // debug
+    //S52_setTextDisp(21, 1, FALSE);                      // BOYLAT
 
     // init decoration (scale bar, North arrow, unit, calib.)
     S52_newCSYMB();
@@ -1385,12 +1236,6 @@ static void     realize(GtkWidget *widget, gpointer data)
 #ifdef USE_AIS
     // Note: data form AIS start too fast for the main loop
     s52ais_initAIS();
-
-    // for continuous drawing
-    //g_idle_add(_draw, widget);
-    //g_idle_add(update_cb, widget);
-
-    //g_print("install hook to loop on gtk_widget_draw when idle\n");
 #endif
 
     // setup S52 display
@@ -1802,13 +1647,10 @@ static int      _s52_updTimeTag(void)
 #endif
     }
 
-
     return TRUE;
 }
 #endif
 
-//#ifdef USE_AIS
-//gboolean update_cb(void *dummy)
 static int      _s52_draw_cb    (gpointer user_data)
 {
     (void)user_data;
@@ -1817,7 +1659,7 @@ static int      _s52_draw_cb    (gpointer user_data)
     GdkGLDrawable *gldrawable = gtk_widget_get_gl_drawable(_winArea);
 
     // debug
-    //printf("update_cb..\n");
+    //printf("_s52_draw_cb..\n");
 
 
     //g_timer_reset(_timer);
@@ -1859,11 +1701,10 @@ static int      _s52_draw_cb    (gpointer user_data)
 
     // debug
     //gdouble sec = g_timer_elapsed(_timer, NULL);
-    //printf("update_cb: %.0f msec\n", sec * 1000);
+    //printf("_s52_draw_cb: %.0f msec\n", sec * 1000);
 
     return TRUE;
 }
-//#endif
 
 int main(int argc, char **argv)
 {
