@@ -3551,9 +3551,18 @@ static int        _app()
                                             double *ppt = NULL;
                                             S57_getGeoData(geo, 0, &npt, &ppt);
                                             S52ObjectHandle sclbdy = _newMarObj("sclbdy", S52_AREAS, npt, NULL, NULL);
-                                            S52_obj *obj = S52_PL_isObjValid(sclbdy);
-                                            _updateGeo(obj, ppt);
-                                            g_array_append_val(_sclbdyList, sclbdy);
+                                            if (FALSE != sclbdy) {
+                                                S52_obj *obj = S52_PL_isObjValid(sclbdy);
+                                                _updateGeo(obj, ppt);
+
+                                                // FIXME: setExtent
+                                                //_setExt(geo, 1, xyz);
+
+                                                g_array_append_val(_sclbdyList, sclbdy);
+                                            } else {
+                                                PRINTF("WARNING: 'sclbdy' fail check PLib AUX\n");
+                                            }
+
                                         }
                                     }
                                 }
@@ -3597,11 +3606,15 @@ static int        _app()
         if (0 != npt) {
             // PLib AUX link to "m_covr" ;OP(3OD11060);LC(HODATA01)
             _HODATAUnion = _newMarObj("m_covr", S52_AREAS, npt, NULL, "CATCOV:1");
-            S52_obj *obj = S52_PL_isObjValid(_HODATAUnion);
-            _updateGeo(obj, (double*)rev);
+            if (FALSE != _HODATAUnion) {
+                S52_obj *obj = S52_PL_isObjValid(_HODATAUnion);
+                _updateGeo(obj, (double*)rev);
 
-            // FIXME: setExtent
-            //_setExt(geo, 1, xyz);
+                // FIXME: setExtent
+                //_setExt(geo, 1, xyz);
+            } else {
+                PRINTF("WARNING: 'm_cover' fail check PLib AUX\n");
+            }
         }
         _doDATCVR = FALSE;
     }
@@ -5942,7 +5955,7 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
     double   *gxyz    = NULL;
     double  **ggxyz   = NULL;
     guint    *gxyznbr = NULL;
-    S52_obj  *obj     = NULL;
+    //S52_obj  *obj     = NULL;
 
     if (0 != xyznbr) {
 
@@ -6010,8 +6023,11 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
 
     if (NULL == geo) {
         PRINTF("WARNING: S57 geo object build failed\n");
-        g_assert(0);
-        //return NULL;
+        if (NULL != gxyznbr) g_free(gxyznbr);
+        if (NULL != ggxyz)   g_free(ggxyz);
+
+        //g_assert(0);
+
         return FALSE;
     }
 
@@ -6030,7 +6046,11 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
     if (NULL != listAttVal)
         _setAtt(geo, listAttVal);
 
-    obj = _insertS57geo(_marinerCell, geo);
+    S52_obj  *obj = _insertS57geo(_marinerCell, geo);
+    if (NULL == obj) {
+        S57_doneData(geo, NULL);
+        return FALSE;
+    }
 
     // init TX & TE
     S52_PL_resetParseText(obj);
@@ -6050,7 +6070,6 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
     }
 #endif
 
-    //return obj;
     return S57_getGeoS57ID(geo);
 }
 
