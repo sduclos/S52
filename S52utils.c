@@ -222,7 +222,7 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
 
     // if user set a callback .. call it
     if (NULL != _log_cb) {
-        _log_cb(str);
+        _log_cb(buf);
     }
 
 
