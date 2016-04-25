@@ -104,7 +104,7 @@ s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
                      -DS52_USE_AFGLOW
 
 # same as s52eglx, but "gtk+-3.0" is added
-s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 gtk+-3.0` \
+s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2
 
@@ -165,11 +165,17 @@ s52glx: s52glx.c
 s52eglx: s52egl.c s52ais.c
 	$(CC) $(CFLAGS) s52egl.c s52ais.c $(LIBS) -o $@
 
-s52gtk2egl: s52gtk2egl.c s52ais.c
-	$(CC) $(CFLAGS) s52gtk2egl.c s52ais.c $(LIBS) -o $@
+#s52gtk2egl: s52gtk2egl.c s52ais.c
+#	$(CC) $(CFLAGS) s52gtk2egl.c s52ais.c $(LIBS) -o $@
 
-s52gtk3egl: s52gtk3egl.c s52ais.c
-	$(CC) $(CFLAGS) s52gtk3egl.c s52ais.c $(LIBS) -o $@
+#s52gtk3egl: s52gtk3egl.c s52ais.c
+#	$(CC) $(CFLAGS) s52gtk3egl.c s52ais.c $(LIBS) -o $@
+
+s52gtk2egl: s52gtkegl.c s52ais.c
+	$(CC) $(CFLAGS) s52gtkegl.c s52ais.c $(LIBS) -o $@
+
+s52gtk3egl: s52gtkegl.c s52ais.c
+	$(CC) $(CFLAGS) s52gtkegl.c s52ais.c $(LIBS) -o $@
 
 s52gv:  LIBS = $(S52_LIBS) $(GTK_LIBS) $(GV_LIBS) $(OGR_LIBS)
 s52gv:  s52gv.c
@@ -354,7 +360,7 @@ gtk3: gtk3test.c
 
 clean:
 	rm -f s52glx s52eglx s52gv s52gv2 s52gtk2 s52gtk2gl2 s52gtk2p s52gtk2.exe *.o *.so \
-    s52gtk2gps S52-1.0.* s52eglx s52ais s52gtk2egl s52gtk3egl s52eglw32.exe
+    s52gtk2gps S52-1.0.* s52eglx s52ais s52gtkegl s52eglw32.exe
 
 distclean: clean
 	rm -f android/dist/sdcard/s52droid/bin/s52ais
