@@ -52,6 +52,8 @@
 #include <glib/gprintf.h>   // g_sprintf()
 #endif
 
+#define  PLIB "PLAUX_00.DAI"
+#define  COLS "plib_COLS-3.4.rle"
 
 typedef struct S52_extent {
     double S,W,N,E;
@@ -1171,9 +1173,9 @@ static int      _initS52()
     //S52_loadPLib("plib_pilote.rle");
     //S52_loadPLib("plib-test2.rle");
     // load auxiliary PLib (fix waypnt/WAYPNT01, OWNSHP vector, put cursor on layer 9, ..)
-    S52_loadPLib("PLAUX_00.DAI");
+    S52_loadPLib(PLIB);
     // lastest (S52 ed 6.0) IHO colors from www.ecdisregs.com
-    S52_loadPLib("plib_COLS-3.4-a.rle");
+    S52_loadPLib(COLS);
     // load PLib from s52.cfg indication
     //S52_loadPLib(NULL);
 
