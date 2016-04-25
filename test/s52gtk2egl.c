@@ -31,7 +31,8 @@
 #include <gdk/gdkx.h>
 #endif
 
-#include <gdk/gdkkeysyms.h>  // GDK_*
+#include <gdk/gdkkeysyms.h>         // GDK_*
+#include <gdk/gdkkeysyms-compat.h>  // compat GDK_a/GDK_KEY_a
 
 #include "S52.h"
 
@@ -104,6 +105,7 @@ typedef struct s52engine {
 
 static s52engine _engine;
 
+
 //----------------------------------------------
 //
 // Common stuff
@@ -134,7 +136,7 @@ static S52ObjectHandle _vessel_ais_afglow = FALSE;
 //-----------------------------
 
 
-static int      _egl_init       (s52engine *engine)
+static int      _egl_init       (s52engine *engine) /*fold00*/
 {
     g_print("s52egl:_egl_init(): starting ..\n");
 
@@ -272,7 +274,7 @@ static int      _egl_init       (s52engine *engine)
     return TRUE;
 }
 
-static void     _egl_done       (s52engine *engine)
+static void     _egl_done       (s52engine *engine) /*fold00*/
 // Tear down the EGL context currently associated with the display.
 {
     if (engine->eglDisplay != EGL_NO_DISPLAY) {
@@ -294,7 +296,7 @@ static void     _egl_done       (s52engine *engine)
     return;
 }
 
-static void     _egl_beg        (s52engine *engine, const char *tag)
+static void     _egl_beg        (s52engine *engine, const char *tag) /*fold00*/
 {
     (void)tag;
 
@@ -311,7 +313,7 @@ static void     _egl_beg        (s52engine *engine, const char *tag)
     return;
 }
 
-static void     _egl_end        (s52engine *engine)
+static void     _egl_end        (s52engine *engine) /*fold00*/
 {
     if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
         g_print("_egl_end(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
@@ -321,7 +323,7 @@ static void     _egl_end        (s52engine *engine)
     return;
 }
 
-static int      _s52_computeView(s52droid_state_t *state)
+static int      _s52_computeView(s52droid_state_t *state) /*fold00*/
 {
     double S,W,N,E;
 
@@ -337,7 +339,7 @@ static int      _s52_computeView(s52droid_state_t *state)
 }
 
 #ifdef USE_FAKE_AIS
-static int      _s52_setupVESSEL(s52droid_state_t *state)
+static int      _s52_setupVESSEL(s52droid_state_t *state) /*fold00*/
 {
     // ARPA
     //_vessel_arpa = S52_newVESSEL(1, dummy, "ARPA label");
@@ -375,7 +377,7 @@ static int      _s52_setupVESSEL(s52droid_state_t *state)
     return TRUE;
 }
 
-static int      _s52_setupOWNSHP(s52droid_state_t *state)
+static int      _s52_setupOWNSHP(s52droid_state_t *state) /*fold00*/
 {
     _ownshp = S52_newOWNSHP(OWNSHPLABEL);
     //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 0.0, 30.0);
@@ -393,7 +395,7 @@ static int      _s52_setupOWNSHP(s52droid_state_t *state)
 }
 #endif  // USE_FAKE_AIS
 
-static int      _s52_setupLEGLIN(void)
+static int      _s52_setupLEGLIN(void) /*fold00*/
 {
 /*
 
@@ -476,7 +478,7 @@ route normale de navigation.
     return TRUE;
 }
 
-static int      _s52_setupVRMEBL(s52droid_state_t *state)
+static int      _s52_setupVRMEBL(s52droid_state_t *state) /*fold00*/
 {
     //char *attVal   = NULL;      // ordinary cursor
     char  attVal[] = "cursty:2,_cursor_label:0.0N 0.0W";  // open cursor
@@ -505,7 +507,7 @@ static int      _s52_setupVRMEBL(s52droid_state_t *state)
     return TRUE;
 }
 
-static int      _s52_setupPRDARE(s52droid_state_t *state)
+static int      _s52_setupPRDARE(s52droid_state_t *state) /*fold00*/
 // test - centroid (PRDARE: wind farm)
 {
     // AREA (CW: to center the text)
@@ -525,7 +527,7 @@ static int      _s52_setupPRDARE(s52droid_state_t *state)
     return TRUE;
 }
 
-static int      _s52_init       (s52engine *engine)
+static int      _s52_init       (s52engine *engine) /*fold00*/
 {
     if ((NULL==engine->eglDisplay) || (EGL_NO_DISPLAY==engine->eglDisplay)) {
         g_print("_init_S52(): no EGL display ..\n");
@@ -658,7 +660,7 @@ static int      _s52_init       (s52engine *engine)
     return EGL_TRUE;
 }
 
-static int      _s52_done       (s52engine *engine)
+static int      _s52_done       (s52engine *engine) /*fold00*/
 {
     (void)engine;
 
@@ -668,7 +670,7 @@ static int      _s52_done       (s52engine *engine)
 }
 
 #ifdef USE_FAKE_AIS
-static int      _s52_updTimeTag (s52engine *engine)
+static int      _s52_updTimeTag (s52engine *engine) /*fold00*/
 {
     (void)engine;
 
@@ -698,7 +700,7 @@ static int      _s52_updTimeTag (s52engine *engine)
 }
 #endif
 
-static int      _s52_draw_cb    (gpointer user_data)
+static int      _s52_draw_cb    (gpointer user_data) /*fold00*/
 // return TRUE for the signal to be called again
 {
     s52engine *engine = (s52engine*)user_data;
@@ -782,7 +784,7 @@ exit:
 //}
 
 
-static gboolean _scroll  (GdkEventKey *event)
+static gboolean _scroll  (GdkEventKey *event) /*fold00*/
 {
     // TODO: test blit
     /*
@@ -809,7 +811,7 @@ static gboolean _scroll  (GdkEventKey *event)
     return TRUE;
 }
 
-static gboolean _zoom    (GdkEventKey *event)
+static gboolean _zoom    (GdkEventKey *event) /*fold00*/
 {
     //*
     switch(event->keyval) {
@@ -822,7 +824,7 @@ static gboolean _zoom    (GdkEventKey *event)
     return TRUE;
 }
 
-static gboolean _rotation(GdkEventKey *event)
+static gboolean _rotation(GdkEventKey *event) /*fold00*/
 {
     //S52_getView(&_view);
 
@@ -850,7 +852,7 @@ static gboolean _rotation(GdkEventKey *event)
     return TRUE;
 }
 
-static gboolean _toggle  (S52MarinerParameter paramName)
+static gboolean _toggle  (S52MarinerParameter paramName) /*fold00*/
 {
     double val = 0.0;
 
@@ -860,7 +862,7 @@ static gboolean _toggle  (S52MarinerParameter paramName)
     return TRUE;
 }
 
-static gboolean _meterInc(S52MarinerParameter paramName)
+static gboolean _meterInc(S52MarinerParameter paramName) /*fold00*/
 {
     double val = 0.0;
 
@@ -870,7 +872,7 @@ static gboolean _meterInc(S52MarinerParameter paramName)
     return TRUE;
 }
 
-static gboolean _meterDec(S52MarinerParameter paramName)
+static gboolean _meterDec(S52MarinerParameter paramName) /*fold00*/
 {
     double val = 0.0;
 
@@ -880,7 +882,7 @@ static gboolean _meterDec(S52MarinerParameter paramName)
     return TRUE;
 }
 
-static gboolean _disp    (S52MarinerParameter paramName, const char disp)
+static gboolean _disp    (S52MarinerParameter paramName, const char disp) /*fold00*/
 {
     double val = (double) disp;
 
@@ -889,7 +891,7 @@ static gboolean _disp    (S52MarinerParameter paramName, const char disp)
     return TRUE;
 }
 
-static gboolean _cpal    (S52MarinerParameter paramName, double val)
+static gboolean _cpal    (S52MarinerParameter paramName, double val) /*fold00*/
 {
     val = S52_getMarinerParam(paramName) + val;
 
@@ -898,7 +900,7 @@ static gboolean _cpal    (S52MarinerParameter paramName, double val)
     return TRUE;
 }
 
-static gboolean _inc     (S52MarinerParameter paramName)
+static gboolean _inc     (S52MarinerParameter paramName) /*fold00*/
 {
     double val = 0.0;
 
@@ -909,7 +911,7 @@ static gboolean _inc     (S52MarinerParameter paramName)
     return TRUE;
 }
 
-static gboolean _mmInc   (S52MarinerParameter paramName)
+static gboolean _mmInc   (S52MarinerParameter paramName) /*fold00*/
 {
     double val = 0.0;
 
@@ -920,7 +922,7 @@ static gboolean _mmInc   (S52MarinerParameter paramName)
     return TRUE;
 }
 
-static gboolean _dumpParam()
+static gboolean _dumpParam() /*fold00*/
 {
     g_print("S52_MAR_SHOW_TEXT         t %4.1f\n", S52_getMarinerParam(S52_MAR_SHOW_TEXT));
     g_print("S52_MAR_TWO_SHADES        w %4.1f\n", S52_getMarinerParam(S52_MAR_TWO_SHADES));
@@ -968,7 +970,7 @@ static gboolean _dumpParam()
 
     return TRUE;
 }
-static gboolean configure_event(GtkWidget         *widget,
+static gboolean configure_event(GtkWidget         *widget, /*fold00*/
                                  GdkEventConfigure *event,
                                  gpointer           data)
 {
@@ -976,41 +978,23 @@ static gboolean configure_event(GtkWidget         *widget,
     (void)event;
     (void)data;
 
-
     //g_print("_configure_event\n");
 
-    // FIXME: find the new screen size
-    //GtkAllocation allocation;
-    //gtk_widget_get_allocation(GTK_WIDGET(widget), &allocation);
-    //_engine.width  = allocation.width;
-    //_engine.height = allocation.height;
-
-
-    //gtk_widget_get_allocation(GTK_WIDGET(_engine.window), &allocation);
-    //gtk_widget_size_allocate(GTK_WIDGET(_engine.window), &allocation);
-
-    //GtkRequisition requisition;
-    //gtk_widget_get_child_requisition(widget, &requisition);
-
-    //*
-    if (TRUE == _engine.do_S52init) {
-        g_print("s52egl:configure_event()\n");
-        _egl_init(&_engine);
-        _s52_init(&_engine);
-        _engine.do_S52init = FALSE;
-    }
+    GtkAllocation allocation;
+    gtk_widget_get_allocation(GTK_WIDGET(widget), &allocation);
+    _engine.width  = allocation.width;
+    _engine.height = allocation.height;
 
     _s52_computeView(&_engine.state);
     S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north);
     S52_setViewPort(0, 0, _engine.width, _engine.height);
 
     _engine.do_S52draw = TRUE;
-    //*/
 
     return TRUE;
 }
 
-static gboolean key_release_event(GtkWidget   *widget,
+static gboolean key_release_event(GtkWidget   *widget, /*fold00*/
                                   GdkEventKey *event,
                                   gpointer     data)
 {
@@ -1019,7 +1003,7 @@ static gboolean key_release_event(GtkWidget   *widget,
 
     //*
     switch(event->keyval) {
-        case GDK_Left  :
+        case GDK_KEY_Left  :
         case GDK_Right :
         case GDK_Up    :
         case GDK_Down  :_scroll(event);            break;
@@ -1140,30 +1124,28 @@ static gboolean key_release_event(GtkWidget   *widget,
     return TRUE;
 }
 
-int main (int argc, char** argv)
+int main(int argc, char** argv) /*fold00*/
 {
     gtk_init(&argc, &argv);
 
-    _engine.window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    _engine.window = GTK_WIDGET(gtk_window_new(GTK_WINDOW_TOPLEVEL));
     gtk_window_set_default_size(GTK_WINDOW(_engine.window), 800, 600);
-    gtk_window_set_title(GTK_WINDOW(_engine.window), "OpenGL ES2 in GTK2 application");
+    gtk_window_set_title       (GTK_WINDOW(_engine.window), "EGL / OpenGL ES2 in GTK application");
 
-    gtk_widget_show_all(_engine.window);
+    gtk_widget_set_app_paintable     (GTK_WIDGET(_engine.window), TRUE );
+    gtk_widget_set_double_buffered   (GTK_WIDGET(_engine.window), FALSE);
+    gtk_widget_set_redraw_on_allocate(GTK_WIDGET(_engine.window), TRUE );
 
-    // move to configure_event()
-    //_egl_init(&_engine);
-    //_s52_init(&_engine);
-
-    gtk_widget_set_app_paintable     (_engine.window, TRUE );
-    gtk_widget_set_double_buffered   (_engine.window, FALSE);
-    gtk_widget_set_redraw_on_allocate(_engine.window, TRUE );
-
-    g_signal_connect(G_OBJECT(_engine.window), "destroy",           G_CALLBACK(gtk_main_quit),      NULL);
+    g_signal_connect(G_OBJECT(_engine.window), "destroy",           G_CALLBACK(gtk_main_quit),     NULL);
     g_signal_connect(G_OBJECT(_engine.window), "key_release_event", G_CALLBACK(key_release_event), NULL);
     g_signal_connect(G_OBJECT(_engine.window), "configure_event",   G_CALLBACK(configure_event),   NULL);
 
-    _engine.do_S52init = TRUE;
-    g_timeout_add(500, _s52_draw_cb, &_engine); // 0.5 sec
+    g_timeout_add(500, (GSourceFunc)_s52_draw_cb, &_engine); // 0.5 sec
+
+    gtk_widget_show_all(_engine.window);
+
+    _egl_init(&_engine);
+    _s52_init(&_engine);
 
     gtk_main();
 
