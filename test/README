@@ -11,7 +11,7 @@ TODO:
 
     - refactor into:
         - handle EGL separatly
-        - init/set/load S52 stuff form TOML
+        - init/set/load S52 stuff form separate file (or TOML)
         - populate ./ref_dump/: reference .PNG to check for regression (use IHO S-64)
 
 
