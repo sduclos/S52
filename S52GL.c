@@ -6411,7 +6411,8 @@ int        S52_GL_setScissor(int x, int y, int width, int height)
 
     glEnable(GL_SCISSOR_TEST);
 
-    glScissor(x, y, width, height);
+    // +1 px to cover line witdh at edge
+    glScissor(x, y, width+1, height+1);
 
     _checkError("S52_GL_setScisor().. -end-");
 
