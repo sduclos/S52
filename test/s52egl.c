@@ -78,7 +78,7 @@
 
 #define PATH     "/sdcard/s52droid"      // Android 4.2
 #define PLIB     PATH "/PLAUX_00.DAI"
-#define COLS     PATH "/plib_COLS-3.4-a.rle"
+#define COLS     PATH "/plib_COLS-3.4.rle"
 #define GPS      PATH "/bin/sl4agps"
 #define AIS      PATH "/bin/s52ais"
 #define PID           ".pid"
@@ -88,7 +88,7 @@
 
 #define  PATH "/home/sduclos/dev/gis/data"
 #define  PLIB "PLAUX_00.DAI"
-#define  COLS "plib_COLS-3.4-a.rle"
+#define  COLS "plib_COLS-3.4.rle"
 #define  LOGI(...)   g_print(__VA_ARGS__)
 #define  LOGE(...)   g_print(__VA_ARGS__)
 
@@ -1422,14 +1422,14 @@ static int      _s52_init       (s52engine *engine)
 
 
     // debug - remove clutter from this symb in SELECT mode
-    S52_setS57ObjClassSupp("M_QUAL", TRUE);  // suppress display of the U pattern
+    S52_setS57ObjClassSupp("M_QUAL", TRUE);     // suppress display of the U pattern
     //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
 
-    S52_setS57ObjClassSupp("M_NSYS", TRUE);   // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
+    S52_setS57ObjClassSupp("M_NSYS", TRUE);     // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
 
-
-    //S52_setS57ObjClassSupp("M_COVR", TRUE);         // HO data limit __/__/__ - LC(HODATA01)
-    //S52_setS57ObjClassSupp("M_COVR", FALSE);        // default
+    // DATCOVR/M_COVR:CATCOV=2
+    S52_setS57ObjClassSupp("M_COVR", TRUE);     // HO data limit __/__/__ - LC(HODATA01)
+    //S52_setS57ObjClassSupp("M_COVR", FALSE);  // default
 
     // Note: "m_covr" is on BASE, so display can't be suppressed
     //S52_setS57ObjClassSupp("m_covr", TRUE);   // fail
