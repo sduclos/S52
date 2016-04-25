@@ -10,9 +10,7 @@ part of the core S52.
 TODO:
 
     - refactor into:
-        - separate in its own file all the setMarPar (or TOML)
-        - merge gtk2 & gtk3 (mouse & kb handling)
-        - handle EGL 
+        - handle EGL separatly
         - init/set/load S52 stuff form TOML
         - populate ./ref_dump/: reference .PNG to check for regression (use IHO S-64)
 
@@ -48,6 +46,9 @@ Makefile Target:
 - s52ais
   gpsd cleint to feed AIS to s52eglx and s52droid
 
+- s52gtk2egl, s52gtk3egl
+  GTK2 / GTK3 and EGL
+
 
 ------------------------------------------------------------
 
@@ -69,7 +70,7 @@ Other Files:
   CHART & PLIB path for testing
 
 - _s52_setupMarPar.i
-  common setup for: s52egl.c, s52gtk2, s52gtk2egl, s52gtk3egl
+  common setup for: s52egl.c, s52gtk2, s52gtkegl
 
 ------------------------------------------------------------
 
@@ -86,7 +87,7 @@ $ ln -s ../libS52.so libS52.so (to make a symbolic link)
 
 Other Folder:
 
-- s52ui: HTML5/Dart UI for testing libS52 functionality
+- s52ui: HTML5/Dart UI for event-driven testing libS52 and functionality
 
 - android: run libS52 on Android, use s52ui
 
