@@ -3,6 +3,21 @@
 // SD 2016APR28
 
 
+typedef void (*PFNGLINSERTEVENTMARKEREXT)(int length, const char *marker);
+//typedef void (GL_APIENTRY *PFNGLPUSHGROUPMARKEREXT)  (GLsizei length, const char *marker);
+//typedef void (GL_APIENTRY *PFNGLPOPGROUPMARKEREXT)   (void);
+
+static PFNGLINSERTEVENTMARKEREXT _glInsertEventMarkerEXT = NULL;
+//static PFNGLPUSHGROUPMARKEREXT   _glPushGroupMarkerEXT   = NULL;
+//static PFNGLPOPGROUPMARKEREXT    _glPopGroupMarkerEXT    = NULL;
+
+//#ifdef S52_USE_TEGRA2
+//typedef EGLuint64NV (*PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC) (void);
+//typedef EGLuint64NV (*PFNEGLGETSYSTEMTIMENVPROC)          (void);
+//static PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC _eglGetSystemTimeFrequencyNV = NULL;
+//static PFNEGLGETSYSTEMTIMENVPROC          _eglGetSystemTimeNV          = NULL;
+//#endif
+
 static void     _egl_done       (s52engine *engine)
 // Tear down the EGL context currently associated with the display.
 {
@@ -98,14 +113,12 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     }
     */
 
-#if !defined(S52_USE_MESA3D)
     // Mesa3D 10.1 generate a glError() in _checkError(): from S52_GL_begin() -0-: 0x502 (GL_INVALID_OPERATION)
     // Note: egltrace.so (apitrace) handle it
     if (NULL != _glInsertEventMarkerEXT) {
         //_glInsertEventMarkerEXT(strlen(tag), tag);
         _glInsertEventMarkerEXT(0, tag);
     }
-#endif
 
     return TRUE;
 }
@@ -287,21 +300,6 @@ static int      _egl_init   (s52engine *engine)
 // -------------------------------------------------------------------------
 //  EGL for s52egl - ARM/Android, X11
 //
-
-typedef void (*PFNGLINSERTEVENTMARKEREXT)(int length, const char *marker);
-//typedef void (GL_APIENTRY *PFNGLPUSHGROUPMARKEREXT)  (GLsizei length, const char *marker);
-//typedef void (GL_APIENTRY *PFNGLPOPGROUPMARKEREXT)   (void);
-
-static PFNGLINSERTEVENTMARKEREXT _glInsertEventMarkerEXT = NULL;
-//static PFNGLPUSHGROUPMARKEREXT   _glPushGroupMarkerEXT   = NULL;
-//static PFNGLPOPGROUPMARKEREXT    _glPopGroupMarkerEXT    = NULL;
-
-//#ifdef S52_USE_TEGRA2
-//typedef EGLuint64NV (*PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC) (void);
-//typedef EGLuint64NV (*PFNEGLGETSYSTEMTIMENVPROC)          (void);
-//static PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC _eglGetSystemTimeFrequencyNV = NULL;
-//static PFNEGLGETSYSTEMTIMENVPROC          _eglGetSystemTimeNV          = NULL;
-//#endif
 
 static int      _egl_init       (s52engine *engine)
 {
