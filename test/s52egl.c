@@ -60,70 +60,8 @@
 #include <android/asset_manager.h>
 #include <android_native_app_glue.h>  // struct android_app
 //#include <sys/types.h>
-
-//ANDROID_LOG_VERBOSE,
-//ANDROID_LOG_DEBUG,
-//ANDROID_LOG_INFO,
-//ANDROID_LOG_WARN,
-//ANDROID_LOG_ERROR,
-//ANDROID_LOG_FATAL,
-
-#define  LOG_TAG    "s52droid"
-#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
-#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
-#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
-#define  g_print    g_message
-
 //#include <glib-android/glib-android.h>  // g_android_init()
-
-#define PATH     "/sdcard/s52droid"      // Android 4.2
-#define PLIB     PATH "/PLAUX_00.DAI"
-#define COLS     PATH "/plib_COLS-3.4.rle"
-#define GPS      PATH "/bin/sl4agps"
-#define AIS      PATH "/bin/s52ais"
-#define PID           ".pid"
-#define ALLSTOP  PATH "/bin/run_allstop.sh"
-
-#else   // S52_USE_ANDROID
-
-#define  PATH "/home/sduclos/dev/gis/data"
-#define  PLIB "PLAUX_00.DAI"
-#define  COLS "plib_COLS-3.4.rle"
-#define  LOGI(...)   g_print(__VA_ARGS__)
-#define  LOGE(...)   g_print(__VA_ARGS__)
-
 #endif  // S52_USE_ANDROID
-
-// ebline draw flag (F4 toggle ON/OFF)
-//static int _drawVRMEBL = TRUE;
-static int _drawVRMEBL = FALSE;
-
-
-// test - St-Laurent Ice Route
-static S52ObjectHandle _waypnt1 = FALSE;
-static S52ObjectHandle _waypnt2 = FALSE;
-static S52ObjectHandle _waypnt3 = FALSE;
-static S52ObjectHandle _waypnt4 = FALSE;
-
-static S52ObjectHandle _leglin1 = FALSE;
-static S52ObjectHandle _leglin2 = FALSE;
-static S52ObjectHandle _leglin3 = FALSE;
-static S52ObjectHandle _leglin4 = FALSE;
-
-// lat/lon/begin/end
-static double _leglin4xy[2*2];
-
-// test - VRMEBL
-// S52 object name:"ebline"
-static S52ObjectHandle _vrmeblA = FALSE;
-
-// test - cursor DISP 9 (instead of IHO PLib DISP 8)
-// need to load PLAUX
-// S52 object name:"ebline"
-static S52ObjectHandle _cursor2 = FALSE;  // 2 - open cursor
-
-// test - centroid
-static S52ObjectHandle _prdare  = FALSE;
 
 
 // FIXME: mutex this share data
@@ -159,7 +97,7 @@ typedef struct s52engine {
 #endif
 
     // EGL - android or X11 window
-    //EGLNativeWindowType eglWindow;
+    EGLNativeWindowType eglWindow;
     EGLDisplay          eglDisplay;
     EGLSurface          eglSurface;
     EGLContext          eglContext;
@@ -204,49 +142,23 @@ static s52engine    _engine;
 // Common stuff
 //
 
-#include "_s52_setupMarPar.i"       // _s52_setupMarPar()
-
 // debug - lap timer
 static GTimer *_timer = NULL;
 
-// debug - exprimental
-//static int _doLoadRADAR = TRUE;
+#include "_s52_setupMarPar.i"  // _s52_setupMarPar()
+#include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP()
+#include "_s52_setupVESSEL.i"  // _s52_setupVESSEL()
+#include "_s52_setupVRMEBL.i"  // _s52_setupVRMEBL()
+//#include "_s52_setupPASTRK.i"  // _s52_setupPASTRK()
+#include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
+//#include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
+//#include "_s52_setupMarFea.i"  // _s52_setupMarFea()
+#include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
 
-#define VESSELTURN_UNDEFINED 129
+#include "_radar.i"            // _radar_init(), _radar_readLog(), _radar_done()
 
-
-
-//------ DEBUG ----
-// debug - no real AIS, then fake target
-#ifdef USE_FAKE_AIS
-static S52ObjectHandle _vessel_ais        = NULL;
-#define VESSELLABEL "~~MV Non Such~~ "           // last char will be trimmed
-
-// test synthetic after glow on VESSEL
-#ifdef S52_USE_AFGLOW
-#define MAX_AFGLOW_PT (12 * 20)   // 12 min @ 1 vessel pos per 5 sec
-//#define MAX_AFGLOW_PT 10        // debug
-static S52ObjectHandle _vessel_ais_afglow = NULL;
-#endif
-
-// test - ownshp
-static S52ObjectHandle _ownshp            = NULL;
-#define OWNSHPLABEL "OWNSHP\n220 deg / 6.0 kt"
-
-#endif  // USE_FAKE_AIS
-
-typedef void (*PFNGLINSERTEVENTMARKEREXT)(int length, const char *marker);
-//typedef void (GL_APIENTRY *PFNGLPUSHGROUPMARKEREXT)  (GLsizei length, const char *marker);
-//typedef void (GL_APIENTRY *PFNGLPOPGROUPMARKEREXT)   (void);
-
-static PFNGLINSERTEVENTMARKEREXT _glInsertEventMarkerEXT = NULL;
-//static PFNGLPUSHGROUPMARKEREXT   _glPushGroupMarkerEXT   = NULL;
-//static PFNGLPOPGROUPMARKEREXT    _glPopGroupMarkerEXT    = NULL;
-
-typedef EGLuint64NV (*PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC) (void);
-typedef EGLuint64NV (*PFNEGLGETSYSTEMTIMENVPROC)          (void);
-static PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC _eglGetSystemTimeFrequencyNV = NULL;
-static PFNEGLGETSYSTEMTIMENVPROC          _eglGetSystemTimeNV          = NULL;
+#include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*()
+#include "_egl.i"              // _egl_init(), _egl_beg(), _egl_end(), _egl_done()
 
 /*
 // GL not GLES2-3 When GL_EXT_framebuffer_multisample is supported, GL_EXT_framebuffer_object and GL_EXT_framebuffer_blit are also supported.
@@ -265,624 +177,11 @@ GL_APICALL void GL_APIENTRY glFramebufferTexture2DMultisampleEXT (GLenum target,
 #endif // GL_EXT_multisampled_render_to_texture
 */
 
+
 //-----------------------------
 
-#ifdef S52_USE_RADAR
-#define RADARLOG PATH "/radar/RADAR_imitator/radarlog"
 
-// Description of management structures and radar images
-typedef struct {
-    unsigned int RAIN      : 1;
-    unsigned int FRUIT     : 1;
-    unsigned int SCALE     : 4;
-    unsigned int MODE_2    : 1;
-    unsigned int _Status    : 1;     // collide with symbole 'Status' !
-    unsigned int reserved1 : 8;
-    unsigned int reserved2 : 8;
-    unsigned int reserved3 : 8;
-} PSO_APMode;
-
-typedef struct {
-    unsigned int    dwHeader;
-    PSO_APMode      mrAPMode;
-    unsigned short  Td;
-    unsigned short  IPCHG;
-    unsigned short  iStringsCount;
-    unsigned short  iStringLength;
-    unsigned char   reserved[4];
-    unsigned short  iCurrentString; // number of line [0..2047]
-    unsigned char   image[1280];    // image line
-} PSO_ImageDGram;
-
-#define ANGLEmax 2048
-#define Rmax     1280
-static FILE *_fd = NULL;
-
-typedef struct {
-    double x;
-    double y;
-} POINT;
-
-static guchar _RADARtex[Rmax*2][Rmax*2];  // Alpha
-//static guchar _RADARtex[Rmax*2][Rmax*2][4];  // RGBA
-static POINT  _Polar_Matrix_Of_Coords[ANGLEmax][Rmax];
-static int      _radar_init()
-{
-    if (NULL == (_fd = fopen(RADARLOG, "rb"))) {
-        g_print("s52egl:_initRadar(): can't open file %s\n", RADARLOG);
-        g_assert(0);
-        return FALSE;
-    }
-
-    memset(_Polar_Matrix_Of_Coords, 0, sizeof(_Polar_Matrix_Of_Coords));
-    memset(_RADARtex,               0, sizeof(_RADARtex));
-
-    // calculate polar coords
-    for (int ANGLE = 0; ANGLE < ANGLEmax; ANGLE++) {
-        double ANGLE_RAD = (double)ANGLE/ANGLEmax*2*M_PI;
-        double cosinus   = cos(ANGLE_RAD);
-        double sinus     = sin(ANGLE_RAD);
-
-        for (int R = 0; R < Rmax; R++) {
-            _Polar_Matrix_Of_Coords[ANGLE][R].x = R * cosinus + Rmax;
-            _Polar_Matrix_Of_Coords[ANGLE][R].y = R * sinus   + Rmax;
-        }
-    }
-
-    return TRUE;
-}
-
-static int      _radar_writePoint (unsigned char VALUE, int ANGLE, int R)
-// Alpha texture,
-{
-    double x = _Polar_Matrix_Of_Coords[ANGLE][R].x;
-    double y = _Polar_Matrix_Of_Coords[ANGLE][R].y;
-
-
-    //_RADARtex[(int)y][(int)x] = VALUE;  // Alpha
-    //_RADARtex[(int)(y+0.5)][(int)(x+0.5)] = VALUE;  // Alpha
-    //_RADARtex[(int)y][(int)x][3] = VALUE;  // Alpha
-
-    // debug - rounding x\y+.5 make no diff
-    _RADARtex[(int)y][(int)x] = 255 - VALUE;  // Alpha reverse (more conspic)
-    //_RADARtex[(int)(y+0.5)][(int)(x+0.5)] = 255 - VALUE;
-
-    return TRUE;
-}
-
-static int      _radar_writeString(guchar *string, int ANGLE)
-{
-    for (int R = 0; R < Rmax; R++)
-        _radar_writePoint(string[R], ANGLE, R);
-
-    return TRUE;
-}
-
-static int      _radar_readLog(int nLine)
-{
-    //LOGI("_radar_readLog()\n");
-
-    PSO_ImageDGram img;
-    while (nLine--) {
-        if (1 == fread(&img, sizeof(PSO_ImageDGram), 1, _fd)) {
-            _radar_writeString(img.image, img.iCurrentString);
-        } else {
-            // return to the top of the file
-            rewind(_fd);
-            g_print("fread = 0\n");
-        }
-        if (0 != ferror(_fd)) {
-            // handle error
-            g_print("ferror != 0\n");
-            g_assert(0);
-            return FALSE;
-        }
-    }
-
-    return TRUE;
-}
-#endif  // S52_USE_RADAR
-
-static int      _egl_init       (s52engine *engine)
-{
-    LOGI("s52egl:_egl_init(): beg ..\n");
-
-    if ((NULL != engine) && (engine->eglDisplay != EGL_NO_DISPLAY)) {
-        if (engine->eglDisplay != EGL_NO_DISPLAY)
-            LOGI("_egl_init(): EGL DISPLAY OK\n");
-        if (engine->eglContext != EGL_NO_CONTEXT)
-            LOGI("_egl_init(): EGL CONTEXT OK\n");
-        if (engine->eglSurface != EGL_NO_SURFACE)
-            LOGI("_egl_init(): EGL SURFACE OK\n");
-
-        LOGE("_egl_init(): EGL is already up .. init skipped!\n");
-
-        return FALSE;
-    }
-
-// EGL Error code -
-// #define EGL_SUCCESS             0x3000
-// #define EGL_NOT_INITIALIZED     0x3001
-// #define EGL_BAD_ACCESS          0x3002
-// #define EGL_BAD_ALLOC           0x3003
-// #define EGL_BAD_ATTRIBUTE       0x3004
-// #define EGL_BAD_CONFIG          0x3005
-// #define EGL_BAD_CONTEXT         0x3006
-// #define EGL_BAD_CURRENT_SURFACE 0x3007
-// #define EGL_BAD_DISPLAY         0x3008
-// #define EGL_BAD_MATCH           0x3009
-// #define EGL_BAD_NATIVE_PIXMAP   0x300A
-// #define EGL_BAD_NATIVE_WINDOW   0x300B
-// #define EGL_BAD_PARAMETER       0x300C
-// #define EGL_BAD_SURFACE         0x300D
-// #define EGL_CONTEXT_LOST        0x300E
-
-
-
-    EGLNativeWindowType eglWindow;
-    EGLDisplay          eglDisplay;
-    EGLSurface          eglSurface;
-    EGLContext          eglContext;
-
-    // Here specify the attributes of the desired configuration.
-    // Below, we select an EGLConfig with at least 8 bits per color
-    // component compatible with on-screen windows
-
-#ifdef S52_USE_ANDROID
-#ifdef S52_USE_TEGRA2
-    const EGLint eglConfigList[] = {
-        EGL_SURFACE_TYPE,        EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE,     EGL_OPENGL_ES2_BIT,
-
-        EGL_RED_SIZE,            8,
-        EGL_GREEN_SIZE,          8,
-        EGL_BLUE_SIZE,           8,
-        //EGL_ALPHA_SIZE,          8,
-
-        // Tegra 2 CSAA (anti-aliase)
-        EGL_COVERAGE_BUFFERS_NV, 1,  // TRUE
-        //EGL_COVERAGE_BUFFERS_NV, 0,
-
-        EGL_COVERAGE_SAMPLES_NV, 2,  // always 5 in practice on tegra 2
-
-        EGL_NONE
-    };
-#endif  // S52_USE_TEGRA2
-
-#ifdef S52_USE_ADRENO
-#define EGL_OPENGL_ES3_BIT_KHR				    0x00000040
-    EGLint eglConfigList[] = {
-        EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
-
-        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
-
-        // this bit open access to ES3 functions on QCOM hardware pre-Android support for ES3
-        // WARNING: this break MSAA on Android Kit-Kat 4.4.2, 4.4.3 - and -lGLESv3 Android.mk
-        //EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT_KHR,
-
-
-        // Note: MSAA work on Andreno in: setting > developer > MSAA
-        //EGL_SAMPLES,            1,  // fail on Adreno
-        //EGL_SAMPLE_BUFFERS,     4,  // fail on Adreno
-
-        EGL_RED_SIZE,           8,
-        EGL_GREEN_SIZE,         8,
-        EGL_BLUE_SIZE,          8,
-
-        EGL_NONE
-    };
-#endif  // S52_USE_ADRENO
-
-#else   // S52_USE_ANDROID
-
-#ifdef S52_USE_GLES2
-    // Mesa GL, GLES 2.x, 3.x
-    // MSAA: RGBA8, depth24, stencil8 - fail on Ubuntu 14.04 (Wayland!)
-    const EGLint eglConfigList[] = {
-        EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
-
-        // EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
-        //EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-        //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
-
-        EGL_RED_SIZE,        8,
-        EGL_GREEN_SIZE,      8,
-        EGL_BLUE_SIZE,       8,
-        //EGL_ALPHA_SIZE,      8,
-
-        //EGL_BUFFER_SIZE,        16,
-        //EGL_BUFFER_SIZE,        24,
-
-        //EGL_DEPTH_SIZE,         1,
-        //EGL_DEPTH_SIZE,         16,
-        //EGL_DEPTH_SIZE,         24,
-
-        //EGL_STENCIL_SIZE,        8,
-
-        // fail on Mesa (MSAA)
-        //EGL_SAMPLES,             1,   // say EGL_SUCCESS, but 0 config num
-        //EGL_SAMPLE_BUFFERS,      1,   // say EGL_SUCCESS, but 0 config num
-        //EGL_SAMPLE_BUFFERS,      2,
-        //EGL_SAMPLE_BUFFERS,      4,
-        //EGL_SAMPLE_BUFFERS,      8,
-
-        EGL_NONE
-    };
-#else   // S52_USE_GLES2
-
-    // Mesa OpenGL 1.x
-    const EGLint eglConfigList[] = {
-        EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
-
-        EGL_RED_SIZE,        8,
-        EGL_GREEN_SIZE,      8,
-        EGL_BLUE_SIZE,       8,
-        //EGL_ALPHA_SIZE,      8,
-
-        EGL_NONE
-    };
-#endif  // S52_USE_GLES2
-
-#endif  // S52_USE_ANDROID
-
-
-#ifdef S52_USE_ANDROID
-    eglDisplay  = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-#else
-    engine->dpy = XOpenDisplay(NULL);
-    eglDisplay  = eglGetDisplay(engine->dpy);
-#endif
-
-    if (EGL_NO_DISPLAY == eglDisplay)
-        LOGE("eglGetDisplay() failed. [0x%x]\n", eglGetError());
-
-    EGLint major = 0;
-    EGLint minor = 0;
-    if (EGL_FALSE == eglInitialize(eglDisplay, &major, &minor))
-        LOGE("eglInitialize() failed. [0x%x]\n", eglGetError());
-
-    LOGI("EGL Version   :%s\n", eglQueryString(eglDisplay, EGL_VERSION));
-    LOGI("EGL Vendor    :%s\n", eglQueryString(eglDisplay, EGL_VENDOR));
-    LOGI("EGL Extensions:%s\n", eglQueryString(eglDisplay, EGL_EXTENSIONS));
-
-    // Here, the application chooses the configuration it desires. In this
-    // sample, we have a very simplified selection process, where we pick
-    // the first EGLConfig that matches our criteria
-    //EGLint     tmp;
-    //EGLConfig  eglConfig[320];
-    //EGLConfig  eglConfig[27];
-    //EGLConfig  eglConfig[780];
-    EGLConfig  eglConfig;
-    EGLint     eglNumConfigs = 0;
-
-    eglGetConfigs(eglDisplay, NULL, 0, &eglNumConfigs);
-    LOGI("eglNumConfigs = %i\n", eglNumConfigs);
-
-    /*
-    for (int i = 0; i<eglNumConfigs; ++i) {
-        EGLint samples = 0;
-        //if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[i], EGL_SAMPLES, &samples))
-        //    LOGE(("eglGetConfigAttrib in loop for an EGL_SAMPLES fail at i = %i\n", i);
-        if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[i], EGL_SAMPLE_BUFFERS, &samples))
-            LOGE(("eglGetConfigAttrib in loop for an  EGL_SAMPLE_BUFFERS fail at i = %i\n", i);
-
-        if (samples > 0)
-            LOGE(("sample found: %i\n", samples);
-
-    }
-    //*/
-
-    if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, &eglConfig, 1, &eglNumConfigs)) {
-    //if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, eglConfig, 27, &eglNumConfigs))
-        LOGI("eglChooseConfig(): call failed [0x%x]\n", eglGetError());
-        g_assert(0);
-    }
-    if (0 == eglNumConfigs) {
-        LOGI("eglChooseConfig(): eglNumConfigs zero matching config [0x%x]\n", eglGetError());
-        g_assert(0);
-    }
-    // debug
-    //else
-    //    LOGI("eglChooseConfig() eglNumConfigs = %i\n", eglNumConfigs);
-
-#ifdef S52_USE_ANDROID
-    // EGL_NATIVE_VISUAL_ID is an attribute of the EGLConfig that is
-    // guaranteed to be accepted by ANativeWindow_setBuffersGeometry().
-    // As soon as we picked a EGLConfig, we can safely reconfigure the
-    // ANativeWindow buffers to match, using EGL_NATIVE_VISUAL_ID.
-    EGLint vid;
-    if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vid))
-    //if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[5], EGL_NATIVE_VISUAL_ID, &vid))
-        LOGE("Error: eglGetConfigAttrib() failed\n");
-
-    // WARNING: do not use native get/set Width()/Height() has it break rotation
-    ANativeWindow_setBuffersGeometry(engine->app->window, 0, 0, vid);
-    eglWindow = (EGLNativeWindowType) engine->app->window;
-    if (NULL == eglWindow) {
-        LOGE("ERROR: ANativeWindow is NULL (can't draw)\n");
-        g_assert(0);
-    }
-#else
-    {
-        XSetWindowAttributes wa;
-        XSizeHints    sh;
-        //XEvent        e;
-        unsigned long mask   = CWBackPixel | CWBorderPixel | CWEventMask | CWColormap;
-        long          screen = 0;
-        XVisualInfo  *visual = NULL;
-        XVisualInfo   tmplt;
-        //Colormap      colormap;
-        int           vID, n;
-        Window        window;
-        Display      *display = engine->dpy;
-
-#ifdef S52_USE_GLES2
-        char         *title   = "EGL/OpenGL ES 2.0 on a Linux Desktop";
-#else
-        char         *title   = "EGL/OpenGL on a Linux Desktop";
-#endif
-        eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vID);
-        tmplt.visualid = vID;
-        visual = XGetVisualInfo(display, VisualIDMask, &tmplt, &n);
-        if (NULL == visual) {
-            LOGE("XGetVisualInfo() failed.\n");
-            g_assert(0);
-        }
-        screen = DefaultScreen(display);
-        wa.colormap         = XCreateColormap(display, RootWindow(display, screen), visual->visual, AllocNone);
-        //wa.colormap         = XCreateColormap(display, RootWindow(display, screen), NULL, AllocNone);
-        wa.background_pixel = 0xFFFFFFFF;
-        wa.border_pixel     = 0;
-        wa.event_mask       = ExposureMask | StructureNotifyMask | KeyPressMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
-
-        window = XCreateWindow(display, RootWindow(display, screen), 0, 0, 1280, 1024,
-                               0, visual->depth, InputOutput, visual->visual, mask, &wa);
-                               //0, 0, InputOutput, NULL, mask, &wa);
-
-        sh.flags = USPosition;
-        sh.x = 0;
-        sh.y = 0;
-        XSetStandardProperties(display, window, title, title, None, 0, 0, &sh);
-        XMapWindow(display, window);
-        XSetWMColormapWindows(display, window, &window, 1);
-        XFlush(display);
-
-        eglWindow = (EGLNativeWindowType) window;
-
-    }
-#endif
-
-    eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, eglWindow, NULL);
-    //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig[5], eglWindow, NULL);
-    if (EGL_NO_SURFACE == eglSurface || EGL_SUCCESS != eglGetError()) {
-        LOGE("eglCreateWindowSurface() failed. EGL_NO_SURFACE [0x%x]\n", eglGetError());
-        g_assert(0);
-    }
-
-    // when swapping Adreno clear old buffer
-    // http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html
-    eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
-
-
-#ifdef S52_USE_GLES2
-    EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
-
-    //EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
-    //EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
-#else
-    // OpenGL 1.x
-    EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
-#endif
-    if (EGL_TRUE != ret)
-        LOGE("eglBindAPI() failed. [0x%x]\n", eglGetError());
-
-    // Then we can create the context and set it current:
-    // 1 - GLES1.x, 2 - GLES2.x, 3 - GLES3.x
-    EGLint eglContextList[] = {
-#ifdef S52_USE_ADRENO
-        EGL_CONTEXT_CLIENT_VERSION, 3, // GLES3 to get NPOT texture in blit
-#else
-        EGL_CONTEXT_CLIENT_VERSION, 2,
-#endif
-        EGL_NONE
-    };
-
-#ifdef S52_USE_GLES2
-    // GLES
-    eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, eglContextList);
-    //eglContext = eglCreateContext(eglDisplay, eglConfig[5], EGL_NO_CONTEXT, eglContextList);
-
-    // EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
-    //eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, NULL);
-#else
-    // GL
-    eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, NULL);
-#endif
-
-    if (EGL_NO_CONTEXT == eglContext || EGL_SUCCESS != eglGetError()) {
-        LOGE("eglCreateContext() failed. [0x%x]\n", eglGetError());
-        g_assert(0);
-    }
-
-    // when swapping Adreno clear old buffer
-    // http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html
-    eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
-
-    if (EGL_FALSE == eglMakeCurrent(eglDisplay, eglSurface, eglSurface, eglContext))
-        LOGE("Unable to eglMakeCurrent()\n");
-
-    // test - no interval, "non-sync" mode - seem uneffective
-    // Note: must be called after MakeCurrent()
-    //eglSwapInterval(eglDisplay, 0);  // bad - make blit jurky
-    eglSwapInterval(eglDisplay, 1);  // default
-
-
-    //--------------------------------------------------------------------------------------------------
-    // get EGL Marker & Timer
-    // Note: on Mesa3D eglGetProcAddress() return an invalid address
-    _glInsertEventMarkerEXT = (PFNGLINSERTEVENTMARKEREXT) eglGetProcAddress("glInsertEventMarkerEXT");
-    if (NULL == _glInsertEventMarkerEXT) {
-        LOGE("DEBUG: eglGetProcAddress(glInsertEventMarkerEXT()) FAILED\n");
-    }
-
-    // get GPU driver timer - EGL_NV_system_time
-    const char *extstr = eglQueryString(eglDisplay, EGL_EXTENSIONS);
-    if (NULL != g_strrstr(extstr, "EGL_NV_system_time")) {
-        LOGI("DEBUG: EGL_NV_system_time OK\n");
-        _eglGetSystemTimeFrequencyNV = (PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC) eglGetProcAddress("eglGetSystemTimeFrequencyNV");
-        if (_eglGetSystemTimeFrequencyNV) {
-            EGLuint64NV freq = _eglGetSystemTimeFrequencyNV();
-            LOGI("DEBUG: eglGetSystemTimeFrequencyNV(): freg:%u\n", (guint)freq);
-        }
-        _eglGetSystemTimeNV = (PFNEGLGETSYSTEMTIMENVPROC) eglGetProcAddress("eglGetSystemTimeNV");
-        if (NULL != _eglGetSystemTimeNV) {
-            EGLuint64NV time = _eglGetSystemTimeNV();
-            LOGI("DEBUG: eglGetSystemTimeNV(): time:%u\n", (guint)time);
-        }
-    } else {
-        LOGI("DEBUG: EGL_NV_system_time FAILED\n");
-    }
-    //--------------------------------------------------------------------------------------------------
-
-    engine->eglDisplay = eglDisplay;
-    engine->eglContext = eglContext;
-    engine->eglSurface = eglSurface;
-    //engine->eglWindow  = eglWindow;
-    engine->eglConfig  = eglConfig;
-
-    LOGI("s52egl:_egl_init(): end ..\n");
-
-    return EGL_TRUE;
-}
-
-static void     _egl_done       (s52engine *engine)
-// Tear down the EGL context currently associated with the display.
-{
-    if (engine->eglDisplay != EGL_NO_DISPLAY) {
-        eglMakeCurrent(engine->eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-
-        if (engine->eglContext != EGL_NO_CONTEXT) {
-            eglDestroyContext(engine->eglDisplay, engine->eglContext);
-            engine->eglContext = EGL_NO_CONTEXT;
-        }
-
-        //if (engine->eglSurface != EGL_NO_SURFACE) {
-        //    eglDestroySurface(engine->eglDisplay, engine->eglSurface);
-        //    engine->eglSurface = EGL_NO_SURFACE;
-        //}
-
-        eglTerminate(engine->eglDisplay);
-        engine->eglDisplay = EGL_NO_DISPLAY;
-    }
-
-    return;
-}
-
-static void     _egl_doneSurface(s52engine *engine)
-{
-    eglMakeCurrent(engine->eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-
-    eglDestroySurface(engine->eglDisplay, engine->eglSurface);
-    engine->eglSurface = EGL_NO_SURFACE;
-
-    return;
-}
-
-static int      _egl_beg        (s52engine *engine, const char *tag)
-{
-    (void)engine;
-    (void)tag;
-
-    //LOGE("s52egl:_egl_beg() .. \n");
-    g_timer_reset(_timer);
-
-    //EGL_SUCCESS             0x3000
-    //LOGI("s52egl:_egl_beg(): eglGetError(): 0x%x\n", eglGetError());
-
-    // Android-09, Blit x10 slower whitout
-    // Android-19, no diff
-    /*
-    if (EGL_FALSE == eglWaitGL()) {
-        LOGE("s52egl:_egl_beg(): eglWaitGL() failed. [0x%x]\n", eglGetError());
-        return FALSE;
-    }
-    //*/
-
-    /* Xoom no diff
-    if (EGL_FALSE == eglWaitClient()) {
-        LOGE("s52egl:_egl_beg():eglWaitClient() failed. [0x%x]\n", eglGetError());
-        return FALSE;
-    }
-    //*/
-
-    /* make sure Android is finish - Xoom no diff
-    if (EGL_FALSE == eglWaitNative(EGL_CORE_NATIVE_ENGINE)) {
-        LOGE("s52egl:_egl_beg():eglWaitNative() failed. [0x%x]\n", eglGetError());
-        return FALSE;
-    }
-    //*/
-
-    /*
-    // this prevent EGL_BAD_ACCESS on Adreno/Tegra - eglMakeCurrent:671 error 3002 (EGL_BAD_ACCESS)
-    if (EGL_NO_CONTEXT == eglGetCurrentContext()) {
-        LOGI("s52egl:_egl_beg(): EGL_NO_CONTEXT .. exit FALSE\n");
-        return FALSE;
-    }
-    //*/
-
-    //*
-    if (engine->eglContext != eglGetCurrentContext()) {
-        //LOGI("s52egl:_egl_beg(): engine->eglContext ..\n");
-        if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
-            // eglMakeCurrent() output the same error msg:
-            // eglMakeCurrent:671 error 3002 (EGL_BAD_ACCESS)
-            LOGE("s52egl:_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
-            return FALSE;
-        }
-    }
-    //*/
-    /*
-    } else {
-        LOGI("s52egl:_egl_beg(): NOT engine->eglContext ..\n");
-        return FALSE;
-    }
-    */
-
-#if !defined(S52_USE_MESA3D)
-    // Mesa3D 10.1 generate a glError() in _checkError(): from S52_GL_begin() -0-: 0x502 (GL_INVALID_OPERATION)
-    // Note: egltrace.so (apitrace) handle it
-    if (NULL != _glInsertEventMarkerEXT) {
-        //_glInsertEventMarkerEXT(strlen(tag), tag);
-        _glInsertEventMarkerEXT(0, tag);
-    }
-#endif
-
-    return TRUE;
-}
-
-static int      _egl_end        (s52engine *engine)
-{
-    if (EGL_FALSE == eglWaitGL()) {
-        LOGE("_egl_end(): eglWaitGL() failed - NO SWAP [0x%x]\n", eglGetError());
-        return FALSE;
-    }
-
-    //g_timer_reset(_timer);
-
-    if (EGL_TRUE != eglSwapBuffers(engine->eglDisplay, engine->eglSurface)) {
-        LOGE("_egl_end(): eglSwapBuffers() failed. [0x%x]\n", eglGetError());
-        return FALSE;
-    }
-
-    //double sec = g_timer_elapsed(_timer, NULL);
-    //LOGI("s52egl:_egl_end():eglSwapBuffers(): %.0f msec --------------------------------------\n", sec * 1000);
-
-    return TRUE;
-}
-
-static int      _s52_computeView(s52droid_state_t *state)
+static int      _s52_getView    (s52droid_state_t *state)
 {
     double S,W,N,E;
 
@@ -903,263 +202,6 @@ static int      _s52_computeView(s52droid_state_t *state)
     // debug - max out range
     if (state->rNM > MAX_RANGE)
         state->rNM = MAX_RANGE;
-
-    return TRUE;
-}
-
-#ifdef USE_FAKE_AIS
-static int      _s52_setupVESSEL(s52droid_state_t *state)
-{
-    // ARPA
-    //_vessel_arpa = S52_newVESSEL(1, dummy, "ARPA label");
-    //_vessel_arpa = S52_newVESSEL(1, "ARPA label");
-    //S52_pushPosition(_vessel_arpa, _view.cLat + 0.01, _view.cLon - 0.02, 0.0);
-    //S52_setVector(_vessel_arpa, 2, 060.0, 3.0);   // water
-
-    // AIS active
-    _vessel_ais = S52_newVESSEL(2, NULL);
-    S52_setDimension(_vessel_ais, 100.0, 100.0, 15.0, 15.0);
-    //S52_pushPosition(_vessel_ais, _view.cLat - 0.02, _view.cLon + 0.02, 0.0);
-    //S52_pushPosition(_vessel_ais, state->cLat - 0.04, state->cLon + 0.04, 0.0);
-    S52_pushPosition(_vessel_ais, state->cLat - 0.01, state->cLon + 0.01, 45.0);
-    S52_setVector(_vessel_ais, 1, 060.0, 16.0);   // ground
-
-    // (re) set label
-    S52_setVESSELlabel(_vessel_ais, VESSELLABEL);
-    //int vesselSelect = 0;  // OFF
-    int vesselSelect = 1;  // ON
-    int vestat       = 1; // AIS active
-    //int vestat       = 2; // AIS sleeping
-    //int vestat       = 3;  // AIS red, close quarters (compile with S52_USE_SYM_VESSEL_DNGHL)
-    int vesselTurn   = VESSELTURN_UNDEFINED;
-    S52_setVESSELstate(_vessel_ais, vesselSelect, vestat, vesselTurn);
-
-    // AIS sleeping
-    //_vessel_ais = S52_newVESSEL(2, 2, "MV Non Such - sleeping"););
-    //S52_pushPosition(_vessel_ais, _view.cLat - 0.02, _view.cLon + 0.02, 0.0);
-
-    // VTS (this will not draw anything!)
-    //_vessel_vts = S52_newVESSEL(3, dummy);
-
-#ifdef S52_USE_AFGLOW
-    // afterglow
-    _vessel_ais_afglow = S52_newMarObj("afgves", S52_LINES, MAX_AFGLOW_PT, NULL, NULL);
-#endif
-
-    return TRUE;
-}
-
-static int      _s52_setupOWNSHP(s52droid_state_t *state)
-{
-    _ownshp = S52_newOWNSHP(OWNSHPLABEL);
-    //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 0.0, 30.0);
-    _ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 15.0, 15.0);
-    //_ownshp = S52_setDimension(_ownshp, 100.0, 100.0, 0.0, 15.0);
-    //_ownshp = S52_setDimension(_ownshp, 100.0, 0.0, 15.0, 0.0);
-    //_ownshp = S52_setDimension(_ownshp, 0.0, 100.0, 15.0, 0.0);
-    //_ownshp = S52_setDimension(_ownshp, 1000.0, 50.0, 15.0, 15.0);
-
-    S52_pushPosition(_ownshp, state->cLat + 0.01, state->cLon - 0.01, 0.0);
-    //S52_pushPosition(_ownshp, state->cLat - 0.01, state->cLon - 0.01, 300.0);
-
-    S52_setVector(_ownshp, 0, 290.0, 6.0);  // ownship use S52_MAR_VECSTB
-
-    return TRUE;
-}
-#endif  // USE_FAKE_AIS
-
-static int      _s52_setupIceRte(void)
-{
-/*
-
-http://www.marinfo.gc.ca/fr/Glaces/index.asp
-
-SRCN04 CWIS 122100
-Bulletin des glaces pour le fleuve et le golfe Saint-Laurent de Les Escoumins aux détroits de
-Cabot et de Belle-Isle émis à 2100TUC dimanche 12 février 2012 par le Centre des glaces de
-Québec de la Garde côtière canadienne.
-
-Route recommandée no 01
-De la station de pilotage de Les Escoumins au
-point de changement ALFA:    4820N 06920W au
-point de changement BRAVO:   4847N 06830W puis
-point de changement CHARLIE: 4900N 06800W puis
-point de changement DELTA:   4930N 06630W puis
-point de changement ECHO:    4930N 06425W puis
-point de changement FOXTROT: 4745N 06000W puis
-route normale de navigation.
-
-Route recommandée no 05
-Émise à 1431UTC le 17 FEVRIER 2012
-par le Centre des Glaces de Québec de la Garde côtière canadienne.
-
-De la station de pilotage de Les Escoumins au
-point de changement ALFA:    4820N 06920W au
-point de changement BRAVO:   4930N 06630W puis
-point de changement CHARLIE: 4945N 06450W puis
-point de changement DELTA:   4730N 06000W puis
-route normale de navigation.
-*/
-    typedef struct WPxyz_t {
-        double x,y,z;
-    } WPxyz_t;
-
-    WPxyz_t WPxyz[4] = {
-        {-69.33333, 48.33333, 0.0},  // WP1 - ALPHA
-        {-68.5,     48.78333, 0.0},  // WP2 - BRAVO
-        {-68.0,     49.00,    0.0},  // WP3 - CHARLIE
-        {-66.5,     49.5,     0.0}   // WP4 - DELTA
-
-        //{-66.5,     49.0,     0.0}   // WP4 - test horizontal dot
-        //{-66.0,     49.5,     0.0}   // WP4 - test vertical dot
-    };
-
-    char attVal1[] = "select:2,OBJNAM:ALPHA";    // waypoint on alternate planned route
-    char attVal2[] = "select:2,OBJNAM:BRAVO";    // waypoint on alternate planned route
-    char attVal3[] = "select:2,OBJNAM:CHARLIE";  // waypoint on alternate planned route
-    char attVal4[] = "select:2,OBJNAM:DELTA";    // waypoint on alternate planned route
-
-    _waypnt1 = S52_newMarObj("waypnt", S52_POINT, 1, (double*)&WPxyz[0], attVal1);
-    _waypnt2 = S52_newMarObj("waypnt", S52_POINT, 1, (double*)&WPxyz[1], attVal2);
-    _waypnt3 = S52_newMarObj("waypnt", S52_POINT, 1, (double*)&WPxyz[2], attVal3);
-    _waypnt4 = S52_newMarObj("waypnt", S52_POINT, 1, (double*)&WPxyz[3], attVal4);
-
-    // need to turn OFF guard zone because projection not set yet (set via S52_draw())
-    double gz = S52_getMarinerParam(S52_MAR_GUARDZONE_BEAM);
-    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);  // trun off
-#define ALT_RTE 2
-    // select: alternate (2) legline for Ice Route 2012-02-12T21:00:00Z
-    _leglin1 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[0].y, WPxyz[0].x, WPxyz[1].y, WPxyz[1].x, FALSE);
-    _leglin2 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[1].y, WPxyz[1].x, WPxyz[2].y, WPxyz[2].x, _leglin1);
-    _leglin3 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[2].y, WPxyz[2].x, WPxyz[3].y, WPxyz[3].x, _leglin2);
-    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, gz);  // trun on
-
-    /*
-    {// test wholin
-        char attVal[] = "loctim:1100,usrmrk:test_wholin";
-        double xyz[6] = {_view.cLon, _view.cLat, 0.0,  _view.cLon + 0.01, _view.cLat - 0.01, 0.0};
-        _wholin = S52_newMarObj("wholin", S52_LINES, 2, xyz, attVal);
-    }
-    */
-
-    return TRUE;
-}
-
-static int      _s52_setupLEGLIN(s52droid_state_t *state)
-{
-    (void) state;
-
-    if (FALSE != _leglin4) {
-        _leglin4 = S52_delMarObj(_leglin4);
-        if (FALSE != _leglin4) {
-            LOGI("s52egl:_s52_setupLEGLIN(): delMarObj _leglin4 failed\n");
-            g_assert(0);
-        }
-        // clear alarm
-        //S52_setMarinerParam(S52_MAR_ERROR, 0.0);
-        S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);
-    }
-
-    // test vertical route on DEPCNT
-    //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat - 0.02, state->cLon + 0.00, state->cLat + 0.02, state->cLon + 0.00, NULL);
-
-    // oblique / upbound - alarm
-    //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat + 0.01, state->cLon + 0.00, state->cLat + 0.05, state->cLon + 0.02, NULL);
-
-    // oblique - no alarm
-    //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat + 0.02, state->cLon + 0.00, state->cLat + 0.05, state->cLon + 0.02, NULL);
-
-    // oblique \  upbound - alarm
-    //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat - 0.01, state->cLon + 0.00, state->cLat + 0.02, state->cLon - 0.02, NULL);
-
-    // oblique / downbound - alarm
-    //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat + 0.02, state->cLon + 0.02, state->cLat - 0.05, state->cLon - 0.02, NULL);
-
-    // oblique \  downbound - alarm
-    //_leglin4 = S52_newLEGLIN(1, 0.0, 0.0, state->cLat + 0.02, state->cLon - 0.02, state->cLat - 0.02, state->cLon + 0.02, NULL);
-
-
-    // test LEGLIN setup via cursor
-    _leglin4 = S52_newLEGLIN(1, 0.0, 0.0, _leglin4xy[1], _leglin4xy[0], _leglin4xy[3], _leglin4xy[2], FALSE);
-    //if (FALSE == _leglin4) {
-    //    LOGI("s52egl:_s52_setupLEGLIN(): failed\n");
-        if (1.0 == S52_getMarinerParam(S52_MAR_GUARDZONE_ALARM))
-            LOGI("s52egl:_s52_setupLEGLIN(): ALARM ON\n");
-        if (2.0 == S52_getMarinerParam(S52_MAR_GUARDZONE_ALARM))
-            LOGI("s52egl:_s52_setupLEGLIN(): INDICATION ON\n");
-    //}
-
-    return TRUE;
-}
-
-static int      _s52_setupVRMEBL(s52droid_state_t *state)
-{
-    //char *attVal   = NULL;      // ordinary cursor
-    //char  attVal[] = "cursty:2,_cursor_label:0.0N 0.0W";  // open cursor
-    char  attVal[] = "cursty:2";  // open cursor
-    double xyz[3] = {state->cLon, state->cLat, 0.0};
-    int S52_VRMEBL_vrm = TRUE;
-    int S52_VRMEBL_ebl = TRUE;
-    int S52_VRMEBL_sty = TRUE;  // normalLineStyle
-    int S52_VRMEBL_ori = TRUE;  // (user) setOrigin
-
-    _cursor2 = S52_newMarObj("cursor", S52_POINT, 1, xyz, attVal);
-
-    //_vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, S52_VRMEBL_ebl, S52_VRMEBL_sty, S52_VRMEBL_ori);
-    _vrmeblA = S52_newVRMEBL(!S52_VRMEBL_vrm, S52_VRMEBL_ebl, S52_VRMEBL_sty, S52_VRMEBL_ori);
-    //_vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, !S52_VRMEBL_ebl, S52_VRMEBL_sty, !S52_VRMEBL_ori);
-    //_vrmeblA = S52_newVRMEBL(S52_VRMEBL_vrm, !S52_VRMEBL_ebl, S52_VRMEBL_sty,  S52_VRMEBL_ori);
-
-    if (FALSE == _drawVRMEBL) {
-        // suppression ON
-        S52_setS57ObjClassSupp("cursor", TRUE);
-        S52_setS57ObjClassSupp("ebline", TRUE);
-        S52_setS57ObjClassSupp("vrmark", TRUE);
-
-        // or supp one obj
-        //S52_toggleDispMarObj(_cursor2);
-        //S52_toggleDispMarObj(_vrmeblA);
-    }
-
-    return TRUE;
-}
-
-static int      _s52_setupPRDARE(s52droid_state_t *state)
-// test - centroid (PRDARE: wind farm)
-{
-    // Note: centroid work on both CW and CCW
-    //*
-    // AREA (CW)
-    double xyzArea[6*3]  = {
-        state->cLon + 0.000, state->cLat + 0.000, 0.0,  // SE
-        state->cLon - 0.005, state->cLat + 0.004, 0.0,  // center
-        state->cLon - 0.010, state->cLat + 0.000, 0.0,  // SW
-        state->cLon - 0.010, state->cLat + 0.005, 0.0,  // NW
-        state->cLon + 0.000, state->cLat + 0.005, 0.0,  // NE
-        state->cLon + 0.000, state->cLat + 0.000, 0.0,  // SE
-    };
-    //*/
-
-    /*
-    // AREA (CCW)
-    double xyzArea[6*3]  = {
-        state->cLon + 0.000, state->cLat + 0.000, 0.0,
-        state->cLon + 0.000, state->cLat + 0.005, 0.0,
-        state->cLon - 0.010, state->cLat + 0.005, 0.0,
-        state->cLon - 0.010, state->cLat + 0.000, 0.0,
-        state->cLon - 0.005, state->cLat + 0.004, 0.0,
-        state->cLon + 0.000, state->cLat + 0.000, 0.0,
-    };
-    */
-
-    // PRDARE/WNDFRM51/CATPRA9
-    char attVal[] = "CATPRA:9";
-    _prdare = S52_newMarObj("PRDARE", S52_AREAS, 6, xyzArea,  attVal);
-
-    // debug: test layer ordering when mixing cell and mariners object
-    //LUPT   29LU00672NILmnufeaL00005OLINES
-    //char attVal[] = "CATPRA:9";
-    //_prdare = S52_newMarObj("mnufea", S52_LINES, 6, xyzArea,  NULL);
 
     return TRUE;
 }
@@ -1209,7 +251,7 @@ static int      _s52_init       (s52engine *engine)
     LOGI("s52egl:_s52_init(): beg ..\n");
 
     if ((NULL==engine->eglDisplay) || (EGL_NO_DISPLAY==engine->eglDisplay)) {
-        LOGE("_init_S52(): no EGL display ..\n");
+        LOGE("_s52_init(): no EGL display ..\n");
         return FALSE;
     }
 
@@ -1287,216 +329,48 @@ static int      _s52_init       (s52engine *engine)
         //S52_setViewPort(0, 0, w, h);
     }
 
-    // load PLib in s52.cfg
-    //S52_loadPLib(NULL);
+    //S52_version();
 
-    S52_loadPLib(PLIB);
-    S52_loadPLib(COLS);
+    // debug: should fail
+    //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test S52_drawStr()");
 
-    // Inland Waterway rasterization rules (form OpenCPN)
-    //S52_loadPLib("S52RAZDS.RLE");
+    //LOGI("Palettes: %s\n", S52_getPalettesNameList());
 
+    // load ENC, ..
+    _s52_setupMain();
 
-#ifdef S52_USE_ANDROID
-
-    // set GDAL data path
-    g_setenv("S57_CSV", "/sdcard/s52droid/gdal_data", 1);
-
-    // read cell location fron s52.cfg
-    //S52_loadCell(NULL, NULL);
-
-    // Tadoussac
-    //S52_loadCell(PATH "/ENC_ROOT/CA379035.000", NULL);
-    // load all 3 S57 charts
-    //S52_loadCell(PATH "/ENC_ROOT", NULL);
-
-    // Rimouski
-    S52_loadCell(PATH "/ENC_ROOT_RIKI/CA579041.000", NULL);
-    // Estuaire du St-Laurent
-    //S52_loadCell(PATH "/ENC_ROOT_RIKI/CA279037.000", NULL);
-
-    // Bec
-    //S52_loadCell(PATH "/ENC_ROOT/CA579016.000", NULL);
-
-    // Portneuf
-    //S52_loadCell(PATH "/ENC_ROOT/CA479017.000", NULL);
-    //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);
-    //S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
-
-#else  // S52_USE_ANDROID
-
-    // Note:
-    // GDAL profile (s57attributes_<profile>.csv, s57objectclasses_<profile>.csv)
-    // iw: Inland Waterway profile add object classe OBCL:17000-17065 (and attributes)
-    //g_setenv("S57_PROFILE", "iw", 1);
-    //g_setenv("S57_PROFILE", "iw2", 1);
-    // GDAL debug info ON
-    //g_setenv("CPL_DEBUG", "ON", 1);
-
-    // read cell location from s52.cfg
-    S52_loadCell(NULL, NULL);
-
-    // S-64 ENC
-    //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/GB5X01SE.000", NULL);
-
-    // debug anti-meridian
-    //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US5HA06M/US5HA06M.000", NULL);
-    //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US1EEZ1M/US1EEZ1M.000", NULL);
-
-    // Rimouski
-    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
-
-    // load PLib in s52.cfg
-    //S52_loadPLib(NULL);
-
-    // Estuaire du St-Laurent
-    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
-
-    //Tadoussac
-    //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA379035.000", NULL);
-
-    // Ice - experimental (HACK: ice symb link to --0WORLD.shp for one shot test)
-    //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
-
-    // ------------ Bathy HD for CA479017.000 ----------------------
-    // Bathy - experimental Cap Sante / Portneuf
-    //S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479017.000", NULL);
-    //S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479020.000", NULL);
-
-    //S52_loadCell(PATH "/bathy/SCX_CapSante.tif", NULL);  // old test bathy
-
-    // bathy overlapping CA479017.000 and CA479020.000
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4666N7170W_5.tiff", NULL);
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7170W_5.tiff", NULL);
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4662N7170W_5.tiff", NULL);
-
-    // CA479017.000
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7172W_5.tiff", NULL);
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4662N7172W_5.tiff", NULL);
-
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7174W_5.tiff", NULL);
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4662N7174W_5.tiff", NULL);
-
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7176W_5.tiff", NULL);
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4662N7176W_5.tiff", NULL);
-
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4664N7178W_5.tiff", NULL);
-
-    // ------------ Bathy HD for CA579016.000 ----------------------
-    // ENC Bec
-    //S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA579016.000", NULL);
-    // ENC TRV
-    //S52_loadCell(PATH "/../S57/CA_QC-TR/ENC_ROOT/CA479014.000", NULL);
-
-
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4642N7236W_5.tiff", NULL);
-
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4640N7238W_5.tiff", NULL);
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4642N7238W_5.tiff", NULL);
-
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4640N7240W_5.tiff", NULL);
-
-    // West of CA479017.000
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4636N7246W_5.tiff", NULL);
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4638N7246W_5.tiff", NULL);
-
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4636N7248W_5.tiff", NULL);
-    //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4638N7248W_5.tiff", NULL);
-
-
-    S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
-
-    // RADAR - experimental
-    //S52_loadCell("/home/sduclos/dev/gis/data/radar/RADAR_imitator/out.raw", NULL);
-
-
-#endif  // S52_USE_ANDROID
-
-#ifdef S52_USE_WORLD
-    // World data
-    if (TRUE == S52_loadCell(PATH "/0WORLD/--0WORLD.shp", NULL)) {
-        //S52_setMarinerParam(S52_MAR_DISP_WORLD, 0.0);   // default
-        S52_setMarinerParam(S52_MAR_DISP_WORLD, 1.0);     // show world
-    }
-#endif
-
-
-    // debug - remove clutter from this symb in SELECT mode
-    S52_setS57ObjClassSupp("M_QUAL", TRUE);     // suppress display of the U pattern
-    //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
-
-    S52_setS57ObjClassSupp("M_NSYS", TRUE);     // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
-
-    // DATCOVR/M_COVR:CATCOV=2
-    S52_setS57ObjClassSupp("M_COVR", TRUE);     // HO data limit __/__/__ - LC(HODATA01)
-    //S52_setS57ObjClassSupp("M_COVR", FALSE);  // default
-
-    // Note: "m_covr" is on BASE, so display can't be suppressed
-    //S52_setS57ObjClassSupp("m_covr", TRUE);   // fail
-
-    //S52_setS57ObjClassSupp("sclbdy", TRUE);
-    //S52_setS57ObjClassSupp("sclbdy", FALSE);  // default
-
-    _s52_setupMarPar();
-
-    //S52_setTextDisp(0, 100, TRUE);                // show all text (default)
-
-    // if first start, find where we are looking
-    _s52_computeView(&engine->state);
+    // if first start find where we are looking
+    _s52_getView(&engine->state);
     // then (re)position the 'camera'
     S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
 
-    // debug - anti-meridian
-    //engine->state.rNM = 2300.0;
-    //S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
-
-    S52_newCSYMB();
+    _s52_setupMarPar();
 
     // must be first mariners' object so that the
     // rendering engine place it on top of OWNSHP/VESSEL
-    _s52_setupVRMEBL(&engine->state);
+    _s52_setupVRMEBL(engine->state.cLat, engine->state.cLon);
 
-    // set route
+    // guard zone OFF (pick need GL projection)
+    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
     _s52_setupIceRte();
+    _s52_setupLEGLIN(engine->state.cLat, engine->state.cLon);
+    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
 
-    // can't check guard zone here because projection not set yet (set via S52_draw())
-    //_s52_setupLEGLIN(&engine->state);
-
-    // wind farme for testing centroids in a concave poly
-    _s52_setupPRDARE(&engine->state);
-
+    _s52_setupPRDARE(engine->state.cLat, engine->state.cLon);
 
 #ifdef USE_FAKE_AIS
-    _s52_setupOWNSHP(&engine->state);
-    _s52_setupVESSEL(&engine->state);
+    _s52_setupOWNSHP(engine->state.cLat, engine->state.cLon);
+    _s52_setupVESSEL(engine->state.cLat, engine->state.cLon);
 #endif
 
-#ifdef S52_USE_EGL
+
+
     S52_setEGLCallBack((S52_EGL_cb)_egl_beg, (S52_EGL_cb)_egl_end, engine);
-#endif
-
-#ifdef USE_AIS
-    s52ais_initAIS();
-#endif
-
-#ifdef S52_USE_RADAR
-    _radar_init();
-    S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
-    S52_setRADARCallBack(_s52_radar_cb1, Rmax);
-    S52_setRADARCallBack(_s52_radar_cb2, Rmax);
-#endif
 
     engine->do_S52draw        = TRUE;
     engine->do_S52drawLast    = TRUE;
     engine->do_S52drawBlit    = FALSE;
     engine->do_S52setViewPort = FALSE;
-
-    S52_version();
-
-    // debug: should fail
-    //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test S52_drawStr()");
-
-    LOGI("Palettes: %s\n", S52_getPalettesNameList());
 
     LOGI("s52egl:_s52_init(): end ..\n");
 
@@ -1504,43 +378,18 @@ static int      _s52_init       (s52engine *engine)
 }
 
 static int      _s52_done       (s52engine *engine)
+
 {
     (void)engine;
 
     S52_done();
 
-    return TRUE;
-}
-
-#ifdef USE_FAKE_AIS
-static int      _s52_updTimeTag (s52engine *engine)
-{
-    (void)engine;
-
-
-    // fake one AIS
-    if (NULL != _vessel_ais) {
-        gchar         str[80];
-        GTimeVal      now;
-        static double hdg = 0.0;
-
-        hdg = (hdg >= 359.0) ? 0.0 : hdg+1;  // fake rotating hdg
-
-        g_get_current_time(&now);
-        g_sprintf(str, "%s %lis", VESSELLABEL, now.tv_sec);
-        S52_setVESSELlabel(_vessel_ais, str);
-        S52_pushPosition(_vessel_ais, engine->state.cLat - 0.01, engine->state.cLon + 0.01, hdg);
-        S52_setVector(_vessel_ais, 1, hdg, 16.0);   // ground
-
-#ifdef S52_USE_AFGLOW
-        // stay at the same place but fill internal S52 buffer - in the search for possible leak
-        S52_pushPosition(_vessel_ais_afglow, engine->state.cLat, engine->state.cLon, 0.0);
+#ifdef S52_USE_RADAR
+    _radar_done();
 #endif
-    }
 
     return TRUE;
 }
-#endif  // USE_FAKE_AIS
 
 static int      _s52_draw_user  (s52engine *engine)
 {
@@ -1646,7 +495,7 @@ static int      _s52_draw_cb    (gpointer user_data)
     if (TRUE == engine->do_S52drawLast) {
 
 #ifdef USE_FAKE_AIS
-        _s52_updTimeTag(engine);
+        _s52_updFakeAIS(engine->state.cLat, engine->state.cLon);
 #endif
 
         S52_drawLast();
@@ -2317,6 +1166,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
     }
 
 #ifdef S52_USE_RADAR
+    // radar mode
     engine->do_S52draw     = TRUE;
 #else
     // normal mode
@@ -2497,7 +1347,8 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 
             //_android_done_external_sensors();
 
-            _egl_doneSurface(engine);
+            //_egl_doneSurface(engine);
+            _egl_done(engine);
 
             break;
         }
@@ -2925,8 +1776,8 @@ static int      _X11_handleXevent(gpointer user_data)
 
                 if (TRUE == S52_xy2LL(&Xlon, &Ylat)) {
                     S52_pushPosition(_cursor2, Ylat, Xlon, 0.0);
-                    _leglin4xy[1] = Ylat;
-                    _leglin4xy[0] = Xlon;
+                    //_leglin4LL[1] = Ylat;
+                    //_leglin4LL[0] = Xlon;
                 }
             }
             break;
@@ -3002,8 +1853,8 @@ static int      _X11_handleXevent(gpointer user_data)
 
             // FIXME: use switch on keysym
 
-            // ESC - quit
-            if (XK_Escape == keysym) {
+            // ESC - (q)uit
+            if (XK_Escape == keysym || XK_q == keysym || XK_Q == keysym) {
                 g_main_loop_quit(engine->main_loop);
                 return TRUE;
             }
@@ -3073,7 +1924,7 @@ static int      _X11_handleXevent(gpointer user_data)
 #ifdef S52_USE_RADAR
             // dispose
             if (XK_F9 == keysym) {
-                if (TRUE == S52_setRADARCallBack(_s52_radar_cb2, 0))
+                if (TRUE == S52_setRADARCallBack(_s52_radar_cb2, NULL))
                     g_print("s52eglx:F9: done _s52_radar_cb2\n");
                 else
                     g_print("s52eglx:F9: FAIL _s52_radar_cb2\n");
@@ -3083,7 +1934,8 @@ static int      _X11_handleXevent(gpointer user_data)
 #endif
 
             // debug
-            g_print("s52egl.c:keysym: %i\n", keysym);
+            g_print("s52egl.c:keysym: 0X%X\n", keysym);
+            //g_print("s52egl.c:keysym: 0X%X\n", XK_q);
 
 
             //
@@ -3213,15 +2065,10 @@ int main(int argc, char *argv[])
 
     _s52_done(&_engine);
 
-    _egl_doneSurface(&_engine);
+    //_egl_doneSurface(&_engine);
     _egl_done(&_engine);
 
     //g_mem_profile();
-
-#ifdef S52_USE_RADAR
-    // close radarlog
-    fclose(_fd);
-#endif
 
 #ifdef S52_USE_MESA3D
     // Mesa3D env - remove from env (not stictly needed - env destroy at exit)

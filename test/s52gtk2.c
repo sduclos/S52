@@ -52,9 +52,6 @@
 #include <glib/gprintf.h>   // g_sprintf()
 #endif
 
-#define  PLIB "PLAUX_00.DAI"
-#define  COLS "plib_COLS-3.4.rle"
-
 typedef struct S52_extent {
     double S,W,N,E;
 } S52_extent;
@@ -71,64 +68,29 @@ static double _y      = 0.0;
 //static double _brg    = 0.0;
 //static double _rge    = 0.0;
 
-typedef struct pt2 {
-    double lat, lon;
-} pt2;
-
 // scroll to a tenth of the range
 #define SCROLL_FAC 0.1
 #define ZOOM_FAC   2.0
 #define ZOOM_INI   1.0
+
 
 //----------------------------------------------
 //
 // Common stuff
 //
 
-#include "_s52_setupMarPar.i"       // _s52_setupMarPar()
+#include "_s52_setupMarPar.i"  // _s52_setupMarPar()
+#include "_s52_setupMarFea.i"  // _s52_setupMarFea()
+#include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP() - fake AIS
+#include "_s52_setupVESSEL.i"  // _s52_setupVESSEL() - fake AIS
+#include "_s52_setupVRMEBL.i"  // _s52_setupVRMEBL()
+#include "_s52_setupPASTRK.i"  // _s52_setupPASTRK()
+#include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
+#include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
+//#include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
 
+#include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup
 
-#define VESSELTURN_UNDEFINED 129
-
-#ifdef S52_USE_AFGLOW
-#define MAX_AFGLOW_PT (12 * 20)   // 12 min @ 1 vessel pos per 5 sec
-//#define MAX_AFGLOW_PT 10        // debug
-static S52ObjectHandle _vessel_ais_afglow = NULL;
-
-#endif  // S52_USE_AFGLOW
-
-
-#define VESSELLABEL "~~MV Non Such~~ "           // bug: last char will be trimmed
-#define OWNSHPLABEL "OWNSHP\\n220 deg / 6.0 kt"
-
-// VRMEBL
-static S52ObjectHandle _vrmeblA     = NULL;
-//static S52ObjectHandle _vrmeblB     = NULL;
-static int             _originIsSet = FALSE;  //for VRMEBL
-
-// VESSEL
-static S52ObjectHandle _ownshp      = NULL;
-//static S52ObjectHandle _vessel_arpa = NULL;
-static S52ObjectHandle _vessel_ais  = NULL;
-static S52ObjectHandle _pastrk      = NULL;
-
-static S52ObjectHandle _leglin1     = NULL;
-static S52ObjectHandle _leglin2     = NULL;
-static S52ObjectHandle _leglin3     = NULL;
-//static S52ObjectHandle _leglin4     = NULL;
-//static S52ObjectHandle _leglin5     = NULL;
-static S52ObjectHandle _waypnt0     = NULL;
-static S52ObjectHandle _waypnt1     = NULL;
-static S52ObjectHandle _waypnt2     = NULL;
-static S52ObjectHandle _waypnt3     = NULL;
-static S52ObjectHandle _waypnt4     = NULL;
-static S52ObjectHandle _wholin      = NULL;
-
-static S52ObjectHandle _clrlin      = NULL;
-
-//static S52ObjectHandle _marfea_area = NULL;
-//static S52ObjectHandle _marfea_line = NULL;
-static S52ObjectHandle _marfea_point = NULL;
 
 //#if !defined(S52_USE_GLES2)
 //// FIXME: work on GL1.x only
@@ -490,7 +452,7 @@ static int      _dumpENV()
 }
 #endif
 
-static int      _computeView(S52_view *view)
+static int      _s52_getView(S52_view *view)
 {
     S52_extent ext;
 
@@ -519,7 +481,7 @@ static int      _resetView(S52_view *view)
     // abort drawing
     raise(SIGINT);
 
-    _computeView(view);
+    _s52_getView(view);
 
     S52_setView(view->cLat, view->cLon, view->rNM, view->north);
 
@@ -588,8 +550,6 @@ static gboolean _rotation(GtkWidget *widget, GdkEventKey *event)
 {
     (void)widget;
 
-    //S52_getView(&_view);
-
     switch(event->keyval) {
         // -
         case GDK_minus:
@@ -606,7 +566,6 @@ static gboolean _rotation(GtkWidget *widget, GdkEventKey *event)
             break;
     }
 
-    //S52_setView(&_view);
     S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
 
     return TRUE;
@@ -683,59 +642,6 @@ static gboolean _mmInc(S52MarinerParameter paramName)
     return TRUE;
 }
 
-static gboolean _dumpParam()
-{
-    g_print("S52_MAR_SHOW_TEXT         t %4.1f\n", S52_getMarinerParam(S52_MAR_SHOW_TEXT));
-    g_print("S52_MAR_TWO_SHADES        w %4.1f\n", S52_getMarinerParam(S52_MAR_TWO_SHADES));
-    g_print("S52_MAR_SAFETY_CONTOUR    c %4.1f\n", S52_getMarinerParam(S52_MAR_SAFETY_CONTOUR));
-    g_print("S52_MAR_SAFETY_DEPTH      d %4.1f\n", S52_getMarinerParam(S52_MAR_SAFETY_DEPTH));
-    g_print("S52_MAR_SHALLOW_CONTOUR   a %4.1f\n", S52_getMarinerParam(S52_MAR_SHALLOW_CONTOUR));
-    g_print("S52_MAR_DEEP_CONTOUR      e %4.1f\n", S52_getMarinerParam(S52_MAR_DEEP_CONTOUR));
-    g_print("S52_MAR_SHALLOW_PATTERN   s %4.1f\n", S52_getMarinerParam(S52_MAR_SHALLOW_PATTERN));
-    g_print("S52_MAR_SHIPS_OUTLINE     o %4.1f\n", S52_getMarinerParam(S52_MAR_SHIPS_OUTLINE));
-    g_print("S52_MAR_DISTANCE_TAGS     f %4.1f\n", S52_getMarinerParam(S52_MAR_DISTANCE_TAGS));
-    g_print("S52_MAR_TIME_TAGS         g %4.1f\n", S52_getMarinerParam(S52_MAR_TIME_TAGS));
-    g_print("S52_MAR_BEAM_BRG_NM       y %4.1f\n", S52_getMarinerParam(S52_MAR_BEAM_BRG_NM));
-    g_print("S52_MAR_FULL_SECTORS      l %4.1f\n", S52_getMarinerParam(S52_MAR_FULL_SECTORS));
-    g_print("S52_MAR_SYMBOLIZED_BND    b %4.1f\n", S52_getMarinerParam(S52_MAR_SYMBOLIZED_BND));
-    g_print("S52_MAR_SYMPLIFIED_PNT    p %4.1f\n", S52_getMarinerParam(S52_MAR_SYMPLIFIED_PNT));
-    g_print("S52_MAR_DISP_CATEGORY   7-0 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_CATEGORY));
-    g_print("S52_MAR_COLOR_PALETTE     k %4.1f\n", S52_getMarinerParam(S52_MAR_COLOR_PALETTE));
-    g_print("S52_MAR_FONT_SOUNDG       n %4.1f\n", S52_getMarinerParam(S52_MAR_FONT_SOUNDG));
-    g_print("S52_MAR_DATUM_OFFSET      m %4.1f\n", S52_getMarinerParam(S52_MAR_DATUM_OFFSET));
-    g_print("S52_MAR_SCAMIN            u %4.1f\n", S52_getMarinerParam(S52_MAR_SCAMIN));
-    g_print("S52_MAR_ANTIALIAS         i %4.1f\n", S52_getMarinerParam(S52_MAR_ANTIALIAS));
-    g_print("S52_MAR_QUAPNT01          j %4.1f\n", S52_getMarinerParam(S52_MAR_QUAPNT01));
-    g_print("S52_MAR_DISP_OVERLAP      z %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_OVERLAP));
-
-    // FIXME
-    //g_print("S52_MAR_DISP_LAYER_LAST   1 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST));
-    g_print("S52_MAR_DISP_LAYER_LAST     %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_LAYER_LAST));
-
-    g_print("S52_MAR_ROT_BUOY_LIGHT    2 %4.1f\n", S52_getMarinerParam(S52_MAR_ROT_BUOY_LIGHT));
-    g_print("S52_MAR_DISP_CRSR_PICK    3 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_CRSR_PICK));
-    g_print("S52_MAR_DISP_GRATICULE    4 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_GRATICULE));
-    g_print("S52_MAR_HEADNG_LINE       5 %4.1f\n", S52_getMarinerParam(S52_MAR_HEADNG_LINE));
-    g_print("S52_MAR_DISP_WHOLIN       6 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_WHOLIN));
-    g_print("S52_MAR_DISP_LEGEND       3 %4.1f\n", S52_getMarinerParam(S52_MAR_DISP_LEGEND));
-    g_print("S52_CMD_WRD_FILTER     F1-5 %4.1f\n", S52_getMarinerParam(S52_CMD_WRD_FILTER));
-    g_print("S52_MAR_DOTPITCH_MM_X    F7 %4.2f\n", S52_getMarinerParam(S52_MAR_DOTPITCH_MM_X));
-    g_print("S52_MAR_DOTPITCH_MM_Y    F8 %4.2f\n", S52_getMarinerParam(S52_MAR_DOTPITCH_MM_Y));
-    g_print("S52_MAR_DISP_NODATA_LAYER F9 %4.2f\n", S52_getMarinerParam(S52_MAR_DISP_NODATA_LAYER));
-
-    int crntVal = (int) S52_getMarinerParam(S52_CMD_WRD_FILTER);
-
-    g_print("\tFilter State:\n");
-    g_print("\tF1 - S52_CMD_WRD_FILTER_SY: %s\n", (S52_CMD_WRD_FILTER_SY & crntVal) ? "TRUE" : "FALSE");
-    g_print("\tF2 - S52_CMD_WRD_FILTER_LS: %s\n", (S52_CMD_WRD_FILTER_LS & crntVal) ? "TRUE" : "FALSE");
-    g_print("\tF3 - S52_CMD_WRD_FILTER_LC: %s\n", (S52_CMD_WRD_FILTER_LC & crntVal) ? "TRUE" : "FALSE");
-    g_print("\tF4 - S52_CMD_WRD_FILTER_AC: %s\n", (S52_CMD_WRD_FILTER_AC & crntVal) ? "TRUE" : "FALSE");
-    g_print("\tF5 - S52_CMD_WRD_FILTER_AP: %s\n", (S52_CMD_WRD_FILTER_AP & crntVal) ? "TRUE" : "FALSE");
-    g_print("\tF6 - S52_CMD_WRD_FILTER_TX: %s\n", (S52_CMD_WRD_FILTER_TX & crntVal) ? "TRUE" : "FALSE");
-
-    return TRUE;
-}
-
 #ifdef S52_USE_RADAR
 static guchar  *_radar_cb(double *cLat, double *cLng, double *rNM)
 {
@@ -774,328 +680,7 @@ static int      _s52_log_cb(const char *msg)
 }
 #endif
 
-static int      _setOWNSHP()
-{
-    //_ownshp = S52_newOWNSHP("OWNSHP");
-    _ownshp = S52_newOWNSHP(NULL);
-    //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 0.0, 30.0);
-    //_ownshp = S52_setDimension(_ownshp, 150.0, 50.0, 15.0, 15.0);
-    //_ownshp = S52_setDimension(_ownshp, 100.0, 100.0, 0.0, 15.0);
-    //_ownshp = S52_setDimension(_ownshp, 100.0, 0.0, 15.0, 0.0);
-    _ownshp = S52_setDimension(_ownshp, 0.0, 100.0, 15.0, 0.0);
-    //_ownshp = S52_setDimension(_ownshp, 1000.0, 50.0, 15.0, 15.0);
-
-    // position 'ownshp' with reasonable value
-    _computeView(&_view);
-
-    //S52_setPosition(_ownshp, _view.cLat, _view.cLon, 030.0);
-    //S52_setPosition(_ownshp, _view.cLat, _view.cLon, 000.0);
-    //S52_setPosition(_ownshp, _view.cLat, _view.cLon, 180.0+045.0);
-    S52_pushPosition(_ownshp, _view.cLat, _view.cLon, 180.0+045.0);
-
-    S52_setVector(_ownshp, 0, 220.0, 6.0);  // ownship use S52_MAR_VECSTB
-
-    // test - supp ON
-    // all obj of a class
-    //S52_setS57ObjClassSupp("ownshp", TRUE);
-    // supp this obj
-    S52_toggleDispMarObj(_ownshp);
-
-    return TRUE;
-}
-
-static int      _setVESSEL()
-{
-    //int dummy = 0;
-
-    _computeView(&_view);
-
-    // ARPA
-    //_vessel_arpa = S52_newVESSEL(1, dummy, "ARPA label");
-    //_vessel_arpa = S52_newVESSEL(1, "ARPA label");
-    //S52_pushPosition(_vessel_arpa, _view.cLat + 0.01, _view.cLon - 0.02, 045.0);
-    //S52_setVector(_vessel_arpa, 2, 060.0, 3.0);   // water
-
-    // AIS active
-    //_vessel_ais = S52_newVESSEL(2, 1, "MV Non Such");
-    //_vessel_ais = S52_newVESSEL(2, "MV Non Such");
-    _vessel_ais = S52_newVESSEL(2, NULL);
-    S52_setDimension(_vessel_ais, 100.0, 100.0, 15.0, 15.0);
-    //S52_setPosition(_vessel_ais, _view.cLat - 0.02, _view.cLon + 0.02, 045.0);
-    S52_pushPosition(_vessel_ais, _view.cLat - 0.02, _view.cLon + 0.02, 045.0);
-    //S52_setVector(_vessel_ais, 1, 060.0, 3.0);   // ground
-
-    // (re) set label
-    //S52_setVESSELlabel(_vessel_ais, "~~MV Non Such~~");
-
-    {
-        int vesselSelect = 1;  // select ON
-        int vestat       = 1;  // AIS active
-        S52_setVESSELstate(_vessel_ais, vesselSelect, vestat, VESSELTURN_UNDEFINED);
-    }
-    // AIS sleeping
-    //_vessel_ais = S52_newVESSEL(2, 2, "MV Non Such - sleeping"););
-    //S52_setPosition(_vessel_ais, _view.cLat - 0.02, _view.cLon + 0.02, 045.0);
-
-    // VTS (this will not draw anything!)
-    //_vessel_vts = S52_newVESSEL(3, dummy);
-
-
-    return TRUE;
-}
-
-
-static int      _setVRMEBL()
-{
-    //int vrm             = TRUE;
-    //int ebl             = FALSE;
-    //int normalLineStyle = FALSE;
-    //int setOrigin       = FALSE;
-
-    // normal VRM/EBL
-    //_vrmeblA = S52_newVRMEBL(TRUE, TRUE, TRUE, FALSE);
-
-    // normal VRM (vrmark)
-    //--> _vrmeblA = S52_newVRMEBL(vrm, ebl, normalLineStyle, setOrigin);
-
-    // normal EBL
-    //_vrmeblA = S52_newVRMEBL(FALSE, TRUE, TRUE, FALSE);
-    // normal EBL + setOrigin
-    _vrmeblA = S52_newVRMEBL(FALSE, TRUE, TRUE, TRUE);
-
-    // alterned VRM/EBL line style
-    //_vrmebl = S52_newVRMEBL(TRUE, TRUE, FALSE);
-
-    // alternate VRM/EBL, freely moveable
-    //_vrmeblB = S52_newVRMEBL(TRUE, TRUE, FALSE, TRUE);
-
-    // alternate VRM, freely moveable
-    //_vrmeblB = S52_newVRMEBL(TRUE, FALSE, FALSE, TRUE);
-
-    return TRUE;
-}
-
-static int      _setPASTRK()
-{
-    _pastrk = S52_newPASTRK(1, 10);
-
-    _computeView(&_view);
-    //S52_getView(&_view);
-
-
-    //S52_addPASTRKPosition(_pastrk, _view.cLat + 0.01, _view.cLon - 0.01, 1.0);
-    //S52_addPASTRKPosition(_pastrk, _view.cLat + 0.01, _view.cLon + 0.01, 2.0);
-    //S52_addPASTRKPosition(_pastrk, _view.cLat + 0.02, _view.cLon + 0.02, 3.0);
-    //S52_addPosition(_pastrk, _view.cLat + 0.01, _view.cLon - 0.01, 1.0);
-    //S52_addPosition(_pastrk, _view.cLat + 0.01, _view.cLon + 0.01, 2.0);
-    //S52_addPosition(_pastrk, _view.cLat + 0.02, _view.cLon + 0.02, 3.0);
-    S52_pushPosition(_pastrk, _view.cLat + 0.01, _view.cLon - 0.01, 1.0);
-    S52_pushPosition(_pastrk, _view.cLat + 0.01, _view.cLon + 0.01, 2.0);
-    S52_pushPosition(_pastrk, _view.cLat + 0.02, _view.cLon + 0.02, 3.0);
-
-    // test failure
-    //S52_addPASTRKPosition(NULL, _view.cLat + 0.03, _view.cLon + 0.03, 3.0);
-    //S52_addPASTRKPosition((S52ObjectHandle)0x01, _view.cLat + 0.03, _view.cLon + 0.03, 3.0);
-    //S52_addPASTRKPosition(_pastrk, 91.0, _view.cLon + 0.03, 3.0);
-    //S52_addPASTRKPosition(_pastrk, _view.cLat + 0.03, 181.0, 3.0);
-    //S52_addPASTRKPosition(_pastrk, _view.cLat + 0.03, _view.cLon + 0.03, -3.0);
-
-
-    // SW - NE
-    //S52_addPASTRKPosition(_pastrk, _view.cLat - 0.01, _view.cLon - 0.01, 1.0);
-    //S52_addPASTRKPosition(_pastrk, _view.cLat + 0.01, _view.cLon + 0.01, 1.0);
-    // vertical
-    //S52_addPASTRKPosition(_pastrk, _view.cLat - 0.01, _view.cLon + 0.01, 1.0);
-    // horizontal
-    //S52_addPASTRKPosition(_pastrk, _view.cLat - 0.01, _view.cLon - 0.01, 1.0);
-
-    return TRUE;
-}
-
-static int      _setRoute()
-{
-
-    _computeView(&_view);
-    //S52_getView(&_view);
-
-    /*
-    _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, _view.cLat - 0.01, _view.cLon - 0.01, _view.cLat - 0.010, _view.cLon + 0.010);
-    _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, _view.cLat - 0.01, _view.cLon + 0.01, _view.cLat + 0.010, _view.cLon + 0.010);
-    _leglin3  = S52_newLEGLIN(1, 12.0, 0.2, _view.cLat + 0.01, _view.cLon + 0.01, _view.cLat - 0.010, _view.cLon - 0.010);
-    _leglin4  = S52_newLEGLIN(1, 12.0, 0.2, _view.cLat - 0.01, _view.cLon + 0.01, _view.cLat - 0.015, _view.cLon + 0.015);
-    _leglin5  = S52_newLEGLIN(1, 12.0, 0.2, _view.cLat - 0.01, _view.cLon + 0.01, _view.cLat - 0.005, _view.cLon + 0.015);
-    */
-
-    /*
-    //_leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpN.lat, wpN.lon, wpW.lat, wpW.lon);
-    //_leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpW.lat, wpW.lon, wpS.lat, wpS.lon);
-    //_leglin3  = S52_newLEGLIN(1, 12.0, 0.2, wpS.lat, wpS.lon, wpE.lat, wpE.lon);
-    //_leglin4  = S52_newLEGLIN(1, 12.0, 0.2, wpE.lat, wpE.lon, wpN.lat, wpN.lon);
-    */
-
-
-    pt2 wpN = {_view.cLat + 0.01, _view.cLon       };
-    pt2 wpE = {_view.cLat       , _view.cLon + 0.01};
-    pt2 wpS = {_view.cLat - 0.01, _view.cLon       };
-    pt2 wpW = {_view.cLat       , _view.cLon - 0.01};
-
-    //-----------------------------
-    /*
-    // heading change from NW to NE
-    _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpS.lat, wpS.lon, wpW.lat, wpW.lon);
-    _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpW.lat, wpW.lon, wpN.lat, wpN.lon);
-    //*/
-
-    /*
-    // heading change from NE to NW
-    _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpS.lat, wpS.lon, wpE.lat, wpE.lon);
-    _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpE.lat, wpE.lon, wpN.lat, wpN.lon);
-    //*/
-
-    //-----------------------------
-    /*
-    // heading change from NW to SW
-    _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpE.lat, wpE.lon, wpN.lat, wpN.lon);
-    _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpN.lat, wpN.lon, wpW.lat, wpW.lon);
-    //*/
-
-    /*
-    // heading change from SW to NW
-    _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpE.lat, wpE.lon, wpS.lat, wpS.lon);
-    _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpS.lat, wpS.lon, wpW.lat, wpW.lon);
-    //*/
-
-    //-----------------------------
-    /*
-    // heading change from SE to NE
-    _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpW.lat, wpW.lon, wpS.lat, wpS.lon);
-    _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpS.lat, wpS.lon, wpE.lat, wpE.lon);
-    //*/
-
-    /*
-    // heading change from NE to SE
-    _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpW.lat, wpW.lon, wpN.lat, wpN.lon);
-    _leglin2  = S52_newLEGLIN(1, 12.0, 0.3, wpN.lat, wpN.lon, wpE.lat, wpE.lon);
-    //*/
-
-    //-----------------------------
-    //*
-    // heading change from SW to SE
-    //_leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpN.lat, wpN.lon, wpW.lat, wpW.lon, NULL);
-    _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpN.lat, wpN.lon, wpW.lat, wpW.lon, FALSE);
-    _leglin2  = S52_newLEGLIN(1, 12.0, 0.2, wpW.lat, wpW.lon, wpS.lat, wpS.lon, _leglin1);
-    _leglin3  = S52_newLEGLIN(1, 12.0, 0.3, wpS.lat, wpS.lon, wpE.lat, wpE.lon, _leglin2);
-    //*/
-
-
-
-    {   // waypoint
-        char attVal1[] = "";            // next waypoint on planned route
-        char attVal2[] = "select:1";    // waypoint on planned route
-        char attVal3[] = "select:2";    // waypoint on alternate planned route
-        double xyz1[3] = {_view.cLon - 0.01, _view.cLat - 0.01, 0.0};
-        double xyz2[3] = {_view.cLon + 0.01, _view.cLat - 0.01, 0.0};
-        double xyz3[3] = {_view.cLon + 0.01, _view.cLat + 0.01, 0.0};
-        double xyz4[3] = {wpW.lon,           wpW.lat,           0.0};
-
-        _waypnt0 = S52_newMarObj("waypnt", S52_POINT, 1, xyz1,  attVal2);
-        S52_toggleDispMarObj(_waypnt0); // off
-        _waypnt1 = S52_newMarObj("waypnt", S52_POINT, 1, xyz1,  attVal1);
-        _waypnt2 = S52_newMarObj("waypnt", S52_POINT, 1, xyz2,  attVal2);
-        _waypnt3 = S52_newMarObj("waypnt", S52_POINT, 1, xyz3,  attVal3);
-        _waypnt4 = S52_newMarObj("waypnt", S52_POINT, 1, xyz4,  attVal1);
-
-        // test
-        S52_toggleDispMarObj(_waypnt0); // on
-        S52_toggleDispMarObj(_waypnt2); // off
-        // test - move to wp2 pos
-        //S52_updObjGeo(_waypnt1, 1, xyz2);
-        //S52_addPosition(_waypnt1,  _view.cLat-0.01, _view.cLon+0.01, 0.0);
-        S52_pushPosition(_waypnt1,  _view.cLat-0.01, _view.cLon+0.01, 0.0);
-
-        // test - over drawn a normal WP over an active WP (ugly)
-        //_waypnt4 = S52_newMarObj("waypnt", S52_POINT_T, 1, xyz1,  attVal2);
-    }
-
-    {// test wholin
-        char attVal[] = "loctim:1100,usrmrk:test_wholin";
-        double xyz[6] = {_view.cLon, _view.cLat, 0.0,  _view.cLon + 0.01, _view.cLat - 0.01, 0.0};
-        _wholin = S52_newMarObj("wholin", S52_LINES, 2, xyz, attVal);
-    }
-
-    return TRUE;
-}
-
-static int      _setCLRLIN()
-{
-    _computeView(&_view);
-    //S52_getView(&_view);
-
-    _clrlin = S52_newCLRLIN(1, _view.cLat - 0.02, _view.cLon - 0.02, _view.cLat - 0.02, _view.cLon + 0.01);
-
-    return TRUE;
-}
-
-static int      _setMarFeature()
-// exemple to display something define in the PLib directly
-{
-    /*
-    // CCW doesn't center text
-    double xyz[5*3] = {
-        _view.cLon + 0.00, _view.cLat + 0.000, 0.0,
-        _view.cLon + 0.00, _view.cLat + 0.005, 0.0,
-        _view.cLon - 0.01, _view.cLat + 0.005, 0.0,
-        _view.cLon - 0.01, _view.cLat + 0.000, 0.0,
-        _view.cLon + 0.00, _view.cLat + 0.000, 0.0,
-    };
-    */
-
-    /*
-    // AREA (CW: to center the text)
-    double xyzArea[5*3]  = {
-        _view.cLon + 0.00, _view.cLat + 0.000, 0.0,
-        _view.cLon - 0.01, _view.cLat + 0.000, 0.0,
-        _view.cLon - 0.01, _view.cLat + 0.005, 0.0,
-        _view.cLon + 0.00, _view.cLat + 0.005, 0.0,
-        _view.cLon + 0.00, _view.cLat + 0.000, 0.0,
-    };
-    */
-
-    // LINE
-    //double xyzLine[2*3]  = {
-    //    _view.cLon + 0.00, _view.cLat + 0.000, 0.0,
-    //    _view.cLon + 0.02, _view.cLat - 0.005, 0.0
-    //};
-
-    // debug
-    //double xyzLine[2*3]  = {
-    //    -72.3166666, 46.416666, 0.0,
-    //    -72.4,       46.4,      0.0
-    //};
-
-    // POINT
-    double xyzPoint[1*3] = {
-        _view.cLon - 0.02, _view.cLat - 0.005, 0.0
-    };
-
-    // add the text
-    char attVal[] = "OBJNAM:6.5_marfea";
-
-    //_marfea_area  = S52_newMarObj("marfea", S52_AREAS, 5, xyzArea,  attVal);
-    //_marfea_area  = S52_newMarObj("marfea", S52_AREAS, 5, NULL,  attVal);
-    //_marfea_line  = S52_newMarObj("marfea", S52_LINES, 2, xyzLine,  attVal);
-    _marfea_point = S52_newMarObj("marfea", S52_POINT, 1, xyzPoint, attVal);
-
-    //S52_pushPosition(_marfea_area, _view.cLat + 0.000, _view.cLon + 0.00, 0.0);
-    //S52_pushPosition(_marfea_area, _view.cLat + 0.000, _view.cLon - 0.01, 0.0);
-    //S52_pushPosition(_marfea_area, _view.cLat + 0.005, _view.cLon - 0.01, 0.0);
-    //S52_pushPosition(_marfea_area, _view.cLat + 0.005, _view.cLon + 0.00, 0.0);
-    //S52_pushPosition(_marfea_area, _view.cLat + 0.000, _view.cLon + 0.00, 0.0);
-
-    return TRUE;
-}
-
-static int      _initS52()
+static int      _s52_init()
 // setup some decent setting for testing
 {
     GdkScreen *screen = gdk_screen_get_default();
@@ -1126,9 +711,6 @@ static int      _initS52()
     hmm    = 307;
     */
 
-    // debug
-    g_print("s52gtk2.c:_initS52(): screen (w/h/wmm/hmm): %i / %i / %i / %i\n", w, h, wmm, hmm);
-
     // can be used before S52_init()
     g_print("%s\n", S52_version());
 
@@ -1138,77 +720,40 @@ static int      _initS52()
     S52_init(w, h, wmm, hmm, NULL);
 #endif
 
-    // load default cell in s52.cfg
-    //S52_loadCell(NULL, _my_S52_loadObject_cb);
-    S52_loadCell(NULL, NULL);
+    // load ENC, ..
+    _s52_setupMain();
 
-
-    ////////////////////////////////////////////////////////////
-    //
-    // setup supression of chart object (for debugging)
-    //
-    // supresse display of adminitrative objects when
-    // S52_MAR_DISP_CATEGORY is SELECT, to avoid cluttering
-    //S52_setS57ObjClassSupp("M_NSYS");   // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
-    //S52_setS57ObjClassSupp("M_COVR");   // HO data limit __/__/__ - LC(HODATA01)
-    //S52_setS57ObjClassSupp("M_NPUB");   // ??
-
-    // debug - M_QUAL - the U pattern
-    //S52_setS57ObjClassSupp("M_QUAL");
-    //ret = S52_setS57ObjClassSupp("M_QUAL");  // OK - ret == TRUE
-    //ret = S52_setS57ObjClassSupp ("M_QUAL");  // OK - ret == TRUE
-    //ret = S52_setS57ObjClassSupp ("M_QUAL");  // OK - ret == FALSE
-    S52_setS57ObjClassSupp("M_QUAL", TRUE);
-
-    // test
-    //S52_setS57ObjClassSupp("DRGARE");   // drege area
-
-    ////////////////////////////////////////////////////////////
-    //
-    // setup mariner object (for debugging)
-    // test loading objH _before_ loadPLib
-    _setMarFeature();
-
-    // load additional PLib (facultative)
-    //S52_loadPLib("plib_pilote.rle");
-    //S52_loadPLib("plib-test2.rle");
-    // load auxiliary PLib (fix waypnt/WAYPNT01, OWNSHP vector, put cursor on layer 9, ..)
-    S52_loadPLib(PLIB);
-    // lastest (S52 ed 6.0) IHO colors from www.ecdisregs.com
-    S52_loadPLib(COLS);
-    // load PLib from s52.cfg indication
-    //S52_loadPLib(NULL);
+    _s52_getView(&_view);
 
     _s52_setupMarPar();
 
+    // setup mariner object (for debugging)
+    // test loading objH _before_ loadPLib
+    _s52_setupMarFea(_view.cLat, _view.cLon);
+
     S52_setTextDisp(0, 100, TRUE);                      // show all text
     // debug
-    //S52_setTextDisp(21, 1, FALSE);                      // BOYLAT
+    //S52_setTextDisp(21, 1, FALSE);                    // BOYLAT
 
     // init decoration (scale bar, North arrow, unit, calib.)
     S52_newCSYMB();
 
-    _setOWNSHP();
-    _setVESSEL();
+#ifdef USE_FAKE_AIS
+    _s52_setupOWNSHP(_view.cLat, _view.cLon);
+    _s52_setupVESSEL(_view.cLat, _view.cLon);
+#endif
 
+    _s52_setupVRMEBL(_view.cLat, _view.cLon);
 
-    //*
-    _setVRMEBL();
+    _s52_setupPASTRK(_view.cLat, _view.cLon);
 
-    _setPASTRK();
-
-    // guard zone OFF (pick need projection)
+    // guard zone OFF (pick need GL projection)
     S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
-    _setRoute();
+    _s52_setupIceRte();
+    _s52_setupLEGLIN(_view.cLat, _view.cLon);
+    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
 
-    // clear alarm
-    //S52_setMarinerParam(S52_MAR_ERROR, 0.0);
-    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);
-
-    _setCLRLIN();
-
-    //_setMarFeature();
-    //*/
+    _s52_setupCLRLIN(_view.cLat, _view.cLon);
 
 #ifdef S52_USE_RADAR
     S52_setRADARCallBack(_radar_cb, 1280);
@@ -1220,7 +765,7 @@ static int      _initS52()
     //g_print("ObjClassList: %s\n", S52_getS57ClassList("CA579016.000"));
     //g_print("ObjList: %s\n",      S52_getObjList("CA579016.000", "ACHARE"));
     g_print("ObjList: %s\n",      S52_getObjList("CA579041.000", "ACHARE"));
-    g_print("ObjClassList: %s\n", S52_getS57ClassList("CA579041.000"));
+    g_print("S57ClassList: %s\n", S52_getS57ClassList("CA579041.000"));
     g_print("attList: %s\n",      S52_getAttList(410));
 
     // debug - suppress display of 'waypnt'
@@ -1257,13 +802,16 @@ static gboolean configure_event(GtkWidget         *widget,
     if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
         return FALSE;
 
-    _computeView(&_view);
+    _s52_getView(&_view);
 
     S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
     S52_setViewPort(0, 0, widget->allocation.width, widget->allocation.height);
 
     _width  = widget->allocation.width;
     _height = widget->allocation.height;
+
+    if (gdk_gl_drawable_is_double_buffered(gldrawable))
+        gdk_gl_drawable_swap_buffers(gldrawable);
 
     gdk_gl_drawable_gl_end(gldrawable);
 
@@ -1303,7 +851,7 @@ static gboolean expose_event(GtkWidget      *widget,
 
         static S52_view view;
 
-        _computeView(&view);
+        _getView(&view);
 
         S52_setView(view.cLat, view.cLon, view.rNM, view.north);
         S52_setViewPort(50, 50, 200, 200);
@@ -1394,7 +942,7 @@ static gboolean key_release_event(GtkWidget   *widget,
             _usage("s52gtk2");
             break;
         case GDK_v     :g_print("%s\n", S52_version());    break;
-        case GDK_x     :_dumpParam();                      break;
+        //case GDK_x     :_dumpParam();                      break;
         case GDK_q     :gtk_main_quit();                   break;
 
         case GDK_w     :_toggle(S52_MAR_TWO_SHADES);       break;
@@ -1507,7 +1055,7 @@ static gboolean button_release_event(GtkWidget      *widget,
             }
         }
 
-        _originIsSet = TRUE;
+        //_originIsSet = TRUE;
 
         return TRUE;
     }
@@ -1625,34 +1173,6 @@ static gboolean motion_notify_event(GtkWidget      *widget,
     return TRUE;
 }
 
-#ifdef USE_FAKE_AIS
-static int      _s52_updTimeTag(void)
-{
-
-    // fake one AIS
-    if (FALSE != _vessel_ais) {
-        gchar         str[80];
-        GTimeVal      now;
-        static double hdg = 0.0;
-
-        hdg = (hdg >= 359.0) ? 0.0 : hdg+1;  // fake rotating hdg
-
-        g_get_current_time(&now);
-        g_sprintf(str, "%s %lis", VESSELLABEL, now.tv_sec);
-        S52_setVESSELlabel(_vessel_ais, str);
-        S52_pushPosition(_vessel_ais, _view.cLat - 0.01, _view.cLon + 0.01, hdg);
-        S52_setVector(_vessel_ais, 1, hdg, 16.0);   // ground
-
-#ifdef S52_USE_AFGLOW
-        // stay at the same place but fill internal S52 buffer - in the search for possible leak
-        S52_pushPosition(_vessel_ais_afglow, _view.cLat, _view.cLon, 0.0);
-#endif
-    }
-
-    return TRUE;
-}
-#endif
-
 static int      _s52_draw_cb    (gpointer user_data)
 {
     (void)user_data;
@@ -1670,15 +1190,15 @@ static int      _s52_draw_cb    (gpointer user_data)
     if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
         return FALSE;
 
-#ifdef USE_FAKE_AIS
-    _s52_updTimeTag();
-#endif
-
     if (TRUE == S52_drawLast()) {
 //#if !defined(S52_USE_GLES2)
 //        if (TRUE == _doRenderHelp)
 //            _renderHelp(_winArea);
-//#endif
+        //#endif
+
+#ifdef USE_FAKE_AIS
+        _s52_updFakeAIS(_view.cLat, _view.cLon);
+#endif
 
         if (gdk_gl_drawable_is_double_buffered(gldrawable))
             gdk_gl_drawable_swap_buffers(gldrawable);
@@ -1762,9 +1282,9 @@ int main(int argc, char **argv)
 
 
 #if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
-    int mode = (GdkGLConfigMode) (GDK_GL_MODE_RGBA | GDK_GL_MODE_DOUBLE);
+    int mode = (GDK_GL_MODE_RGBA | GDK_GL_MODE_DOUBLE);
 #else
-    int mode = (GDK_GL_MODE_RGBA | GDK_GL_MODE_DOUBLE | GDK_GL_MODE_STENCIL );
+    int mode = (GDK_GL_MODE_RGBA | GDK_GL_MODE_DOUBLE | GDK_GL_MODE_STENCIL);
 #endif
 
     GdkGLConfig *glconfig = gdk_gl_config_new_by_mode((GdkGLConfigMode)mode);
@@ -1785,9 +1305,6 @@ int main(int argc, char **argv)
     //GTK_WIDGET_UNSET_FLAGS(_win,     GTK_DOUBLE_BUFFERED);
     //GTK_WIDGET_UNSET_FLAGS(_winArea, GTK_DOUBLE_BUFFERED);
 
-    // setup S52 display
-    _initS52();
-
     g_timeout_add(500, _s52_draw_cb, NULL); // 0.5 sec
 
     g_signal_connect_after(G_OBJECT(_winArea), "realize",             G_CALLBACK(realize),         NULL);
@@ -1796,10 +1313,14 @@ int main(int argc, char **argv)
     g_signal_connect(      G_OBJECT(_winArea), "motion_notify_event", G_CALLBACK(motion_notify_event),  NULL);
     g_signal_connect(      G_OBJECT(_winArea), "button_release_event",G_CALLBACK(button_release_event), NULL);
 
-    g_signal_connect_after(G_OBJECT(_win), "key_release_event",   G_CALLBACK(key_release_event),    NULL);
-    g_signal_connect(      G_OBJECT(_win), "delete_event",        G_CALLBACK(gtk_main_quit),        NULL);
+    g_signal_connect_after(G_OBJECT(_win),     "key_release_event",   G_CALLBACK(key_release_event),    NULL);
+    g_signal_connect(      G_OBJECT(_win),     "delete_event",        G_CALLBACK(gtk_main_quit),        NULL);
     //g_signal_connect(      G_OBJECT(_win), "button_release_event",G_CALLBACK(button_release_event), NULL);
 
+    // setup S52 before configure_event
+    _s52_init();
+
+    // will trigger configure_event
     gtk_widget_show_all(_win);
 
     // start main loop
