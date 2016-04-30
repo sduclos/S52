@@ -4,6 +4,9 @@
 #
 
 
+2016APR29
+    -mod refactor test/, unify duplicate test code
+
 2016APR23
     -del S52_USE_LOG as log_cd is used instead
     -fix NULL DList in case of symb missing in AUX
