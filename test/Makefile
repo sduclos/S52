@@ -21,9 +21,6 @@ all: s52gtk3egl     # GTK3 & EGL
 #all: s52clutter.js # same as s52gtk2 but use Clutter & Javascript (experimental)
                     # also used to build S52/doc/S52-0.1.gir
 
-# GDB BUG: ImportError: No module named 'libstdcxx'
-# FIX: (gdb) python sys.path.append("/usr/share/gcc-4.8/python");
-
 # TCC
 #CC   = tcc -fPIC
 
@@ -74,7 +71,9 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 # -DS52_USE_RADAR     - when in RADAR mode
 
-CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` -DUSE_FAKE_AIS
+# default - s52gtk2
+CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` \
+         -DUSE_FAKE_AIS
 
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
                       -DS52_USE_GL2          \
@@ -86,20 +85,19 @@ s52gtk2gps: CFLAGS += `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-gl
 
 s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 
+#                     -DSET_SCREEN_SIZE
 s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
                      -DS52_USE_MESA3D        \
-                     -DSET_SCREEN_SIZE       \
-                     -DUSE_AIS               \
+                     -DUSE_FAKE_AIS          \
                      -DS52_USE_AFGLOW
 
-# same as s52eglx, but "gtk+-2.0" is added - no AIS
+# same as s52eglx, but "gtk+-2.0" is added
 s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-2.0` \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
                      -DS52_USE_MESA3D        \
-                     -DSET_SCREEN_SIZE       \
                      -DUSE_AIS               \
                      -DS52_USE_AFGLOW
 
@@ -108,13 +106,18 @@ s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2
 
-s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`      \
-                      -I$(OPENEV_HOME) -DGV_USE_DOUBLE_PRECISION_COORD \
-                      -I.. -DS52_USE_GV
+s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`    \
+                      -I$(OPENEV_HOME)                               \
+                      -I..                                           \
+					  -DGV_USE_DOUBLE_PRECISION_COORD                \
+					  -DS52_USE_GV
 
-s52gv2:     CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0`       \
-                      -D_REENTRANT  -DGV_USE_DOUBLE_PRECISION_COORD    \
-                      -I$(OPENEV2HOME) -I..  -DS52_USE_GV
+s52gv2:     CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0`     \
+                      -D_REENTRANT                                   \
+					  -DGV_USE_DOUBLE_PRECISION_COORD                \
+                      -I$(OPENEV2HOME)                               \
+					  -I..                                           \
+					  -DS52_USE_GV
 
 
 ############### LIBS setup ##############################
@@ -136,10 +139,7 @@ GTK_LIBS    = `gtk-config  --libs` -lgtkgl
 GTK2LIBS    = `pkg-config  --libs gtk+-2.0 gtkglext-1.0 gthread-2.0 gl`
 
 # GL2 can't use GL1 stuff like glBegin/glEnd
-# FIXME: use VBO instead
 s52gtk2gl2 : GTK2LIBS = `pkg-config --libs gtk+-2.0 gtkglext-1.0 gthread-2.0`
-
-OGR_LIBS  = `gdal-config --libs`
 
 # Ubuntu 13+ need -lX11
 s52eglx   : LIBS    = `pkg-config --libs egl x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS) -lm
@@ -149,6 +149,14 @@ s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobjec
 
 # same as s52eglx, add "gtk+-3.0"
 s52gtk3egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-3.0 libgps` $(S52_LIBS) -lm
+
+OGR_LIBS  = `gdal-config --libs`
+s52gv:      LIBS = $(S52_LIBS) $(GTK_LIBS) $(GV_LIBS) $(OGR_LIBS)
+s52gv2:     LIBS = $(S52_LIBS) $(GTK2LIBS) $(GV2LIBS) $(OGR_LIBS)
+
+s52gtk2gps: LIBS = $(S52_LIBS) $(GTK2LIBS) $(OGR_LIBS) -Wl,-rpath . -L. -ls52gps
+
+s52gtk2p:   LIBS = $(GTK2LIBS) $(OGR_LIBS)
 
 
 ############### build ##############################
@@ -162,7 +170,7 @@ s52glx: s52glx.c
 #	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
 
 #FIXME: with -DUSE_FAKE_AIS no need to build AIS
-s52eglx: s52egl.c s52ais.c
+s52eglx: s52egl.c s52ais.c *.i
 	$(CC) $(CFLAGS) s52egl.c s52ais.c $(LIBS) -o $@
 
 #s52gtk2egl: s52gtk2egl.c s52ais.c
@@ -171,18 +179,16 @@ s52eglx: s52egl.c s52ais.c
 #s52gtk3egl: s52gtk3egl.c s52ais.c
 #	$(CC) $(CFLAGS) s52gtk3egl.c s52ais.c $(LIBS) -o $@
 
-s52gtk2egl: s52gtkegl.c s52ais.c
+s52gtk2egl: s52gtkegl.c s52ais.c *.i
 	$(CC) $(CFLAGS) s52gtkegl.c s52ais.c $(LIBS) -o $@
 
-s52gtk3egl: s52gtkegl.c s52ais.c
+s52gtk3egl: s52gtkegl.c s52ais.c *.i
 	$(CC) $(CFLAGS) s52gtkegl.c s52ais.c $(LIBS) -o $@
 
-s52gv:  LIBS = $(S52_LIBS) $(GTK_LIBS) $(GV_LIBS) $(OGR_LIBS)
 s52gv:  s52gv.c
 	(cd $(OPENEV_HOME); make gvtest; $(CC) -shared *.o -o libgv.so)
 	$(CC) $(CFLAGS) s52gv.c $(LIBS) -o $@
 
-s52gv2: LIBS = $(S52_LIBS) $(GTK2LIBS) $(GV2LIBS) $(OGR_LIBS)
 s52gv2: s52gv.c
 	$(CC) $(CFLAGS) s52gv.c $(LIBS) -o $@
 
@@ -197,7 +203,6 @@ s52gtk2 s52gtk2gl2: s52gtk2.c s52ais.c ../S52.h
 libs52gps.so: s52gps.h s52gps.c
 	$(CC) $(CFLAGS) -fPIC -shared -I.. s52gps.c -o $@
 
-s52gtk2gps: LIBS = $(S52_LIBS) $(GTK2LIBS) $(OGR_LIBS) -Wl,-rpath . -L. -ls52gps
 s52gtk2gps: libs52gps.so s52gtk2.c ../S52.h
 	$(CC) $(CFLAGS) s52gtk2.c $(LIBS) -o $@
 
@@ -206,7 +211,6 @@ s52qt4: s52qt4.pro s52qt4.cpp ../S52.h
 	qmake -o Makefile.qt4 s52qt4.pro
 	make -f Makefile.qt4
 
-s52gtk2p: LIBS = $(GTK2LIBS) $(OGR_LIBS)
 s52gtk2p: s52gtk2.c ../S52.h
 	$(CC) $(CFLAGS) -pg s52gtk2.c ../*.o $(LIBS) -lproj -llcms -o $@
 
@@ -310,11 +314,10 @@ s52eglw32: s52gtk2egl.c ../S52.h
 
 
 
-
-
 ############ experimantal: Clutter/Javascript ################
 #
 #
+
 #GNOME3_SHELL_LIBS = /home/sduclos/gnome-shell/install/lib64
 GNOME3_SHELL_LIBS = /usr/lib
 #GNOME3_SHELL_RUN  = jhbuild run
@@ -348,6 +351,7 @@ S52-1.0.typelib: S52-1.0.gir
 	$(GNOME3_SHELL_RUN) g-ir-compiler S52-1.0.gir -o $@
 	sudo cp S52-1.0.typelib $(GNOME3_SHELL_LIBS)/girepository-1.0/
 
+
 ############### gtk3 test ##############################
 
 gtk3: gtk3test.c
@@ -360,7 +364,7 @@ gtk3: gtk3test.c
 
 clean:
 	rm -f s52glx s52eglx s52gv s52gv2 s52gtk2 s52gtk2gl2 s52gtk2p s52gtk2.exe *.o *.so \
-    s52gtk2gps S52-1.0.* s52eglx s52ais s52gtkegl s52eglw32.exe
+    s52gtk2gps S52-1.0.* s52eglx s52ais s52gtk2egl s52gtk3egl s52eglw32.exe
 
 distclean: clean
 	rm -f android/dist/sdcard/s52droid/bin/s52ais
