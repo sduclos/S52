@@ -82,7 +82,7 @@ typedef struct { double u, v; } projUV;
 static GTimer *_timer = NULL;
 
 // trap signal (ESC abort rendering)
-// must be compiled with -std=gnu99
+// must be compiled with -std=gnu99 or -std=c99 -D_POSIX_C_SOURCE=199309L
 #include <unistd.h>      // getuid()
 #include <sys/types.h>
 #include <signal.h>      // siginfo_t
@@ -1307,8 +1307,7 @@ static int        _initSIG(void)
     memset(&sa, 0, sizeof(sa));
     sa.sa_sigaction = _trapSIG;
     sigemptyset(&sa.sa_mask);
-    //sa.sa_flags = SA_RESTART | SA_SIGINFO;
-    sa.sa_flags = SA_SIGINFO|SA_RESETHAND;
+    sa.sa_flags = SA_SIGINFO;  // -std=c99 -D_POSIX_C_SOURCE=199309L
 
     //  2 - Interrupt (ANSI) - user press ESC to stop rendering
     g_atomic_int_set(&_atomicAbort, FALSE);
