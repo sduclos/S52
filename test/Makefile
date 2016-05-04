@@ -26,14 +26,14 @@ all: s52gtk3egl     # GTK3 & EGL
 
 # GCC
 #CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=gnu99
-CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=c99
+#CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=c99 -D_POSIX_C_SOURCE=199309L
 # test - compile C code as C++
 #CC   = g++ -fPIC -O0 -g -Wall
-CXX   = g++ -O0 -g -Wall
+#CXX   = g++ -O0 -g -Wall
 
 # CLANG
-#CC   = clang   -fPIC
-#CXX  = clang++ -fPIC
+CC   = clang   -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
+CXX  = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
 
 MINGW = /usr/bin/i586-mingw32msvc-
 #MINGW = /usr/bin/i686-w64-mingw32-
@@ -58,6 +58,7 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DUSE_AIS           - call s52ais.c
 # -DSET_SCREEN_SIZE   - set screen size be hand (hard coded as dual-screen seem to confused the setup)
 # -DUSE_LOG_CB        - log every S52_* in tmp file
+# -DUSE_TEST_OBJ      - load test Mariners' Object
 
 # -DS52_USE_MESA3D    - set ENV for Mesa3D MSAA and vblank_mode
 # -DS52_USE_GLES2     - GLES2
@@ -72,8 +73,7 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DS52_USE_RADAR     - when in RADAR mode
 
 # default - s52gtk2
-CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl` \
-         -DUSE_FAKE_AIS
+CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl`
 
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
                       -DS52_USE_GL2          \
@@ -90,7 +90,7 @@ s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
                      -DS52_USE_MESA3D        \
-                     -DUSE_FAKE_AIS          \
+                     -DUSE_AIS               \
                      -DS52_USE_AFGLOW
 
 # same as s52eglx, but "gtk+-2.0" is added
