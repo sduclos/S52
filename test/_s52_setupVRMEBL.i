@@ -4,19 +4,19 @@
 
 
 // test - VRMEBL
+
+//static int _originIsSet = FALSE;  //for VRMEBL
+
 // S52 object name:"ebline"
 static S52ObjectHandle _vrmeblA = FALSE;
 
-// test - cursor DISP 9 (instead of IHO PLib DISP 8)
-// need to load PLAUX
+// test - cursor DISP 9 (instead of IHO PLib DISP 8), need to load PLAUX
 // S52 object name:"ebline"
 static S52ObjectHandle _cursor2 = FALSE;  // 2 - open cursor
 
 // ebline draw flag (F4 toggle ON/OFF)
 //static int _drawVRMEBL = TRUE;
 static int _drawVRMEBL = FALSE;
-
-//static int _originIsSet = FALSE;  //for VRMEBL
 
 
 static int _s52_setupVRMEBL(double cLat, double cLon)
