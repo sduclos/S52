@@ -33,7 +33,7 @@
 #include <glib.h>
 #include <glib/gstdio.h>  // g_file_test(),
 
-// compiled with -std=gnu99 instead of -std=c99 will define M_PI
+// compiled with -std=gnu99 (or -std=c99 -D_POSIX_C_SOURCE=???) will define M_PI
 #include <math.h>         // sin(), cos(), atan2(), pow(), sqrt(), floor(), INFINITY, M_PI
 
 // FIXME: for C99
