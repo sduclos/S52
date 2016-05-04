@@ -43,7 +43,7 @@
 #include <math.h>
 #include <wchar.h>
 
-#include <glib.h>
+#include <glib.h>  // g_strdup(), g_free()
 
 #include "texture-font.h"
 
@@ -260,7 +260,7 @@ texture_font_new( texture_atlas_t * atlas,
     self->height    = 0;
     self->ascender  = 0;
     self->descender = 0;
-    self->filename  = strdup( filename );
+    self->filename  = g_strdup( filename );
     self->size      = size;
     self->outline_type = 0;
     self->outline_thickness = 0.0;
