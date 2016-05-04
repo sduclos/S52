@@ -76,10 +76,10 @@ static double _y      = 0.0;
 
 //----------------------------------------------
 //
-// Common stuff
+// Common stuff for s52egl.c, s52gtk2.c, s52gtkegl.c
 //
 
-#include "_s52_setupMarPar.i"  // _s52_setupMarPar()
+#ifdef USE_TEST_OBJ
 #include "_s52_setupMarFea.i"  // _s52_setupMarFea()
 #include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP() - fake AIS
 #include "_s52_setupVESSEL.i"  // _s52_setupVESSEL() - fake AIS
@@ -88,8 +88,10 @@ static double _y      = 0.0;
 #include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
 #include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
 //#include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
+#endif  // USE_TEST_OBJ
 
-#include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup
+#include "_s52_setupMarPar.i"  // _s52_setupMarPar(), buntch of call to S52_setMarinerParam()
+#include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*(), loadCell()
 
 
 //#if !defined(S52_USE_GLES2)
@@ -727,6 +729,7 @@ static int      _s52_init()
 
     _s52_setupMarPar();
 
+    /*
     // setup mariner object (for debugging)
     // test loading objH _before_ loadPLib
     _s52_setupMarFea(_view.cLat, _view.cLon);
@@ -758,6 +761,7 @@ static int      _s52_init()
 #ifdef S52_USE_RADAR
     S52_setRADARCallBack(_radar_cb, 1280);
 #endif
+    */
 
     g_print("PLibList    : %s\n", S52_getPLibNameList());
     g_print("PalettesList: %s\n", S52_getPalettesNameList());
@@ -834,7 +838,6 @@ static gboolean expose_event(GtkWidget      *widget,
 
 
     if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext)) {
-        g_assert(0);
         return FALSE;
     }
 
@@ -1044,17 +1047,15 @@ static gboolean button_release_event(GtkWidget      *widget,
         S52_setVRMEBL(_vrmeblA, x, y, &brg, &rge);
         //*/
 
-        // set origin
+        /* set origin
         if (0 == S52_setVRMEBL(_vrmeblA, 100, 100, NULL, NULL)) {
-            g_print("s52gtk.c:button_release_event(): setVRMEBL 1 failed\n");
-            g_assert(0);
+            g_print("WARNING: s52gtk.c:button_release_event(): setVRMEBL 1 failed\n");
         } else {
             if (0 == S52_setVRMEBL(_vrmeblA, 500, 500, NULL, NULL)) {
-                g_print("s52gtk.c:button_release_event(): setVRMEBL 2 failed\n");
-                g_assert(0);
+                g_print("WARNING: s52gtk.c:button_release_event(): setVRMEBL 2 failed\n");
             }
         }
-
+        */
         //_originIsSet = TRUE;
 
         return TRUE;
@@ -1358,7 +1359,7 @@ static S52ObjectHandle _marfea_point = NULL;
 */
 
 
-    //* S52 Mariner Obj cleanup by hand - S52_done() do that too
+    /* S52 Mariner Obj cleanup by hand - S52_done() do that too
     _ownshp      = S52_delMarObj(_ownshp);
     _vrmeblA     = S52_delMarObj(_vrmeblA);
     //_vrmeblB     = S52_delMarObj(_vrmeblB);
