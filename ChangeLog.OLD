@@ -4,6 +4,9 @@
 #
 
 
+2016MAI01
+    -fix call to log_cb when logging to file
+
 2016APR29
     -mod refactor test/, unify duplicate test code
 
