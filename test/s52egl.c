@@ -106,16 +106,8 @@ typedef struct s52engine {
     //EGLClientBuffer     eglClientBuf;
     //EGLNativePixmapType eglPixmap;       // eglCopyBuffers()
 
-
-    // draw thread
+     // draw thread
     GMainLoop          *main_loop;
-
-    // debug - test with rendering thread
-    //GThread            *drawThread;
-    //GAsyncQueue        *queue;             // asynchronous communication between threads
-    //GTimeVal            end_time;
-    //guint               idle_id;           // start _s52_draw_cb
-    //GStaticMutex        mutex;
 
     // flags use in _s52_draw_cb
     int                 do_S52draw;        // TRUE to call S52_draw()
@@ -139,13 +131,13 @@ static s52engine    _engine;
 
 //----------------------------------------------
 //
-// Common stuff
+// Common stuff for s52egl.c, s52gtk2.c, s52gtkegl.c
 //
 
 // debug - lap timer
 static GTimer *_timer = NULL;
 
-#include "_s52_setupMarPar.i"  // _s52_setupMarPar()
+#ifdef USE_TEST_OBJ
 #include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP()
 #include "_s52_setupVESSEL.i"  // _s52_setupVESSEL()
 #include "_s52_setupVRMEBL.i"  // _s52_setupVRMEBL()
@@ -156,8 +148,10 @@ static GTimer *_timer = NULL;
 #include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
 
 #include "_radar.i"            // _radar_init(), _radar_readLog(), _radar_done()
+#endif  // USE_TEST_OBJ
 
-#include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*()
+#include "_s52_setupMarPar.i"  // _s52_setupMarPar(): S52_setMarinerParam()
+#include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*(), loadCell()
 #include "_egl.i"              // _egl_init(), _egl_beg(), _egl_end(), _egl_done()
 
 /*
@@ -345,7 +339,7 @@ static int      _s52_init       (s52engine *engine)
     S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
 
     _s52_setupMarPar();
-
+    /*
     // must be first mariners' object so that the
     // rendering engine place it on top of OWNSHP/VESSEL
     _s52_setupVRMEBL(engine->state.cLat, engine->state.cLon);
@@ -362,7 +356,7 @@ static int      _s52_init       (s52engine *engine)
     _s52_setupOWNSHP(engine->state.cLat, engine->state.cLon);
     _s52_setupVESSEL(engine->state.cLat, engine->state.cLon);
 #endif
-
+    */
 
 
     S52_setEGLCallBack((S52_EGL_cb)_egl_beg, (S52_EGL_cb)_egl_end, engine);
@@ -497,7 +491,6 @@ static int      _s52_draw_cb    (gpointer user_data)
 #ifdef USE_FAKE_AIS
         _s52_updFakeAIS(engine->state.cLat, engine->state.cLon);
 #endif
-
         S52_drawLast();
     }
 
@@ -747,18 +740,19 @@ static int      _android_sensors_gyro(gpointer user_data)
 
 static int      _android_sensorsList_dump(ASensorManager *sensorManager)
 {
-/*
-I/s52droid( 2683): 0 - sensor name: KXTF9 3-axis Accelerometer
-I/s52droid( 2683): 1 - sensor name: Ambient Light sensor
-I/s52droid( 2683): 2 - sensor name: AK8975 3-axis Magnetic field sensor
-I/s52droid( 2683): 3 - sensor name: BMP085 Pressure sensor
-I/s52droid( 2683): 4 - sensor name: L3G4200D Gyroscope sensor
-I/s52droid( 2683): 5 - sensor name: Rotation Vector Sensor
-I/s52droid( 2683): 6 - sensor name: Gravity Sensor
-I/s52droid( 2683): 7 - sensor name: Linear Acceleration Sensor
-I/s52droid( 2683): 8 - sensor name: Orientation Sensor
-I/s52droid( 2683): 9 - sensor name: Corrected Gyroscope Sensor
-*/
+    /* Xoom
+     I/s52droid( 2683): 0 - sensor name: KXTF9 3-axis Accelerometer
+     I/s52droid( 2683): 1 - sensor name: Ambient Light sensor
+     I/s52droid( 2683): 2 - sensor name: AK8975 3-axis Magnetic field sensor
+     I/s52droid( 2683): 3 - sensor name: BMP085 Pressure sensor
+     I/s52droid( 2683): 4 - sensor name: L3G4200D Gyroscope sensor
+     I/s52droid( 2683): 5 - sensor name: Rotation Vector Sensor
+     I/s52droid( 2683): 6 - sensor name: Gravity Sensor
+     I/s52droid( 2683): 7 - sensor name: Linear Acceleration Sensor
+     I/s52droid( 2683): 8 - sensor name: Orientation Sensor
+     I/s52droid( 2683): 9 - sensor name: Corrected Gyroscope Sensor
+     */
+
     int i = 0;
     ASensorList list;
     int ret = ASensorManager_getSensorList(sensorManager, &list);
@@ -796,19 +790,13 @@ static gpointer _android_display_init(gpointer user_data)
     // 60 fps -> 1000 / 60 = 16.666 msec
     //g_timeout_add(1000/60, _s52_draw_cb, user_data);  // 16 msec
 
+#ifdef USE_AIS
+    // Note: data form AIS start too fast for the main loop
+    s52ais_initAIS();
+#endif
+
     // debug - init s52ui (HTML5) right at the start
     _android_init_external_UI(engine);
-
-    // debug - test with rendering thread
-    //GMainContext *c   = g_main_context_get_thread_default();
-    //engine->main_loop = g_main_loop_new(c, FALSE);
-    //engine->main_loop = g_main_loop_new(NULL, FALSE);
-    //engine->queue     = g_async_queue_new();
-
-    //engine->idle_id   = g_idle_add(_s52_draw_cb, user_data);
-
-    // start draw loop
-    //g_main_loop_run(engine->main_loop);
 
     return NULL;
 }
@@ -1729,6 +1717,11 @@ static int      _X11_handleXevent(gpointer user_data)
             S52_setViewPort(0, 0, event.xconfigure.width, event.xconfigure.height);
             g_print("DEBUG: ConfigureNotify Event\n");
 
+#ifdef USE_AIS
+            // Note: data form AIS start too fast for the main loop
+            s52ais_initAIS();
+#endif
+
             break;
 
         case Expose:
@@ -1737,10 +1730,11 @@ static int      _X11_handleXevent(gpointer user_data)
             engine->do_S52drawLast = TRUE;
             //g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0);
             //_s52_draw_cb((gpointer) engine);
-            //g_print("DEBUG: Expose Event\n");
+            g_print("DEBUG: Expose Event\n");
 
             break;
 
+#ifdef USE_TEST_OBJ
         case MotionNotify:
             {
                 if (FALSE == _drawVRMEBL)
@@ -1844,6 +1838,7 @@ static int      _X11_handleXevent(gpointer user_data)
                 */
             }
             break;
+#endif  // USE_TEST_OBJ
 
         case KeyPress:
         case KeyRelease: {
@@ -1879,6 +1874,8 @@ static int      _X11_handleXevent(gpointer user_data)
                 engine->do_S52draw = TRUE;
                 return TRUE;
             }
+
+#ifdef USE_TEST_OBJ
             // VRMEBL toggle
             if (XK_F4 == keysym) {
                 _drawVRMEBL = !_drawVRMEBL;
@@ -1897,6 +1894,8 @@ static int      _X11_handleXevent(gpointer user_data)
 
                 return TRUE;
             }
+#endif  // USE_TEST_OBJ
+
             // Rot. Buoy Light
             if (XK_F5 == keysym) {
                 S52_setMarinerParam(S52_MAR_ROT_BUOY_LIGHT, 180.0);
