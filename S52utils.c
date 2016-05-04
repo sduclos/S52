@@ -194,39 +194,44 @@ int      S52_utils_getConfig(cchar *label, valueBuf *vbuf)
 
 void _printf(const char *file, int line, const char *function, const char *frmt, ...)
 {
-    //S52GL.c:6020 in _contextValid(): Renderer:   Gallium 0.4 on AMD CEDAR
-    //S52GL.c:6021 in _contextValid(): Version:    3.0 Mesa 10.1.3
-    //S52GL.c:6022 in _contextValid(): Shader:     1.30
-    // this driver need a buffer of 5K to fit all extesion string
-
-    //const int MAX = 1024 + 1024 + 1024 + 1024;
-    //const
-
-    // FIXME: variable lenght array
-    int MAX = 6*1024;
+    int  MAX = 128;
     char buf[MAX];
-    snprintf(buf, MAX, "%s:%i in %s(): ", file, line, function);
+    char frmtstr[] =  "%s:%i in %s(): ";
+    int  size = snprintf(buf, MAX, frmtstr, file, line, function);
 
-	int size = (int) strlen(buf);
     if (size < MAX) {
 		va_list argptr;
 		va_start(argptr, frmt);
 		int n = vsnprintf(&buf[size], (MAX-size), frmt, argptr);
         va_end(argptr);
 
-        if (n > (MAX-size)) {
-            g_print("WARNING: _printf(): string buffer FULL, str len:%i, buf len:%i\n", n, (MAX-size));
+        char bufFinal[size + n + 1];
+        memcpy(bufFinal, buf, size);
+		va_start(argptr, frmt);
+		//int nn = vsnprintf(&buf[size], (MAX-size), frmt, argptr);
+		int nn = vsnprintf(&bufFinal[size], (n+1), frmt, argptr);
+        va_end(argptr);
+
+        if (nn > (n+1)) {
+        //if (n > (MAX-size)) {
+            //g_print("WARNING: _printf(): string buffer FULL, str len:%i, buf len:%i\n", n, (MAX-size));
+            g_print("WARNING: _printf(): string buffer FULL, str len:%i, buf len:%i\n", nn, (n+1));
             g_assert(0);
         }
-	}
+    } else {
+        g_print("WARNING: _printf(): buf FULL, str size:%i, buf len:%i\n", size, MAX);
+        g_assert(0);
+    }
 
     g_print("%s", buf);
 
-    // if user set a callback .. call it
+#if !defined(S52_USE_LOGFILE)
+    // if user set a callback .. call it,
+    // unless logging to file witch will call the cb
     if (NULL != _log_cb) {
         _log_cb(buf);
     }
-
+#endif
 
 }
 
