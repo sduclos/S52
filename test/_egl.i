@@ -101,7 +101,7 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
         if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
             // eglMakeCurrent() output the same error msg:
             // eglMakeCurrent:671 error 3002 (EGL_BAD_ACCESS)
-            //LOGE("_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
+            LOGE("_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
             return FALSE;
         }
     }
@@ -113,12 +113,13 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     }
     */
 
-    // Mesa3D 10.1 generate a glError() in _checkError(): from S52_GL_begin() -0-: 0x502 (GL_INVALID_OPERATION)
+    /* Mesa3D 10.1 generate a glError() in _checkError(): from S52_GL_begin() -0-: 0x502 (GL_INVALID_OPERATION)
     // Note: egltrace.so (apitrace) handle it
     if (NULL != _glInsertEventMarkerEXT) {
         //_glInsertEventMarkerEXT(strlen(tag), tag);
         _glInsertEventMarkerEXT(0, tag);
     }
+    */
 
     return TRUE;
 }
@@ -608,6 +609,7 @@ static int      _egl_init       (s52engine *engine)
     // 1 - GLES1.x, 2 - GLES2.x, 3 - GLES3.x
     EGLint eglContextList[] = {
 #ifdef S52_USE_ADRENO
+        // FIXME: why not 2 - GLES2 on Adreno!
         EGL_CONTEXT_CLIENT_VERSION, 3, // GLES3 to get NPOT texture in blit
 #else
         EGL_CONTEXT_CLIENT_VERSION, 2,
