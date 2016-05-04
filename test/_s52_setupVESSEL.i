@@ -5,8 +5,8 @@
 
 #ifdef USE_FAKE_AIS
 
-#define VESSELLABEL "~~MV Non Such~~ "           // last char will be trimmed
 #define VESSELTURN_UNDEFINED 129
+#define VESSELLABEL "~~MV Non Such~~ "           // last char will be trimmed
 
 static S52ObjectHandle _vessel_ais        = FALSE;
 
