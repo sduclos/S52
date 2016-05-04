@@ -72,16 +72,19 @@ DBG    = $(DBG3)
 #CXX  = tcc -fPIC -fmudflap
 
 # GCC
-#CC   = gcc -std=c99 -fPIC
+#CC   = gcc -std=c99 -fPIC -D_POSIX_C_SOURCE=199309L # to get siginfo_t
+#CC   = gcc -std=c99 -fPIC -D_POSIX_C_SOURCE=200809L # 199309L to get siginfo_t, 200809L strdup() in freetype_gl 
+
+#CC   = gcc -std=c99 -fPIC -D_POSIX_C_SOURCE=200112L
 #CC   = gcc -std=c99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
-CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI
+#CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI and sigtrap()
 # test - compile C code as C++
 #CC   = g++ -fPIC -O0 -g -Wall
-CXX  = g++ -fPIC
+#CXX  = g++ -fPIC
 
 # CLANG
-#CC   = clang   -fPIC
-#CXX  = clang++ -fPIC
+CC   = clang   -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
+CXX  = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
 
 # FIXME: check this
 # LLVM-AddressSanitizer: http://clang.llvm.org/docs/AddressSanitizer.html
