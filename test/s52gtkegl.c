@@ -79,10 +79,11 @@ static s52engine _engine;
 
 //----------------------------------------------
 //
-// Common stuff
+// Common stuff for s52egl.c, s52gtk2.c, s52gtkegl.c
 //
 
-#include "_s52_setupMarPar.i"  // _s52_setupMarPar()
+
+#ifdef USE_TEST_OBJ
 //#include "_s52_setupMarFea.i"  // _s52_setupMarFea()
 #include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP()
 #include "_s52_setupVESSEL.i"  // _s52_setupVESSEL()
@@ -91,8 +92,11 @@ static s52engine _engine;
 #include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
 //#include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
 #include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
+#endif  // USE_TEST_OBJ
 
-#include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*()
+
+#include "_s52_setupMarPar.i"  // _s52_setupMarPar(): S52_setMarinerParam()
+#include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*(), loadCell()
 
 #include "_egl.i"              // _egl_init(), _egl_beg(), _egl_end(), _egl_done()
 
@@ -172,6 +176,7 @@ static int      _s52_init   (s52engine *engine)
 
     _s52_setupMarPar();
 
+#ifdef USE_TEST_OBJ
     // must be first mariners' object so that the
     // rendering engine place it on top of OWNSHP/VESSEL
     _s52_setupVRMEBL(engine->state.cLat, engine->state.cLon);
@@ -189,6 +194,7 @@ static int      _s52_init   (s52engine *engine)
     _s52_setupVESSEL(engine->state.cLat, engine->state.cLon);
 #endif
 
+#endif  // USE_TEST_OBJ
 
 
     S52_setEGLCallBack((S52_EGL_cb)_egl_beg, (S52_EGL_cb)_egl_end, engine);
