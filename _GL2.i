@@ -278,15 +278,6 @@ static int       _init_freetype_gl(void)
         }
     }
 
-/*
-#ifdef S52_USE_ADRENO
-    // bigger font on Nexus 7 (size + 8)
-    int basePtSz = 20;
-#else
-    int basePtSz = 12;
-#endif
-*/
-
     // 10 points default
     int basePtSz = 10 * (PICA / S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
 
@@ -1282,9 +1273,10 @@ static int       _set_glScaled(void)
     ////////////////////////////////////////////////////////////////
     //
     // FIXME: scale found by trial and error
-    //        find a way to get it programmaticaly
+    //        FIME: should get pixel Resolution programmaticaly
     //
 
+    // FIXME: why -Y? (flip Y !!)
 #ifdef S52_USE_TEGRA2
     // Xoom - S52_MAR_DOTPITCH_MM set to 0.3
     scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 8.0;
@@ -1292,7 +1284,7 @@ static int       _set_glScaled(void)
 #endif
 
 #ifdef S52_USE_ADRENO
-    // Nexus 7 (2013) - 323ppi landscape - if S52_MAR_DOTPITCH_MM not set (so dotptich is set via EGL/S52_init()
+    // Nexus 7 (2013) - 323ppi landscape -
     //scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 1.0;
     //scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-1.0;
 
