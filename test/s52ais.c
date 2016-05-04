@@ -47,6 +47,18 @@ static GThread *_gpsClientThread = NULL;
 #endif
 
 #ifdef S52_USE_ANDROID
+//#define GPSD_HOST "192.168.1.66"  // connect to GPSD on local network
+//#define GPSD_HOST "192.168.1.68"  // connect to GPSD on local network
+//#define GPSD_HOST "192.168.1.70"  // connect to GPSD on local network
+#define GPSD_HOST "192.168.1.73"  // connect to GPSD on local network
+#else
+#define GPSD_HOST "localhost"     // connect to local GPSD
+//#define GPSD_HOST "192.168.1.73"  // connect to GPSD on local network
+#endif
+
+#define GPSD_PORT "2947"
+
+#ifdef S52_USE_ANDROID
 #include <android/log.h>
 #define LOG_TAG    "s52ais"
 #define LOGI(...)  __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
@@ -210,18 +222,6 @@ static struct sigaction _old_signal_handler_SIGSEGV;   // loop in android
 static struct sigaction _old_signal_handler_SIGTERM;
 #endif
 
-#ifdef S52_USE_ANDROID
-//#define GPSD_HOST "192.168.1.66"  // connect to GPSD on local network
-//#define GPSD_HOST "192.168.1.68"  // connect to GPSD on local network
-//#define GPSD_HOST "192.168.1.70"  // connect to GPSD on local network
-#define GPSD_HOST "192.168.1.73"  // connect to GPSD on local network
-#else
-//#define GPSD_HOST "localhost"     // connect to local GPSD
-#define GPSD_HOST "192.168.1.73"  // connect to GPSD on local network
-#endif
-
-#define GPSD_PORT "2947"
-
 #ifdef S52_USE_SOCK
 // FIXME: #define
 static char _localhost[] = "127.0.0.1";
@@ -264,8 +264,7 @@ static DBusMessage  *_newBDusSignal(const char *sigName)
                                                    S52_DBUS_OBJ_NAME,  // interface of signal of Object
                                                    sigName);
     if (NULL == message) {
-        g_warning("_newBDusSignal(): ERROR: new signal msg failed\n");
-        g_assert(0);
+        g_warning("_newBDusSignal(): WARNING: new signal msg failed\n");
         return FALSE;
     }
 
@@ -901,7 +900,6 @@ static int           _setAISDel (_ais_t *ais)
 {
     if (NULL == ais) {
         g_print("s52ais:_setAISDel(): WARNING: AIS is NULL!\n");
-        g_assert(0);
     }
 
 #ifdef S52_USE_DBUS
