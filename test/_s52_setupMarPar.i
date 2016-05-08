@@ -68,7 +68,7 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
     //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
 
-    // remove QUAPNT01 symbole (black diagonal and a '?')
+    // remove clutter QUAPNT01 symbole (black diagonal and a '?')
     S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);   // off
 
     S52_setMarinerParam(S52_MAR_DISP_CALIB,      1.0);
@@ -218,50 +218,6 @@ static gboolean _dumpParam()
     return TRUE;
 }
 */
-
-    ////////////////////////////////////////////////////////////
-    //
-    // setup internal variable to decent value for debugging
-    //
-    /*
-    S52_setMarinerParam("S52_MAR_SHOW_TEXT",       1.0);
-    S52_setMarinerParam("S52_MAR_TWO_SHADES",      0.0);
-    S52_setMarinerParam("S52_MAR_SAFETY_CONTOUR", 10.0);
-    S52_setMarinerParam("S52_MAR_SAFETY_DEPTH",   10.0);
-    S52_setMarinerParam("S52_MAR_SHALLOW_CONTOUR", 5.0);
-    S52_setMarinerParam("S52_MAR_DEEP_CONTOUR",   11.0);
-
-    S52_setMarinerParam("S52_MAR_SHALLOW_PATTERN", 0.0);
-    //S52_setMarinerParam("S52_MAR_SHALLOW_PATTERN", 1.0);
-
-    S52_setMarinerParam("S52_MAR_SHIPS_OUTLINE",   1.0);
-    S52_setMarinerParam("S52_MAR_DISTANCE_TAGS",   0.0);
-    S52_setMarinerParam("S52_MAR_TIME_TAGS",       0.0);
-    S52_setMarinerParam("S52_MAR_BEAM_BRG_NM",     1.0);
-
-    S52_setMarinerParam("S52_MAR_FULL_SECTORS",    1.0);
-    S52_setMarinerParam("S52_MAR_SYMBOLIZED_BND",  1.0);
-    S52_setMarinerParam("S52_MAR_SYMPLIFIED_PNT",  1.0);
-
-    S52_setMarinerParam("S52_MAR_DISP_CATEGORY",   S52_MAR_DISP_CATEGORY_STD);  // STANDARD (default)
-
-    S52_setMarinerParam("S52_MAR_COLOR_PALETTE",   0.0);  // first palette
-
-    //S52_setMarinerParam("S52_MAR_FONT_SOUNDG",    1.0);
-    S52_setMarinerParam("S52_MAR_FONT_SOUNDG",     0.0);
-
-    S52_setMarinerParam("S52_MAR_DATUM_OFFSET",    0.0);
-    //S52_setMarinerParam("S52_MAR_DATUM_OFFSET",    5.0);
-
-    S52_setMarinerParam("S52_MAR_SCAMIN",          1.0);
-    //S52_setMarinerParam("S52_MAR_SCAMIN",          0.0);
-
-    // remove clutter
-    S52_setMarinerParam("S52_MAR_QUAPNT01",        0.0);
-    */
-
-    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);
-    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);
 
     //--------  SETTING FOR CHART NO 1 (PLib C1 3.1) --------
     // Soundings      ON
