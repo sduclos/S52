@@ -8,15 +8,10 @@ part of the core S52.
 
 
 TODO:
-
-    - refactor into:
-        - handle EGL separatly
-        - init/set/load S52 stuff form separate file (or TOML)
-        - populate ./ref_dump/: reference .PNG to check for regression (use IHO S-64)
+    - populate ./ref_dump/: reference .PNG to check for regression (use IHO S-64)
 
 
 TIP:
-
     - xmag: X11 magnify parts of the screen
 
 
@@ -41,7 +36,7 @@ Makefile Target:
   EGL harness for X
 
 - s52eglarm:
-  Android (s52droid)
+  ARM/Android (s52droid)
 
 - s52ais
   gpsd cleint to feed AIS to s52eglx and s52droid
@@ -58,7 +53,7 @@ Other Files:
   Clutter + Javascript partial experiment
 
 - PLAUX_00.DAI
-  (add some info about this paticular PLib)
+  (fix waypnt/WAYPNT01, OWNSHP vector, put cursor on layer 9, ..)
 
 - plib*
   PLib for testing
@@ -69,8 +64,22 @@ Other Files:
 - s52.cfg
   CHART & PLIB path for testing
 
-- _s52_setupMarPar.i
-  common setup for: s52egl.c, s52gtk2, s52gtkegl
+- common setup for: s52egl.c, s52gtk2.c, s52gtkegl.c
+    _egl.i                // _egl_init(), _egl_beg(), _egl_end(), _egl_done()
+    _s52_setupMarPar.i    // various S52_setMarinerParam()
+    _s52_setupMain.i      // various S52_loadCell(), S52_loadPLib(), S52_setS57ObjClassSupp(), ..
+
+- common test for: s52egl.c, s52gtk2.c, s52gtkegl.c (-DUSE_TEST_OBJ)
+    _radar.i              // _radar_init(), _radar_readLog(), _radar_done()
+    _s52_setupCLRLIN.i    // clrlin
+    _s52_setupLEGLIN.i    // leglin, _s52_setupIceRte()
+    _s52_setupmarfea.i    // marfea; point, line, area
+    _s52_setupOWNSHP.i    // ownshp
+    _s52_setupPASTRK.i    // pastrk
+    _s52_setupPRDARE.i    // PRDARE
+    _s52_setupVESSEL.i    // vessel,
+    _s52_setupVRMEBL.i    // cursor, ebline, vrmark
+
 
 ------------------------------------------------------------
 
