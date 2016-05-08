@@ -144,13 +144,12 @@ static GTimer *_timer = NULL;
 //#include "_s52_setupPASTRK.i"  // _s52_setupPASTRK()
 #include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
 //#include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
-//#include "_s52_setupMarFea.i"  // _s52_setupMarFea()
+//#include "_s52_setupmarfea.i"  // _s52_setupmarfea()
 #include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
-
 #include "_radar.i"            // _radar_init(), _radar_readLog(), _radar_done()
 #endif  // USE_TEST_OBJ
 
-#include "_s52_setupMarPar.i"  // _s52_setupMarPar(): S52_setMarinerParam()
+#include "_s52_setupMarPar.i"  // _s52_setupMarPar()
 #include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*(), loadCell()
 #include "_egl.i"              // _egl_init(), _egl_beg(), _egl_end(), _egl_done()
 
@@ -207,38 +206,6 @@ static int      _s52_log_cb     (const char *err)
     return TRUE;
 }
 #endif
-
-#ifdef S52_USE_RADAR
-static guchar  *_s52_radar_cb1  (double *cLat, double *cLng, double *rNM)
-{
-    *cLat = _engine.state.cLat + 0.01;
-    *cLng = _engine.state.cLon - 0.01;
-
-    // Cap Sante
-    *cLat = 46.65;
-    *cLng = -71.7;
-
-    //*rNM = 12.0;  // rNM
-    *rNM = 3.0;  // rNM
-    //*rNM = 1.5;  // rNM
-
-    return (unsigned char *)_RADARtex;
-    //return (unsigned char *)NULL;
-}
-
-static guchar  *_s52_radar_cb2  (double *cLat, double *cLng, double *rNM)
-{
-    *cLat = _engine.state.cLat - 0.01;
-    *cLng = _engine.state.cLon - 0.02;
-
-    //*rNM = 12.0;  // rNM
-    //*rNM = 3.0;  // rNM
-    *rNM = 1.5;  // rNM
-
-    return (unsigned char *)_RADARtex;
-    //return (unsigned char *)NULL;
-}
-#endif  // S52_USE_RADAR
 
 static int      _s52_init       (s52engine *engine)
 {
@@ -339,7 +306,11 @@ static int      _s52_init       (s52engine *engine)
     S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
 
     _s52_setupMarPar();
-    /*
+
+    // init decoration (scale bar, North arrow, unit, calib.)
+    S52_newCSYMB();
+
+#ifdef USE_TEST_OBJ
     // must be first mariners' object so that the
     // rendering engine place it on top of OWNSHP/VESSEL
     _s52_setupVRMEBL(engine->state.cLat, engine->state.cLon);
@@ -356,10 +327,9 @@ static int      _s52_init       (s52engine *engine)
     _s52_setupOWNSHP(engine->state.cLat, engine->state.cLon);
     _s52_setupVESSEL(engine->state.cLat, engine->state.cLon);
 #endif
-    */
 
+#endif  // USE_TEST_OBJ
 
-    S52_setEGLCallBack((S52_EGL_cb)_egl_beg, (S52_EGL_cb)_egl_end, engine);
 
     engine->do_S52draw        = TRUE;
     engine->do_S52drawLast    = TRUE;
@@ -404,6 +374,10 @@ static int      _s52_draw_user  (s52engine *engine)
 
     // test
     //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test S52_drawStr()");
+    static GTimeVal now;
+    g_get_current_time(&now);
+    S52_drawStr(100, engine->height - 100, "ARPAT", 1, g_time_val_to_iso8601(&now));
+
 
     return TRUE;
 }
@@ -482,7 +456,7 @@ static int      _s52_draw_cb    (gpointer user_data)
         S52_draw();
 
         // user can add stuff on top of draw()
-        _s52_draw_user(engine);
+        //_s52_draw_user(engine);
     }
 
     // draw AIS on last layer (IHO layer 9)
@@ -492,6 +466,9 @@ static int      _s52_draw_cb    (gpointer user_data)
         _s52_updFakeAIS(engine->state.cLat, engine->state.cLon);
 #endif
         S52_drawLast();
+
+        // user can add stuff on top of drawLast()
+        _s52_draw_user(engine);
     }
 
 #if !defined(S52_USE_EGL)
@@ -1637,6 +1614,7 @@ exit:
 
     _s52_done(&_engine);
 
+    //_egl_doneSurface(&_engine);
     _egl_done(&_engine);
 
     AConfiguration_delete(_engine.config);
