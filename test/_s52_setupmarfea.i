@@ -1,4 +1,4 @@
-// _s52_setupmarfea.i: setup Mariners' Feature
+// _s52_setupmarfea.i: setup Mariners' Feature (marfea)
 //
 // SD 2016APR27
 
@@ -8,7 +8,7 @@
 static S52ObjectHandle _marfea_point = FALSE;
 
 static int      _s52_setupmarfea(double cLat, double cLon)
-// exemple to display something define in the PLib directly
+// exemple to display directly something define in the PLib
 {
     /*
     // CCW doesn't center text
