@@ -80,7 +80,7 @@ static double _y      = 0.0;
 //
 
 #ifdef USE_TEST_OBJ
-#include "_s52_setupMarFea.i"  // _s52_setupMarFea()
+#include "_s52_setupmarfea.i"  // _s52_setupmarfFea()
 #include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP() - fake AIS
 #include "_s52_setupVESSEL.i"  // _s52_setupVESSEL() - fake AIS
 #include "_s52_setupVRMEBL.i"  // _s52_setupVRMEBL()
@@ -88,10 +88,11 @@ static double _y      = 0.0;
 #include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
 #include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
 //#include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
+//#include "_radar.i"            // _radar_init(), _radar_readLog(), _radar_done()
 #endif  // USE_TEST_OBJ
 
 #include "_s52_setupMarPar.i"  // _s52_setupMarPar(), buntch of call to S52_setMarinerParam()
-#include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*(), loadCell()
+#include "_s52_setupMain.i"    // _s52_setupMain(), various loadCell(), loadPLib(), ..
 
 
 //#if !defined(S52_USE_GLES2)
@@ -633,7 +634,7 @@ static gboolean _inc(S52MarinerParameter paramName)
     return TRUE;
 }
 
-static gboolean _mmInc(S52MarinerParameter paramName)
+tatic gboolean _mmInc(S52MarinerParameter paramName)
 {
     double val = 0.0;
 
@@ -643,35 +644,6 @@ static gboolean _mmInc(S52MarinerParameter paramName)
 
     return TRUE;
 }
-
-#ifdef S52_USE_RADAR
-static guchar  *_radar_cb(double *cLat, double *cLng, double *rNM)
-{
-    (void)cLat;
-    (void)cLng;
-    (void)rNM;
-
-    //g_print("_radar_cb()\n");
-
-    return NULL;
-}
-#endif  // S52_USE_RADAR
-
-#if 0
-static int      _my_S52_loadObject_cb(const char *objname,   void *shape)
-{
-    //
-    // .. do something cleaver with each object of a layer ..
-    //
-
-    // this fill the terminal
-    //printf("\tOBJECT NAME: %s\n", objname);
-
-    return S52_loadObject(objname, shape);
-
-    //return TRUE;
-}
-#endif
 
 #ifdef USE_LOG_CB
 static int      _s52_log_cb(const char *msg)
@@ -729,17 +701,17 @@ static int      _s52_init()
 
     _s52_setupMarPar();
 
-    /*
+    // init decoration (scale bar, North arrow, unit, calib.)
+    S52_newCSYMB();
+
+#ifdef USE_TEST_OBJ
     // setup mariner object (for debugging)
     // test loading objH _before_ loadPLib
-    _s52_setupMarFea(_view.cLat, _view.cLon);
+    _s52_setupmarfea(_view.cLat, _view.cLon);
 
     S52_setTextDisp(0, 100, TRUE);                      // show all text
     // debug
     //S52_setTextDisp(21, 1, FALSE);                    // BOYLAT
-
-    // init decoration (scale bar, North arrow, unit, calib.)
-    S52_newCSYMB();
 
 #ifdef USE_FAKE_AIS
     _s52_setupOWNSHP(_view.cLat, _view.cLon);
@@ -758,10 +730,7 @@ static int      _s52_init()
 
     _s52_setupCLRLIN(_view.cLat, _view.cLon);
 
-#ifdef S52_USE_RADAR
-    S52_setRADARCallBack(_radar_cb, 1280);
-#endif
-    */
+#endif  // USE_TEST_OBJ
 
     g_print("PLibList    : %s\n", S52_getPLibNameList());
     g_print("PalettesList: %s\n", S52_getPalettesNameList());
@@ -1375,6 +1344,10 @@ static S52ObjectHandle _marfea_point = NULL;
 
 #ifdef USE_AIS
     s52ais_doneAIS();
+#endif
+
+#ifdef S52_USE_RADAR
+    _radar_done();
 #endif
 
     S52_done();
