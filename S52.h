@@ -71,7 +71,7 @@ typedef enum S52MarinerParameter {
     S52_MAR_SHALLOW_PATTERN     =  7,   // flag indicating selection of shallow water highlight (on/off)(optional) [default OFF]
     S52_MAR_SHIPS_OUTLINE       =  8,   // flag indicating selection of ship scale symbol (on/off) [IMO PS 8.4]
     S52_MAR_DISTANCE_TAGS       =  9,   // NOT IMPLEMENTED: selected spacing of "distance to run" tags at a route (nm) [default 0.0 - OFF]
-    S52_MAR_TIME_TAGS           = 10,   // NOT IMPLEMENTED: selected spacing of time tags at the past track (min), [ref S52_addPASTRKPosition() bellow]
+    S52_MAR_TIME_TAGS           = 10,   // NOT IMPLEMENTED: selected spacing of time tags at the past track (min)
     S52_MAR_FULL_SECTORS        = 11,   // show full length light sector lines (on/off) [default ON]
     S52_MAR_SYMBOLIZED_BND      = 12,   // symbolized area boundaries (on/off) [default ON]
     S52_MAR_SYMPLIFIED_PNT      = 13,   // simplified point (on/off) [default ON]
