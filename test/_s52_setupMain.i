@@ -39,6 +39,22 @@
 
 // -------------- s52gtkegl.c -----------------------------------------------------
 
+#if 0
+static int      _my_S52_loadObject_cb(const char *objname,   void *shape)
+{
+    //
+    // .. do something cleaver with each object of a layer ..
+    //
+
+    // this fill the terminal
+    //printf("\tOBJECT NAME: %s\n", objname);
+
+    return S52_loadObject(objname, shape);
+
+    //return TRUE;
+}
+#endif
+
 static int _s52_setupMain(void)
 {
     // can be called any time
@@ -63,8 +79,8 @@ static int _s52_setupMain(void)
     //S52_loadCell("/home/sduclos/dev/gis/data/bathy/2009_HD_BATHY_TRIALS/46307250_LOD2.merc.tif", NULL);
     //S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
 
-    // load AIS select symb.
-    //S52_loadPLib("plib-test-priv.rle");
+    //S52_loadCell(NULL, _my_S52_loadObject_cb);
+    //S52_loadCell(NULL, NULL);
 
 #ifdef S52_USE_ANDROID
 
@@ -172,8 +188,7 @@ static int _s52_setupMain(void)
     //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4636N7248W_5.tiff", NULL);
     //S52_loadCell(PATH "/bathy/2016_HD_BATHY_QBC-TRV/4638N7248W_5.tiff", NULL);
 
-
-    S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
+    //S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
 
     // RADAR - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/radar/RADAR_imitator/out.raw", NULL);
@@ -191,23 +206,18 @@ static int _s52_setupMain(void)
 #endif
 
     // debug - remove clutter from this symb in SELECT mode
-    //S52_setS57ObjClassSupp("M_QUAL", TRUE);  // supress display of the U pattern
-    //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // displaythe U pattern
-    //S52_setS57ObjClassSupp ("M_QUAL");           //  suppression ON
-    //S52_setS57ObjClassSupp("M_QUAL");         //  suppression OFF
-    S52_setS57ObjClassSupp("M_QUAL", TRUE);
+    // debug - M_QUAL - the U pattern
+    // supresse display of adminitrative objects when
+    // S52_MAR_DISP_CATEGORY is SELECT, to avoid cluttering
+    S52_setS57ObjClassSupp("M_QUAL", TRUE);  // supress display of the U pattern
+    //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
 
+    // debug
+    //ret = S52_setS57ObjClassSupp ("M_QUAL", TRUE);  // OK - ret == TRUE  - first time
+    //ret = S52_setS57ObjClassSupp ("M_QUAL", TRUE);  // OK - ret == FALSE - second time
 
-    S52_loadPLib(PLIB);
-    S52_loadPLib(COLS);
-
-    return TRUE;
-}
-
-/*
-// -------------- s52egl.c -----------------------------------------------------
-// load PLib in s52.cfg
-    //S52_loadPLib(NULL);
+    // test
+    //S52_setS57ObjClassSupp("DRGARE");   // drege area
 
     S52_loadPLib(PLIB);
     S52_loadPLib(COLS);
@@ -215,11 +225,8 @@ static int _s52_setupMain(void)
     // Inland Waterway rasterization rules (form OpenCPN)
     //S52_loadPLib("S52RAZDS.RLE");
 
-    // debug - remove clutter from this symb in SELECT mode
-    S52_setS57ObjClassSupp("M_QUAL", TRUE);     // suppress display of the U pattern
-    //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
-
-    S52_setS57ObjClassSupp("M_NSYS", TRUE);     // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
+    S52_setS57ObjClassSupp("M_NSYS", TRUE);   // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
+    S52_setS57ObjClassSupp("M_NPUB", TRUE);   // ??
 
     // DATCOVR/M_COVR:CATCOV=2
     S52_setS57ObjClassSupp("M_COVR", TRUE);     // HO data limit __/__/__ - LC(HODATA01)
@@ -231,93 +238,17 @@ static int _s52_setupMain(void)
     //S52_setS57ObjClassSupp("sclbdy", TRUE);
     //S52_setS57ObjClassSupp("sclbdy", FALSE);  // default
 
-    _s52_setupMarPar();
-
-    //S52_setTextDisp(0, 100, TRUE);                // show all text (default)
-
-    // if first start, find where we are looking
-    _s52_getView(&engine->state);
-    // then (re)position the 'camera'
-    S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
-
-    // debug - anti-meridian
-    //engine->state.rNM = 2300.0;
-    //S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
-
-    S52_newCSYMB();
-
-    // must be first mariners' object so that the
-    // rendering engine place it on top of OWNSHP/VESSEL
-    _s52_setupVRMEBL(engine->state.cLat, engine->state.cLon);
-
-    // set route
-    _s52_setupIceRte();
-
-    _s52_setupLEGLIN(engine->state.cLat, engine->state.cLon);
-
-    // wind farme for testing centroids in a concave poly
-    _s52_setupPRDARE(engine->state.cLat, engine->state.cLon);
-
-#ifdef USE_FAKE_AIS
-    // s52ais.c has it own OWNSHP for debugging (ie. ais target acting like OWNSHP)
-    _s52_setupOWNSHP(engine->state.cLat, engine->state.cLon);
-    _s52_setupVESSEL(engine->state.cLat, engine->state.cLon);
-#endif
-
-#ifdef USE_AIS
-    s52ais_initAIS();
-#endif
-
-#ifdef S52_USE_EGL
-    S52_setEGLCallBack((S52_EGL_cb)_egl_beg, (S52_EGL_cb)_egl_end, engine);
-#endif
-
-#ifdef S52_USE_RADAR
-    _radar_init();
-    S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
-    S52_setRADARCallBack(_s52_radar_cb1, Rmax);
-    S52_setRADARCallBack(_s52_radar_cb2, Rmax);
-#endif
-
-
-// -------------- s52gtk2.c -----------------------------------------------------
-
-// load default cell in s52.cfg
-    //S52_loadCell(NULL, _my_S52_loadObject_cb);
-    S52_loadCell(NULL, NULL);
-
-
-    ////////////////////////////////////////////////////////////
-    //
-    // setup supression of chart object (for debugging)
-    //
-    // supresse display of adminitrative objects when
-    // S52_MAR_DISP_CATEGORY is SELECT, to avoid cluttering
-    //S52_setS57ObjClassSupp("M_NSYS");   // boundary between IALA-A and IALA-B systems (--A--B--, LC(MARSYS51))
-    //S52_setS57ObjClassSupp("M_COVR");   // HO data limit __/__/__ - LC(HODATA01)
-    //S52_setS57ObjClassSupp("M_NPUB");   // ??
-
-    // debug - M_QUAL - the U pattern
-    //S52_setS57ObjClassSupp("M_QUAL");
-    //ret = S52_setS57ObjClassSupp("M_QUAL");  // OK - ret == TRUE
-    //ret = S52_setS57ObjClassSupp ("M_QUAL");  // OK - ret == TRUE
-    //ret = S52_setS57ObjClassSupp ("M_QUAL");  // OK - ret == FALSE
-    S52_setS57ObjClassSupp("M_QUAL", TRUE);
-
-    // test
-    //S52_setS57ObjClassSupp("DRGARE");   // drege area
 
     // load additional PLib (facultative)
+    // load AIS select symb.
+    //S52_loadPLib("plib-test-priv.rle");
+
     //S52_loadPLib("plib_pilote.rle");
-    //S52_loadPLib("plib-test2.rle");
-    // load auxiliary PLib (fix waypnt/WAYPNT01, OWNSHP vector, put cursor on layer 9, ..)
-    S52_loadPLib(PLIB);
-    // lastest (S52 ed 6.0) IHO colors from www.ecdisregs.com
-    S52_loadPLib(COLS);
-    // load PLib from s52.cfg indication
-    //S52_loadPLib(NULL);
+    //S52_loadPLib("plib-test2-boylat.rle");
 
-    _s52_setupMarPar();
+    //plib-test1-rle_vect.rle
+    //plib-test3-col.rle
 
 
-*/
+    return TRUE;
+}
