@@ -6,10 +6,6 @@
 #ifdef S52_USE_RADAR
 #define RADARLOG PATH "/radar/RADAR_imitator/radarlog"
 
-// debug - exprimental
-//static int _doLoadRADAR = TRUE;
-
-
 // Description of management structures and radar images
 typedef struct {
     unsigned int RAIN      : 1;
@@ -46,8 +42,58 @@ typedef struct {
 static guchar _RADARtex[Rmax*2][Rmax*2];  // Alpha
 //static guchar _RADARtex[Rmax*2][Rmax*2][4];  // RGBA
 static POINT  _Polar_Matrix_Of_Coords[ANGLEmax][Rmax];
+
+/*
+static guchar  *_s52_radar_cb1(double *cLat, double *cLng, double *rNM)
+{
+    (void)cLat;
+    (void)cLng;
+    (void)rNM;
+
+    //g_print("_radar_cb()\n");
+
+    return NULL;
+}
+*/
+
+static guchar  *_s52_radar_cb1  (double *cLat, double *cLng, double *rNM)
+{
+    //*cLat = _engine.state.cLat + 0.01;
+    //*cLng = _engine.state.cLon - 0.01;
+
+    // Cap Sante
+    *cLat = 46.65;
+    *cLng = -71.7;
+
+    //*rNM = 12.0;  // rNM
+    *rNM = 3.0;  // rNM
+    //*rNM = 1.5;  // rNM
+
+    return (unsigned char *)_RADARtex;
+    //return (unsigned char *)NULL;
+}
+
+/*
+static guchar  *_s52_radar_cb2  (double *cLat, double *cLng, double *rNM)
+{
+    *cLat = _engine.state.cLat - 0.01;
+    *cLng = _engine.state.cLon - 0.02;
+
+    //*rNM = 12.0;  // rNM
+    //*rNM = 3.0;  // rNM
+    *rNM = 1.5;  // rNM
+
+    return (unsigned char *)_RADARtex;
+    //return (unsigned char *)NULL;
+}
+*/
+
 static int      _radar_init()
 {
+    S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 1.0);
+    S52_setRADARCallBack(_s52_radar_cb1, Rmax);
+    //S52_setRADARCallBack(_s52_radar_cb2, Rmax);
+
     if (NULL == (_radarlog_fd = fopen(RADARLOG, "rb"))) {
         g_print("s52egl:_initRadar(): can't open file %s\n", RADARLOG);
         g_assert(0);
@@ -126,6 +172,8 @@ static int      _radar_done(void)
 {
     // close radarlog
     fclose(_radarlog_fd);
+
+    S52_setMarinerParam(S52_MAR_DISP_RADAR_LAYER, 0.0);
 
     return TRUE;
 }
