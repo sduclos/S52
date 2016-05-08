@@ -7,6 +7,7 @@ static S52ObjectHandle _leglin2 = FALSE;
 static S52ObjectHandle _leglin3 = FALSE;
 //static S52ObjectHandle _leglin4 = FALSE;
 //static S52ObjectHandle _leglin5 = FALSE;
+
 static S52ObjectHandle _waypnt0 = FALSE;
 static S52ObjectHandle _waypnt1 = FALSE;
 static S52ObjectHandle _waypnt2 = FALSE;
@@ -133,8 +134,9 @@ static int _s52_setupLEGLIN(double cLat, double cLon)
     return TRUE;
 }
 
-#if 0
-static int      _s52_setupLEGLIN()
+/*
+static int      _s52_setupLEGLIN_alarm()
+// will trigger alarm / indication
 {
     if (FALSE != _leglin4) {
         _leglin4 = S52_delMarObj(_leglin4);
@@ -177,7 +179,7 @@ static int      _s52_setupLEGLIN()
 
     return TRUE;
 }
-#endif
+*/
 
 static int      _s52_setupIceRte(void)
 {
