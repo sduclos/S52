@@ -84,7 +84,7 @@ static s52engine _engine;
 
 
 #ifdef USE_TEST_OBJ
-//#include "_s52_setupMarFea.i"  // _s52_setupMarFea()
+//#include "_s52_setupmarfea.i"  // _s52_setupmarfea()
 #include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP()
 #include "_s52_setupVESSEL.i"  // _s52_setupVESSEL()
 #include "_s52_setupVRMEBL.i"  // _s52_setupVRMEBL()
@@ -176,6 +176,10 @@ static int      _s52_init   (s52engine *engine)
 
     _s52_setupMarPar();
 
+    // init decoration (scale bar, North arrow, unit, calib.)
+    S52_newCSYMB();
+
+
 #ifdef USE_TEST_OBJ
     // must be first mariners' object so that the
     // rendering engine place it on top of OWNSHP/VESSEL
@@ -195,9 +199,6 @@ static int      _s52_init   (s52engine *engine)
 #endif
 
 #endif  // USE_TEST_OBJ
-
-
-    S52_setEGLCallBack((S52_EGL_cb)_egl_beg, (S52_EGL_cb)_egl_end, engine);
 
 
     engine->do_S52draw        = TRUE;
