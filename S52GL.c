@@ -2591,6 +2591,12 @@ static int       _renderSY(S52_obj *obj)
             }
         }
 
+        // debug
+        //if (0 == g_strcmp0(S57_getName(geoData), "BOYLAT")) {
+        //    PRINTF("DEBUG: BOYLAT found\n");
+        //    //g_assert(0);
+        //}
+
         // all other point sym
         _renderSY_POINT_T(obj, ppt[0], ppt[1], orient+_north);
 
@@ -5099,6 +5105,11 @@ int        S52_GL_isSupp(S52_obj *obj)
         return TRUE;
     }
 
+    // some HO set a scamin on DISPLAYBASE obj!?
+    if (DISPLAYBASE == S52_PL_getDISC(obj)) {
+        return FALSE;
+    }
+
     // SCAMIN
     if (TRUE == (int) S52_MP_get(S52_MAR_SCAMIN)) {
         S57_geo *geo  = S52_PL_getGeo(obj);
@@ -5467,6 +5478,17 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //}
     //------------------------------------------------------
 
+
+    /* FIXME: check atomic for each obj
+    // but _atomicAbort is local to S52.c!
+    g_atomic_int_get(&_atomicAbort);
+    if (TRUE == _atomicAbort) {
+        PRINTF("abort drawing .. \n");
+        _backtrace();
+        g_atomic_int_set(&_atomicAbort, FALSE);
+        return TRUE;
+    }
+    */
 
     if (S52_GL_PICK == _crnt_GL_cycle) {
         ++_cIdx.color.r;
