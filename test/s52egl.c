@@ -745,7 +745,6 @@ static int      _android_sensorsList_dump(ASensorManager *sensorManager)
 }
 #endif
 
-//static int      _android_display_init(s52engine *engine)
 static gpointer _android_display_init(gpointer user_data)
 {
     s52engine *engine = (s52engine*)user_data;
