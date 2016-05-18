@@ -138,16 +138,19 @@ static s52engine    _engine;
 static GTimer *_timer = NULL;
 
 #ifdef USE_TEST_OBJ
-#include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP()
-#include "_s52_setupVESSEL.i"  // _s52_setupVESSEL()
 #include "_s52_setupVRMEBL.i"  // _s52_setupVRMEBL()
-//#include "_s52_setupPASTRK.i"  // _s52_setupPASTRK()
+#include "_s52_setupPASTRK.i"  // _s52_setupPASTRK()
 #include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
-//#include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
-//#include "_s52_setupmarfea.i"  // _s52_setupmarfea()
+#include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
+#include "_s52_setupmarfea.i"  // _s52_setupmarfea()
 #include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
 #include "_radar.i"            // _radar_init(), _radar_readLog(), _radar_done()
 #endif  // USE_TEST_OBJ
+
+#ifdef USE_FAKE_AIS
+#include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP()
+#include "_s52_setupVESSEL.i"  // _s52_setupVESSEL(), _s52_updFakeAIS()
+#endif  // USE_FAKE_AIS
 
 #include "_s52_setupMarPar.i"  // _s52_setupMarPar()
 #include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*(), loadCell()
@@ -289,8 +292,6 @@ static int      _s52_init       (s52engine *engine)
         // init() will do that by default at startup
         //S52_setViewPort(0, 0, w, h);
     }
-
-    //S52_version();
 
     // debug: should fail
     //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test S52_drawStr()");
