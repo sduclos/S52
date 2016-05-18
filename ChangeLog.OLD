@@ -4,6 +4,13 @@
 #
 
 
+2016MAY18
+    -mod debug config CONF_* to CFG_*
+    -add atomic abort in _suppLineOverlap()
+    -fix check for short OGR_TEMP_BUFFER_SIZE
+    -add check for disp cat before SCAMIN
+    -fix CFG parser in utils.c
+
 2016MAI01
     -fix call to log_cb when logging to file
 
