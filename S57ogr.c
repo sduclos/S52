@@ -90,7 +90,8 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
         }
     }
 
-    // optimisation: direct link to GString save the search in attList
+    // optimisation: direct link to the value of Att (GString)
+    // save the search in attList
     GString  *scamin = S57_getAttVal(geoData, "SCAMIN");
     if ((NULL!=scamin) && (NULL!=scamin->str)){
         S57_setScamin(geoData, S52_atof(scamin->str));
