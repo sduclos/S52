@@ -3,8 +3,6 @@
 // SD 2016APR26
 
 
-#ifdef USE_FAKE_AIS
-
 #define VESSELTURN_UNDEFINED 129
 #define VESSELLABEL "~~MV Non Such~~ "           // last char will be trimmed
 
@@ -89,4 +87,3 @@ static int _s52_updFakeAIS(double cLat, double cLon)
 
     return TRUE;
 }
-#endif  // USE_FAKE_AIS

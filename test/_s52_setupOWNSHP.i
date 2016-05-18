@@ -3,8 +3,6 @@
 // SD 2016APR26
 
 
-#ifdef USE_FAKE_AIS
-
 #define OWNSHPLABEL "OWNSHP\n220 deg / 6.0 kt"
 static S52ObjectHandle _ownshp = FALSE;
 
@@ -30,4 +28,3 @@ static int _s52_setupOWNSHP(double cLat, double cLon)
 
     return TRUE;
 }
-#endif  // USE_FAKE_AIS
