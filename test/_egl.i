@@ -45,7 +45,11 @@ static void     _egl_done       (s52engine *engine)
         }
 
 #if !defined(S52_USE_ANDROID)
-        _egl_doneSurface(engine)
+        //_egl_doneSurface(engine);
+        if (engine->eglSurface != EGL_NO_SURFACE) {
+            eglDestroySurface(engine->eglDisplay, engine->eglSurface);
+            engine->eglSurface = EGL_NO_SURFACE;
+        }
 #endif
 
         eglTerminate(engine->eglDisplay);
@@ -190,6 +194,20 @@ static int      _egl_init       (s52engine *engine)
     EGLDisplay          eglDisplay = EGL_NO_DISPLAY;
     EGLSurface          eglSurface = EGL_NO_SURFACE;
     EGLContext          eglContext = EGL_NO_CONTEXT;
+
+    // --- BindAPI GL/GLES ------------------------------------------------
+#ifdef S52_USE_GLES2
+    EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
+
+    //EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
+    //EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
+#else
+    // OpenGL 1.x
+    EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
+#endif
+    if (EGL_TRUE != ret)
+        LOGE("eglBindAPI() failed. [0x%x]\n", eglGetError());
+
 
     // --- get eglDisplay ------------------------------------------------
 #if defined(S52_USE_ANDROID) || defined(GTK_MAJOR_VERSION)
@@ -436,21 +454,6 @@ static int      _egl_init       (s52engine *engine)
     // when swapping Adreno clear old buffer
     // http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html
     eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
-
-
-    // --- get Binding ------------------------------------------------
-#ifdef S52_USE_GLES2
-    EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
-
-    //EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
-    //EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
-#else
-    // OpenGL 1.x
-    EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
-#endif
-    if (EGL_TRUE != ret)
-        LOGE("eglBindAPI() failed. [0x%x]\n", eglGetError());
-
 
     // --- get eglContext ------------------------------------------------
     // Then we can create the context and set it current:
