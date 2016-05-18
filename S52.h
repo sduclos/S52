@@ -194,7 +194,7 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
  *
  * Return: (transfer none): String with the version of libS52 and the '#define' used to build it
  */
-#define S52_VERSION "libS52-2016MAY04-1.177"
+#define S52_VERSION "libS52-2016MAY18-1.178"
 DLL const char * STD S52_version(void);
 
 /**
@@ -294,8 +294,9 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int textureRadiusP
  * Draw S57 object (cell) on layer 0-8
  *
  * Note: call will fail if no ENC loaded (via S52_loadCell)
+ * Note: Interrupt 2 (ANSI) - user press Ctrl-C to stop long running process
  *
- * WARNING: At startup, this call must be the very fist draw call to set projection
+ * WARNING: At startup, this call must be the very first draw call to set projection
  *
  *
  * Return: TRUE on success, else FALSE
@@ -309,6 +310,7 @@ DLL int    STD S52_draw(void);
  * fast update
  *
  * Note: call will fail if no ENC loaded (via S52_loadCell)
+ * Note: Interrupt 2 (ANSI) - user press Ctrl-C to stop long running process
  *
  *
  * Return: TRUE on success, else FALSE
@@ -489,6 +491,9 @@ typedef int (*S52_loadObject_cb)(const char *objname, /* OGRFeatureH */ void *fe
  *
  * Note: the first call to S52_loadCell() will set the Mercator Projection Latitude
  *       and Longitude of any futher S52_loadCell() call(s)
+ * Note: Interrupt 2 (ANSI) - user press Ctrl-C to stop long running process
+ *       (if compiled with S52_USE_SUPP_LINE_OVERLAP and/or S52_USE_C_AGGR_C_ASSO,
+ *        analysis can be expensive in large file)
  *
  * Return: TRUE on success, else FALSE
  */
