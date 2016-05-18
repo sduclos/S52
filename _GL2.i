@@ -268,7 +268,7 @@ static int       _init_freetype_gl(void)
     }
 
     valueBuf TTFPath = {'\0'};
-    if (FALSE == S52_utils_getConfig(CONF_TTF, &TTFPath)) {
+    if (FALSE == S52_utils_getConfig(CFG_TTF, TTFPath)) {
         PRINTF("default TTF not found in s52.cfg\n");
         PRINTF("using hard-coded TTF filename: %s\n", _freetype_gl_fontfilename);
     } else {
