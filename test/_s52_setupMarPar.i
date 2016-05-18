@@ -25,8 +25,8 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   12.0);
 
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
     // -- DEPTH COLOR ------------------------------------
 
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the CPU/GPU]
