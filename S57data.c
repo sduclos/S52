@@ -243,6 +243,7 @@ int        S57_initPROJ()
     if (!(_pjsrc = pj_init_plus(_argssrc))){
         PRINTF("error init src PROJ4\n");
         S57_donePROJ();
+        g_assert(0);
         return FALSE;
     }
 #endif
@@ -311,7 +312,8 @@ PROJCS["WGS 84 / Pseudo-Mercator",
     AUTHORITY["EPSG","3857"]]
 */
 
-    const char *templ = "+proj=merc +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
+    //const char *templ = "+proj=merc +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
+    const char *templ = "+proj=utm +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
 
     if (NULL != _pjstr) {
         PRINTF("WARNING: Merc projection allready set\n");
@@ -1781,11 +1783,10 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
         }
     }
 
-    // optimisation not usefull in this case since it's a one time pass
-    // FIXME: optimisation: push Z one to many edge
-    // FIXME: optimisation: check if moving vertex to clip plane (Z_CLIP_PLANE)
+    // LS() use Z_CLIP_PLANE (S57_OVERLAP_GEO_Z+1) to clip overlap
+    // LC() check for the value -S57_OVERLAP_GEO_Z
     for (guint j=0; j<nptEdge; ++j) {
-        ppt[i*3 + 2] = -S57_OVERLAP_GEO_Z; // not Z_CLIP_PLANE
+        ppt[i*3 + 2] = -S57_OVERLAP_GEO_Z;
         i += next;
     }
 
