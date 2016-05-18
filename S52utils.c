@@ -33,9 +33,9 @@
 
 // debug - configuration file
 #ifdef S52_USE_ANDROID
-#define CONF_NAME   "/sdcard/s52droid/s52.cfg"
+#define CFG_NAME   "/sdcard/s52droid/s52.cfg"
 #else
-#define CONF_NAME   "s52.cfg"
+#define CFG_NAME   "s52.cfg"
 #endif
 
 #ifdef S52_USE_LOGFILE
@@ -149,46 +149,51 @@ cchar   *S52_utils_version(void)
     return _version;
 }
 
-int      S52_utils_getConfig(cchar *label, valueBuf *vbuf)
+int      S52_utils_getConfig(cchar *label, char *vbuf)
 // return TRUE and string value in vbuf for label, FALSE if fail
 {
    FILE *fp;
    int  ret;
+   int  nline = 1;
    //char lbuf[PATH_MAX];
    //char frmt[PATH_MAX];
    char lbuf[MAXL];
    char frmt[MAXL];
+   char str [MAXL];
+   char *pstr = NULL;
 
-   //fp = fopen(CONF_NAME, "r");
-   fp = g_fopen(CONF_NAME, "r");
+   fp = g_fopen(CFG_NAME, "r");
    if (NULL == fp) {
-       PRINTF("WARNING: conf not found: %s\n", CONF_NAME);
+       PRINTF("WARNING: .cfg not found: %s\n", CFG_NAME);
        return FALSE;
    }
 
-
    // prevent buffer overflow
-   //sprintf(frmt, "%s%i%s", " %s %", MAXL-1, "[^\n]s");
    SNPRINTF(frmt, MAXL, "%s%i%s", " %s %", MAXL-1, "[^\n]s");
    //printf("frmt:%s\n", frmt);
 
-   ret = fscanf(fp, frmt, lbuf, vbuf);
-   while (ret > 0) {
-       if (('#'!=lbuf[0]) && (0==strncmp(lbuf, label, strlen(label)))) {
-               PRINTF("label:%s value:%s \n", lbuf, *vbuf);
+   pstr = fgets(str, MAXL, fp);
+   while (NULL != pstr) {
+       // debug
+       //printf("%i - label:%s value:%s\n", nline, lbuf, vbuf);
+
+       if ('#' != str[0]) {
+           ret = sscanf(str, frmt, lbuf, vbuf);
+           if (0 == g_strcmp0(lbuf, label)) {
+               PRINTF("--->>> label:%s value:%s \n", lbuf, vbuf);
                fclose(fp);
                return TRUE;
+           }
        }
 
-       ret = fscanf(fp, frmt, lbuf, vbuf);
-       //ret = fscanf(fp, "%s%255[^\n]\n", lbuf, tmp);
-       //printf("label:%s \n", lbuf);
-       //printf("value:%s \n", tmp);
-       //printf("ret:%i\n", ret);
+       ++nline;
+       pstr = fgets(str, MAXL, fp);
    }
+
    fclose(fp);
 
-   *vbuf[0] = '\0';
+   vbuf[0] = '\0';
+
    return FALSE;
 }
 
