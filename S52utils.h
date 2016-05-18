@@ -59,16 +59,16 @@ if (NULL==ptr) {                             \
 
 
 // debug: valid label in .cfg file
-#define CONF_CATALOG  "CATALOG"
-#define CONF_PLIB     "PLIB"
-#define CONF_CHART    "CHART"
-#define CONF_WORLD    "WORLD"
-#define CONF_TTF      "TTF"
+#define CFG_CATALOG  "CATALOG"
+#define CFG_PLIB     "PLIB"
+#define CFG_CHART    "CHART"
+#define CFG_WORLD    "WORLD"
+#define CFG_TTF      "TTF"
 
 #define MAXL 1024    // MAX lenght of buffer _including_ '\0'
 typedef char valueBuf[MAXL];
 
-int      S52_utils_getConfig(cchar *label, valueBuf *vbuf);
+int      S52_utils_getConfig(cchar *label, char *vbuf);
 
 cchar   *S52_utils_version(void);
 int      S52_utils_initLog(S52_log_cb log_cb);
