@@ -81,15 +81,19 @@ static double _y      = 0.0;
 
 #ifdef USE_TEST_OBJ
 #include "_s52_setupmarfea.i"  // _s52_setupmarfFea()
-#include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP() - fake AIS
-#include "_s52_setupVESSEL.i"  // _s52_setupVESSEL() - fake AIS
 #include "_s52_setupVRMEBL.i"  // _s52_setupVRMEBL()
 #include "_s52_setupPASTRK.i"  // _s52_setupPASTRK()
 #include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
 #include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
-//#include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
-//#include "_radar.i"            // _radar_init(), _radar_readLog(), _radar_done()
+#include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
+#include "_radar.i"            // _radar_init(), _radar_readLog(), _radar_done()
 #endif  // USE_TEST_OBJ
+
+
+#ifdef USE_FAKE_AIS
+#include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP() - fake AIS
+#include "_s52_setupVESSEL.i"  // _s52_setupVESSEL() - fake AIS
+#enbdif
 
 #include "_s52_setupMarPar.i"  // _s52_setupMarPar(), buntch of call to S52_setMarinerParam()
 #include "_s52_setupMain.i"    // _s52_setupMain(), various loadCell(), loadPLib(), ..
@@ -775,13 +779,12 @@ static gboolean configure_event(GtkWidget         *widget,
     if (!gdk_gl_drawable_gl_begin(gldrawable, glcontext))
         return FALSE;
 
-    _s52_getView(&_view);
-
-    S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
-    S52_setViewPort(0, 0, widget->allocation.width, widget->allocation.height);
-
     _width  = widget->allocation.width;
     _height = widget->allocation.height;
+
+    _s52_getView(&_view);
+    S52_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
+    S52_setViewPort(0, 0, _width, _height);
 
     if (gdk_gl_drawable_is_double_buffered(gldrawable))
         gdk_gl_drawable_swap_buffers(gldrawable);
