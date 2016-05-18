@@ -84,16 +84,18 @@ static s52engine _engine;
 
 
 #ifdef USE_TEST_OBJ
-//#include "_s52_setupmarfea.i"  // _s52_setupmarfea()
-#include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP()
-#include "_s52_setupVESSEL.i"  // _s52_setupVESSEL()
+#include "_s52_setupmarfea.i"  // _s52_setupmarfea()
 #include "_s52_setupVRMEBL.i"  // _s52_setupVRMEBL()
-//#include "_s52_setupPASTRK.i"  // _s52_setupPASTRK()
+#include "_s52_setupPASTRK.i"  // _s52_setupPASTRK()
 #include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
-//#include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
+#include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
 #include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
 #endif  // USE_TEST_OBJ
 
+#ifdef USE_FAKE_AIS
+#include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP()
+#include "_s52_setupVESSEL.i"  // _s52_setupVESSEL()
+#endif
 
 #include "_s52_setupMarPar.i"  // _s52_setupMarPar(): S52_setMarinerParam()
 #include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*(), loadCell()
@@ -433,14 +435,21 @@ static gboolean configure_event(GtkWidget         *widget,
     (void)event;
     (void)data;
 
-    GtkAllocation allocation;
-    gtk_widget_get_allocation(GTK_WIDGET(widget), &allocation);
-    _engine.width  = allocation.width;
-    _engine.height = allocation.height;
+    //GtkAllocation allocation;
+    //gtk_widget_get_allocation(GTK_WIDGET(widget), &allocation);
+    //_engine.width  = allocation.width;
+    //_engine.height = allocation.height;
+    //_engine.width  = widget->allocation.width;
+    //_engine.height = widget->allocation.height;
+
+    gtk_window_get_size(GTK_WINDOW(widget), &_engine.width, &_engine.height);
+
+    // GTK 3.0
+    //gtk_widget_get_size_request(GTK_WIDGET(widget), gint *width, gint *height);
 
     _s52_getView(&_engine.state);
     S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north);
-    S52_setViewPort(0, 0, allocation.width, allocation.height);
+    S52_setViewPort(0, 0, _engine.width, _engine.height);
 
     _engine.do_S52draw = TRUE;
 
@@ -584,7 +593,8 @@ int main(int argc, char** argv)
 
     _engine.window = GTK_WIDGET(gtk_window_new(GTK_WINDOW_TOPLEVEL));
     gtk_window_set_default_size(GTK_WINDOW(_engine.window), 800, 600);
-    gtk_window_set_title       (GTK_WINDOW(_engine.window), "EGL / OpenGL ES2 in GTK3 application");
+    //gtk_window_fullscreen      (GTK_WINDOW(_engine.window));
+    gtk_window_set_title       (GTK_WINDOW(_engine.window), "EGL / OpenGL ES2 in GTK application");
 
     gtk_widget_set_app_paintable     (GTK_WIDGET(_engine.window), TRUE );
     gtk_widget_set_double_buffered   (GTK_WIDGET(_engine.window), FALSE);
