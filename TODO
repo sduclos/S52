@@ -3,6 +3,7 @@ TODO: jot pad for libS52.so missing stuff, bug, snag, ... , brain dump
 Last update:
 2013JAN - add link to Pavel Kalian RleEditor, add Testing section
 2014DEC - X-Track logic done, add testing using S-64
+2016MAY - experiment in optimisation (GLES2): send palette+vertex trans to shader via Z
 
 
 Curent focus (top priority *):
@@ -10,7 +11,8 @@ Curent focus (top priority *):
     GL:
 *   -rotate extent when chart rotate
 *   -handle overlaping symbol at the center of the screen (find test case to debug)
-    -implement patern scale spacing (PASP field)
+    -send XYZ to GPU where Z=(idx col pal 6bits + trans 2bits) = 64 colors + 4 levels of transparancy
+    -implement pattern scale spacing (PASP field)
     -handle GLU_TESS_MAX_COORD, GLU_TESS_TOLERANCE (LOD)
     -nice to have: fading chart boudary, calib symb, ..
 
