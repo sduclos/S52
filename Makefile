@@ -73,7 +73,7 @@ DBG    = $(DBG3)
 
 # GCC
 #CC   = gcc -std=c99 -fPIC -D_POSIX_C_SOURCE=199309L # to get siginfo_t
-#CC   = gcc -std=c99 -fPIC -D_POSIX_C_SOURCE=200809L # 199309L to get siginfo_t, 200809L strdup() in freetype_gl 
+#CC   = gcc -std=c99 -fPIC -D_POSIX_C_SOURCE=200809L # 199309L to get siginfo_t, 200809L strdup() in freetype_gl
 
 #CC   = gcc -std=c99 -fPIC -D_POSIX_C_SOURCE=200112L
 #CC   = gcc -std=c99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
@@ -238,6 +238,7 @@ s52gtk2gl2 : CFLAGS =                                  \
          -DS52_USE_GL2                                 \
          -DS52_USE_FREETYPE_GL                         \
          -DS52_USE_SUPP_LINE_OVERLAP                   \
+         -DS52_USE_BACKTRACE                           \
          -DS52_USE_TXT_SHADOW                          \
          -DS52_DEBUG $(DBG)
 
@@ -264,6 +265,7 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
                   -DS52_USE_FTGL                  \
                   -DS52_DEBUG $(DBG)
 
+#                  -DS52_USE_SUPP_LINE_OVERLAP
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                   `gdal-config --cflags`         \
@@ -282,7 +284,7 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_SOCK                 \
                   -DS52_USE_TXT_SHADOW           \
                   -DS52_USE_AFGLOW               \
-                  -DS52_USE_SUPP_LINE_OVERLAP    \
+                  -DS52_USE_BACKTRACE            \
                   -DS52_USE_SYM_VESSEL_DNGHL     \
                   -DS52_USE_RASTER               \
                   -DS52_DEBUG $(DBG)
