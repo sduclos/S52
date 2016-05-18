@@ -22,7 +22,7 @@
 
 
 #include "S52.h"        // --
-#include "S52utils.h"   // PRINTF(), CONF*, S52_utils_getConfig()
+#include "S52utils.h"   // PRINTF(), S52_utils_getConfig()
 #include "S52PL.h"      // S52_PRIO_NUM
 #include "S52MP.h"      // S52MarinerParameter
 #include "S57data.h"    // S57_prj2geo(), S52_geo2prj*(), projXY, S57_geo
@@ -1134,7 +1134,7 @@ static int        _backtrace(void)
 
     return TRUE;
 }
-#endif // S52_USE_BACKTRACE
+#endif  // S52_USE_BACKTRACE
 
 #ifdef _MINGW
 static void       _trapSIG(int sig)
@@ -1142,6 +1142,7 @@ static void       _trapSIG(int sig)
     //void  *buffer[100];
     //char **strings;
 
+    // Ctrl-C
     if (SIGINT == sig) {
         PRINTF("Signal SIGINT(%i) cought .. setting up atomic to abort draw()\n", sig);
         g_atomic_int_set(&_atomicAbort, TRUE);
@@ -1164,9 +1165,9 @@ static void       _trapSIG(int sig)
 
 static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 {
-    // 2 -
+    // 2 - Interrupt (ANSI), Ctrl-C
     if (SIGINT == sig) {
-        PRINTF("Signal SIGINT(%i) cought .. setting up atomic to abort draw()\n", sig);
+        PRINTF("Signal SIGINT(%i) cought .. setting up atomic to abort\n", sig);
         g_atomic_int_set(&_atomicAbort, TRUE);
 
         // continue with normal sig handling
@@ -1309,7 +1310,8 @@ static int        _initSIG(void)
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_SIGINFO;  // -std=c99 -D_POSIX_C_SOURCE=199309L
 
-    //  2 - Interrupt (ANSI) - user press ESC to stop rendering
+    //  2 - Interrupt (ANSI) - user press Ctrl-C to stop long
+    //  running process in _draw(), _drawLast() and _suppLineOverlap()
     g_atomic_int_set(&_atomicAbort, FALSE);
     sigaction(SIGINT,  &sa, &_old_signal_handler_SIGINT);
     //  3 - Quit (POSIX)
@@ -1635,7 +1637,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 
 DLL cchar *STD S52_version(void)
 {
-    PRINTF("%s", S52_utils_version());
+    PRINTF("%s\n", S52_utils_version());
 
     return S52_utils_version();
 }
@@ -1794,6 +1796,12 @@ static int        _suppLineOverlap()
 // NAME_RCNM (IntegerList) = (1:130)
 // NAME_RCID (IntegerList) = (1:72)
 {
+
+    // FIXME: abort if too slow on large area
+    // (define slow - or - C^ trap --> show something - heartbeat)
+    // -OR- skip general INTUS = 1
+
+
     return_if_null(_crntCell->S57Edges);
     //return_if_null(_crntCell->ConnectedNodes); // not used (yet!)
 
@@ -1803,6 +1811,19 @@ static int        _suppLineOverlap()
         for (S52ObjectType obj_t=S52_LINES; obj_t>S52__META; --obj_t) {
             GPtrArray *rbin = _crntCell->renderBin[prio][obj_t];
             for (guint idx=0; idx<rbin->len; ++idx) {
+
+                // degug - Ctrl-C land here also now
+                //for (;;) {
+                    g_atomic_int_get(&_atomicAbort);
+                    if (TRUE == _atomicAbort) {
+                        PRINTF("abort _suppLineOverlap() .. \n");
+                        _backtrace();
+                        g_atomic_int_set(&_atomicAbort, FALSE);
+                        goto exit;
+                    }
+                //    g_usleep(1000 * 1000); // 1.0 sec
+                //}
+
                 // one object
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
 
@@ -1818,11 +1839,19 @@ static int        _suppLineOverlap()
                     break;
                 }
 
-                //* FIXME: overkill, find a better way . maybe when loading att
+                // see ogr/ogrfeature.cpp:994
+                #define OGR_TEMP_BUFFER_SIZE 80
+                if ((OGR_TEMP_BUFFER_SIZE==name_rcnmstr->len) && ('.'==name_rcnmstr->str[name_rcnmstr->len-1])) {
+                    PRINTF("FIXME: OGR buffer TEMP_BUFFER_SIZE in ogr/ogrfeature.cpp:994 overflow\n");
+                    PRINTF("FIXME: apply patch in S52/doc/ogrfeature.cpp.diff to OGR source code\n");
+                    g_assert(0);
+                    return FALSE;
+                }
+                /* FIXME: overkill, find a better way . maybe when loading att
                 {   // check for substring ",...)" if found at the end
                     // this mean that TEMP_BUFFER_SIZE in OGR is not large anought.
                     // see ogr/ogrfeature.cpp:994
-                    // #define TEMP_BUFFER_SIZE 80
+                    // #define OGR_TEMP_BUFFER_SIZE 80
                     // apply patch in S52/doc/ogrfeature.cpp.diff to OGR source code
                     const gchar *substr = ",...)";
                     gchar       *found1 = g_strrstr(name_rcnmstr->str, substr);
@@ -1997,6 +2026,8 @@ static int        _suppLineOverlap()
             }
         }
     }
+
+exit:
 
     {   // free all overlaping line data
         // these are not S52_obj, so no delObj()
@@ -2449,7 +2480,6 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 // GDAL:
 // - GeoTIFF
 {
-    //S52_CHECK_INIT;
     S52_CHECK_MUTX_INIT;
 
     valueBuf chartPath = {'\0'};
@@ -2478,8 +2508,9 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     // debug - if NULL check in file s52.cfg
     if (NULL == encPath) {
         // FIXME: refactor to return "const char *"
-        if (FALSE == S52_utils_getConfig(CONF_CHART, &chartPath)) {
-            PRINTF("S57 file not found!\n");
+        if (FALSE == S52_utils_getConfig(CFG_CHART, chartPath)) {
+            PRINTF("CHART label not found in .cfg!\n");
+            g_assert(0);
             GMUTEXUNLOCK(&_mp_mutex);
             return FALSE;
         }
@@ -2925,21 +2956,27 @@ int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_
 #ifdef S52_USE_SUPP_LINE_OVERLAP
     // --- trap OGR/S57 low level primitive ---
 
+
     // unused
     if (0 == g_strcmp0(layername, "IsolatedNode"))
         return TRUE;
+
+    // --------------------------------------------
+    // FIXME: abort if too slow on large area
+    // (define slow - or - C^ trap --> show something - heartbeat)
+    // -OR- skip general INTUS = 1
 
     // ConnectedNode use to complete an Edge
     if (0 == g_strcmp0(layername, "ConnectedNode")) {
         S57_ogrLoadLayer(layername, layer, _loadConnectedNode);
         return TRUE;
     }
-
     // Edge is use to resolve overlapping line
     if (0 == g_strcmp0(layername, "Edge")) {
         S57_ogrLoadLayer(layername, layer, _loadEdge);
         return TRUE;
     }
+    // --------------------------------------------
 
     // unused
     if (0 == g_strcmp0(layername, "Face"))
@@ -2950,7 +2987,7 @@ int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_
 
     // debug: too slow for Lake Superior
     // FIXME
-    //if (0 == strncmp(layername, "OBSTRN", 6))
+    //if (0 == g_strcmp0(layername, "OBSTRN"))
     //    return 1;
     //if (0 == g_strcmp0(layername, "UWTROC"))
     //    return 1;
@@ -3708,6 +3745,10 @@ static int        _cullObj(_cell *c, GPtrArray *rbin)
         //if (0 == g_strcmp0("PIPSOL", S52_PL_getOBCL(obj))) {
         //    PRINTF("PIPSOL found\n");
         //}
+        //if (0 == g_strcmp0("BOYLAT", S52_PL_getOBCL(obj))) {
+        //    PRINTF("BOYLAT found\n");
+        //    //g_assert(0);
+        //}
 
         // is *this* object suppressed by user
         if (TRUE == S52_PL_getSupp(obj)) {
@@ -4181,10 +4222,11 @@ static int        _draw()
     for (guint i=_cellList->len; i>1; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
 
-        // FIXME: check atomic for each obj
         g_atomic_int_get(&_atomicAbort);
         if (TRUE == _atomicAbort) {
             PRINTF("abort drawing .. \n");
+            _backtrace();
+            g_atomic_int_set(&_atomicAbort, FALSE);
             return TRUE;
         }
 
@@ -4207,6 +4249,7 @@ static int        _draw()
 
         // needed in combining HO DATA limit (check for corner overlap)
         // also mariners obj that overlapp cells
+        // BUG: this also clip calibration symbol if overlap cell & NODATYA
         S52_GL_setScissor(x, y, w, h);
 
         // draw under radar
@@ -4408,19 +4451,20 @@ static int        _drawLast(void)
         for (guint idx=rbin->len; idx>0; --idx) {
             S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx-1);
 
+            g_atomic_int_get(&_atomicAbort);
+            if (TRUE == _atomicAbort) {
+                PRINTF("abort drawing .. \n");
+                _backtrace();
+                g_atomic_int_set(&_atomicAbort, FALSE);
+                return TRUE;
+            }
+
             // debug: can this happen!
             if (NULL == obj) {
                 PRINTF("DEBUG: skip NULL obj\n");
                 g_assert(0);
                 continue;
             }
-
-            g_atomic_int_get(&_atomicAbort);
-            if (TRUE == _atomicAbort) {
-                PRINTF("abort drawing .. \n");
-                return TRUE;
-            }
-
 
             /////////////////////////////////////
             // CULL & DRAW
@@ -4495,8 +4539,6 @@ DLL int    STD S52_drawLast(void)
         //g_assert(0);
         goto exit;
     }
-
-    g_atomic_int_set(&_atomicAbort, FALSE);
 
     g_timer_reset(_timer);
 
@@ -5167,8 +5209,8 @@ DLL int    STD S52_loadPLib(const char *plibName)
     valueBuf PLibPath = {'\0'};
     if (NULL == plibName) {
         // check in s52.cfg
-        if (0 == S52_utils_getConfig(CONF_PLIB, &PLibPath)) {
-            PRINTF("default PLIB not found in .cfg (%s)\n", CONF_PLIB);
+        if (0 == S52_utils_getConfig(CFG_PLIB, PLibPath)) {
+            PRINTF("default PLIB not found in .cfg (%s)\n", CFG_PLIB);
             goto exit;
         } else {
             if (TRUE == S52_PL_load(PLibPath)) {
@@ -6286,8 +6328,10 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         goto exit;
     }
 
+    // ---  check if hazard inside Guard Zone ---
     // FIXME: call _GuardZoneCheck(), document what object is checked for, right now CS/DEPCNT02
-    //* check if hazard inside Guard Zone
+    // FIXME: GL_proj will fail if no GL_draw() call was invoqued first
+    // - FIX: call _draw() or GL_proj_init
     if (0.0 != S52_MP_get(S52_MAR_GUARDZONE_BEAM)) {
         double oldCRSR_PICK = S52_MP_get(S52_MAR_DISP_CRSR_PICK);
         double beam2        = S52_MP_get(S52_MAR_GUARDZONE_BEAM)/2.0;
@@ -6327,7 +6371,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         S52_GL_setGEOView(ext.S, ext.W, ext.N, ext.E);  // to cull obj
 
         if (TRUE == S52_GL_begin(S52_GL_PICK)) {
-            // must reset all journal, but only "over" filled
+            // only "over" used
             _resetJournal();
 
             _app();
