@@ -58,7 +58,7 @@ static int      _my_S52_loadObject_cb(const char *objname,   void *shape)
 static int _s52_setupMain(void)
 {
     // can be called any time
-    S52_version();
+    LOGI("%s", S52_version());
 
 
     // read cell location fron s52.cfg
