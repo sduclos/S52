@@ -1341,7 +1341,7 @@ static int        _readColor(_PL *fp)
 {
 
     _readS52Line(fp, _pBuf);
-    while ( 0 != strncmp(_pBuf, "****",4)) {
+    while ( 0 != strncmp(_pBuf, "****", 4)) {
         S52_Color c;
 
         // debug
@@ -1399,7 +1399,7 @@ static int        _readColor(_PL *fp)
 static int        _readColor(_PL *fp, GArray *colors)
 {
     _readS52Line(fp, _pBuf);
-    while ( 0 != strncmp(_pBuf, "****",4)) {
+    while ( 0 != strncmp(_pBuf, "****", 4)) {
         S52_Color c;
 
         memset(&c, 0, sizeof(S52_Color));
@@ -2014,7 +2014,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
 
         } else {
             // value from ENC
-            if (0 == strncmp(buf, "DRVAL1", 6)) {
+            if (0 == strncmp(buf, "DRVAL1", S57_OBJ_ATT_LEN)) {
                 double height = S52_atof(value->str);
 
                 // ajust datum if required
@@ -2025,10 +2025,10 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
                 return str;
             }
 
-            if (0 == strncmp(buf, "VERCSA", 6) ||
-                0 == strncmp(buf, "VERCLR", 6) ||
-                0 == strncmp(buf, "VERCCL", 6) ||
-                0 == strncmp(buf, "VERCOP", 6) )
+            if (0 == strncmp(buf, "VERCSA", S57_OBJ_ATT_LEN) ||
+                0 == strncmp(buf, "VERCLR", S57_OBJ_ATT_LEN) ||
+                0 == strncmp(buf, "VERCCL", S57_OBJ_ATT_LEN) ||
+                0 == strncmp(buf, "VERCOP", S57_OBJ_ATT_LEN) )
             {
                 double height = S52_atof(value->str);
 
@@ -2428,7 +2428,6 @@ S52_Color  *S52_PL_getColor(const char *colorName)
         guchar i = GPOINTER_TO_INT(idx);
 
         // libS52 color index start at 0
-        //return S52_PL_getColorAt(i-1);
         return _getColorAt(i-1);
     }
 
@@ -2838,38 +2837,52 @@ S52_CmdWrd  S52_PL_iniCmd(_S52_obj *obj)
 }
 
 S52_CmdWrd  S52_PL_getCmdNext(_S52_obj *obj)
-// FIX: use a single GArray filled with cmd (normal+CS)
 {
     return_if_null(obj);
 
     obj->crntAidx++;
     if (obj->crntAidx < obj->crntA->len) {
         _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
-        // FIXME: can this array call return NULL!
+        // debug - can this array return NULL!
         if (NULL == cmd) {
-            PRINTF("WARNING: no cmd\n");
+            PRINTF("DEBUG: no cmd word\n");
             g_assert(0);
             return S52_CMD_NONE;
         } else {
             return cmd->cmdWord;
         }
     }
+    //*
+    else
+    {
+        //PRINTF("DEBUG: crntAidx at end of command word array\n");
+        //g_assert(0);
+        obj->crntAidx = 0;
+    }
+    //*/
 
     return S52_CMD_NONE;
 }
 
 _cmdWL           *_getCrntCmd(_S52_obj *obj)
 {
-    if (NULL == obj->crntA)
+    if (NULL == obj->crntA) {
+        PRINTF("WARNING: internal inconsistency\n");
+        g_assert(0);
         return NULL;
+    }
 
-    if (obj->crntAidx >= obj->crntA->len)
+    if (obj->crntAidx >= obj->crntA->len) {
+        PRINTF("DEBUG: idx >= len\n");
+        //g_assert(0);
         return NULL;
+    }
 
     _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
     if (NULL == cmd) {
         PRINTF("WARNING: no cmd\n");
         g_assert(0);
+        return NULL;
     }
 
     return cmd;
@@ -3229,11 +3242,8 @@ S52_DList  *S52_PL_newDListData(_S52_obj *obj)
     return_if_null(obj);
 
     _cmdWL *cmd = _getCrntCmd(obj);
-    if (NULL == cmd) {
-        PRINTF("WARNING: internal inconsistency\n");
-        g_assert(0);
+    if (NULL == cmd)
         return NULL;
-    }
 
     if ((NULL==cmd->cmd.DList) && (S52_CMD_ARE_CO==cmd->cmdWord)) {
         cmd->cmd.DList = g_new0(S52_DList, 1);
@@ -3267,9 +3277,8 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
     //    (S52_CMD_ARE_CO!=cmd->cmdWord) &&   // _renderAC_LIGHTS05() pass here now
     //    (S52_CMD_SYM_PT!=cmd->cmdWord))
 
-    if (S52_CMD_SIM_LN == cmd->cmdWord)
-    {
-        PRINTF("ERROR: this type of cmd word has no DL!\n");
+    if (S52_CMD_SIM_LN == cmd->cmdWord) {
+        PRINTF("ERROR: S52_CMD_SIM_LN has no DList\n");
         g_assert(0);
         return NULL;
     }
@@ -3300,16 +3309,7 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
     }
     */
 
-    // FIXME: refactor this
     for (guint i=0; i<nbr; ++i) {
-        //S52_Color *col = S52_PL_getColorAt(c[i].cidx);
-        S52_Color *col = _getColorAt(c[i].cidx);
-
-        // FIXME: ugly: pull transparency from symbol color not from PLib
-        //guchar cidx  = c[i].cidx;
-        //guchar trans = c[i].trans;
-        //guchar pen_w = c[i].pen_w;
-
         if (TRUE == S57_isHighlighted(obj->geoData)) {
             S52_Color *colhigh = S52_PL_getColor("DNGHL");
             //c[i] = *colhigh;
@@ -3320,6 +3320,7 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
             // this will also copy the 'cidx/trans/pen_w' from the color table
             //c[i] = *col;
 
+            S52_Color *col = _getColorAt(c[i].cidx);
             c[i].R = col->R;
             c[i].G = col->G;
             c[i].B = col->B;
@@ -3332,10 +3333,6 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
             }
             */
         }
-
-        // FIXME: this is comming from symb vector
-        //c[i].trans = trans;  // overwrite 'trans' with the symbol trans
-        //c[i].pen_w = pen_w;
     }
 
     if (S52_CMD_ARE_CO == cmd->cmdWord)
@@ -3347,7 +3344,8 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
 S52_vec    *S52_PL_initVOCmd(_S52_cmdDef *def)
 {
     if (NULL == def) {
-        PRINTF("ERROR: no symbology definition\n");
+        PRINTF("WARNING: internal inconsistency\n");
+        g_assert(0);
         return NULL;
     }
 
@@ -3397,7 +3395,7 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
 {
     return_if_null(vecObj);
 
-    if (NULL==vecObj->str)
+    if (NULL == vecObj->str)
         return S52_VC_NONE;
 
     // debug
@@ -3807,15 +3805,17 @@ int         S52_PL_setTextParsed(_S52_obj *obj)
 {
     return_if_null(obj);
 
+    /* useless !?!
     _cmdWL *cmd = _getCrntCmd(obj);
     if (NULL == cmd)
         return FALSE;
 
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
-        PRINTF("ERROR: bug, not a text command\n");
-        g_assert(0);
+        PRINTF("WARNING: not a text command\n");
+        //g_assert(0);
         return FALSE;
     }
+    */
 
     // flag text as parsed
     obj->textParsed[_getAlt(obj)] = TRUE;
@@ -3886,6 +3886,8 @@ const char *S52_PL_hasCS(_S52_obj *obj)
 
     if (S52_CMD_CND_SY == cmdWrd) {
         _cmdWL *cmd = _getCrntCmd(obj);
+        if (NULL == cmd)
+            return NULL;
 
         return cmd->param;
     }
@@ -4130,8 +4132,11 @@ int         S52_PL_getRGB(const char *colorName, unsigned char *R, unsigned char
 
 int         S52_PL_getPalTableSz()
 {
-    if (NULL == _colTables)
+    if (NULL == _colTables) {
+        PRINTF("ERROR: unknown colors table\n");
+        g_assert(0);
         return 0;
+    }
 
     return _colTables->len;
 }
@@ -4184,8 +4189,7 @@ S52_obj    *S52_PL_setWholin(_S52_obj *obj)
     return_if_null(obj);
 
     if (NULL != obj->wholin)
-
-    obj->wholin = obj;
+        obj->wholin = obj;
 
     return obj;
 }
@@ -4222,11 +4226,9 @@ guint       S52_PL_getFreetypeGL_VBO(_S52_obj *obj, guint *len)
     if (NULL == cmd)
         return FALSE;
 
-    // parano
     // Note: S52_CMD_SYM_PT pass here - speed text on leg
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord) && (S52_CMD_SYM_PT!=cmd->cmdWord)) {
-        PRINTF("DEBUG: logic bug, not a text command [cmdWord:%i]\n", cmd->cmdWord);
-        g_assert(0);
+        //PRINTF("DEBUG: not a text command [cmdWord:%i]\n", cmd->cmdWord);
         return FALSE;
     }
 
@@ -4246,7 +4248,7 @@ int         S52_PL_setFreetypeGL_VBO(_S52_obj *obj, guint vboID, guint len)
     // parano
     // Note: S52_CMD_SYM_PT pass here - speed text on leg
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord) && (S52_CMD_SYM_PT!=cmd->cmdWord)) {
-        PRINTF("DEBUG: logic bug, not a text command\n");
+        PRINTF("DEBUG: logic bug, not a text command [cmdWord:%i]\n", cmd->cmdWord);
         g_assert(0);
 
         return FALSE;
