@@ -1017,8 +1017,11 @@ static void      _glLineStipple(GLint  factor,  GLushort  pattern)
 
 static void      _glLineWidth(GLfloat width)
 {
-    // FIXME: test dotpich correction
+    // FIXME: debug dotpich correction
     glLineWidth(width);
+
+    // debug GLES2 blending - NOP!
+    //glLineWidth(width + 0.5);
 
     return;
 }
@@ -1390,31 +1393,10 @@ static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx
 }
 
 static int       _fillArea(S57_geo *geoData)
-//static int       _fillArea(S57_geo *geoData, char LOD)
 {
     S57_prim *prim = S57_getPrimGeo(geoData);
     if (NULL == prim) {
-
-        /* GLU_TESS_TOLERANCE is implementation dependant
-        switch (LOD) {
-        //case -1: break;
-        case '0': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.1     ); break;  // world
-        case '1': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.01    ); break;
-        //case '2': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.001   ); break;
-        case '2': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.1   ); break;
-        case '3': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.0001  ); break;
-        case '4': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.00001 ); break;
-        case '5': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.000001); break;
-        case '6': gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.000001); break;
-        default:
-            gluTessProperty(_tcen, GLU_TESS_TOLERANCE, 0.000001);
-        }
-        //*/
-
         prim = _tessd(_tobj, geoData);
-
-        // reset normal tolerance
-        //gluTessProperty(_tobj, GLU_TESS_TOLERANCE, 0.000001);
     }
 
 #ifdef S52_USE_OPENGL_VBO
@@ -1437,6 +1419,7 @@ static int       _fillArea(S57_geo *geoData)
 
 // FIXME: ship head up for safety perimeter
 
+// S52_GL_PICK mode
 typedef struct col {
     GLubyte r;
     GLubyte g;
@@ -1445,7 +1428,6 @@ typedef struct col {
     GLubyte a;
 } col;
 
-// S52_GL_PICK mode
 typedef union cIdx {
     col   color;
     guint idx;
@@ -1456,22 +1438,22 @@ static cIdx _cIdx;
 static cIdx _pixelsRead[8 * 8];  // buffer to collect pixels when in S52_GL_PICK mode
 
 #if 0
+// MSAA experiment does the blending now
 static int       _setBlend(int blend)
 // TRUE turn on blending if AA
 {
-    //static int blendstate = FALSE;
     if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
         if (TRUE == blend) {
             glEnable(GL_BLEND);
 
-#if defined(S52_USE_GL1) || defined(S52_USE_GL1)
+#ifdef S52_USE_GL1
             glEnable(GL_LINE_SMOOTH);
             glEnable(GL_ALPHA_TEST);
 #endif
         } else {
             glDisable(GL_BLEND);
 
-#if defined(S52_USE_GL1) || defined(S52_USE_GL1)
+#ifdef S52_USE_GL1
             glDisable(GL_LINE_SMOOTH);
             glDisable(GL_ALPHA_TEST);
 #endif
@@ -1482,62 +1464,68 @@ static int       _setBlend(int blend)
 
     return TRUE;
 }
-#endif
+#endif  // 0
 
-static GLubyte   _glColor4ub(S52_Color *c)
-// return transparancy
+static int       _glColor4ub(GLubyte r, GLubyte g, GLubyte b, GLubyte a)
 {
-    /* debug
-    if (NULL == c) {
-        PRINTF("DEBUG: no color NULL\n");
-        g_assert(0);
-        return 0;
-    }
-    */
-
-    if (S52_GL_PICK == _crnt_GL_cycle) {
         // debug
         //printf("_glColor4ub: set current cIdx R to : %X\n", _cIdx.color.r);
 
+
+/*
 #ifdef S52_USE_GL2
-        glUniform4f(_uColor, _cIdx.color.r/255.0, _cIdx.color.g/255.0, _cIdx.color.b/255.0, _cIdx.color.a);
+glUniform4f(_uColor, _cIdx.color.r/255.0, _cIdx.color.g/255.0, _cIdx.color.b/255.0, _cIdx.color.a);
 #else
-        glColor4ub(_cIdx.color.r, _cIdx.color.g, _cIdx.color.b, _cIdx.color.a);
+glColor4ub(_cIdx.color.r, _cIdx.color.g, _cIdx.color.b, _cIdx.color.a);
+#endif
+*/
+#ifdef S52_USE_GL2
+    glUniform4f(_uColor, r/255.0, g/255.0, b/255.0, (4 - (a - '0')) * TRNSP_FAC_GLES2);
+#else
+    glColor4ub(r, g, b, (4 - (a - '0')) * TRNSP_FAC);
 #endif
 
+    _checkError("_setFragment()");
+
+    return TRUE;
+}
+
+static GLubyte   _setFragment(S52_Color *c)
+// set color, trans, pen_w and highlight
+// return transparancy
+{
+    if (S52_GL_PICK == _crnt_GL_cycle) {
+        // opaque
+        _glColor4ub(_cIdx.color.r, _cIdx.color.g, _cIdx.color.b, '0');
         return (GLubyte) 1;
     }
 
-    if ('0' != c->trans) {
-        // FIXME: some symbol allway use blending
-        // but now with GLES2 AA its all or nothing
-        if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS))
-            glEnable(GL_BLEND);
+    // normal
+    _glColor4ub(c->R, c->G, c->B, c->trans);
+
+    // reset color if highlighting (pick / alarm / indication)
+    // FIXME: red / yellow (danger / warning)
+    if (TRUE == _doHighlight) {
+        S52_Color *dnghlcol = S52_PL_getColor("DNGHL");
+        _glColor4ub(dnghlcol->R, dnghlcol->G, dnghlcol->B, c->trans);
+    }
+
+    // trans
+    if (('0'!=c->trans) && (TRUE==(int) S52_MP_get(S52_MAR_ANTIALIAS))) {
+        // FIXME: blending always ON
+        glEnable(GL_BLEND);
 
 #ifdef S52_USE_GL1
         glEnable(GL_ALPHA_TEST);
 #endif
     }
 
-    if (TRUE == _doHighlight) {
-        S52_Color *dnghlcol = S52_PL_getColor("DNGHL");
-#ifdef S52_USE_GL2
-        glUniform4f(_uColor, dnghlcol->R/255.0, dnghlcol->G/255.0, dnghlcol->B/255.0, (4 - (c->trans - '0')) * TRNSP_FAC_GLES2);
-#else
-        glColor4ub(dnghlcol->R, dnghlcol->G, dnghlcol->B, (4 - (c->trans - '0')) * TRNSP_FAC);
-#endif
-    } else {
-#ifdef S52_USE_GL2
-        glUniform4f(_uColor, c->R/255.0, c->G/255.0, c->B/255.0, (4 - (c->trans - '0')) * TRNSP_FAC_GLES2);
-#else
-        glColor4ub(c->R, c->G, c->B, (4 - (c->trans - '0'))*TRNSP_FAC);
-#endif
-
-        // FIXME: c pen_w not used anymore
-        if (0 != c->pen_w) {  // AC, .. doesn't have en pen_w
-            _glLineWidth(c->pen_w - '0');
-            _glPointSize(c->pen_w - '0');
-        }
+    // pen_w of SY
+    // - AC, AP, TXT, doesn't have a pen_w
+    // - LS, LC have there own pen_w
+    if (0 != c->pen_w) {
+        _glLineWidth(c->pen_w - '0');
+        _glPointSize(c->pen_w - '0');
     }
 
     return c->trans;
@@ -1567,7 +1555,7 @@ static int       _glCallList(S52_DList *DListData)
 
     for (guint i=0; i<DListData->nbr; ++i, ++lst, ++col) {
 
-        GLubyte trans = _glColor4ub(col);
+        GLubyte trans = _setFragment(col);
 
 #ifdef S52_USE_OPENGL_VBO
         GLuint vboId = DListData->vboIds[i];
@@ -1590,8 +1578,10 @@ static int       _glCallList(S52_DList *DListData)
             while (TRUE == S57_getPrimIdx(DListData->prim[i], j, &mode, &first, &count)) {
 
                 // debug: how can this be !?
-                if (NULL == DListData->prim[i])
+                if (NULL == DListData->prim[i]) {
+                    g_assert(0);
                     continue;
+                }
 
                 if (_TRANSLATE == mode) {
                     GArray *vert = S57_getPrimVertex(DListData->prim[i]);
@@ -2703,7 +2693,7 @@ static int       _renderSY(S52_obj *obj)
             {
                 S52_DList *DListData = S52_PL_getDListData(obj);
                 S52_Color *col = DListData->colors;
-                _glColor4ub(col);
+                _setFragment(col);
 
                 _glUniformMatrix4fv_uModelview();
 
@@ -3155,7 +3145,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
         char       style;   // dummy
         char       pen_w;   // dummy
         S52_PL_getLSdata(obj, &pen_w, &style, &col);
-        _glColor4ub(col);
+        _setFragment(col);
     }
 
     //_setBlend(TRUE);
@@ -3270,7 +3260,7 @@ static int       _renderLS(S52_obj *obj)
     char       style;   // L/S/T
     char       pen_w;
     S52_PL_getLSdata(obj, &pen_w, &style, &col);
-    _glColor4ub(col);
+    _setFragment(col);
 
     _glLineWidth(pen_w - '0');
     //_glLineWidth(pen_w - '0' + 0.1);  // WARNING: THIS +0.1 SLOW DOWN EVERYTHING
@@ -3380,7 +3370,7 @@ static int       _renderLS(S52_obj *obj)
 
                     // alternate planned route
                     if (0 == g_strcmp0("leglin", S57_getName(geoData))) {
-                        // FIXME: move to _renderLS_setPatDott()
+                        // FIXME: move to _renderLS_setPattDott()
                         glUniform1f(_uStipOn, 1.0);
                         glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
 
@@ -3411,6 +3401,19 @@ static int       _renderLS(S52_obj *obj)
                         // all other line
                         _glUniformMatrix4fv_uModelview();
                         _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
+
+                        /* experimental cheap AA for GLES2 high def
+                        // fail because GL impl diff
+                        if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
+                            char a = col->trans;
+                            col->trans = '2';  // 3 - 75% trans
+                            _setFragment(col);
+                            _glLineWidth(pen_w - '0' + 1.0);
+                            _glUniformMatrix4fv_uModelview();
+                            _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
+                            col->trans = a;
+                        }
+                        //*/
                     }
 #else
                     _glUniformMatrix4fv_uModelview();
@@ -3753,7 +3756,7 @@ static int       _renderLC(S52_obj *obj)
     // be set via call list --short line
     S52_DList *DListData = S52_PL_getDListData(obj);
     S52_Color *c = DListData->colors;
-    _glColor4ub(c);
+    _setFragment(c);
 
     GLdouble symlen_pixl = 0.0;
     GLdouble symlen_wrld = 0.0;
@@ -3946,7 +3949,7 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
     }
 
     S52_Color *c = DListData->colors;
-    _glColor4ub(c);
+    _setFragment(c);
 
     GLdouble slice  = 360.0;
     GLdouble loops  = 1.0;
@@ -4024,13 +4027,11 @@ static int       _renderAC(S52_obj *obj)
         return TRUE;
     }
 
-    _glColor4ub(c);
+    _setFragment(c);
 
     _glUniformMatrix4fv_uModelview();
 
     _fillArea(geo);
-    //char LOD = S52_PL_getLOD(obj);
-    //_fillArea(geo, LOD);
 
     _checkError("_renderAC()");
 
@@ -4060,7 +4061,7 @@ static int       _renderAP_NODATA_layer0(void)
     pt3.y = _pmin.v;
 
     S52_Color *chgrd = S52_PL_getColor("CHGRD");  // grey, conspic
-    _glColor4ub(chgrd);
+    _setFragment(chgrd);
 
 #ifdef S52_USE_GL2
     // draw using texture as a stencil -------------------
@@ -4172,7 +4173,7 @@ static int       _renderAP(S52_obj *obj)
         S57_geo *geoData = S52_PL_getGeo(obj);
         S52_Color dummy;
 
-        _glColor4ub(&dummy);
+        _setFragment(&dummy);
         _fillArea(geoData);
 
         return TRUE;
@@ -4300,7 +4301,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 #ifdef S52_USE_TXT_SHADOW
     {
         S52_Color *c = S52_PL_getColor("UIBCK");   // opposite of CHBLK
-        _glColor4ub(c);
+        _setFragment(c);
 
         // lower right - OK
         if ((S52_GL_LAST==_crnt_GL_cycle) || (S52_GL_NONE==_crnt_GL_cycle)) {
@@ -4312,7 +4313,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     }
 #endif  // S52_USE_TXT_SHADOW
 
-    _glColor4ub(color);
+    _setFragment(color);
 
     if ((S52_GL_LAST==_crnt_GL_cycle) || (S52_GL_NONE==_crnt_GL_cycle)) {
         // some MIO change age of target - need to resend the string
@@ -4391,7 +4392,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     double n = _north;
     _north = 0.0;
 
-    _glColor4ub(color);
+    _setFragment(color);
 
     //_setBlend(FALSE);
     _glMatrixSet(VP_WIN);
@@ -4682,6 +4683,11 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
             case S52_VC_CI: {  // circle --draw immediatly
                 GLdouble  radius = S52_PL_getVOradius(vecObj);
                 GArray   *vec    = S52_PL_getVOdata(vecObj);
+                if (NULL == vec) {
+                    PRINTF("ERROR: vector NULL\n");
+                    g_assert(0);
+                    continue;
+                }
                 vertex_t *data   = (vertex_t *)vec->data;
                 GLint     slices = 32;
                 GLint     loops  = 1;
@@ -4700,13 +4706,14 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 glPushMatrix();
                 glTranslated(data[0], data[1], data[2]);
 #endif
-
                 // pass 'vertex' via global '_diskPrimTmp' used by _gluDisk()
                 _diskPrimTmp = vertex;
 
+                // FIXME: optimisation, draw a point instead of a filled disk
+                // use fillMode & radius * dotpitch = pixel
+
 #ifdef S52_USE_OPENGL_VBO
                 if (GLU_FILL == fillMode) {
-                    // FIXME: optimisation, draw a point instead of a filled disk
                     _gluQuadricDrawStyle(_qobj, GLU_FILL);
                     _gluDisk(_qobj, inner, outer, slices, loops);
                 } else {  //LINE
@@ -4715,7 +4722,6 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 }
 #else
                 if (GLU_FILL == fillMode) {
-                    // FIXME: optimisation, draw a point instead of a filled disk
                     gluQuadricDrawStyle(_qobj, GLU_FILL);
                     gluDisk(_qobj, inner, outer, slices, loops);
                 }
@@ -4739,6 +4745,11 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
             case S52_VC_FP: { // fill poly immediatly
                 //PRINTF("fill poly: start\n");
                 GArray   *vec  = S52_PL_getVOdata(vecObj);
+                if (NULL == vec) {
+                    PRINTF("ERROR: vector NULL\n");
+                    g_assert(0);
+                    continue;
+                }
                 vertex_t *data = (vertex_t *)vec->data;
 
                 // circle is already filled
@@ -4780,6 +4791,8 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 
                 // trick from NeHe
                 // Draw smooth anti-aliased outline over polygons.
+                // FIXME: is this code affect states in DList?
+                // if so then valid for GL1.x only (not VBO code path)
                 //glEnable( GL_BLEND );
                 //glEnable( GL_LINE_SMOOTH );
                 //glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
@@ -4808,7 +4821,14 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                     _glBegin(GL_LINES,  vertex);
                     while ((S52_VC_PD==vcmd) || (S52_VC_PU==vcmd)) {
                         GArray   *vec  = S52_PL_getVOdata(vecObj);
+                        if (NULL == vec) {
+                            PRINTF("ERROR: vector NULL\n");
+                            g_assert(0);
+                            vcmd = S52_PL_getNextVOCmd(vecObj);
+                            continue;
+                        }
                         vertex_t *data = (vertex_t *)vec->data;
+
 
                         // failsafe
                         if (0 == vec->len)
@@ -4816,7 +4836,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 
                         // POINTS
                         // draw points as a short line so one glDraw call
-                        // to render all: points, lines, strip to save a lone glDraw point call
+                        // to render all: points, lines, strip to save a lone glDraw call
                         if (1 == vec->len) {
                             vertex_t data1[3] = {data[0]+20.0, data[1]+20.0, 0.0};
                             S57_addPrimVertex(vertex, data);
@@ -5735,8 +5755,8 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     glDisable(GL_DITHER);
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_POLYGON_OFFSET_FILL);
-    glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
-    glDisable(GL_SAMPLE_COVERAGE);
+    //glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
+    //glDisable(GL_SAMPLE_COVERAGE);
 
     _checkError("S52_GL_begin() - EnableCap");
 
@@ -5762,10 +5782,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     // then create all PLib symbol
     _createSymb();
-
-    // _createSymb() might reset line width
-    // FIXME: linewidth sould be set *before* rendering any line
-    //_glLineWidth(1.0);
 
     // -------------------------------------------------------
 
@@ -5973,10 +5989,13 @@ int        S52_GL_delDL(S52_obj *obj)
                 vboID = 0;
                 S52_PL_setFreetypeGL_VBO(obj, vboID, len);
             }
-            //else {
-            //        PRINTF("WARNING: ivalid FreetypeGL VBOID(%i)\n", vboID);
-            //g_assert(0);
-            //    }
+            /* debug
+            else
+            {
+                PRINTF("WARNING: ivalid FreetypeGL VBOID(%i)\n", vboID);
+                //g_assert(0);
+            }
+            */
         }
 #endif
 
@@ -6434,7 +6453,10 @@ int        S52_GL_setScissor(int x, int y, int width, int height)
     glEnable(GL_SCISSOR_TEST);
 
     // +1 px to cover line witdh at edge
-    glScissor(x, y, width+1, height+1);
+    if (0==x || 0==y)
+        glScissor(x, y, width+1, height+1);
+    else
+        glScissor(x-1, y-1, width+2, height+2);
 
     _checkError("S52_GL_setScisor().. -end-");
 
@@ -6932,7 +6954,7 @@ int        S52_GL_drawStr(double pixels_x, double pixels_y, const char *colorNam
 
 #ifdef S52_USE_FTGL
     if (NULL != _ftglFont[bsize]) {
-        _glColor4ub(c);
+        _setFragment(c);
         ftglRenderFont(_ftglFont[bsize], str, FTGL_RENDER_ALL);
     }
 #endif
@@ -6974,7 +6996,7 @@ int        S52_GL_drawGraticule(void)
 
     char   str[80];
     S52_Color *black = S52_PL_getColor("CHBLK");
-    _glColor4ub(black);
+    _setFragment(black);
     _glLineWidth(1.0);
 
     //_setBlend(TRUE);
@@ -7153,7 +7175,7 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
 
     S52_DList *DListData = S52_PL_getDListData(objA);
     S52_Color *color     = DListData->colors;
-    _glColor4ub(color);
+    _setFragment(color);
 
 
     // draw arc
