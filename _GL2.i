@@ -22,7 +22,6 @@ typedef GLUtesselator GLUtriangulatorObj;
 // forward decl
 static double      _getGridRef(S52_obj *, double *, double *, double *, double *, double *, double *);
 static int         _fillArea(S57_geo *);
-//static int         _fillArea(S57_geo *, char LOD);
 static void        _glMatrixMode(guint);
 static void        _glLoadIdentity(int);
 static void        _glUniformMatrix4fv_uModelview(void);
@@ -30,7 +29,7 @@ static int         _glMatrixSet(VP);
 static int         _glMatrixDel(VP);
 static int         _pushScaletoPixel(int);
 static int         _popScaletoPixel(void);
-static GLubyte     _glColor4ub(S52_Color *);
+static GLubyte     _setFragment(S52_Color *);
 static void        _glLineWidth(GLfloat);
 static void        _glPointSize(GLfloat);
 static inline void _checkError(const char *);
@@ -281,7 +280,7 @@ static int       _init_freetype_gl(void)
     // 10 points default
     int basePtSz = 10 * (PICA / S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
 
-    PRINTF("DEBUG: basePtSz = %i, dotp mm=%f\n", basePtSz, _dotpitch_mm_y);
+    //PRINTF("DEBUG: basePtSz = %i, dotp mm=%f\n", basePtSz, _dotpitch_mm_y);
 
     _freetype_gl_font[0] = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz +  0);
     _freetype_gl_font[1] = texture_font_new(_freetype_gl_atlas, _freetype_gl_fontfilename, basePtSz +  6);
@@ -735,7 +734,7 @@ static GLuint    _loadShader(GLenum type, const char *shaderSrc)
 
     if (GL_FALSE == compiled) {
         int logLen = 0;
-		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);  // length include '\0'
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);  // length include '\0'
 
         PRINTF("ERROR: glCompileShader() fail\n");
 
@@ -929,6 +928,10 @@ static int       _init_gl2(void)
 
             "void main(void)                                                \n"
             "{                                                              \n"
+            // version 130 (not in mesa v 100)
+            //"  gl_Position = ftransform(); \n"
+            //"  vec4 TexCoord = gl_MultiTexCoord0; \n"
+
             "    v_alpha      = aAlpha;                                     \n"
             "    gl_PointSize = uPointSize;                                 \n"
             "    gl_Position  = uProjection * uModelview * aPosition;       \n"
@@ -981,7 +984,8 @@ static int       _init_gl2(void)
             "uniform float     uStipOn;                 \n"
             "uniform float     uPattOn;                 \n"
             "uniform float     uGlowOn;                 \n"
-            "uniform float     uRasterOn;               \n"
+
+            //"uniform float     uFxAAOn;                 \n"
 
             "uniform vec4      uColor;                  \n"
 
@@ -1005,9 +1009,7 @@ static int       _init_gl2(void)
             "            } else {                                                    \n"
 #ifdef S52_USE_AFGLOW
             "                if (0.0 < uGlowOn) {                                    \n"
-            "                    float dist = distance(vec2(0.5,0.5), gl_PointCoord); \n"
-            //"                    if (0.5 > sqrt((gl_PointCoord.x-0.5)*(gl_PointCoord.x-0.5) +   \n"
-            //"                                   (gl_PointCoord.y-0.5)*(gl_PointCoord.y-0.5))) { \n"
+            "                    float dist = distance(vec2(0.5,0.5), gl_PointCoord);\n"
             "                    if (0.5 > dist) {                                   \n"
             "                        gl_FragColor   = uColor;                        \n"
             "                        gl_FragColor.a = v_alpha;                       \n"
@@ -1549,7 +1551,7 @@ static int       _renderAP_gl2(S52_obj *obj)
         }
     }
 
-    _glColor4ub(DListData->colors);
+    _setFragment(DListData->colors);
 
     // debug - red conspic
     //glUniform4f(_uColor, 1.0, 0.0, 0.0, 0.0);
