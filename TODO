@@ -3,7 +3,7 @@ TODO: jot pad for libS52.so missing stuff, bug, snag, ... , brain dump
 Last update:
 2013JAN - add link to Pavel Kalian RleEditor, add Testing section
 2014DEC - X-Track logic done, add testing using S-64
-2016MAY - experiment in optimisation (GLES2): send palette+vertex trans to shader via Z
+2016MAY - experiment in optimisation (GLES2): send 'idx palette' + 'vertex trans' to shader via Z
 
 
 Curent focus (top priority *):

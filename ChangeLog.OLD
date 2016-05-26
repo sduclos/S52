@@ -4,6 +4,11 @@
 #
 
 
+2016MAY26
+    -mod rename _glColor4ub to _setFragment
+    -mod _setFragment call _glColor4ub
+    -mod refactor _glColor4ub
+
 2016MAY18
     -mod debug config CONF_* to CFG_*
     -add atomic abort in _suppLineOverlap()
