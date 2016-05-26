@@ -312,8 +312,9 @@ PROJCS["WGS 84 / Pseudo-Mercator",
     AUTHORITY["EPSG","3857"]]
 */
 
-    //const char *templ = "+proj=merc +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
-    const char *templ = "+proj=utm +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
+    const char *templ = "+proj=merc +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
+    // FIXME: utm tilt ENC .. why?
+    //const char *templ = "+proj=utm +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
 
     if (NULL != _pjstr) {
         PRINTF("WARNING: Merc projection allready set\n");
