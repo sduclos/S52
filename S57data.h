@@ -34,6 +34,7 @@
 #define EMPTY_NUMBER_MARKER "2147483641"  /* MAXINT-6 */
 
 #define S57_CELL_NAME_MAX_LEN 8  // cell name maximum lenght
+#define S57_OBJ_ATT_LEN       6  // attribute name lenght
 
 // push Z in geo (Z not used, alway 0)
 // could be use as a clip plane for LS()
