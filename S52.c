@@ -3807,15 +3807,13 @@ static int        _cullLayer(_cell *c)
         // Note: skip META
         for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
 
-            //GPtrArray *rbin = c->renderBin[i][j];
-            //_cullObj(rbin);
+            // FIXME: AA line & point, mark in journal to render to texture
+            // then send texture to FB
 
-            //*
             GPtrArray *c_rbin = c->renderBin[i][j];
             _cullObj(c, c_rbin);
             GPtrArray *m_rbin = _marinerCell->renderBin[i][j];
             _cullObj(c, m_rbin);
-            //*/
         }
     }
 
