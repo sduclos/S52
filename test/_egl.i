@@ -199,7 +199,7 @@ static int      _egl_init       (s52engine *engine)
 #ifdef S52_USE_GLES2
     EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
 
-    //EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
+    // debug MSAA - EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
     //EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
 #else
     // OpenGL 1.x
@@ -287,7 +287,6 @@ static int      _egl_init       (s52engine *engine)
     const EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
 
-        // EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
         //EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
         //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
@@ -307,11 +306,10 @@ static int      _egl_init       (s52engine *engine)
         //EGL_STENCIL_SIZE,        8,
 
         // fail on Mesa (MSAA)
-        //EGL_SAMPLES,             1,   // say EGL_SUCCESS, but 0 config num
-        //EGL_SAMPLE_BUFFERS,      1,   // say EGL_SUCCESS, but 0 config num
-        //EGL_SAMPLE_BUFFERS,      2,
-        //EGL_SAMPLE_BUFFERS,      4,
-        //EGL_SAMPLE_BUFFERS,      8,
+        //EGL_SAMPLE_BUFFERS,      1,   // say EGL_SUCCESS, but no surface
+        //EGL_SAMPLES,             1,   // say EGL_SUCCESS, but no surface
+        //EGL_SAMPLES,             4,   // say EGL_SUCCESS, but no surface
+        //EGL_SAMPLES,             8,     // say EGL_SUCCESS, but no surface
 
         EGL_NONE
     };
@@ -440,12 +438,13 @@ static int      _egl_init       (s52engine *engine)
     }
 
     // --- get eglSurface ------------------------------------------------
+    // FIXME: PBuffer for AA!
 #ifdef GTK_MAJOR_VERSION
     eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, GDK_WINDOW_XID(gtk_widget_get_window(engine->window)), NULL);
 #else
     eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, eglWindow, NULL);
-#endif
     //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig[5], eglWindow, NULL);
+#endif
     if (EGL_NO_SURFACE == eglSurface || EGL_SUCCESS != eglGetError()) {
         LOGE("eglCreateWindowSurface() failed. EGL_NO_SURFACE [0x%x]\n", eglGetError());
         g_assert(0);
@@ -455,12 +454,14 @@ static int      _egl_init       (s52engine *engine)
     // http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html
     eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
 
+    // debug GLES2 AA - The initial value of EGL_MULTISAMPLE_RESOLVE is EGL_MULTISAMPLE_RESOLVE_DEFAULT.
+    //eglSurfaceAttrib(eglDisplay, eglSurface, EGL_MULTISAMPLE_RESOLVE, EGL_MULTISAMPLE_RESOLVE_DEFAULT);
+
     // --- get eglContext ------------------------------------------------
     // Then we can create the context and set it current:
     // 1 - GLES1.x, 2 - GLES2.x, 3 - GLES3.x
     EGLint eglContextList[] = {
 #ifdef S52_USE_ADRENO
-        // FIXME: why not 2 - GLES2 on Adreno!
         EGL_CONTEXT_CLIENT_VERSION, 3, // GLES3 to get NPOT texture in blit
 #else
         EGL_CONTEXT_CLIENT_VERSION, 2,
