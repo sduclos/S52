@@ -1125,8 +1125,16 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
     }
 
     if (NULL != drval1str) {
-        if (UNKNOWN==least_depth || least_depth<drval1)
+        //if (UNKNOWN==least_depth || least_depth<drval1)
+        //    least_depth = drval1;
+
+        if (UNKNOWN == least_depth) {
             least_depth = drval1;
+        } else {
+            if (least_depth >= drval1)
+             least_depth = drval1;
+        }
+
     }
 
     return least_depth;
