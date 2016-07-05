@@ -1713,7 +1713,7 @@ exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
-    PRINTF("libS52 done\n");
+    PRINTF("libS52 .. done\n");
 
     return TRUE;
 }
@@ -1920,7 +1920,7 @@ static int        _suppLineOverlap()
 
                 // debug
                 if (nRCNM != nRCID) {
-                    PRINTF("ERROR: nRCNM != nRCID\n");
+                    PRINTF("DEBUG: nRCNM != nRCID .. exit\n");
                     g_assert(0);
                     return FALSE;
                 }
@@ -2885,7 +2885,7 @@ static int        _loadConnectedNode(const char *name, void *ConnectedNode)
 // 1st - collect "ConnectedNode"
 {
     if ((NULL==name) || (NULL==ConnectedNode)) {
-        PRINTF("ERROR: objname / shape  --> NULL\n");
+        PRINTF("WARNING: objname / shape  --> NULL\n");
         g_assert(0);
         return FALSE;
     }
@@ -2903,7 +2903,7 @@ static int        _loadConnectedNode(const char *name, void *ConnectedNode)
 
         // debug
         if (NULL == rcidstr) {
-            PRINTF("ERROR: no Att RCID\n");
+            PRINTF("DEBUG: no Att RCID .. \n");
             g_assert(0);
             return FALSE;
         }
@@ -2946,7 +2946,7 @@ int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_
 #endif
 
     if ((NULL==layername) || (NULL==layer)) {
-        PRINTF("ERROR: layername / layer NULL\n");
+        PRINTF("WARNING: layername / layer NULL\n");
         g_assert(0);
         return FALSE;
     }
@@ -3131,9 +3131,11 @@ static S52_obj   *_insertS52obj(_cell *c, S52_obj *obj)
         case S57_AREAS_T: obj_t = S52_AREAS; break;
         case S57_LINES_T: obj_t = S52_LINES; break;
         case S57_POINT_T: obj_t = S52_POINT; break;
-        default:
-            PRINTF("ERROR: unknown index of addressed object type\n");
+        default: {
+            // debug
+            PRINTF("DEBUG: unknown index of addressed object type\n");
             g_assert(0);
+        }
     }
 
     // special prossesing for light sector
@@ -3184,7 +3186,7 @@ int            S52_loadObject(const char *objname, void *shape)
     S52_CHECK_INIT;
 
     if ((NULL==objname) || (NULL==shape)) {
-        PRINTF("ERROR: objname / shape NULL\n");
+        PRINTF("WARNING: objname / shape NULL\n");
         return FALSE;
     }
 
@@ -3431,7 +3433,7 @@ static int        _moveObj(_cell *cell, S52_disPrio oldPrio, S52ObjectType obj_t
 
         // del obj to rbin of oldPrio
         if (NULL == g_ptr_array_remove_index_fast(oldBin, idx)) {
-            PRINTF("ERROR: no object to remove\n");
+            PRINTF("WARNING: no object to remove\n");
             g_assert(0);
             return FALSE;
         }
@@ -3568,7 +3570,7 @@ static int        _app()
                                 _cell *cj = (_cell*) g_ptr_array_index(_cellList, j);
 
                                 // check nav purp (INTU)
-                                if (c->dsid_intustr->str >= cj->dsid_intustr->str)
+                                if (*c->dsid_intustr->str < *cj->dsid_intustr->str)
                                     continue;
 
                                 //  M_COVR intersect smaller scale extent
@@ -3597,6 +3599,7 @@ static int        _app()
                                                 g_array_append_val(_sclbdyList, sclbdy);
                                             } else {
                                                 PRINTF("WARNING: 'sclbdy' fail check PLib AUX\n");
+                                                g_assert(0);
                                             }
 
                                         }
