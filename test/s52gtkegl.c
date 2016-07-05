@@ -320,6 +320,8 @@ static gboolean _scroll  (GdkEventKey *event)
         case GDK_KEY_Down : _engine.state.cLat -= _engine.state.rNM/(60.0*10.0); S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
     }
 
+    gtk_widget_queue_draw(_engine.window);
+
     return TRUE;
 }
 
@@ -331,6 +333,8 @@ static gboolean _zoom    (GdkEventKey *event)
         // zoom out
         case GDK_KEY_Page_Down: _engine.state.rNM *= 2.0; S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
     }
+
+    gtk_widget_queue_draw(_engine.window);
 
     return TRUE;
 }
@@ -354,6 +358,8 @@ static gboolean _rotation(GdkEventKey *event)
     }
 
     S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north);
+
+    gtk_widget_queue_draw(_engine.window);
 
     return TRUE;
 }
@@ -601,7 +607,7 @@ int main(int argc, char** argv)
     gtk_widget_set_redraw_on_allocate(GTK_WIDGET(_engine.window), TRUE );
 
     g_signal_connect(G_OBJECT(_engine.window), "destroy",           G_CALLBACK(gtk_main_quit),     NULL);
-    //g_signal_connect(G_OBJECT(_engine.window), "draw",              G_CALLBACK(_s52_draw_cb),     &_engine);
+    g_signal_connect(G_OBJECT(_engine.window), "draw",              G_CALLBACK(_s52_draw_cb),     &_engine);
     g_signal_connect(G_OBJECT(_engine.window), "key_release_event", G_CALLBACK(key_release_event), NULL);
     g_signal_connect(G_OBJECT(_engine.window), "configure_event",   G_CALLBACK(configure_event),   NULL);
 
