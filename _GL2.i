@@ -29,7 +29,7 @@ static int         _glMatrixSet(VP);
 static int         _glMatrixDel(VP);
 static int         _pushScaletoPixel(int);
 static int         _popScaletoPixel(void);
-static GLubyte     _setFragment(S52_Color *);
+static GLubyte     _setFragColor(S52_Color *);
 static void        _glLineWidth(GLfloat);
 static void        _glPointSize(GLfloat);
 static inline void _checkError(const char *);
@@ -226,7 +226,7 @@ static int       _f2d(GArray *tessWorkBuf_d, guint npt, vertex_t *ppt)
     return TRUE;
 }
 
-static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt) 
+static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt)
 // convert array of double to array of float, geo to VBO
 {
     g_array_set_size(tessWorkBuf_f, 0);
@@ -239,7 +239,7 @@ static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt)
     return TRUE;
 }
 
-static int       _init_freetype_gl(void) 
+static int       _init_freetype_gl(void)
 {
     const wchar_t   *cache    = L" !\"#$%&'()*+,-./0123456789:;<=>?"
                                 L"@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_"
@@ -316,7 +316,7 @@ static int       _init_freetype_gl(void)
     return TRUE;
 }
 
-static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsigned int weight) 
+static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsigned int weight)
 // fill buffer whit triangles strip
 // experimental: smaller text size if second line
 {
@@ -394,7 +394,7 @@ static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsi
 // gles2 float Matrix stuff (by hand)
 //
 
-static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m) 
+static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m)
 {
    float c = cos(angle * M_PI / 180.0);
    float s = sin(angle * M_PI / 180.0);
@@ -408,7 +408,7 @@ static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m)
    m[5] =  c;
 }
 
-static void      _make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat *m) 
+static void      _make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat *m)
 {
    memset(m, 0, sizeof(GLfloat) * 16);
    m[0]  = xs;
@@ -417,7 +417,7 @@ static void      _make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat 
    m[15] = 1.0;
 }
 
-static void      _multiply(GLfloat *m, GLfloat *n) 
+static void      _multiply(GLfloat *m, GLfloat *n)
 {
    GLfloat tmp[16];
    const GLfloat *row, *column;
@@ -433,10 +433,10 @@ static void      _multiply(GLfloat *m, GLfloat *n)
    }
    memcpy(m, &tmp, sizeof tmp);
 }
- 
+
 //------------ NOT USED -----------------------------
 #if 0
-static void      _mul_matrix(GLfloat *prod, const GLfloat *a, const GLfloat *b) 
+static void      _mul_matrix(GLfloat *prod, const GLfloat *a, const GLfloat *b)
 {
 #define A(row,col)  a[(col<<2)+row]
 #define B(row,col)  b[(col<<2)+row]
@@ -458,7 +458,7 @@ static void      _mul_matrix(GLfloat *prod, const GLfloat *a, const GLfloat *b)
 //------------ NOT USED -----------------------------
 
 
-static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[4], GLfloat out[4]) 
+static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[4], GLfloat out[4])
 {
     for (int i=0; i<4; i++) {
         out[i] = in[0] * matrix[0*4+i] +
@@ -468,7 +468,7 @@ static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[
     }
 }
 
-static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16]) 
+static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16])
 {
     GLfloat inv[16], det;
 
@@ -519,7 +519,7 @@ static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16])
     return GL_TRUE;
 }
 
-static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GLfloat r[16]) 
+static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GLfloat r[16])
 {
     for (int i=0; i<4; ++i) {
         for (int j=0; j<4; ++j) {
@@ -531,7 +531,7 @@ static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GL
     }
 }
 
-static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz, 
+static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz,
                              const GLfloat modelMatrix[16],
                              const GLfloat projMatrix[16],
                              const GLint   viewport[4],
@@ -566,7 +566,7 @@ static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz,
     return GL_TRUE;
 }
 
-static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz, 
+static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
                                const GLfloat modelMatrix[16],
                                const GLfloat projMatrix[16],
                                const GLint   viewport[4],
@@ -612,7 +612,7 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
     return GL_TRUE;
 }
 
-static void      _glTranslated(double x, double y, double z) 
+static void      _glTranslated(double x, double y, double z)
 {
     GLfloat t[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  (GLfloat) x, (GLfloat) y, (GLfloat) z, 1 };
     //GLfloat t[16] = {1, (GLfloat) x, (GLfloat) y, (GLfloat) z,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1};
@@ -626,7 +626,7 @@ static void      _glTranslated(double x, double y, double z)
     return;
 }
 
-static void      _glScaled(double x, double y, double z) 
+static void      _glScaled(double x, double y, double z)
 {
     GLfloat m[16];
 
@@ -641,7 +641,7 @@ static void      _glScaled(double x, double y, double z)
     return;
 }
 
-static void      _glRotated(double angle, double x, double y, double z) 
+static void      _glRotated(double angle, double x, double y, double z)
 // rotate on Z
 {
     GLfloat m[16];
@@ -662,7 +662,7 @@ static void      _glRotated(double angle, double x, double y, double z)
     return;
 }
 
-static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len) 
+static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
 // render VBO static text (ie no data) or dynamic text
 {
     // Note: static text could also come from MIO's (ie S52_GL_LAST cycle)
@@ -716,7 +716,7 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
     return TRUE;
 }
 
-static GLuint    _loadShader(GLenum type, const char *shaderSrc) 
+static GLuint    _loadShader(GLenum type, const char *shaderSrc)
 {
     GLint compiled = GL_FALSE;
 
@@ -752,65 +752,61 @@ static GLuint    _loadShader(GLenum type, const char *shaderSrc)
     return shader;
 }
 
-static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask) 
-// make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
+static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
+// make a RGBA texture from 32x32 bitmask
 {
     memset(rgba_mask, 0, 4*32*8*4);
 
     for (int i=0; i<(4*32); ++i) {
-        if (0 != mask[i]) {
-            if (mask[i] & (1<<0)) {
-                //rgba_mask[(i*4*8)+0] = 0;  // R
-                //rgba_mask[(i*4*8)+1] = 0;  // G
-                //rgba_mask[(i*4*8)+2] = 0;  // B
-                rgba_mask[(i*4*8)+3] = 255;   // A
-            }
-            if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
-            if (mask[i] & (1<<2)) rgba_mask[(i*4*8)+11] = 255;  // A
-            if (mask[i] & (1<<3)) rgba_mask[(i*4*8)+15] = 255;  // A
-            if (mask[i] & (1<<4)) rgba_mask[(i*4*8)+19] = 255;  // A
-            if (mask[i] & (1<<5)) rgba_mask[(i*4*8)+23] = 255;  // A
-            if (mask[i] & (1<<6)) rgba_mask[(i*4*8)+27] = 255;  // A
-            if (mask[i] & (1<<7)) rgba_mask[(i*4*8)+31] = 255;  // A
+        if (mask[i] & (1<<0)) {
+            //rgba_mask[(i*4*8)+0] = 0;  // R
+            //rgba_mask[(i*4*8)+1] = 0;  // G
+            //rgba_mask[(i*4*8)+2] = 0;  // B
+            rgba_mask[(i*4*8)+3] = 255;   // A
         }
+        if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
+        if (mask[i] & (1<<2)) rgba_mask[(i*4*8)+11] = 255;  // A
+        if (mask[i] & (1<<3)) rgba_mask[(i*4*8)+15] = 255;  // A
+        if (mask[i] & (1<<4)) rgba_mask[(i*4*8)+19] = 255;  // A
+        if (mask[i] & (1<<5)) rgba_mask[(i*4*8)+23] = 255;  // A
+        if (mask[i] & (1<<6)) rgba_mask[(i*4*8)+27] = 255;  // A
+        if (mask[i] & (1<<7)) rgba_mask[(i*4*8)+31] = 255;  // A
     }
 
     return TRUE;
 }
 
-static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask) 
-// make a RGBA texture from 32x32 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
+static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
+// make a RGBA texture from 32x1 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
 {
-    memset(rgba_mask, 0, 8*4*4);
-    //for (int i=0; i<8; ++i) {
-    for (int i=0; i<4; ++i) {    // 4 bytes
-        if (0 != mask[i]) {
-            if (mask[i] & (1<<0)) {
-                //rgba_mask[(i*4*8)+0] = 0;   // R
-                //rgba_mask[(i*4*8)+1] = 0;   // G
-                //rgba_mask[(i*4*8)+2] = 0;   // B
-                rgba_mask[(i*4*8)+3] = 255;   // A
-            }
-            if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
-            if (mask[i] & (1<<2)) rgba_mask[(i*4*8)+11] = 255;  // A
-            if (mask[i] & (1<<3)) rgba_mask[(i*4*8)+15] = 255;  // A
-            if (mask[i] & (1<<4)) rgba_mask[(i*4*8)+19] = 255;  // A
-            if (mask[i] & (1<<5)) rgba_mask[(i*4*8)+23] = 255;  // A
-            if (mask[i] & (1<<6)) rgba_mask[(i*4*8)+27] = 255;  // A
-            if (mask[i] & (1<<7)) rgba_mask[(i*4*8)+31] = 255;  // A
+    memset(rgba_mask, 0, 8*4*4);  // 32x4B (rgda)
+    for (int i=0; i<4; ++i) {     // 4 bytes
+        if (mask[i] & (1<<0)) {
+            //rgba_mask[(i*4*8)+0] = 0;   // R
+            //rgba_mask[(i*4*8)+1] = 0;   // G
+            //rgba_mask[(i*4*8)+2] = 0;   // B
+            rgba_mask[(i*4*8)+3] = 255;   // A
         }
+        if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
+        if (mask[i] & (1<<2)) rgba_mask[(i*4*8)+11] = 255;  // A
+        if (mask[i] & (1<<3)) rgba_mask[(i*4*8)+15] = 255;  // A
+        if (mask[i] & (1<<4)) rgba_mask[(i*4*8)+19] = 255;  // A
+        if (mask[i] & (1<<5)) rgba_mask[(i*4*8)+23] = 255;  // A
+        if (mask[i] & (1<<6)) rgba_mask[(i*4*8)+27] = 255;  // A
+        if (mask[i] & (1<<7)) rgba_mask[(i*4*8)+31] = 255;  // A
     }
 
     return TRUE;
 }
 
-static int       _initTexture(void) 
+static int       _initTexture(void)
 {
     if (0 != _nodata_mask_texID)
         return TRUE;
 
     // load texture on GPU ----------------------------------
 
+    // FIXME: send GL_APHA instead of RGBA - skip convertion of bits to RGBA
     // fill _rgba_nodata_mask - expand bitmask to a RGBA buffer
     // that will acte as a stencil in the fragment shader
     _1024bitMask2RGBATex(_nodata_mask_bits, _nodata_mask_rgba);
@@ -865,7 +861,7 @@ static int       _initTexture(void)
     return TRUE;
 }
 
-static int       _init_gl2(void) 
+static int       _init_gl2(void)
 {
     PRINTF("begin GLSL init ..\n");
 
@@ -1164,7 +1160,7 @@ static int       _init_gl2(void)
     return TRUE;
 }
 
-static int       _renderTile(S52_DList *DListData) 
+static int       _renderTile(S52_DList *DListData)
 {
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
@@ -1551,7 +1547,7 @@ static int       _renderAP_gl2(S52_obj *obj)
         }
     }
 
-    _setFragment(DListData->colors);
+    _setFragColor(DListData->colors);
 
     // debug - red conspic
     //glUniform4f(_uColor, 1.0, 0.0, 0.0, 0.0);
