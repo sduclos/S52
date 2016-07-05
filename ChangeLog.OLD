@@ -4,6 +4,26 @@
 #
 
 
+2016JUL05
+    -mod rename to _setFragColor
+
+2016JUL04
+    -fix indirection bug in _app()/DATCVR01 repport by chenzunfeng
+    -fix comparison bug at same line as above
+
+2016JUL02
+    -fix bug repported by chenzunfeng in CS OBSTRN04 cont. B, 'quapos' / 'udwhaz03' / 'valsou' 
+     should be mutually exclusive
+
+2016JUN29
+    -fix bug repported by chenzunfeng in CS OBSTRN04 is LS(DASH,2,CHGRD) not CHBLK
+    -fix bug repported by chenzunfeng in CS OBSTRN04 add g_string_append(obstrn04str, ";SY(OBSTRN03)");
+    -fix bug repported by chenzunfeng in CS OBSTRN04, if (UNKNOWN != least_depth) should be '=='
+
+2016JUN25
+    -fix bug repported by chenzunfeng in CS _DEPVAL01
+    -mod rename _setFragment to _setFragAtt
+    
 2016MAY26
     -mod rename _glColor4ub to _setFragment
     -mod _setFragment call _glColor4ub
