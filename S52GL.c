@@ -256,32 +256,11 @@ inline void      _checkError(const char *msg)
 {
 #ifdef S52_DEBUG
 
-///////////////////////////////////////////////////////
-/* C99 TRICK
-// Not really special, but so useful I thought
-// I'll put it here.  Can also be used with other
-// libraries (OpenAL, OpenSLES, ...)
-#ifdef DEBUG
-#  define GL(line) do {                      \
-       line;                                 \
-       assert(glGetError() == GL_NO_ERROR);  \
-   } while(0)
-#else
-#  define GL(line) line
-#endif
-
-// Put GL around all your opengl calls:
-GL(glClear(GL_COLORS_MASK));
-GL(pos_loc = glGetAttribLocation(prog, "pos"));
-*/
-///////////////////////////////////////////////////////
-
-
 /*
 GL_NO_ERROR
                 No error has been recorded. The value of this
                     symbolic constant is guaranteed to be 0.
-GL_INVALID_ENUM               d
+GL_INVALID_ENUM
                 An unacceptable value is specified for an
                     enumerated argument. The offending command is ignored,
                     and has no other side effect than to set the error
@@ -1485,12 +1464,12 @@ glColor4ub(_cIdx.color.r, _cIdx.color.g, _cIdx.color.b, _cIdx.color.a);
     glColor4ub(r, g, b, (4 - (a - '0')) * TRNSP_FAC);
 #endif
 
-    _checkError("_setFragment()");
+    _checkError("_glColor4ub()");
 
     return TRUE;
 }
 
-static GLubyte   _setFragment(S52_Color *c)
+static GLubyte   _setFragColor(S52_Color *c)
 // set color, trans, pen_w and highlight
 // return transparancy
 {
@@ -1555,7 +1534,7 @@ static int       _glCallList(S52_DList *DListData)
 
     for (guint i=0; i<DListData->nbr; ++i, ++lst, ++col) {
 
-        GLubyte trans = _setFragment(col);
+        GLubyte trans = _setFragColor(col);
 
 #ifdef S52_USE_OPENGL_VBO
         GLuint vboId = DListData->vboIds[i];
@@ -2693,7 +2672,7 @@ static int       _renderSY(S52_obj *obj)
             {
                 S52_DList *DListData = S52_PL_getDListData(obj);
                 S52_Color *col = DListData->colors;
-                _setFragment(col);
+                _setFragColor(col);
 
                 _glUniformMatrix4fv_uModelview();
 
@@ -3145,7 +3124,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
         char       style;   // dummy
         char       pen_w;   // dummy
         S52_PL_getLSdata(obj, &pen_w, &style, &col);
-        _setFragment(col);
+        _setFragColor(col);
     }
 
     //_setBlend(TRUE);
@@ -3260,7 +3239,7 @@ static int       _renderLS(S52_obj *obj)
     char       style;   // L/S/T
     char       pen_w;
     S52_PL_getLSdata(obj, &pen_w, &style, &col);
-    _setFragment(col);
+    _setFragColor(col);
 
     _glLineWidth(pen_w - '0');
     //_glLineWidth(pen_w - '0' + 0.1);  // WARNING: THIS +0.1 SLOW DOWN EVERYTHING
@@ -3368,7 +3347,7 @@ static int       _renderLS(S52_obj *obj)
 #ifdef S52_USE_GL2
                     _d2f(_tessWorkBuf_f, npt, ppt);
 
-                    // alternate planned route
+                    // alternate planned route (dot)
                     if (0 == g_strcmp0("leglin", S57_getName(geoData))) {
                         // FIXME: move to _renderLS_setPattDott()
                         glUniform1f(_uStipOn, 1.0);
@@ -3401,19 +3380,6 @@ static int       _renderLS(S52_obj *obj)
                         // all other line
                         _glUniformMatrix4fv_uModelview();
                         _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
-
-                        /* experimental cheap AA for GLES2 high def
-                        // fail because GL impl diff
-                        if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
-                            char a = col->trans;
-                            col->trans = '2';  // 3 - 75% trans
-                            _setFragment(col);
-                            _glLineWidth(pen_w - '0' + 1.0);
-                            _glUniformMatrix4fv_uModelview();
-                            _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
-                            col->trans = a;
-                        }
-                        //*/
                     }
 #else
                     _glUniformMatrix4fv_uModelview();
@@ -3423,7 +3389,7 @@ static int       _renderLS(S52_obj *obj)
             }
 
 //#ifdef S52_USE_GL2
-            // Not usefull with AA
+            // Not usefull with MSAA
             //_d2f(_tessWorkBuf_f, npt, ppt);
             //_DrawArrays_POINTS(npt, (vertex_t *)_tessWorkBuf_f->data);
 //#else
@@ -3756,7 +3722,7 @@ static int       _renderLC(S52_obj *obj)
     // be set via call list --short line
     S52_DList *DListData = S52_PL_getDListData(obj);
     S52_Color *c = DListData->colors;
-    _setFragment(c);
+    _setFragColor(c);
 
     GLdouble symlen_pixl = 0.0;
     GLdouble symlen_wrld = 0.0;
@@ -3949,7 +3915,7 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
     }
 
     S52_Color *c = DListData->colors;
-    _setFragment(c);
+    _setFragColor(c);
 
     GLdouble slice  = 360.0;
     GLdouble loops  = 1.0;
@@ -4027,7 +3993,7 @@ static int       _renderAC(S52_obj *obj)
         return TRUE;
     }
 
-    _setFragment(c);
+    _setFragColor(c);
 
     _glUniformMatrix4fv_uModelview();
 
@@ -4061,7 +4027,7 @@ static int       _renderAP_NODATA_layer0(void)
     pt3.y = _pmin.v;
 
     S52_Color *chgrd = S52_PL_getColor("CHGRD");  // grey, conspic
-    _setFragment(chgrd);
+    _setFragColor(chgrd);
 
 #ifdef S52_USE_GL2
     // draw using texture as a stencil -------------------
@@ -4173,7 +4139,7 @@ static int       _renderAP(S52_obj *obj)
         S57_geo *geoData = S52_PL_getGeo(obj);
         S52_Color dummy;
 
-        _setFragment(&dummy);
+        _setFragColor(&dummy);
         _fillArea(geoData);
 
         return TRUE;
@@ -4301,7 +4267,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 #ifdef S52_USE_TXT_SHADOW
     {
         S52_Color *c = S52_PL_getColor("UIBCK");   // opposite of CHBLK
-        _setFragment(c);
+        _setFragColor(c);
 
         // lower right - OK
         if ((S52_GL_LAST==_crnt_GL_cycle) || (S52_GL_NONE==_crnt_GL_cycle)) {
@@ -4313,7 +4279,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     }
 #endif  // S52_USE_TXT_SHADOW
 
-    _setFragment(color);
+    _setFragColor(color);
 
     if ((S52_GL_LAST==_crnt_GL_cycle) || (S52_GL_NONE==_crnt_GL_cycle)) {
         // some MIO change age of target - need to resend the string
@@ -4392,7 +4358,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     double n = _north;
     _north = 0.0;
 
-    _setFragment(color);
+    _setFragColor(color);
 
     //_setBlend(FALSE);
     _glMatrixSet(VP_WIN);
@@ -5125,7 +5091,7 @@ int        S52_GL_isSupp(S52_obj *obj)
         return TRUE;
     }
 
-    // some HO set a scamin on DISPLAYBASE obj!?
+    // debug: some HO set a scamin on DISPLAYBASE obj!?
     if (DISPLAYBASE == S52_PL_getDISC(obj)) {
         return FALSE;
     }
@@ -5765,7 +5731,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     glShadeModel(GL_FLAT);                       // NOT in GLES2
     // draw both side
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);   // NOT in OpenGL ES SC
-    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_VERTEX_ARRAY);        // NOT in GLES2
 
 #endif  // S52_USE_GL2
 
@@ -6954,7 +6920,7 @@ int        S52_GL_drawStr(double pixels_x, double pixels_y, const char *colorNam
 
 #ifdef S52_USE_FTGL
     if (NULL != _ftglFont[bsize]) {
-        _setFragment(c);
+        _setFragColor(c);
         ftglRenderFont(_ftglFont[bsize], str, FTGL_RENDER_ALL);
     }
 #endif
@@ -6996,7 +6962,8 @@ int        S52_GL_drawGraticule(void)
 
     char   str[80];
     S52_Color *black = S52_PL_getColor("CHBLK");
-    _setFragment(black);
+    _setFragColor(black);
+    // FIXME: set black->lineW
     _glLineWidth(1.0);
 
     //_setBlend(TRUE);
@@ -7175,7 +7142,7 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
 
     S52_DList *DListData = S52_PL_getDListData(objA);
     S52_Color *color     = DListData->colors;
-    _setFragment(color);
+    _setFragColor(color);
 
 
     // draw arc
