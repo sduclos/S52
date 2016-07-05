@@ -1125,15 +1125,30 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
     }
 
     if (NULL != drval1str) {
+        // chenzunfeng repport discrepency w/ pslb03_2.pdf
+        // the bug in the original code is '<'
         //if (UNKNOWN==least_depth || least_depth<drval1)
         //    least_depth = drval1;
 
+        // debug - check impact of this bug
+        if (least_depth < drval1) {
+            PRINTF("DEBUG: chenzunfeng found this bug: 'least_depth<drval1' should be '>='\n");
+            g_assert(0);
+        }
+
+
+        //* litteraly psbl03_2.pdf say:
         if (UNKNOWN == least_depth) {
             least_depth = drval1;
         } else {
             if (least_depth >= drval1)
-             least_depth = drval1;
+                least_depth = drval1;
         }
+        //*/
+
+        // it's logicaly the same but more elegant this way
+        //if (UNKNOWN==least_depth || least_depth>=drval1)
+        //    least_depth = drval1;
 
     }
 
@@ -1841,11 +1856,15 @@ static GString *OBSTRN04 (S57_geo *geo)
         if (S57_AREAS_T == S57_getObjtype(geo))
             least_depth = _DEPVAL01(geo, least_depth);
 
-        if (UNKNOWN != least_depth) {
+        //if (UNKNOWN != least_depth) {
+        if (UNKNOWN == least_depth) {
+            PRINTF("DEBUG: chenzunfeng found this should be (UNKNOWN == least_depth)[not !=]\n");
+            //g_assert(0);
+
             GString *catobsstr = S57_getAttVal(geo, "CATOBS");
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
 
-            if (NULL != catobsstr && '6' == *catobsstr->str)
+            if (NULL!=catobsstr && '6'==*catobsstr->str)
                 depth_value = 0.01;
             else {
                 if (NULL == watlevstr) // default
@@ -1954,7 +1973,7 @@ static GString *OBSTRN04 (S57_geo *geo)
                     }
 
                 } else { // OBSTRN
-                    if ( NULL == watlevstr) // default
+                    if (NULL == watlevstr) // default
                         g_string_append(obstrn04str, ";SY(OBSTRN01)");
                     else {
                         switch (*watlevstr->str) {
@@ -1962,7 +1981,10 @@ static GString *OBSTRN04 (S57_geo *geo)
                             case '2': g_string_append(obstrn04str, ";SY(OBSTRN11)"); break;
                             case '3': g_string_append(obstrn04str, ";SY(OBSTRN01)"); break;
                             case '4':
-                            case '5':
+                            case '5': g_string_append(obstrn04str, ";SY(OBSTRN03)");
+                                      PRINTF("DEBUG: chenzunfeng found this should be SY(OBSTRN03)[not 01]\n");
+                                      //g_assert(0);  // CA479020.000 pass here
+                                      break;
                             default : g_string_append(obstrn04str, ";SY(OBSTRN01)"); break;
                         }
                     }
@@ -1988,34 +2010,42 @@ static GString *OBSTRN04 (S57_geo *geo)
             GString *quaposstr = S57_getAttVal(geo, "QUAPOS");
             int      quapos    = 0;
 
+            // ------------------------------------------------------------
+            // FIXME: chenzunfeng found this bug: should be mutually exclusive
+            // FIX: add 2 'else'
             if (NULL != quaposstr) {
                 quapos = S52_atoi(quaposstr->str);
-                if ( 2 <= quapos && quapos < 10){
+                if (2 <= quapos && quapos < 10) {
                     if (NULL != udwhaz03str)
                         g_string_append(obstrn04str, ";LC(LOWACC41)");
                     else
                         g_string_append(obstrn04str, ";LC(LOWACC31)");
                 }
-            }
-
-            if (NULL != udwhaz03str)
-                g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
-
-            if (UNKNOWN != valsou) {
-                if (valsou <= 20.0)
+                PRINTF("DEBUG: chenzunfeng found this bug: should skip 'udwhaz03' & 'valsou'\n");
+            } else {
+                if (NULL != udwhaz03str) {
                     g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
-                else
-                    g_string_append(obstrn04str, ";LS(DASH,2,CHBLK)");
-            } else
-                g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
+                    PRINTF("DEBUG: chenzunfeng found this bug: should skip 'valsou'\n");
+               } else {
+                    if (UNKNOWN != valsou) {
+                        if (valsou <= 20.0)
+                            g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
+                        else
+                            g_string_append(obstrn04str, ";LS(DASH,2,CHBLK)");
+                    } else
+                        g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
+                }
+            }
+            // ------------------------------------------------------------
 
 
             if (NULL != udwhaz03str)
                 g_string_append(obstrn04str, udwhaz03str->str);
             else {
-                if (UNKNOWN != valsou)
+                if (UNKNOWN != valsou) {
                     if (valsou<=20.0 && NULL!=sndfrm02str)
                         g_string_append(obstrn04str, sndfrm02str->str);
+                }
             }
 
             if (NULL != udwhaz03str) g_string_free(udwhaz03str, TRUE);
@@ -2052,8 +2082,12 @@ static GString *OBSTRN04 (S57_geo *geo)
 
                 if (valsou <= 20.0)
                     g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
-                else
-                    g_string_append(obstrn04str, ";LS(DASH,2,CHBLK)");
+                else {
+                    //g_string_append(obstrn04str, ";LS(DASH,2,CHBLK)");
+                    g_string_append(obstrn04str, ";LS(DASH,2,CHGRD)");
+                    PRINTF("DEBUG: chenzunfeng found this bug LS(DASH,2,CHGRD)[not CHBLK]\n");
+                    g_assert(0);
+                }
 
                 if (NULL != sndfrm02str)
                     g_string_append(obstrn04str, sndfrm02str->str);
