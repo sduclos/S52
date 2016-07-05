@@ -69,7 +69,7 @@ static int _s52_setupMain(void)
 
 
     //S52_loadCell("/home/vitaly/CHARTS/for_sasha/GB5X01SE.000", NULL);
-	//S52_loadCell("/home/vitaly/CHARTS/for_sasha/GB5X01NE.000", NULL);
+    //S52_loadCell("/home/vitaly/CHARTS/for_sasha/GB5X01NE.000", NULL);
 
     // Ice - experimental
     //S52_loadCell("/home/sduclos/dev/gis/data/ice/East_Coast/--0WORLD.shp", NULL);
