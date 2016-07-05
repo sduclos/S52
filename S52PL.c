@@ -2739,7 +2739,8 @@ static S52_DisCat _getDISC(_LUP *LUP)
 S52_DisCat  S52_PL_getDISC(_S52_obj *obj)
 // get DISplay Category
 {
-    return_if_null(obj);
+    // test useless since the only caller allready did that
+    //return_if_null(obj);
 
     if (TRUE == obj->prioOveride)
         return obj->DISC;
@@ -2843,7 +2844,7 @@ S52_CmdWrd  S52_PL_getCmdNext(_S52_obj *obj)
     obj->crntAidx++;
     if (obj->crntAidx < obj->crntA->len) {
         _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
-        // debug - can this array return NULL!
+        // debug: can this array call return NULL!
         if (NULL == cmd) {
             PRINTF("DEBUG: no cmd word\n");
             g_assert(0);
@@ -3734,7 +3735,7 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
         return NULL;
 
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
-        PRINTF("ERROR: bug, not a text command\n");
+        PRINTF("WARNING: bug, not a text command\n");
         g_assert(0);
         return NULL;
     }
@@ -3965,8 +3966,9 @@ S52_objSupp S52_PL_getObjClassState(const char *className)
 
 S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
 {
-    if (NULL == obj)
-        return S52_SUPP_ERR;
+    // test useless since the only caller allready did that
+    //if (NULL == obj)
+    //    return S52_SUPP_ERR;
 
     // debug
     //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "M_QUAL")) {
