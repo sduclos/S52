@@ -1146,7 +1146,8 @@ S57_geo   *S57_getTouchDEPVAL(_S57_geo *geo)
 
 double     S57_setScamin(_S57_geo *geo, double scamin)
 {
-    return_if_null(geo);
+    // test useless since the only caller allready did that
+    //return_if_null(geo);
 
     geo->scamin = scamin;
 
@@ -1155,7 +1156,8 @@ double     S57_setScamin(_S57_geo *geo, double scamin)
 
 double     S57_getScamin(_S57_geo *geo)
 {
-    return_if_null(geo);
+    // test useless since the only caller allready did that
+    //return_if_null(geo);
 
     return geo->scamin;
 }
