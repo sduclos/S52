@@ -199,22 +199,22 @@ int      S52_utils_getConfig(cchar *label, char *vbuf)
 
 void _printf(const char *file, int line, const char *function, const char *frmt, ...)
 {
-    int  MAX = 128;
+    int  MAX = 1024;
     char buf[MAX];
     char frmtstr[] =  "%s:%i in %s(): ";
     int  size = snprintf(buf, MAX, frmtstr, file, line, function);
 
     if (size < MAX) {
-		va_list argptr;
-		va_start(argptr, frmt);
-		int n = vsnprintf(&buf[size], (MAX-size), frmt, argptr);
+        va_list argptr;
+        va_start(argptr, frmt);
+        int n = vsnprintf(&buf[size], (MAX-size), frmt, argptr);
         va_end(argptr);
 
         char bufFinal[size + n + 1];
         memcpy(bufFinal, buf, size);
-		va_start(argptr, frmt);
-		//int nn = vsnprintf(&buf[size], (MAX-size), frmt, argptr);
-		int nn = vsnprintf(&bufFinal[size], (n+1), frmt, argptr);
+        va_start(argptr, frmt);
+        //int nn = vsnprintf(&buf[size], (MAX-size), frmt, argptr);
+        int nn = vsnprintf(&bufFinal[size], (n+1), frmt, argptr);
         va_end(argptr);
 
         if (nn > (n+1)) {
