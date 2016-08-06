@@ -283,7 +283,6 @@ static int      _egl_init       (s52engine *engine)
 
 #ifdef S52_USE_GLES2
     // Mesa GL, GLES 2.x, 3.x
-    // MSAA: RGBA8, depth24, stencil8 - fail on Ubuntu 14.04 (Wayland!)
     const EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
 
@@ -296,20 +295,10 @@ static int      _egl_init       (s52engine *engine)
         EGL_BLUE_SIZE,       8,
         //EGL_ALPHA_SIZE,      8,
 
-        //EGL_BUFFER_SIZE,        16,
-        //EGL_BUFFER_SIZE,        24,
-
-        //EGL_DEPTH_SIZE,         1,
-        //EGL_DEPTH_SIZE,         16,
-        //EGL_DEPTH_SIZE,         24,
-
-        //EGL_STENCIL_SIZE,        8,
-
-        // fail on Mesa (MSAA)
-        //EGL_SAMPLE_BUFFERS,      1,   // say EGL_SUCCESS, but no surface
-        //EGL_SAMPLES,             1,   // say EGL_SUCCESS, but no surface
-        //EGL_SAMPLES,             4,   // say EGL_SUCCESS, but no surface
-        //EGL_SAMPLES,             8,     // say EGL_SUCCESS, but no surface
+        // MSAA
+        EGL_SAMPLE_BUFFERS,      1,
+        EGL_SAMPLES,             4,
+        //EGL_SAMPLES,             8,
 
         EGL_NONE
     };
