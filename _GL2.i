@@ -994,7 +994,7 @@ static int       _init_gl2(void)
             "    if (1.0 == uBlitOn) {                  \n"
             "        gl_FragColor = texture2D(uSampler2d, v_texCoord);               \n"
             "    } else {                                                            \n"
-            // FIXME: uStipOn and uPattOn same - diff might be usefull later on ..
+            // Note: uStipOn and uPattOn same - diff might be usefull later on ..
             "        if (1.0 == uStipOn) {                                           \n"
             "            gl_FragColor = texture2D(uSampler2d, v_texCoord);           \n"
             "            gl_FragColor.rgb = uColor.rgb;                              \n"
@@ -1006,11 +1006,11 @@ static int       _init_gl2(void)
 #ifdef S52_USE_AFGLOW
             "                if (0.0 < uGlowOn) {                                    \n"
             "                    float dist = distance(vec2(0.5,0.5), gl_PointCoord);\n"
-            "                    if (0.5 > dist) {                                   \n"
+            "                    if (0.5 < dist) {                                   \n"
+            "                        discard;                                        \n"
+            "                    } else {                                            \n"
             "                        gl_FragColor   = uColor;                        \n"
             "                        gl_FragColor.a = v_alpha;                       \n"
-            "                    } else {                                            \n"
-            "                        discard;                                        \n"
             "                    }                                                   \n"
             "                } else                                                  \n"
 #endif
