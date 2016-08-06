@@ -72,14 +72,14 @@ static double       _rangeNM   = 0.0;
 static double       _centerLat = 0.0;
 static double       _centerLon = 0.0;
 
-static double       _SCAMIN    = 1.0;  // screen scale
+static double       _SCAMIN    = 1.0;  // screen scale (SCAle MINimum in S57)
 static double       _scalex    = 1.0;  // meter per pixel in X
 static double       _scaley    = 1.0;  // meter per pixel in Y
 
 // projected view
 static projUV _pmin = { INFINITY,  INFINITY};
 static projUV _pmax = {-INFINITY, -INFINITY};
-// _pmin, _pmax convert to GEO for culling object with there extent is in deg
+// _pmin, _pmax convert to GEO for culling object with their extent (in deg)
 static projUV _gmin = { INFINITY,  INFINITY};
 static projUV _gmax = {-INFINITY, -INFINITY};
 
@@ -210,7 +210,7 @@ static guint   _npoly     = 0;     // total polys
 #include "_GLU.i"
 
 #ifdef S52_USE_PROJ
-#include <proj_api.h>   // projUV, projXY, projPJ
+#include <proj_api.h>   // projUV, projXY
 #else
 // same thing as in proj_api.h
 typedef struct { double u, v; } projUV;
@@ -5655,29 +5655,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
         //glShadeModel(GL_FLAT);         // NOT in GLES2
 
-    } else {
-        if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
-            glEnable(GL_BLEND);
-
-#ifdef S52_USE_GL1
-            // NOTE: point smoothing is ugly with point pattern
-            //glEnable(GL_POINT_SMOOTH);
-
-            glEnable(GL_LINE_SMOOTH);
-            glEnable(GL_ALPHA_TEST);
-#endif
-
-        } else {
-            // need to explicitly disable since
-            // OpenGL state stay the same from draw to draw
-            glDisable(GL_BLEND);
-
-#ifdef S52_USE_GL1
-            glDisable(GL_POINT_SMOOTH);
-            glDisable(GL_LINE_SMOOTH);
-            glDisable(GL_ALPHA_TEST);
-#endif
-        }
     }
 
     //_checkError("S52_GL_begin() -2-");
@@ -5706,18 +5683,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     glEnable(GL_CULL_FACE);
     //glDisable(GL_CULL_FACE);
 
-/*
-#if !defined(S52_USE_MESA3D) && defined(S52_USE_AFGLOW)
-    // GL_POINT_SPRITE 0x8861 define only in Mesa3d GL/glext.h also in android tool chain GLES/gl.h
-    // but GLSL ES 3.0 say that GL_POINT_SPRITE/gl_PointCoord work
-#define GL_POINT_SPRITE 0x8861
-    //glEnable(GL_POINT_SPRITE);               // Adreno GLSL ES 3.0 say invalid (libGLESv3, libGLESv1_CM)
-#define GL_VERTEX_PROGRAM_POINT_SIZE 0x8642
-    //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);  // Adreno GLSL ES 3.0 say invalid
-#endif
-*/
-
-    // EnableCap
     glDisable(GL_DITHER);
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_POLYGON_OFFSET_FILL);
