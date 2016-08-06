@@ -79,15 +79,16 @@ gboolean SYMBOLIZED_BND  = TRUE;     // symbolized area boundaries
 */
 
 
-// textual name of mariner's parameter
 // WARNING: must be in sync with S52MarinerParameter
+// FIXME: add textual name of mariner's parameter
+// FIXME: use the X macro to sync: http://www.drdobbs.com/cpp/the-x-macro/228700289
 static double _MARparamVal[] = {
     0.0,      // 0 - ERROR: 0 - no error,
 
     //0.0,     // 1 - SHOW_TEXT  (0 - off)
     1.0,     // 1 - SHOW_TEXT (default)
 
-    FALSE,    // 2 - TWO_SHADES (flase -> 4 shade)
+    FALSE,    // 2 - TWO_SHADES (false -> 4 shade)
     //TRUE,    // 2 - TWO_SHADES (SEABED01 default)
 
     15.0,     // 3 - SAFETY_CONTOUR
