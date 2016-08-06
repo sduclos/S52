@@ -139,7 +139,7 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_DISP_RADAR_LAYER    = 45,   // display Raster: RADAR, Bathy, ... (on/off) (default off)
 
-    // FIXME: DISP TEXT SHADOW - 0-7 bit: N NE E SE S SW W NW, 0 - off
+    // FIXME: DISP TEXT SHADOW - 0-7 bit: N NE E SE S SW W NW, 0 - off, [default to SE for now]
 
     S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters) [0.0 - off]
     S52_MAR_GUARDZONE_LENGTH    = 47,   // Danger/Indication Highlight used by Position (meters, user computed from speed/time or distance)
@@ -153,12 +153,13 @@ typedef enum S52MarinerParameter {
 
 // [3] debug - command word filter for profiling
 typedef enum S52_CMD_WRD_FILTER_t {
-    S52_CMD_WRD_FILTER_SY = 1 << 0,   // 0x000001 - SY
-    S52_CMD_WRD_FILTER_LS = 1 << 1,   // 0x000010 - LS
-    S52_CMD_WRD_FILTER_LC = 1 << 2,   // 0x000100 - LC
-    S52_CMD_WRD_FILTER_AC = 1 << 3,   // 0x001000 - AC
-    S52_CMD_WRD_FILTER_AP = 1 << 4,   // 0x010000 - AP
-    S52_CMD_WRD_FILTER_TX = 1 << 5    // 0x100000 - TE & TX
+    S52_CMD_WRD_FILTER_OFF = 0,        // not used
+    S52_CMD_WRD_FILTER_SY  = 1 << 0,   // 0x000001 - SY
+    S52_CMD_WRD_FILTER_LS  = 1 << 1,   // 0x000010 - LS
+    S52_CMD_WRD_FILTER_LC  = 1 << 2,   // 0x000100 - LC
+    S52_CMD_WRD_FILTER_AC  = 1 << 3,   // 0x001000 - AC
+    S52_CMD_WRD_FILTER_AP  = 1 << 4,   // 0x010000 - AP
+    S52_CMD_WRD_FILTER_TX  = 1 << 5    // 0x100000 - TE & TX
 } S52_CMD_WRD_FILTER_t;
 
 // [1] S52_MAR_DISP_CATEGORY / S52_MAR_DISP_LAYER_LAST
@@ -256,6 +257,7 @@ DLL int    STD S52_getTextDisp(unsigned int dispPrioIdx);
  * @eglBeg: (in): callback to EGL end   (swap)
  * @EGLctx: (in): EGL context           (user_data)
  *
+ * usefull for debuging - send tag string to EGL/glInsertEventMarkerEXT to tell witch draw is starting
  *
  * Return: TRUE on success, else FALSE
  */
