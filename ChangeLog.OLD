@@ -4,6 +4,14 @@
 #
 
 
+2016AUG02
+    -upgrade to GCC 5
+    -mod __FUCTION__ to C99 __func__ in PRINTF
+    -del old AA code in GL_begin()
+
+2016JUL28
+    -mod EGL test default to 4MSAA
+
 2016JUL05
     -mod rename to _setFragColor
 
