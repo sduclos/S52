@@ -39,7 +39,7 @@
 #include <stdarg.h>
 
 void _printf(const char *file, int line, const char *function, const char *frmt, ...);
-#define PRINTF(...) _printf(__FILE__, __LINE__, __FUNCTION__, __VA_ARGS__)
+#define PRINTF(...) _printf(__FILE__, __LINE__, __func__, __VA_ARGS__)
 #else    // S52_DEBUG  S52_USE_LOGFILE
 #define PRINTF(...)
 #endif  // S52_DEBUG  S52_USE_LOGFILE
