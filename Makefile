@@ -267,6 +267,7 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
                   -DS52_DEBUG $(DBG)
 
 #                  -DS52_USE_SUPP_LINE_OVERLAP
+#                  -DS52_USE_GLSC2
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                   `gdal-config --cflags`         \
@@ -278,7 +279,6 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_EGL                  \
                   -DS52_USE_OPENGL_VBO           \
                   -DS52_USE_GLES2                \
-                  -DS52_USE_GLSC2                \
                   -DS52_USE_MESA3D               \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_SOCK                 \
