@@ -9,9 +9,12 @@
 
 
 // Note: GLES2 is a subset of GL2, so declaration in GLES2 header cover all GL2 decl use in the code
-#define GL_GLEXT_PROTOTYPES
+#ifdef S52_USE_GLSC2
+#include <GLSC2/glsc2.h>
+#else
 #include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
+#endif
+
 typedef double GLdouble;
 
 #include "tesselator.h"
@@ -1574,7 +1577,7 @@ static int       _renderAP_gl2(S52_obj *obj)
     glUniform1f(_uPattW,     0.0);
     glUniform1f(_uPattH,     0.0);
 
-    _checkError("_renderAP_es2() -2-");
+    _checkError("_renderAP_gl2() -2-");
 
     return TRUE;
 }
