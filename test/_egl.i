@@ -296,8 +296,8 @@ static int      _egl_init       (s52engine *engine)
         //EGL_ALPHA_SIZE,      8,
 
         // MSAA
-        EGL_SAMPLE_BUFFERS,      1,
-        EGL_SAMPLES,             4,
+        //EGL_SAMPLE_BUFFERS,      1,
+        //EGL_SAMPLES,             4,
         //EGL_SAMPLES,             8,
 
         EGL_NONE
