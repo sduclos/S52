@@ -195,11 +195,12 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_EGL          - EGL callback from libS52
 # GL FIX FUNC:
 # -DS52_USE_GL1          - GL1.x
-# -DS52_USE_GLSC1        - GL Safety Critical 1.0 (subset of GL1.3)
+# -DS52_USE_GLSC1        - GLSC1.x - Safety Critical 1.0 (subset of GL1.3)
 # -DS52_USE_OPENGL_VBO   - GL1.5 or greater. Vertex Buffer Object used also in GL2+
 # GL GLSL:
 # -DS52_USE_GL2          - GL2.x
 # -DS52_USE_GLES2        - GLES2.x
+# -DS52_USE_GLSC2        - GLSC2.x - Safety Critical 2.0 (subset of GLES2)
 # -DS52_USE_GL3          - GL3.x
 # -DS52_USE_GLES3        - GLES3.x / GLSL ES 3.0
 
@@ -269,8 +270,6 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                   `gdal-config --cflags`         \
-                  -I/usr/include                 \
-                  -I/usr/include/freetype2       \
                   -I./lib/freetype-gl            \
                   -I./lib/libtess                \
                   -I./lib/parson                 \
@@ -279,6 +278,7 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_EGL                  \
                   -DS52_USE_OPENGL_VBO           \
                   -DS52_USE_GLES2                \
+                  -DS52_USE_GLSC2                \
                   -DS52_USE_MESA3D               \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_SOCK                 \
@@ -328,7 +328,6 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
                      -I$(S52DROIDINC)/glib-2.0             \
                      -I$(S52DROIDINC)/glib-2.0/include     \
-                     -I/usr/include/freetype2              \
                      -I./lib/freetype-gl                   \
                      -I./lib/libtess                       \
                      -I./lib/parson                        \
@@ -491,18 +490,18 @@ $(S52DROIDLIB)/libS52.a: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARS
 	$(RANLIB)  $(S52DROIDLIB)/libS52.a
 
 libS52.so: $(OBJS_S52) $(OBJ_PARSON) tags
-	$(CXX) -shared $(OBJS_S52) $(OBJ_PARSON) $(LIBS) -o $@
+	$(CC) -shared $(OBJS_S52) $(OBJ_PARSON) $(LIBS) -o $@
 
 libS52gl2.so:  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
-	$(CXX) -shared  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
+	$(CC) -shared  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
 	-ln -sf libS52gl2.so libS52.so
 
 libS52egl.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
-	$(CXX) -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
+	$(CC) -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
 	-ln -sf libS52egl.so libS52.so
 
 libS52gv.so: $(OBJS_S52) $(OBJS_GV)
-	$(CXX) -shared $(OBJS_S52) $(OBJS_GV) $(LIBS) -o libS52.so
+	$(CC) -shared $(OBJS_S52) $(OBJS_GV) $(LIBS) -o libS52.so
 
 s52win32 s52eglw32: LIBWIN32PATH = ../../mingw
 s52win32 s52eglw32: GTKPATH = $(HOME)/dev/gis/openev-cvs/mingw/gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/bin
