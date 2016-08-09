@@ -79,9 +79,28 @@ gboolean SYMBOLIZED_BND  = TRUE;     // symbolized area boundaries
 */
 
 
-// WARNING: must be in sync with S52MarinerParameter
 // FIXME: add textual name of mariner's parameter
 // FIXME: use the X macro to sync: http://www.drdobbs.com/cpp/the-x-macro/228700289
+/*
+#define COLORS        \
+    X(Cred,   "red")  \
+    X(Cblue,  "blue") \
+    X(Cgreen, "green")
+
+// Put this in color.h. Then, in the place where the enum is declared:
+
+#define X(a, b) a,
+enum Color { COLORS };
+#undef X
+
+// You can see where this is going. In the source file color.c:
+
+#define X(a, b) b,
+static char *ColorStrings[] = { COLORS };
+#undef X
+*/
+
+// WARNING: must be in sync with S52MarinerParameter (see X macro above)
 static double _MARparamVal[] = {
     0.0,      // 0 - ERROR: 0 - no error,
 
@@ -267,17 +286,17 @@ static unsigned int _textDisp[TEXT_IDX_MAX] = {
 
 int    S52_MP_setTextDisp(unsigned int prioIdx, unsigned int count, unsigned int state)
 {
-    if (TEXT_IDX_MAX < prioIdx) {
+    if (TEXT_IDX_MAX <= prioIdx) {
         PRINTF("WARNING: prioIdx out of bound (%i)\n", prioIdx);
         return FALSE;
     }
 
-    if (TEXT_IDX_MAX < count) {
+    if (TEXT_IDX_MAX <= count) {
         PRINTF("WARNING: count out of bound (%i)\n", count);
         return FALSE;
     }
 
-    if (prioIdx+count > TEXT_IDX_MAX) {
+    if (TEXT_IDX_MAX <= prioIdx+count) {
         PRINTF("WARNING: prioIdx + count out of bound (%i)\n", prioIdx + count);
         return FALSE;
     }
