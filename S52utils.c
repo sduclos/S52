@@ -103,6 +103,9 @@ static const char _version[] = S52_VERSION
 #ifdef  S52_USE_GLES2
       ",S52_USE_GLES2"
 #endif
+#ifdef  S52_USE_GLSC2
+      ",S52_USE_GLSC2"
+#endif
 #ifdef  S52_USE_ANDROID
       ",S52_USE_ANDROID"
 #endif
@@ -153,7 +156,7 @@ int      S52_utils_getConfig(cchar *label, char *vbuf)
 // return TRUE and string value in vbuf for label, FALSE if fail
 {
    FILE *fp;
-   int  ret;
+   //int  ret;
    int  nline = 1;
    //char lbuf[PATH_MAX];
    //char frmt[PATH_MAX];
@@ -178,7 +181,8 @@ int      S52_utils_getConfig(cchar *label, char *vbuf)
        //printf("%i - label:%s value:%s\n", nline, lbuf, vbuf);
 
        if ('#' != str[0]) {
-           ret = sscanf(str, frmt, lbuf, vbuf);
+           //ret = sscanf(str, frmt, lbuf, vbuf);
+           sscanf(str, frmt, lbuf, vbuf);
            if (0 == g_strcmp0(lbuf, label)) {
                PRINTF("--->>> label:%s value:%s \n", lbuf, vbuf);
                fclose(fp);
