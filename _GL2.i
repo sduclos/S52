@@ -268,6 +268,7 @@ static int       _init_freetype_gl(void)
 
     _checkError("_init_freetype_gl() -0-");
 
+    // FIXME: overkill!
     if (NULL != _freetype_gl_font[0]) {
         texture_font_delete(_freetype_gl_font[0]);
         texture_font_delete(_freetype_gl_font[1]);
@@ -1256,7 +1257,7 @@ static int       _init_gl2(void)
         PRINTF("WARNING: GLSC2/GLSL _loadShaderBin() failed .. \n");
         g_assert(0);
         return FALSE;
-#end
+#endif
         _programObject = _compShaderbin(_programObject);
         if (0 == _programObject) {
             PRINTF("WARNING: GL2/GLSL init .. failed\n");

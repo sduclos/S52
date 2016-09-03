@@ -158,7 +158,7 @@ static int _GL_OES_point_sprite = FALSE;
 #error "GL1 or GL2, not both"
 #endif
 #if !defined(S52_USE_GL1) && !defined(S52_USE_GL2)
-#error "must define GL1 or GL2
+#error "must define GL1 or GL2"
 #endif
 #if defined(S52_USE_GLSC2) && !defined(S52_USE_EGL)
 #error "GLSC2 need EGL"

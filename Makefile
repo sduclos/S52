@@ -496,13 +496,6 @@ libS52egl.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 	$(CC) -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
 	-ln -sf libS52egl.so libS52.so
 
-# test mesa-git dev
-#libS52egl.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
-#	$(CC) -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) \
-#	-L/home/sduclos/dev/prog/graphic/opengl/mesa/mesa-git/build/usr/local/lib -lGLESv2 -o $@
-#	-ln -sf libS52egl.so libS52.so
-
-
 libS52gv.so: $(OBJS_S52) $(OBJS_GV)
 	$(CC) -shared $(OBJS_S52) $(OBJS_GV) $(LIBS) -o libS52.so
 
