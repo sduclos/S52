@@ -18,7 +18,7 @@
 #    along with OpENCview.  If not, see <http://www.gnu.org/licenses/>.
 
 
-        #.align  32   # to large for ARM build 
+        #.align  32   # too large for ARM build
         .align  8
 
          # definition of symbol name
@@ -28,8 +28,8 @@
 
 S52raz: # fill data segment
         .incbin "S52raz-3.2.rle"
-        
-S52razLen: 
+
+S52razLen:
         .long   . - S52raz
 
 
