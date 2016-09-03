@@ -1165,7 +1165,8 @@ double     S57_getScamin(_S57_geo *geo)
 double     S57_resetScamin(_S57_geo *geo)
 // reset scamin from att val
 {
-    return_if_null(geo);
+    // test useless since the only caller allready did that
+    //return_if_null(geo);
 
     if (NULL == geo->attribs)
         g_datalist_init(&geo->attribs);
