@@ -34,8 +34,13 @@
 #if defined(__APPLE__)
     #include <OpenGL/gl.h>
 #else
+#ifdef S52_USE_GLSC2
+    #include <GLSC2/glsc2.h>  // SD 2016AUG07 - test
+#else
     #include <GLES2/gl2.h>
+#endif  // S52_USE_GLSC2
 #endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -102,11 +107,14 @@ texture_atlas_delete( texture_atlas_t *self )
         g_free( self->data );
     }
     // SD 2014MAR22 - from diff in git
+#if !defined S52_USE_GLSC2
+    // no delete in GLSC2
     //if( !self->id )
     if(0 != self->id )
     {
         glDeleteTextures( 1, &self->id );
     }
+#endif
 
     //free( self );
     g_free( self );
@@ -209,7 +217,7 @@ texture_atlas_get_region( texture_atlas_t * self,
 {
     assert( self );
 
-	//int y, best_height, best_width, best_index;
+    //int y, best_height, best_width, best_index;
     int y, best_width, best_index;
     size_t best_height;
     ivec3 *node, *prev;
@@ -219,24 +227,24 @@ texture_atlas_get_region( texture_atlas_t * self,
     best_height = INT_MAX;
     best_index  = -1;
     best_width  = INT_MAX;
-	for( i=0; i<self->nodes->size; ++i )
-	{
+    for( i=0; i<self->nodes->size; ++i )
+    {
         y = texture_atlas_fit( self, i, width, height );
-		if( y >= 0 )
-		{
+        if( y >= 0 )
+        {
             node = (ivec3 *) vector_get( self->nodes, i );
-			if( ( (y + height) < best_height ) || ( ((y + height) == best_height) && (node->XYZ.z < best_width)) )
-			{
-				best_height   = y + height;
-				best_index    = i;
-				best_width    = node->XYZ.z;
-				region.XYZW.x = node->XYZ.x;
-				region.XYZW.y = y;
-			}
+            if( ( (y + height) < best_height ) || ( ((y + height) == best_height) && (node->XYZ.z < best_width)) )
+            {
+                best_height   = y + height;
+                best_index    = i;
+                best_width    = node->XYZ.z;
+                region.XYZW.x = node->XYZ.x;
+                region.XYZW.y = y;
+            }
         }
     }
    
-	if( best_index == -1 )
+    if( best_index == -1 )
     {
         region.XYZW.x = -1;
         region.XYZW.y = -1;
@@ -321,31 +329,40 @@ texture_atlas_upload( texture_atlas_t * self )
     {
         glGenTextures( 1, &self->id );
     }
-
     glBindTexture( GL_TEXTURE_2D, self->id );
+
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
+
     if( self->depth == 4 )
     {
 #ifdef GL_UNSIGNED_INT_8_8_8_8_REV
-        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, self->width, self->height,
-                      0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, self->data );
+        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, self->width, self->height, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, self->data );
 #else
-        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, self->width, self->height,
-                      0, GL_RGBA, GL_UNSIGNED_BYTE, self->data );
-#endif
+#ifdef S52_USE_GLSC2
+        glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, self->width, self->height);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, self->width, self->height, GL_RGBA, GL_UNSIGNED_BYTE, self->data);
+#else  // S52_USE_GLSC2
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, self->width, self->height, 0, GL_RGBA, GL_UNSIGNED_BYTE, self->data );
+#endif  // S52_USE_GLSC2
+#endif  // GL_UNSIGNED_INT_8_8_8_8_REV
     }
     else if( self->depth == 3 )
     {
-        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, self->width, self->height,
-                      0, GL_RGB, GL_UNSIGNED_BYTE, self->data );
+#ifdef S52_USE_GLSC2
+        glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, self->width, self->height);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, self->width, self->height, GL_RGB, GL_UNSIGNED_BYTE, self->data);
+#else  // S52_USE_GLSC2
+        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGB, self->width, self->height, 0, GL_RGB, GL_UNSIGNED_BYTE, self->data );
+#endif  // S52_USE_GLSC2
     }
+#if !defined S52_USE_GLSC2
+    // SD 2016AUG13 - no GL_ALPHA in GLSC2 so no depth=1
     else
     {
-        glTexImage2D( GL_TEXTURE_2D, 0, GL_ALPHA, self->width, self->height,
-                      0, GL_ALPHA, GL_UNSIGNED_BYTE, self->data );
+        glTexImage2D( GL_TEXTURE_2D, 0, GL_ALPHA, self->width, self->height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, self->data );
     }
+#endif
 }
-
