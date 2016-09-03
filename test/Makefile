@@ -14,8 +14,8 @@
 #all: s52gv2        # GV2 (OpenEV2 / GTK2)  broken
 #all: s52gtk2       # GTK2 & OGR
 #all: s52gtk2p      # GTK2 & OGR (profiler)
-#all: s52gtk2egl    # GTK2 & EGL
-all: s52gtk3egl     # GTK3 & EGL
+#all: s52gtk2egl    # GTK2 & GLES2 & EGL
+all: s52gtk3egl     # GTK3 & GLES2 & EGL
 #all: s52win32      # same as s52gtk2 but run on wine
 #all: s52eglw32     # same as s52gtk2egl but run on wine
 #all: s52clutter.js # same as s52gtk2 but use Clutter & Javascript (experimental)
@@ -109,15 +109,15 @@ s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
 s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`    \
                       -I$(OPENEV_HOME)                               \
                       -I..                                           \
-					  -DGV_USE_DOUBLE_PRECISION_COORD                \
-					  -DS52_USE_GV
+                      -DGV_USE_DOUBLE_PRECISION_COORD                \
+                      -DS52_USE_GV
 
 s52gv2:     CFLAGS = `pkg-config --cflags gtk+-2.0 gtkglext-1.0`     \
                       -D_REENTRANT                                   \
-					  -DGV_USE_DOUBLE_PRECISION_COORD                \
+                      -DGV_USE_DOUBLE_PRECISION_COORD                \
                       -I$(OPENEV2HOME)                               \
-					  -I..                                           \
-					  -DS52_USE_GV
+                      -I..                                           \
+                      -DS52_USE_GV
 
 
 ############### LIBS setup ##############################
@@ -172,12 +172,6 @@ s52glx: s52glx.c
 #FIXME: with -DUSE_FAKE_AIS no need to build AIS
 s52eglx: s52egl.c s52ais.c *.i
 	$(CC) $(CFLAGS) s52egl.c s52ais.c $(LIBS) -o $@
-
-#s52gtk2egl: s52gtk2egl.c s52ais.c
-#	$(CC) $(CFLAGS) s52gtk2egl.c s52ais.c $(LIBS) -o $@
-
-#s52gtk3egl: s52gtk3egl.c s52ais.c
-#	$(CC) $(CFLAGS) s52gtk3egl.c s52ais.c $(LIBS) -o $@
 
 s52gtk2egl: s52gtkegl.c s52ais.c *.i
 	$(CC) $(CFLAGS) s52gtkegl.c s52ais.c $(LIBS) -o $@
