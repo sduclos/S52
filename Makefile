@@ -200,9 +200,9 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # GL GLSL:
 # -DS52_USE_GL2          - GL2.x
 # -DS52_USE_GLES2        - GLES2.x
-# -DS52_USE_GLSC2        - GLSC2.x - Safety Critical 2.0 (subset of GLES2)
-# -DS52_USE_GL3          - GL3.x
-# -DS52_USE_GLES3        - GLES3.x / GLSL ES 3.0
+# -DS52_USE_GLSC2        - GLSC2.x - Safety Critical 2.0 / GLSL 1.00 (subset of GLES 2.0.25)
+# -DS52_USE_GL3          - GL3.x   -in a day (npot)
+# -DS52_USE_GLES3        - GLES3.x -in a day (npot)
 
 #
 # ARM:
@@ -425,7 +425,6 @@ s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms 
                                       `gdal-config --libs` -lproj
 
 
-
 # check this; gv use glib-1 S52 use glib-2
 s52gv  : LIBS = `glib-config --libs`               \
                 `gdal-config --libs`               \
@@ -464,15 +463,12 @@ s52gtk2gps    : libS52.so    test/s52gtk2gps
 S52raz-3.2.rle.o: S52raz.s
 	$(CC) -c S52raz.s -o $@
 
-#%.o: %.c %.h S52.h
 %.o: %.c *.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-#S52GL.o: S52GL.c _GL1.i _GL2.i _GLU.i S52.h
-S52GL.o: S52GL.c _GL1.i _GL2.i _GLU.i *.h
+S52GL.o: S52GL.c _GL1.i _GL2.i _GLU.i S52.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-#S52.o: S52.c _S52.i S52.h
 S52.o: S52.c _S52.i *.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -499,6 +495,13 @@ libS52gl2.so:  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 libS52egl.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 	$(CC) -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
 	-ln -sf libS52egl.so libS52.so
+
+# test mesa-git dev
+#libS52egl.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
+#	$(CC) -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) \
+#	-L/home/sduclos/dev/prog/graphic/opengl/mesa/mesa-git/build/usr/local/lib -lGLESv2 -o $@
+#	-ln -sf libS52egl.so libS52.so
+
 
 libS52gv.so: $(OBJS_S52) $(OBJS_GV)
 	$(CC) -shared $(OBJS_S52) $(OBJS_GV) $(LIBS) -o libS52.so
