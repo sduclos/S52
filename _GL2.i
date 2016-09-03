@@ -11,9 +11,17 @@
 // Note: GLES2 is a subset of GL2, so declaration in GLES2 header cover all GL2 decl use in the code
 #ifdef S52_USE_GLSC2
 #include <GLSC2/glsc2.h>
-#else
+typedef void GLvoid;
+#else  // S52_USE_GLSC2
+#ifdef S52_USE_GL2
 #include <GLES2/gl2.h>
-#endif
+
+//#include <GLES2/gl2ext.h>  // GL_MULTISAMPLE_EXT / NV
+
+#define GL_GLEXT_PROTOTYPES
+#include <GLES2/gl2ext.h>  // glReadnPixelsEXT / KHR
+#endif  // S52_USE_GL2
+#endif  // S52_USE_GLSC2
 
 typedef double GLdouble;
 
@@ -46,9 +54,7 @@ static GArray *_tessWorkBuf_d = NULL;
 static GArray *_tessWorkBuf_f = NULL;
 
 // glsl main
-static GLint  _programObject  = 0;
-static GLuint _vertexShader   = 0;
-static GLuint _fragmentShader = 0;
+static GLuint _programObject = 0;
 
 // glsl uniform
 static GLint _uProjection = 0;
@@ -57,7 +63,7 @@ static GLint _uColor      = 0;
 static GLint _uPointSize  = 0;
 static GLint _uSampler2d  = 0;
 static GLint _uBlitOn     = 0;
-static GLint _uStipOn     = 0;
+static GLint _uTextOn     = 0;
 static GLint _uGlowOn     = 0;
 
 static GLint _uPattOn     = 0;
@@ -249,14 +255,18 @@ static int       _init_freetype_gl(void)
                                 L"`abcdefghijklmnopqrstuvwxyz{|}~"
                                 L"èàé";
 
+    _checkError("_init_freetype_gl() -beg-");
+
     if (NULL == _freetype_gl_atlas) {
-        _freetype_gl_atlas = texture_atlas_new(512, 512, 1);    // alpha only
-        //_freetype_gl_atlas = texture_atlas_new(1024, 1024, 1);    // alpha only
+        //_freetype_gl_atlas = texture_atlas_new(512, 512, 1);    // alpha only  - not in GLSC2
+        _freetype_gl_atlas = texture_atlas_new(512, 512, 3);    // GL_RGB in GLSC2 - code change in GLSL
     } else {
         PRINTF("WARNING: _init_freetype_gl() allready initialize\n");
         g_assert(0);
         return FALSE;
     }
+
+    _checkError("_init_freetype_gl() -0-");
 
     if (NULL != _freetype_gl_font[0]) {
         texture_font_delete(_freetype_gl_font[0]);
@@ -296,10 +306,14 @@ static int       _init_freetype_gl(void)
         return FALSE;
     }
 
+
     texture_font_load_glyphs(_freetype_gl_font[0], cache);
+    _checkError("_init_freetype_gl() -1-");
     texture_font_load_glyphs(_freetype_gl_font[1], cache);
     texture_font_load_glyphs(_freetype_gl_font[2], cache);
     texture_font_load_glyphs(_freetype_gl_font[3], cache);
+
+    _checkError("_init_freetype_gl() -2-");
 
     if (0 == _freetype_gl_textureID)
         glGenBuffers(1, &_freetype_gl_textureID);
@@ -311,6 +325,8 @@ static int       _init_freetype_gl(void)
         g_assert(0);
         return FALSE;
     }
+
+    _checkError("_init_freetype_gl() -end-");
 
     if (NULL == _freetype_gl_buffer) {
         _freetype_gl_buffer = g_array_new(FALSE, FALSE, sizeof(_freetype_gl_vertex_t));
@@ -687,7 +703,7 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
     }
 
     // turn ON 'sampler2d'
-    glUniform1f(_uStipOn, 1.0);
+    glUniform1f(_uTextOn, 1.0);
 
     glBindTexture(GL_TEXTURE_2D, _freetype_gl_atlas->id);
 
@@ -708,7 +724,7 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
     _popScaletoPixel();
 
     glBindTexture(GL_TEXTURE_2D, 0);
-    glUniform1f(_uStipOn, 0.0);
+    glUniform1f(_uTextOn, 0.0);
 
     // disconnect buffer
     glDisableVertexAttribArray(_aUV);
@@ -746,7 +762,7 @@ static GLuint    _loadShader(GLenum type, const char *shaderSrc)
             char log[logLen];
             glGetShaderInfoLog(shader, logLen, &writeOut, log);
             _checkError("_loadShader()");
-            PRINTF("glCompileShader() log: %s\n", log);
+            PRINTF("DEBUG: glCompileShader() log: %s\n", log);
         }
         g_assert(0);
         return FALSE;
@@ -807,6 +823,8 @@ static int       _initTexture(void)
     if (0 != _nodata_mask_texID)
         return TRUE;
 
+    _checkError("_initTexture -00-");
+
     // load texture on GPU ----------------------------------
 
     // FIXME: send GL_APHA instead of RGBA - skip convertion of bits to RGBA
@@ -821,7 +839,7 @@ static int       _initTexture(void)
     glGenTextures(1, &_dashpa_mask_texID);
     //glGenTextures(1,     &_aa_mask_texID);
 
-    _checkError("_renderAP_NODATA_layer0 -0-");
+    _checkError("_initTexture -0-");
 
     // ------------
     // nodata pattern
@@ -859,246 +877,396 @@ static int       _initTexture(void)
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
 
-    _checkError("_renderAP_NODATA_layer0 -1-");
+    _checkError("_initTexture -1-");
 
     return TRUE;
 }
 
+// Note: on Intel GL_PROGRAM_BINARY_LENGTH_OES is 0 - bailout
+// https://bugs.freedesktop.org/show_bug.cgi?id=87516
+typedef unsigned char u8;
+static PFNGLREADNPIXELSEXTPROC       _glReadnPixelsEXT       = NULL;  // fail with mesa-git/master(2016AUG28)
+static PFNGLREADNPIXELSEXTPROC       _glReadnPixelsKHR       = NULL;
+static PFNGLPROGRAMPARAMETERIEXTPROC _glProgramParameteriEXT = NULL;
+static PFNGLGETPROGRAMBINARYOESPROC  _glGetProgramBinaryOES  = NULL;
+static PFNGLPROGRAMBINARYOESPROC     _glProgramBinaryOES     = NULL;
+
+static int       _loadProcEXT()
+{
+    typedef void (*proc)(void);
+    extern proc eglGetProcAddress(const char *procname);
+
+    _glReadnPixelsEXT = (PFNGLREADNPIXELSEXTPROC) eglGetProcAddress("glReadnPixelsEXT");
+    if (NULL == _glReadnPixelsEXT) {
+        PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsEXT) FAILED\n");
+    } else {
+        PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsEXT) OK\n");
+    }
+    _glReadnPixelsKHR = (PFNGLREADNPIXELSKHRPROC) eglGetProcAddress("glReadnPixelsKHR");
+    if (NULL == _glReadnPixelsKHR) {
+        PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsKHR) FAILED\n");
+    } else {
+        PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsKHR) OK\n");
+    }
+
+    _glProgramParameteriEXT = (PFNGLPROGRAMPARAMETERIEXTPROC) eglGetProcAddress("glProgramParameteriEXT");
+    if (NULL == _glProgramParameteriEXT) {
+        PRINTF("DEBUG: eglGetProcAddress(glProgramParameteriEXT) FAILED\n");
+    } else {
+        PRINTF("DEBUG: eglGetProcAddress(glProgramParameteriEXT) OK\n");
+    }
+
+    _glGetProgramBinaryOES = (PFNGLGETPROGRAMBINARYOESPROC) eglGetProcAddress("glGetProgramBinaryOES");
+    if (NULL == _glGetProgramBinaryOES) {
+        PRINTF("DEBUG: eglGetProcAddress(_glGetProgramBinaryOES) FAILED\n");
+    } else {
+        PRINTF("DEBUG: eglGetProcAddress(_glGetProgramBinaryOES) OK\n");
+    }
+    _glProgramBinaryOES = (PFNGLPROGRAMBINARYOESPROC) eglGetProcAddress("glProgramBinaryOES");
+    if (NULL == _glProgramBinaryOES) {
+        PRINTF("DEBUG: eglGetProcAddress(glProgramBinaryOES) FAILED\n");
+    } else {
+        PRINTF("DEBUG: eglGetProcAddress(glProgramBinaryOES) OK\n");
+    }
+
+
+    return TRUE;
+}
+
+static int       _saveShaderBin(GLuint programObject)
+// Save a GLSL shader bin into a file
+{
+    //_checkError("_saveShaderBin() -0-");
+
+    // get the blob
+    GLint nFormats = 0;
+    glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS_OES, &nFormats);
+    PRINTF("DEBUG: GL_NUM_PROGRAM_BINARY_FORMATS_OES nFormats=%i\n", nFormats);
+    //GLint formats[nFormats];
+    GLenum formats[nFormats];
+    glGetIntegerv(GL_PROGRAM_BINARY_FORMATS_OES, (GLint*)formats);
+
+    GLsizei bufsize = 0;
+    //FIXME: no OES
+    glGetProgramiv(programObject, GL_PROGRAM_BINARY_LENGTH_OES, &bufsize);
+    _checkError("_saveShaderBin() -1-");
+    if (0 == bufsize) {
+        PRINTF("DEBUG: GL_PROGRAM_BINARY_LENGTH_OES failed [bufsize=%i]\n", bufsize);
+        //g_assert(0);
+        //return FALSE;
+    }
+
+    GLsizei lenOut        = 0;
+    //GLenum  binaryFormats = 0;
+    u8      binary[bufsize];
+    // FIXME: compare bufsize / lenOut
+    //_glGetProgramBinaryOES(programObject, bufsize, &lenOut, formats, binary);
+    _glGetProgramBinaryOES(programObject, bufsize, &lenOut, 0, binary);
+    //glGetProgramBinaryOES(programObject, bufsize, &lenOut, formats, binary);
+    _checkError("_saveShaderBin():_glGetProgramBinaryOES() -2-");
+
+    // save the blob
+    if (0 != lenOut) {
+        FILE* fp = fopen("shader.bin", "wb");
+        fwrite(binary, lenOut, 1, fp);
+        fclose(fp);
+    } else {
+        PRINTF("DEBUG: glGetProgramBinary() FAILED [bufsize=%i, lenOut=%i]\n", bufsize, lenOut);
+        //g_assert(0);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+static GLuint    _loadShaderBin(void)
+// Load a binary GLSL shader from a file
+{
+    FILE* fp = g_fopen("shader.bin", "rb");
+    if (NULL == fp) {
+        PRINTF("'shader.bin' loading failed\n");
+        return 0;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    GLint len = (GLint)ftell(fp);
+    u8 binary[len];
+    fseek(fp, 0, SEEK_SET);
+    fread(binary, len, 1, fp);
+    fclose(fp);
+
+    _checkError("_loadShaderBin() -0-");
+    GLint nFormats = 0;
+    glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS_OES, &nFormats);
+    GLint binaryFormats[nFormats];
+    glGetIntegerv(GL_PROGRAM_BINARY_FORMATS_OES, binaryFormats);
+    _checkError("_loadShaderBin() -1-");
+
+    GLuint progId = glCreateProgram();
+
+    // FIXME: binaryFormat seem useless - maybe binaryFormats (with 's')
+    GLenum binaryFormat = 0;
+    _glProgramBinaryOES(progId, binaryFormat, (const void *)binary, len);
+    _checkError("_loadShaderBin() -2-");
+
+    GLint success = 0;
+    glGetProgramiv(progId, GL_LINK_STATUS, &success);
+    if (!success) {
+        PRINTF("'shader.bin' linking failed\n");
+        return 0;
+    }
+    _checkError("_loadShaderBin() -end-");
+
+    return progId;
+}
+
+static GLuint    _compShaderbin(GLuint programObject)
+// compile source
+{
+    PRINTF("DEBUG: building '_programObject'\n");
+    programObject = glCreateProgram();
+    if (0 == programObject) {
+        PRINTF("ERROR: glCreateProgram() FAILED\n");
+        g_assert(0);
+        return 0;
+    }
+
+    _checkError("_compShaderbin() -00-");
+
+    // ----------------------------------------------------------------------
+    PRINTF("DEBUG: GL_VERTEX_SHADER\n");
+
+    // FIXME: check this stringify
+    //#define STRINGIFY(...) #__VA_ARGS__
+
+    //Note: #version directive default to 1.10 (bad)
+    //static const char vertSrc[] = STRINGIFY(
+    static const char vertSrc[] =
+        "#version 100\n"  // no "es" in V1.00
+        //"#version 130\n"  // not supported
+        //"#version 300 es\n"
+
+        //"precision lowp float;                                          \n"
+        "precision mediump float;                                       \n"
+        //"precision highp   float;                                       \n"
+
+        "uniform   mat4  uProjection;                                   \n"
+        "uniform   mat4  uModelview;                                    \n"
+        "uniform   float uPointSize;                                    \n"
+        "uniform   float uPattOn;                                       \n"
+        "uniform   float uPattGridX;                                    \n"
+        "uniform   float uPattGridY;                                    \n"
+        "uniform   float uPattW;                                        \n"
+        "uniform   float uPattH;                                        \n"
+
+        "attribute vec2  aUV;                                           \n"
+        "attribute vec4  aPosition;                                     \n"
+        "attribute float aAlpha;                                        \n"
+
+        "varying   vec2  v_texCoord;                                    \n"
+        "varying   vec4  v_acolor;                                      \n"
+        "varying   float v_pattOn;                                      \n"
+        "varying   float v_alpha;                                       \n"
+
+        "void main(void)                                                \n"
+        "{                                                              \n"
+        "    v_alpha      = aAlpha;                                     \n"
+        "    gl_PointSize = uPointSize;                                 \n"
+        "    gl_Position  = uProjection * uModelview * aPosition;       \n"
+        "    if (1.0 == uPattOn) {                                      \n"
+        "        v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;    \n"
+        "        v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;    \n"
+        "    } else {                                                   \n"
+        "        v_texCoord = aUV;                                      \n"
+        "    }                                                          \n"
+        "}                                                              \n";
+
+    GLuint vertexShader = _loadShader(GL_VERTEX_SHADER, vertSrc);
+
+    // ----------------------------------------------------------------------
+
+    PRINTF("DEBUG: GL_FRAGMENT_SHADER\n");
+
+    static const char fragSrc[] =
+        "#version 100\n"
+        //"#version 130\n"  // not supported
+
+        //"precision lowp float;                      \n"
+        "precision mediump float;                   \n"
+
+        "uniform sampler2D uSampler2d;              \n"
+        "uniform float     uFlatOn;                 \n"
+        "uniform float     uBlitOn;                 \n"
+        "uniform float     uTextOn;                 \n"
+        "uniform float     uPattOn;                 \n"
+        "uniform float     uGlowOn;                 \n"
+
+        //"uniform float     uFxAAOn;                 \n"
+
+        "uniform vec4      uColor;                  \n"
+
+        "varying vec2      v_texCoord;              \n"
+        "varying float     v_alpha;                 \n"
+
+        "void main(void)                            \n"
+        "{                                          \n"
+        "    if (1.0 == uBlitOn) {                  \n"
+        "        gl_FragColor = texture2D(uSampler2d, v_texCoord);               \n"
+        "    } else {                                                            \n"
+        "        if (1.0 == uTextOn) {                                           \n"
+//        "            gl_FragColor = texture2D(uSampler2d, v_texCoord);           \n"
+        "            vec4 _sample = texture2D(uSampler2d, v_texCoord);            \n"
+        "            gl_FragColor.a   = _sample.r;                                \n"
+        "            gl_FragColor.rgb = uColor.rgb;                              \n"
+        "        } else {                                                        \n"
+        "            if (1.0 == uPattOn) {                                       \n"
+        "                gl_FragColor = texture2D(uSampler2d, v_texCoord);       \n"
+        "                gl_FragColor.rgb = uColor.rgb;                          \n"
+        "            } else {                                                    \n"
+#ifdef S52_USE_AFGLOW
+        "                if (0.0 < uGlowOn) {                                    \n"
+        "                    float dist = distance(vec2(0.5,0.5), gl_PointCoord);\n"
+        "                    if (0.5 < dist) {                                   \n"
+        "                        discard;                                        \n"
+        "                    } else {                                            \n"
+        "                        gl_FragColor   = uColor;                        \n"
+        "                        gl_FragColor.a = v_alpha;                       \n"
+        "                    }                                                   \n"
+        "                } else                                                  \n"
+#endif
+        "                {                          \n"
+        "                    gl_FragColor = uColor; \n"
+        "                }                          \n"
+        "            }                              \n"
+        "        }                                  \n"
+        "    }                                      \n"
+        "}                                          \n";
+
+    GLuint fragmentShader = _loadShader(GL_FRAGMENT_SHADER, fragSrc);
+
+
+    // ----------------------------------------------------------------------
+
+    if ((0==programObject) || (0==vertexShader) || (0==fragmentShader)) {
+        PRINTF("ERROR: problem loading shaders and/or creating program\n");
+        g_assert(0);
+        return 0;
+    }
+    _checkError("_compShaderbin() -0-");
+
+    if (TRUE != glIsShader(vertexShader)) {
+        PRINTF("ERROR: glIsShader(vertexShader) failed\n");
+        g_assert(0);
+        return 0;
+    }
+    if (TRUE != glIsShader(fragmentShader)) {
+        PRINTF("ERROR: glIsShader(fragmentShader) failed\n");
+        g_assert(0);
+        return 0;
+    }
+
+    _checkError("_compShaderbin() -1-");
+
+    glAttachShader(programObject, vertexShader);
+    glAttachShader(programObject, fragmentShader);
+
+#define GL_PROGRAM_BINARY_RETRIEVABLE_HINT 0x8257
+    _glProgramParameteriEXT(programObject, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
+    _checkError("_compShaderbin() -1.1-");
+
+    glLinkProgram(programObject);
+    GLint linked = GL_FALSE;
+    glGetProgramiv(programObject, GL_LINK_STATUS, &linked);
+    if (GL_TRUE == linked){
+        // Note: migth need a draw() call before saving
+        // to instanciate the prog (see S52_GL_end())
+        _saveShaderBin(programObject);
+    } else {
+        GLsizei length;
+        GLchar  infoLog[2048];
+
+        glGetProgramInfoLog(programObject,  2048, &length, infoLog);
+        PRINTF("DEBUG: problem linking program:%s", infoLog);
+
+        g_assert(0);
+        return 0;
+    }
+
+    glUseProgram(programObject);
+
+    _checkError("_compShaderbin() -2-");
+
+    return programObject;
+}
+
+static GLuint    _bindAttrib(GLuint programObject)
+{
+    //load all attributes
+    _aPosition   = glGetAttribLocation(programObject, "aPosition");
+    _aUV         = glGetAttribLocation(programObject, "aUV");
+    _aAlpha      = glGetAttribLocation(programObject, "aAlpha");
+
+    return programObject;
+}
+
+static GLuint    _bindUnifrom(GLuint programObject)
+{
+    _uProjection = glGetUniformLocation(programObject, "uProjection");
+    _uModelview  = glGetUniformLocation(programObject, "uModelview");
+    _uColor      = glGetUniformLocation(programObject, "uColor");
+    _uPointSize  = glGetUniformLocation(programObject, "uPointSize");
+    _uSampler2d  = glGetUniformLocation(programObject, "uSampler2d");
+
+    _uBlitOn     = glGetUniformLocation(programObject, "uBlitOn");
+    _uTextOn     = glGetUniformLocation(programObject, "uTextOn");
+    _uGlowOn     = glGetUniformLocation(programObject, "uGlowOn");
+
+    _uPattOn     = glGetUniformLocation(programObject, "uPattOn");
+    _uPattGridX  = glGetUniformLocation(programObject, "uPattGridX");
+    _uPattGridY  = glGetUniformLocation(programObject, "uPattGridY");
+    _uPattW      = glGetUniformLocation(programObject, "uPattW");
+    _uPattH      = glGetUniformLocation(programObject, "uPattH");
+
+    return programObject;
+}
+
 static int       _init_gl2(void)
 {
-    PRINTF("begin GLSL init ..\n");
-
     if (TRUE == glIsProgram(_programObject)) {
         PRINTF("DEBUG: _programObject valid not re-init\n");
         return TRUE;
     }
+
+    PRINTF("begin GL2/GLSL init ..\n");
 
     if (NULL == _tessWorkBuf_d)
         _tessWorkBuf_d = g_array_new(FALSE, FALSE, sizeof(double)*3);
     if (NULL == _tessWorkBuf_f)
         _tessWorkBuf_f = g_array_new(FALSE, FALSE, sizeof(float)*3);
 
-    if (FALSE == glIsProgram(_programObject)) {
-        GLint linked = GL_FALSE;
+    _init_freetype_gl();
 
-#ifdef S52_USE_FREETYPE_GL
-        _init_freetype_gl();
-#endif
+    _initTexture();
 
-        _initTexture();
+    _loadProcEXT();
 
-        // ----------------------------------------------------------------------
-
-        PRINTF("DEBUG: building '_programObject'\n");
-        _programObject = glCreateProgram();
+    _programObject = _loadShaderBin();
+    if (0 == _programObject) {
+#ifdef S52_USE_GLSC2
+        PRINTF("WARNING: GLSC2/GLSL _loadShaderBin() failed .. \n");
+        g_assert(0);
+        return FALSE;
+#end
+        _programObject = _compShaderbin(_programObject);
         if (0 == _programObject) {
-            PRINTF("ERROR: glCreateProgram() FAILED\n");
+            PRINTF("WARNING: GL2/GLSL init .. failed\n");
             g_assert(0);
             return FALSE;
         }
-
-        // ----------------------------------------------------------------------
-        PRINTF("DEBUG: GL_VERTEX_SHADER\n");
-
-        static const char vertSrc[] =
-//#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
-#ifdef S52_USE_GLES2
-            //"precision lowp float;                                          \n"
-            "precision mediump float;                                       \n"
-            //"precision highp   float;                                       \n"
-#endif
-            "uniform   mat4  uProjection;                                   \n"
-            "uniform   mat4  uModelview;                                    \n"
-            "uniform   float uPointSize;                                    \n"
-            "uniform   float uPattOn;                                       \n"
-            "uniform   float uPattGridX;                                    \n"
-            "uniform   float uPattGridY;                                    \n"
-            "uniform   float uPattW;                                        \n"
-            "uniform   float uPattH;                                        \n"
-
-            "attribute vec2  aUV;                                           \n"
-            "attribute vec4  aPosition;                                     \n"
-            "attribute float aAlpha;                                        \n"
-
-            "varying   vec2  v_texCoord;                                    \n"
-            "varying   vec4  v_acolor;                                      \n"
-            "varying   float v_pattOn;                                      \n"
-            "varying   float v_alpha;                                       \n"
-
-            "void main(void)                                                \n"
-            "{                                                              \n"
-            // version 130 (not in mesa v 100)
-            //"  gl_Position = ftransform(); \n"
-            //"  vec4 TexCoord = gl_MultiTexCoord0; \n"
-
-            "    v_alpha      = aAlpha;                                     \n"
-            "    gl_PointSize = uPointSize;                                 \n"
-            "    gl_Position  = uProjection * uModelview * aPosition;       \n"
-            "    if (1.0 == uPattOn) {                                      \n"
-            "        v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;    \n"
-            "        v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;    \n"
-            "    } else {                                                   \n"
-            "        v_texCoord = aUV;                                      \n"
-            "    }                                                          \n"
-            "}                                                              \n";
-
-        _vertexShader = _loadShader(GL_VERTEX_SHADER, vertSrc);
-
-        // ----------------------------------------------------------------------
-
-        PRINTF("DEBUG: GL_FRAGMENT_SHADER\n");
-
-/*
-#ifdef S52_USE_TEGRA2
-        // FIXME: does this really help with blending on a TEGRA2
-#define BLENDFUNC #pragma profilepragma blendoperation(gl_FragColor, GL_FUNC_ADD, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
-#else
-#define BLENDFUNC
-#endif
-*/
-
-
-/*
-//#if (defined(S52_USE_GL2) && defined(S52_USE_MESA3D))
-#ifdef S52_USE_GL2
-//#ifdef S52_USE_MESA3D         // to get gl_PointCoord when s52_use_afterglow
-            "#version 120                               \n"
-//            "#version 100                               \n"
-#endif
-*/
-
-        static const char fragSrc[] =
-#ifdef S52_USE_MESA3D         // to get gl_PointCoord when s52_use_afterglow
-            //"#version 120                               \n"
-            //"#version 100                               \n"
-#endif
-
-#ifdef S52_USE_GLES2
-            //"precision lowp float;                      \n"
-            "precision mediump float;                   \n"
-#endif
-            "uniform sampler2D uSampler2d;              \n"
-            "uniform float     uFlatOn;                 \n"
-            "uniform float     uBlitOn;                 \n"
-            "uniform float     uStipOn;                 \n"
-            "uniform float     uPattOn;                 \n"
-            "uniform float     uGlowOn;                 \n"
-
-            //"uniform float     uFxAAOn;                 \n"
-
-            "uniform vec4      uColor;                  \n"
-
-            "varying vec2      v_texCoord;              \n"
-            "varying float     v_alpha;                 \n"
-
-            // NOTE: if else if ... doesn't seem to slow things down
-            "void main(void)                            \n"
-            "{                                          \n"
-            "    if (1.0 == uBlitOn) {                  \n"
-            "        gl_FragColor = texture2D(uSampler2d, v_texCoord);               \n"
-            "    } else {                                                            \n"
-            // Note: uStipOn and uPattOn same - diff might be usefull later on ..
-            "        if (1.0 == uStipOn) {                                           \n"
-            "            gl_FragColor = texture2D(uSampler2d, v_texCoord);           \n"
-            "            gl_FragColor.rgb = uColor.rgb;                              \n"
-            "        } else {                                                        \n"
-            "            if (1.0 == uPattOn) {                                       \n"
-            "                gl_FragColor = texture2D(uSampler2d, v_texCoord);       \n"
-            "                gl_FragColor.rgb = uColor.rgb;                          \n"
-            "            } else {                                                    \n"
-#ifdef S52_USE_AFGLOW
-            "                if (0.0 < uGlowOn) {                                    \n"
-            "                    float dist = distance(vec2(0.5,0.5), gl_PointCoord);\n"
-            "                    if (0.5 < dist) {                                   \n"
-            "                        discard;                                        \n"
-            "                    } else {                                            \n"
-            "                        gl_FragColor   = uColor;                        \n"
-            "                        gl_FragColor.a = v_alpha;                       \n"
-            "                    }                                                   \n"
-            "                } else                                                  \n"
-#endif
-            "                {                          \n"
-            "                    gl_FragColor = uColor; \n"
-            "                }                          \n"
-            "            }                              \n"
-            "        }                                  \n"
-            "    }                                      \n"
-            "}                                          \n";
-
-        _fragmentShader = _loadShader(GL_FRAGMENT_SHADER, fragSrc);
-
-
-        // ----------------------------------------------------------------------
-
-        if ((0==_programObject) || (0==_vertexShader) || (0==_fragmentShader)) {
-            PRINTF("ERROR: problem loading shaders and/or creating program\n");
-            g_assert(0);
-            return FALSE;
-        }
-        _checkError("_init_es2() -0-");
-
-        if (TRUE != glIsShader(_vertexShader)) {
-            PRINTF("ERROR: glIsShader(_vertexShader) failed\n");
-            g_assert(0);
-            return FALSE;
-        }
-        if (TRUE != glIsShader(_fragmentShader)) {
-            PRINTF("ERROR: glIsShader(_fragmentShader) failed\n");
-            g_assert(0);
-            return FALSE;
-        }
-
-        _checkError("_init_es2() -1-");
-
-        glAttachShader(_programObject, _vertexShader);
-        glAttachShader(_programObject, _fragmentShader);
-        glLinkProgram (_programObject);
-        glGetProgramiv(_programObject, GL_LINK_STATUS, &linked);
-        if (GL_FALSE == linked){
-            GLsizei length;
-            GLchar  infoLog[2048];
-
-            glGetProgramInfoLog(_programObject,  2048, &length, infoLog);
-            PRINTF("problem linking program:%s", infoLog);
-
-
-            g_assert(0);
-            return FALSE;
-        }
-
-        _checkError("_init_es2() -2-");
-
-        //use the program
-        glUseProgram(_programObject);
-
-
-        _checkError("_init_es2() -3-");
     }
 
-
-    //load all attributes
-    //FIXME: move to bindShaderAttrib();
-    _aPosition   = glGetAttribLocation(_programObject, "aPosition");
-    _aUV         = glGetAttribLocation(_programObject, "aUV");
-    _aAlpha      = glGetAttribLocation(_programObject, "aAlpha");
-
-    //FIXME: move to bindShaderUnifrom();
-    _uProjection = glGetUniformLocation(_programObject, "uProjection");
-    _uModelview  = glGetUniformLocation(_programObject, "uModelview");
-    _uColor      = glGetUniformLocation(_programObject, "uColor");
-    _uPointSize  = glGetUniformLocation(_programObject, "uPointSize");
-    _uSampler2d  = glGetUniformLocation(_programObject, "uSampler2d");
-
-    _uBlitOn     = glGetUniformLocation(_programObject, "uBlitOn");
-    _uStipOn     = glGetUniformLocation(_programObject, "uStipOn");
-    _uGlowOn     = glGetUniformLocation(_programObject, "uGlowOn");
-
-    _uPattOn     = glGetUniformLocation(_programObject, "uPattOn");
-    _uPattGridX  = glGetUniformLocation(_programObject, "uPattGridX");
-    _uPattGridY  = glGetUniformLocation(_programObject, "uPattGridY");
-    _uPattW      = glGetUniformLocation(_programObject, "uPattW");
-    _uPattH      = glGetUniformLocation(_programObject, "uPattH");
-
+    _bindAttrib (_programObject);
+    _bindUnifrom(_programObject);
 
     //  init matrix stack
     memset(_mvm, 0, sizeof(GLfloat) * 16 * MATRIX_STACK_MAX);
@@ -1132,25 +1300,13 @@ static int       _init_gl2(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
 
     //_checkError("_init_es2() -4-");
 
 #ifdef S52_USE_TEGRA2
     // Note: _fb_pixels must be in sync with _fb_format
-
-    // RGBA
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp[2], _vp[3], 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
     glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-
-    // RGB
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_UNSIGNED_BYTE, _fb_pixels);
-    //glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGB,  _vp[2], _vp[3], 0, GL_RGB,  GL_UNSIGNED_BYTE, 0);
-
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, _vp[2], _vp[3], 0);
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,  0, 0, _vp[2], _vp[3], 0);
 #else
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp.w, _vp.h, 0);
 #endif
 
