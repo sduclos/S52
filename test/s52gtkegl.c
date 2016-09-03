@@ -225,7 +225,8 @@ static int      _s52_draw_cb(gpointer user_data)
 {
     s52engine *engine = (s52engine*)user_data;
 
-    //g_print("s52egl:_s52_draw_cb(): begin .. \n");
+    // debug
+    //g_print("s52egl:_s52_draw_cb(): begin ..");
 
     /*
     GTimeVal now;  // 2 glong (at least 32 bits each - but amd64 !?
@@ -252,7 +253,7 @@ static int      _s52_draw_cb(gpointer user_data)
 
     // no draw at all, the window is not visible
     if ((FALSE==engine->do_S52draw) && (FALSE==engine->do_S52drawLast)) {
-        //g_print("s52egl:_s52_draw_cb(): nothing to draw (do_S52draw & do_S52drawLast FALSE)\n");
+        g_print("s52egl:_s52_draw_cb(): nothing to draw (do_S52draw & do_S52drawLast FALSE)\n");
         goto exit;
     }
 
@@ -293,6 +294,7 @@ exit:
 
     // debug
     //g_print("s52egl:_s52_draw_cb(): end .. \n");
+    //g_print(".. end\n");
 
     return EGL_TRUE;
 }
@@ -320,8 +322,6 @@ static gboolean _scroll  (GdkEventKey *event)
         case GDK_KEY_Down : _engine.state.cLat -= _engine.state.rNM/(60.0*10.0); S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
     }
 
-    gtk_widget_queue_draw(_engine.window);
-
     return TRUE;
 }
 
@@ -333,8 +333,6 @@ static gboolean _zoom    (GdkEventKey *event)
         // zoom out
         case GDK_KEY_Page_Down: _engine.state.rNM *= 2.0; S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
     }
-
-    gtk_widget_queue_draw(_engine.window);
 
     return TRUE;
 }
@@ -358,8 +356,6 @@ static gboolean _rotation(GdkEventKey *event)
     }
 
     S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north);
-
-    gtk_widget_queue_draw(_engine.window);
 
     return TRUE;
 }
@@ -588,12 +584,15 @@ static gboolean key_release_event(GtkWidget   *widget,
     }
 
     // redraw
-    _engine.do_S52draw = TRUE;
+    _engine.do_S52draw     = TRUE;
+    _engine.do_S52drawLast = TRUE;
+
+    _s52_draw_cb(&_engine.window);
 
     return TRUE;
 }
 
-int main(int argc, char** argv)
+static int      _gtk_init(int argc, char** argv)
 {
     gtk_init(&argc, &argv);
 
@@ -607,19 +606,22 @@ int main(int argc, char** argv)
     gtk_widget_set_redraw_on_allocate(GTK_WIDGET(_engine.window), TRUE );
 
     g_signal_connect(G_OBJECT(_engine.window), "destroy",           G_CALLBACK(gtk_main_quit),     NULL);
-    g_signal_connect(G_OBJECT(_engine.window), "draw",              G_CALLBACK(_s52_draw_cb),     &_engine);
     g_signal_connect(G_OBJECT(_engine.window), "key_release_event", G_CALLBACK(key_release_event), NULL);
     g_signal_connect(G_OBJECT(_engine.window), "configure_event",   G_CALLBACK(configure_event),   NULL);
 
-    //g_timeout_add(500, step, gtk_widget_get_window(_engine.window));  // 0.5 sec
-    //g_timeout_add(500, (GSourceFunc)_s52_draw_cb, &_engine); // 0.5 sec
     g_timeout_add(500, _s52_draw_cb, &_engine); // 0.5 sec
 
     gtk_widget_show_all(_engine.window);
 
+    return TRUE;
+}
+
+int main(int argc, char** argv)
+{
+    _gtk_init(argc, argv);
+
     _egl_init(&_engine);
     _s52_init(&_engine);
-
 
     gtk_main();
 
