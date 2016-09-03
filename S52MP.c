@@ -291,12 +291,12 @@ int    S52_MP_setTextDisp(unsigned int prioIdx, unsigned int count, unsigned int
         return FALSE;
     }
 
-    if (TEXT_IDX_MAX <= count) {
+    if (TEXT_IDX_MAX < count) {
         PRINTF("WARNING: count out of bound (%i)\n", count);
         return FALSE;
     }
 
-    if (TEXT_IDX_MAX <= prioIdx+count) {
+    if (TEXT_IDX_MAX < prioIdx+count) {
         PRINTF("WARNING: prioIdx + count out of bound (%i)\n", prioIdx + count);
         return FALSE;
     }
