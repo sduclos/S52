@@ -130,6 +130,8 @@ typedef struct  pt3v { vertex_t x,y,z; } pt3v;
 // as computed at init() time
 static double _dotpitch_mm_x = 0.3;  // will be overwright at init()
 static double _dotpitch_mm_y = 0.3;  // will be overwright at init()
+#define MM2INCH  25.4
+#define PICA      0.351  // mm
 
 // GPU Extension
 static int _GL_OES_texture_npot = FALSE;
@@ -145,7 +147,9 @@ static int _GL_OES_point_sprite = FALSE;
 #if defined(S52_USE_GLES2) && !defined(S52_USE_GL2)
 #define S52_USE_GL2  // this signal to load _GL2.i and
 #endif               // switch to GL2 code path
-
+#if defined(S52_USE_GLSC2) && !defined(S52_USE_GL2)
+#define S52_USE_GL2  // this signal to load _GL2.i and
+#endif               // switch to GL2 code path
 
 #if defined(S52_USE_FREETYPE_GL) && !(defined(S52_USE_GL2) || defined(S52_USE_GLES2))
 #error "Need GL2 or GLES2 for Freetype GL"
@@ -154,31 +158,28 @@ static int _GL_OES_point_sprite = FALSE;
 #error "GL1 or GL2, not both"
 #endif
 #if !defined(S52_USE_GL1) && !defined(S52_USE_GL2)
-#error "must define GL1 or GL2"
+#error "must define GL1 or GL2
 #endif
-
-#define MM2INCH  25.4
-#define PICA      0.351  // mm
+#if defined(S52_USE_GLSC2) && !defined(S52_USE_EGL)
+#error "GLSC2 need EGL"
+#endif
 
 // GL1.x
 #ifdef S52_USE_GL1
 #include "_GL1.i"
 #endif
 
-// GL2.x, GLES2.x
+// GL2.x, GLES2.x, GLSC2
 #ifdef S52_USE_GL2
 #include "_GL2.i"
 #endif
 
-// GL3.x, GLES3.x - in a day
-#ifdef S52_USE_GL3
-#include "_GL3.i"
-#endif
-
-// Vulkan - in a day
-#ifdef S52_USE_VULKAN
-#include "_VULKAN.i"
-#endif
+// GL3.x, GLES3.x -- in a day (npot)
+//#ifdef S52_USE_GL3
+//#define S52_USE_GL2 // super set of GL2
+//#include "_GL3.i"
+//#include "_GL2.i"
+//#endif
 
 
 ///////////////////////////////////////////////////////////////////
@@ -229,13 +230,13 @@ typedef struct { double u, v; } projUV;
 
 #define NM_METER 1852.0
 
-// debug
+// debug - redondant see S52_GL_cycle
 static int _GL_BEGIN = FALSE;
 #define CHECK_GL_BEGIN if (FALSE == _GL_BEGIN) {                    \
                            PRINTF("ERROR: not inside glBegin()\n"); \
                            g_assert(0);                             \
                        }
-
+// not used
 #define CHECK_GL_END   if (TRUE == _GL_BEGIN) {                         \
                            PRINTF("ERROR: already inside glBegin()\n"); \
                            g_assert(0);                                 \
@@ -635,7 +636,7 @@ static void      _glOrtho(double left, double right, double bottom, double top, 
 static void      _glUniformMatrix4fv_uModelview(void)
 // optimisation - reset flag
 {
-    _glMatrixMode  (GL_MODELVIEW);
+    //_glMatrixMode  (GL_MODELVIEW);
     _glLoadIdentity(GL_MODELVIEW);
 
 #ifdef S52_USE_GL2
@@ -669,7 +670,7 @@ static GLint     _pushScaletoPixel(int scaleSym)
         scaley /= (S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 100.0);
     }
 
-    _glMatrixMode(GL_MODELVIEW);
+    //_glMatrixMode(GL_MODELVIEW);
     _glPushMatrix(GL_MODELVIEW);
     _glScaled(scalex, scaley, 1.0);
 
@@ -678,7 +679,7 @@ static GLint     _pushScaletoPixel(int scaleSym)
 
 static GLint     _popScaletoPixel(void)
 {
-    _glMatrixMode(GL_MODELVIEW);
+    //_glMatrixMode(GL_MODELVIEW);
     _glPopMatrix (GL_MODELVIEW);
 
     // ModelView Matrix will be send to GPU before next glDraw()
@@ -1447,21 +1448,15 @@ static int       _setBlend(int blend)
 
 static int       _glColor4ub(GLubyte r, GLubyte g, GLubyte b, GLubyte a)
 {
-        // debug
-        //printf("_glColor4ub: set current cIdx R to : %X\n", _cIdx.color.r);
+    // debug
+    //printf("_glColor4ub: set current cIdx R to : %X\n", _cIdx.color.r);
 
-
-/*
 #ifdef S52_USE_GL2
-glUniform4f(_uColor, _cIdx.color.r/255.0, _cIdx.color.g/255.0, _cIdx.color.b/255.0, _cIdx.color.a);
+    GLfloat alpha = (4 - (a - '0')) * TRNSP_FAC_GLES2;
+    glUniform4f(_uColor, r/255.0, g/255.0, b/255.0, alpha);
 #else
-glColor4ub(_cIdx.color.r, _cIdx.color.g, _cIdx.color.b, _cIdx.color.a);
-#endif
-*/
-#ifdef S52_USE_GL2
-    glUniform4f(_uColor, r/255.0, g/255.0, b/255.0, (4 - (a - '0')) * TRNSP_FAC_GLES2);
-#else
-    glColor4ub(r, g, b, (4 - (a - '0')) * TRNSP_FAC);
+    GLbyte alpha = (4 - (a - '0')) * TRNSP_FAC;
+    glColor4ub(r, g, b, alpha);
 #endif
 
     _checkError("_glColor4ub()");
@@ -1470,8 +1465,8 @@ glColor4ub(_cIdx.color.r, _cIdx.color.g, _cIdx.color.b, _cIdx.color.a);
 }
 
 static GLubyte   _setFragColor(S52_Color *c)
-// set color, trans, pen_w and highlight
-// return transparancy
+// set color/highlight, trans, pen_w
+// return transparancy/alpha
 {
     if (S52_GL_PICK == _crnt_GL_cycle) {
         // opaque
@@ -1489,7 +1484,7 @@ static GLubyte   _setFragColor(S52_Color *c)
         _glColor4ub(dnghlcol->R, dnghlcol->G, dnghlcol->B, c->trans);
     }
 
-    // trans
+    /* trans
     if (('0'!=c->trans) && (TRUE==(int) S52_MP_get(S52_MAR_ANTIALIAS))) {
         // FIXME: blending always ON
         glEnable(GL_BLEND);
@@ -1498,13 +1493,17 @@ static GLubyte   _setFragColor(S52_Color *c)
         glEnable(GL_ALPHA_TEST);
 #endif
     }
+    */
 
     // pen_w of SY
     // - AC, AP, TXT, doesn't have a pen_w
     // - LS, LC have there own pen_w
     if (0 != c->pen_w) {
         _glLineWidth(c->pen_w - '0');
-        _glPointSize(c->pen_w - '0');
+
+        // FIXME: used by _DrawArrays_POINTS
+        // move to the call
+        //_glPointSize(c->pen_w - '0');
     }
 
     return c->trans;
@@ -1534,7 +1533,8 @@ static int       _glCallList(S52_DList *DListData)
 
     for (guint i=0; i<DListData->nbr; ++i, ++lst, ++col) {
 
-        GLubyte trans = _setFragColor(col);
+        //GLubyte trans =
+        _setFragColor(col);
 
 #ifdef S52_USE_OPENGL_VBO
         GLuint vboId = DListData->vboIds[i];
@@ -1624,11 +1624,11 @@ static int       _glCallList(S52_DList *DListData)
 
 #endif  // S52_USE_OPENGL_VBO
 
-        if ('0' != trans) {
 #ifdef S52_USE_GL1
+        if ('0' != col->trans) {
             glDisable(GL_ALPHA_TEST);
-#endif
         }
+#endif
 
     }
 
@@ -3058,16 +3058,16 @@ static int       _renderLS_vessel(S52_obj *obj)
                     // FIXME: move to _renderLS_setPatDott()
                     float dx       = pt[0].x - pt[1].x;
                     float dy       = pt[0].y - pt[1].y;
-                    float leglen_m = sqrt(dx*dx + dy*dy);                     // leg length in meter
-                    float leglen_px= leglen_m  / _scalex;                      // leg length in pixel
-                    float sym_n    = leglen_px / 32.0;  // 32 pixels (rgba)
+                    float leglen_m = sqrt(dx*dx + dy*dy);  // leg length in meter
+                    float leglen_px= leglen_m  / _scalex;  // leg length in pixel
+                    float sym_n    = leglen_px / 32.0;     // 32 pixels (rgba)
                     float ptr[4] = {
                         0.0,   0.0,
                         sym_n, 1.0
                     };
 
                     _glLineWidth(3);
-                    glUniform1f(_uStipOn, 1.0);
+                    glUniform1f(_uPattOn, 1.0);
                     glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
                     glEnableVertexAttribArray(_aUV);
                     glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
@@ -3078,9 +3078,8 @@ static int       _renderLS_vessel(S52_obj *obj)
 
                 glBindBuffer(GL_ARRAY_BUFFER, 0);
                 glBindTexture(GL_TEXTURE_2D,  0);
-                // turn OFF stippling
-                glUniform1f(_uStipOn, 0.0);
 
+                glUniform1f(_uPattOn, 0.0);
                 glDisableVertexAttribArray(_aUV);
                 glDisableVertexAttribArray(_aPosition);
 #else
@@ -3349,19 +3348,20 @@ static int       _renderLS(S52_obj *obj)
 
                     // alternate planned route (dot)
                     if (0 == g_strcmp0("leglin", S57_getName(geoData))) {
-                        // FIXME: move to _renderLS_setPattDott()
-                        glUniform1f(_uStipOn, 1.0);
+                        // FIXME: move to _GL2.i:_renderLS_setPatDott(float *ppt)
+                        // FIXME: use GL_POINTS
+                        glUniform1f(_uPattOn, 1.0);
                         glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
 
                         float dx       = ppt[0] - ppt[3];
                         float dy       = ppt[1] - ppt[4];
                         float leglen_m = sqrt(dx*dx + dy*dy);   // leg length in meter
                         float leglen_px= leglen_m  / _scalex;   // leg length in pixel
-                        float sym_n    = leglen_px / 32.0;      // number of symbol - 32 pixels (rgba)
+                        float tex_n    = leglen_px / 32.0;      // number of texture pattern - 1D 32x1 pixels
 
                         float ptr[4] = {
                             0.0,   0.0,
-                            sym_n, 1.0
+                            tex_n, 1.0
                         };
 
                         glEnableVertexAttribArray(_aUV);
@@ -3371,10 +3371,8 @@ static int       _renderLS(S52_obj *obj)
                         _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
 
                         glDisableVertexAttribArray(_aUV);
-
-                        // turn OFF stippling
                         glBindTexture(GL_TEXTURE_2D,  0);
-                        glUniform1f(_uStipOn, 0.0);
+                        glUniform1f(_uPattOn, 0.0);
 
                     } else {
                         // all other line
@@ -3388,6 +3386,7 @@ static int       _renderLS(S52_obj *obj)
                 }
             }
 
+            // add point on thick line to round corner
 //#ifdef S52_USE_GL2
             // Not usefull with MSAA
             //_d2f(_tessWorkBuf_f, npt, ppt);
@@ -3624,7 +3623,7 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
 
         // FIXME: need this because some 'Display List' reset blending
         // FIXME: some Complex Line (LC) symbol allway use blending (ie transparancy)
-        // but now with GLES2 AA its all or nothing
+        // but now with GLES2 MSAA its all or nothing
         //_setBlend(TRUE);
         //if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
         //    glEnable(GL_BLEND);
@@ -4802,7 +4801,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
 
                         // POINTS
                         // draw points as a short line so one glDraw call
-                        // to render all: points, lines, strip to save a lone glDraw call
+                        // to render all: points, lines, strip to save a lone glDraw point call
                         if (1 == vec->len) {
                             vertex_t data1[3] = {data[0]+20.0, data[1]+20.0, 0.0};
                             S57_addPrimVertex(vertex, data);
@@ -5344,7 +5343,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
     glEnableVertexAttribArray(_aPosition);
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
 
-    glUniform1f(_uStipOn, 1.0);
+    glUniform1f(_uPattOn, 1.0);
     glBindTexture(GL_TEXTURE_2D, raster->texID);
 
     _glUniformMatrix4fv_uModelview();
@@ -5354,7 +5353,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
     glBindTexture(GL_TEXTURE_2D,  0);
 
-    glUniform1f(_uStipOn, 0.0);
+    glUniform1f(_uPattOn, 0.0);
 
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
@@ -5526,18 +5525,21 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
             // FIXME: optimisation: shader trick! .. put the pixels back in an array then back to main!!
             // FIXME: use _fb_format (rgb/rgba) and EGL rgb/rgba
             //glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
-            //glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGB, GL_UNSIGNED_BYTE, &_pixelsRead);
-            //glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGB, GL_UNSIGNED_BYTE, &_pixelsRead);
+            //glReadPixels(_vp[0], _vp[1], 8, 8, GL_RGB,  GL_UNSIGNED_BYTE, &_pixelsRead);
+            //glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGB,  GL_UNSIGNED_BYTE, &_pixelsRead);
             //glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
+#ifdef S52_USE_GLSC2
+            int bufSize = 1 * 1 * 4;
+            _glReadnPixelsEXT(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
+#else
             glReadPixels(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
-
+#endif
             _checkError("S52_GL_draw():glReadPixels()");
 
             if (_pixelsRead[0].color.r == _cIdx.color.r) {
                 g_ptr_array_add(_objPick, obj);
 
                 // debug
-                //PRINTF("DEBUG: pixel found (%i, %i): i=%i color=%X\n", _vp[0], _vp[1], 0, _cIdx.color.r);
                 PRINTF("DEBUG: pixel found (%i, %i): i=%i color=%X\n", _vp.x, _vp.y, 0, _cIdx.color.r);
             }
         }
@@ -5620,7 +5622,8 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // transparency
     //glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
-    //glSampleCoverage(1,  GL_FALSE);
+    //glEnable(GL_MULTISAMPLE);
+    //glDisable(GL_MULTISAMPLE_EXT);    //glSampleCoverage(1,  GL_FALSE);
 
 
     //glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
@@ -5636,7 +5639,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
         g_ptr_array_set_size(_objPick, 0);
 
-        // make sure that color are not messed up
+        // make sure that _cIdx.color are not messed up
         //glDisable(GL_POINT_SMOOTH);
 
         //glDisable(GL_LINE_SMOOTH);     // NOT in GLES2
@@ -5809,8 +5812,12 @@ int        S52_GL_end(S52_GL_cycle cycle)
 
     // read once, top object
     if (S52_GL_PICK==_crnt_GL_cycle && 1.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
-        //glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
+#ifdef S52_USE_GLSC2
+        int bufSize = 1 * 1 * 4;
+        _glReadnPixelsEXT(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
+#else
         glReadPixels(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
+#endif
         _checkError("S52_GL_end():glReadPixels()");
     }
 
@@ -5869,6 +5876,17 @@ int        S52_GL_end(S52_GL_cycle cycle)
     _crnt_GL_cycle = S52_GL_NONE;
 
     _GL_BEGIN = FALSE;
+
+#ifdef S52_USE_GL2
+    //* test - try save glsl prog after drawing - FAIL on Intel
+    // Note: this test to sae bin also in _GL2.i:_compShaderbin()
+    static int silent = FALSE;
+    if (FALSE == silent) {
+        _saveShaderBin(_programObject);
+        silent = TRUE;
+    }
+    //*/
+#endif
 
     _checkError("S52_GL_end() -fini-");
 
@@ -6008,11 +6026,11 @@ static int       _contextValid(void)
             const GLubyte *vendor     = glGetString(GL_VENDOR);
             const GLubyte *renderer   = glGetString(GL_RENDERER);
             const GLubyte *version    = glGetString(GL_VERSION);
-            const GLubyte *slglver    = glGetString(GL_SHADING_LANGUAGE_VERSION);
+            const GLubyte *glslver    = glGetString(GL_SHADING_LANGUAGE_VERSION);
             PRINTF("Vendor:     %s\n", vendor);
             PRINTF("Renderer:   %s\n", renderer);
             PRINTF("Version:    %s\n", version);
-            PRINTF("Shader:     %s\n", slglver);
+            PRINTF("Shader:     %s\n", glslver);
             PRINTF("Extensions: %s\n", extensions);
         }
 #endif
@@ -6042,6 +6060,16 @@ static int       _contextValid(void)
         } else {
             PRINTF("DEBUG: GL_OES_point_sprite FAILED\n");
             _GL_OES_point_sprite = FALSE;
+        }
+
+        // GL_ARB_get_program_binary
+        if (NULL != g_strrstr((const char *)extensions, "GL_OES_get_program_binary")) {
+        //if (NULL != g_strrstr((const char *)extensions, "get_program_binary")) {
+            PRINTF("DEBUG: GL_OES_get_program_binary OK\n");
+            //_GL_OES_point_sprite = TRUE;
+        } else {
+            PRINTF("DEBUG: GL_OES_get_program_binary FAILED\n");
+            //_GL_OES_point_sprite = FALSE;
         }
     }
 
@@ -6560,32 +6588,42 @@ guchar    *S52_GL_readFBPixels(void)
 
 #ifdef S52_USE_GL2
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
+
+#ifdef S52_USE_GLSC2
+    int bufSize =  _vp.w * _vp.h * 4;
+    _glReadnPixelsEXT(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
+
+    _checkError("S52_GL_readFBPixels().. -0-");
+
+    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+
+    _checkError("S52_GL_readFBPixels().. -1-");
+
+#else  // S52_USE_GLSC2
+
 #ifdef S52_USE_TEGRA2
     // Note: glCopyTexImage2D flip Y on TEGRA (Xoom)
     // Note: must be in sync with _fb_format
 
     // copy FB --> MEM
     // RGBA
-    //glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    glReadPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    // RGB
-    //glReadPixels(_vp[0], _vp[1], _vp[2], _vp[3], GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
-
+    glReadPixels(_vp.x, _vp.y,  _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
     // copy MEM --> Texture
     // RGBA
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    // RGB
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, _vp[2], _vp[3], 0, GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
 
 #else   // S52_USE_TEGRA2
-    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp[2], _vp[3], 0);
+    // RGB
     glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp.w, _vp.h, 0);
 #endif  // S52_USE_TEGRA2
+#endif  // S52_USE_GLSC2
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
 #else   // S52_USE_GL2
-    glReadPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    // GL1
+    glReadPixels(_vp.x, _vp.y,  _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
 #endif  // S52_USE_GL2
 
     _checkError("S52_GL_readFBPixels().. -end-");
@@ -6808,8 +6846,15 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
 
 #ifdef S52_USE_GL2
     // FIXME: arm adreno will break here
-    glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+    //glReadPixels(x, y, width, height, GL_RGB,  GL_UNSIGNED_BYTE, pixels);
     //glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+#ifdef S52_USE_GLSC2
+    int bufSize =  _vp.w * _vp.h * 4;
+    _glReadnPixelsEXT(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
+#else
+    glReadPixels(_vp.x, _vp.y,  _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+#endif  // S52_USE_GLSC2
+
 #else
     glReadBuffer(GL_FRONT);
     glReadPixels(x, y, width, height, GL_RGB, GL_UNSIGNED_BYTE, pixels);
