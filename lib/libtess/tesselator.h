@@ -34,10 +34,12 @@
 
 /* This just includes the defines needed by the tesselator code */
 
-//#include "cogl/cogl-defines.h"
-
+#ifdef S52_USE_GLSC2
+#include <GLSC2/glsc2.h>
+typedef void GLvoid;
+#else  // S52_USE_GLSC2
 #include <GLES2/gl2.h>
-#include <GLES2/gl2ext.h>
+#endif  // S52_USE_GLSC2
 
 typedef struct GLUtesselator GLUtesselator;
 
