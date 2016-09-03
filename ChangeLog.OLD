@@ -4,6 +4,18 @@
 #
 
 
+2016SEP03
+    -add GLSL load/save bin prog
+
+2016AUG09
+    -add test for 8MSAA
+    -add doc for X macro, fix off by one for text array bound
+    -start porting to GLSC2 .. need GPU support for testing
+    -add GLSC2 option, del default include path, link with gcc
+    -fix compiler warning in utils, update version string for GLSC2
+    -add glsc2.h, clean not used include in _GL2.i
+    -fix log cb
+
 2016AUG02
     -upgrade to GCC 5
     -mod __FUCTION__ to C99 __func__ in PRINTF
