@@ -205,8 +205,8 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
 {
     int  MAX = 1024;
     char buf[MAX];
-    char frmtstr[] =  "%s:%i in %s(): ";
-    int  size = snprintf(buf, MAX, frmtstr, file, line, function);
+    char headerfrmt[] = "%s:%i in %s(): ";
+    int  size = snprintf(buf, MAX, headerfrmt, file, line, function);
 
     if (size < MAX) {
         va_list argptr;
@@ -221,27 +221,29 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
         int nn = vsnprintf(&bufFinal[size], (n+1), frmt, argptr);
         va_end(argptr);
 
+        printf("%s", bufFinal);
+
+#if !defined(S52_USE_LOGFILE)
+        // if user set a callback .. call it,
+        // unless logging to file witch will call the cb
+        if (NULL != _log_cb) {
+            _log_cb(bufFinal);
+        }
+#endif
+
         if (nn > (n+1)) {
         //if (n > (MAX-size)) {
             //g_print("WARNING: _printf(): string buffer FULL, str len:%i, buf len:%i\n", n, (MAX-size));
-            g_print("WARNING: _printf(): string buffer FULL, str len:%i, buf len:%i\n", nn, (n+1));
+            g_message("WARNING: _printf(): string buffer FULL, str len:%i, buf len:%i\n", nn, (n+1));
             g_assert(0);
         }
     } else {
-        g_print("WARNING: _printf(): buf FULL, str size:%i, buf len:%i\n", size, MAX);
+        // FIXME: use printf() or g_message / g_error !
+        g_message("WARNING: _printf(): buf FULL, str size:%i, buf len:%i\n", size, MAX);
         g_assert(0);
     }
 
-    g_print("%s", buf);
-
-#if !defined(S52_USE_LOGFILE)
-    // if user set a callback .. call it,
-    // unless logging to file witch will call the cb
-    if (NULL != _log_cb) {
-        _log_cb(buf);
-    }
-#endif
-
+    return;
 }
 
 #ifdef S52_USE_LOGFILE
