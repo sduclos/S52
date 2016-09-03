@@ -67,33 +67,38 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     //LOGE("_egl_beg() .. \n");
     //g_timer_reset(_timer);
 
-    //EGL_SUCCESS             0x3000
-    //LOGI("_egl_beg(): eglGetError(): 0x%x\n", eglGetError());
+    /* EGL_SUCCESS             0x3000
+    if (0x3000 == eglGetError()) {
+        LOGI("_egl_beg(): eglGetError(): 0x3000 == EGL_SUCCESS\n");
+    } else {
+        LOGI("_egl_beg(): eglGetError(): EGL ERROR \n");
+    }
+    */
 
     // Android-09, Blit x10 slower whitout
     // Android-19, no diff
-    /*
+    //*
     if (EGL_FALSE == eglWaitGL()) {
         LOGE("_egl_beg(): eglWaitGL() failed. [0x%x]\n", eglGetError());
         return FALSE;
     }
     //*/
 
-    /* Xoom no diff
+    //* Xoom no diff
     if (EGL_FALSE == eglWaitClient()) {
         LOGE("_egl_beg():eglWaitClient() failed. [0x%x]\n", eglGetError());
         return FALSE;
     }
     //*/
 
-    /* make sure Android is finish - Xoom no diff
+    //* make sure Android is finish - Xoom no diff
     if (EGL_FALSE == eglWaitNative(EGL_CORE_NATIVE_ENGINE)) {
         LOGE("_egl_beg():eglWaitNative() failed. [0x%x]\n", eglGetError());
         return FALSE;
     }
     //*/
 
-    /*
+    //*
     // this prevent EGL_BAD_ACCESS on Adreno/Tegra - eglMakeCurrent:671 error 3002 (EGL_BAD_ACCESS)
     if (EGL_NO_CONTEXT == eglGetCurrentContext()) {
         LOGI("_egl_beg(): EGL_NO_CONTEXT .. exit FALSE\n");
@@ -103,7 +108,7 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
 
     //*
     if (engine->eglContext != eglGetCurrentContext()) {
-        //LOGI("_egl_beg(): engine->eglContext ..\n");
+        LOGI("_egl_beg(): engine->eglContext not current..\n");
         if (EGL_FALSE == eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext)) {
             // eglMakeCurrent() output the same error msg:
             // eglMakeCurrent:671 error 3002 (EGL_BAD_ACCESS)
@@ -114,7 +119,7 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     //*/
     /*
     } else {
-        LOGI("_egl_beg(): NOT engine->eglContext ..\n");
+        LOGI("_egl_beg(): NO engine->eglContext ..\n");
         return FALSE;
     }
     */
@@ -196,11 +201,8 @@ static int      _egl_init       (s52engine *engine)
     EGLContext          eglContext = EGL_NO_CONTEXT;
 
     // --- BindAPI GL/GLES ------------------------------------------------
-#ifdef S52_USE_GLES2
+#if defined(S52_USE_GLES2)
     EGLBoolean ret = eglBindAPI(EGL_OPENGL_ES_API);
-
-    // debug MSAA - EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
-    //EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
 #else
     // OpenGL 1.x
     EGLBoolean ret = eglBindAPI(EGL_OPENGL_API);
@@ -256,24 +258,25 @@ static int      _egl_init       (s52engine *engine)
 #endif  // S52_USE_TEGRA2
 
 #ifdef S52_USE_ADRENO
-#define EGL_OPENGL_ES3_BIT_KHR				    0x00000040
+#define EGL_OPENGL_ES3_BIT_KHR    0x00000040
     EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
 
-        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
+        //EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,  // GLES3 to get NPOT texture in blit
 
         // this bit open access to ES3 functions on QCOM hardware pre-Android support for ES3
         // WARNING: this break MSAA on Android Kit-Kat 4.4.2, 4.4.3 - and -lGLESv3 Android.mk
         //EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT_KHR,
 
-
-        // Note: MSAA work on Andreno in: setting > developer > MSAA
-        //EGL_SAMPLES,            1,  // fail on Adreno
-        //EGL_SAMPLE_BUFFERS,     4,  // fail on Adreno
-
         EGL_RED_SIZE,           8,
         EGL_GREEN_SIZE,         8,
         EGL_BLUE_SIZE,          8,
+
+        // Note: MSAA work on Andreno in: setting > developer > MSAA
+        EGL_SAMPLE_BUFFERS,     1,
+        EGL_SAMPLES,            4,
+        //EGL_SAMPLES,             8,
 
         EGL_NONE
     };
@@ -281,14 +284,11 @@ static int      _egl_init       (s52engine *engine)
 
 #else   // S52_USE_ANDROID
 
-#ifdef S52_USE_GLES2
+#if defined(S52_USE_GLES2)
     // Mesa GL, GLES 2.x, 3.x
     const EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
-
-        //EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-        //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT_KHR,
 
         EGL_RED_SIZE,        8,
         EGL_GREEN_SIZE,      8,
@@ -296,8 +296,8 @@ static int      _egl_init       (s52engine *engine)
         //EGL_ALPHA_SIZE,      8,
 
         // MSAA
-        //EGL_SAMPLE_BUFFERS,      1,
-        //EGL_SAMPLES,             4,
+        EGL_SAMPLE_BUFFERS,      1,
+        EGL_SAMPLES,             4,
         //EGL_SAMPLES,             8,
 
         EGL_NONE
@@ -313,6 +313,10 @@ static int      _egl_init       (s52engine *engine)
         EGL_GREEN_SIZE,      8,
         EGL_BLUE_SIZE,       8,
         //EGL_ALPHA_SIZE,      8,
+
+        EGL_SAMPLE_BUFFERS,     1,
+        EGL_SAMPLES,            4,
+        //EGL_SAMPLES,             8,
 
         EGL_NONE
     };
@@ -385,10 +389,10 @@ static int      _egl_init       (s52engine *engine)
         Window        window  = 0;
         Display      *display = engine->dpy;
 
-#ifdef S52_USE_GLES2
+#if defined(S52_USE_GLES2)
         char         *title   = "EGL/OpenGL ES 2.0 on a Linux Desktop";
 #else
-        char         *title   = "EGL/OpenGL on a Linux Desktop";
+        char         *title   = "EGL/OpenGL 2.0 on a Linux Desktop";
 #endif
         eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vID);
         tmplt.visualid = vID;
@@ -427,7 +431,6 @@ static int      _egl_init       (s52engine *engine)
     }
 
     // --- get eglSurface ------------------------------------------------
-    // FIXME: PBuffer for AA!
 #ifdef GTK_MAJOR_VERSION
     eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, GDK_WINDOW_XID(gtk_widget_get_window(engine->window)), NULL);
 #else
@@ -450,7 +453,7 @@ static int      _egl_init       (s52engine *engine)
     // Then we can create the context and set it current:
     // 1 - GLES1.x, 2 - GLES2.x, 3 - GLES3.x
     EGLint eglContextList[] = {
-#ifdef S52_USE_ADRENO
+#if defined(S52_USE_ADRENO)
         EGL_CONTEXT_CLIENT_VERSION, 3, // GLES3 to get NPOT texture in blit
 #else
         EGL_CONTEXT_CLIENT_VERSION, 2,
@@ -458,13 +461,10 @@ static int      _egl_init       (s52engine *engine)
         EGL_NONE
     };
 
-#ifdef S52_USE_GLES2
+#if defined(S52_USE_GLES2)
     // GLES
     eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, eglContextList);
     //eglContext = eglCreateContext(eglDisplay, eglConfig[5], EGL_NO_CONTEXT, eglContextList);
-
-    // EGL/GL Mesa3D 10.1 GLSL fail at gl_PointCoord
-    //eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, NULL);
 #else
     // GL
     eglContext = eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, NULL);
@@ -490,7 +490,9 @@ static int      _egl_init       (s52engine *engine)
     // Note: on Mesa3D eglGetProcAddress() return an invalid address
     _glInsertEventMarkerEXT = (PFNGLINSERTEVENTMARKEREXT) eglGetProcAddress("glInsertEventMarkerEXT");
     if (NULL == _glInsertEventMarkerEXT) {
-        LOGE("DEBUG: eglGetProcAddress(glInsertEventMarkerEXT()) FAILED\n");
+        LOGE("DEBUG: eglGetProcAddress(glInsertEventMarkerEXT) FAILED\n");
+    } else {
+        LOGE("DEBUG: eglGetProcAddress(glInsertEventMarkerEXT) OK\n");
     }
 
     /* get GPU driver timer - EGL_NV_system_time
@@ -534,7 +536,6 @@ static int      _egl_init       (s52engine *engine)
 //  EGL for s52gtkegl - GTK
 //
 #if 0
-//#ifdef GTK_MAJOR_VERSION
 static int      _egl_init   (s52engine *engine)
 {
     g_print("_egl_init(): starting ..\n");
@@ -673,6 +674,4 @@ static int      _egl_init   (s52engine *engine)
 
     return 1;
 }
-
-//#else  // GTK_MAJOR_VERSION
 #endif  // 0
