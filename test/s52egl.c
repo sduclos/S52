@@ -1655,7 +1655,6 @@ static int      _s52_setVwNDraw (s52engine *engine, double new_y, double new_x, 
         engine->do_S52draw     = TRUE;
         engine->do_S52drawLast = TRUE;
 
-        //g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0, NULL);
         _s52_draw_cb((gpointer) engine);
         return TRUE;
     }
