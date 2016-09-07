@@ -4,6 +4,9 @@
 #
 
 
+2016SEP07
+    -add proper call for GLSC2 code path - test if driver capable
+
 2016SEP03
     -add GLSL load/save bin prog
 
