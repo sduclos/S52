@@ -1858,8 +1858,12 @@ static GString *OBSTRN04 (S57_geo *geo)
 
         //if (UNKNOWN != least_depth) {
         if (UNKNOWN == least_depth) {
-            PRINTF("DEBUG: chenzunfeng found this should be (UNKNOWN == least_depth)[not !=]\n");
-            //g_assert(0);
+            static int silent = FALSE;
+            if (FALSE == silent) {
+                PRINTF("DEBUG: chenzunfeng found this should be (UNKNOWN == least_depth)[not !=]\n");
+                //g_assert(0);
+                silent = TRUE;
+            }
 
             GString *catobsstr = S57_getAttVal(geo, "CATOBS");
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
