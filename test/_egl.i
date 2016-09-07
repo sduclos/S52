@@ -219,14 +219,19 @@ static int      _egl_init       (s52engine *engine)
     eglDisplay  = eglGetDisplay(engine->dpy);
 #endif
 
-    if (EGL_NO_DISPLAY == eglDisplay)
+    if (EGL_NO_DISPLAY == eglDisplay) {
         LOGE("eglGetDisplay() failed. [0x%x]\n", eglGetError());
+        g_assert(0);
+    }
 
     EGLint major = 2;
     EGLint minor = 0;
-    if (EGL_FALSE == eglInitialize(eglDisplay, &major, &minor))
+    if (EGL_FALSE == eglInitialize(eglDisplay, &major, &minor)) {
         LOGE("eglInitialize() failed. [0x%x]\n", eglGetError());
+        g_assert(0);
+    }
 
+    LOGI("EGL Clint API :%s\n", eglQueryString(eglDisplay, EGL_CLIENT_APIS));
     LOGI("EGL Version   :%s\n", eglQueryString(eglDisplay, EGL_VERSION));
     LOGI("EGL Vendor    :%s\n", eglQueryString(eglDisplay, EGL_VENDOR));
     LOGI("EGL Extensions:%s\n", eglQueryString(eglDisplay, EGL_EXTENSIONS));
@@ -289,13 +294,14 @@ static int      _egl_init       (s52engine *engine)
     const EGLint eglConfigList[] = {
         EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
         EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,  // test
 
         EGL_RED_SIZE,        8,
         EGL_GREEN_SIZE,      8,
         EGL_BLUE_SIZE,       8,
         //EGL_ALPHA_SIZE,      8,
 
-        // MSAA
+        // MSAA - fail on MESA with "export MESA_GLES_VERSION_OVERRIDE=2.0"
         EGL_SAMPLE_BUFFERS,      1,
         EGL_SAMPLES,             4,
         //EGL_SAMPLES,             8,
@@ -375,9 +381,10 @@ static int      _egl_init       (s52engine *engine)
 
     eglWindow = (EGLNativeWindowType) engine->app->window;
 
-#elif GTK_MAJOR_VERSION   // S52_USE_ANDROID
-	eglWindow = (EGLNativeWindowType) gtk_widget_get_window(engine->window);
-#else  // S52_USE_ANDROID
+#elif GTK_MAJOR_VERSION
+    eglWindow = (EGLNativeWindowType) GDK_WINDOW_XID(gtk_widget_get_window(engine->window));
+#else
+    // Xlib
     {
         XSetWindowAttributes wa;
         XSizeHints    sh;
@@ -431,12 +438,9 @@ static int      _egl_init       (s52engine *engine)
     }
 
     // --- get eglSurface ------------------------------------------------
-#ifdef GTK_MAJOR_VERSION
-    eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, GDK_WINDOW_XID(gtk_widget_get_window(engine->window)), NULL);
-#else
+    //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, GDK_WINDOW_XID(gtk_widget_get_window(engine->window)), NULL);
     eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, eglWindow, NULL);
     //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig[5], eglWindow, NULL);
-#endif
     if (EGL_NO_SURFACE == eglSurface || EGL_SUCCESS != eglGetError()) {
         LOGE("eglCreateWindowSurface() failed. EGL_NO_SURFACE [0x%x]\n", eglGetError());
         g_assert(0);
@@ -457,6 +461,7 @@ static int      _egl_init       (s52engine *engine)
         EGL_CONTEXT_CLIENT_VERSION, 3, // GLES3 to get NPOT texture in blit
 #else
         EGL_CONTEXT_CLIENT_VERSION, 2,
+        //EGL_CONTEXT_CLIENT_VERSION, 3,  // test
 #endif
         EGL_NONE
     };
