@@ -231,7 +231,7 @@ static int      _egl_init       (s52engine *engine)
         g_assert(0);
     }
 
-    LOGI("EGL Clint API :%s\n", eglQueryString(eglDisplay, EGL_CLIENT_APIS));
+    LOGI("EGL Client API:%s\n", eglQueryString(eglDisplay, EGL_CLIENT_APIS));
     LOGI("EGL Version   :%s\n", eglQueryString(eglDisplay, EGL_VERSION));
     LOGI("EGL Vendor    :%s\n", eglQueryString(eglDisplay, EGL_VENDOR));
     LOGI("EGL Extensions:%s\n", eglQueryString(eglDisplay, EGL_EXTENSIONS));
