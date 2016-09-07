@@ -11,7 +11,7 @@
 // Note: GLES2 is a subset of GL2, so declaration in GLES2 header cover all GL2 decl use in the code
 #ifdef S52_USE_GLSC2
 #include <GLSC2/glsc2.h>
-typedef void GLvoid;
+#include <GLSC2/glsc2ext.h>  //
 #else  // S52_USE_GLSC2
 #ifdef S52_USE_GL2
 #include <GLES2/gl2.h>
@@ -19,13 +19,13 @@ typedef void GLvoid;
 //#include <GLES2/gl2ext.h>  // GL_MULTISAMPLE_EXT / NV
 
 #define GL_GLEXT_PROTOTYPES
-#include <GLES2/gl2ext.h>  // glReadnPixelsEXT / KHR
+#include <GLES2/gl2ext.h>  // glReadnPixelsEXT / KHR, glTexStorage2DEXT
 #endif  // S52_USE_GL2
 #endif  // S52_USE_GLSC2
 
 typedef double GLdouble;
 
-#include "tesselator.h"
+#include "tesselator.h"  // will pull also: typedef void GLvoid;
 typedef GLUtesselator GLUtesselatorObj;
 typedef GLUtesselator GLUtriangulatorObj;
 
@@ -736,40 +736,58 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
     return TRUE;
 }
 
-static GLuint    _loadShader(GLenum type, const char *shaderSrc)
+typedef unsigned char u8;
+#ifdef S52_USE_GLSC2
+typedef void (GL_APIENTRYP PFNGLREADNPIXELSKHRPROC) (GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLsizei bufSize, void *data);
+static PFNGLREADNPIXELSKHRPROC       _glReadnPixelsKHR       = NULL;
+//typedef void (GL_APIENTRYP PFNGLTEXTURESTORAGE2DEXTPROC) (GLuint texture, GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height);
+//static PFNGLTEXSTORAGE2DEXTPROC      _glTexStorage2DEXT      = NULL;
+#else
+// Note: on Intel GL_PROGRAM_BINARY_LENGTH_OES is 0 - bailout
+// https://bugs.freedesktop.org/show_bug.cgi?id=87516
+static PFNGLREADNPIXELSEXTPROC       _glReadnPixelsEXT       = NULL;  // fail with mesa-git/master(2016AUG28)
+static PFNGLREADNPIXELSKHRPROC       _glReadnPixelsKHR       = NULL;
+static PFNGLPROGRAMPARAMETERIEXTPROC _glProgramParameteriEXT = NULL;
+static PFNGLGETPROGRAMBINARYOESPROC  _glGetProgramBinaryOES  = NULL;
+static PFNGLPROGRAMBINARYOESPROC     _glProgramBinaryOES     = NULL;
+static PFNGLTEXSTORAGE2DEXTPROC      _glTexStorage2DEXT      = NULL;
+#endif
+
+static int       _loadProcEXT()
 {
-    GLint compiled = GL_FALSE;
+    typedef void (*proc)(void);
+    extern proc eglGetProcAddress(const char *procname);
 
-    GLuint shader = glCreateShader(type);
-    if (0 == shader) {
-        PRINTF("ERROR: glCreateShader() failed\n");
-        _checkError("_loadShader()");
-        g_assert(0);
-        return FALSE;
-    }
+#ifdef S52_USE_GLSC2
+    _glReadnPixelsKHR =       (PFNGLREADNPIXELSKHRPROC)      eglGetProcAddress("glReadnPixelsKHR");
+    PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsKHR)       %s\n",     (NULL==_glReadnPixelsKHR)?"FAILED":"OK");
 
-    glShaderSource(shader, 1, &shaderSrc, NULL);
-    glCompileShader(shader);
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+    //_glTexStorage2DEXT =      (PFNGLTEXSTORAGE2DEXTPROC)     eglGetProcAddress("glTexStorage2DEXT");
+    //PRINTF("DEBUG: eglGetProcAddress(glTexStorage2DEXT)      %s\n",     (NULL==_glTexStorage2DEXT)?"FAILED":"OK");
+#else
+    _glReadnPixelsEXT =       (PFNGLREADNPIXELSEXTPROC)      eglGetProcAddress("glReadnPixels");
+    PRINTF("DEBUG: eglGetProcAddress(glReadnPixels)          %s\n",     (NULL==_glReadnPixelsEXT)?"FAILED":"OK");
 
-    if (GL_FALSE == compiled) {
-        int logLen = 0;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);  // length include '\0'
+    _glReadnPixelsEXT =       (PFNGLREADNPIXELSEXTPROC)      eglGetProcAddress("glReadnPixelsEXT");
+    PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsEXT)       %s\n",     (NULL==_glReadnPixelsEXT)?"FAILED":"OK");
 
-        PRINTF("ERROR: glCompileShader() fail\n");
+    _glReadnPixelsKHR =       (PFNGLREADNPIXELSKHRPROC)      eglGetProcAddress("glReadnPixelsKHR");
+    PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsKHR)       %s\n",     (NULL==_glReadnPixelsKHR)?"FAILED":"OK");
 
-        if (0 != logLen) {
-            int  writeOut = 0;
-            char log[logLen];
-            glGetShaderInfoLog(shader, logLen, &writeOut, log);
-            _checkError("_loadShader()");
-            PRINTF("DEBUG: glCompileShader() log: %s\n", log);
-        }
-        g_assert(0);
-        return FALSE;
-    }
+    _glProgramParameteriEXT = (PFNGLPROGRAMPARAMETERIEXTPROC)eglGetProcAddress("glProgramParameteriEXT");
+    PRINTF("DEBUG: eglGetProcAddress(glProgramParameteriEXT) %s\n",     (NULL==_glProgramParameteriEXT)?"FAILED":"OK");
 
-    return shader;
+    _glGetProgramBinaryOES =  (PFNGLGETPROGRAMBINARYOESPROC) eglGetProcAddress("glGetProgramBinaryOES");
+    PRINTF("DEBUG: eglGetProcAddress(glGetProgramBinaryOES)  %s\n",     (NULL==_glGetProgramBinaryOES)?"FAILED":"OK");
+
+    _glProgramBinaryOES =     (PFNGLPROGRAMBINARYOESPROC)    eglGetProcAddress("glProgramBinaryOES");
+    PRINTF("DEBUG: eglGetProcAddress(glProgramBinaryOES)     %s\n",     (NULL==_glProgramBinaryOES)?"FAILED":"OK");
+
+    _glTexStorage2DEXT =      (PFNGLTEXSTORAGE2DEXTPROC)     eglGetProcAddress("glTexStorage2DEXT");
+    PRINTF("DEBUG: eglGetProcAddress(glTexStorage2DEXT)      %s\n",     (NULL==_glTexStorage2DEXT)?"FAILED":"OK");
+#endif
+
+    return TRUE;
 }
 
 static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
@@ -846,94 +864,87 @@ static int       _initTexture(void)
     // nodata pattern
     glBindTexture(GL_TEXTURE_2D, _nodata_mask_texID);
 
+#ifdef S52_USE_GLSC2
+    // modern way
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, 32, 32);
+    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, 32, 32);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 32, GL_RGBA, GL_UNSIGNED_BYTE, _nodata_mask_rgba);
+#else  // S52_USE_GLSC2
+    // old way
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, _nodata_mask_rgba);
+    // modern way
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, 32, 32);
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 32, GL_RGBA, GL_UNSIGNED_BYTE, _nodata_mask_rgba);
+#endif  // S52_USE_GLSC2
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, _nodata_mask_rgba);
+    _checkError("_initTexture -1-");
 
     // ------------
     // dott pattern
     glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
 
+#ifdef S52_USE_GLSC2
+    // modern way
+    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, 32, 1);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 1, GL_RGBA, GL_UNSIGNED_BYTE, _dottpa_mask_rgba);
+#else
+    // old way
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dottpa_mask_rgba);
+    // modern way
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, 32, 1);
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 1, GL_RGBA, GL_UNSIGNED_BYTE, _dottpa_mask_rgba);
+#endif
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dottpa_mask_rgba);
+    _checkError("_initTexture -2-");
 
     // ------------
     // dash pattern
     glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
 
+#ifdef S52_USE_GLSC2
+    // modern way
+    // FIXME: GL_INVALID_ENUM at run-time when compiled for GLSC2 and linked to GLESv2
+    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA8_OES, 32, 1);  // GL_INVALID_OPERATION
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RED_EXT, 32, 1);  // GL_INVALID_OPERATION
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_R8_EXT, 32, 1);  // GL_INVALID_OPERATION
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_ALPHA8_EXT, 32, 1);  // GL_INVALID_OPERATION
+    _checkError("_initTexture -3.1-");
+
+    // FIXME: GL_INVALID_OPERATION at run-time when compiled for GLSC2 andlinked to GLESv2
+    // because no previous call to glTexImage2D or glCopyTexImage2D witch don't exist in GLSC2!
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 1, GL_RGBA,      GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 1, GL_RGBA8_OES, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 1, GL_RED_EXT, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
+    _checkError("_initTexture -3.2-");
+#else
+    // old way
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
+
+#endif
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    _checkError("_initTexture -3.3-");
+
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
-
-    _checkError("_initTexture -1-");
+    _checkError("_initTexture -3.4-");
 
     return TRUE;
 }
 
-// Note: on Intel GL_PROGRAM_BINARY_LENGTH_OES is 0 - bailout
-// https://bugs.freedesktop.org/show_bug.cgi?id=87516
-typedef unsigned char u8;
-static PFNGLREADNPIXELSEXTPROC       _glReadnPixelsEXT       = NULL;  // fail with mesa-git/master(2016AUG28)
-static PFNGLREADNPIXELSEXTPROC       _glReadnPixelsKHR       = NULL;
-static PFNGLPROGRAMPARAMETERIEXTPROC _glProgramParameteriEXT = NULL;
-static PFNGLGETPROGRAMBINARYOESPROC  _glGetProgramBinaryOES  = NULL;
-static PFNGLPROGRAMBINARYOESPROC     _glProgramBinaryOES     = NULL;
-
-static int       _loadProcEXT()
-{
-    typedef void (*proc)(void);
-    extern proc eglGetProcAddress(const char *procname);
-
-    _glReadnPixelsEXT = (PFNGLREADNPIXELSEXTPROC) eglGetProcAddress("glReadnPixelsEXT");
-    if (NULL == _glReadnPixelsEXT) {
-        PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsEXT) FAILED\n");
-    } else {
-        PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsEXT) OK\n");
-    }
-    _glReadnPixelsKHR = (PFNGLREADNPIXELSKHRPROC) eglGetProcAddress("glReadnPixelsKHR");
-    if (NULL == _glReadnPixelsKHR) {
-        PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsKHR) FAILED\n");
-    } else {
-        PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsKHR) OK\n");
-    }
-
-    _glProgramParameteriEXT = (PFNGLPROGRAMPARAMETERIEXTPROC) eglGetProcAddress("glProgramParameteriEXT");
-    if (NULL == _glProgramParameteriEXT) {
-        PRINTF("DEBUG: eglGetProcAddress(glProgramParameteriEXT) FAILED\n");
-    } else {
-        PRINTF("DEBUG: eglGetProcAddress(glProgramParameteriEXT) OK\n");
-    }
-
-    _glGetProgramBinaryOES = (PFNGLGETPROGRAMBINARYOESPROC) eglGetProcAddress("glGetProgramBinaryOES");
-    if (NULL == _glGetProgramBinaryOES) {
-        PRINTF("DEBUG: eglGetProcAddress(_glGetProgramBinaryOES) FAILED\n");
-    } else {
-        PRINTF("DEBUG: eglGetProcAddress(_glGetProgramBinaryOES) OK\n");
-    }
-    _glProgramBinaryOES = (PFNGLPROGRAMBINARYOESPROC) eglGetProcAddress("glProgramBinaryOES");
-    if (NULL == _glProgramBinaryOES) {
-        PRINTF("DEBUG: eglGetProcAddress(glProgramBinaryOES) FAILED\n");
-    } else {
-        PRINTF("DEBUG: eglGetProcAddress(glProgramBinaryOES) OK\n");
-    }
-
-
-    return TRUE;
-}
-
+#ifndef S52_USE_GLSC2
 static int       _saveShaderBin(GLuint programObject)
 // Save a GLSL shader bin into a file
 {
@@ -979,6 +990,7 @@ static int       _saveShaderBin(GLuint programObject)
 
     return TRUE;
 }
+#endif  // !S52_USE_GLSC2
 
 static GLuint    _loadShaderBin(void)
 // Load a binary GLSL shader from a file
@@ -998,16 +1010,28 @@ static GLuint    _loadShaderBin(void)
 
     _checkError("_loadShaderBin() -0-");
     GLint nFormats = 0;
+#ifdef S52_USE_GLSC2
+    glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS, &nFormats);
+#else
     glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS_OES, &nFormats);
+#endif
     GLint binaryFormats[nFormats];
+#ifdef S52_USE_GLSC2
+    glGetIntegerv(GL_PROGRAM_BINARY_FORMATS, binaryFormats);
+#else
     glGetIntegerv(GL_PROGRAM_BINARY_FORMATS_OES, binaryFormats);
+#endif
     _checkError("_loadShaderBin() -1-");
 
     GLuint progId = glCreateProgram();
 
     // FIXME: binaryFormat seem useless - maybe binaryFormats (with 's')
     GLenum binaryFormat = 0;
+#ifdef S52_USE_GLSC2
+    glProgramBinary(progId, binaryFormat, (const void *)binary, len);
+#else
     _glProgramBinaryOES(progId, binaryFormat, (const void *)binary, len);
+#endif
     _checkError("_loadShaderBin() -2-");
 
     GLint success = 0;
@@ -1021,7 +1045,44 @@ static GLuint    _loadShaderBin(void)
     return progId;
 }
 
-static GLuint    _compShaderbin(GLuint programObject)
+#ifndef S52_USE_GLSC2
+static GLuint    _loadShaderSrc(GLenum type, const char *shaderSrc)
+{
+    GLint compiled = GL_FALSE;
+
+    GLuint shader = glCreateShader(type);
+    if (0 == shader) {
+        PRINTF("ERROR: glCreateShader() failed\n");
+        _checkError("_loadShader()");
+        g_assert(0);
+        return FALSE;
+    }
+
+    glShaderSource(shader, 1, &shaderSrc, NULL);
+    glCompileShader(shader);
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+
+    if (GL_FALSE == compiled) {
+        int logLen = 0;
+        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLen);  // length include '\0'
+
+        PRINTF("ERROR: glCompileShader() fail\n");
+
+        if (0 != logLen) {
+            int  writeOut = 0;
+            char log[logLen];
+            glGetShaderInfoLog(shader, logLen, &writeOut, log);
+            _checkError("_loadShader()");
+            PRINTF("DEBUG: glCompileShader() log: %s\n", log);
+        }
+        g_assert(0);
+        return FALSE;
+    }
+
+    return shader;
+}
+
+static GLuint    _compShaderSrc(GLuint programObject)
 // compile source
 {
     PRINTF("DEBUG: building '_programObject'\n");
@@ -1032,7 +1093,7 @@ static GLuint    _compShaderbin(GLuint programObject)
         return 0;
     }
 
-    _checkError("_compShaderbin() -00-");
+    _checkError("_compShaderSrc() -00-");
 
     // ----------------------------------------------------------------------
     PRINTF("DEBUG: GL_VERTEX_SHADER\n");
@@ -1082,7 +1143,7 @@ static GLuint    _compShaderbin(GLuint programObject)
         "    }                                                          \n"
         "}                                                              \n";
 
-    GLuint vertexShader = _loadShader(GL_VERTEX_SHADER, vertSrc);
+    GLuint vertexShader = _loadShaderSrc(GL_VERTEX_SHADER, vertSrc);
 
     // ----------------------------------------------------------------------
 
@@ -1143,7 +1204,7 @@ static GLuint    _compShaderbin(GLuint programObject)
         "    }                                      \n"
         "}                                          \n";
 
-    GLuint fragmentShader = _loadShader(GL_FRAGMENT_SHADER, fragSrc);
+    GLuint fragmentShader = _loadShaderSrc(GL_FRAGMENT_SHADER, fragSrc);
 
 
     // ----------------------------------------------------------------------
@@ -1153,7 +1214,7 @@ static GLuint    _compShaderbin(GLuint programObject)
         g_assert(0);
         return 0;
     }
-    _checkError("_compShaderbin() -0-");
+    _checkError("_compShaderSrc() -0-");
 
     if (TRUE != glIsShader(vertexShader)) {
         PRINTF("ERROR: glIsShader(vertexShader) failed\n");
@@ -1166,14 +1227,14 @@ static GLuint    _compShaderbin(GLuint programObject)
         return 0;
     }
 
-    _checkError("_compShaderbin() -1-");
+    _checkError("_compShaderSrc() -1-");
 
     glAttachShader(programObject, vertexShader);
     glAttachShader(programObject, fragmentShader);
 
 #define GL_PROGRAM_BINARY_RETRIEVABLE_HINT 0x8257
     _glProgramParameteriEXT(programObject, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
-    _checkError("_compShaderbin() -1.1-");
+    _checkError("_compShaderSrc() -1.1-");
 
     glLinkProgram(programObject);
     GLint linked = GL_FALSE;
@@ -1195,10 +1256,11 @@ static GLuint    _compShaderbin(GLuint programObject)
 
     glUseProgram(programObject);
 
-    _checkError("_compShaderbin() -2-");
+    _checkError("_compShaderSrc() -2-");
 
     return programObject;
 }
+#endif  // !S52_USE_GLSC2
 
 static GLuint    _bindAttrib(GLuint programObject)
 {
@@ -1233,7 +1295,8 @@ static GLuint    _bindUnifrom(GLuint programObject)
 
 static int       _init_gl2(void)
 {
-    if (TRUE == glIsProgram(_programObject)) {
+    //if (TRUE == glIsProgram(_programObject)) {
+    if (0 != _programObject) {
         PRINTF("DEBUG: _programObject valid not re-init\n");
         return TRUE;
     }
@@ -1247,9 +1310,9 @@ static int       _init_gl2(void)
 
     _init_freetype_gl();
 
-    _initTexture();
-
     _loadProcEXT();
+
+    _initTexture();
 
     _programObject = _loadShaderBin();
     if (0 == _programObject) {
@@ -1257,13 +1320,14 @@ static int       _init_gl2(void)
         PRINTF("WARNING: GLSC2/GLSL _loadShaderBin() failed .. \n");
         g_assert(0);
         return FALSE;
-#endif
-        _programObject = _compShaderbin(_programObject);
+#else  // S52_USE_GLSC2
+        _programObject = _compShaderSrc(_programObject);
         if (0 == _programObject) {
             PRINTF("WARNING: GL2/GLSL init .. failed\n");
             g_assert(0);
             return FALSE;
         }
+#endif  // S52_USE_GLSC2
     }
 
     _bindAttrib (_programObject);
@@ -1297,19 +1361,31 @@ static int       _init_gl2(void)
     // setup mem buffer to save FB to
     glGenTextures(1, &_fb_texture_id);
     glBindTexture  (GL_TEXTURE_2D, _fb_texture_id);
+
+#ifdef S52_USE_TEGRA2
+    // Note: _fb_pixels must be in sync with _fb_format
+    glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    // modern way
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+#else
+#ifdef S52_USE_GLSC2
+    // modern way
+    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
+#else
+    // old way
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp.w, _vp.h, 0);
+    // modern way
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
+#endif
+#endif
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     //_checkError("_init_es2() -4-");
-
-#ifdef S52_USE_TEGRA2
-    // Note: _fb_pixels must be in sync with _fb_format
-    glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-#else
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp.w, _vp.h, 0);
-#endif
 
     //_checkError("_init_es2() -5-");
 
@@ -1365,12 +1441,18 @@ static int       _renderTile(S52_DList *DListData)
 
 static int       _initFBO(GLuint mask_texID)
 {
+    _checkError("_initFBO() -00-");
+
     if (0 == _fboID) {
         glGenFramebuffers (1, &_fboID);
     }
 
+    _checkError("_initFBO() -0-");
+
     glBindFramebuffer     (GL_FRAMEBUFFER, _fboID);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, mask_texID, 0);
+
+    _checkError("_initFBO() -1-");
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE) {
@@ -1380,13 +1462,13 @@ static int       _initFBO(GLuint mask_texID)
         switch(status)
         {
         case GL_FRAMEBUFFER_UNSUPPORTED:
-            PRINTF("Framebuffer object format is unsupported by the video hardware. (GL_FRAMEBUFFER_UNSUPPORTED)(FBO - 820)");
+            PRINTF("Framebuffer object format is unsupported by the video hardware. (GL_FRAMEBUFFER_UNSUPPORTED)(FBO - 820)\n");
             break;
         case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-            PRINTF("Incomplete attachment. (GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT)(FBO - 820)");
+            PRINTF("Incomplete attachment. (GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT)(FBO - 820)\n");
             break;
         case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-            PRINTF("Incomplete missing attachment. (GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT)(FBO - 820)");
+            PRINTF("Incomplete missing attachment. (GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT)(FBO - 820)\n");
             break;
 // Not in GL
 //            case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
@@ -1416,7 +1498,7 @@ static int       _initFBO(GLuint mask_texID)
         return FALSE;
     }
 
-    _checkError("_setFBO()");
+    _checkError("_initFBO() -end-");
 
     return TRUE;
 }
@@ -1520,18 +1602,6 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
 {
     GLuint mask_texID = 0;
 
-    glGenTextures(1, &mask_texID);
-    glBindTexture(GL_TEXTURE_2D, mask_texID);
-
-    // GL_OES_texture_npot
-    // The npot extension for GLES2 is only about support of mipmaps and repeat/mirror wrap modes.
-    // If you don't care about mipmaps and use only the clamp wrap mode, you can use npot textures.
-    // It's part of the GLES2 spec.
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
     GLsizei w = ceil(tileWpx);
     GLsizei h = ceil(tileHpx);
 
@@ -1545,10 +1615,38 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
         h *= 2;
     }
 
+    _checkError("_renderTexure() -0000-");
+
+    glGenTextures(1, &mask_texID);
+    glBindTexture(GL_TEXTURE_2D, mask_texID);
+
     // NOTE: GL_RGBA is needed for:
     // - Vendor: Tungsten Graphics, Inc. - Renderer: Mesa DRI Intel(R) 965GM x86/MMX/SSE2
     // - Vendor: Qualcomm                - Renderer: Adreno (TM) 320
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w,   h,   0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+#ifdef S52_USE_GLSC2
+    // modern way
+    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+#else
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    // modern way
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA8_OES, w, h);
+    //_checkError("_renderTexure() -000-");
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+#endif
+
+    _checkError("_renderTexure() -00-");
+
+    // GL_OES_texture_npot
+    // The npot extension for GLES2 is only about support of mipmaps and repeat/mirror wrap modes.
+    // If you don't care about mipmaps and use only the clamp wrap mode, you can use npot textures.
+    // It's part of the GLES2 spec.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    _checkError("_renderTexure() -0-");
 
 
     _initFBO(mask_texID);
@@ -1571,7 +1669,7 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
     // set color alpha
     glUniform4f(_uColor, 0.0, 0.0, 0.0, 1.0);
 
-    _checkError("_setTexture() -1-");
+    _checkError("_renderTexure() -1-");
 
 
     // render to texture -----------------------------------------
@@ -1678,7 +1776,7 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
     //glDeleteFramebuffers(1, &_fboID);
     //_fboID = 0;
 
-    _checkError("_setTexture() -1-");
+    _checkError("_renderTexure() -2-");
 
     return mask_texID;
 }
