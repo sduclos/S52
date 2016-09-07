@@ -1156,7 +1156,8 @@ static int       _VBOCreate(S57_prim *prim)
     if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
         return FALSE;
 
-    if (GL_FALSE == glIsBuffer(vboID)) {
+    //if (GL_FALSE == glIsBuffer(vboID)) {
+    if (0 == vboID) {
         glGenBuffers(1, &vboID);
 
         // glIsBuffer fail!
@@ -4222,7 +4223,8 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     guint len = 0;
     if ((S52_GL_DRAW==_crnt_GL_cycle) && (NULL!=obj)) {
         GLuint vboID = S52_PL_getFreetypeGL_VBO(obj, &len);
-        if (GL_TRUE == glIsBuffer(vboID)) {
+        //if (GL_TRUE == glIsBuffer(vboID)) {
+        if (0 != vboID) {
             // connect to data in VBO GPU
             glBindBuffer(GL_ARRAY_BUFFER, vboID);
         } else {
@@ -4883,6 +4885,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
         return FALSE;
 
 #ifdef S52_USE_OPENGL_VBO
+#ifndef S52_USE_GLSC2
     if (TRUE == glIsBuffer(DL->vboIds[0])) {
         // NOTE: DL->nbr is 1 - all pattern in PLib have only one color
         // but this is not in S52 specs (check this)
@@ -4899,7 +4902,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
         g_assert(0);
         return FALSE;
     }
-
+#endif  // !S52_USE_GLSC1
 #else   // S52_USE_OPENGL_VBO
 
 #ifndef S52_USE_GLSC1
@@ -4981,6 +4984,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
     }
 
 #ifdef S52_USE_OPENGL_VBO
+#ifndef S52_USE_GLSC2
     if (TRUE == glIsBuffer(DL->vboIds[0])) {
         glDeleteBuffers(DL->nbr, &DL->vboIds[0]);
 
@@ -4988,6 +4992,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
         g_assert(0);
         return FALSE;
     }
+#endif  // !S52_USE_GLSC1
 
     //glGenBuffers(DL->nbr, &DL->vboIds[0]);
 
@@ -5248,11 +5253,17 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
     if (0 == raster->texID) {
         if (TRUE == raster->isRADAR) {
+
+            // no ALPHA in GLSC2
+#ifndef S52_USE_GLSC2
             glGenTextures(1, &raster->texID);
             glBindTexture(GL_TEXTURE_2D, raster->texID);
 
             // GLES2/XOOM ALPHA fail and if not POT
             glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->npotX, raster->npotY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
+            // modern way
+            //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_ALPHA, raster->npotX, raster->npotY);
+            //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_ALPHA, GL_UNSIGNED_BYTE, _fb_pixels);
 
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
@@ -5262,6 +5273,8 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
             glBindTexture(GL_TEXTURE_2D, 0);
 
             _checkError("S52_GL_drawRaster() -1.0-");
+#endif  //!S52_USE_GLSC2
+
         } else {
             // raster / bathy
             _newTexture(raster);
@@ -5270,8 +5283,15 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
             glBindTexture(GL_TEXTURE_2D, raster->texID);
 
             // GLES2/XOOM ALPHA fail and if not POT
-            //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->potX, raster->potY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
+#ifdef S52_USE_GLSC2
+            // modern way
+            glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+#else
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, raster->texAlpha);
+            // modern way
+            //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY);
+            //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
 
             //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_FLOAT, raster->data);
             //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_FLOAT, raster->data);
@@ -5279,7 +5299,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
             //dword PackValues(byte x,byte y,byte z,byte w) {
             //    return (x<<24)+(y<<16)+(z<<8)+(w);
             //}
-
+#endif
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -5293,6 +5313,8 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
             PRINTF("DEBUG: MIN=%f MAX=%f\n", raster->min, raster->max);
         }
     } else {
+        // no ALPHA in GLSC2
+#ifndef S52_USE_GLSC2
         // update RADAR
         if (TRUE == raster->isRADAR) {
             glBindTexture(GL_TEXTURE_2D, raster->texID);
@@ -5302,6 +5324,8 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
             _checkError("S52_GL_drawRaster() -3.0-");
         }
+#endif  // !S52_USE_GLSC2
+
     }
 
     // set radar extent
@@ -5530,7 +5554,8 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
             //glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
 #ifdef S52_USE_GLSC2
             int bufSize = 1 * 1 * 4;
-            _glReadnPixelsEXT(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
+            //_glReadnPixelsEXT(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
+            _glReadnPixelsKHR(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
 #else
             glReadPixels(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
 #endif
@@ -5814,7 +5839,8 @@ int        S52_GL_end(S52_GL_cycle cycle)
     if (S52_GL_PICK==_crnt_GL_cycle && 1.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
 #ifdef S52_USE_GLSC2
         int bufSize = 1 * 1 * 4;
-        _glReadnPixelsEXT(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
+        //_glReadnPixelsEXT(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
+        _glReadnPixelsKHR(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
 #else
         glReadPixels(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
 #endif
@@ -5878,6 +5904,7 @@ int        S52_GL_end(S52_GL_cycle cycle)
     _GL_BEGIN = FALSE;
 
 #ifdef S52_USE_GL2
+#ifndef S52_USE_GLSC2
     //* test - try save glsl prog after drawing - FAIL on Intel
     // Note: this test to sae bin also in _GL2.i:_compShaderbin()
     static int silent = FALSE;
@@ -5887,6 +5914,7 @@ int        S52_GL_end(S52_GL_cycle cycle)
     }
     //*/
 #endif
+#endif  // GL2
 
     _checkError("S52_GL_end() -fini-");
 
@@ -5916,6 +5944,7 @@ int        S52_GL_delDL(S52_obj *obj)
             return FALSE;
 
 #ifdef S52_USE_OPENGL_VBO
+#ifndef S52_USE_GLSC2
         // delete VBO when program terminated
         if (GL_TRUE == glIsBuffer(vboID)) {
             glDeleteBuffers(1, &vboID);
@@ -5946,7 +5975,8 @@ int        S52_GL_delDL(S52_obj *obj)
             }
             */
         }
-#endif
+#endif  // S52_USE_FREETYPE_GL
+#endif  // !S52_USE_GLSC2
 
 #else  // S52_USE_OPENGL_VBO
         // 'vboID' is in fact a DList here
@@ -5983,7 +6013,9 @@ int        S52_GL_delRaster(S52_GL_ras *raster, int texOnly)
         }
     }
 
+#ifndef S52_USE_GLSC2
     glDeleteTextures(1, &raster->texID);
+#endif
     raster->texID = 0;
 
     _checkError("S52_GL_delRaster()");
@@ -6066,10 +6098,15 @@ static int       _contextValid(void)
         if (NULL != g_strrstr((const char *)extensions, "GL_OES_get_program_binary")) {
         //if (NULL != g_strrstr((const char *)extensions, "get_program_binary")) {
             PRINTF("DEBUG: GL_OES_get_program_binary OK\n");
-            //_GL_OES_point_sprite = TRUE;
         } else {
             PRINTF("DEBUG: GL_OES_get_program_binary FAILED\n");
-            //_GL_OES_point_sprite = FALSE;
+        }
+
+        // GL_EXT_texture_storage
+        if (NULL != g_strrstr((const char *)extensions, "_texture_storage ")) {
+            PRINTF("DEBUG: _texture_storage OK\n");
+        } else {
+            PRINTF("DEBUG: _texture_storage FAILED\n");
         }
     }
 
@@ -6201,6 +6238,7 @@ int        S52_GL_done(void)
         g_array_free(_aftglwColorArr, TRUE);
         _aftglwColorArr = NULL;
     }
+#ifndef S52_USE_GLSC2
     if (0 != _vboIDaftglwColrID) {
         glDeleteBuffers(1, &_vboIDaftglwColrID);
         _vboIDaftglwColrID = 0;
@@ -6220,20 +6258,22 @@ int        S52_GL_done(void)
         g_array_free(_tessWorkBuf_f, TRUE);
         _tessWorkBuf_f = NULL;
     }
+#endif
 
     // done texture object
+#ifndef S52_USE_GLSC2
     glDeleteTextures(1, &_nodata_mask_texID);
-    _nodata_mask_texID = 0;
     glDeleteTextures(1, &_dottpa_mask_texID);
-    _dottpa_mask_texID = 0;
     glDeleteTextures(1, &_dashpa_mask_texID);
-    _dashpa_mask_texID = 0;
-
-    glDeleteProgram(_programObject);
-    _programObject = 0;
-
     glDeleteFramebuffers(1, &_fboID);
-    _fboID = 0;
+    glDeleteProgram(_programObject);
+#endif
+
+    _dashpa_mask_texID = 0;
+    _dottpa_mask_texID = 0;
+    _nodata_mask_texID = 0;
+    _fboID             = 0;
+    _programObject     = 0;
 
 
 #ifdef S52_USE_FREETYPE_GL
@@ -6247,14 +6287,17 @@ int        S52_GL_done(void)
     _freetype_gl_font[3] = NULL;
 
     if (0 != _freetype_gl_textureID) {
+#ifndef S52_USE_GLSC2
         glDeleteBuffers(1, &_freetype_gl_textureID);
+#endif
         _freetype_gl_textureID = 0;
     }
+
     if (NULL != _freetype_gl_buffer) {
         g_array_free(_freetype_gl_buffer, TRUE);
         _freetype_gl_buffer = NULL;
     }
-#endif
+#endif  // S52_USE_FREETYPE_GL
 #endif  // S52_USE_GL2
 
 
@@ -6591,10 +6634,12 @@ guchar    *S52_GL_readFBPixels(void)
 
 #ifdef S52_USE_GLSC2
     int bufSize =  _vp.w * _vp.h * 4;
-    _glReadnPixelsEXT(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
+    //_glReadnPixelsEXT(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
+    _glReadnPixelsKHR(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
 
     _checkError("S52_GL_readFBPixels().. -0-");
 
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
     glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
 
@@ -6612,6 +6657,9 @@ guchar    *S52_GL_readFBPixels(void)
     // copy MEM --> Texture
     // RGBA
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    // modern way
+    //glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h,);
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h,, 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
 
 #else   // S52_USE_TEGRA2
     // RGB
@@ -6850,7 +6898,8 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     //glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 #ifdef S52_USE_GLSC2
     int bufSize =  _vp.w * _vp.h * 4;
-    _glReadnPixelsEXT(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
+    //_glReadnPixelsEXT(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
+    _glReadnPixelsKHR(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
 #else
     glReadPixels(_vp.x, _vp.y,  _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
 #endif  // S52_USE_GLSC2
