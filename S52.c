@@ -277,7 +277,7 @@ static void      *_EGLctx = NULL;
                                 goto exit;                        \
                                 return FALSE;                     \
                            }                                      \
-						}
+                        }
 
 #define EGL_END(tag)    if (NULL != _eglEnd) _eglEnd(_EGLctx,#tag);
 
@@ -2657,8 +2657,6 @@ DLL int    STD S52_doneCell(const char *encPath)
 // so loadCell would load a CATALOG then CM would load individual cell
 // to fill the view (and unload cell outside the view)
 {
-    //S52_CHECK_INIT;
-
     return_if_null(encPath);
 
     int    ret      = FALSE;
@@ -2933,8 +2931,6 @@ static int        _loadConnectedNode(const char *name, void *ConnectedNode)
 
 int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb)
 {
-    S52_CHECK_INIT;
-
     static int silent = FALSE;
 
 #ifdef S52_USE_GV
@@ -3013,8 +3009,6 @@ int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_
 #else
     S57_ogrLoadLayer(layername, layer, loadObject_cb);
 #endif
-
-exit:
 
     return TRUE;
 }
@@ -3182,8 +3176,6 @@ static int        _compLNAM(gconstpointer a, gconstpointer b)
 int            S52_loadObject(const char *objname, void *shape)
 {
     S57_geo *geoData = NULL;
-
-    S52_CHECK_INIT;
 
     if ((NULL==objname) || (NULL==shape)) {
         PRINTF("WARNING: objname / shape NULL\n");
@@ -3364,8 +3356,6 @@ int            S52_loadObject(const char *objname, void *shape)
         g_tree_insert(_lnamBBT, key_lnam->str, geoData);
 
     S52_CS_add(_crntCell->local, geoData);
-
-exit:
 
     return TRUE;
 }
@@ -3783,7 +3773,6 @@ static int        _cullObj(_cell *c, GPtrArray *rbin)
             // switch OFF highlight if user acknowledge Alarm / Indication by
             // resetting S52_MAR_GUARDZONE_ALARM to 0 (OFF - no alarm)
             // Note: at this time only S52_PRIO_HAZRDS / S52_RAD_OVER
-            //if (0.0==S52_MP_get(S52_MAR_ERROR) && TRUE==S57_isHighlighted(geo))
             if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_isHighlighted(geo))
                 S57_highlightOFF(geo);
         }
@@ -4286,14 +4275,6 @@ DLL int    STD S52_draw(void)
 
     int ret = FALSE;
 
-    S52_CHECK_INIT;
-    if (NULL == S57_getPrjStr())
-        goto exit;
-
-    EGL_BEG(DRAW);
-
-
-
     // do not wait if an other thread is allready drawing
 #if (defined(S52_USE_ANDROID) || defined(_MINGW))
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
@@ -4303,6 +4284,12 @@ DLL int    STD S52_draw(void)
         PRINTF("WARNING: trylock failed\n");
         goto exit;
     }
+
+    S52_CHECK_INIT;
+    if (NULL == S57_getPrjStr())
+        goto exit;
+
+    EGL_BEG(DRAW);
 
     // debug
     //PRINTF("DRAW: start ..\n");
@@ -4397,6 +4384,10 @@ DLL int    STD S52_draw(void)
 
     } else {
         PRINTF("WARNING:S52_GL_begin() failed\n");
+
+        // FIXME: tell EGL to reset context
+        //EGL_END(RESET);
+        g_assert(0);
     }
 
 #ifdef S52_DEBUG
@@ -4518,18 +4509,6 @@ DLL int    STD S52_drawLast(void)
 {
     int ret = FALSE;
 
-    S52_CHECK_INIT;
-
-    if (NULL == S57_getPrjStr())
-        goto exit;
-
-    if (S52_MAR_DISP_LAYER_LAST_NONE == (int) S52_MP_get(S52_MAR_DISP_LAYER_LAST))
-        goto exit;
-
-#if !defined(S52_USE_RADAR)
-    EGL_BEG(LAST);
-#endif
-
 #if (defined(S52_USE_ANDROID) || defined(_MINGW))
     // do not wait if an other thread is allready drawing
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
@@ -4540,6 +4519,19 @@ DLL int    STD S52_drawLast(void)
         //g_assert(0);
         goto exit;
     }
+
+    S52_CHECK_INIT;
+
+    if (NULL == S57_getPrjStr())
+        goto exit;
+
+    if (S52_MAR_DISP_LAYER_LAST_NONE == (int) S52_MP_get(S52_MAR_DISP_LAYER_LAST))
+        goto exit;
+
+
+#if !defined(S52_USE_RADAR)
+    EGL_BEG(LAST);
+#endif
 
     g_timer_reset(_timer);
 
@@ -4915,11 +4907,11 @@ exit:
 
 DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *north)
 {
-    //S52_CHECK_INIT;
     return_if_null(cLat);
     return_if_null(cLon);
     return_if_null(rNM);
     return_if_null(north);
+
     S52_CHECK_MUTX_INIT;
 
     // update local var _view
@@ -4952,7 +4944,6 @@ exit:
 
 DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height)
 {
-    //S52_CHECK_INIT;
     S52_CHECK_MUTX_INIT;
 
     PRINTF("pixels_x:%i, pixels_y:%i, pixels_width:%i, pixels_height:%i\n", pixels_x, pixels_y, pixels_width, pixels_height);
@@ -5070,12 +5061,12 @@ static int        _getCellsExt(extent* extSum)
 
 DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, double *N, double *E)
 {
-    //S52_CHECK_INIT;
 
     if (NULL==S || NULL==W || NULL==N || NULL==E) {
         PRINTF("WARNING: NULL extent S,W,N,E\n");
         return FALSE;
     }
+
     S52_CHECK_MUTX_INIT;
 
     if (NULL == filename) {
@@ -5715,8 +5706,6 @@ exit:
 
 DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B)
 {
-    //S52_CHECK_INIT;
-
     return_if_null(colorName);
 
     S52_CHECK_MUTX_INIT;
@@ -5735,8 +5724,6 @@ exit:
 
 DLL int    STD S52_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B)
 {
-    //S52_CHECK_INIT;
-
     return_if_null(colorName);
     return_if_null(R);
     return_if_null(G);
@@ -5763,8 +5750,6 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius)
     (void)texRadius;
 
 #ifdef S52_USE_RADAR
-
-    //S52_CHECK_INIT;
 
     return_if_null(cb);
 
