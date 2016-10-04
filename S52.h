@@ -348,11 +348,11 @@ DLL int    STD S52_drawLayer(const char *name);
 DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);
 
 /**
- * S52_drawBlit: Blitting
+ * S52_drawBlit: Blitting (for touch screen)
  * @scale_x: (in): -1.0 .. 0.0 .. +1.0
  * @scale_y: (in): -1.0 .. 0.0 .. +1.0
  * @scale_z: (in): -1.0 .. 0.0 .. +1.0
- * @north:   (in): [0.0 .. 360.0[      (<0 or >=360 unchage)
+ * @north:   (in):  [0.0 .. 360.0[  (<0 or >=360 unchage) [not impl. yet]
  *
  * Note: call will fail if no ENC loaded (via S52_loadCell)
  *
