@@ -22,6 +22,7 @@
 
 
 #include <EGL/egl.h>
+#include <EGL/eglext.h>  // robustness
 
 #include <gtk/gtk.h>
 #include <gdk/gdkkeysyms.h>         // GDK_*
@@ -477,6 +478,7 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_KEY_equal :
         case GDK_KEY_plus  :
         case GDK_KEY_minus :_rotation(event);          break;
+        //case GDK_KEY_minus :S52_drawBlit(0.0, 0.0, 0.0, 10.0); break;
 
         case GDK_KEY_Page_Down:
         case GDK_KEY_Page_Up:_zoom(event);             break;
@@ -503,7 +505,6 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_KEY_i     :_toggle(S52_MAR_ANTIALIAS);        break;
         case GDK_KEY_j     :_toggle(S52_MAR_QUAPNT01);         break;
         case GDK_KEY_z     :_toggle(S52_MAR_DISP_OVERLAP);     break;
-        //case GDK_1     :_toggle(S52_MAR_DISP_LAYER_LAST);  break;
         case GDK_KEY_1     :_meterInc(S52_MAR_DISP_LAYER_LAST);break;
         case GDK_KEY_exclam:_meterDec(S52_MAR_DISP_LAYER_LAST);break;
 
@@ -518,8 +519,6 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_KEY_4     :_toggle(S52_MAR_DISP_GRATICULE);   break;
         case GDK_KEY_5     :_toggle(S52_MAR_HEADNG_LINE);      break;
 
-        //case GDK_t     :_meterInc(S52_MAR_SHOW_TEXT);      break;
-        //case GDK_T     :_meterDec(S52_MAR_SHOW_TEXT);      break;
         case GDK_KEY_t     :
         case GDK_KEY_T     :_toggle  (S52_MAR_SHOW_TEXT);      break;
         case GDK_KEY_c     :_meterInc(S52_MAR_SAFETY_CONTOUR); break;
@@ -539,14 +538,6 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_KEY_m     :_meterInc(S52_MAR_DATUM_OFFSET);   break;
         case GDK_KEY_M     :_meterDec(S52_MAR_DATUM_OFFSET);   break;
 
-        //case GDK_KEY_7     :_disp(S52_MAR_DISP_CATEGORY, 'D'); break; // DISPLAYBASE
-        //case GDK_KEY_8     :_disp(S52_MAR_DISP_CATEGORY, 'S'); break; // STANDARD
-        //case GDK_KEY_9     :_disp(S52_MAR_DISP_CATEGORY, 'O'); break; // OTHER
-        //case GDK_KEY_0     :_disp(S52_MAR_DISP_CATEGORY, 'A'); break; // OTHER (all)
-        //case GDK_KEY_7     :_disp(S52_MAR_DISP_CATEGORY, 0);   break; // DISPLAYBASE
-        //case GDK_KEY_8     :_disp(S52_MAR_DISP_CATEGORY, 1);   break; // STANDARD
-        //case GDK_KEY_9     :_disp(S52_MAR_DISP_CATEGORY, 2);   break; // OTHER
-        //case GDK_KEY_0     :_disp(S52_MAR_DISP_CATEGORY, 3);   break; // OTHER (all)
         case GDK_KEY_7     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_BASE);   break; // DISPLAYBASE
         case GDK_KEY_8     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_STD);    break; // STANDARD
         case GDK_KEY_9     :_disp(S52_MAR_DISP_CATEGORY, S52_MAR_DISP_CATEGORY_OTHER);  break; // OTHER
