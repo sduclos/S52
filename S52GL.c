@@ -137,6 +137,7 @@ static double _dotpitch_mm_y = 0.3;  // will be overwright at init()
 static int _GL_OES_texture_npot = FALSE;
 static int _GL_EXT_debug_marker = FALSE;
 static int _GL_OES_point_sprite = FALSE;
+static int _GL_EXT_robustness   = FALSE;
 
 /////////////////////////////////////////////////////
 //
@@ -229,18 +230,6 @@ typedef struct { double u, v; } projUV;
 #define STRETCH_SYM_FAC 2.0
 
 #define NM_METER 1852.0
-
-// debug - redondant see S52_GL_cycle
-static int _GL_BEGIN = FALSE;
-#define CHECK_GL_BEGIN if (FALSE == _GL_BEGIN) {                    \
-                           PRINTF("ERROR: not inside glBegin()\n"); \
-                           g_assert(0);                             \
-                       }
-// not used
-#define CHECK_GL_END   if (TRUE == _GL_BEGIN) {                         \
-                           PRINTF("ERROR: already inside glBegin()\n"); \
-                           g_assert(0);                                 \
-                       }
 
 #ifdef S52_USE_AFGLOW
 // experimental: synthetic after glow
@@ -484,12 +473,6 @@ static int       _getCentroidClose(guint npt, double *ppt)
     }
 
     return FALSE;
-}
-
-static double    _computeSCAMIN(void)
-
-{
-    return (_scalex > _scaley) ? _scalex : _scaley;
 }
 
 static void      _glMatrixMode(GLenum  mode)
@@ -881,6 +864,15 @@ static projXY    _prj2win(projXY p)
     return p;
 }
 
+static double    _setSCAMIN(void)
+// used by S52_GL_isSupp() and to set SCALEB10 or SCALEB11 (scale bar)
+{
+    _SCAMIN = (_scalex > _scaley) ? _scalex : _scaley;
+    _SCAMIN *= 10000.0;
+
+    return _SCAMIN;
+}
+
 static int       _doProjection(vp_t vp, double centerLat, double centerLon, double rangeDeg)
 {
     pt3 NE = {0.0, 0.0, 0.0};  // Nort/East
@@ -928,6 +920,9 @@ static int       _doProjection(vp_t vp, double centerLat, double centerLon, doub
     // MPP - Meter Per Pixel
     _scalex = (_pmax.u - _pmin.u) / (double)vp.w;
     _scaley = (_pmax.v - _pmin.v) / (double)vp.h;
+
+    //_SCAMIN = _computeSCAMIN() * 10000.0;
+    _setSCAMIN();
 
     return TRUE;
 }
@@ -5472,14 +5467,18 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //        PRINTF("%s\n", FIDNstr->str);
     //    }
     //}
-    //S57_geo *geo = S52_PL_getGeo(obj);
+    /*
+    S57_geo *geo = S52_PL_getGeo(obj);
     //PRINTF("drawing geo ID: %i\n", S57_getGeoS57ID(geo));
     //if (2184==S57_getGeoS57ID(geo)) {
     //if (140 == S57_getGeoS57ID(geo)) {
     //if (103 == S57_getGeoS57ID(geo)) {  // Hawaii ISODNG
-    //    PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoS57ID(geo));
+    if (567 == S57_getGeoS57ID(geo)) {
+        PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoS57ID(geo));
+        S57_highlightON(geo);
     ////    return TRUE;
-    //}
+    }
+    */
     //if (S52_GL_PICK == _crnt_GL_cycle) {
     //    if (0 == strcmp("PRDARE", S52_PL_getOBCL(obj))) {
     //        PRINTF("PRDARE found\n");
@@ -5554,8 +5553,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
             //glReadPixels(_vp[0], _vp[1], 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
 #ifdef S52_USE_GLSC2
             int bufSize = 1 * 1 * 4;
-            //_glReadnPixelsEXT(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
-            _glReadnPixelsKHR(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
+            _glReadnPixels(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
 #else
             glReadPixels(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
 #endif
@@ -5575,11 +5573,14 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
 
 int        S52_GL_begin(S52_GL_cycle cycle)
 {
-    CHECK_GL_END;
-    _GL_BEGIN = TRUE;
-
-    // GL sanity check before start of init
+    // GL sanity check before start of cycle
     _checkError("S52_GL_begin() -0-");
+
+    if (S52_GL_NONE == cycle) {
+        PRINTF("DEBUG: GL cycle out of sync\n");
+        //g_assert(0);
+        return FALSE;
+    }
 
     // Projection set in the DRAW cycle - hence need to be first
     // so that other calls depend on projection
@@ -5588,14 +5589,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
         g_assert(0);
         return FALSE;
     }
-
-    //*
-    if (S52_GL_INIT!=_crnt_GL_cycle && S52_GL_NONE!=_crnt_GL_cycle) {
-        PRINTF("WARNING: S52_GL_cycle out of sync\n");
-        g_assert(0);
-        return FALSE;
-    }
-    //*/
 
     _crnt_GL_cycle = cycle;
 
@@ -5619,13 +5612,14 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     _nCall     = 0;
     _npoly     = 0;
 
-
 #ifdef S52_USE_COGL
     cogl_begin_gl();
 #endif
 
 #ifdef S52_USE_GL1
     glPushAttrib(GL_ALL_ATTRIB_BITS);
+    //glPushAttrib(GL_ENABLE_BIT);          // NOT in OpenGL ES SC
+    //glDisable(GL_NORMALIZE);              // NOT in GLES2
 
     glAlphaFunc(GL_ALWAYS, 0);
 
@@ -5637,68 +5631,58 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     // POLY (not used)
     //glHint(GL_POLYGON_SMOOTH_HINT, GL_DONT_CARE);
     //glHint(GL_POLYGON_SMOOTH_HINT, GL_FASTEST);
-#endif
 
-    glEnable(GL_BLEND);
+    glShadeModel(GL_FLAT);                       // NOT in GLES2
+    // draw both side
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);   // NOT in OpenGL ES SC
+    glEnableClientState(GL_VERTEX_ARRAY);        // NOT in GLES2
 
-    // GL_FUNC_ADD, GL_FUNC_SUBTRACT, or GL_FUNC_REVERSE_SUBTRACT
-    //glBlendEquation(GL_FUNC_ADD);
+    // GL1 read in matrix from GPU
+    glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
+    glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
 
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // transparency
-    //glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-    //glEnable(GL_MULTISAMPLE);
-    //glDisable(GL_MULTISAMPLE_EXT);    //glSampleCoverage(1,  GL_FALSE);
-
-
-    //glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
-    //glHint(GL_POINT_SMOOTH_HINT, GL_DONT_CARE);
-    //glHint(GL_POINT_SMOOTH_HINT, GL_FASTEST);
-
-    // picking or rendering cycle
-    if (S52_GL_PICK == _crnt_GL_cycle) {
-        _cIdx.color.r = 0;
-        _cIdx.color.g = 0;
-        _cIdx.color.b = 0;
-        _cIdx.color.a = 0;
-
-        g_ptr_array_set_size(_objPick, 0);
-
-        // make sure that _cIdx.color are not messed up
-        //glDisable(GL_POINT_SMOOTH);
-
-        //glDisable(GL_LINE_SMOOTH);     // NOT in GLES2
-        //glDisable(GL_POLYGON_SMOOTH);  // NOT in "OpenGL ES SC"
-        glDisable(GL_BLEND);
-
-        // 2014OCT14 - optimisation no color ditherring
-        glDisable(GL_DITHER);          // NOT in "OpenGL ES SC"
-
-        //glDisable(GL_FOG);             // NOT in "OpenGL ES SC", NOT in GLES2
-        //glDisable(GL_LIGHTING);        // NOT in GLES2
-        //glDisable(GL_TEXTURE_1D);      // NOT in "OpenGL ES SC"
-        //glDisable(GL_TEXTURE_2D);      // fail on GLES2
-        //glDisable(GL_TEXTURE_3D);      // NOT in "OpenGL ES SC"
-        //glDisable(GL_ALPHA_TEST);      // NOT in GLES2
-
-        //glShadeModel(GL_FLAT);         // NOT in GLES2
-
-    }
-
-    //_checkError("S52_GL_begin() -2-");
-
-    //glPushAttrib(GL_ENABLE_BIT);          // NOT in OpenGL ES SC
-    //glDisable(GL_NORMALIZE);              // NOT in GLES2
-
-    glDisable(GL_DEPTH_TEST);
-    glDepthMask(GL_FALSE);
-
-
-#if !defined(S52_USE_GLSC1)
-    glDisable(GL_DITHER);                   // NOT in OpenGL ES SC
+    // draw to back buffer then swap
+    glDrawBuffer(GL_BACK);
 #endif
 
 #ifdef S52_USE_GL2
+    /*
+     Returned by GetGraphicsResetStatus:
+
+     GL_NO_ERROR               Indicates that the GL context has not been in a reset state since the last call.
+     GL_GUILTY_CONTEXT_RESET   Indicates that a reset has been detected that is attributable to the current GL context.
+     GL_INNOCENT_CONTEXT_RESET Indicates a reset has been detected that is not attributable to the current GL context.
+     GL_UNKNOWN_CONTEXT_RESET  Indicates a detected graphics reset whose cause is unknown.
+
+     Accepted by the <value> parameter of GetBooleanv, GetIntegerv, and GetFloatv:
+
+        CONTEXT_ROBUST_ACCESS                           0x90F3
+        RESET_NOTIFICATION_STRATEGY                     0x8256
+
+     Returned by GetIntegerv and related simple queries when <value> is RESET_NOTIFICATION_STRATEGY :
+
+        LOSE_CONTEXT_ON_RESET                           0x8252
+        NO_RESET_NOTIFICATION                           0x8261
+
+     Returned by GetError:
+
+        CONTEXT_LOST                                    0x0507
+
+    */
+
+    // FIXME: trigger reset to test this call
+    if (NULL!=_glGetGraphicsResetStatus && TRUE==_GL_EXT_robustness) {
+        GLenum ret = _glGetGraphicsResetStatus();
+        if (GL_NO_ERROR != ret) {
+            // FIXME: set S52_MAR_ERROR 
+            PRINTF("DEBUG: invalide GL context [0x%x].. need reset\n", ret);
+            _checkError("S52_GL_begin() - GL2 glGetGraphicsResetStatus");
+            g_assert(0);
+            return FALSE;
+        }
+        _checkError("S52_GL_begin() - GL2 glGetGraphicsResetStatus");
+    }
+
     // FrontFaceDirection
     //glFrontFace(GL_CW);
     glFrontFace(GL_CCW);  // default
@@ -5717,18 +5701,43 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     //glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
     //glDisable(GL_SAMPLE_COVERAGE);
 
-    _checkError("S52_GL_begin() - EnableCap");
+    glActiveTexture(GL_TEXTURE0);  // default
+    glUniform1i(_uSampler2d0, 0);  // default
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-#else  // S52_USE_GL2
-
-    glShadeModel(GL_FLAT);                       // NOT in GLES2
-    // draw both side
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);   // NOT in OpenGL ES SC
-    glEnableClientState(GL_VERTEX_ARRAY);        // NOT in GLES2
-
+    _checkError("S52_GL_begin() - GL2 EnableCap");
 #endif  // S52_USE_GL2
 
 
+    glEnable(GL_BLEND);
+
+    // GL_FUNC_ADD, GL_FUNC_SUBTRACT, or GL_FUNC_REVERSE_SUBTRACT
+    //glBlendEquation(GL_FUNC_ADD);
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // transparency
+    //glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    //glEnable(GL_MULTISAMPLE);
+    //glDisable(GL_MULTISAMPLE_EXT);    //glSampleCoverage(1,  GL_FALSE);
+
+    //glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
+    //glHint(GL_POINT_SMOOTH_HINT, GL_DONT_CARE);
+    //glHint(GL_POINT_SMOOTH_HINT, GL_FASTEST);
+
+    // depth OFF - not used
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+
+    //_checkError("S52_GL_begin() -2-");
+
+
+#if !defined(S52_USE_GLSC1)
+    glDisable(GL_DITHER);                   // NOT in OpenGL ES SC
+#endif
 
     // -------set matrix param ---------
     glViewport(_vp.x, _vp.y, _vp.w, _vp.h);
@@ -5739,45 +5748,49 @@ int        S52_GL_begin(S52_GL_cycle cycle)
         _doProjection(_vp, _centerLat, _centerLon, _rangeNM/60.0);
     }
 
-    // then create all PLib symbol
-    _createSymb();
-
-    // -------------------------------------------------------
-
-
-    _SCAMIN = _computeSCAMIN() * 10000.0;
-
-    if (_fb_pixels_size < (_vp.w * _vp.h * _fb_format) ) {
-        PRINTF("ERROR: pixels buffer overflow: fb_pixels_size=%i, VP=%i \n", _fb_pixels_size, (_vp.w * _vp.h * _fb_format));
-        // NOTE: since the assert() is removed in the release, draw last can
-        // still be called (but does notting) if _fb_pixels is NULL
-        g_free(_fb_pixels);
-        _fb_pixels = NULL;
-
-        g_assert(0);
-        return FALSE;
-    }
-
     _glMatrixSet(VP_PRJ);
 
-#ifdef S52_USE_GL2
-    glActiveTexture(GL_TEXTURE0);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-#else
-    // GL1 read in matrix from GPU
-    glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
-    glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
-    // draw to back buffer then swap
-    glDrawBuffer(GL_BACK);
-#endif
+    // then create all S52 PLib symbol
+    _createSymb();
 
 
-    glBindTexture(GL_TEXTURE_2D, 0);
 
+    // ----- set cycle GL state --------------------------------------------------
+    switch(_crnt_GL_cycle) {
 
-    //-- update background ------------------------------------------
-    if (S52_GL_DRAW == _crnt_GL_cycle) {
+    //-- picking ------------------------------------------------------------
+    case S52_GL_PICK: {
+        //if (S52_GL_PICK == _crnt_GL_cycle) {
+        _cIdx.color.r = 0;
+        _cIdx.color.g = 0;
+        _cIdx.color.b = 0;
+        _cIdx.color.a = 0;
+
+        g_ptr_array_set_size(_objPick, 0);
+
+        // make sure that _cIdx.color are not messed up
+        //glDisable(GL_POINT_SMOOTH);
+        //glDisable(GL_LINE_SMOOTH);     // NOT in GLES2
+        //glDisable(GL_POLYGON_SMOOTH);  // NOT in "OpenGL ES SC"
+        glDisable(GL_BLEND);
+
+        // 2014OCT14 - optimisation no color ditherring
+        glDisable(GL_DITHER);            // NOT in "OpenGL ES SC"
+
+        //glDisable(GL_FOG);             // NOT in "OpenGL ES SC", NOT in GLES2
+        //glDisable(GL_LIGHTING);        // NOT in GLES2
+        //glDisable(GL_TEXTURE_1D);      // NOT in "OpenGL ES SC"
+        //glDisable(GL_TEXTURE_2D);      // fail on GLES2
+        //glDisable(GL_TEXTURE_3D);      // NOT in "OpenGL ES SC"
+        //glDisable(GL_ALPHA_TEST);      // NOT in GLES2
+
+        //glShadeModel(GL_FLAT);         // NOT in GLES2
+    }
+    break;
+
+    //-- update background / layer 0-8 ------------------------------------------
+    case S52_GL_DRAW: {
+        //if (S52_GL_DRAW == _crnt_GL_cycle) {
         // CS DATCVR01: 2.2 - No data areas
         if (1.0 == S52_MP_get(S52_MAR_DISP_NODATA_LAYER)) {
             // fill display with 'NODTA' color
@@ -5792,31 +5805,40 @@ int        S52_GL_begin(S52_GL_cycle cycle)
             // fill display with black color in RADAR mode
             _renderAC_NODATA_layer0();
         }
-
-#else  // S52_USE_RADAR
-
-    } else {
-        if (S52_GL_LAST == _crnt_GL_cycle) {
-            // user can draw on top of base
-            // then call drawLast repeatdly
-            if (TRUE == _fb_update) {
-#ifdef S52_USE_GL2
-                S52_GL_readFBPixels();
-#else
-                glDrawBuffer(GL_FRONT); // GL1
-                S52_GL_readFBPixels();
-                glDrawBuffer(GL_BACK);  // GL1
-#endif
-                _fb_update = FALSE;
-            }
-
-            // load FB that was filled with the previous draw() call
-            S52_GL_drawFBPixels();
-        }
-
 #endif  // S52_USE_RADAR
     }
-    //---------------------------------------------------------------
+    break;
+
+    //-- update foreground / layer 9 / fast layer ------------------------------------------
+    case S52_GL_LAST: {
+        //if (S52_GL_LAST == _crnt_GL_cycle) {
+        // user can draw on top of base
+        // then call drawLast repeatdly
+        if (TRUE == _fb_update) {
+#ifdef S52_USE_GL2
+            S52_GL_readFBPixels();
+#else
+            glDrawBuffer(GL_FRONT); // GL1
+            S52_GL_readFBPixels();
+            glDrawBuffer(GL_BACK);  // GL1
+#endif
+            _fb_update = FALSE;
+        }
+
+        // load FB that was filled with the previous draw() call
+        S52_GL_drawFBPixels();
+    }
+    break;
+
+    case S52_GL_NONE:  // state between 2 cycles
+    case S52_GL_BLIT:  // bitblit cycle - blit FB of first pass
+    case S52_GL_INIT:  // state before first S52_GL_DRAW
+    default: {
+        PRINTF("DEBUG: invalide S52 GL cycle\n");
+        g_assert(0);
+        return FALSE;
+    }
+    }  // switch()
 
     _checkError("S52_GL_begin() - fini");
 
@@ -5826,21 +5848,17 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 int        S52_GL_end(S52_GL_cycle cycle)
 //
 {
-    CHECK_GL_BEGIN;
-
     if (cycle != _crnt_GL_cycle) {
         PRINTF("WARNING: S52_GL_mode out of sync\n");
         g_assert(0);
         return FALSE;
     }
-    _crnt_GL_cycle = cycle;
 
     // read once, top object
     if (S52_GL_PICK==_crnt_GL_cycle && 1.0==S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
 #ifdef S52_USE_GLSC2
         int bufSize = 1 * 1 * 4;
-        //_glReadnPixelsEXT(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
-        _glReadnPixelsKHR(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
+        _glReadnPixels(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, &_pixelsRead);
 #else
         glReadPixels(_vp.x, _vp.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &_pixelsRead);
 #endif
@@ -5899,10 +5917,6 @@ int        S52_GL_end(S52_GL_cycle cycle)
     //PRINTF("DEPARE = %i, TOTAL AC = %i\n", _depare, _nAC);
 #endif
 
-    _crnt_GL_cycle = S52_GL_NONE;
-
-    _GL_BEGIN = FALSE;
-
 #ifdef S52_USE_GL2
 #ifndef S52_USE_GLSC2
     //* test - try save glsl prog after drawing - FAIL on Intel
@@ -5917,6 +5931,8 @@ int        S52_GL_end(S52_GL_cycle cycle)
 #endif  // GL2
 
     _checkError("S52_GL_end() -fini-");
+
+    _crnt_GL_cycle = S52_GL_NONE;
 
     return TRUE;
 }
@@ -6049,8 +6065,15 @@ static int       _contextValid(void)
 #if S52_USE_GL1
     if (s <= 0)
         PRINTF("WARNING: no stencil buffer in cinfig for pattern on GL1\n");
+
+    GLboolean d = FALSE;
+    glGetBooleanv(GL_DOUBLEBUFFER, &d);
+    PRINTF("DEBUG: double buffer: %s\n", ((TRUE==d) ? "TRUE" : "FALSE"));
 #endif
 
+
+
+    // check EXT
     {
         const GLubyte *extensions = glGetString(GL_EXTENSIONS);
 #ifdef S52_DEBUG
@@ -6102,19 +6125,18 @@ static int       _contextValid(void)
             PRINTF("DEBUG: GL_OES_get_program_binary FAILED\n");
         }
 
-        // GL_EXT_texture_storage
-        if (NULL != g_strrstr((const char *)extensions, "_texture_storage ")) {
-            PRINTF("DEBUG: _texture_storage OK\n");
-        } else {
-            PRINTF("DEBUG: _texture_storage FAILED\n");
+
+        {   // GL_EXT_texture_storage
+            const char *str = g_strrstr((const char *)extensions, "GL_EXT_texture_storage ");
+            PRINTF("DEBUG: GL_EXT_texture_storage %s\n", (NULL==str)? "FAILED": "OK");
+        }
+
+        {   // GL_EXT_robustness - check for EXT/KHR/ARB
+            const char *str = g_strrstr((const char *)extensions, "robustness ");
+            PRINTF("DEBUG: GL_EXT/KHR/ARB_robustness %s\n", (NULL==str)? "FAILED": "OK");
+            _GL_EXT_robustness = (NULL== str)? FALSE : TRUE;
         }
     }
-
-#if !defined(S52_USE_GL2)
-    GLboolean d = FALSE;
-    glGetBooleanv(GL_DOUBLEBUFFER, &d);
-    PRINTF("DEBUG: double buffer: %s\n", ((TRUE==d) ? "TRUE" : "FALSE"));
-#endif
 
     _checkError("_contextValid()");
 
@@ -6634,8 +6656,7 @@ guchar    *S52_GL_readFBPixels(void)
 
 #ifdef S52_USE_GLSC2
     int bufSize =  _vp.w * _vp.h * 4;
-    //_glReadnPixelsEXT(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
-    _glReadnPixelsKHR(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
+    _glReadnPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
 
     _checkError("S52_GL_readFBPixels().. -0-");
 
@@ -6685,10 +6706,6 @@ int        S52_GL_drawFBPixels(void)
         return FALSE;
     }
 
-    // set rotation temporatly to 0.0  (MatrixSet)
-    double north = _north;
-    _north = 0.0;
-
     // debug
     //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
 
@@ -6725,6 +6742,10 @@ int        S52_GL_drawFBPixels(void)
 
 #else   // S52_USE_GL2
 
+    // set rotation temporatly to 0.0  (MatrixSet)
+    double northtmp = _north;
+    _north = 0.0;
+
     _glMatrixSet(VP_WIN);
     glRasterPos2i(0, 0);
 
@@ -6736,11 +6757,12 @@ int        S52_GL_drawFBPixels(void)
 
     _glMatrixDel(VP_WIN);
 
+    _north = northtmp;
+
+
 #endif  // S52_USE_GL2
 
     glBindTexture(GL_TEXTURE_2D, 0);
-
-    _north = north;
 
     _checkError("S52_GL_drawFBPixels() -fini-");
 
@@ -6753,14 +6775,14 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
         return FALSE;
     }
 
-    // set rotation temporatly to 0.0  (MatrixSet)
-    double northtmp = _north;
-
-    _north = north;
+    // FIXME: clear screen
+    //_renderAC_NODATA_layer0(void);
 
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
 #ifdef S52_USE_GL2
+    (void) north;
+
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
 
@@ -6789,14 +6811,19 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     glDisableVertexAttribArray(_aPosition);
 
 #else
+    // set rotation temporatly to 0.0  (MatrixSet)
+    //double northtmp = _north;
+    //_north = north;
+
     (void)scale_x;
     (void)scale_y;
     (void)scale_z;
+
+    //_north = northtmp;
+
 #endif
 
     glBindTexture(GL_TEXTURE_2D, 0);
-
-    _north = northtmp;
 
     _checkError("S52_GL_drawBlit()");
 
@@ -6898,8 +6925,7 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     //glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 #ifdef S52_USE_GLSC2
     int bufSize =  _vp.w * _vp.h * 4;
-    //_glReadnPixelsEXT(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
-    _glReadnPixelsKHR(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
+    _glReadnPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
 #else
     glReadPixels(_vp.x, _vp.y,  _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
 #endif  // S52_USE_GLSC2
@@ -6964,8 +6990,6 @@ int        S52_GL_drawStr(double pixels_x, double pixels_y, const char *colorNam
 
     S52_Color *c = S52_PL_getColor(colorName);
 
-    _GL_BEGIN = TRUE;
-
 #ifdef S52_USE_GL2
     S52_GL_win2prj(&pixels_x, &pixels_y);
 
@@ -6985,8 +7009,6 @@ int        S52_GL_drawStr(double pixels_x, double pixels_y, const char *colorNam
 #endif
 
 #endif // S52_USE_GL2
-
-    _GL_BEGIN = FALSE;
 
     return TRUE;
 }
