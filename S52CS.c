@@ -1130,12 +1130,14 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
         //if (UNKNOWN==least_depth || least_depth<drval1)
         //    least_depth = drval1;
 
+#ifdef S52_DEBUG
         // debug - check impact of this bug
         if (least_depth < drval1) {
-            PRINTF("DEBUG: chenzunfeng found this bug: 'least_depth<drval1' should be '>='\n");
+            PRINTF("DEBUG: chenzunfeng found this bug: 'least_depth<drval1' (should be '>='), %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
+            S57_highlightON(geo);
             g_assert(0);
         }
-
+#endif
 
         //* litteraly psbl03_2.pdf say:
         if (UNKNOWN == least_depth) {
@@ -1858,13 +1860,20 @@ static GString *OBSTRN04 (S57_geo *geo)
 
         //if (UNKNOWN != least_depth) {
         if (UNKNOWN == least_depth) {
-            static int silent = FALSE;
-            if (FALSE == silent) {
-                PRINTF("DEBUG: chenzunfeng found this should be (UNKNOWN == least_depth)[not !=]\n");
-                //g_assert(0);
-                silent = TRUE;
-            }
+#ifdef S52_DEBUG
+            {  // debug - check impact of this bug
+                static int silent = FALSE;
+                if (FALSE == silent) {
+                    PRINTF("DEBUG: chenzunfeng found this should be (UNKNOWN == least_depth)[not !=], %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
 
+                    //silent = TRUE;
+                    //PRINTF("       (this msg will not repeat)\n");
+
+                    //g_assert(0);
+                }
+                S57_highlightON(geo);
+            }
+#endif
             GString *catobsstr = S57_getAttVal(geo, "CATOBS");
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
 
@@ -1985,10 +1994,17 @@ static GString *OBSTRN04 (S57_geo *geo)
                             case '2': g_string_append(obstrn04str, ";SY(OBSTRN11)"); break;
                             case '3': g_string_append(obstrn04str, ";SY(OBSTRN01)"); break;
                             case '4':
+                            //case '5': g_string_append(obstrn04str, ";SY(OBSTRN01)");
                             case '5': g_string_append(obstrn04str, ";SY(OBSTRN03)");
-                                      PRINTF("DEBUG: chenzunfeng found this should be SY(OBSTRN03)[not 01]\n");
-                                      //g_assert(0);  // CA479020.000 pass here
-                                      break;
+#ifdef S52_DEBUG
+                            {   // debug - check impact of this bug
+                                // this change the color from blue to green
+                                PRINTF("DEBUG: chenzunfeng found this should be SY(OBSTRN03)[not 01], %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
+                                S57_highlightON(geo);
+                                //g_assert(0);  // CA479020.000 pass here
+                            }
+#endif
+                                break;
                             default : g_string_append(obstrn04str, ";SY(OBSTRN01)"); break;
                         }
                     }
@@ -2025,11 +2041,22 @@ static GString *OBSTRN04 (S57_geo *geo)
                     else
                         g_string_append(obstrn04str, ";LC(LOWACC31)");
                 }
-                PRINTF("DEBUG: chenzunfeng found this bug: should skip 'udwhaz03' & 'valsou'\n");
+#ifdef S52_DEBUG
+                {   // debug - check impact of this bug
+                    PRINTF("DEBUG: chenzunfeng found this bug: should skip 'udwhaz03' & 'valsou', %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
+                    S57_highlightON(geo);
+                }
+#endif
             } else {
                 if (NULL != udwhaz03str) {
                     g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
-                    PRINTF("DEBUG: chenzunfeng found this bug: should skip 'valsou'\n");
+
+#ifdef S52_DEBUG
+                    {   // debug - check impact of this bug
+                        PRINTF("DEBUG: chenzunfeng found this bug: should skip 'valsou', %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
+                        S57_highlightON(geo);
+                    }
+#endif
                } else {
                     if (UNKNOWN != valsou) {
                         if (valsou <= 20.0)
@@ -2089,8 +2116,14 @@ static GString *OBSTRN04 (S57_geo *geo)
                 else {
                     //g_string_append(obstrn04str, ";LS(DASH,2,CHBLK)");
                     g_string_append(obstrn04str, ";LS(DASH,2,CHGRD)");
-                    PRINTF("DEBUG: chenzunfeng found this bug LS(DASH,2,CHGRD)[not CHBLK]\n");
-                    g_assert(0);
+
+#ifdef S52_DEBUG
+                    {   // debug - check impact of this bug
+                        PRINTF("DEBUG: chenzunfeng found this bug LS(DASH,2,CHGRD)[not CHBLK], %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
+                        S57_highlightON(geo);
+                        g_assert(0);
+                    }
+#endif
                 }
 
                 if (NULL != sndfrm02str)
