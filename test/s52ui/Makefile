@@ -6,16 +6,21 @@
 
 all:build/web/s52ui.dart.js
 
-DARTSDKPATH = /home/sduclos/dev/prog/dart/dart/dart-sdk/bin
+#DARTSDKPATH = /home/sduclos/dev/prog/dart/dart/dart-sdk/bin
+DARTSDKPATH = /usr/lib/dart/bin
 
 # in DARTSDKPATH/dart2js script:  --heap_growth_rate=512
 # also add --no_use_inlining to save 1 sec of compilation time
 # --disable-native-live-type-analysis - Disable the optimization that removes unused native types from dart:html
-# --checked 
+# --checked
+
+# update dependency - fix the msg: "Could not find a file named"pubspec.yaml"in .../.pub-cache/..."
+dep:
+	$(DARTSDKPATH)/pub -v get
 
 # need (re)build if html change to (re)populate build/web/
 build/web/s52ui.dart.js: web/s52.dart web/s52ui.dart web/s52ui.css web/s52ui.html web/s52ui.js
-	$(DARTSDKPATH)/pub -v build
+	$(DARTSDKPATH)/pub -v build --mode=debug web
 
 clean:
 	rm -rf build/web/*
