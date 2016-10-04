@@ -147,7 +147,8 @@ static int      _s52_setupMarPar(void)
     //S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters) [0.0 - off]
     //S52_MAR_GUARDZONE_LENGTH    = 47,   // Danger/Indication Highlight used by Position (meters, user computed from speed/time or distance)
     //S52_MAR_GUARDZONE_ALARM     = 48,   // FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
-                                        // -1 - display highlight
+                                          // -1 - display highlight
+    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, -1.0);  // debug - alarm
 
     //S52_MAR_DISP_HODATA         = 49,   // 0 - union HO data limit "m_covr"(default), 1 - all HO data limit (M_COVR+m_covr)
 
