@@ -4,8 +4,16 @@
 #
 
 
+2016OCT04
+    -clean up test/s52ui/web/js/tinyjet
+    -clean up GL cycling code
+
+2016SEP20
+    -mod refactor S52_GL_begin()
+    -add GLES2/EGL robustness EXT
+
 2016SEP07
-    -add proper call for GLSC2 code path - test if driver capable
+    -add proper call for GLSC2 code path - need testing if/when driver capable
 
 2016SEP03
     -add GLSL load/save bin prog
@@ -35,7 +43,7 @@
     -fix comparison bug at same line as above
 
 2016JUL02
-    -fix bug repported by chenzunfeng in CS OBSTRN04 cont. B, 'quapos' / 'udwhaz03' / 'valsou' 
+    -fix bug repported by chenzunfeng in CS OBSTRN04 cont. B, 'quapos' / 'udwhaz03' / 'valsou'
      should be mutually exclusive
 
 2016JUN29
@@ -46,7 +54,7 @@
 2016JUN25
     -fix bug repported by chenzunfeng in CS _DEPVAL01
     -mod rename _setFragment to _setFragAtt
-    
+
 2016MAY26
     -mod rename _glColor4ub to _setFragment
     -mod _setFragment call _glColor4ub
@@ -77,7 +85,7 @@
 
 2016MAR26
     -mod S57_getExt() return FALSE if extent not set ($CSYMB, ..)
-    -add system generated CS DATCVR01-2 - HO Data Limit, 
+    -add system generated CS DATCVR01-2 - HO Data Limit,
     -mod call to _newMarObj() ok if xyz=NULL
     -add system generated CS DATCVR01-3 - SCALE BOUNDARIES (sclbdy)
 
