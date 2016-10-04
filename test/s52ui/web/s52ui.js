@@ -181,7 +181,6 @@ var _rootComponent;
 function _main() {
 
     this.document.title = "s52ui/tinyjet";
-
     _rootComponent = new Main(window);
     _rootComponent.beMainWindowComponent();
 };
