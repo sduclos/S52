@@ -38,25 +38,19 @@ Main.prototype.footer = function(html)
     html.a({href:"http://www.w3schools.com"}, "This is a link");
 
     html.div({id:"content"},
-             html.section({id:"left"},
+             html.section({id:"bullets"},
                           html.ul({},
                                   html.li("LCoffee"),
                                   html.li("LTea"),
-                                  html.li("LMilk")
-                                 )
-                         ),
-             html.section({id:"rigth"},
-                          html.ul({},
-                                  html.li("RCoffee"),
-                                  html.li("RTea"),
-                                  html.li("RMilk")
+                                  html.li("LMilk"),
+                                  html.ul({},
+                                          html.li("RCoffee"),
+                                          html.li("RTea"),
+                                          html.li("RMilk")
+                                         )
                                  )
                          )
              );
-
-
-    html.a({href:"http://www.w3schools.com"}, "This is a link");
-
 
     // table
     html.div({id:"tableContainer", class:"tableContainer"},
@@ -111,23 +105,22 @@ Main.prototype.footer = function(html)
 }
 
 
-//html.p({bind:"XXXdesc1", title:"Free The Web"}, "Press the button");
-//html.button({type    : "button"},
-//            "OK"
-//           );
+Main.prototype.render = function(JET) {
+    var svg  = JET.SVG();
+    var html = JET.HTML();
 
-
-//Main.prototype.renderSVG = function(html) {
-Main.prototype.render = function(html) {
-    var SVG = html.SVG();
+    //html.p({bind:"XXXdesc1", title:"Free The Web"}, "Press the button");
+    //html.button({type    : "button"},
+    //            "OK"
+    //           );
 
     // animate work with xulrunner 2.0, html5 (Chrome)
-    SVG.svg({width: '120px', height: '120px', version: "1.1"},
-             SVG.circle({r: 50, cx: 60, cy: 60, style: 'stroke: red; fill: none; stroke-width: 20'},
-                         SVG.animate({attributeName:'cx', to:200, dur:'10s'})
+    svg.svg({width: '120px', height: '120px', version: "1.1"},
+             svg.circle({r: 50, cx: 60, cy: 60, style: 'stroke: red; fill: none; stroke-width: 20'},
+                         svg.animate({attributeName:'cx', to:200, dur:'10s'})
                        ),
              //onmouseover: onOver, onmouseout: onOut }),
-             SVG.line  ({x1: 33, y1: 93, x2: 93, y2: 23, style: 'stroke: red; stroke-width: 20'})
+             svg.line  ({x1: 33, y1: 93, x2: 93, y2: 23, style: 'stroke: red; stroke-width: 20'})
              //onmouseover: onOver, onmouseout: onOut })
            );
 
@@ -136,7 +129,7 @@ Main.prototype.render = function(html) {
     html.textarea({id:'output', rows:10, cols:40});
     
     
-    html.insert(this.footer);
+    JET.insert(this.footer);
 }
 
 
@@ -149,10 +142,7 @@ var _rootComponent;
 
 function _main() {
 
-    // both work so what the use for '_setTitle()' !
-    //window._setTitle("htmljetZZZ");
-    this.document.title = "htmljetXXX";
-
+    this.document.title = "test-tinyjet";
     _rootComponent = new Main(window);
     _rootComponent.beMainWindowComponent();
 

@@ -3,65 +3,35 @@
 // SD 2012
 
 
-// constants with URIs of XML namespaces
 var exports = {};
 
+// constants with URIs of XML namespaces
 exports.HTML_NS = 'http://www.w3.org/1999/xhtml';
 exports.SVG__NS = 'http://www.w3.org/2000/svg';
 
-//exports.dumpMessage = function(aString)
-function _dumpMessage(aString) {
+exports.dumpMessage = function(aString) {
     console.log('tinyjet.js: dumpMessage(): ' + aString);
 }
 
 exports.inspect     = function(obj) {
-  _dumpMessage("-----------");
+  exports.dumpMessage("-----------");
   for (prop in obj)
-      _dumpMessage(prop + ": " + obj[prop]);
-  _dumpMessage("-----------");
+      exports.dumpMessage(prop + ": " + obj[prop]);
+  exports.dumpMessage("-----------");
 }
 
 exports.dumpElement = function(element) {
     var serializer = new XMLSerializer();
     var xml = serializer.serializeToString(element);
-    _dumpMessage(xml);
-}
-
-function _bindJs(fn, selfObj, var_args)
-{
-    var context = selfObj || window;
-
-    if (arguments.length > 2) {
-        var boundArgs = Array.prototype.slice.call(arguments, 2);
-        return function() {
-            // Prepend the bound arguments to the current arguments.
-            var newArgs = Array.prototype.slice.call(arguments);
-            Array.prototype.unshift.apply(newArgs, boundArgs);
-            return fn.apply(context, newArgs);
-        }
-    }
-    else {
-        return function() {
-            return fn.apply(context, arguments);
-        }
-    }
-}
-
-/** @type {!Function} */
-function _bindNative(fn, selfObj, var_args)
-{
-    return fn.call.apply(fn.bind, arguments);
+    exports.dumpMessage(xml);
 }
 
 exports.bind        = function(fn, selfObj, var_args) {
-    if (Function.prototype.bind && Function.prototype.bind.toString().indexOf('native code') != -1) {
-        exports.bind = _bindNative;
-    } else {
-        exports.bind = _bindJs;
-    }
-
-    //_dumpMessage('exports.bind:' + arguments);
     //exports.inspect(arguments);
+
+    exports.bind = function() {
+        return fn.call.apply(fn.bind, arguments);
+    }
 
     return exports.bind.apply(null, arguments);
 }
@@ -122,33 +92,6 @@ exports.id          = function() {
 }
 exports.id.lastUID  = 0;
 
-/* not used
-exports.getProperty = function(receiver, propertyNameOrClosure) {
-    if (!propertyNameOrClosure)
-        return object;
-
-    _dumpMessage(propertyNameOrClosure);
-    exports.inspect(propertyNameOrClosure);
-
-    if (typeof propertyNameOrClosure == 'function')
-        return propertyNameOrClosure(receiver);
-
-    var obj      = receiver;
-    var splitted = propertyNameOrClosure.split('.');
-    splitted.forEach(function (each) {
-                         obj = obj[each];
-                     });
-
-    return obj;
-}
-
-exports.selectedListItem = function(listboxElement) {
-    var collection = listboxElement.attachedObjects['attachedObject'];
-    var index      = listboxElement.selectedItem.getAttribute('htmljet:value');
-
-    return collection[parseInt(index, 10)];
-}
-*/
 
 ////////////////////////////////////////////////////////////////////////
 //
@@ -202,6 +145,7 @@ exports.AbstractCanvas.prototype.SVG         = function() {
     return new exports.SVGCanvas(this, this.component);
 }
 
+/*
 exports.AbstractCanvas.prototype.insertNodes = function(nodes) {
     nodes.isElementsCollection = true;
     nodes.forEach(function(each) {
@@ -211,6 +155,7 @@ exports.AbstractCanvas.prototype.insertNodes = function(nodes) {
 
     return nodes;
 }
+*/
 
 exports.AbstractCanvas.prototype.insert      = function(aClosure, arg) {
     var embeddedCanvas = new this.constructor(null, this.component);
@@ -227,15 +172,17 @@ exports.AbstractCanvas.prototype.insert      = function(aClosure, arg) {
     return roots;
 }
 
+/*
 exports.AbstractCanvas.prototype.collect     = function(aCollection, aClosure) {
     var boundClosure = exports.bind(aClosure, this.component);
 
     return this.insert(function(_html) {
                            aCollection.forEach(function(item, index) {
-													boundClosure(_html, item, index);
+                                                   boundClosure(_html, item, index);
                                                });
                        });
 }
+*/
 
 exports.AbstractCanvas.prototype.sectionBeg  = function(id) {
     var result = this.p({hidden: true, id: '__beg_'+id });
@@ -376,36 +323,10 @@ exports.Component.prototype.ID            = function(aString) {
     return result;
 }
 
-exports.Component.prototype.$C            = function(aClosure) {
-    var boundClosure = exports.bind(aClosure, this);
-    var closureId    = window._ClosureRegistry.add(boundClosure);
-    this.registeredClosures.push(closureId);
-
-    return
-        'if (typeof event == \'undefined\')                                           \
-            (window._ClosureRegistry.registry["'+closureId+'"])(this, undefined);     \
-        else                                                                          \
-            (window._ClosureRegistry.registry["'+closureId+'"])(this, event)';
-}
-
-exports.Component.prototype.$             = function(element) {
-    if (arguments.length > 1) {
-        for (var i = 0, elements = [], length = arguments.length; i < length; i++)
-            elements.push(this.$(arguments[i]));
-
-        return elements;
-    }
-
-    if (typeof element == 'string')
-        element = this.window.document.getElementById(element);
-
-    return element;
-}
-
-// main hook to render stuff
+// main hook to render stuff -
 exports.Component.prototype.render        = function(){}
 
-// this is a hook to add stuff after render() (I think!)
+// this is a hook to add stuff (from other file) after render() (I think!)
 exports.Component.prototype.finishRendering = function(){}
 exports.Component.prototype.finishRenderingWithChildren = function() {
   this.finishRendering();
@@ -435,32 +356,6 @@ exports.Component.prototype.refresh       = function() {
     this.finishRenderingWithChildren();
 }
 
-exports.Component.prototype.replace       = function(oldComponent) {
-    var roots = this.rendered();
-    oldComponent.clearClosures();
-    _replaceComponentInDocument(this.window.document, oldComponent.id, roots);
-
-    this.finishRenderingWithChildren();
-}
-
-exports.Component.prototype.remove        = function() {
-    this.clearClosures();
-    _replaceComponentInDocument(this.uid, []);
-}
-
-exports.Component.prototype.refreshSection = function(id, aClosure ) {
-    var boundClosure = exports.bind(aClosure, this);
-    var html         = new exports.HTMLCanvas(null, this);
-
-    html.sectionBeg(id);
-    boundClosure(html);
-    html.sectionEnd(id);
-
-    var roots = html.roots();
-    roots.isElementsCollection = true;
-    _replaceComponentInDocument(this.window.document, id, roots);
-}
-
 exports.Component.prototype.beMainWindowComponent = function() {
     this.uid = 'mainWindowComponent';
     this.refresh();
@@ -478,30 +373,14 @@ exports.Window = function() {}
 //    return this.document.getElementsByTagName('window')[0];
 //}
 
-/* not used
-exports.Window = function(component, title) {
-    this.onWindowOpened = function(newWin) {
-        exports.extend(newWin, exports.Window.prototype);
-
-        newWin._ClosureRegistry = window._ClosureRegistry;
-
-        //newWin._setTitle(title);
-        component.setWindow(newWin);
-
-        var roots = component.rendered();
-        _replaceComponentInDocument(newWin.document, 'windowComponent', roots);
-        component.finishRenderingWithChildren();
-    }
-}
-//*/
-
 
 //////////////////////////////////////////////////////////////////////
 //
 // Generate renderer classes
 //
 
-exports.isAttributes     = function(attrs) {
+//exports.isAttributes     = function(attrs) {
+function _isAttributes(attrs) {
     return (typeof attrs == 'object')
         && !(attrs instanceof HTMLElement)
         && !(attrs instanceof SVGElement)
@@ -510,74 +389,12 @@ exports.isAttributes     = function(attrs) {
         && !(attrs.isElementsCollection);
 }
 
-exports.isElement        = function(anObject) {
+//exports.isElement        = function(anObject) {
+function _isElement(anObject) {
     return anObject instanceof Element
         || anObject instanceof Text
         || anObject instanceof HTMLElement
         || anObject instanceof SVGElement
-}
-
-exports.processAttribute = function(aNode, key, value, aCanvas) {
-    /*
-    if (key == 'returncommand')   {
-        key = 'onkeypress';
-        var oldValue = value;
-        value = function(element, event) {
-            if (event.keyCode == KeyEvent.DOM_VK_RETURN)
-                this.$(oldValue).doCommand()
-        }
-    }
-
-    if (key == 'link') {
-        var currentValue;
-
-        var splitted = value[1].split('.');
-        var currentValue = value[0];
-        splitted.forEach(function (each) {
-                             currentValue = currentValue[each];
-                         });
-
-        var safeCurrentValue = (currentValue == undefined || currentValue == null) ? '' : currentValue;
-
-        aNode.setAttribute('htmljet:name', value[1]);
-        switch (aNode.tagName) {
-        	case 'textbox'    : aNode.setAttribute('value',   safeCurrentValue); break;
-        	case 'checkbox'   : aNode.setAttribute('checked', currentValue);     break;
-        	case 'colorpicker': aNode.setAttribute('color',   currentValue);     break;
-        	default: aNode.setAttribute('value', currentValue);
-        }
-
-        aNode.setFormReceiver(value);
-
-        return;
-    }
-
-    //if ((key == 'bind') || (key == 'id' && aCanvas.automaticProperties)) {
-    //if ((key == 'bind') || (key == 'id')) {
-    if (key == 'bind') {
-        aNode.bindProperty(aCanvas.component, value);
-        aCanvas.component[value] = aNode;
-    }
-    */
-
-    var val = value;
-    if (typeof val == 'function')
-        val = aCanvas.component.$C(val);
-
-    aNode.setAttribute(key, val);
-}
-
-function _attachObject(tag, propertyName, object)
-{
-    if (!tag.getAttribute('tinyjet:attachedObjects'))
-         tag.setAttribute('tinyjet:attachedObjects', exports.id());
-
-    if (!tag.attachedObjects)
-         tag.attachedObjects = {};
-
-    tag.attachedObjects[propertyName] = object;
-
-    return tag;
 }
 
 function _collectAttachedObjects(node, objects)
@@ -618,7 +435,8 @@ function _setAttachedObjects(node, objects)
     }
 }
 
-function _replaceComponentInDocument(aDocument, id, newNodes) {
+function _replaceComponentInDocument(aDocument, id, newNodes)
+{
     var begNode = aDocument.getElementById('__beg_' + id);
     var endNode = aDocument.getElementById('__end_' + id);
 
@@ -639,27 +457,15 @@ function _replaceComponentInDocument(aDocument, id, newNodes) {
     endNode.parentNode.removeChild(endNode);
 }
 
-/* SD - not used
-//var replaceBodyInDocument = function(aDocument, newNodes) {
-function _replaceBodyInDocument(aDocument, newNodes)
-{
-    newNodes.forEach(function(node) {
-                         var clonedNode  = node.cloneNode(true);
-                         var attachments = _collectAttachedObjects(node);
-                         _setAttachedObjects(clonedNode, attachments);
-                         aDocument.body.appendChild(clonedNode);
-                     });
-}
-*/
-
 exports.makeTagHelper  = function(namespace, prefix, tagName) {
     return function(attrs) {
         var node = document.createElementNS(namespace, prefix + tagName);
 
-        var firstArgIsAttributes = exports.isAttributes(attrs);
+        //var firstArgIsAttributes = exports.isAttributes(attrs);
+        var firstArgIsAttributes = _isAttributes(attrs);
         if (firstArgIsAttributes) {
             for (var key in attrs) {
-                exports.processAttribute(node, key, attrs[key], this);
+                node.setAttribute(key, attrs[key]);
             }
         }
 
@@ -670,7 +476,8 @@ exports.makeTagHelper  = function(namespace, prefix, tagName) {
             if (typeof arg == 'string' || arg == undefined)
                 arg = document.createTextNode(arg || '');
 
-            if (exports.isElement(arg))
+            //if (exports.isElement(arg))
+            if (_isElement(arg))
                 arg.parent = node;
 
             if (arg.isElementsCollection) {
@@ -697,52 +504,10 @@ exports.makeTagHelpers = function(canvasClass, namespace, prefix) {
 }
 
 exports.makeTagHelpers(exports.HTMLCanvas, exports.HTML_NS, 'html:');
-exports.makeTagHelpers(exports.SVGCanvas,  exports.SVG__NS, 'svg:');
+exports.makeTagHelpers(exports.SVGCanvas,  exports.SVG__NS, 'svg:' );
 
-exports.extend(
-               Element.prototype,
-               {
-               on: function(obj, property) {
-                       var currentValue = obj;
-
-
-                       //var splitted = property.split('.');
-                       //splitted.forEach(
-                       //                 function (each) {
-                       //                     currentValue = currentValue[each];
-                       //                 });
-
-
-                       this.setAttribute('tinyjet:name', property);
-
-                       //switch (this.tagName) {
-                       //case 'checkbox'   : this.setAttribute('checked', currentValue); break;
-                       //case 'colorpicker': this.setAttribute('color',   currentValue); break;
-                       //default: this.setAttribute('value', currentValue)
-                       //}
-                       this.setAttribute('value', currentValue)
-
-                       this.setFormReceiver([obj, property]);
-
-                       return this;
-                   },
-
-               attach: function(obj, propertyName) {
-                       var property = propertyName ? propertyName : 'attachedObject';
-                       return _attachObject(this, property, obj);
-                   },
-
-               bindProperty: function(obj, propertyName) {
-                       return _attachObject(this, 'propertyBinding', {object: obj, property: propertyName});
-                   },
-
-               setFormReceiver: function(obj) {
-                       return _attachObject(this, 'formReceiver', obj);
-                   }
-               }
-              );
-
-function _onMainWindowOpened(loadEvt) {
+function _onMainWindowOpened(loadEvt)
+{
     exports.extend(window, exports.Window.prototype);
     exports.Window.main = window;
 
