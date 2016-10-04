@@ -35,7 +35,7 @@ all: s52gtk2        # OGR & GTK2 & GL 1.5 (VBO)
 
 SHELL = /bin/sh
 
-.PHONY: test/* clean distclean LIBS52VERS
+.PHONY: test/* clean distclean
 
 
 DBG0   = -O0 -g
