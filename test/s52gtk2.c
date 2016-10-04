@@ -1203,17 +1203,6 @@ static int      _s52_draw_cb    (gpointer user_data)
 
 int main(int argc, char **argv)
 {
-    //GThreadFunctions vtable;
-    // export G_SLICE=always-malloc
-    // export G_DEBUG=gc-friendly
-    //g_mem_set_vtable(glib_mem_profiler_table);
-    //g_mem_profile();
-    //g_atexit(g_mem_profile);
-    //return 1;
-
-    //g_thread_init(&vtable);
-    //g_thread_init(NULL);
-
     g_print("s52gtk2:main(): starting (argc:%i, argv[0]:%s\n", argc, argv[0]);
 
     gtk_init(&argc, &argv);
@@ -1222,7 +1211,7 @@ int main(int argc, char **argv)
 
     _option(argc, argv);
 
-    gtk_set_locale();
+    //gtk_set_locale();
 
     // debug - GLib ptr array size of gint
     //GPtrArray *_ptrA = g_ptr_array_new();
