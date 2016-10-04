@@ -3,6 +3,9 @@
 // SD 2016APR28
 
 
+//#include <EGL/egl.h>
+//#include <EGL/eglext.h>
+
 typedef void (*PFNGLINSERTEVENTMARKEREXT)(int length, const char *marker);
 //typedef void (GL_APIENTRY *PFNGLPUSHGROUPMARKEREXT)  (GLsizei length, const char *marker);
 //typedef void (GL_APIENTRY *PFNGLPOPGROUPMARKEREXT)   (void);
@@ -18,6 +21,7 @@ static PFNGLINSERTEVENTMARKEREXT _glInsertEventMarkerEXT = NULL;
 //static PFNEGLGETSYSTEMTIMENVPROC          _eglGetSystemTimeNV          = NULL;
 //#endif
 
+static int _EGL_EXT_create_context_robustness = FALSE;
 
 #ifdef S52_USE_ANDROID
 static void     _egl_doneSurface(s52engine *engine)
@@ -100,6 +104,8 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
 
     //*
     // this prevent EGL_BAD_ACCESS on Adreno/Tegra - eglMakeCurrent:671 error 3002 (EGL_BAD_ACCESS)
+    // also for robustness EGL_EXT_create_context_robustness (ie lose context on fault)
+    // EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_EXT, EGL_LOSE_CONTEXT_ON_RESET,  // 0x31BF
     if (EGL_NO_CONTEXT == eglGetCurrentContext()) {
         LOGI("_egl_beg(): EGL_NO_CONTEXT .. exit FALSE\n");
         return FALSE;
@@ -115,14 +121,20 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
             LOGE("_egl_beg(): eglMakeCurrent() failed. [0x%x]\n", eglGetError());
             return FALSE;
         }
+    } else {
+        //LOGI("_egl_beg(): DEBUG engine->eglContext OK\n");
+
     }
     //*/
-    /*
-    } else {
-        LOGI("_egl_beg(): NO engine->eglContext ..\n");
-        return FALSE;
+
+    /* debug - this code fail to trigger context reset
+    // also 'suspend' or 'lock' fail to lose context
+    if (NULL!=tag && 'L'==tag[0]) {
+        LOGI("DEBUG: test to trigger CONTEXT RESET\n");
+        eglDestroyContext(engine->eglDisplay, engine->eglContext);
+        engine->eglContext = EGL_NO_CONTEXT;
     }
-    */
+    //*/
 
     /* Mesa3D 10.1 generate a glError() in _checkError(): from S52_GL_begin() -0-: 0x502 (GL_INVALID_OPERATION)
     // Note: egltrace.so (apitrace) handle it
@@ -135,8 +147,16 @@ static int      _egl_beg        (s52engine *engine, const char *tag)
     return TRUE;
 }
 
-static int      _egl_end        (s52engine *engine)
+static int      _egl_end        (s52engine *engine, const char *tag)
 {
+    (void)engine;
+    (void)tag;
+
+    // debug - context reset
+    //if (NULL!=tag && 'D'==tag[0]) {
+    //    LOGE("_egl_end(): FIXME: RESET CONTEXT [0x%x]\n", eglGetError());
+    //}
+
     if (EGL_FALSE == eglWaitGL()) {
         //LOGE("_egl_end(): eglWaitGL() failed - NO SWAP [0x%x]\n", eglGetError());
         return FALSE;
@@ -234,13 +254,29 @@ static int      _egl_init       (s52engine *engine)
     LOGI("EGL Client API:%s\n", eglQueryString(eglDisplay, EGL_CLIENT_APIS));
     LOGI("EGL Version   :%s\n", eglQueryString(eglDisplay, EGL_VERSION));
     LOGI("EGL Vendor    :%s\n", eglQueryString(eglDisplay, EGL_VENDOR));
-    LOGI("EGL Extensions:%s\n", eglQueryString(eglDisplay, EGL_EXTENSIONS));
 
+    const char *extensions = eglQueryString(eglDisplay, EGL_EXTENSIONS);
+    LOGI("EGL Extensions:%s\n", extensions);
+
+    // EGL_EXT_create_context_robustness
+    if (NULL != g_strrstr(extensions, "EGL_EXT_create_context_robustness")) {
+        LOGI("DEBUG: EGL_EXT_create_context_robustness OK\n");
+        _EGL_EXT_create_context_robustness = TRUE;
+    } else {
+        LOGI("DEBUG: EGL_EXT_create_context_robustness FAILED\n");
+        _EGL_EXT_create_context_robustness = FALSE;
+    }
 
     // --- set eglConfig ------------------------------------------------
     // Here specify the attributes of the desired configuration.
     // Below, we select an EGLConfig with at least 8 bits per color
     // component compatible with on-screen windows
+
+
+    // FIXME: if EGL_EXT_create_context_robustness available then
+    //           EGL_CONTEXT_OPENGL_ROBUST_ACCESS_EXT set to EGL_TRUE
+    //           EGL_CONTEXT_RESET_NOTIFICATION_STRATEGY_EXT set to <reset notification behavior>
+
 #ifdef S52_USE_ANDROID
 #ifdef S52_USE_TEGRA2
     const EGLint eglConfigList[] = {
@@ -428,7 +464,6 @@ static int      _egl_init       (s52engine *engine)
         XFlush(display);
 
         eglWindow = (EGLNativeWindowType) window;
-
     }
 #endif  // S52_USE_ANDROID
 
@@ -438,7 +473,6 @@ static int      _egl_init       (s52engine *engine)
     }
 
     // --- get eglSurface ------------------------------------------------
-    //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, GDK_WINDOW_XID(gtk_widget_get_window(engine->window)), NULL);
     eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, eglWindow, NULL);
     //eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig[5], eglWindow, NULL);
     if (EGL_NO_SURFACE == eglSurface || EGL_SUCCESS != eglGetError()) {
@@ -450,13 +484,10 @@ static int      _egl_init       (s52engine *engine)
     // http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html
     eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
 
-    // debug GLES2 AA - The initial value of EGL_MULTISAMPLE_RESOLVE is EGL_MULTISAMPLE_RESOLVE_DEFAULT.
-    //eglSurfaceAttrib(eglDisplay, eglSurface, EGL_MULTISAMPLE_RESOLVE, EGL_MULTISAMPLE_RESOLVE_DEFAULT);
-
     // --- get eglContext ------------------------------------------------
     // Then we can create the context and set it current:
     // 1 - GLES1.x, 2 - GLES2.x, 3 - GLES3.x
-    EGLint eglContextList[] = {
+    EGLint eglContextList[9] = {
 #if defined(S52_USE_ADRENO)
         EGL_CONTEXT_CLIENT_VERSION, 3, // GLES3 to get NPOT texture in blit
 #else
@@ -465,6 +496,20 @@ static int      _egl_init       (s52engine *engine)
 #endif
         EGL_NONE
     };
+
+    if (TRUE == _EGL_EXT_create_context_robustness) {
+        LOGI("DEBUG: create EGLcontext robustness\n");
+        // will propagate to glGetGraphicsResetStatus() if GL_EXT_robustness is supported
+        eglContextList[4] = EGL_CONTEXT_OPENGL_ROBUST_ACCESS_EXT;
+        eglContextList[5] = EGL_TRUE;
+
+        // 2 strategy available
+        eglContextList[6] = EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_EXT;
+        //eglContextList[7] = EGL_NO_RESET_NOTIFICATION,  // 0x31BE
+        eglContextList[7] = EGL_LOSE_CONTEXT_ON_RESET;  // 0x31BF
+
+        eglContextList[8] = EGL_NONE;
+    }
 
 #if defined(S52_USE_GLES2)
     // GLES
@@ -539,7 +584,7 @@ static int      _egl_init       (s52engine *engine)
 
 // -------------------------------------------------------------------------
 //  EGL for s52gtkegl - GTK
-//
+//                                                   /
 #if 0
 static int      _egl_init   (s52engine *engine)
 {
