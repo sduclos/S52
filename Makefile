@@ -21,11 +21,11 @@
 #all: s52eglw32      # OGR & EGL & Win32 (for testing EGL/GLES2 on Win32)
 #all: s52gv          # GV  (GTK)
 #all: s52gv2         # GV2 (GTK2)
-all: s52gtk2        # OGR & GTK2 & GL 1.5 (VBO)
+#all: s52gtk2        # OGR & GTK2 & GL 1.5 (VBO)
 #all: s52gtk2gl2     # OGR & GTK2 & GL 2.x
 #all: s52gtk2p       # profiling
 #all: s52gtk2gps     # build s52gtk2 for testing with live data comming from GPSD
-#all: s52gtk2egl     # GTK2 & EGL
+all: s52gtk2egl     # GTK2 & EGL
 #all: s52gtk3egl     # GTK3 & EGL
 #all: s52qt4         # OGR & Qt4 (build s52gtk2 to run on Qt4)
 #all: s52win32       # build libS52.dll on GL1 to run on wine/win32 (MinGW)
