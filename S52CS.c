@@ -1125,18 +1125,14 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
     }
 
     if (NULL != drval1str) {
-        // chenzunfeng repport discrepency w/ pslb03_2.pdf
-        // the bug in the original code is '<'
-        //if (UNKNOWN==least_depth || least_depth<drval1)
-        //    least_depth = drval1;
-
 #ifdef S52_DEBUG
-        // debug - check impact of this bug
-        if (least_depth < drval1) {
+        // debug - check impact of this bug: no impact since drval1str is allway NULL in St-Laurent
+        //if (least_depth < drval1) {
+        //if (least_depth >= drval1) {
             PRINTF("DEBUG: chenzunfeng found this bug: 'least_depth<drval1' (should be '>='), %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
             S57_highlightON(geo);
             g_assert(0);
-        }
+        //}
 #endif
 
         //* litteraly psbl03_2.pdf say:
@@ -1149,6 +1145,7 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
         //*/
 
         // it's logicaly the same but more elegant this way
+        //if (UNKNOWN==least_depth || least_depth<drval1)
         //if (UNKNOWN==least_depth || least_depth>=drval1)
         //    least_depth = drval1;
 
@@ -1861,15 +1858,13 @@ static GString *OBSTRN04 (S57_geo *geo)
         //if (UNKNOWN != least_depth) {
         if (UNKNOWN == least_depth) {
 #ifdef S52_DEBUG
-            {  // debug - check impact of this bug
+            {  // debug - check impact of this bug: seem that the code can recover and ==/!= make no diff in the end
                 static int silent = FALSE;
                 if (FALSE == silent) {
                     PRINTF("DEBUG: chenzunfeng found this should be (UNKNOWN == least_depth)[not !=], %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
 
-                    //silent = TRUE;
-                    //PRINTF("       (this msg will not repeat)\n");
-
-                    //g_assert(0);
+                    silent = TRUE;
+                    PRINTF("       (this msg will not repeat)\n");
                 }
                 S57_highlightON(geo);
             }
