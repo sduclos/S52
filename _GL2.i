@@ -1161,12 +1161,10 @@ static GLuint    _compShaderSrc(GLuint programObject)
         "varying   vec4  v_acolor;                                      \n"
         "varying   float v_pattOn;                                      \n"
         "varying   float v_alpha;                                       \n"
-        "varying   vec2  v_pos;                                       \n"
 
         "void main(void)                                                \n"
         "{                                                              \n"
         "    v_alpha      = aAlpha;                                     \n"
-        "    v_pos        = aPosition.xy;                                  \n"
         "    gl_PointSize = uPointSize;                                 \n"
         "    gl_Position  = uProjection * uModelview * aPosition;       \n"
         "    if (1.0 == uPattOn) {                                      \n"
@@ -1197,15 +1195,11 @@ static GLuint    _compShaderSrc(GLuint programObject)
         "uniform float     uPattOn;                 \n"
         "uniform float     uGlowOn;                 \n"
 
-        //"uniform float     uFxAAOn;                 \n"
-
         "uniform vec4      uColor;                  \n"
 
         "varying vec2      v_texCoord;              \n"
         "varying float     v_alpha;                 \n"
-//        "varying vec2      v_pos;                   \n"
 
-//        "float rand(vec2 co){return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);}\n"
         "void main(void)                            \n"
         "{                                          \n"
         "    if (1.0 == uBlitOn) {                  \n"
@@ -1237,13 +1231,6 @@ static GLuint    _compShaderSrc(GLuint programObject)
 #endif
         "                {                          \n"
         "                    gl_FragColor = uColor; \n"
-        // test noise
-        //"                    gl_FragColor.a = 1.0 - rand(vec2(1.5,1.5));\n"
-        //"                    gl_FragColor.r = uColor.r - rand(vec2(1.0, 1.0));\n"
-        //"                    gl_FragColor.g = uColor.g - rand(vec2(1.0, 1.0));\n"
-        //"                    gl_FragColor.b = uColor.b - rand(vec2(1.0, 1.0));\n"
-        //"                    gl_FragColor.a = uColor.a + rand(vec2(1.0, 1.0));\n"
-        //"                    gl_FragColor.a = uColor.a - rand(v_pos);\n"
         "                }                          \n"
         "            }                              \n"
         "        }                                  \n"
