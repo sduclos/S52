@@ -34,7 +34,7 @@
 #include <glib/gstdio.h>  // g_file_test(),
 
 // compiled with -std=gnu99 (or -std=c99 -D_POSIX_C_SOURCE=???) will define M_PI
-#include <math.h>         // sin(), cos(), atan2(), pow(), sqrt(), floor(), INFINITY, M_PI
+#include <math.h>         // sin(), cos(), atan2(), pow(), sqrt(), floor(), fabs(), INFINITY, M_PI
 
 // FIXME: for C99
 #ifndef M_PI
@@ -1724,10 +1724,11 @@ static int       _computeCentroid(S57_geo *geoData)
                 _pmax.u, _pmax.v, 0.0,
                 _pmin.u, _pmax.v, 0.0,
             };
-            GLdouble *p = d;
+            GLdouble *p = NULL;
 
             // CCW
             /*
+            p = d;
             gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
             p += 3;
             gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
@@ -2395,8 +2396,10 @@ static int       _renderSY_pastrk(S52_obj *obj)
     for (guint i=0; i<npt; ++i) {
         double x1 = ppt[ i   *3 + 0];
         double y1 = ppt[ i   *3 + 1];
-        double x2 = ppt[(i+1)*3 + 0];
-        double y2 = ppt[(i+1)*3 + 1];
+        //double x2 = ppt[(i+1)*3 + 0];
+        //double y2 = ppt[(i+1)*3 + 1];
+        double x2 = 0.0;
+        double y2 = 0.0;
 
         if (i == npt-1) {
             x2 = ppt[(i-1)*3 + 0];
@@ -2577,8 +2580,6 @@ static int       _renderSY(S52_obj *obj)
         // computer 'center' of line
         double cView_x = (_pmax.u + _pmin.u) / 2.0;
         double cView_y = (_pmax.v + _pmin.v) / 2.0;
-        double dmin    = INFINITY;
-        double xmin, ymin;
 
         guint     npt = 0;
         GLdouble *ppt = NULL;
@@ -2627,6 +2628,9 @@ static int       _renderSY(S52_obj *obj)
         }
 
         // find segment's center point closess to view center
+        double xmin = 0.0;
+        double ymin = 0.0;
+        double dmin = INFINITY;
         for (guint i=0; i<npt; ++i) {
             double x = (ppt[i*3+3] + ppt[i*3]  ) / 2.0;
             double y = (ppt[i*3+4] + ppt[i*3+1]) / 2.0;
@@ -6526,7 +6530,7 @@ cchar     *S52_GL_getNameObjPick(void)
             S57_geo *geo = S52_PL_getGeo(obj);
 
             name  = S57_getName(geo);
-            S57ID = S57_getGeoS57ID(geo);
+            //S57ID = S57_getGeoS57ID(geo);
 
             PRINTF("%i  : %s\n", i, name);
             PRINTF("LUP : %s\n", S52_PL_getCMDstr(obj));
@@ -6846,7 +6850,6 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
 
     // if obj is NULL then dump the whole framebuffer
     guint x, y;
-
     if (NULL == obj) {
         x      = _vp.x;
         y      = _vp.y;
@@ -6921,8 +6924,9 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
 
 #ifdef S52_USE_GL2
     // FIXME: arm adreno will break here
+    // FIXME: must be in sync with _fb_format
     //glReadPixels(x, y, width, height, GL_RGB,  GL_UNSIGNED_BYTE, pixels);
-    //glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 #ifdef S52_USE_GLSC2
     int bufSize =  _vp.w * _vp.h * 4;
     _glReadnPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
@@ -7208,7 +7212,7 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
     double symlen_pixl = symlen / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0);
     double symlen_wrld = symlen_pixl * _scalex;
     double symAngle    = atan2(symlen_wrld, dist) * RAD_TO_DEG;
-    double nSym        = abs(floor(sweep / symAngle));
+    double nSym        = fabs(floor(sweep / symAngle));
     double crntAngle   = orientA + 90.0;
 
     if (sweep > 0.0)
