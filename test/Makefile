@@ -14,8 +14,8 @@
 #all: s52gv2        # GV2 (OpenEV2 / GTK2)  broken
 #all: s52gtk2       # GTK2 & OGR
 #all: s52gtk2p      # GTK2 & OGR (profiler)
-#all: s52gtk2egl    # GTK2 & GLES2 & EGL
-all: s52gtk3egl     # GTK3 & GLES2 & EGL
+all: s52gtk2egl    # GTK2 & GLES2 & EGL
+#all: s52gtk3egl     # GTK3 & GLES2 & EGL
 #all: s52win32      # same as s52gtk2 but run on wine
 #all: s52eglw32     # same as s52gtk2egl but run on wine
 #all: s52clutter.js # same as s52gtk2 but use Clutter & Javascript (experimental)
@@ -26,13 +26,15 @@ all: s52gtk3egl     # GTK3 & GLES2 & EGL
 
 # GCC
 #CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=gnu99
-CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=c99 -D_POSIX_C_SOURCE=199309L
+CC   = gcc -O0 -g -Wall -Wextra -pedantic -pipe -std=c99 -D_POSIX_C_SOURCE=199309L
 # test - compile C code as C++
 #CC   = g++ -fPIC -O0 -g -Wall
 CXX   = g++ -O0 -g -Wall
 
 # CLANG
-#CC   = clang   -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
+CC   = clang   -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
+#CC   += --analyze
+
 #CXX  = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
 
 MINGW = /usr/bin/i586-mingw32msvc-
@@ -94,7 +96,9 @@ s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
                      -DS52_USE_AFGLOW
 
 # same as s52eglx, but "gtk+-2.0" is added
-s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-2.0` \
+#s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-2.0`
+#s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gobject-2.0 libgps gtk+-2.0`
+s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl gtk+-2.0 libgps ` \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
                      -DS52_USE_MESA3D        \
@@ -145,10 +149,11 @@ s52gtk2gl2 : GTK2LIBS = `pkg-config --libs gtk+-2.0 gtkglext-1.0 gthread-2.0`
 s52eglx   : LIBS    = `pkg-config --libs egl x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS) -lm
 
 # same as s52eglx, add "gtk+-2.0"
-s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-2.0 libgps` $(S52_LIBS) -lm
+#s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-2.0 libgps` $(S52_LIBS) -lm
+s52gtk2egl: LIBS    = `pkg-config --libs egl gtk+-2.0 libgps` $(S52_LIBS) -lm
 
 # same as s52eglx, add "gtk+-3.0"
-s52gtk3egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-3.0 libgps` $(S52_LIBS) -lm
+s52gtk3egl: LIBS    = `pkg-config --libs egl gtk+-3.0 libgps` $(S52_LIBS) -lm
 
 OGR_LIBS  = `gdal-config --libs`
 s52gv:      LIBS = $(S52_LIBS) $(GTK_LIBS) $(GV_LIBS) $(OGR_LIBS)
