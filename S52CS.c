@@ -479,7 +479,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
                         GString *drval1str = S57_getAttVal(candidate, "DRVAL1");
                         double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
                         if (drval1 < drvalmin) {
-                            drvalmin = drval1;
+                            //drvalmin = drval1;  // clang - never read
                             S57_setTouchDEPARE(geo, candidate);
                         }
                     //}
@@ -521,7 +521,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
                     double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
 
                     if (drval1 < drvalmin) {
-                        drvalmin = drval1;
+                        //drvalmin = drval1;  // clang - never read
                         S57_setTouchDEPVAL(geo, candidate);
                     }
                 } else
@@ -797,12 +797,11 @@ static GString *DEPARE01 (S57_geo *geo)
     int      objl      = 0;
     GString *objlstr   = NULL;
     GString *drval1str = S57_getAttVal(geo, "DRVAL1");
-    double   drval1    = UNKNOWN;
+    //double   drval1    = UNKNOWN;  // clang - init val never read
+    double drval1 = (NULL == drval1str) ? -1.0        : S52_atof(drval1str->str);
     GString *drval2str = S57_getAttVal(geo, "DRVAL2");
-    double   drval2    = UNKNOWN;
-
-    drval1 = (NULL == drval1str) ? -1.0        : S52_atof(drval1str->str);
-    drval2 = (NULL == drval2str) ? drval1+0.01 : S52_atof(drval2str->str);
+    //double   drval2    = UNKNOWN;  // clang - init val never read
+    double drval2 = (NULL == drval2str) ? drval1+0.01 : S52_atof(drval2str->str);
 
     double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
     drval1 += datum;
@@ -940,9 +939,9 @@ static GString *DEPCNT02 (S57_geo *geo)
                     GString *drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
                     double   drval1touch    = (NULL == drval1touchstr) ? 0.0 : S52_atof(drval1touchstr->str);
 
-                    // adjuste datum
-                    double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                    drval1 += datum;
+                    // debug - adjuste datum, clang - val never read
+                    //double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
+                    //drval1 += datum;
 
                     // debug
                     //if (483 == S57_getGeoS57ID(geo)) {
@@ -1112,21 +1111,39 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
     // FIX: return default UNKNOWN, assume the worst
     // NOTE: maybe if an UNSARE is found then all other underlying
     // objects can be ignore
-    least_depth = UNKNOWN;
+    if (0 == g_strcmp0(S57_getName(geo), "UNSARE")) {
+        // debug
+        PRINTF("DEBUG: %s:%c\n", S57_getName(geo), S57_getObjtype(geo));
+        g_assert(0);
+        return UNKNOWN;
+    }
+
+    //least_depth = UNKNOWN;
+    least_depth = drval1; // !?! clang - val in least_depth never read
 
     // debug
     //PRINTF("DEBUG: %s:%c\n", S57_getName(geo), S57_getObjtype(geo));
     //S57_dumpData(geo, FALSE);
 
-
-    if (UNKNOWN != drval1) {
-        double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-        drval1 += datum;
+    //* clang complain - move bellow
+    if (UNKNOWN != least_depth) {
+        least_depth += S52_MP_get(S52_MAR_DATUM_OFFSET);  // !?! clang - val in least_depth never read
     }
+    //*/
 
-    if (NULL != drval1str) {
+    //if (NULL != drval1str) {
+    if (UNKNOWN != drval1) {
+
+        // clang still complain
+        //if (UNKNOWN != drval1) {
+        //double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
+        //drval1 += datum;  // !?! clang - val never read
+        //least_depth += S52_MP_get(S52_MAR_DATUM_OFFSET);  // !?! clang - val in least_depth never read
+        //}
+
 #ifdef S52_DEBUG
         // debug - check impact of this bug: no impact since drval1str is allway NULL in St-Laurent
+        // FIXME: see bellow - this branch never reach
         //if (least_depth < drval1) {
         //if (least_depth >= drval1) {
             PRINTF("DEBUG: chenzunfeng found this bug: 'least_depth<drval1' (should be '>='), %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
@@ -1135,10 +1152,11 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
         //}
 #endif
 
-        //* litteraly psbl03_2.pdf say:
+        /* litteraly psbl03_2.pdf say:
         if (UNKNOWN == least_depth) {
             least_depth = drval1;
         } else {
+            // FIXME: this branch never reach
             if (least_depth >= drval1)
                 least_depth = drval1;
         }
@@ -1379,12 +1397,16 @@ static GString *LIGHTS05 (S57_geo *geo)
     }
 
     // Continuation B --sector light
+    /*
     if (NULL == sectr1str) {
-        sectr1 = 0.0;
-        sectr2 = 0.0;
+        sectr1 = 0.0;  // clang - val never read
+        sectr2 = 0.0;  // clang - val never read
     } else
         sweep = (sectr1 > sectr2) ? sectr2-sectr1+360 : sectr2-sectr1;
-
+    */
+    if (NULL != sectr1str) {
+        sweep = (sectr1 > sectr2) ? sectr2-sectr1+360 : sectr2-sectr1;
+    }
 
     if (sweep<1.0 || sweep==360.0) {
         // handle all round light
@@ -1838,7 +1860,8 @@ static GString *OBSTRN04 (S57_geo *geo)
     GString *udwhaz03str = NULL;
     GString *valsoustr   = S57_getAttVal(geo, "VALSOU");
     double   valsou      = UNKNOWN;
-    double   depth_value = UNKNOWN;
+    //double   depth_value = UNKNOWN;  // clang - init val never read
+    double   depth_value = 0.0;  // clang - init val never read
     double   least_depth = UNKNOWN;
 
     // debug CA49995B.000:305859
