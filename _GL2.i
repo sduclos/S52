@@ -986,7 +986,7 @@ static int       _saveShaderBin(GLuint programObject)
     if (0 == bufsize) {
         PRINTF("DEBUG: GL_PROGRAM_BINARY_LENGTH_OES failed [bufsize=%i]\n", bufsize);
         //g_assert(0);
-        //return FALSE;
+        return FALSE;
     }
 
     GLsizei lenOut        = 0;
@@ -1059,6 +1059,7 @@ static GLuint    _loadShaderBin(void)
 #else
     if (NULL != _glProgramBinaryOES) {
         _glProgramBinaryOES(progId, binaryFormat, (const void *)binary, len);
+        //_glProgramBinaryOES(progId, NULL, (const void *)binary, len);
     } else {
         g_assert(0);
         return 0;
@@ -1543,6 +1544,7 @@ static int       _initFBO(GLuint mask_texID)
 static int       _set_glScaled(void)
 {
     // sailsafe
+    // clang - val never read  when #ifdef set scale
     double scaleX = _dotpitch_mm_x;
     double scaleY = _dotpitch_mm_y;
 
@@ -1550,7 +1552,7 @@ static int       _set_glScaled(void)
     ////////////////////////////////////////////////////////////////
     //
     // FIXME: scale found by trial and error
-    // FIXME: should get pixel Resolution programmaticaly
+    // FIXME: dotpitch should do
     //
 
     // FIXME: why -Y? (flip Y !!)
@@ -1570,12 +1572,10 @@ static int       _set_glScaled(void)
     scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-4.0;  // 4 or 5 OK
 #endif
 
-//*
 #ifdef S52_USE_MESA3D
     scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 8.0;
     scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-8.0;
 #endif
-    //*/
 
     _glScaled(scaleX, scaleY, 1.0);
 
@@ -1824,10 +1824,10 @@ static int       _renderAP_gl2(S52_obj *obj)
 {
     S52_DList *DListData = S52_PL_getDListData(obj);
 
-    double x1, y1;   // LL of region of area in world
-    double x2, y2;   // UR of region of area in world
-    double tileWpx;
-    double tileHpx;
+    double x1=0.0, y1=0.0;   // LL of region of area in world
+    double x2=0.0, y2=0.0;   // UR of region of area in world
+    double tileWpx = 0.0;
+    double tileHpx = 0.0;
     double stagOffsetPix = _getGridRef(obj, &x1, &y1, &x2, &y2, &tileWpx, &tileHpx);
     double tileWw = tileWpx * _scalex;
     double tileHw = tileHpx * _scaley;
