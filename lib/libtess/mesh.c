@@ -748,7 +748,7 @@ void __gl_meshCheckMesh( GLUmesh *mesh )
   GLUvertex *v, *vPrev;
   GLUhalfEdge *e, *ePrev;
 
-  fPrev = fHead;
+  //fPrev = fHead;  // clang - store val never read
   for( fPrev = fHead ; (f = fPrev->next) != fHead; fPrev = f) {
     assert( f->prev == fPrev );
     e = f->anEdge;
@@ -763,7 +763,7 @@ void __gl_meshCheckMesh( GLUmesh *mesh )
   }
   assert( f->prev == fPrev && f->anEdge == NULL && f->data == NULL );
 
-  vPrev = vHead;
+  //vPrev = vHead;  // clang - store val never read
   for( vPrev = vHead ; (v = vPrev->next) != vHead; vPrev = v) {
     assert( v->prev == vPrev );
     e = v->anEdge;
@@ -778,7 +778,7 @@ void __gl_meshCheckMesh( GLUmesh *mesh )
   }
   assert( v->prev == vPrev && v->anEdge == NULL && v->data == NULL );
 
-  ePrev = eHead;
+  //ePrev = eHead;  // clang - store val never read
   for( ePrev = eHead ; (e = ePrev->next) != eHead; ePrev = e) {
     assert( e->Sym->next == ePrev->Sym );
     assert( e->Sym != e );

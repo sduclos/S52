@@ -78,7 +78,7 @@ static void ComputeNormal( GLUtesselator *tess, GLdouble norm[3] )
   GLUvertex *v, *v1, *v2;
   GLdouble c, tLen2, maxLen2;
   GLdouble maxVal[3], minVal[3], d1[3], d2[3], tNorm[3];
-  GLUvertex *maxVert[3], *minVert[3];
+  GLUvertex *maxVert[3]={0}, *minVert[3]={0};  // fix clang warning: assign gabage or undefined
   GLUvertex *vHead = &tess->mesh->vHead;
   int i;
 
@@ -109,8 +109,8 @@ static void ComputeNormal( GLUtesselator *tess, GLdouble norm[3] )
    * (Length of normal == twice the triangle area)
    */
   maxLen2 = 0;
-  v1 = minVert[i];
-  v2 = maxVert[i];
+  v1 = minVert[i];  // clang - assign gabage or undefined
+  v2 = maxVert[i];  // clang - assign gabage or undefined
   d1[0] = v1->coords[0] - v2->coords[0];
   d1[1] = v1->coords[1] - v2->coords[1];
   d1[2] = v1->coords[2] - v2->coords[2];

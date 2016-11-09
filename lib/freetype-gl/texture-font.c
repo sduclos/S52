@@ -169,7 +169,7 @@ texture_glyph_delete( texture_glyph_t *self )
 }
 
 // ---------------------------------------------- texture_glyph_get_kerning ---
-float 
+float
 texture_glyph_get_kerning( const texture_glyph_t * self,
                            const wchar_t charcode )
 {
@@ -299,7 +299,7 @@ texture_font_new( texture_atlas_t * atlas,
         self->underline_thickness = 1.0;
     }
 
-    FT_Size_Metrics metrics = face->size->metrics; 
+    FT_Size_Metrics metrics = face->size->metrics;
     self->ascender = (metrics.ascender >> 6) / 100.0;
     self->descender = (metrics.descender >> 6) / 100.0;
     self->height = (metrics.height >> 6) / 100.0;
@@ -353,7 +353,7 @@ texture_font_load_glyphs( texture_font_t * self,
     FT_Library library;
     FT_Error error;
     FT_Face face;
-    FT_Glyph ft_glyph;
+    FT_Glyph ft_glyph = {0};  // clang - no init val
     FT_GlyphSlot slot;
     FT_Bitmap ft_bitmap;
 
@@ -473,7 +473,7 @@ texture_font_load_glyphs( texture_font_t * self,
                         FT_Errors[error].code, FT_Errors[error].message);
                 return 0;
             }
-          
+
             if( depth == 1)
             {
                 error = FT_Glyph_To_Bitmap( &ft_glyph, FT_RENDER_MODE_NORMAL, 0, 1);

@@ -111,7 +111,9 @@ static JSON_Value * parse_value(const char **string, size_t nesting);
 
 /* Various */
 static int try_realloc(void **ptr, size_t new_size) {
-    void *reallocated_ptr = parson_realloc(*ptr, new_size);
+    if (0 == new_size) { return ERROR; }
+
+    void *reallocated_ptr = parson_realloc(*ptr, new_size);  // clang - size 0
     if (!reallocated_ptr) { return ERROR; }
     *ptr = reallocated_ptr;
     return SUCCESS;
