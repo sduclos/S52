@@ -72,19 +72,20 @@ DBG    = $(DBG3)
 #CXX  = tcc -fPIC -fmudflap
 
 # GCC
-#CC   = gcc -std=c99 -fPIC -D_POSIX_C_SOURCE=199309L # to get siginfo_t
-CC   = gcc -std=c99 -fPIC -D_POSIX_C_SOURCE=200809L # 199309L to get siginfo_t
+#CC   = gcc -std=c99 -fPIC -pipe -D_POSIX_C_SOURCE=199309L # to get siginfo_t
+#CC   = gcc -std=c99 -fPIC -pipe -D_POSIX_C_SOURCE=200809L # 199309L to get siginfo_t
 
 #CC   = gcc -std=c99 -fPIC -D_POSIX_C_SOURCE=200112L
 #CC   = gcc -std=c99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
 #CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI and sigtrap()
 # test - compile C code as C++
 #CC   = g++ -fPIC -O0 -g -Wall
-CXX  = g++ -fPIC
+#CXX  = g++ -fPIC
 
 # CLANG
-#CC   = clang   -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
-#CXX  = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
+CC    = clang   -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
+#CC   += --analyze
+CXX   = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
 
 # FIXME: check this
 # LLVM-AddressSanitizer: http://clang.llvm.org/docs/AddressSanitizer.html
@@ -268,6 +269,7 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
 
 #                  -DS52_USE_SUPP_LINE_OVERLAP
 #                  -DS52_USE_GLSC2
+#                  -DS52_USE_MESA3D
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                   `gdal-config --cflags`         \
@@ -279,7 +281,6 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_EGL                  \
                   -DS52_USE_OPENGL_VBO           \
                   -DS52_USE_GLES2                \
-                  -DS52_USE_MESA3D               \
                   -DS52_USE_FREETYPE_GL          \
                   -DS52_USE_SOCK                 \
                   -DS52_USE_TXT_SHADOW           \
