@@ -615,8 +615,8 @@ static void       _delSMB(gpointer value)
 static gint       _loadCondSymb()
 // load Conditional Symbology in BBtree
 {
-    if (NULL == S52_CS_condTable)
-        return FALSE;
+    //if (NULL == S52_CS_condTable)
+    //    return FALSE;
 
     for (int i=0; NULL!=S52_CS_condTable[i].CScb; ++i) {
         g_tree_insert(_selSMB(S52_SMB_COND),
@@ -1600,7 +1600,7 @@ static int        _parseLUPT(_PL *fp)
 
                     g_tree_replace(LUPtype, (gpointer*)LUP->OBCL, (gpointer*)LUP);
 
-                    LUPtop  = LUP;
+                    //LUPtop  = LUP;  // never read - CLang
                     replace = TRUE;
                 } else {
                     // replace with new one
@@ -1929,6 +1929,8 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
     int      defval = 0;    // default value
     int      len    = 0;
 
+    return_if_null(str);  // clang warning
+
     // debug
     //PRINTF("--> buf:%s str:%s\n", buf, str);
 
@@ -2088,7 +2090,8 @@ static _Text     *_parseTEXT(S57_geo *geoData, char *str)
     text->yoffs = S52_atoi(buf);             // YOFFS
     str         = _getParamVal(geoData, str, buf, MAXL);
     text->col   = S52_PL_getColor(buf);      // COLOUR
-    str         = _getParamVal(geoData, str, buf, MAXL);
+    //str         = _getParamVal(geoData, str, buf, MAXL);
+                  _getParamVal(geoData, str, buf, MAXL);  // clang - str never used
     text->dis   = S52_atoi(buf);             // DISPLAY
 
     return text;
