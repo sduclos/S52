@@ -4,6 +4,17 @@
 #
 
 
+2016OCT23
+    -fix clang --analyse warning
+    -mod _DEPVAL01 
+    -mod libtess
+    -mod freetype_gl
+    -mod parson
+
+2016OCT06
+    -mod make target default to s52gtk2egl
+    -del noise eperiment
+
 2016OCT04
     -clean up test/s52ui/web/js/tinyjet
     -clean up GL cycling code
