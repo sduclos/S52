@@ -861,7 +861,8 @@ static int        _freeCell(_cell *c)
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
 
-                obj = _delObj(obj);
+                //obj = _delObj(obj);  // clang - return obj never read
+                _delObj(obj);
             }
             g_ptr_array_free(rbin, TRUE);
         }
@@ -873,7 +874,8 @@ static int        _freeCell(_cell *c)
         for (guint idx=0; idx<c->lights_sector->len; ++idx) {
             S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, idx);
 
-            obj = _delObj(obj);
+            //obj = _delObj(obj);  // clang - return obj never read
+            _delObj(obj);
         }
         g_ptr_array_free(c->lights_sector, TRUE);
     }
@@ -1123,12 +1125,14 @@ static int        _backtrace(void)
     PRINTF("==== backtrace() returned %d addresses ====\n", nptrs);
 
     strings = backtrace_symbols(buffer, nptrs);
-    if (strings == NULL) {
+    if (NULL == strings) {
         PRINTF("ERROR: backtrace_symbols() .. no symbols");
+        return FALSE;
     }
 
-    for (int i=0; i<nptrs; ++i)
-        PRINTF("==== %s\n", strings[i]);
+    for (int i=0; i<nptrs; ++i) {
+        PRINTF("==== %s\n", strings[i]);  // clang - null dereference - return false above
+    }
 
     free(strings);
 
@@ -3628,7 +3632,8 @@ static int        _app()
         if (FALSE != _HODATAUnion) {
             S52_obj *obj = S52_PL_isObjValid(_HODATAUnion);
             _removeObj(_marinerCell, obj);
-            obj  = _delObj(obj);
+            //obj  = _delObj(obj);  // cllang - return val never used
+            _delObj(obj);
             _HODATAUnion = FALSE;
         }
 
@@ -5070,9 +5075,9 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
     S52_CHECK_MUTX_INIT;
 
     if (NULL == filename) {
-        extent ext;
+        extent ext = {0.0, 0.0, 0.0, 0.0};
         _getCellsExt(&ext);
-        *S = ext.S;
+        *S = ext.S;  // !?! clang - assign garbage or undefined
         *W = ext.W;
         *N = ext.N;
         *E = ext.E;
@@ -5879,7 +5884,8 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
         // what case does that solve! ("bla:,bla:bla")
         // maybe case of unbalanced att/val pair
         // but that case is trapped by the code above
-        if ('\0' == *attvalL[1]) {
+        //if ('\0' == *attvalL[1]) {  // clang - dereference null ptr
+        if ((NULL==attvalL[1]) || ('\0'==*attvalL[1])) {
             PRINTF("WARNING: mixed up val, the rest of list fail [%s]\n", listAttVal);
             g_strfreev(freeL);
             return FALSE;
@@ -6176,7 +6182,8 @@ static S52ObjectHandle     _delMarObj(S52ObjectHandle objH)
         return objH;
     }
 
-    obj  = _delObj(obj);
+    //obj  = _delObj(obj);  // clang return obj never read
+    _delObj(obj);
     objH = FALSE;
 
     return objH;
