@@ -195,6 +195,9 @@ static int      _s52_init   (s52engine *engine)
     S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
 
     _s52_setupPRDARE(engine->state.cLat, engine->state.cLon);
+    _s52_setupmarfea(engine->state.cLat, engine->state.cLon);
+    _s52_setupPASTRK(engine->state.cLat, engine->state.cLon);
+    _s52_setupCLRLIN(engine->state.cLat, engine->state.cLon);
 
 #ifdef USE_FAKE_AIS
     _s52_setupOWNSHP(engine->state.cLat, engine->state.cLon);
@@ -568,7 +571,7 @@ static gboolean key_release_event(GtkWidget   *widget,
     return TRUE;
 }
 
-/*
+#if 0
 //////////////////////////////////////////////////
 // code lifted from gtk/demos/gtk-demo/gesture.c
 //
@@ -733,7 +736,7 @@ static int      _gtk_init_gestures(GtkWidget *window)
 
     return TRUE;
 }
-*/
+#endif  // 0
 
 static int      _gtk_init(int argc, char** argv)
 {
