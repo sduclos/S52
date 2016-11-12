@@ -4,6 +4,10 @@
 #
 
 
+2016NOV12
+    -fix gl2 line stipple
+    -add _renderLS_gl2() to _GL2.i
+
 2016OCT23
     -fix clang --analyse warning
     -mod _DEPVAL01 
