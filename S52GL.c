@@ -972,7 +972,7 @@ static void      _glLineStipple(GLint  factor,  GLushort  pattern)
     (void)factor;
     (void)pattern;
 
-    //*
+    /*
     static int silent = FALSE;
     if (FALSE == silent) {
         PRINTF("FIXME: GL2 line stipple\n");
@@ -3067,7 +3067,8 @@ static int       _renderLS_vessel(S52_obj *obj)
                     };
 
                     _glLineWidth(3);
-                    glUniform1f(_uPattOn, 1.0);
+
+                    glUniform1f(_uTextOn, 1.0);
                     glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
                     glEnableVertexAttribArray(_aUV);
                     glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
@@ -3079,7 +3080,7 @@ static int       _renderLS_vessel(S52_obj *obj)
                 glBindBuffer(GL_ARRAY_BUFFER, 0);
                 glBindTexture(GL_TEXTURE_2D,  0);
 
-                glUniform1f(_uPattOn, 0.0);
+                glUniform1f(_uTextOn, 0.0);
                 glDisableVertexAttribArray(_aUV);
                 glDisableVertexAttribArray(_aPosition);
 #else
@@ -3344,13 +3345,16 @@ static int       _renderLS(S52_obj *obj)
                 {
 
 #ifdef S52_USE_GL2
-                    _d2f(_tessWorkBuf_f, npt, ppt);
+                    _renderLS_gl2(style, npt, ppt);
 
+                    /*
+                    _d2f(_tessWorkBuf_f, npt, ppt);
                     // alternate planned route (dot)
                     if (0 == g_strcmp0("leglin", S57_getName(geoData))) {
                         // FIXME: move to _GL2.i:_renderLS_setPatDott(float *ppt)
                         // FIXME: use GL_POINTS
-                        glUniform1f(_uPattOn, 1.0);
+                        //glUniform1f(_uPattOn, 1.0);
+                        glUniform1f(_uTextOn, 1.0);
                         glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
 
                         float dx       = ppt[0] - ppt[3];
@@ -3372,13 +3376,15 @@ static int       _renderLS(S52_obj *obj)
 
                         glDisableVertexAttribArray(_aUV);
                         glBindTexture(GL_TEXTURE_2D,  0);
-                        glUniform1f(_uPattOn, 0.0);
+                        //glUniform1f(_uPattOn, 0.0);
+                        glUniform1f(_uTextOn, 0.0);
 
                     } else {
                         // all other line
                         _glUniformMatrix4fv_uModelview();
                         _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
                     }
+                    //*/
 #else
                     _glUniformMatrix4fv_uModelview();
                     _DrawArrays_LINE_STRIP(npt, (vertex_t *)ppt);
@@ -5366,7 +5372,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
     glEnableVertexAttribArray(_aPosition);
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
 
-    glUniform1f(_uPattOn, 1.0);
+    glUniform1f(_uTextOn, 1.0);
     glBindTexture(GL_TEXTURE_2D, raster->texID);
 
     _glUniformMatrix4fv_uModelview();
@@ -5376,7 +5382,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
     glBindTexture(GL_TEXTURE_2D,  0);
 
-    glUniform1f(_uPattOn, 0.0);
+    glUniform1f(_uTextOn, 0.0);
 
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
@@ -5678,7 +5684,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     if (NULL!=_glGetGraphicsResetStatus && TRUE==_GL_EXT_robustness) {
         GLenum ret = _glGetGraphicsResetStatus();
         if (GL_NO_ERROR != ret) {
-            // FIXME: set S52_MAR_ERROR 
+            // FIXME: set S52_MAR_ERROR
             PRINTF("DEBUG: invalide GL context [0x%x].. need reset\n", ret);
             _checkError("S52_GL_begin() - GL2 glGetGraphicsResetStatus");
             g_assert(0);
