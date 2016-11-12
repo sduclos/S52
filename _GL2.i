@@ -64,7 +64,7 @@ static GLint _uPointSize  = 0;
 static GLint _uSampler2d0 = 0;
 static GLint _uSampler2d1 = 0;
 static GLint _uBlitOn     = 0;
-static GLint _uTextOn     = 0;
+static GLint _uTextOn     = 0;  // textured line and text from freetype-gl
 static GLint _uGlowOn     = 0;
 
 static GLint _uPattOn     = 0;
@@ -196,6 +196,7 @@ static    int      _pjmTop = 0;       // point to stack top
 #include "texture-font.h"
 
 static texture_atlas_t *_freetype_gl_atlas              = NULL;
+// FIXME: {0} - C99!
 static texture_font_t  *_freetype_gl_font[S52_MAX_FONT] = {NULL,NULL,NULL,NULL};
 static const char      *_freetype_gl_fontfilename       =
 #ifdef S52_USE_ANDROID
@@ -260,8 +261,11 @@ static int       _init_freetype_gl(void)
     _checkError("_init_freetype_gl() -beg-");
 
     if (NULL == _freetype_gl_atlas) {
-        //_freetype_gl_atlas = texture_atlas_new(512, 512, 1);    // alpha only  - not in GLSC2
+#ifdef S52_USE_GLSC2
         _freetype_gl_atlas = texture_atlas_new(512, 512, 3);    // GL_RGB in GLSC2 - code change in GLSL
+#else
+        _freetype_gl_atlas = texture_atlas_new(512, 512, 1);    // alpha only  - not in GLSC2
+#endif
     } else {
         PRINTF("WARNING: _init_freetype_gl() allready initialize\n");
         g_assert(0);
@@ -1211,8 +1215,13 @@ static GLuint    _compShaderSrc(GLuint programObject)
         "    } else {                                                            \n"
         "        if (1.0 == uTextOn) {                                           \n"
 //        "            gl_FragColor = texture2D(uSampler2d0, v_texCoord);           \n"
-        "            vec4 _sample = texture2D(uSampler2d0, v_texCoord);            \n"
-        "            gl_FragColor.a   = _sample.r;                                \n"
+//        "            vec4 _sample = texture2D(uSampler2d0, v_texCoord);            \n"
+#ifdef S52_USE_GLSC2
+        // GLSC2 has no GL_ALPHA in freetype-gl/texture_atlas_new() use GL_RED
+        "            gl_FragColor.a   = texture2D(uSampler2d0, v_texCoord).r;                                \n"
+#else
+        "            gl_FragColor.a   = texture2D(uSampler2d0, v_texCoord).a;                                \n"
+#endif
         "            gl_FragColor.rgb = uColor.rgb;                              \n"
         "        } else {                                                        \n"
         "            if (1.0 == uPattOn) {                                       \n"
@@ -1872,6 +1881,73 @@ static int       _renderAP_gl2(S52_obj *obj)
     glUniform1f(_uPattH,     0.0);
 
     _checkError("_renderAP_gl2() -2-");
+
+    return TRUE;
+}
+
+static int       _renderLS_gl2(char style, guint npt, double *ppt)
+{
+    _d2f(_tessWorkBuf_f, npt, ppt);
+
+    switch (style) {
+
+        case 'L': // SOLD --correct
+            // but this stippling break up antialiase
+            //glLineStipple(1, 0xFFFF);
+            _glUniformMatrix4fv_uModelview();
+            _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
+
+            return TRUE;
+
+        case 'S': // DASH (dash 3.6mm, space 1.8mm) --incorrect  (last space 1.8mm instead of 1.2mm)
+            //glEnable(GL_LINE_STIPPLE);
+            //_glLineStipple(3, 0x7777);
+            //glLineStipple(2, 0x9248);  // !!
+            glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
+            // debug
+            //return TRUE;
+            break;
+
+        case 'T': // DOTT (dott 0.6mm, space 1.2mm) --correct
+            //glEnable(GL_LINE_STIPPLE);
+            //_glLineStipple(1, 0xFFF0);
+            //_glPointSize(pen_w - '0');
+            glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
+            break;
+
+        default:
+            PRINTF("WARNING: invalid line style\n");
+            g_assert(0);
+            return FALSE;
+    }
+
+    // FIXME: use GL_POINTS if DOTT
+    glUniform1f(_uTextOn, 1.0);
+    _glUniformMatrix4fv_uModelview();
+
+    float *v = (float *)_tessWorkBuf_f->data;
+    for (guint i=1; i<npt; ++i, ppt+=3, v+=3) {
+        float dx       = ppt[0] - ppt[3];
+        float dy       = ppt[1] - ppt[4];
+        float leglen_m = sqrt(dx*dx + dy*dy);   // leg length in meter
+        float leglen_px= leglen_m  / _scalex;   // leg length in pixel
+        float tex_n    = leglen_px / 32.0;      // number of texture pattern - 1D 32x1 pixels
+
+        float ptr[4] = {
+            0.0,   0.0,
+            tex_n, 1.0
+        };
+
+        glEnableVertexAttribArray(_aUV);
+        glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
+
+        //_DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
+        _DrawArrays_LINE_STRIP(2, v);
+    }
+
+    glDisableVertexAttribArray(_aUV);
+    glBindTexture(GL_TEXTURE_2D,  0);
+    glUniform1f(_uTextOn, 0.0);
 
     return TRUE;
 }
