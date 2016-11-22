@@ -43,7 +43,7 @@
 static int      _my_S52_loadObject_cb(const char *objname,   void *shape)
 {
     //
-    // .. do something cleaver with each object of a layer ..
+    // .. do something clever with each object of a layer ..
     //
 
     // this fill the terminal
