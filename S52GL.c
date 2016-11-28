@@ -1304,7 +1304,6 @@ static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx
     // Tile pattern to 'grided' extent
     //
 
-    //double x , y;    // index
     double x1, y1;   // LL of region of area
     double x2, y2;   // UR of region of area
 
@@ -1318,12 +1317,8 @@ static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx
     double tileWidthPix  = tw  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
     double tileHeightPix = th  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
     double stagOffsetPix = dx  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
-    //double tileWidthPix  = tw  / (100.0 * _dotpitch_mm_x);
-    //double tileHeightPix = th  / (100.0 * _dotpitch_mm_y);
-    //double stagOffsetPix = dx  / (100.0 * _dotpitch_mm_x);
 
     // convert tile in pixel to world
-    //double d0 = stagOffsetPix * _scalex;
     double w0 = tileWidthPix  * _scalex;
     double h0 = tileHeightPix * _scaley;
 
@@ -1890,6 +1885,7 @@ static int       _renderSY_silhoutte(S52_obj *obj)
         _pushScaletoPixel(TRUE);
 
         // apply stretch
+        // Note: no -Y
         _glScaled(brdRatio, lenRatio, 1.0);
 
         _glCallList(DListData);
@@ -1944,7 +1940,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         _win2prj(&x, &y);
 
         _glTranslated(x, y, 0.0);
-        _glScaled(1.0, -1.0, 1.0);
+        _glScaled(1.0, -1.0, 1.0);            // flip Y
         _glRotated(_north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
         _pushScaletoPixel(TRUE);
@@ -2003,19 +1999,18 @@ static int       _renderSY_CSYMB(S52_obj *obj)
     if (TRUE == (int) S52_MP_get(S52_MAR_DISP_CALIB)) {
         // check symbol physical size, should be 5mm by 5mm
         if (0 == g_strcmp0(attval->str, "CHKSYM01")) {
-            double x = _vp.x + 50;
-            double y = _vp.y + 50;
+            double x      = _vp.x + 50;
+            double y      = _vp.y + 50;
+            double scalex = _scalex / (_dotpitch_mm_x * 100.0);
+            double scaley = _scaley / (_dotpitch_mm_y * 100.0);
+            //double scaley = _scaley / (_dotpitch_mm_x * 100.0);
 
             _glLoadIdentity(GL_MODELVIEW);
 
             _win2prj(&x, &y);
 
             _glTranslated(x, y, 0.0);
-            _glScaled(_scalex / (_dotpitch_mm_x * 100.0),
-                      //scaley / (_dotpitch_mm_y * 100.0),
-                      _scaley / (_dotpitch_mm_x * 100.0),
-                      1.0);
-
+            _glScaled(scalex, scaley, 1.0);
             _glRotated(_north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
             _glCallList(DListData);
@@ -3998,6 +3993,15 @@ static int       _renderAC(S52_obj *obj)
         return TRUE;
     }
 
+    // skip NODTA if on group 1
+    if (0 == g_strcmp0(c->colName, "NODTA")) {
+        // FIXME: skip return if group 2
+        //PRINTF("DEBUG: nodata color found\n");
+        return TRUE;
+    }
+    //*/
+
+
     _setFragColor(c);
 
     _glUniformMatrix4fv_uModelview();
@@ -4033,6 +4037,15 @@ static int       _renderAP_NODATA_layer0(void)
 
     S52_Color *chgrd = S52_PL_getColor("CHGRD");  // grey, conspic
     _setFragColor(chgrd);
+
+
+    ///////////////////////////////////////////////////////////////////////////////////
+    //
+    // FIXME: georeference to cell, so that pattern are fix on 'unsare' when scrolling
+    // FIX: emulate _getGridRef()
+    //
+
+
 
 #ifdef S52_USE_GL2
     // draw using texture as a stencil -------------------
