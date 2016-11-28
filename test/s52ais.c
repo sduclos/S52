@@ -1446,7 +1446,11 @@ int            s52ais_initAIS(void)
 
 #ifdef WIN32
     WSADATA wsaData;
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
+    int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (iResult != 0) {
+        g_printf("WSAStartup failed: %d\n", iResult);
+        return 1;
+    }
 #endif
 
 
