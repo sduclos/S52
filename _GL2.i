@@ -196,8 +196,7 @@ static    int      _pjmTop = 0;       // point to stack top
 #include "texture-font.h"
 
 static texture_atlas_t *_freetype_gl_atlas              = NULL;
-// FIXME: {0} - C99!
-static texture_font_t  *_freetype_gl_font[S52_MAX_FONT] = {NULL,NULL,NULL,NULL};
+static texture_font_t  *_freetype_gl_font[S52_MAX_FONT] = {0};
 static const char      *_freetype_gl_fontfilename       =
 #ifdef S52_USE_ANDROID
     //"/system/fonts/Roboto-Regular.ttf"   // not official, could change place
@@ -1550,45 +1549,50 @@ static int       _initFBO(GLuint mask_texID)
     return TRUE;
 }
 
-static int       _set_glScaled(void)
+static int       _fixDPI_glScaled(void)
 {
-    // sailsafe
-    // clang - val never read  when #ifdef set scale
-    double scaleX = _dotpitch_mm_x;
-    double scaleY = _dotpitch_mm_y;
-
-
     ////////////////////////////////////////////////////////////////
+    // DPI tweak for texture
     //
     // FIXME: scale found by trial and error
     // FIXME: dotpitch should do
     //
-
-    // FIXME: why -Y? (flip Y !!)
+#ifdef S52_USE_ANDROID
 #ifdef S52_USE_TEGRA2
     // Xoom - S52_MAR_DOTPITCH_MM set to 0.3
-    scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 8.0;
-    scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-8.0;
+    double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 8.0;
+    double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 8.0;
 #endif
 
 #ifdef S52_USE_ADRENO
     // Nexus 7 (2013) - 323ppi landscape -
-    //scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 1.0;
-    //scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-1.0;
+    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 1.0;
+    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 1.0;
 
     // Nexus 7 (2013) - 323ppi landscape - S52_MAR_DOTPITCH_MM set to 0.2
-    scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 4.0;  // 4 or 5 OK
-    scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-4.0;  // 4 or 5 OK
+    double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 4.0;  // 4 or 5 OK
+    double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 4.0;  // 4 or 5 OK
 #endif
+
+#else  // S52_USE_ANDROID
 
 #ifdef S52_USE_MESA3D
-    scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X)/ 8.0;
-    scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y)/-8.0;
-#endif
+    double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 8.0;
+    double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 8.0;
+#else
+    // normal case - nothing to fix
+    double scaleX = _dotpitch_mm_x;
+    double scaleY = _dotpitch_mm_y;
 
-    _glScaled(scaleX, scaleY, 1.0);
+    // -OR_
+    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X);
+    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y);
+#endif
+#endif  // S52_USE_ANDROID
 
     ////////////////////////////////////////////////////////////////
+
+    _glScaled(scaleX, -scaleY, 1.0);
 
     return TRUE;
 }
@@ -1788,15 +1792,9 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
     */
     _glMatrixSet(VP_WIN);
 
+    _glTranslated(tileWpx/2.0, tileHpx/2.0, 0.0);
 
-    _glTranslated(tileWpx/2.0 - 0.0, tileHpx/2.0 - 0.0, 0.0);
-    //_glTranslated(tileWpx/2.0 - 3.0, tileHpx/2.0 - 3.0, 0.0);
-    //_glTranslated(tileWpx/2.0 - 5.0, tileHpx/2.0 - 5.0, 0.0);
-    //_glTranslated(tileWpx/2.0 - 10.0, tileHpx/2.0 - 10.0, 0.0);
-
-
-
-    _set_glScaled();
+    _fixDPI_glScaled();
 
     S52_DList *DListData = S52_PL_getDListData(obj);
     _renderTile(DListData);
@@ -1810,7 +1808,7 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
             _glTranslated((w/2.0) + stagOffsetPix, (h/2.0), 0.0);
         }
 
-        _set_glScaled();
+        _fixDPI_glScaled();
 
         _renderTile(DListData);
     }
@@ -1831,8 +1829,6 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
 
 static int       _renderAP_gl2(S52_obj *obj)
 {
-    S52_DList *DListData = S52_PL_getDListData(obj);
-
     double x1=0.0, y1=0.0;   // LL of region of area in world
     double x2=0.0, y2=0.0;   // UR of region of area in world
     double tileWpx = 0.0;
@@ -1840,6 +1836,17 @@ static int       _renderAP_gl2(S52_obj *obj)
     double stagOffsetPix = _getGridRef(obj, &x1, &y1, &x2, &y2, &tileWpx, &tileHpx);
     double tileWw = tileWpx * _scalex;
     double tileHw = tileHpx * _scaley;
+    S52_DList *DListData = S52_PL_getDListData(obj);
+
+    // FIXME: pattern fail .. why?
+    /* skip NODATA03 pattern if on group 1
+    const char *name = S52_PL_getOBCL(obj);
+    if (0 == g_strcmp0(name, "UNSARE")) {
+        // FIXME; skip if group 2
+        //PRINTF("DEBUG: nodata pattern found\n");
+        return TRUE;
+    }
+    //*/
 
     GLuint mask_texID = S52_PL_getAPtexID(obj);
     if (0 == mask_texID) {
