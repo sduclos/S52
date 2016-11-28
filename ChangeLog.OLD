@@ -4,6 +4,10 @@
 #
 
 
+2016NOV28
+    -mod rename to _fixDPI_glSetScaled()
+    -mod use layer 0 for NODTA area group 1
+
 2016NOV12
     -fix gl2 line stipple
     -add _renderLS_gl2() to _GL2.i
@@ -17,7 +21,7 @@
 
 2016OCT06
     -mod make target default to s52gtk2egl
-    -del noise eperiment
+    -del noise experiment
 
 2016OCT04
     -clean up test/s52ui/web/js/tinyjet
