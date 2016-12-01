@@ -94,8 +94,8 @@ int   S52_GL_setDotPitch(int w, int h, int wmm, int hmm);
 int   S52_GL_begin(S52_GL_cycle cycle);
 // render an object to framebuffer
 int   S52_GL_draw(S52_obj *obj, gpointer user_data);
-// draw lights
-int   S52_GL_drawLIGHTS(S52_obj *obj);
+// draw lights - not used
+//int   S52_GL_drawLIGHTS(S52_obj *obj);
 // draw text
 int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
 // draw RADAR,Bathy,...
