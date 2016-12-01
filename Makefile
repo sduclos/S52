@@ -628,8 +628,9 @@ backup: distclean
 tags:
 	-$(TAGS) *.c *.h *.i
 
-err.txt: *.c *.h
-	cppcheck --enable=all $(DEFS) *.c 2> err.txt
+#--version 
+cppcheck:
+	cppcheck --enable=all --std=c99 --template='{file}:{line}: {severity},{id},{message}' $(DEFS) $(SRCS_S52)
 
 # get version - "libS52-2014DEC27-1.157" --> 2014DEC27-1.145
 LIBS52VERS = $(shell grep libS52- S52utils.c | sed 's/.*"libS52-\(.*\)"/\1/' )
@@ -682,3 +683,4 @@ doc: S52-$(LIBS52VERS).typelib
 # 3 - sync .git with sduclos git on GitHub
 # Pushes commits (.git) to your remote repo stored on GitHub
 # $ git push origin master
+

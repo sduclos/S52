@@ -4,6 +4,9 @@
 #
 
 
+2016NOV29
+    -fix cppcheck warning
+
 2016NOV28
     -mod rename to _fixDPI_glSetScaled()
     -mod use layer 0 for NODTA area group 1
