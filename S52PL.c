@@ -1935,7 +1935,8 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
     //PRINTF("--> buf:%s str:%s\n", buf, str);
 
     // parse constant parameter with concatenation operator "'"
-    if (str != NULL && *str == APOS){
+    //if (str != NULL && *str == APOS){
+    if (*str == APOS){
         str++;
         while (*str != APOS){
             *buf++ = *str++;
@@ -2681,12 +2682,14 @@ S57_geo    *S52_PL_getGeo(_S52_obj *obj)
     return obj->geoData;
 }
 
+#if 0
 S57_geo    *S52_PL_setGeo(_S52_obj *obj, S57_geo *geoData)
 {
     return_if_null(obj);
 
     return obj->geoData = geoData;
 }
+#endif  // 0
 
 const char *S52_PL_getOBCL(_S52_obj *obj)
 // NOTE: geoData.name is the same as LUP.OBCL
@@ -2754,12 +2757,14 @@ S52_DisCat  S52_PL_getDISC(_S52_obj *obj)
         return _getDISC(obj->LUP);
 }
 
+#if 0
 int         S52_PL_getLUCM(_S52_obj *obj)
 {
     return_if_null(obj);
 
     return obj->LUCM;
 }
+#endif  // 0
 
 S52_RadPrio S52_PL_getRPRI(_S52_obj *obj)
 {
@@ -2990,8 +2995,8 @@ int         S52_PL_setSYorient(_S52_obj *obj, double orient)
 double      S52_PL_getSYorient(_S52_obj *obj)
 // return symbol cmd orientation parameter [0..360[. -1 on error
 {
-    char   val[MAXL] = {'\0'};   // output string
-    char  *str       = NULL;
+    //char   val[MAXL] = {'\0'};   // output string
+    //char  *str       = NULL;
 
     return_if_null(obj);
 
@@ -3000,10 +3005,12 @@ double      S52_PL_getSYorient(_S52_obj *obj)
             _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
 
             if (NULL != cmd) {
-                str = cmd->param;
+                char *str = cmd->param;
 
                 // check if ORIENT param in symb cmd (ex SY(AAAA01,ORIENT))
-                if (',' == *(str+8)) {
+                if (NULL!=str && ',' == *(str+8)) {
+                    char  val[MAXL] = {'\0'};   // output string
+
                     str = _getParamVal(obj->geoData, str+9, val, MAXL);
 
                     obj->orient = (NULL==str) ? 0.0 : S52_atof(val);
@@ -3032,6 +3039,7 @@ int         S52_PL_getSYbbox  (_S52_obj *obj, int *width, int *height)
     return TRUE;
 }
 
+#if 0
 int         S52_PL_setSYspeed(_S52_obj *obj, double speed)
 {
     return_if_null(obj);
@@ -3058,6 +3066,7 @@ int         S52_PL_getSYspeed(_S52_obj *obj, double *speed)
 
     return TRUE;
 }
+#endif  // 0
 
 int         S52_PL_getLCdata(_S52_obj *obj, double *symlen, char *pen_w)
 // compute symbol run lenght in pixel
@@ -3182,6 +3191,7 @@ int         S52_PL_getAPTileDim(_S52_obj *obj, double *w, double *h, double *dx)
 }
 
 #if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
+#if 0
 int         S52_PL_getAPTilePos(_S52_obj *obj, double *bbx, double *bby, double *pivot_x, double *pivot_y)
 {
     return_if_null(obj);
@@ -3197,6 +3207,7 @@ int         S52_PL_getAPTilePos(_S52_obj *obj, double *bbx, double *bby, double 
 
     return TRUE;
 }
+#endif  // 0
 
 int         S52_PL_setAPtexID(_S52_obj *obj, guint mask_texID)
 {
@@ -3591,11 +3602,13 @@ GArray     *S52_PL_getVOdata(_S52_vec *vecObj)
     return S57_getPrimVertex(vecObj->prim);
 }
 
+#if 0
 S57_prim   *S52_PL_getVOprim(_S52_vec *vecObj)
 {
     return_if_null(vecObj);
     return vecObj->prim;
 }
+#endif  // 0
 
 double      S52_PL_getVOradius(_S52_vec *vecObj)
 {
@@ -3856,6 +3869,7 @@ int         S52_PL_hasText(_S52_obj *obj)
     return FALSE;
 }
 
+#if 0
 int         S52_PL_hasLC(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -3872,7 +3886,9 @@ int         S52_PL_hasLC(_S52_obj *obj)
     }
     return FALSE;
 }
+#endif  // 0
 
+#if 0
 const char *S52_PL_hasCS(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -3898,6 +3914,7 @@ const char *S52_PL_hasCS(_S52_obj *obj)
 
     return NULL;
 }
+#endif  // 0
 
 static
 S52_objSupp       _toggleObjType(_LUP *LUP)
@@ -3938,10 +3955,10 @@ S52_objSupp S52_PL_toggleObjClass(const char *className)
 // toggle an S57 object class
 {
     S52_objSupp supp = S52_SUPP_ERR;
-    _LUP  *LUPlist = NULL;
+    //_LUP  *LUPlist = NULL;
 
     for (_table_t tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
-        LUPlist = (_LUP*)g_tree_lookup(_table[tblType], (gpointer*)className);
+        _LUP *LUPlist = (_LUP*)g_tree_lookup(_table[tblType], (gpointer*)className);
         if (NULL != LUPlist)
             supp = _toggleLUPlist(LUPlist);
     }
@@ -4189,6 +4206,7 @@ S52_obj    *S52_PL_getPrevLeg(_S52_obj *obj)
     return obj->prevLeg;
 }
 
+#if 0
 S52_obj    *S52_PL_setWholin(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -4205,6 +4223,7 @@ S52_obj    *S52_PL_getWholin(_S52_obj *obj)
 
     return obj->wholin;
 }
+#endif  // 0
 
 int         S52_PL_setTimeNow(_S52_obj *obj)
 {

@@ -1510,14 +1510,6 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     _initSIG();
 
     ///////////////////////////////////////////////////////////
-    //
-    // init mem stat stuff
-    //
-    //GMemVTable *glib_mem_profiler_table;
-    //g_mem_set_vtable(glib_mem_profiler_table);
-    //g_mem_profile();
-
-    ///////////////////////////////////////////////////////////
     // init global info
     //
     if (NULL == _plibNameList)
@@ -1576,6 +1568,8 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     //
     // load basic def (ex color, CS, ...)
     S52_PL_init();
+
+    PRINTF("S52 CS VERSION: %s\n", S52_CS_version());
 
     // put an error No, default to 0 - no error
     //S52_MP_set(S52_MAR_ERROR, 0.0);
@@ -2935,8 +2929,6 @@ static int        _loadConnectedNode(const char *name, void *ConnectedNode)
 
 int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb)
 {
-    static int silent = FALSE;
-
 #ifdef S52_USE_GV
     // init w/ dummy cell name --we get here from OpenEV now (!?)
     if (NULL == _crntCell) {
@@ -2993,6 +2985,7 @@ int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_
     //    return 1;
 
     if (NULL == loadObject_cb) {
+        static int silent = FALSE;
         if (FALSE == silent) {
             PRINTF("NOTE: using default S52_loadObject() callback\n");
             PRINTF("       (this msg will not repeat)\n");
@@ -3851,7 +3844,8 @@ static int        _cull(extent ext)
     return TRUE;
 }
 
-#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
+#if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
+#if defined(S52_USE_RASTER) || defined(S52_USE_RADAR)
 static int        _drawRaster(extent *cellExt)
 {
     for (guint i=0; i<_rasterList->len; ++i) {
@@ -3896,6 +3890,7 @@ static int        _drawRaster(extent *cellExt)
 
     return TRUE;
 }
+#endif  // S52_USE_RASTER S52_USE_RADAR
 #endif  // S52_USE_GL2 S52_USE_GLES2
 
 static int        _drawLayer(extent ext, int layer)

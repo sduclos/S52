@@ -105,7 +105,6 @@ localObj *S52_CS_done(_localObj *local)
     local->depval_list = NULL;
 
     g_free(local);
-    local = NULL;
 
     return NULL;
 }
@@ -195,8 +194,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
 // compute witch geo object of this cell "touch" this one (geo)
 // return TRUE
 {
-    static int silent = FALSE;
-
     return_if_null(local);
     return_if_null(geo);
 
@@ -238,6 +235,8 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
     //
     if (0 == g_strcmp0(name, "BOYLAT")) {
         for (guint i=0; i<local->lights_list->len; ++i) {
+            static int silent = FALSE;
+
             S57_geo *light = (S57_geo *) g_ptr_array_index(local->lights_list, i);
 
             // skip if this light is not at buoy's position
@@ -876,7 +875,7 @@ static GString *DEPCNT02 (S57_geo *geo)
     GString *objlstr   = NULL;
     int      objl      = 0;
     GString *quaposstr = NULL;
-    int      quapos    = 0;
+    //int      quapos    = 0;
     //double   depth_value;          // for depth label (facultative in S-52)
 
 
@@ -1038,7 +1037,7 @@ static GString *DEPCNT02 (S57_geo *geo)
     // FIXME: check that the assumtion above is valid!
     quaposstr = S57_getAttVal(geo, "QUAPOS");
     if (NULL != quaposstr) {
-        quapos = S52_atoi(quaposstr->str);
+        int quapos = S52_atoi(quaposstr->str);
         if ( 2 <= quapos && quapos < 10) {
             if (TRUE == safe)
                 depcnt02 = g_string_new(";LS(DASH,2,DEPSC)");
@@ -1531,13 +1530,13 @@ static GString *_LITDSN01(S57_geo *geo)
     GString *litdsn01         = g_string_new("");
     GString *gstr             = NULL;  // tmp
     GString *catlitstr        = S57_getAttVal(geo, "CATLIT");
-    char     catlit[LISTSIZE] = {'\0'};
+    //char     catlit[LISTSIZE] = {'\0'};
     GString *litchrstr        = S57_getAttVal(geo, "LITCHR");
-    char     litchr[LISTSIZE] = {'\0'};
+    //char     litchr[LISTSIZE] = {'\0'};
     GString *colourstr        = S57_getAttVal(geo, "COLOUR");
-    char     colour[LISTSIZE] = {'\0'};
+    //char     colour[LISTSIZE] = {'\0'};
     GString *statusstr        = S57_getAttVal(geo, "STATUS");
-    char     status[LISTSIZE] = {'\0'};
+    //char     status[LISTSIZE] = {'\0'};
 
     // FIXME: need grammar to create light's text
 
@@ -1554,6 +1553,7 @@ static GString *_LITDSN01(S57_geo *geo)
         const char *tmp     = NULL;
         int         i       = 0;
         int         ncatlit = 0;
+        char        catlit[LISTSIZE] = {'\0'};
 
         ncatlit = _parseList(catlitstr->str, catlit);
 
@@ -1618,6 +1618,7 @@ static GString *_LITDSN01(S57_geo *geo)
     // LITCHR
     if (NULL != litchrstr) {
         const char *tmp = NULL;
+        char        litchr[LISTSIZE] = {'\0'};
 
         if (1 < _parseList(litchrstr->str, litchr)) {
             PRINTF("WARNING: more then one 'light characteristic' (LITCHR), other not displayed\n");
@@ -1704,6 +1705,7 @@ static GString *_LITDSN01(S57_geo *geo)
     // COLOUR,
     if (NULL != colourstr) {
         const char *tmp = NULL;
+        char        colour[LISTSIZE] = {'\0'};
 
         //if (1 < _parseList(colourstr->str, colour))
         //    PRINTF("WARNING: more then one 'colour' (COLOUR), other not displayed\n");
@@ -1793,6 +1795,7 @@ static GString *_LITDSN01(S57_geo *geo)
     // STATUS,
     if (NULL != statusstr) {
         const char *tmp = NULL;
+        char        status[LISTSIZE] = {'\0'};
 
         if (1 < _parseList(statusstr->str, status))
             PRINTF("WARNING: more then one 'status' (STATUS), other not displayed\n");
@@ -1924,12 +1927,13 @@ static GString *OBSTRN04 (S57_geo *geo)
 
         if (NULL != udwhaz03str){
             g_string_append(obstrn04str, udwhaz03str->str);
-            if (NULL != quapnt01str)
+            if (NULL != quapnt01str) {
                 g_string_append(obstrn04str, quapnt01str->str);
+                g_string_free(quapnt01str, TRUE);
+            }
+            g_string_free(udwhaz03str, TRUE);
 
-            if (NULL != udwhaz03str) g_string_free(udwhaz03str, TRUE);
             if (NULL != sndfrm02str) g_string_free(sndfrm02str, TRUE);
-            if (NULL != quapnt01str) g_string_free(quapnt01str, TRUE);
 
             return obstrn04str;
         }
@@ -2046,13 +2050,13 @@ static GString *OBSTRN04 (S57_geo *geo)
         if (S57_LINES_T == S57_getObjtype(geo)) {
             // Continuation B
             GString *quaposstr = S57_getAttVal(geo, "QUAPOS");
-            int      quapos    = 0;
+            //int      quapos    = 0;
 
             // ------------------------------------------------------------
             // FIXME: chenzunfeng found this bug: should be mutually exclusive
             // FIX: add 2 'else'
             if (NULL != quaposstr) {
-                quapos = S52_atoi(quaposstr->str);
+                int quapos = S52_atoi(quaposstr->str);
                 if (2 <= quapos && quapos < 10) {
                     if (NULL != udwhaz03str)
                         g_string_append(obstrn04str, ";LC(LOWACC41)");
@@ -2109,12 +2113,14 @@ static GString *OBSTRN04 (S57_geo *geo)
                 g_string_append(obstrn04str, ";AC(DEPVS);AP(FOULAR01)");
                 g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
                 g_string_append(obstrn04str, udwhaz03str->str);
-                if (NULL != quapnt01str)
+                if (NULL != quapnt01str) {
                     g_string_append(obstrn04str, quapnt01str->str);
+                    g_string_free(quapnt01str, TRUE);
+                }
+                g_string_free(udwhaz03str, TRUE);
 
-                if (NULL != udwhaz03str) g_string_free(udwhaz03str, TRUE);
-                if (NULL != sndfrm02str) g_string_free(sndfrm02str, TRUE);
-                if (NULL != quapnt01str) g_string_free(quapnt01str, TRUE);
+                if (NULL != sndfrm02str)
+                    g_string_free(sndfrm02str, TRUE);
 
                 return obstrn04str;
             }
@@ -2378,11 +2384,11 @@ static GString *_QUALIN01(S57_geo *geo)
 {
     GString *qualino1  = NULL;
     GString *quaposstr = S57_getAttVal(geo, "QUAPOS");
-    int      quapos    = 0;
+    //int      quapos    = 0;
     const char *line   = NULL;
 
     if (NULL != quaposstr) {
-        quapos = S52_atoi(quaposstr->str);
+        int quapos = S52_atoi(quaposstr->str);
         if ( 2 <= quapos && quapos < 10)
             line = ";LC(LOWACC21)";
     } else {
@@ -2548,7 +2554,7 @@ static GString *RESARE02 (S57_geo *geo)
 {
     GString *resare02         = g_string_new("");
     GString *restrnstr        = S57_getAttVal(geo, "RESTRN");
-    char     restrn[LISTSIZE] = {'\0'};
+    //char     restrn[LISTSIZE] = {'\0'};
     GString *catreastr        = S57_getAttVal(geo, "CATREA");
     char     catrea[LISTSIZE] = {'\0'};
     const char *symb          = NULL;
@@ -2556,6 +2562,7 @@ static GString *RESARE02 (S57_geo *geo)
     const char *prio          = NULL;
 
     if ( NULL != restrnstr) {
+        char restrn[LISTSIZE] = {'\0'};
         _parseList(restrnstr->str, restrn);
 
         if (NULL != catreastr) _parseList(catreastr->str, catrea);
@@ -2735,10 +2742,12 @@ static GString *_RESCSP01(S57_geo *geo)
 {
     GString *rescsp01         = NULL;
     GString *restrnstr        = S57_getAttVal(geo, "RESTRN");
-    char     restrn[LISTSIZE] = {'\0'};   // restriction list
-    const char *symb          = NULL;
+    //char     restrn[LISTSIZE] = {'\0'};   // restriction list
+    //const char *symb          = NULL;
 
     if ( NULL != restrnstr) {
+        char        restrn[LISTSIZE] = {'\0'};   // restriction list
+        const char *symb             = NULL;
         _parseList(restrnstr->str, restrn);
 
         if (_strpbrk(restrn, "\007\010\016")) {
@@ -2887,7 +2896,7 @@ static GString *_SNDFRM02(S57_geo *geo, double depth_value)
     GString *sndfrm02         = g_string_new("");
     const char *symbol_prefix = NULL;
     GString *tecsoustr        = S57_getAttVal(geo, "TECSOU");
-    char     tecsou[LISTSIZE] = {'\0'};
+    //char     tecsou[LISTSIZE] = {'\0'};
     GString *quasoustr        = S57_getAttVal(geo, "QUASOU");
     char     quasou[LISTSIZE] = {'\0'};
     GString *statusstr        = S57_getAttVal(geo, "STATUS");
@@ -2912,6 +2921,7 @@ static GString *_SNDFRM02(S57_geo *geo, double depth_value)
         symbol_prefix = "SOUNDG";
 
     if (NULL != tecsoustr) {
+        char tecsou[LISTSIZE] = {'\0'};
         _parseList(tecsoustr->str, tecsou);
         if (_strpbrk(tecsou, "\006"))
             g_string_sprintfa(sndfrm02, ";SY(%sB1)", symbol_prefix);

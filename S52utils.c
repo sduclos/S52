@@ -357,7 +357,7 @@ double   S52_atof(cchar *str)
 }
 
 
-
+/*
 //////////////////////
 //
 // from GIMP xyz2rgb.c
@@ -398,3 +398,4 @@ int      S52_xyL2rgb(double *xr, double *yg, double *Lb)
 
   return 1;
 }
+*/

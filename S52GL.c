@@ -410,7 +410,7 @@ static int       _getCentroidOpen (guint npt, pt3 *v)
 static int       _getCentroidClose(guint npt, double *ppt)
 // Close Poly - return TRUE and centroid else FALSE
 {
-    GLdouble ai;
+    //GLdouble ai;
     GLdouble atmp = 0.0;
     GLdouble xtmp = 0.0;
     GLdouble ytmp = 0.0;
@@ -437,7 +437,7 @@ static int       _getCentroidClose(guint npt, double *ppt)
 
     // compute area
     for (guint i=0; i<npt-1; ++i) {
-        ai    =  (p[0]-offx) * (p[4]-offy) - (p[3]-offx) * (p[1]-offy);
+        GLdouble ai = (p[0]-offx) * (p[4]-offy) - (p[3]-offx) * (p[1]-offy);
         atmp += ai;
         xtmp += ((p[3]-offx) + (p[0]-offx)) * ai;
         ytmp += ((p[4]-offy) + (p[1]-offy)) * ai;
@@ -3535,8 +3535,10 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
 
     double off_x = ppt[0];
     double off_y = ppt[1];
-    GLdouble x1,y1,z1,  x2,y2,z2;
+    GLdouble x1,y1;
+    GLdouble x2,y2;
     for (guint i=1; i<npt; ++i) {
+        GLdouble z1,z2;
         // set coordinate
         x1 = ppt[0];
         y1 = ppt[1];
@@ -3724,8 +3726,8 @@ static int       _renderLC(S52_obj *obj)
     S52_Color *c = DListData->colors;
     _setFragColor(c);
 
-    GLdouble symlen_pixl = 0.0;
-    GLdouble symlen_wrld = 0.0;
+    //GLdouble symlen_pixl = 0.0;
+    //GLdouble symlen_wrld = 0.0;
 
     GLdouble symlen = 0.0;
     char     pen_w  = 0;
@@ -3733,8 +3735,8 @@ static int       _renderLC(S52_obj *obj)
     _glLineWidth(pen_w - '0');
     //_glLineWidth(pen_w - '0' + 0.375);
 
-    symlen_pixl = symlen / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
-    symlen_wrld = symlen_pixl * _scalex;
+    GLdouble symlen_pixl = symlen / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
+    GLdouble symlen_wrld = symlen_pixl * _scalex;
 
     guint rNbr = S57_getRingNbr(geo);
     for (guint i=0; i<rNbr; ++i) {
@@ -5177,6 +5179,7 @@ int        S52_GL_isOFFview(S52_obj *obj)
 }
 
 #ifdef S52_USE_GL2
+#if defined(S52_USE_RASTER) || defined(S52_USE_RADAR)
 static int       _newTexture(S52_GL_ras *raster)
 // copy and blend raster 'data' to alpha texture
 // FIXME: test if the use of shader to blend rather than precomputing value here is faster
@@ -5405,9 +5408,10 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
     return TRUE;
 }
+#endif  // S52_USE_RASTER S52_USE_RADAR
 #endif  // S52_USE_GL2
 
-
+#if 0
 int        S52_GL_drawLIGHTS(S52_obj *obj)
 // draw lights
 {
@@ -5425,6 +5429,7 @@ int        S52_GL_drawLIGHTS(S52_obj *obj)
 
     return TRUE;
 }
+#endif  // 0
 
 int        S52_GL_drawText(S52_obj *obj, gpointer user_data)
 // TE&TX
@@ -6177,12 +6182,13 @@ int        S52_GL_init(void)
 
     PRINTF("begin GL init..\n");
 
-    // juste checking
+    /* juste checking
     if (sizeof(double) != sizeof(GLdouble)) {
         PRINTF("ERROR: sizeof(double) != sizeof(GLdouble)\n");
         g_assert(0);
         return FALSE;
     }
+    */
 
     // GL sanity check before start of init
     _checkError("S52_GL_init() -0-");
@@ -6571,12 +6577,13 @@ cchar     *S52_GL_getNameObjPick(void)
 
                     //*
                     if (NULL != cmdType) {
-                        char  name[80];
+                        //char  name[80];
                         const char *value = S52_PL_getCmdText(obj);
                         // debug
                         //PRINTF("%s%i: %s\n", cmdType, nCmd, value);
 
                         if (NULL !=  value) {
+                            char name[80];
                             // insert in Att
                             SNPRINTF(name, 80, "%s%i", cmdType, nCmd);
                             S57_setAtt(geo, name, value);
@@ -7282,6 +7289,7 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
     return TRUE;
 }
 
+#if 0
 int        S52_GL_drawArc(S52_obj *objA, S52_obj *objB)
 {
     return_if_null(objA);
@@ -7302,6 +7310,7 @@ int        S52_GL_drawArc(S52_obj *objA, S52_obj *objB)
 
     return TRUE;
 }
+#endif  // 0
 
 #if 0
 int              _intersect(double x1, double y1, double x2, double y2,

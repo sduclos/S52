@@ -152,12 +152,13 @@ static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_
 
 int            S57_ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
 {
-    // check that geometric data type are in sync with OpenGL
+    /* check that geometric data type are in sync with OpenGL
     if (sizeof(geocoord) != sizeof(double)) {
         PRINTF("ERROR: sizeof(geocoord) != sizeof(double)\n");
         g_assert(0);
         return FALSE;
     }
+    */
 
     OGRRegisterAll();
 
