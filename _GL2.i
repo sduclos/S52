@@ -444,15 +444,15 @@ static void      _make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat 
 
 static void      _multiply(GLfloat *m, GLfloat *n)
 {
-   GLfloat tmp[16];
-   const GLfloat *row, *column;
-   div_t d;
+    GLfloat tmp[16] = {0};
+   //const GLfloat *row, *column;
+   //div_t d;
 
    for (int i = 0; i < 16; i++) {
-      tmp[i] = 0;
-      d      = div(i, 4);
-      row    = n + d.quot * 4;
-      column = m + d.rem;
+      //tmp[i] = 0;
+      div_t    d      = div(i, 4);
+      GLfloat *row    = n + d.quot * 4;
+      GLfloat *column = m + d.rem;
       for (int j = 0; j < 4; j++)
           tmp[i] += row[j] * column[j * 4];
    }

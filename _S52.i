@@ -824,7 +824,7 @@ static gboolean            _handleWebSocket(GIOChannel *source, gchar *str_read,
 static gboolean            _handshakeWebSocket(GIOChannel *source, gchar *str_read)
 {
     gchar buf[SOCK_BUF] = {'\0'};
-    sscanf(str_read, "Sec-WebSocket-Key: %s", buf);
+    sscanf(str_read, "Sec-WebSocket-Key: %2047s", buf);  // SOCK_BUF - 1
     GString *secWebSocketKey = g_string_new(buf);
     secWebSocketKey = g_string_append(secWebSocketKey, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 

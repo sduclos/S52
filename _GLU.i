@@ -130,7 +130,7 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
 {
     GLdouble sinCache[CACHE_SIZE];
     GLdouble cosCache[CACHE_SIZE];
-    GLdouble angle;
+    //GLdouble angle;
     GLdouble vertex[3];
 
     if (slices < 2) slices = 2;
@@ -151,7 +151,8 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
 
     if (sweepAngle <    0.0) {
         startAngle += sweepAngle;
-        sweepAngle -= sweepAngle;
+        //sweepAngle -= sweepAngle;
+        sweepAngle = 0.0;
     }
 
     //if (sweepAngle == 360.0) slices2 = slices;
@@ -159,7 +160,7 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
 
     GLdouble angleOffset = startAngle/180.0f*PI;
     for (int i=0; i<=slices; i++) {
-        angle = angleOffset+((PI*sweepAngle)/180.0f)*i/slices;
+        GLdouble angle = angleOffset+((PI*sweepAngle)/180.0f)*i/slices;
 
         sinCache[i] = sin(angle);
         cosCache[i] = cos(angle);
