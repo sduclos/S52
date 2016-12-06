@@ -561,8 +561,16 @@ static void      _glPopMatrix(int mode)
 
 static void      _glLoadIdentity(int mode)
 {
-    (void)mode;
+    //(void)mode;
 
+    // debug - alway in GL_MODELVIEW mode in a GLcycle
+    if (GL_MODELVIEW == mode) {
+        g_assert(*_crntMat == *_mvm[_mvmTop]);
+        ;
+    } else {
+        g_assert(*_crntMat == *_pjm[_pjmTop]);
+        ;
+    }
 #ifdef S52_USE_GL2
     memset(_crntMat, 0, sizeof(GLfloat) * 16);
     _crntMat[0] = _crntMat[5] = _crntMat[10] = _crntMat[15] = 1.0;
@@ -744,10 +752,12 @@ static GLint     _glMatrixSet(VP vpcoord)
 
     _glOrtho(left, right, bottom, top, znear, zfar);
 
+    //*
     _glTranslated(  (left+right)/2.0,  (bottom+top)/2.0, 0.0);
     _glRotated   (_north, 0.0, 0.0, 1.0);
     _glTranslated( -(left+right)/2.0, -(bottom+top)/2.0, 0.0);
-
+    //PRINTF("DEBUG: north:%f\n", _north);
+    //*/
 
     _glMatrixMode  (GL_MODELVIEW);
     _glPushMatrix  (GL_MODELVIEW);
@@ -791,7 +801,7 @@ static GLint     _glMatrixDel(VP vpcoord)
 static int       _win2prj(double *x, double *y)
 // convert coordinate: window --> projected
 {
-    GLint vp[4] = {_vp.x,_vp.y,_vp.w,_vp.h};
+    GLint vp[4] = {_vp.x, _vp.y, _vp.w, _vp.h};
 #ifdef S52_USE_GL2
     float u       = *x;
     float v       = *y;
@@ -804,6 +814,9 @@ static int       _win2prj(double *x, double *y)
         return FALSE;
     }
     //*/
+
+    // Note: this is CPU job - no need to send the matrix to the GPU
+    _glLoadIdentity(GL_MODELVIEW);
 
     if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], vp, &u, &v, &dummy_z)) {
         PRINTF("WARNING: UnProjection faild: _mvmTop=%i, _pjmTop=%i\n", _mvmTop, _pjmTop);
@@ -836,8 +849,9 @@ static projXY    _prj2win(projXY p)
         g_assert(0);
         return p;
     }
-    float u = p.u;
-    float v = p.v;
+
+    float u       = p.u;
+    float v       = p.v;
     float dummy_z = 0.0;
 
     // make sure that _gluProject() has the right coordinate
@@ -892,6 +906,7 @@ static int       _doProjection(vp_t vp, double centerLat, double centerLon, doub
         double r = (double)vp.h / (double)vp.w;   // > 1 'h' dominant, < 1 'w' dominant
         //PRINTF("Viewport pixels (width x height): %i %i (r=%f)\n", w, h, r);
         double dy = NE.y - SW.y;
+        //double dy = ABS(NE.y - SW.y);
         // assume h dominant (latitude), so range
         // fit on a landscape screen in latitude
         // FIXME: in portrait screen logitude is dominant
@@ -1299,13 +1314,11 @@ static int       _callDList(S57_prim *prim)
 #endif // S52_USE_OPENGL_VBO
 
 static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx, double *URy, double *tileW, double *tileH)
+// called by _GL1.i and _GL2.i
 {
     //
     // Tile pattern to 'grided' extent
     //
-
-    double x1, y1;   // LL of region of area
-    double x2, y2;   // UR of region of area
 
     // pattern tile: 1 = 0.01 mm
     double tw = 0.0;  // tile width
@@ -1323,6 +1336,9 @@ static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx
     double h0 = tileHeightPix * _scaley;
 
     // grid alignment
+    double x1, y1;   // LL of region of area
+    double x2, y2;   // UR of region of area
+
     S57_geo *geoData = S52_PL_getGeo(obj);
     S57_getExt(geoData, &x1, &y1, &x2, &y2);
     double xyz[6] = {x1, y1, 0.0, x2, y2, 0.0};
@@ -1935,7 +1951,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         double x = 10.0; // 3 mm from left
         double y = 10.0; // bottom justifier
 
-        _glLoadIdentity(GL_MODELVIEW);
+        //_glLoadIdentity(GL_MODELVIEW);
 
         _win2prj(&x, &y);
 
@@ -1966,13 +1982,17 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         return TRUE;
     }
 
+    //
+    // FIXME: something bellow is affecting LC() winding - maybe matrix rot +- north
+    //
+
     // north arrow
     if (0 == g_strcmp0(attval->str, "NORTHAR1")) {
         double x   = 30;
         double y   = _vp.h - 40;
         double rot = 0.0;
 
-        _glLoadIdentity(GL_MODELVIEW);
+        //_glLoadIdentity(GL_MODELVIEW);
 
         _win2prj(&x, &y);
 
@@ -1984,10 +2004,10 @@ static int       _renderSY_CSYMB(S52_obj *obj)
     // depth unit
     if (0 == g_strcmp0(attval->str, "UNITMTR1")) {
         // Note: S52 specs say: left corner, just beside the scalebar [what does that mean in XY]
-        double x = 30;
-        double y = 20;
+        double x   = 30;
+        double y   = 20;
 
-        _glLoadIdentity(GL_MODELVIEW);
+        //_glLoadIdentity(GL_MODELVIEW);
 
         _win2prj(&x, &y);
 
@@ -2005,13 +2025,14 @@ static int       _renderSY_CSYMB(S52_obj *obj)
             double scaley = _scaley / (_dotpitch_mm_y * 100.0);
             //double scaley = _scaley / (_dotpitch_mm_x * 100.0);
 
-            _glLoadIdentity(GL_MODELVIEW);
+            //_glLoadIdentity(GL_MODELVIEW);
 
             _win2prj(&x, &y);
 
             _glTranslated(x, y, 0.0);
             _glScaled(scalex, scaley, 1.0);
-            _glRotated(_north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
+            //_glRotated(_north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
+            _glRotated(-_north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
             _glCallList(DListData);
 
@@ -2022,14 +2043,17 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         if (0 == g_strcmp0(attval->str, "BLKADJ01")) {
             // FIXME: use _dotpitch_ ..
             // top left (witch is under CPU usage on Android)
-            double x = _vp.w - 50;
-            double y = _vp.h - 50;
+            double x   = _vp.w - 50;
+            double y   = _vp.h - 50;
+            //double rot = 0.0;
 
-            _glLoadIdentity(GL_MODELVIEW);
+            //_glLoadIdentity(GL_MODELVIEW);
 
             _win2prj(&x, &y);
 
-            _renderSY_POINT_T(obj, x, y, _north);
+            _renderSY_POINT_T(obj, x, y,  _north);
+            //_renderSY_POINT_T(obj, x, y, -_north);
+            //_renderSY_POINT_T(obj, x, y, rot);
 
             return TRUE;
         }
@@ -3341,45 +3365,6 @@ static int       _renderLS(S52_obj *obj)
 
 #ifdef S52_USE_GL2
                     _renderLS_gl2(style, npt, ppt);
-
-                    /*
-                    _d2f(_tessWorkBuf_f, npt, ppt);
-                    // alternate planned route (dot)
-                    if (0 == g_strcmp0("leglin", S57_getName(geoData))) {
-                        // FIXME: move to _GL2.i:_renderLS_setPatDott(float *ppt)
-                        // FIXME: use GL_POINTS
-                        //glUniform1f(_uPattOn, 1.0);
-                        glUniform1f(_uTextOn, 1.0);
-                        glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
-
-                        float dx       = ppt[0] - ppt[3];
-                        float dy       = ppt[1] - ppt[4];
-                        float leglen_m = sqrt(dx*dx + dy*dy);   // leg length in meter
-                        float leglen_px= leglen_m  / _scalex;   // leg length in pixel
-                        float tex_n    = leglen_px / 32.0;      // number of texture pattern - 1D 32x1 pixels
-
-                        float ptr[4] = {
-                            0.0,   0.0,
-                            tex_n, 1.0
-                        };
-
-                        glEnableVertexAttribArray(_aUV);
-                        glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
-
-                        _glUniformMatrix4fv_uModelview();
-                        _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
-
-                        glDisableVertexAttribArray(_aUV);
-                        glBindTexture(GL_TEXTURE_2D,  0);
-                        //glUniform1f(_uPattOn, 0.0);
-                        glUniform1f(_uTextOn, 0.0);
-
-                    } else {
-                        // all other line
-                        _glUniformMatrix4fv_uModelview();
-                        _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
-                    }
-                    //*/
 #else
                     _glUniformMatrix4fv_uModelview();
                     _DrawArrays_LINE_STRIP(npt, (vertex_t *)ppt);
@@ -4025,6 +4010,7 @@ static int       _renderAP_NODATA_layer0(void)
     pt2v pt0, pt1, pt2, pt3;
 
     // double --> float if GLES2
+    // FIXME: resize extent for chart rotation
     pt0.x = _pmin.u;
     pt0.y = _pmin.v;
 
@@ -4040,22 +4026,17 @@ static int       _renderAP_NODATA_layer0(void)
     S52_Color *chgrd = S52_PL_getColor("CHGRD");  // grey, conspic
     _setFragColor(chgrd);
 
-
-    ///////////////////////////////////////////////////////////////////////////////////
-    //
-    // FIXME: georeference to cell, so that pattern are fix on 'unsare' when scrolling
-    // FIX: emulate _getGridRef()
-    //
-
-
-
 #ifdef S52_USE_GL2
     // draw using texture as a stencil -------------------
-
+    // NODATA texture size: 32px x 32px  --> world
     vertex_t tile_x   = 32 * _scalex;
     vertex_t tile_y   = 32 * _scaley;
-    int      n_tile_x = (_pmin.u - _pmax.u) / tile_x;
-    int      n_tile_y = (_pmin.v - _pmax.v) / tile_y;
+    int      n_tile_x = (pt0.x - pt2.x) / tile_x;
+    int      n_tile_y = (pt0.y - pt2.y) / tile_y;
+
+    // georeference to grid
+    pt0.x   = floorf(pt0.x / tile_x) * tile_x;
+    pt0.y   = floorf(pt0.y / tile_y) * tile_y;
 
     vertex_t ppt[4*3 + 4*2] = {
         pt0.x, pt0.y, 0.0,        0.0f,     0.0f,
@@ -5110,6 +5091,15 @@ int        S52_GL_isSupp(S52_obj *obj)
 // TRUE if display of object is suppressed
 // also collect stat
 {
+    /* debug
+    if (0 == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) {
+        PRINTF("DEBUG: m_covr FOUND\n");
+    }
+    if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
+        PRINTF("DEBUG: sclbdy FOUND\n");
+    }
+    */
+
     if (S52_SUPP_ON == S52_PL_getObjToggleState(obj)) {
         ++_oclip;
         return TRUE;
@@ -5145,6 +5135,14 @@ int        S52_GL_isOFFview(S52_obj *obj)
     //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "pastrk")) {
     //    PRINTF("DEBUG: pastrk FOUND\n");
     //}
+    /*
+    if (0 == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) {
+        PRINTF("DEBUG: m_covr FOUND\n");
+    }
+    if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
+        PRINTF("DEBUG: sclbdy FOUND\n");
+    }
+    */
 
     // geo extent _gmin/max
     double x1,y1,x2,y2;
@@ -5153,7 +5151,7 @@ int        S52_GL_isOFFview(S52_obj *obj)
         return FALSE;
 
     // FIXME: look for trick to bailout if func fail
-    //(S57_getExt(geo, &x1, &y1, &x2, &y2)? TRUE : return FALSE;
+    //(TRUE==S57_getExt(geo, &x1, &y1, &x2, &y2)? TRUE : return FALSE;
 
     // S-N limits
     if ((y2 < _gmin.v) || (y1 > _gmax.v)) {
@@ -5485,9 +5483,17 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "pastrk")) {
     //    PRINTF("DEBUG: pastrk FOUND\n");
     //}
-    //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
-    //    PRINTF("DEBUG: M_COVR FOUND\n");
-    //}
+    /*
+    if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
+        PRINTF("DEBUG: M_COVR FOUND\n");
+    }
+    if (0 == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) {
+        PRINTF("DEBUG: m_covr FOUND\n");
+    }
+    if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
+        PRINTF("DEBUG: sclbdy FOUND\n");
+    }
+    */
     //if (S52_GL_PICK == _crnt_GL_cycle) {
     //    S57_geo *geo = S52_PL_getGeo(obj);
     //    GString *FIDNstr = S57_getAttVal(geo, "FIDN");
@@ -6503,13 +6509,29 @@ int        S52_GL_setScissor(int x, int y, int width, int height)
         return TRUE;
     }
 
+    //
+    // FIXME: extent box if chart rotation - will mess MIO & HO data limit!
+    // FIX: skip scissor _north != 0, add doc
+    if (0.0 != _north) {
+        // FIXME: save S52_MAR_DISP_HODATA, reset when N = 0
+        glDisable(GL_SCISSOR_TEST);
+        return TRUE;
+    }
+
+
     glEnable(GL_SCISSOR_TEST);
 
-    // +1 px to cover line witdh at edge
-    if (0==x || 0==y)
-        glScissor(x, y, width+1, height+1);
-    else
+    /* +1 px to cover line witdh at edge
+    if (x<=0 || y<=0) {
+        if (0 < x)
+            glScissor(x, 0, width+1,   height+1+y);
+        if (0 < y)
+            glScissor(0, y, width+1+x, height+1);
+    } else
         glScissor(x-1, y-1, width+2, height+2);
+    */
+
+    glScissor(x-1, y-1, width+2, height+2);
 
     _checkError("S52_GL_setScisor().. -end-");
 
@@ -6739,9 +6761,15 @@ int        S52_GL_drawFBPixels(void)
     // debug
     //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
 
+    // set rotation temporatly to 0.0 (via _glMatrixSet())
+    double northtmp = _north;
+    _north = 0.0;
+
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
 #ifdef S52_USE_GL2
+    _glMatrixSet(VP_PRJ);
+
     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
 
@@ -6770,11 +6798,10 @@ int        S52_GL_drawFBPixels(void)
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
 
-#else   // S52_USE_GL2
+    _glMatrixDel(VP_PRJ);
+    _north = northtmp;
 
-    // set rotation temporatly to 0.0  (MatrixSet)
-    double northtmp = _north;
-    _north = 0.0;
+#else   // S52_USE_GL2
 
     _glMatrixSet(VP_WIN);
     glRasterPos2i(0, 0);
@@ -6787,14 +6814,14 @@ int        S52_GL_drawFBPixels(void)
 
     _glMatrixDel(VP_WIN);
 
-    _north = northtmp;
-
-
 #endif  // S52_USE_GL2
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
     _checkError("S52_GL_drawFBPixels() -fini-");
+
+    _north = northtmp;
+
 
     return TRUE;
 }
