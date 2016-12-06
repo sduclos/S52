@@ -280,7 +280,7 @@ static int      _s52_draw_cb(gpointer user_data)
         engine->do_S52draw = FALSE;
     }
 
-    // draw AIS
+    // draw last (AIS)
     if (TRUE == engine->do_S52drawLast) {
 
 #ifdef USE_FAKE_AIS
@@ -347,14 +347,14 @@ static gboolean _rotation(GdkEventKey *event)
         // -
         case GDK_KEY_minus:
             _engine.state.north += 1.0;
-            if (360.0 < _engine.state.north)
+            if (360.0 <= _engine.state.north)
                 _engine.state.north -= 360.0;
             break;
         // +
         case GDK_KEY_equal:
         case GDK_KEY_plus :
             _engine.state.north -= 1.0;
-            if (_engine.state.north < 0.0)
+            if (0.0 > _engine.state.north)
                 _engine.state.north += 360.0;
             break;
     }
