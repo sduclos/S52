@@ -3580,12 +3580,12 @@ static int        _app()
                                                 S52_obj *obj = S52_PL_isObjValid(sclbdy);
                                                 _updateGeo(obj, ppt);
 
-                                                // FIXME: setExtent
+                                                // optimisation: setExtent
                                                 //_setExt(geo, 1, xyz);
 
                                                 g_array_append_val(_sclbdyList, sclbdy);
                                             } else {
-                                                PRINTF("WARNING: 'sclbdy' fail check PLib AUX\n");
+                                                PRINTF("WARNING: 'sclbdy' fail - check PLib AUX\n");
                                                 g_assert(0);
                                             }
 
@@ -3625,7 +3625,7 @@ static int        _app()
         if (FALSE != _HODATAUnion) {
             S52_obj *obj = S52_PL_isObjValid(_HODATAUnion);
             _removeObj(_marinerCell, obj);
-            //obj  = _delObj(obj);  // cllang - return val never used
+            //obj  = _delObj(obj);  // clang - return val never used
             _delObj(obj);
             _HODATAUnion = FALSE;
         }
@@ -3637,10 +3637,11 @@ static int        _app()
                 S52_obj *obj = S52_PL_isObjValid(_HODATAUnion);
                 _updateGeo(obj, (double*)rev);
 
-                // FIXME: setExtent
+                // optimisation: setExtent
                 //_setExt(geo, 1, xyz);
             } else {
                 PRINTF("WARNING: 'm_cover' fail check PLib AUX\n");
+                g_assert(0);
             }
         }
         _doDATCVR = FALSE;
@@ -3811,17 +3812,23 @@ static int        _cullLayer(_cell *c)
 }
 
 static int        _cull(extent ext)
-// FIXME: allow for chart rotation - north != 0.0
 // cull chart not in view extent
 // - viewport
 // - small cell region on top
 {
     _resetJournal();
 
-    // FIXME: mariner layer must be embeded in each cell
-    // ex: mariner layer[8] for route
-    // cull mariners' at each layer glScissor() will clip
+    // extend view to fit cell rotation
+    // optimisation: use _north angle (in S52GL.c!) if big delta affect GPU
+    double LLv, LLu, URv, URu;
+    S52_GL_getGEOView(&LLv, &LLu, &URv, &URu);
+    //PRINTF("DEBUG: LLv, LLu, URv, URu: %f %f  %f %f\n", LLv, LLu, URv, URu);
 
+    double dLat = ABS((LLv - URv) / 2.0);
+    double dLon = ABS((LLu - URu) / 2.0);
+    S52_GL_setGEOView(LLv-dLat, LLu-dLon, URv+dLat, URu+dLat);
+    //PRINTF("DEBUG: dLat,dLon: %f %f\n", dLat, dLon);
+    //PRINTF("DEBUG: LLv, LLu, URv, URu: %f %f  %f %f\n", LLv-dLat, LLu-dLon, URv+dLat, URu+dLat);
 
     // all cells - larger region first (small scale)
     //for (guint i=_cellList->len; i>0; --i) {
@@ -3837,6 +3844,9 @@ static int        _cull(extent ext)
             _cullLayer(c);
         }
     }
+
+    // reset original view extent
+    S52_GL_setGEOView(LLv, LLu, URv, URu);
 
     // debug
     //PRINTF("DEBUG: nbr of object culled: %i (%i)\n", _nCull, _nTotal);
@@ -4232,15 +4242,16 @@ static int        _draw()
         S52_GL_prj2win(&xyz[3], &xyz[4]);
         // ----------------------------------------------------------------------------
 
-        int x = floor(xyz[0]);
-        int y = floor(xyz[1]);
-        int w = floor(xyz[3] - xyz[0]);
-        int h = floor(xyz[4] - xyz[1]);
-
-        // needed in combining HO DATA limit (check for corner overlap)
-        // also mariners obj that overlapp cells
-        // BUG: this also clip calibration symbol if overlap cell & NODATYA
-        S52_GL_setScissor(x, y, w, h);
+        {   // needed in combining HO DATA limit (check for corner overlap)
+            // also mariners obj that overlapp cells
+            // FIXME: this also clip calibration symbol if overlap cell & NODATA
+            // need to augment the box size for chart rotation, but MIO will overlap!
+            int x = floor(xyz[0]);
+            int y = floor(xyz[1]);
+            int w = floor(xyz[3] - xyz[0]);
+            int h = floor(xyz[4] - xyz[1]);
+            S52_GL_setScissor(x, y, w, h);
+        }
 
         // draw under radar
         g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
@@ -6197,26 +6208,6 @@ DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
     }
 
     objH = _delMarObj(objH);
-
-    /*
-    // validate this obj and remove if found
-    S52_obj *obj = S52_PL_isObjValid(objH);
-    if (NULL == obj) {
-        goto exit;
-    }
-
-    if (NULL == _removeObj(_marinerCell, obj)) {
-        PRINTF("WARNING: couldn't delete .. objH not in Mariners' Object List\n");
-        goto exit;
-    }
-
-    if (objH == _OWNSHP) {
-        _OWNSHP = FALSE;
-    }
-
-    obj  = _delObj(obj);
-    objH = FALSE;
-    */
 
 exit:
 
