@@ -1098,7 +1098,7 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
 
 // NOTE: UNSARE test is useless since least_depth is already UNKNOWN
 {
-    // collect group 1 area DEPARE & DRGARE that touch this point/line/area
+    // Note: collect group 1 area DEPARE & DRGARE that touch this point/line/area is done at load-time
     S57_geo *geoTmp    = S57_getTouchDEPVAL(geo);
     GString *drval1str = S57_getAttVal(geoTmp, "DRVAL1");
     double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
