@@ -287,12 +287,15 @@ static int       _init_freetype_gl(void)
 
     valueBuf TTFPath = {'\0'};
     if (FALSE == S52_utils_getConfig(CFG_TTF, TTFPath)) {
-        PRINTF("default TTF not found in s52.cfg\n");
-        PRINTF("using hard-coded TTF filename: %s\n", _freetype_gl_fontfilename);
+        PRINTF("loading hard-coded TTF filename: %s\n", _freetype_gl_fontfilename);
     } else {
-       if (TRUE == g_file_test(TTFPath, G_FILE_TEST_EXISTS)) {
+        if (TRUE == g_file_test(TTFPath, G_FILE_TEST_EXISTS)) {
             _freetype_gl_fontfilename = TTFPath;
-            PRINTF("default TTF found in s52.cfg (%s)\n", TTFPath);
+            PRINTF("loading TTF found in s52.cfg (%s)\n", TTFPath);
+        } else {
+            //FIXME: test this path
+            PRINTF("WARNING: no TTF found (no text)\n", TTFPath);
+            return FALSE;
         }
     }
 
@@ -424,8 +427,9 @@ static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m)
    float c = cos(angle * M_PI / 180.0);
    float s = sin(angle * M_PI / 180.0);
 
-   memset(m, 0, sizeof(GLfloat) * 16);
-   m[0] = m[5] = m[10] = m[15] = 1.0;
+   //memset(m, 0, sizeof(GLfloat) * 16);
+   //m[0] = m[5] = m[10] = m[15] = 1.0;
+   m[10] = m[15] = 1.0;
 
    m[0] =  c;
    m[1] =  s;
@@ -669,7 +673,7 @@ static void      _glScaled(double x, double y, double z)
 static void      _glRotated(double angle, double x, double y, double z)
 // rotate on Z
 {
-    GLfloat m[16];
+    GLfloat m[16] = {0};
     // FIXME: handle only 0.0==x 0.0==y 1.0==z
     // silence warning for now
     (void)x;
@@ -690,6 +694,8 @@ static void      _glRotated(double angle, double x, double y, double z)
 static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
 // render VBO static text (ie no data) or dynamic text
 {
+    // FIXME: abort if no ttf (id check _freetype_gl_atlas->id)
+
     // Note: static text could also come from MIO's (ie S52_GL_LAST cycle)
     if ((NULL == data) &&
         ((S52_GL_DRAW==_crnt_GL_cycle) || (S52_GL_LAST==_crnt_GL_cycle))) {
@@ -1836,7 +1842,6 @@ static int       _renderAP_gl2(S52_obj *obj)
     double stagOffsetPix = _getGridRef(obj, &x1, &y1, &x2, &y2, &tileWpx, &tileHpx);
     double tileWw = tileWpx * _scalex;
     double tileHw = tileHpx * _scaley;
-    S52_DList *DListData = S52_PL_getDListData(obj);
 
     // FIXME: pattern fail .. why?
     /* skip NODATA03 pattern if on group 1
@@ -1860,6 +1865,7 @@ static int       _renderAP_gl2(S52_obj *obj)
         }
     }
 
+    S52_DList *DListData = S52_PL_getDListData(obj);
     _setFragColor(DListData->colors);
 
     // debug - red conspic
