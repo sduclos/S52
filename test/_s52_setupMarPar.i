@@ -136,11 +136,6 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 0.0);  // default
     //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 1.0);
 
-    // CS DATCVY01:M_COVR:CATCOV=2, "M_COVR" OTHER
-    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 1.0);  // draw all M_COVR individualy
-    //CS DATCVY01:M_COVR:CATCOV=1, "m_covr" BASE, (LUPT in PLAUX_00.DAI)
-    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 0.0);  // union: combite M_COVR as one poly 'm_covr' (default)
-
     //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);
     S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);  // default
 
@@ -151,6 +146,11 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, -1.0);  // debug - alarm
 
     //S52_MAR_DISP_HODATA         = 49,   // 0 - union HO data limit "m_covr"(default), 1 - all HO data limit (M_COVR+m_covr)
+    // CS DATCVY01:M_COVR:CATCOV=2, "M_COVR" OTHER
+    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 1.0);  // draw all M_COVR individualy
+    //CS DATCVY01:M_COVR:CATCOV=1, "m_covr" BASE, (LUPT in PLAUX_00.DAI)
+    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 0.0);  // union: combite M_COVR as one poly 'm_covr' (default)
+
 
     //*
     // debug - use for timing rendering
