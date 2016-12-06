@@ -52,6 +52,10 @@ DBG    = $(DBG3)
 #    no -rdynamic
 #    -fsanitize=safestack
 
+# from JPL Coding Standard in C
+# -Wall -pedantic -std=iso9899:1999
+# -Wtraditional -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wstrict-prototypes -Wmissing-prototypes -Wconversion
+
 # from clutter
 # Compiler flags: -Werror -Wall -Wshadow -Wcast-align -Wno-uninitialized -Wempty-body -Wformat-security -Winit-self
 
@@ -628,9 +632,10 @@ backup: distclean
 tags:
 	-$(TAGS) *.c *.h *.i
 
-#--version 
+# ./lib/freetype-gl/*.c ./lib/libtess/*.c ./lib/parson/*.c
 cppcheck:
-	cppcheck --enable=all --std=c99 --template='{file}:{line}: {severity},{id},{message}' $(DEFS) $(SRCS_S52)
+	cppcheck --version
+	cppcheck --enable=all --std=c99 --template='{file}:{line}: {severity},{id},{message}' $(DEFS) $(SRCS_S52) ./test/s52gtkegl.c
 
 # get version - "libS52-2014DEC27-1.157" --> 2014DEC27-1.145
 LIBS52VERS = $(shell grep libS52- S52utils.c | sed 's/.*"libS52-\(.*\)"/\1/' )
