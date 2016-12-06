@@ -4,12 +4,20 @@
 #
 
 
+2016DEC06
+    -mod scissor when chart rotated
+
+2016DEC04
+    -mod georef layer 0 NODATA pattern
+    -fix gl2 chart rotation
+    -fix culling for chart rotation
+
 2016NOV29
-    -fix cppcheck warning
+    -fix cppcheck 1.72 warning
 
 2016NOV28
     -mod rename to _fixDPI_glSetScaled()
-    -mod use layer 0 for NODTA area group 1
+    -mod use layer 0 for NODTA group 1 area
 
 2016NOV12
     -fix gl2 line stipple
