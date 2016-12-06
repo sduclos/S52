@@ -79,6 +79,7 @@ typedef enum _colorTableStat {
 
 // Following 4 additional colors could be made available as alternative colors for non-charted items.
 // Draft PLib 4.0 has 4 more color of MIO's: "MARBL", "MARCY", "MARMG", "MARWH"
+// FIXME: how to handle these
 static const char *_colorName[] = {
     "NODTA", "CURSR", "CHBLK", "CHGRD", "CHGRF", "CHRED", "CHGRN", "CHYLW",
     "CHMGD", "CHMGF", "CHBRN", "CHWHT", "SCLBR", "CHCOR", "LITRD", "LITGN",
