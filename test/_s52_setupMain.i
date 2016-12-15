@@ -229,7 +229,7 @@ static int _s52_setupMain(void)
     S52_setS57ObjClassSupp("M_NPUB", TRUE);   // ??
 
     // DATCOVR/M_COVR:CATCOV=2
-    S52_setS57ObjClassSupp("M_COVR", TRUE);     // HO data limit __/__/__ - LC(HODATA01)
+    //S52_setS57ObjClassSupp("M_COVR", TRUE);   // HO data limit __/__/__ - LC(HODATA01)
     //S52_setS57ObjClassSupp("M_COVR", FALSE);  // default
 
     // Note: "m_covr" is on BASE, so display can't be suppressed

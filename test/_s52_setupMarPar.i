@@ -13,17 +13,17 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    10.0);
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
 
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);     // for triggering symb ISODGR01 (ODD winding) at Rimouski
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
 
-    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
-    //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
+    //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
+    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
 
-    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
+    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
-    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   12.0);
+    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   12.0);
 
     S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
     //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
@@ -90,6 +90,7 @@ static int      _s52_setupMarPar(void)
 
 
     // ---------------- trick to force symbole size -----------------------------
+#ifdef S52_USE_ANDROID
 #ifdef S52_USE_TEGRA2
     // smaller on xoom so that proportion look the same
     // as a 'normal' screen - since the eye is closer to the 10" screen of the Xoom
@@ -103,11 +104,12 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.2);
 #endif
 
-#if !defined(SET_SCREEN_SIZE) && !defined(S52_USE_ANDROID)
+#else  // S52_USE_ANDROID
     // NOTE: S52 pixels for symb are 0.3 mm
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
-#endif
+#endif  // S52_USE_ANDROID
+
     // -------------------------------------------- -----------------------------
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
