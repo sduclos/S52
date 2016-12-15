@@ -78,7 +78,7 @@ typedef enum _colorTableStat {
 #define S52_COL_NUM   63     // number of color (#64 is transparent)
 
 // Following 4 additional colors could be made available as alternative colors for non-charted items.
-// Draft PLib 4.0 has 4 more color of MIO's: "MARBL", "MARCY", "MARMG", "MARWH"
+// Draft PLib 4.0 has 4 more color of MIO's: "MARBL", "MARCY", "MARMG", "MARWH" (resp.: blue, cyan, magenta, white)
 // FIXME: how to handle these
 static const char *_colorName[] = {
     "NODTA", "CURSR", "CHBLK", "CHGRD", "CHGRF", "CHRED", "CHGRN", "CHYLW",
@@ -210,6 +210,12 @@ typedef struct _LUP {
     S52_DisCat   DISC;          // Display Categorie: B/S/O, Base, Standard, Other
     int          LUCM;          // Look-Up Comment (PLib3.x put 'groupes' here,
                                 // hense 'int', but its a string in the specs)
+    // FIXME exttract to struct
+    //S52_disPrio  DPRI;          // Display Priority
+    //S52_RadPrio  RPRI;          // 'O' or 'S', Radar Priority
+    //S52_DisCat   DISC;          // Display Categorie: B/S/O, Base, Standard, Other
+    //int          LUCM;          // Look-Up Comment (PLib3.x put 'groupes' here,
+                                // hense 'int', but its a string in the specs)
 
     // ---- not a S52 fields ------------------------------------
     S52_objSupp  supp;      // suppress display of this object type
@@ -276,6 +282,7 @@ typedef struct _S52_obj {
     gint         textParsed[2]; // TRUE if parsed, need two flag because there is text for
                                 // two type of point and area
     // CS override
+    // FIXME: extract to struct
     int          prioOveride;   // CS overide display priority
     S52_disPrio  DPRI;          // Display Priority
     S52_RadPrio  RPRI;          // 'O' or 'S', Radar Priority
@@ -2980,7 +2987,8 @@ int         S52_PL_setSYorient(_S52_obj *obj, double orient)
     return_if_null(obj);
 
     // clamp to [0..360[
-    while (360.0 < orient)
+    //while (360.0 < orient)
+    while (360.0 <= orient)
         orient -= 360.0;
 
     while (orient < 0.0)
@@ -2994,12 +3002,13 @@ int         S52_PL_setSYorient(_S52_obj *obj, double orient)
 }
 
 double      S52_PL_getSYorient(_S52_obj *obj)
-// return symbol cmd orientation parameter [0..360[. -1 on error
+// return symbol cmd orientation parameter [0..360[.
 {
-    //char   val[MAXL] = {'\0'};   // output string
-    //char  *str       = NULL;
-
     return_if_null(obj);
+
+    //double noOrient =   0.0;
+    double noOrient =  -1.0;
+    //double noOrient = 360.0;
 
     if (1 == isinf(obj->orient)) { // +inf
         if (NULL != obj->crntA) {
@@ -3013,20 +3022,33 @@ double      S52_PL_getSYorient(_S52_obj *obj)
                     char  val[MAXL] = {'\0'};   // output string
 
                     str = _getParamVal(obj->geoData, str+9, val, MAXL);
+                    //obj->orient = (NULL==str) ? noOrient : S52_atof(val);
 
-                    obj->orient = (NULL==str) ? 0.0 : S52_atof(val);
-                } else
-                    obj->orient = 0.0;
+                    if (NULL == str)
+                        obj->orient = noOrient;
+                    else
+                        S52_PL_setSYorient(obj, S52_atof(val));
+
+                } else {
+                    // FIXME: search orient, heading, ...
+                    obj->orient = noOrient;
+                }
             } else
-                obj->orient = 0.0;
+                obj->orient = noOrient;
         } else
-            obj->orient = 0.0;
+            obj->orient = noOrient;
+    }
+
+    // debug
+    if (noOrient == obj->orient) {
+        PRINTF("DEBUG: %s:noOrient found(%f) .. orient set to 0.0\n", S52_PL_getOBCL(obj), noOrient);
+        obj->orient = 0.0;
     }
 
     return obj->orient;
 }
 
-int         S52_PL_getSYbbox  (_S52_obj *obj, int *width, int *height)
+int         S52_PL_getSYbbox(_S52_obj *obj, int *width, int *height)
 {
     return_if_null(obj);
 
@@ -3192,8 +3214,7 @@ int         S52_PL_getAPTileDim(_S52_obj *obj, double *w, double *h, double *dx)
 }
 
 #if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
-#if 0
-int         S52_PL_getAPTilePos(_S52_obj *obj, double *bbx, double *bby, double *pivot_x, double *pivot_y)
+int         S52_PL_getAPTilePos(_S52_obj *obj, double *bbox_x, double *bbox_y, double *pivot_x, double *pivot_y)
 {
     return_if_null(obj);
 
@@ -3201,14 +3222,13 @@ int         S52_PL_getAPTilePos(_S52_obj *obj, double *bbx, double *bby, double 
     if ((NULL==cmd) || (NULL==cmd->cmd.def))
         return FALSE;
 
-    *bbx     = cmd->cmd.def->pos.patt.bbox_x.LBXC;
-    *bby     = cmd->cmd.def->pos.patt.bbox_y.LBXR;
+    *bbox_x  = cmd->cmd.def->pos.patt.bbox_x.LBXC;
+    *bbox_y  = cmd->cmd.def->pos.patt.bbox_y.LBXR;
     *pivot_x = cmd->cmd.def->pos.patt.pivot_x.LICL;
     *pivot_y = cmd->cmd.def->pos.patt.pivot_y.LIRW;
 
     return TRUE;
 }
-#endif  // 0
 
 int         S52_PL_setAPtexID(_S52_obj *obj, guint mask_texID)
 {
@@ -3509,9 +3529,10 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
         }
 
         // read coordinate (x,y,x,y,...) into array (xyzxyzxyz...)
-        {
+        {   // origine pivot_x/y
             double off_x = vecObj->pivot_x;
             double off_y = vecObj->pivot_y;
+            // origine bbox_x/y
             //double off_x = vecObj->bbx;
             //double off_y = vecObj->bby;
             //double off_x = 0.0;
@@ -4107,7 +4128,7 @@ S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
     return S52_SUPP_ERR;
 }
 
-int         S52_PL_getOffset(_S52_obj *obj, double *offset_x, double *offset_y)
+int         S52_PL_getPivotOffset(_S52_obj *obj, double *offset_x, double *offset_y)
 {
     return_if_null(obj);
 

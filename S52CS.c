@@ -249,7 +249,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
                 // debug
                 if (NULL != S57_getTouchLIGHTS(light)) {
                     if (FALSE == silent) {
-                        PRINTF("FIXME: more than 1 light for the same bouy!!!\n");
+                        PRINTF("FIXME: more than 1 light for the same buoy!!!\n");
                         PRINTF("       (this msg will not repeat)\n");
                         silent = TRUE;
                     }
@@ -261,7 +261,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
                 break;
             } else {
                 if (FALSE == silent) {
-                    PRINTF("FIXME: more than 1 light for the same bouy!!!\n");
+                    PRINTF("FIXME: more than 1 light for the same buoy!!!\n");
                     PRINTF("       (this msg will not repeat)\n");
                     silent = TRUE;
                 }

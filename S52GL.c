@@ -133,11 +133,6 @@ static double _dotpitch_mm_y = 0.3;  // will be overwright at init()
 #define MM2INCH  25.4
 #define PICA      0.351  // mm
 
-// GPU Extension
-static int _GL_OES_texture_npot = FALSE;
-static int _GL_EXT_debug_marker = FALSE;
-static int _GL_OES_point_sprite = FALSE;
-static int _GL_EXT_robustness   = FALSE;
 
 /////////////////////////////////////////////////////
 //
@@ -307,6 +302,8 @@ GL_OUT_OF_MEMORY
 static int       _findCentInside  (guint npt, pt3 *v)
 // return TRUE and centroid else FALSE
 {
+    PRINTF("DEBUG: point is outside polygone, heuristique used to find a pt inside\n");
+
     _dcin  = -1.0;
     _inSeg = FALSE;
 
@@ -394,15 +391,15 @@ static int       _getCentroidOpen (guint npt, pt3 *v)
         // use heuristique to find centroid
         if (1.0 == S52_MP_get(S52_MAR_DISP_CENTROIDS)) {
             _findCentInside(npt, v);
-            PRINTF("point is outside polygone\n");
 
             return TRUE;
         }
 
         return TRUE;
+    } else {
+        // FIXME: bizzard case of poly with no area!
+        PRINTF("WARNING: no area (0.0)\n");
     }
-
-    PRINTF("WARNING: no area (0.0)\n");
 
     return FALSE;
 }
@@ -464,12 +461,12 @@ static int       _getCentroidClose(guint npt, double *ppt)
         if (1.0 == S52_MP_get(S52_MAR_DISP_CENTROIDS)) {
             _findCentInside(npt, (pt3*)ppt);
 
-            // debug
-            //PRINTF("point is outside polygone, heuristique used to find a pt inside\n");
-
             return TRUE;
         }
 
+    } else {
+        // FIXME: bizzard case of poly with no area!
+        PRINTF("WARNING: no area (0.0)\n");
     }
 
     return FALSE;
@@ -1313,7 +1310,7 @@ static int       _callDList(S57_prim *prim)
 }
 #endif // S52_USE_OPENGL_VBO
 
-static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx, double *URy, double *tileW, double *tileH)
+static double    _getWorldGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx, double *URy, double *tileW, double *tileH)
 // called by _GL1.i and _GL2.i
 {
     //
@@ -1327,9 +1324,9 @@ static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx
     S52_PL_getAPTileDim(obj, &tw,  &th,  &dx);
 
     // convert tile unit (0.01mm) to pixel
-    double tileWidthPix  = tw  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
-    double tileHeightPix = th  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
-    double stagOffsetPix = dx  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
+    double tileWidthPix  = tw / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
+    double tileHeightPix = th / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
+    double stagOffsetPix = dx / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
 
     // convert tile in pixel to world
     double w0 = tileWidthPix  * _scalex;
@@ -1351,17 +1348,23 @@ static double    _getGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx
     y2  = xyz[4];
 
     x1  = floor(x1 / w0) * w0;
-    y1  = floor(y1 / (2*h0)) * (2*h0);
+    //y1  = floor(y1 / (2*h0)) * (2*h0);
+    if (TRUE == stagOffsetPix)
+        y1 = floor(y1 / (2*h0)) * (2*h0);
+    else
+        y1 = floor(y1 / h0) * h0;
 
     // optimisation, resize extent grid to fit window
     if (x1 < _pmin.u)
-        x1 += floor((_pmin.u-x1) / w0) * w0;
+        x1 += floor((_pmin.u-x1)   / w0) * w0;
     if (y1 < _pmin.v)
-        y1 += floor((_pmin.v-y1) / (2*h0)) * (2*h0);
+        y1 += floor((_pmin.v-y1)   / (2*h0)) * (2*h0);
     if (x2 > _pmax.u)
         x2 -= floor((x2 - _pmax.u) / w0) * w0;
+    //if (y2 > _pmax.v)
+    //    y2 -= floor((y2 - _pmax.v) / h0) * h0;
     if (y2 > _pmax.v)
-        y2 -= floor((y2 - _pmax.v) / h0) * h0;
+        y2 -= floor((y2 - _pmax.v) / (2*h0)) * (2*h0);
 
     // cover completely
     x2 += w0;
@@ -1847,12 +1850,11 @@ static int       _renderSY_silhoutte(S52_obj *obj)
     S57_geo  *geo    = S52_PL_getGeo(obj);
     GLdouble  orient = S52_PL_getSYorient(obj);
 
-    guint     npt = 0;
-    GLdouble *ppt = NULL;
-
     // debug
     //return TRUE;
 
+    guint     npt = 0;
+    GLdouble *ppt = NULL;
     if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
@@ -2526,11 +2528,6 @@ static int       _renderSY(S52_obj *obj)
     S57_geo *geoData = S52_PL_getGeo(obj);
     GLdouble orient  = S52_PL_getSYorient(obj);
 
-    if (1 == isinf(orient)) {  // +inf
-        PRINTF("WARNING: no 'orient' for object: %s\n", S57_getName(geoData));
-        return FALSE;
-    }
-
     guint     npt = 0;
     GLdouble *ppt = NULL;
     if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt)) {
@@ -2583,9 +2580,16 @@ static int       _renderSY(S52_obj *obj)
         //    PRINTF("DEBUG: BOYLAT found\n");
         //    //g_assert(0);
         //}
+        //if (0 == g_strcmp0(S57_getName(geoData), "BOYCAR")) {  // cardinal buoy
+        //    PRINTF("DEBUG: BOYCAR found\n");
+        //    //g_assert(0);
+        //}
+
 
         // all other point sym
-        _renderSY_POINT_T(obj, ppt[0], ppt[1], orient+_north);
+        // FIXME: chart rotation - some should not rotate, like cardinal buoy BOYCAR - check chart
+        //_renderSY_POINT_T(obj, ppt[0], ppt[1], orient+_north);  // CIP wrong
+        _renderSY_POINT_T(obj, ppt[0], ppt[1], orient);           // CIP ok - buoy rotate
 
         return TRUE;
     }
@@ -2663,6 +2667,7 @@ static int       _renderSY(S52_obj *obj)
         }
 
         if (INFINITY != dmin) {
+            //_renderSY_POINT_T(obj, xmin, ymin, orient+_north);
             _renderSY_POINT_T(obj, xmin, ymin, orient);
         }
 
@@ -2702,8 +2707,10 @@ static int       _renderSY(S52_obj *obj)
             // centroid offset might put the symb outside the area
             if (TRUE == S57_hasCentroid(geoData)) {
                 double x,y;
-                while (TRUE == S57_getNextCentroid(geoData, &x, &y))
-                    _renderSY_POINT_T(obj, x, y, orient+_north);
+                while (TRUE == S57_getNextCentroid(geoData, &x, &y)) {
+                    //_renderSY_POINT_T(obj, x, y, orient+_north);
+                    _renderSY_POINT_T(obj, x, y, orient);
+                }
             }
             return TRUE;
         }
@@ -2725,7 +2732,8 @@ static int       _renderSY(S52_obj *obj)
             if (TRUE == S57_hasCentroid(geoData)) {
                 double x,y;
                 while (TRUE == S57_getNextCentroid(geoData, &x, &y)) {
-                    _renderSY_POINT_T(obj, x, y, orient+_north);
+                    //_renderSY_POINT_T(obj, x, y, orient+_north);
+                    _renderSY_POINT_T(obj, x, y, orient);
                 }
                 return TRUE;
             } else {
@@ -2734,7 +2742,7 @@ static int       _renderSY(S52_obj *obj)
 
             // compute offset
             if (0 < _centroids->len) {
-                S52_PL_getOffset(obj, &offset_x, &offset_y);
+                S52_PL_getPivotOffset(obj, &offset_x, &offset_y);
 
                 // mm --> pixel
                 offset_x /=  S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0;
@@ -2782,7 +2790,7 @@ static int       _renderSY(S52_obj *obj)
 static int       _renderLS_LIGHTS05(S52_obj *obj)
 {
     S57_geo *geoData   = S52_PL_getGeo(obj);
-    GString *orientstr = S57_getAttVal(geoData, "ORIENT");
+    GString *orientstr = S57_getAttVal(geoData, "ORIENT");  // or S52_PL_getSYorient(obj)
     GString *sectr1str = S57_getAttVal(geoData, "SECTR1");
     GString *sectr2str = S57_getAttVal(geoData, "SECTR2");
     double   leglenpix = 25.0 / S52_MP_get(S52_MAR_DOTPITCH_MM_X);
@@ -2791,6 +2799,21 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
     guint     npt = 0;
     if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt))
         return FALSE;
+
+    /* debug
+    {
+        double orientA = -1;  // sync with 'no orient' value in getSYorient()
+        double orientB = S52_PL_getSYorient(obj);
+        if (NULL != orientstr) {
+            orientA = S52_atof(orientstr->str);
+        }
+        if (orientA != orientB) {
+            PRINTF("orientA != orientB A:%f, B:%f\n", orientA, orientB);
+            g_assert(0);
+        }
+
+    }
+    //*/
 
     //PRINTF("S1: %f, S2:%f\n", sectr1, sectr2);
 
@@ -3692,17 +3715,17 @@ static int       _renderLC(S52_obj *obj)
         //*/
     }
 
-    /* debug
-    if (0 == g_strcmp0("M_COVR", S57_getName(geo))) {
-        PRINTF("DEBUG: M_COVR found, nRing=%i\n", S57_getRingNbr(geo));
-    }
-    if (0 == g_strcmp0("M_NSYS", S57_getName(geo))) {
-        PRINTF("DEBUG: M_NSYS found, nRing=%i\n", S57_getRingNbr(geo));
-    }
-    if (0 == g_strcmp0("sclbdy", S57_getName(geo))) {
-        PRINTF("DEBUG: sclbdy found, nRing=%i\n", S57_getRingNbr(geo));
-        //g_assert(0);
-    }
+    //* debug
+    //if (0 == g_strcmp0("M_COVR", S57_getName(geo))) {
+    //    PRINTF("DEBUG: M_COVR found, nRing=%i\n", S57_getRingNbr(geo));
+    //}
+    //if (0 == g_strcmp0("M_NSYS", S57_getName(geo))) {
+    //    PRINTF("DEBUG: M_NSYS found, nRing=%i\n", S57_getRingNbr(geo));
+    //}
+    //if (0 == g_strcmp0("sclbdy", S57_getName(geo))) {
+    //    PRINTF("DEBUG: sclbdy found, nRing=%i\n", S57_getRingNbr(geo));
+    //    //g_assert(0);
+    //}
     //*/
 
     // set pen color & size here because values might not
@@ -3980,10 +4003,18 @@ static int       _renderAC(S52_obj *obj)
         return TRUE;
     }
 
-    // skip NODTA if on group 1
+    //* experimental: skip NODTA color - passthrough layer 0
+    // FIXME: check if this break S52_MAR_DISP_NODATA_LAYER OFF
+    // FIXME: check if HO can  put something on group 1 bellow group 2 NODTA
+    //        that break pasthrough layer 0
     if (0 == g_strcmp0(c->colName, "NODTA")) {
-        // FIXME: skip return if group 2
-        //PRINTF("DEBUG: nodata color found\n");
+        /* Note: UNSARE (unsurveyed area) on group 2
+        if (S52_PRIO_GROUP1 != S52_PL_getDPRI(obj)) {
+            // FIXME: skip return if group 2
+            PRINTF("DEBUG: nodata on group 2\n");
+            g_assert(0);
+        }
+        //*/
         return TRUE;
     }
     //*/
@@ -4035,8 +4066,8 @@ static int       _renderAP_NODATA_layer0(void)
     int      n_tile_y = (pt0.y - pt2.y) / tile_y;
 
     // georeference to grid
-    pt0.x   = floorf(pt0.x / tile_x) * tile_x;
-    pt0.y   = floorf(pt0.y / tile_y) * tile_y;
+    pt0.x = floorf(pt0.x / tile_x) * tile_x;
+    pt0.y = floorf(pt0.y / tile_y) * tile_y;
 
     vertex_t ppt[4*3 + 4*2] = {
         pt0.x, pt0.y, 0.0,        0.0f,     0.0f,
@@ -4052,11 +4083,15 @@ static int       _renderAP_NODATA_layer0(void)
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
 
     // turn ON 'sampler2d'
+    //glUniform1f(_uTextOn,       1.0);
+
+    //*
     glUniform1f(_uPattOn,       1.0);
     glUniform1f(_uPattGridX,  pt0.x);
     glUniform1f(_uPattGridY,  pt0.y);
     glUniform1f(_uPattW,     tile_x);
     glUniform1f(_uPattH,     tile_y);
+    //*/
 
     glBindTexture(GL_TEXTURE_2D, _nodata_mask_texID);
 
@@ -4070,11 +4105,16 @@ static int       _renderAP_NODATA_layer0(void)
 
     glBindTexture(GL_TEXTURE_2D,  0);
 
+    //*
     glUniform1f(_uPattOn,    0.0);
     glUniform1f(_uPattGridX, 0.0);
     glUniform1f(_uPattGridY, 0.0);
     glUniform1f(_uPattW,     0.0);
     glUniform1f(_uPattH,     0.0);
+    //*/
+
+    // turn OFF 'sampler2d'
+    //glUniform1f(_uTextOn,       0.0);
 
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
@@ -4147,6 +4187,34 @@ static int       _renderAP(S52_obj *obj)
     }
     //*/
     //--------------------------------------------------------
+    //* experimental: skip NODATA03 pattern - passthrough layer 0
+    // FIXME: check if this break S52_MAR_DISP_NODATA_LAYER OFF
+    // FIXME: check if HO can  put something on group 1 bellow group 2 NODATA03
+    //        that break pasthrough layer 0
+    if (0 == S52_PL_cmpCmdParam(obj, "NODATA03")) {
+        /* Note: UNSARE (unsurveyed area) on group 2
+        if (S52_PRIO_GROUP1 != S52_PL_getDPRI(obj)) {
+            // FIXME: skip return if group 2
+            PRINTF("DEBUG: nodata on group 2\n");
+            g_assert(0);
+        }
+        //*/
+        return TRUE;
+    }
+    //*/
+
+
+    /* experimental: skip NODATA03 pattern - layer 0 does it
+    // FIXME: check if this break S52_MAR_DISP_NODATA_LAYER OFF
+    if (0 == S52_PL_cmpCmdParam(obj, "NODATA03")) {
+        //if (S52_PRIO_GROUP1 != S52_PL_getDPRI(obj)) {
+            // FIXME: skip return if group 2
+            //PRINTF("DEBUG: nodata on group 2\n");
+            //g_assert(0);
+        //}
+        return TRUE;
+    }
+    //*/
 
 #ifdef S52_USE_GL2
     return _renderAP_gl2(obj);
@@ -5091,23 +5159,26 @@ int        S52_GL_isSupp(S52_obj *obj)
 // TRUE if display of object is suppressed
 // also collect stat
 {
-    /* debug
-    if (0 == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) {
-        PRINTF("DEBUG: m_covr FOUND\n");
+    // debug
+    //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: M_COVR FOUND\n");
+    //}
+    //if (0 == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: m_covr FOUND\n");
+    //}
+    //if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: sclbdy FOUND\n");
+    //}
+
+    // debug: some HO set a scamin on DISPLAYBASE obj!?
+    // Note: obj on BASE can't be set to OFF
+    if (DISPLAYBASE == S52_PL_getDISC(obj)) {
+        return FALSE;
     }
-    if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
-        PRINTF("DEBUG: sclbdy FOUND\n");
-    }
-    */
 
     if (S52_SUPP_ON == S52_PL_getObjToggleState(obj)) {
         ++_oclip;
         return TRUE;
-    }
-
-    // debug: some HO set a scamin on DISPLAYBASE obj!?
-    if (DISPLAYBASE == S52_PL_getDISC(obj)) {
-        return FALSE;
     }
 
     // SCAMIN
@@ -5117,6 +5188,14 @@ int        S52_GL_isSupp(S52_obj *obj)
 
         if (scamin < _SCAMIN) {
             ++_oclip;
+            return TRUE;
+        }
+    }
+
+    // FIXME: not great - test every obj
+    if (0 == (int) S52_MP_get(S52_MAR_DISP_HODATA)) {
+        if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
+            //PRINTF("DEBUG: M_COVR FOUND\n");
             return TRUE;
         }
     }
@@ -5135,14 +5214,15 @@ int        S52_GL_isOFFview(S52_obj *obj)
     //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "pastrk")) {
     //    PRINTF("DEBUG: pastrk FOUND\n");
     //}
-    /*
-    if (0 == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) {
-        PRINTF("DEBUG: m_covr FOUND\n");
-    }
-    if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
-        PRINTF("DEBUG: sclbdy FOUND\n");
-    }
-    */
+    //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: M_COVR FOUND\n");
+    //}
+    //if (0 == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: m_covr FOUND\n");
+    //}
+    //if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: sclbdy FOUND\n");
+    //}
 
     // geo extent _gmin/max
     double x1,y1,x2,y2;
@@ -5483,17 +5563,15 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "pastrk")) {
     //    PRINTF("DEBUG: pastrk FOUND\n");
     //}
-    /*
-    if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
-        PRINTF("DEBUG: M_COVR FOUND\n");
-    }
-    if (0 == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) {
-        PRINTF("DEBUG: m_covr FOUND\n");
-    }
-    if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
-        PRINTF("DEBUG: sclbdy FOUND\n");
-    }
-    */
+    //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: M_COVR FOUND\n");
+    //}
+    //if (0 == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: m_covr FOUND\n");
+    //}
+    //if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: sclbdy FOUND\n");
+    //}
     //if (S52_GL_PICK == _crnt_GL_cycle) {
     //    S57_geo *geo = S52_PL_getGeo(obj);
     //    GString *FIDNstr = S57_getAttVal(geo, "FIDN");

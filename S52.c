@@ -3730,7 +3730,7 @@ static int        _cullObj(_cell *c, GPtrArray *rbin)
         //    PRINTF("ISODGR01 found\n");
         //}
 
-        // debug - layer drawing order
+        // debug
         //if (0 == g_strcmp0("mnufea", S52_PL_getOBCL(obj))) {
         //    PRINTF("mnufea found\n");
         //}
@@ -3740,6 +3740,9 @@ static int        _cullObj(_cell *c, GPtrArray *rbin)
         //if (0 == g_strcmp0("BOYLAT", S52_PL_getOBCL(obj))) {
         //    PRINTF("BOYLAT found\n");
         //    //g_assert(0);
+        //}
+        //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
+        //    PRINTF("M_COVR found\n");
         //}
 
         // is *this* object suppressed by user
@@ -6742,8 +6745,7 @@ static S52_obj            *_setPointPosition(S52_obj *obj, double latitude, doub
     // reset timer for AIS
     if (0 == g_strcmp0("vessel", S57_getName(geo))) {
         S52_PL_setTimeNow(obj);
-        // optimisation (out of the blue): set 'orient' obj var directly
-        // rather then read it from attribut
+        // set 'orient' obj var directly rather then read it from attribut
         S52_PL_setSYorient(obj, heading);
 
         {
