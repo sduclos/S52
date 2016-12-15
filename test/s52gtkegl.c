@@ -546,6 +546,7 @@ static gboolean key_release_event(GtkWidget   *widget,
 
         //case GDK_KEY_F1    :S52_doneCell("/home/vitaly/CHARTS/for_sasha/GB5X01SE.000"); break;
         //case GDK_KEY_F2    :S52_doneCell("/home/vitaly/CHARTS/for_sasha/GB5X01NE.000"); break;
+
         case GDK_KEY_F1    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY); break;
         case GDK_KEY_F2    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS); break;
         case GDK_KEY_F3    :S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC); break;
@@ -557,6 +558,7 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_KEY_F8    :_mmInc(S52_MAR_DOTPITCH_MM_Y); break;
 
         case GDK_KEY_F9    :_toggle(S52_MAR_DISP_NODATA_LAYER); break;
+        case GDK_KEY_F10   :_toggle(S52_MAR_DISP_HODATA);       break;
 
         default:
             g_print("key: 0x%04x\n", event->keyval);
