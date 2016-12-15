@@ -224,6 +224,7 @@ S52_vec    *S52_PL_initVOCmd(S52_cmdDef *def);
 // free parser mem
 int         S52_PL_doneVOCmd(S52_vec *vecObj);
 // get (parse) next vector command, width in ASCII (1 pixel=0.32 mm)
+// vector origine: pivot_x/y
 S52_vCmd    S52_PL_getNextVOCmd(S52_vec *vecObj);
 // get vector for this command - not used
 //S57_prim   *S52_PL_getVOprim(S52_vec *vecObj);
@@ -257,7 +258,7 @@ int            S52_PL_getAPTileDim(S52_obj *obj, double *tw,  double *th,  doubl
 
 #if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
 // get Area Pattern Position - not used
-//int            S52_PL_getAPTilePos(S52_obj *obj, double *bbx, double *bby, double *pivot_x, double *pivot_y);
+int            S52_PL_getAPTilePos(S52_obj *obj, double *bbox_x, double *bbox_y, double *pivot_x, double *pivot_y);
 // store texture ID of patterns in GLES2
 int            S52_PL_setAPtexID(S52_obj *obj, guint mask_texID);
 guint          S52_PL_getAPtexID(S52_obj *obj);
@@ -294,8 +295,8 @@ S52_objSupp    S52_PL_getObjToggleState(S52_obj *obj);
 S52_objSupp    S52_PL_getObjClassState(const char *className);
 
 int            S52_PL_resloveSMB(S52_obj *obj);
-
-int            S52_PL_getOffset(S52_obj *obj, double *offset_x, double *offset_y);
+// dx/dy between center and pivot
+int            S52_PL_getPivotOffset(S52_obj *obj, double *offset_x, double *offset_y);
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 // link chain-node
