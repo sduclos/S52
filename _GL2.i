@@ -31,7 +31,7 @@ typedef GLUtesselator GLUtriangulatorObj;
 
 ////////////////////////////////////////////////////////
 // forward decl
-static double      _getGridRef(S52_obj *, double *, double *, double *, double *, double *, double *);
+static double      _getWorldGridRef(S52_obj *, double *, double *, double *, double *, double *, double *);
 static int         _fillArea(S57_geo *);
 static void        _glMatrixMode(guint);
 static void        _glLoadIdentity(int);
@@ -46,6 +46,17 @@ static void        _glPointSize(GLfloat);
 static inline void _checkError(const char *);
 static GLvoid      _DrawArrays_LINE_STRIP(guint, vertex_t *);  // debug pattern
 ////////////////////////////////////////////////////////
+
+
+// GL2 GPU Extension
+//   GL_OES_texture_npot:
+//   The npot extension for GLES2 is only about support of mipmaps and repeat/mirror wrap modes.
+//   If you don't care about mipmaps and use only the clamp wrap mode, you can use npot textures.
+//   It's part of the GLES2 spec.
+static int _GL_OES_texture_npot = FALSE;
+static int _GL_EXT_debug_marker = FALSE;
+static int _GL_OES_point_sprite = FALSE;
+static int _GL_EXT_robustness   = FALSE;
 
 
 // used to convert float to double for tesselator
@@ -85,9 +96,19 @@ static GLint _aAlpha      = 0;
 //---- PATTERN GL2 / GLES2 -----------------------------------------------------------
 //
 // NOTE: 4 mask are drawn to fill the square made of 2 triangles (fan)
-// NOTE: MSB 0x01, LSB 0xE0 - so it left most pixels is at 0x01
+// NOTE: MSB 0x01, LSB 0xE0 - so it left most pixels is at 0x01 0x00
 // and the right most pixel in a byte is at 0xE0
 // 1 bit in _nodata_mask is 4 bytes (RGBA) in _rgba_nodata_mask (s0 x 8 bits x 4 )
+
+/* FIXME:
++static cairo_always_inline cairo_bool_t
++_cairo_is_little_endian (void)
++{
++    static const int i = 1;
++    return *((char *) &i) == 0x01;
++}
++
+*/
 
 // NODATA03
 static GLuint        _nodata_mask_texID = 0;
@@ -422,7 +443,7 @@ static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsi
 // gles2 float Matrix stuff (by hand)
 //
 
-static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m)
+static void      __make_z_rot_matrix(GLfloat angle, GLfloat *m)
 {
    float c = cos(angle * M_PI / 180.0);
    float s = sin(angle * M_PI / 180.0);
@@ -437,7 +458,7 @@ static void      _make_z_rot_matrix(GLfloat angle, GLfloat *m)
    m[5] =  c;
 }
 
-static void      _make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat *m)
+static void      __make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat *m)
 {
    memset(m, 0, sizeof(GLfloat) * 16);
    m[0]  = xs;
@@ -445,47 +466,6 @@ static void      _make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat 
    m[10] = zs;
    m[15] = 1.0;
 }
-
-static void      _multiply(GLfloat *m, GLfloat *n)
-{
-    GLfloat tmp[16] = {0};
-   //const GLfloat *row, *column;
-   //div_t d;
-
-   for (int i = 0; i < 16; i++) {
-      //tmp[i] = 0;
-      div_t    d      = div(i, 4);
-      GLfloat *row    = n + d.quot * 4;
-      GLfloat *column = m + d.rem;
-      for (int j = 0; j < 4; j++)
-          tmp[i] += row[j] * column[j * 4];
-   }
-   memcpy(m, &tmp, sizeof tmp);
-}
-
-//------------ NOT USED -----------------------------
-#if 0
-static void      _mul_matrix(GLfloat *prod, const GLfloat *a, const GLfloat *b)
-{
-#define A(row,col)  a[(col<<2)+row]
-#define B(row,col)  b[(col<<2)+row]
-#define P(row,col)  p[(col<<2)+row]
-   GLfloat p[16];
-   for (GLint i = 0; i < 4; i++) {
-      const GLfloat ai0=A(i,0),  ai1=A(i,1),  ai2=A(i,2),  ai3=A(i,3);
-      P(i,0) = ai0 * B(0,0) + ai1 * B(1,0) + ai2 * B(2,0) + ai3 * B(3,0);
-      P(i,1) = ai0 * B(0,1) + ai1 * B(1,1) + ai2 * B(2,1) + ai3 * B(3,1);
-      P(i,2) = ai0 * B(0,2) + ai1 * B(1,2) + ai2 * B(2,2) + ai3 * B(3,2);
-      P(i,3) = ai0 * B(0,3) + ai1 * B(1,3) + ai2 * B(2,3) + ai3 * B(3,3);
-   }
-   memcpy(prod, p, sizeof(p));
-#undef A
-#undef B
-#undef P
-}
-#endif
-//------------ NOT USED -----------------------------
-
 
 static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[4], GLfloat out[4])
 {
@@ -641,6 +621,22 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
     return GL_TRUE;
 }
 
+static void      _multiply(GLfloat *m, GLfloat *n)
+{
+    GLfloat tmp[16] = {0};
+
+   for (int i = 0; i < 16; i++) {
+      div_t    d      = div(i, 4);
+      GLfloat *row    = n + d.quot * 4;
+      GLfloat *column = m + d.rem;
+      for (int j = 0; j < 4; j++)
+          tmp[i] += row[j] * column[j * 4];
+   }
+   memcpy(m, &tmp, sizeof tmp);
+}
+// gles2 float Matrix stuff (by hand)
+//-----------------------------------------
+
 static void      _glTranslated(double x, double y, double z)
 {
     GLfloat t[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  (GLfloat) x, (GLfloat) y, (GLfloat) z, 1 };
@@ -659,7 +655,7 @@ static void      _glScaled(double x, double y, double z)
 {
     GLfloat m[16];
 
-    _make_scale_matrix((GLfloat) x, (GLfloat) y, (GLfloat) z, m);
+    __make_scale_matrix((GLfloat) x, (GLfloat) y, (GLfloat) z, m);
 
     _multiply(_crntMat, m);
 
@@ -680,7 +676,7 @@ static void      _glRotated(double angle, double x, double y, double z)
     (void)y;
     (void)z;
 
-    _make_z_rot_matrix((GLfloat) angle, m);
+    __make_z_rot_matrix((GLfloat) angle, m);
 
     _multiply(_crntMat, m);
 
@@ -780,7 +776,7 @@ static int       _loadProcEXT()
     _glReadnPixels =       (PFNGLREADNPIXELSKHRPROC)      eglGetProcAddress("glReadnPixelsKHR");
     PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsKHR)       %s\n",     (NULL==_glReadnPixelsKHR)?"FAILED":"OK");
 
-    _glTexStorage2DEXT =      (PFNGLTEXSTORAGE2DEXTPROC)     eglGetProcAddress("glTexStorage2DEXT");
+    _glTexStorage2DEXT =   (PFNGLTEXSTORAGE2DEXTPROC)     eglGetProcAddress("glTexStorage2DEXT");
     PRINTF("DEBUG: eglGetProcAddress(glTexStorage2DEXT)      %s\n",     (NULL==_glTexStorage2DEXT)?"FAILED":"OK");
 #else
     _glGetGraphicsResetStatus = (PFNGLGETGRAPHICSRESETSTATUSEXTPROC) eglGetProcAddress("glGetGraphicsResetStatusEXT");
@@ -1157,6 +1153,7 @@ static GLuint    _compShaderSrc(GLuint programObject)
         "uniform   mat4  uProjection;                                   \n"
         "uniform   mat4  uModelview;                                    \n"
         "uniform   float uPointSize;                                    \n"
+
         "uniform   float uPattOn;                                       \n"
         "uniform   float uPattGridX;                                    \n"
         "uniform   float uPattGridY;                                    \n"
@@ -1178,8 +1175,10 @@ static GLuint    _compShaderSrc(GLuint programObject)
         "    gl_PointSize = uPointSize;                                 \n"
         "    gl_Position  = uProjection * uModelview * aPosition;       \n"
         "    if (1.0 == uPattOn) {                                      \n"
-        "        v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;    \n"
-        "        v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;    \n"
+//        "        v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;    \n"
+//        "        v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;    \n"
+        "        v_texCoord.x = (uPattGridX - aPosition.x) / uPattW;    \n"
+        "        v_texCoord.y = (uPattGridY - aPosition.y) / uPattH;    \n"
         "    } else {                                                   \n"
         "        v_texCoord = aUV;                                      \n"
         "    }                                                          \n"
@@ -1587,12 +1586,22 @@ static int       _fixDPI_glScaled(void)
     double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 8.0;
 #else
     // normal case - nothing to fix
-    double scaleX = _dotpitch_mm_x;
-    double scaleY = _dotpitch_mm_y;
+    //double scaleX = _dotpitch_mm_x;
+    //double scaleY = _dotpitch_mm_y;
 
-    // -OR_
+    // -OR-
     //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X);
     //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y);
+
+    // debug - to fit pattern in tile
+    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 5.0;
+    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 5.0;
+    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 5.0;
+    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 5.0;
+    double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 8.0;
+    double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 8.0;
+    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 10.0;
+    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 10.0;
 #endif
 #endif  // S52_USE_ANDROID
 
@@ -1618,50 +1627,13 @@ static int       _minPOT(int value)
     }
 }
 
-#if 0
-static int       next_power_of_two(int v)
-{
-    v--;
-    v |= v >> 1;
-    v |= v >> 2;
-    v |= v >> 4;
-    v |= v >> 8;
-    v |= v >> 16;
-    v++;
-
-    return v;
-}
-
-static int       is_power_of_two(guint v)
-{
-    if (v == 0)
-        return TRUE;
-
-    return (v & (v-1)) == 0;
-}
-
-static guint     g_nearest_pow(gint num)
-// lifted from glib garray.c
-/* Returns the smallest power of 2 greater than n, or n if
- * such power does not fit in a guint
- */
-{
-  guint n = 1;
-
-  //while (n<num && n>0)
-  while (0<n && n<num)
-    n <<= 1;
-
-  return n ? n : num;
-}
-#endif
-
 static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, double stagOffsetPix)
 {
     GLuint mask_texID = 0;
 
     GLsizei w = ceil(tileWpx);
     GLsizei h = ceil(tileHpx);
+
 
     if (FALSE == _GL_OES_texture_npot) {
         w = _minPOT(w);
@@ -1683,7 +1655,7 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
     // - Vendor: Qualcomm                - Renderer: Adreno (TM) 320
 #ifdef S52_USE_GLSC2
     // modern way
-    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
+    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, w, h);
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 #else
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
@@ -1695,10 +1667,6 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
 
     _checkError("_renderTexure() -00-");
 
-    // GL_OES_texture_npot
-    // The npot extension for GLES2 is only about support of mipmaps and repeat/mirror wrap modes.
-    // If you don't care about mipmaps and use only the clamp wrap mode, you can use npot textures.
-    // It's part of the GLES2 spec.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -1732,18 +1700,12 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
 
     // render to texture -----------------------------------------
 
-    {   // set line/point width
-        double   dummy = 0.0;
-        char     pen_w = '1';
-        S52_PL_getLCdata(obj, &dummy, &pen_w);
-
-        //_glLineWidth(pen_w - '0');
-        _glLineWidth(pen_w - '0' + 1.0);  // must enlarge line glsl sampler
-        _glPointSize(pen_w - '0' + 1.0);  // sampler + AA soften pixel, so need enhencing a bit
-    }
+    _glMatrixSet(VP_WIN);
 
     /* debug - draw X and Y axis
     {
+        _glLineWidth(1.0);
+
         // Note: line in X / Y need to start at +1 to show up
 #ifdef S52_USE_TEGRA2
         pt3v lineW[2] = {{1.0, 1.0, 0.0}, {potW,  1.0, 0.0}};
@@ -1773,32 +1735,64 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
 
     PRCARE  : tex: 32 x 32,   frac: 0.591071 x 0.592593
     Tile    :  500.0 x  500.0
-    pivot   :  750.0 x  750.0
-    bboxOrig:  750.0 x  250.0
+    pivotx/y:  750.0 x  750.0
+    bbox_x/y:  750.0 x  250.0
     offset  :    0.0 x  500.0
     offsetpx:    0.0 x   19.0
     Tile px :   18.9 x   19.0
 
-    PATD   55DIAMOND1VLINCON0000000000022500225002250043130112500093
+    DIAMOND1: PATD   55DIAMOND1VLINCON0000000000022500225002250043130112500093
+    tile px : W  75.0 x H 143.8
+    bbox_   : X1125.0 x Y  93.0
+    pivot_  : X2250.0 x Y2250.0
+.
     DEPARE  : tex: 128 x 256, frac: 0.664955 x 0.638963
     Tile    : 2250.0 x 4313.0
-    pivot   : 2250.0 x 2250.0
-    bboxOrig: 1125.0 x   93.0
+    pivotx/y: 2250.0 x 2250.0
+    bbox_x/y: 1125.0 x   93.0
     offset  : 1125.0 x 2157.0
     offsetpx:   42.6 x   81.8
     Tile px :   85.1 x  163.6
 
     DRGARE  : tex: 16 x 16,   frac: 0.827500 x 0.829630
     Tile    :  350.0 x  350.0
-    pivot   : 1500.0 x 1500.0
-    bboxOrig: 1500.0 x 1300.0
+    pivotx/y: 1500.0 x 1500.0
+    bbox_x/y: 1500.0 x 1300.0
     offset  :    0.0 x  200.0
     offsetpx:    0.0 x    7.6
     Tile px :   13.2 x   13.3
     */
-    _glMatrixSet(VP_WIN);
 
-    _glTranslated(tileWpx/2.0, tileHpx/2.0, 0.0);
+    {   // set line/point width
+        double   dummy = 0.0;
+        char     pen_w = '1';
+        S52_PL_getLCdata(obj, &dummy, &pen_w);
+
+        _glLineWidth(pen_w - '0' + 1.0);  // must enlarge line glsl sampler
+        _glPointSize(pen_w - '0' + 1.0);  // sampler + AA soften pixel, so need enhencing a bit
+    }
+
+    {   /* get pivot
+        double bbox_x = 0.0, bbox_y = 0.0;
+        double pivot_x= 0.0, pivot_y= 0.0;
+        S52_PL_getAPTilePos(obj, &bbox_x, &bbox_y, &pivot_x, &pivot_y);
+        //PRINTF("DEBUG: bbox_   : X%6.1f x Y%6.1f\n", bbox_x,  bbox_y);
+        //PRINTF("DEBUG: pivot_  : X%6.1f x Y%6.1f\n", pivot_x, pivot_y);
+        */
+
+        double offset_x = 0.0;
+        double offset_y = 0.0;
+        S52_PL_getPivotOffset(obj, &offset_x, &offset_y);
+        // --> pixel
+        offset_x /=  S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0;
+        offset_y /=  S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 100.0;
+        //PRINTF("DEBUG: %s:  px dx/dy center-pivot X:%f Y:%f\n", S52_PL_getOBCL(obj), offset_x, offset_y);
+
+        // move pattern to texture's center
+        //_glTranslated(tileWpx/2.0, tileHpx/2.0, 0.0);
+        _glTranslated((tileWpx/2.0)-offset_x, (tileHpx/2.0)+offset_y, 0.0);
+        //PRINTF("DEBUG: tile px : W%6.1f x H%6.1f\n", tileWpx, tileHpx);
+    }
 
     _fixDPI_glScaled();
 
@@ -1835,23 +1829,29 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
 
 static int       _renderAP_gl2(S52_obj *obj)
 {
-    double x1=0.0, y1=0.0;   // LL of region of area in world
-    double x2=0.0, y2=0.0;   // UR of region of area in world
+    // debug
+    //if (0 == S52_PL_cmpCmdParam(obj, "NODATA03")) {
+    //    PRINTF("DEBUG: nodata03 on group 2\n");
+    //}
+    //if (0 == S52_PL_cmpCmdParam(obj, "DIAMOND1")) {
+    //    PRINTF("DEBUG: DIAMOND1 found\n");
+    //}
+    //if (0 == g_strcmp0("DRGARE", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: DRGARE found\n");
+    //}
+
+    // FIXME: rename LLwx
+    //double x1=0.0, y1=0.0;   // LL of region of area in world
+    //double x2=0.0, y2=0.0;   // UR of region of area in world
+    double LLx=0.0, LLy=0.0;   // LL of region of area in world
+    double URx=0.0, URy=0.0;   // UR of region of area in world
     double tileWpx = 0.0;
     double tileHpx = 0.0;
-    double stagOffsetPix = _getGridRef(obj, &x1, &y1, &x2, &y2, &tileWpx, &tileHpx);
+    double stagOffsetPix = _getWorldGridRef(obj, &LLx, &LLy, &URx, &URy, &tileWpx, &tileHpx);
     double tileWw = tileWpx * _scalex;
     double tileHw = tileHpx * _scaley;
 
-    // FIXME: pattern fail .. why?
-    /* skip NODATA03 pattern if on group 1
-    const char *name = S52_PL_getOBCL(obj);
-    if (0 == g_strcmp0(name, "UNSARE")) {
-        // FIXME; skip if group 2
-        //PRINTF("DEBUG: nodata pattern found\n");
-        return TRUE;
-    }
-    //*/
+    //PRINTF("DEBUG: %s: grid x1:%f y1:%f Ww:%f Hw:%f sop:%f\n", S52_PL_getOBCL(obj), LLx, LLy, tileWw, tileHw, stagOffsetPix);
 
     GLuint mask_texID = S52_PL_getAPtexID(obj);
     if (0 == mask_texID) {
@@ -1874,10 +1874,9 @@ static int       _renderAP_gl2(S52_obj *obj)
     _glUniformMatrix4fv_uModelview();
 
     glUniform1f(_uPattOn,    1.0);
-    // make no diff on MESA/gallium if it is 0.0 but not on Xoom (tegra2)
-    glUniform1f(_uPattGridX, x1);
-    glUniform1f(_uPattGridY, y1);
-
+    // make no diff on mesa if it is 0.0 but not on Xoom (tegra2)
+    glUniform1f(_uPattGridX, LLx);
+    glUniform1f(_uPattGridY, LLy);
     glUniform1f(_uPattW,     tileWw);        // tile width in world
     glUniform1f(_uPattH,     tileHw);        // tile height in world
 

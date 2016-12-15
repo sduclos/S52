@@ -127,7 +127,7 @@ static const GLubyte _nodata_mask[4*32] = {
 
 ////////////////////////////////////////////////////////
 // forward decl
-static double      _getGridRef(S52_obj *, double *, double *, double *, double *, double *, double *);
+static double      _getWorldGridRef(S52_obj *, double *, double *, double *, double *, double *, double *);
 static int         _fillArea(S57_geo *);
 static int         _glCallList(S52_DList *);
 static GLubyte     _setFragColor(S52_Color *);
@@ -472,7 +472,7 @@ static int       _renderAP_gl1(S52_obj *obj)
     double x2, y2;   // UR of region of area
     double tileWidthPix;
     double tileHeightPix;
-    double stagOffsetPix = _getGridRef(obj, &x1, &y1, &x2, &y2, &tileWidthPix, &tileHeightPix);
+    double stagOffsetPix = _getWorldGridRef(obj, &x1, &y1, &x2, &y2, &tileWidthPix, &tileHeightPix);
     //PRINTF("PIXEL: tileW:%f tileH:%f\n", tileWidthPix, tileHeightPix);
 
     /*
