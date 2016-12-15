@@ -101,7 +101,6 @@ s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
 s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl gtk+-2.0 libgps ` \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
-                     -DS52_USE_MESA3D        \
                      -DUSE_TEST_OBJ          \
                      -DUSE_AIS               \
                      -DS52_USE_AFGLOW
