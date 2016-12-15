@@ -4,6 +4,12 @@
 #
 
 
+2016DEC13
+    -fix chart rotation for bouy
+
+2016DEC12
+    -fix pattern in gl2
+
 2016DEC06
     -mod scissor when chart rotated
 
@@ -25,7 +31,7 @@
 
 2016OCT23
     -fix clang --analyse warning
-    -mod _DEPVAL01 
+    -mod _DEPVAL01
     -mod libtess
     -mod freetype_gl
     -mod parson
