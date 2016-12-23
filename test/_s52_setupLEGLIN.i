@@ -89,9 +89,8 @@ static int _s52_setupLEGLIN(double cLat, double cLon)
     //-----------------------------
     //*
     // heading change from SW to SE
-    //_leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpN.lat, wpN.lon, wpW.lat, wpW.lon, NULL);
-    _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, wpN.lat, wpN.lon, wpW.lat, wpW.lon, FALSE);
-    _leglin2  = S52_newLEGLIN(1, 12.0, 0.2, wpW.lat, wpW.lon, wpS.lat, wpS.lon, _leglin1);
+    _leglin1  = S52_newLEGLIN(1, 10.0, 0.1, wpN.lat, wpN.lon, wpW.lat, wpW.lon, FALSE);
+    _leglin2  = S52_newLEGLIN(1, 11.0, 0.2, wpW.lat, wpW.lon, wpS.lat, wpS.lon, _leglin1);
     _leglin3  = S52_newLEGLIN(1, 12.0, 0.3, wpS.lat, wpS.lon, wpE.lat, wpE.lon, _leglin2);
     //*/
 
@@ -116,9 +115,8 @@ static int _s52_setupLEGLIN(double cLat, double cLon)
         // test
         S52_toggleDispMarObj(_waypnt0); // on
         S52_toggleDispMarObj(_waypnt2); // off
+
         // test - move to wp2 pos
-        //S52_updObjGeo(_waypnt1, 1, xyz2);
-        //S52_addPosition(_waypnt1,  cLat-0.01, cLon+0.01, 0.0);
         S52_pushPosition(_waypnt1,  cLat-0.01, cLon+0.01, 0.0);
 
         // test - over drawn a normal WP over an active WP (ugly)
