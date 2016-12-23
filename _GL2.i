@@ -365,14 +365,19 @@ static int       _init_freetype_gl(void)
     return TRUE;
 }
 
-static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsigned int weight)
-// fill buffer whit triangles strip
+static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsigned int weight, double *strWpx, double *strHpx)
+// fill buffer with triangles strip, W/H can be NULL
 // experimental: smaller text size if second line
 {
     int   pen_x = 0;
     int   pen_y = 0;
     int   nl    = FALSE;
     glong len   = g_utf8_strlen(str, -1);
+
+    if (NULL!=strWpx && NULL!=strHpx) {
+        *strWpx = 0.0;
+        *strHpx = 0.0;
+    }
 
     g_array_set_size(ftglBuf, 0);
 
@@ -433,7 +438,15 @@ static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsi
 
         pen_x += glyph->advance_x;
         pen_y += glyph->advance_y;
+
+        // tally whole string size (what with NL)
+        if (NULL!=strWpx && NULL!=strHpx) {
+            *strWpx += glyph->width;
+            *strHpx  = (*strHpx>glyph->height)? *strHpx : glyph->height;
+        }
     }
+
+    //PRINTF("DEBUG: h/w px: %f %f\n", h_px, w_px);
 
     return ftglBuf;
 }
