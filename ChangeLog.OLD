@@ -4,6 +4,13 @@
 #
 
 
+2016DEC22
+    -rename S52_cmdmDef to S52_symDef
+    -move freetype-gl data to _Text
+    -move code for planned speed renderSY_leglin() to renderTXT()
+    -mod leglin CS for correct TX string handling
+    -add text V/H justification
+
 2016DEC13
     -fix chart rotation for bouy
 
