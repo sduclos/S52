@@ -1207,6 +1207,7 @@ static GString *LEGLIN02 (S57_geo *geo)
     GString *selectstr = S57_getAttVal(geo, "select");
     GString *plnspdstr = S57_getAttVal(geo, "plnspd");
 
+    // FIXME: add OP()
     if ((NULL!=selectstr) && ('1'==*selectstr->str)) {
         g_string_append(leglin02, ";SY(PLNSPD03);LC(PLNRTE03)");
         // LUCM 42210 DISPLAYBASE
@@ -1216,20 +1217,20 @@ static GString *LEGLIN02 (S57_geo *geo)
         // LUCM 52210 STANDARD
     }
 
-    // FIXME: problem of determining witch TX() to draw
+    // TX: cog, course made good (mid point of leg)
+    g_string_append(leglin02, ";TX(leglin,3,1,2,'15112',0,0,CHBLK,51)");
 
-    // TX: course made good (mid point of leg)
-    g_string_append(leglin02, ";TX('leglin',2,1,2,'15110',-1,-1,CHBLK,51)");
+    // TX: plnspd, planned speed (mid point of leg)
+    if ((NULL!=plnspdstr) && (0.0<S52_atof(plnspdstr->str))) {
+        g_string_append(leglin02, ";TX(plnspd,1,2,2,'15110',0,0,CHBLK,51)");
+    }
 
-    // TX: planned speed (mid point of leg)
-    if ((NULL!=plnspdstr) && (0.0<S52_atof(plnspdstr->str)))
-        g_string_append(leglin02, ";TX('leglin',2,1,2,'15110',-1,-1,CHBLK,51)");
-
-    // FIXME: move to GL
+    /* FIXME: move to GL
     // TX: distance tags
     if (0.0 < S52_MP_get(S52_MAR_DISTANCE_TAGS)) {
-        g_string_append(leglin02, ";SY(PLNPOS02);TX('leglin',2,1,2,'15110',-1,-1,CHBLK,51)");
+        g_string_append(leglin02, ";SY(PLNPOS02);TX(_disttags,3,1,2,'15112',0,0,CHBLK,51)");
     }
+    */
 
     return leglin02;
 }
@@ -2341,13 +2342,21 @@ static GString *PASTRK01 (S57_geo *geo)
     GString *catpststr = S57_getAttVal(geo, "catpst");
 
     if (NULL != catpststr) {
-        // FIXME: view group: 1 - standard (52430) , 2 - other (52460)
+        // FIXME: view group: 1 - standard (52430) , 2 - standard (52460)
         // NOTE: text grouping 51
-        if ('1' == *catpststr->str)
-            pastrk01  = g_string_new(";LS(SOLD,2,PSTRK);SY(PASTRK01);TX('pastrk',2,1,2,'15110',-1,-1,CHBLK,51)");
+        if ('1' == *catpststr->str) {
+            //pastrk01 = g_string_new(";LS(SOLD,2,PSTRK);SY(PASTRK01);TX(pastrk,2,1,2,'15110',-1,-1,CHBLK,51)");
+            pastrk01 = g_string_new(";LS(SOLD,2,PSTRK);SY(PASTRK01)");
+        }
+        if ('2' == *catpststr->str) {
+            //pastrk01 = g_string_new(";LS(SOLD,1,SYTRK);SY(PASTRK02);TX(pastrk,2,1,2,'15110',-1,-1,CHBLK,51)");
+            pastrk01 = g_string_new(";LS(SOLD,1,SYTRK);SY(PASTRK02)");
+        }
 
-        if ('2' == *catpststr->str)
-            pastrk01  = g_string_new(";LS(SOLD,1,SYTRK);SY(PASTRK02);TX('pastrk',2,1,2,'15110',-1,-1,CHBLK,51)");
+        // FIXME: if time-tags
+        //if (0.0 < S52_MAR_TIME_TAGS) {
+        //    g_string_append(pastrk01, ";TX(_timetags,2,1,2,'15110',-1,-1,CHBLK,51)");
+        //}
 
     }
 

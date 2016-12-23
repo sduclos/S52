@@ -3051,7 +3051,14 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
     if (NULL == obj) {
         PRINTF("WARNING: S52 object build failed\n");
         g_assert(0);
-        return FALSE;
+        return NULL;
+    }
+
+    // debug
+    if (S57_getObjtype(geo) != S52_PL_getFTYP(obj)) {
+        PRINTF("DEBUG: S52/S57 object type mismatch\n");
+        g_assert(0);
+        return NULL;
     }
 
     // connect S52ObjectType (public enum) to S57 object type (private)
@@ -3115,6 +3122,13 @@ static S52_obj   *_insertS52obj(_cell *c, S52_obj *obj)
     S52_disPrio   disPrioIdx = S52_PL_getDPRI(obj);
     S57_Obj_t     ot         = S57_getObjtype(geo);
     S52ObjectType obj_t      = S52_N_OBJ;
+
+    // debug
+    if (S57_getObjtype(geo) != S52_PL_getFTYP(obj)) {
+        PRINTF("DEBUG: S52/S57 object type mismatch\n");
+        g_assert(0);
+        return NULL;
+    }
 
     // connect S52ObjectType (public enum) to S57 object type (private)
     switch (ot) {
@@ -3782,6 +3796,7 @@ static int        _cullObj(_cell *c, GPtrArray *rbin)
         // if this object has TX or TE, draw text last (on top)
         if (TRUE == S52_PL_hasText(obj)) {
             g_ptr_array_add(c->textList, obj);
+            //PRINTF("DEBUG: add text %p\n", obj);
         }
     }
 
@@ -6525,14 +6540,20 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
 
     {   // create LEGLIN
         char   attval[80];
-        double xyz[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
+        double xyztmp[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
+        S57_geo2prj3dv(2, xyztmp);
+        double cog = ATAN2TODEG(xyztmp);
 
+        // FIXME: used leglin to get cog when rendering
         if (0.0 != wholinDist) {
-            SNPRINTF(attval, 80, "select:%i,plnspd:%f,_wholin_dist:%f", select, plnspd, wholinDist);
+            //SNPRINTF(attval, 80, "select:%i,plnspd:%f,_wholin_dist:%f", select, plnspd, wholinDist);
+            SNPRINTF(attval, 80, "leglin:%f,select:%i,plnspd:%f,_wholin_dist:%f", cog, select, plnspd, wholinDist);
         } else {
-            SNPRINTF(attval, 80, "select:%i,plnspd:%f", select, plnspd);
+            //SNPRINTF(attval, 80, "select:%i,plnspd:%f", select, plnspd);
+            SNPRINTF(attval, 80, "leglin:%f,select:%i,plnspd:%f", cog, select, plnspd);
         }
 
+        double xyz[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
         leglinH = _newMarObj("leglin", S52_LINES, 2, xyz, attval);
         if (FALSE == leglinH) {
             PRINTF("WARNING: LEGLIN_H not a valid S52ObjectHandle\n");

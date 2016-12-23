@@ -126,8 +126,8 @@ typedef struct  pt3  { double   x,y,z; } pt3;
 typedef struct  pt3v { vertex_t x,y,z; } pt3v;
 
 // NOTE: S52 pixels for symb are 0.3 mm
-// this is the real dotpitch of the device
-// as computed at init() time
+// this is the real (physical) dotpitch of the device as computed at init() time
+// virtual dotpitch is set by user with S52_MP_set(S52_MAR_DOTPITCH_MM_X/Y, ..);
 static double _dotpitch_mm_x = 0.3;  // will be overwright at init()
 static double _dotpitch_mm_y = 0.3;  // will be overwright at init()
 #define MM2INCH  25.4
@@ -1891,7 +1891,6 @@ static int       _renderSY_silhoutte(S52_obj *obj)
         double lenRatio = shpLenPixel / symLenPixel;
         double brdRatio = shpBrdPixel / symBrdPixel;
 
-        //_glMatrixMode  (GL_MODELVIEW);
         _glLoadIdentity(GL_MODELVIEW);
 
         _glTranslated(ppt[0], ppt[1], 0.0);
@@ -1916,7 +1915,7 @@ static int       _renderSY_silhoutte(S52_obj *obj)
 }
 
 static int       _renderSY_CSYMB(S52_obj *obj)
-// FIXME: use _dotpitch_ for XY placement
+// FIXME: use dotpitch for XY placement
 {
     S57_geo *geoData = S52_PL_getGeo(obj);
     char    *attname = "$SCODE";
@@ -1952,8 +1951,6 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         // set geo
         double x = 10.0; // 3 mm from left
         double y = 10.0; // bottom justifier
-
-        //_glLoadIdentity(GL_MODELVIEW);
 
         _win2prj(&x, &y);
 
@@ -1994,8 +1991,6 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         double y   = _vp.h - 40;
         double rot = 0.0;
 
-        //_glLoadIdentity(GL_MODELVIEW);
-
         _win2prj(&x, &y);
 
         _renderSY_POINT_T(obj, x, y, rot);
@@ -2006,10 +2001,8 @@ static int       _renderSY_CSYMB(S52_obj *obj)
     // depth unit
     if (0 == g_strcmp0(attval->str, "UNITMTR1")) {
         // Note: S52 specs say: left corner, just beside the scalebar [what does that mean in XY]
-        double x   = 30;
-        double y   = 20;
-
-        //_glLoadIdentity(GL_MODELVIEW);
+        double x = 30;
+        double y = 20;
 
         _win2prj(&x, &y);
 
@@ -2025,9 +2018,6 @@ static int       _renderSY_CSYMB(S52_obj *obj)
             double y      = _vp.y + 50;
             double scalex = _scalex / (_dotpitch_mm_x * 100.0);
             double scaley = _scaley / (_dotpitch_mm_y * 100.0);
-            //double scaley = _scaley / (_dotpitch_mm_x * 100.0);
-
-            //_glLoadIdentity(GL_MODELVIEW);
 
             _win2prj(&x, &y);
 
@@ -2049,13 +2039,9 @@ static int       _renderSY_CSYMB(S52_obj *obj)
             double y   = _vp.h - 50;
             //double rot = 0.0;
 
-            //_glLoadIdentity(GL_MODELVIEW);
-
             _win2prj(&x, &y);
 
             _renderSY_POINT_T(obj, x, y,  _north);
-            //_renderSY_POINT_T(obj, x, y, -_north);
-            //_renderSY_POINT_T(obj, x, y, rot);
 
             return TRUE;
         }
@@ -2448,15 +2434,16 @@ static int       _renderSY_leglin(S52_obj *obj)
     guint     npt = 0;
     GLdouble *ppt = NULL;
 
-    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt)) {
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
         PRINTF("WARNING: LEGLIN with no geo\n");
         return FALSE;
     }
 
-    if (npt != 2) {
-        PRINTF("WARNING: LEGLIN with %i point\n", npt);
-        return FALSE;
-    }
+    // debug
+    //if (npt != 2) {
+    //    PRINTF("WARNING: LEGLIN with %i point\n", npt);
+    //    return FALSE;
+    //}
 
     // planned speed (box symbol)
     if (0 == S52_PL_cmpCmdParam(obj, "PLNSPD03") ||
@@ -2465,28 +2452,31 @@ static int       _renderSY_leglin(S52_obj *obj)
         double   plnspd    = (NULL==plnspdstr) ? 0.0 : S52_atof(plnspdstr->str);
 
         if (0.0 != plnspd) {
-            double offset_x = 10.0 * _scalex;
-            double offset_y = 18.0 * _scaley;
-            gchar str[80];
-
-            // draw box --side effect, set color
             // FIXME: strech the box to fit text
-            // FIXME: place the box "above close to the leg" (see S52 p. I-112)
-            //_renderSY_POINT_T(obj, ppt[0], ppt[1], 0.0);
+            // FIXME: place the box "close to the leg" (see S52 p. I-112)
             _renderSY_POINT_T(obj, ppt[0], ppt[1], _north);
 
-            // draw speed text inside box
-            // FIXME: compute offset from symbol's bbox
-            // S52_PL_getSYbbox(S52_obj *obj, int *width, int *height);
-            // FIXME: ajuste XY for rotation
-            SNPRINTF(str, 80, "%3.1f kt", plnspd);
 
-            // FIXME: get color from TE & TX command word
-            S52_Color *color = S52_PL_getColor("CHBLK");
+            /* planned speed text
+            {
+                double offset_x = 10.0 * _scalex;
+                double offset_y = 18.0 * _scaley;
 
-            //_renderTXTAA(obj, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, str);
-            _renderTXTAA(obj, color, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, str);
+                // draw speed text inside box
+                // FIXME: compute offset from symbol's bbox
+                // S52_PL_getSYbbox(S52_obj *obj, int *width, int *height);
+                // FIXME: ajuste XY for rotation
+                char s[80];
+                SNPRINTF(s, 80, "%3.1f kt", plnspd);
 
+                // FIXME: get color from TE & TX command word
+                // -OR- get color from leglin (orange or yellow)
+                S52_Color *color = S52_PL_getColor("CHBLK");
+
+                _renderTXTAA(obj, color, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, s);
+                //_renderTXTAA(obj, NULL, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, s);
+            }
+            //*/
 
         }
         return TRUE;
@@ -2790,7 +2780,7 @@ static int       _renderSY(S52_obj *obj)
 static int       _renderLS_LIGHTS05(S52_obj *obj)
 {
     S57_geo *geoData   = S52_PL_getGeo(obj);
-    GString *orientstr = S57_getAttVal(geoData, "ORIENT");  // or S52_PL_getSYorient(obj)
+    GString *orientstr = S57_getAttVal(geoData, "ORIENT");
     GString *sectr1str = S57_getAttVal(geoData, "SECTR1");
     GString *sectr2str = S57_getAttVal(geoData, "SECTR2");
     double   leglenpix = 25.0 / S52_MP_get(S52_MAR_DOTPITCH_MM_X);
@@ -4203,19 +4193,6 @@ static int       _renderAP(S52_obj *obj)
     }
     //*/
 
-
-    /* experimental: skip NODATA03 pattern - layer 0 does it
-    // FIXME: check if this break S52_MAR_DISP_NODATA_LAYER OFF
-    if (0 == S52_PL_cmpCmdParam(obj, "NODATA03")) {
-        //if (S52_PRIO_GROUP1 != S52_PL_getDPRI(obj)) {
-            // FIXME: skip return if group 2
-            //PRINTF("DEBUG: nodata on group 2\n");
-            //g_assert(0);
-        //}
-        return TRUE;
-    }
-    //*/
-
 #ifdef S52_USE_GL2
     return _renderAP_gl2(obj);
 #endif
@@ -4254,11 +4231,10 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 // Note: PLib C1 CHARS for TE() & TX() alway '15110' - ie style = 1 (alway), weigth = '5' (medium), width = 1 (alway), bsize = 10
 // Note: weight is already converted from '4','5','6' to int 0,1,2
 // Note: obj can be NULL
+// Note: all text command pass here
 {
-    // TODO: use 'bsize'
+    // FIXME: use 'bsize'
     (void) bsize;
-
-    //g_assert(NULL != color);
 
     if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
@@ -4290,14 +4266,17 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 #ifdef S52_USE_GL2
     // static text
     guint len = 0;
+    double strWpx;
+    double strHpx;
     if ((S52_GL_DRAW==_crnt_GL_cycle) && (NULL!=obj)) {
-        GLuint vboID = S52_PL_getFreetypeGL_VBO(obj, &len);
+        GLuint vboID = S52_PL_getFreetypeGL_VBO(obj, &len, &strWpx, &strHpx);
+
         //if (GL_TRUE == glIsBuffer(vboID)) {
         if (0 != vboID) {
             // connect to data in VBO GPU
             glBindBuffer(GL_ARRAY_BUFFER, vboID);
         } else {
-            _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight);
+            _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, &strWpx, &strHpx);
             if (0 == _freetype_gl_buffer->len)
                 return TRUE;
             else
@@ -4312,7 +4291,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
                 return FALSE;
             }
 
-            S52_PL_setFreetypeGL_VBO(obj, vboID, _freetype_gl_buffer->len);
+            S52_PL_setFreetypeGL_VBO(obj, vboID, _freetype_gl_buffer->len, strWpx, strHpx);
 
             // bind VBOs for vertex array
             glBindBuffer(GL_ARRAY_BUFFER, vboID);      // for vertex coordinates
@@ -4326,16 +4305,16 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
     // dynamique text
     if (S52_GL_LAST == _crnt_GL_cycle) {
-        _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight);
+        _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, NULL, NULL);
     }
 
     // lone text - S52_drawStr()
     if (S52_GL_NONE == _crnt_GL_cycle) {
-        _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight);
+        _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, NULL, NULL);
     }
 
 #ifdef S52_USE_TXT_SHADOW
-    {
+    if (NULL != color) {
         S52_Color *c = S52_PL_getColor("UIBCK");   // opposite of CHBLK
         _setFragColor(c);
 
@@ -4349,7 +4328,8 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     }
 #endif  // S52_USE_TXT_SHADOW
 
-    _setFragColor(color);
+    if (NULL != color)
+        _setFragColor(color);
 
     if ((S52_GL_LAST==_crnt_GL_cycle) || (S52_GL_NONE==_crnt_GL_cycle)) {
         // some MIO change age of target - need to resend the string
@@ -4457,7 +4437,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
 static int       _renderTXT(S52_obj *obj)
 // render TE or TX
-// Note: all text pass here
+// Note: NOT all text command pass here (ex: legends are system generated)
 {
     if (0.0 == S52_MP_get(S52_MAR_SHOW_TEXT))
         return FALSE;
@@ -4466,8 +4446,8 @@ static int       _renderTXT(S52_obj *obj)
     if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
-    guint      npt    = 0;
-    GLdouble  *ppt    = NULL;
+    guint      npt   = 0;
+    GLdouble  *ppt   = NULL;
     S57_geo *geoData = S52_PL_getGeo(obj);
     if (FALSE == S57_getGeoData(geoData, 0, &npt, &ppt))
         return FALSE;
@@ -4477,30 +4457,65 @@ static int       _renderTXT(S52_obj *obj)
     int          yoffs  = 0;
     unsigned int bsize  = 0;
     unsigned int weight = 0;
-    int          disIdx = 0;      // text view group
-    const char  *str = S52_PL_getEX(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx);
+    int          disIdx = 0;  // text view group
+    char         hjust  ='0';
+    char         vjust  ='0';
 
-    // debug
-    //PRINTF("xoffs/yoffs/bsize/weight: %i/%i/%i/%i:%s\n", xoffs, yoffs, bsize, weight, str);
-
-    if (NULL == str) {
-        //PRINTF("NULL text string\n");
-        return FALSE;
-    }
-    if (0 == strlen(str)) {
-        PRINTF("no text!\n");
-        return FALSE;
-    }
+    const char  *str    = S52_PL_getEX(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx, &hjust, &vjust);
+    //PRINTF("DEBUG: xoffs/yoffs/bsize/weight: %i/%i/%i/%i:%s\n", xoffs, yoffs, bsize, weight, str);
 
     // supress display of text
     if (FALSE == (int) S52_MP_getTextDisp(disIdx))
         return FALSE;
 
-    // convert offset to PRJ
+    if (NULL == str) {
+        //PRINTF("DEBUG: NULL text string\n");
+        return FALSE;
+    }
+    if (0 == strlen(str)) {
+        PRINTF("DEBUG: no text!\n");
+        return FALSE;
+    }
+
+    // convert pivot point offset to PRJ
     double uoffs  = ((10 * PICA * xoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_X)) * _scalex;
     double voffs  = ((10 * PICA * yoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_Y)) * _scaley;
 
-    //PRINTF("uoffs/voffs: %f/%f %s\n", uoffs, voffs, str);
+    {  // compute H/V justification
+        guint  len    = 0;    // dummy
+        double strWpx = 0.0;
+        double strHpx = 0.0;
+        S52_PL_getFreetypeGL_VBO(obj, &len, &strWpx, &strHpx);
+        double strWw  = strWpx * _scalex;
+        double strHw  = strHpx * _scaley;
+
+        // FIXME: where is the origin of the str - assume LL
+        switch(hjust) {
+        case '1': strHw /= +2.0; break;  // CENTRE
+        case '2': strHw /= +1.0; break;  // RIGHT
+        case '3': strHw  =  0.0; break;  // LEFT
+        default:
+            PRINTF("DEBUG: invalid hjust!\n");
+            strWw = 0.0;
+            g_assert(0);
+        }
+
+        switch(vjust) {
+        case '1': strWw  =  0.0; break;  // BOTTOM
+        case '2': strWw /= +2.0; break;  // CENTRE
+        case '3': strWw /= +1.0; break;  // TOP
+        default:
+            PRINTF("DEBUG: invalid vjust!\n");
+            strHw = 0.0;
+            g_assert(0);
+        }
+
+        // compute total u/v offset (pivot+just.)
+        uoffs += strWw;
+        voffs += strHw;
+    }
+
+    //PRINTF("DEBUG: uoffs/voffs: %f/%f %s\n", uoffs, voffs, str);
 
     if (S57_POINT_T == S57_getObjtype(geoData)) {
         _renderTXTAA(obj, color, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
@@ -4512,14 +4527,13 @@ static int       _renderTXT(S52_obj *obj)
         if (0 == g_strcmp0("pastrk", S57_getName(geoData))) {
             // past track time
             for (guint i=0; i<npt; ++i) {
-                gchar s[80];
                 int timeHH = ppt[i*3 + 2] / 100;
                 int timeMM = ppt[i*3 + 2] - (timeHH * 100);
-                //SNPRINTF(s, 80, "t%04.f", ppt[i*3 + 2]);     // S52 PASTRK01 say frefix a 't'
+
+                char s[80];
+                //SNPRINTF(s, 80, "t%04.f", ppt[i*3 + 2]);     // S52 PASTRK01 say prefix a 't'
                 SNPRINTF(s, 80, "%02i:%02i", timeHH, timeMM);  // ISO say HH:MM
 
-                //_renderTXTAA(obj, ppt[i*3 + 0], ppt[i*3 + 1], bsize, weight, s);
-                //_renderTXTAA(obj, ppt[i*3 + 0]+uoffs, ppt[i*3 + 1]-voffs, bsize, weight, s);
                 _renderTXTAA(obj, color, ppt[i*3 + 0]+uoffs, ppt[i*3 + 1]-voffs, bsize, weight, s);
             }
 
@@ -4531,34 +4545,61 @@ static int       _renderTXT(S52_obj *obj)
             double x = (ppt[3] + ppt[0]) / 2.0;
             double y = (ppt[4] + ppt[1]) / 2.0;
 
-            gchar s[80];
+            //if (orient < 0.0) orient += 360.0;
 
-            if (orient < 0) orient += 360.0;
-
+            char s[80];
             SNPRINTF(s, 80, "%s %03.f", str, orient);
 
-            //_renderTXTAA(obj, x, y, bsize, weight, s);
-            //_renderTXTAA(obj, x+uoffs, y-voffs, bsize, weight, s);
             _renderTXTAA(obj, color, x+uoffs, y-voffs, bsize, weight, s);
 
             return TRUE;
         }
 
         if (0 == g_strcmp0("leglin", S57_getName(geoData))) {
-            double orient = ATAN2TODEG(ppt);
-            // mid point of leg
-            double x = (ppt[3] + ppt[0]) / 2.0;
-            double y = (ppt[4] + ppt[1]) / 2.0;
+            // cog
+            if (0 == S52_PL_cmpCmdParam(obj, "leglin")) {
+                // TX(leglin,3,1,2,'15112',0,0,CHBLK,51)
+                //double orient = ATAN2TODEG(ppt);
+                double orient = S52_atof(str);
 
-            gchar s[80];
+                // mid point of leg
+                double x = (ppt[3] + ppt[0]) / 2.0;
+                double y = (ppt[4] + ppt[1]) / 2.0;
 
-            if (orient < 0) orient += 360.0;
+                //if (orient < 0.0) orient += 360.0;
 
-            SNPRINTF(s, 80, "%03.f cog", orient);
+                char s[80];
+                //SNPRINTF(s, 80, "%03.f cog", orient);
+                SNPRINTF(s, 80, "%03.f deg", orient);
 
-            //_renderTXTAA(obj, x, y, bsize, weight, s);
-            //_renderTXTAA(obj, x+uoffs, y-voffs, bsize, weight, s);
-            _renderTXTAA(obj, color, x+uoffs, y-voffs, bsize, weight, s);
+                //PRINTF("DEBUG: xoffs/yoffs/bsize/weight: %i/%i/%i/%i:%s\t%s\n", xoffs, yoffs, bsize, weight, str, s);
+
+                _renderTXTAA(obj, color, x+uoffs, y-voffs, bsize, weight, s);
+            }
+
+            // planned speed
+            if (0 == S52_PL_cmpCmdParam(obj, "plnspd")) {
+                // TX(plnspd,1,2,2,'15110',0,0,CHBLK,51)
+                GString *plnspdstr = S57_getAttVal(geoData, "plnspd");
+                double   plnspd    = (NULL==plnspdstr) ? 0.0 : S52_atof(plnspdstr->str);
+
+                if (0.0 != plnspd) {
+                    double offset_x = 10.0 * _scalex;
+                    double offset_y = 18.0 * _scaley;
+
+                    // draw speed text inside box
+                    // FIXME: compute offset from symbol's bbox
+                    // S52_PL_getSYbbox(S52_obj *obj, int *width, int *height);
+                    char s[80];
+                    SNPRINTF(s, 80, "%3.1f kt", plnspd);
+
+                    // FIXME: get color from leglin (orange or yellow) instead of black (not in S52)
+                    //S52_Color *color = S52_PL_getColor("???");
+
+                    //PRINTF("DEBUG: xoffs/yoffs/bsize/weight: %i/%i/%i/%i:%s\t%s\n", xoffs, yoffs, bsize, weight, str, s);
+                    _renderTXTAA(obj, color, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, s);
+                }
+            }
 
             return TRUE;
         }
@@ -4585,7 +4626,6 @@ static int       _renderTXT(S52_obj *obj)
             }
 
             if (INFINITY != dmin) {
-                //_renderTXTAA(obj, xmin+uoffs, ymin-voffs, bsize, weight, str);
                 _renderTXTAA(obj, color, xmin+uoffs, ymin-voffs, bsize, weight, str);
             }
         }
@@ -4600,7 +4640,6 @@ static int       _renderTXT(S52_obj *obj)
         for (guint i=0; i<_centroids->len; ++i) {
             pt3 *pt = &g_array_index(_centroids, pt3, i);
 
-            //_renderTXTAA(obj, pt->x+uoffs, pt->y-voffs, bsize, weight, str);
             _renderTXTAA(obj, color, pt->x+uoffs, pt->y-voffs, bsize, weight, str);
             //PRINTF("TEXT (%s): %f/%f\n", str, pt->x, pt->y);
 
@@ -4944,8 +4983,8 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
     // 'data' not used
     (void) data;
 
-    S52_cmdDef *cmdDef = (S52_cmdDef*)value;
-    S52_DList  *DL     = S52_PL_getDLData(cmdDef);
+    S52_symDef *symDef = (S52_symDef*)value;
+    S52_DList  *DL     = S52_PL_getDLData(symDef);
 
     //PRINTF("PATTERN: %s\n", (char*)key);
 
@@ -4996,7 +5035,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
 
 #endif  // S52_USE_OPENGL_VBO
 
-    S52_vec *vecObj = S52_PL_initVOCmd(cmdDef);
+    S52_vec *vecObj = S52_PL_initVOCmd(symDef);
 
     // set default
     //_glLineWidth(1.0);
@@ -5038,8 +5077,8 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
     // 'data' not used
     (void) data;
 
-    S52_cmdDef *cmdDef = (S52_cmdDef*)value;
-    S52_DList  *DL     = S52_PL_getDLData(cmdDef);
+    S52_symDef *symDef = (S52_symDef*)value;
+    S52_DList  *DL     = S52_PL_getDLData(symDef);
 
     // is this symbol need to be re-created (update PLib)
     if (FALSE == DL->create)
@@ -5087,7 +5126,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
     _glLineWidth(1.0);
     //_glPointSize(1.0);
 
-    S52_vec *vecObj  = S52_PL_initVOCmd(cmdDef);
+    S52_vec *vecObj  = S52_PL_initVOCmd(symDef);
 
     for (guint i=0; i<DL->nbr; ++i) {
         if (NULL == DL->prim[i])
@@ -6085,15 +6124,18 @@ int        S52_GL_delDL(S52_obj *obj)
         }
 
 #ifdef S52_USE_FREETYPE_GL
-        {   // delete text if any
-            guint len;
-            guint vboID = S52_PL_getFreetypeGL_VBO(obj, &len);
+        // delete text if any
+        if (TRUE == S52_PL_hasText(obj)) {
+            guint  len;
+            double dummy;
+            guint vboID = S52_PL_getFreetypeGL_VBO(obj, &len, &dummy, &dummy);
             if (GL_TRUE == glIsBuffer(vboID)) {
                 glDeleteBuffers(1, &vboID);
 
-                len   = 0;
-                vboID = 0;
-                S52_PL_setFreetypeGL_VBO(obj, vboID, len);
+                //len   = 0;
+                //vboID = 0;
+                //S52_PL_setFreetypeGL_VBO(obj, vboID, len);
+                S52_PL_setFreetypeGL_VBO(obj, 0, 0, 0.0, 0.0);
             }
             /* debug
             else
@@ -7154,8 +7196,10 @@ int        S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *s
     (void)str;
 
     // scale offset
-    double uoffs  = ((PICA * *offset_x) / _dotpitch_mm_x) * _scalex;
-    double voffs  = ((PICA * *offset_y) / _dotpitch_mm_y) * _scaley;
+    //double uoffs  = ((PICA * *offset_x) / _dotpitch_mm_x) * _scalex;
+    //double voffs  = ((PICA * *offset_y) / _dotpitch_mm_y) * _scaley;
+    double uoffs  = ((PICA * *offset_x) / S52_MP_get(S52_MAR_DOTPITCH_MM_X)) * _scalex;
+    double voffs  = ((PICA * *offset_y) / S52_MP_get(S52_MAR_DOTPITCH_MM_Y)) * _scaley;
 
     *offset_x = uoffs;
     *offset_y = voffs;

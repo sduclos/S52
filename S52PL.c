@@ -110,10 +110,10 @@ typedef struct _Shape {
    // note: bitmap/vector mutually exclusive
     union { GString   *dummy,  *PBTM,   *SBTM;  } bitmap;  // unused
     union { GString   *LVCT,   *PVCT,   *SVCT;  } vector;  //
-} Shape;
+} _Shape;
 
 // symbology definition: LINE,    PATTERN, SYMBOL
-typedef struct _S52_cmdDef {
+typedef struct _S52_symDef {
     int      RCID;
     union    {char       LINM[S52_SMB_NMLN+1],  // symbology name
                          PANM[S52_SMB_NMLN+1],  // '\0' teminated
@@ -124,7 +124,7 @@ typedef struct _S52_cmdDef {
     union    {char       dummy1,  PASP,    dummy2; } spacing;
     union    {_Position  line,    patt,    symb;   } pos;
     union    {GString   *LXPO,   *PXPO,   *SXPO;   } exposition;
-    union    {Shape      line,    patt,    symb;   } shape;
+    union    {_Shape     line,    patt,    symb;   } shape;
     union    {GString   *LCRF,   *PCRF,   *SCRF;   } colRef;
 
     // ---- not a S52 fields ------------------------------------
@@ -137,34 +137,60 @@ typedef struct _S52_cmdDef {
     int            potH;        // tex height
 #endif
 
-} _S52_cmdDef;
+} _S52_symDef;
 
+/*
+HJUST "horizontal justification" parameter:
+    1 means CENTRE justified (i.e. pivot point is located at the centre of the overall length of text string)
+    2 means RIGHT justified  (i.e. pivot point is located at the right side of the last character of text string)
+    3 means LEFT justified. This is the default value. (i.e. pivot point is located at the left side of the first character of text string)
+
+VJUST "vertical justification" parameter:
+    1 means BOTTOM justified. This is the default value. (i.e. the pivot point is located at the bottom line of the text string)
+    2 means CENTRE justified (i.e. the pivot point is located at the centre line of the text string)
+    3 means TOP justified (i.e. the pivot point is located at the top line of the text string)
+
+SPACE "character spacing" parameter:
+    1 means FIT spacing (i.e. the text string should be expanded or condensed to fit between the first and the last position in a spatial object)
+    2 means STANDARD spacing. This is the default value. (i.e. the standard spacing in accordance with the typeface given in CHARS should be used)
+    3 means STANDARD spacing with word wrap (i.e. the standard spacing in accordance with the typeface given in CHARS should be used;
+    text longer than 8 characters should be broken into separate lines)
+*/
 typedef struct _Text {
     GString   *frmtd;       // formated text string (could be NULL)
+
     char       hjust;
     char       vjust;
     char       space;
     char       style;       // CHARS
     char       weight;      // CHARS
     char       width;       // CHARS
-    int        bsize;       // CHARS -body size
-    int        xoffs;       // pica (1 = 0.351mm)
-    int        yoffs;       // pica (1 = 0.351mm)
+    int        bsize;       // CHARS - body size
+    int        xoffs;       // pivot point, pica (1 = 0.351mm)
+    int        yoffs;       // pivot point, pica (1 = 0.351mm)
     S52_Color *col;         // colour
     int        dis;         // display (view group)
+
+#ifdef S52_USE_FREETYPE_GL
+    guint      vboID;       // ID if the OpenGL VBO text
+    guint      len;         // VBO text length
+    double     strWpx;      // string width  (pixels)
+    double     strHpx;      // string height (pixels)
+#endif
+
 } _Text;
 
 // this 'union' is to highlight that *cmdDef is a pointer to a
 // 1) PLib symbole definition or 2) C function (CS) or 3) text struct or 4) light sector
 typedef union _cmdDef {
-    _S52_cmdDef     *def;
+    _S52_symDef     *def;
 
-    _Text           *text;      // after parsing this could de NULL
+    _Text           *text;   // after parsing this could de NULL
 
     S52_CS_condSymb *CS;
 
     // because there is no cmdDef for light sector, so put VBO here (ie no need struct _S52_cmdDef)
-    S52_DList       *DList;     // for pattern in GLES2 this DL will create a texture
+    S52_DList       *DList;  // for pattern in GLES2 this DL will create a texture
 
 } _cmdDef;
 
@@ -175,11 +201,12 @@ typedef struct _cmdWL {
 
     _cmdDef        cmd;      // command word definition or conditional symb func call
 
+/*
 #ifdef S52_USE_FREETYPE_GL
     guint          vboID;    // ID if the OpenGL VBO text
     guint          len;      // VBO text length
 #endif
-
+//*/
     guchar         crntPal;  // optimisation: this 'cmd' is setup for 'palette N' colors
 
     struct _cmdWL *next;
@@ -198,24 +225,23 @@ typedef enum _LUPtnm {
 
 
 //-- LOOKUP MODULE STRUCTURE ----------------------------------------
+typedef struct _prios {
+    S52_disPrio  DPRI;          // Display Priority
+    S52_RadPrio  RPRI;          // 'O' or 'S', Radar Priority
+    S52_DisCat   DISC;          // Display Categorie: B/S/O, Base, Standard, Other
+    int          LUCM;          // Look-Up Comment (PLib3.x put 'groupes' here,
+                                // hense 'int', but its a string in the specs)
+} _prios;
+
 typedef struct _LUP {
     int          RCID;          // record identifier
     char         OBCL[S52_PL_NMLN+1]; // LUP name --'\0' terminated
     S57_Obj_t    FTYP;          // 'A' Area, 'L' Line, 'P' Point
-    S52_disPrio  DPRI;          // Display Priority
-    S52_RadPrio  RPRI;          // 'O' or 'S', Radar Priority
        _LUPtnm   TNAM;          // FTYP:  areas, points, lines
+       _prios    prios;
+
     GString     *ATTC;          // Attribute Code/Value (repeat)
     GString     *INST;          // Instruction Field (rules)
-    S52_DisCat   DISC;          // Display Categorie: B/S/O, Base, Standard, Other
-    int          LUCM;          // Look-Up Comment (PLib3.x put 'groupes' here,
-                                // hense 'int', but its a string in the specs)
-    // FIXME exttract to struct
-    //S52_disPrio  DPRI;          // Display Priority
-    //S52_RadPrio  RPRI;          // 'O' or 'S', Radar Priority
-    //S52_DisCat   DISC;          // Display Categorie: B/S/O, Base, Standard, Other
-    //int          LUCM;          // Look-Up Comment (PLib3.x put 'groupes' here,
-                                // hense 'int', but its a string in the specs)
 
     // ---- not a S52 fields ------------------------------------
     S52_objSupp  supp;      // suppress display of this object type
@@ -282,13 +308,8 @@ typedef struct _S52_obj {
     gint         textParsed[2]; // TRUE if parsed, need two flag because there is text for
                                 // two type of point and area
     // CS override
-    // FIXME: extract to struct
     int          prioOveride;   // CS overide display priority
-    S52_disPrio  DPRI;          // Display Priority
-    S52_RadPrio  RPRI;          // 'O' or 'S', Radar Priority
-    S52_DisCat   DISC;          // Display Categorie: B/S/O, Base, Standard, Other
-    int          LUCM;          // Look-Up Comment (PLib3.x put 'groupes' here,
-                                // hense 'int', but its a string in the specs)
+    _prios       oPrios;
 
     S57_geo     *geoData;       // S-57
 
@@ -329,7 +350,7 @@ static GTree   *_table[TBL_NUM] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}
 // it is then turn into a string in gv_properties
 //#define EMPTY_NUMBER_MARKER "2147483641"  /* MAXINT-6 */
 
-// MAX_BUF == 1024 --for buffer overflow
+// MAX_BUF == 1024 - for buffer overflow
 //#define LNFMT  "%1024[^\n]"   // line format
 #define LNFMT  "%[^\n]"   // line format
 
@@ -608,7 +629,7 @@ static void       _delLUP(gpointer value)
 static void       _delSMB(gpointer value)
 // delete symbol
 {
-   _S52_cmdDef *def = (_S52_cmdDef*) value;
+   _S52_symDef *def = (_S52_symDef*) value;
 
    // debug
    //PRINTF("del %s\n", def->name.SYNM);
@@ -836,9 +857,9 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
                               cmd->cmdWord = t;      \
                               cmd->param   = str;
 
-#define LOOKUP(dbnm)  cmd->cmd.def = (_S52_cmdDef*)g_tree_lookup(_selSMB(dbnm), str);                     \
+#define LOOKUP(dbnm)  cmd->cmd.def = (_S52_symDef*)g_tree_lookup(_selSMB(dbnm), str);                     \
                       if (cmd->cmd.def == NULL) {                                                         \
-                          cmd->cmd.def = (_S52_cmdDef*)g_tree_lookup(_selSMB(dbnm), (void*) "QUESMRK1");  \
+                          cmd->cmd.def = (_S52_symDef*)g_tree_lookup(_selSMB(dbnm), (void*) "QUESMRK1");  \
                           PRINTF("WARNING: no lookup %s, %i, default to QUESMRK1\n", str, dbnm);          \
                       }
 
@@ -1019,10 +1040,10 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
 
     // reset priority override
     obj->prioOveride = FALSE;
-    obj->DPRI = obj->LUP->DPRI;
-    obj->RPRI = obj->LUP->RPRI;
-    obj->DISC = obj->LUP->DISC;
-    obj->LUCM = obj->LUP->LUCM;
+    obj->oPrios.DPRI = obj->LUP->prios.DPRI;
+    obj->oPrios.RPRI = obj->LUP->prios.RPRI;
+    obj->oPrios.DISC = obj->LUP->prios.DISC;
+    obj->oPrios.LUCM = obj->LUP->prios.LUCM;
 
     // expand CS
     S52_CS_cb CScb = cmd->cmd.CS->CScb;
@@ -1041,19 +1062,19 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
 
                     // Display Priority
                     if (S52_PRIO_NOPRIO != c[0])
-                        obj->DPRI = (S52_disPrio) (c[0] - '0');
+                        obj->oPrios.DPRI = (S52_disPrio) (c[0] - '0');
 
                     // 'O' or 'S', Radar Priority
                     if (S52_PRIO_NOPRIO != c[1])
-                        obj->RPRI = (S52_RadPrio) c[1];
+                        obj->oPrios.RPRI = (S52_RadPrio) c[1];
 
                     // Display Categorie: D/S/O, (ie baseDisplay, Standard, Other)
                     if (S52_PRIO_NOPRIO != c[2])
-                        obj->DISC = (S52_DisCat) c[2];
+                        obj->oPrios.DISC = (S52_DisCat) c[2];
 
                     // Look-Up Comment
                     if (S52_PRIO_NOPRIO != c[3])
-                        sscanf(c+3, "%d", &obj->LUCM);
+                        sscanf(c+3, "%d", &obj->oPrios.LUCM);
                 }
 
                 // continue to fill array with expanded CS
@@ -1542,13 +1563,13 @@ static int        _parseLUPT(_PL *fp)
     sscanf(_pBuf+11, "%d", &LUP->RCID);
     //sscanf(_pBuf+11, "%i", &LUP->RCID);
     strncpy(LUP->OBCL, _pBuf+19, S52_PL_NMLN);
-    LUP->FTYP = (S57_Obj_t  )  _pBuf[25];
-    LUP->DPRI = (S52_disPrio) (_pBuf[30] - '0');
-    LUP->RPRI = (S52_RadPrio)  _pBuf[31];
-    LUP->TNAM = (   _LUPtnm )  _pBuf[36];
+    LUP->FTYP       = (S57_Obj_t  )  _pBuf[25];
+    LUP->prios.DPRI = (S52_disPrio) (_pBuf[30] - '0');
+    LUP->prios.RPRI = (S52_RadPrio)  _pBuf[31];
+    LUP->TNAM       = (   _LUPtnm )  _pBuf[36];
 
-    if ('O'!=LUP->RPRI && 'S'!=LUP->RPRI)
-        LUP->RPRI = (S52_RadPrio) 'O';  // failsafe
+    if ('O'!=LUP->prios.RPRI && 'S'!=LUP->prios.RPRI)
+        LUP->prios.RPRI = (S52_RadPrio) 'O';  // failsafe
 
     // debug
     //if (LUP->TNAM == 103)
@@ -1573,12 +1594,12 @@ static int        _parseLUPT(_PL *fp)
 
         FIELD(INST) { LUP->INST = g_string_new(_pBuf+9); }
         FIELD(DISC) {
-            LUP->DISC = (S52_DisCat) _pBuf[9];
+            LUP->prios.DISC = (S52_DisCat) _pBuf[9];
             // check if MARINER, remap to S52_DisCat MARINER
             if ('M' == _pBuf[9])
-                LUP->DISC = (S52_DisCat) (_pBuf[18] + 1);
+                LUP->prios.DISC = (S52_DisCat) (_pBuf[18] + 1);
         }
-        FIELD(LUCM) { sscanf(_pBuf+9, "%d",&LUP->LUCM);  }
+        FIELD(LUCM) { sscanf(_pBuf+9, "%d",&LUP->prios.LUCM);  }
         //FIELD(LUCM) { sscanf(_pBuf+9, "%i",&LUP->LUCM);  }
 
         FIELD(****) {
@@ -1698,7 +1719,7 @@ static int        _parseLNST(_PL *fp)
     //int  len = 0;
     gboolean    inserted = FALSE;
     //_S52_cmdDef *lnstmp   = NULL;
-    _S52_cmdDef *lnst     = g_new0(_S52_cmdDef, 1);
+    _S52_symDef *lnst     = g_new0(_S52_symDef, 1);
     //_S52_cmdDef *lnst     = g_try_new0(_S52_cmdDef, 1);
     if (NULL == lnst)
         g_assert(0);
@@ -1749,7 +1770,7 @@ static int        _parsePATT(_PL *fp)
     //int  len = 0;
     gboolean    inserted = FALSE;
     //_S52_cmdDef *pattmp   = NULL;
-    _S52_cmdDef *patt     = g_new0(_S52_cmdDef, 1);
+    _S52_symDef *patt     = g_new0(_S52_symDef, 1);
     //_S52_cmdDef *patt     = g_try_new0(_S52_cmdDef, 1);
     if (NULL == patt)
         g_assert(0);
@@ -1803,7 +1824,7 @@ static int        _parseSYMB(_PL *fp)
 
     //int  len = 0;
     gboolean    inserted = FALSE;
-    _S52_cmdDef *symb    = g_new0(_S52_cmdDef, 1);
+    _S52_symDef *symb    = g_new0(_S52_symDef, 1);
     //_S52_cmdDef *symb     = g_try_new0(_S52_cmdDef, 1);
     if (NULL == symb)
         g_assert(0);
@@ -1933,7 +1954,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
 // Return pointer to the next field in the string (delim is ','), NULL to abort
 {
     char    *tmp    = buf;
-    GString *value  = NULL;
+    GString *valstr = NULL;
     int      defval = 0;    // default value
     int      len    = 0;
 
@@ -1954,6 +1975,14 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
         str++;  // skip ","
 
         return str;
+
+        /*
+        valstr = S57_getAttVal(geoData, tmp);
+        if (NULL == valstr)
+            return str;
+        else
+            return valstr->str;
+        */
     }
 
     //while (*str!=',' && *str!=')' && *str!='\0' /*&& len<bsz*/) {
@@ -1981,8 +2010,8 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
     //if (0 == g_strncasecmp(buf, "DRVAL1", 6))
     //    PRINTF("DRVAL1 found\n");
 
-    value = S57_getAttVal(geoData, buf);
-    if (NULL == value) {
+    valstr = S57_getAttVal(geoData, buf);
+    if (NULL == valstr) {
         // debug
         //S57_dumpData(geoData);
         if (defval)
@@ -1993,7 +2022,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
         }
     } else {
 
-        int vallen = strlen(value->str);
+        int vallen = strlen(valstr->str);
 
         if (vallen >= bsz) {
             vallen =  bsz;
@@ -2002,7 +2031,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
 
         // special case ENC return an index
         if (0 == strncmp(buf, "NATSUR", S52_PL_NMLN)) {
-            gchar** attvalL = g_strsplit_set(value->str, ",", 0);  // can't handle UTF-8, check g_strsplit() if needed
+            gchar** attvalL = g_strsplit_set(valstr->str, ",", 0);  // can't handle UTF-8, check g_strsplit() if needed
             gchar** freeL   = attvalL;
             buf[0]          = '\0';
 
@@ -2026,7 +2055,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
         } else {
             // value from ENC
             if (0 == strncmp(buf, "DRVAL1", S57_OBJ_ATT_LEN)) {
-                double height = S52_atof(value->str);
+                double height = S52_atof(valstr->str);
 
                 // ajust datum if required
                 double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
@@ -2041,7 +2070,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
                 0 == strncmp(buf, "VERCCL", S57_OBJ_ATT_LEN) ||
                 0 == strncmp(buf, "VERCOP", S57_OBJ_ATT_LEN) )
             {
-                double height = S52_atof(value->str);
+                double height = S52_atof(valstr->str);
 
                 // ajust datum if required
                 double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
@@ -2053,7 +2082,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
 
             // default
             //else {
-                strncpy(buf, value->str, vallen);
+                strncpy(buf, valstr->str, vallen);
                 // juste to be certain
                 buf[vallen] = '\0';
             //}
@@ -2080,9 +2109,9 @@ static _Text     *_parseTEXT(S57_geo *geoData, char *str)
     if (NULL == text)
         g_assert(0);
 
-    str = _getParamVal(geoData, str, &text->hjust, 1);   // HJUST
-    str = _getParamVal(geoData, str, &text->vjust, 1);   // VJUST
-    str = _getParamVal(geoData, str, &text->space, 1);   // SPACE
+    str = _getParamVal(geoData, str, &text->hjust, 1);  // HJUST
+    str = _getParamVal(geoData, str, &text->vjust, 1);  // VJUST
+    str = _getParamVal(geoData, str, &text->space, 1);  // SPACE
 
     // CHARS
     str         = _getParamVal(geoData, str, buf, 5);
@@ -2093,6 +2122,18 @@ static _Text     *_parseTEXT(S57_geo *geoData, char *str)
     text->width = buf[2];
     text->bsize = S52_atoi(buf+3);
 
+/*
+XOFFS "x-offset" parameter:
+    defines the X-offset of the pivot point given in units of BODY SIZE (see CHARS parameter) relative
+    to the location of the spatial object (0 is default if XOFFS is not given or undefined); positive x-offset
+    extends to the right (the "units of BODYSIZE" means that if for example, the body size is 10 pica
+    points each unit of offset is 10 (0.351) = 3.51 mm).
+
+YOFFS "y-offset" parameter:
+    defines the y-offset of the pivot point given in units of BODY SIZE (see CHARS parameter) relative
+    to the location of the spatial object (0 is default if YOFFS is not given or undefined); positive y-offset
+    extends downwards.
+*/
     str         = _getParamVal(geoData, str, buf, MAXL);
     text->xoffs = S52_atoi(buf);             // XOFFS
     str         = _getParamVal(geoData, str, buf, MAXL);
@@ -2492,7 +2533,7 @@ static int        _linkLUP(_S52_obj *obj, int alt)
             exit(0);
         }
 
-        obj->LUP->DPRI = S52_PRIO_HAZRDS;
+        obj->LUP->prios.DPRI = S52_PRIO_HAZRDS;
     }
 
     // get tokenized instruction list
@@ -2733,7 +2774,7 @@ S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
     if (NULL == obj->LUP)
         return S52_PRIO_NODATA;
 
-    S52_disPrio dpri = (TRUE == obj->prioOveride) ? obj->DPRI : obj->LUP->DPRI;
+    S52_disPrio dpri = (TRUE == obj->prioOveride) ? obj->oPrios.DPRI : obj->LUP->prios.DPRI;
 
 #ifdef S52_DEBUG
     if ((0==dpri) && (0!=obj->LUP->INST->len)) {
@@ -2745,10 +2786,11 @@ S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
     return dpri;
 }
 
-static S52_DisCat _getDISC(_LUP *LUP)
-{
-    return LUP->DISC;
-}
+// useless
+//static S52_DisCat _getDISC(_LUP *LUP)
+//{
+//    return LUP->DISC;
+//}
 
 S52_DisCat  S52_PL_getDISC(_S52_obj *obj)
 // get DISplay Category
@@ -2757,22 +2799,29 @@ S52_DisCat  S52_PL_getDISC(_S52_obj *obj)
     //return_if_null(obj);
 
     if (TRUE == obj->prioOveride)
-        return obj->DISC;
+        return obj->oPrios.DISC;
 
     if (NULL == obj->LUP)
         return NO_DISP_CAT;    // we get here on 'DISD'
-    else
-        return _getDISC(obj->LUP);
+    else {
+        //return _getDISC(obj->LUP);
+        return obj->LUP->prios.DISC;
+    }
 }
 
-#if 0
+//#if 0
 int         S52_PL_getLUCM(_S52_obj *obj)
 {
     return_if_null(obj);
 
-    return obj->LUCM;
+    // initialy oPrios = prios, but might change after CS are resolve
+    if (TRUE == obj->prioOveride)
+        return obj->oPrios.LUCM;
+    else
+        return obj->LUP->prios.LUCM;
+
 }
-#endif  // 0
+//#endif  // 0
 
 S52_RadPrio S52_PL_getRPRI(_S52_obj *obj)
 {
@@ -2781,7 +2830,13 @@ S52_RadPrio S52_PL_getRPRI(_S52_obj *obj)
     //    return S52_RAD_OVER;
     //}
 
-    return obj->RPRI;
+    //return obj->RPRI;
+
+    // initialy oPrios = prios, but might change after CS are resolve
+    if (TRUE == obj->prioOveride)
+        return obj->oPrios.RPRI;
+    else
+        return obj->LUP->prios.RPRI;
 }
 
 const char *S52_PL_infoLUP(_S52_obj *obj)
@@ -2910,18 +2965,20 @@ int         S52_PL_cmpCmdParam(_S52_obj *obj, const char *name)
     return_if_null(obj);
     return_if_null(name);
 
-    /* debug: dump command string
-    if (NULL == name) {
-        PRINTF("DEBUG: %s\n", obj->CSinst[0]->str);
-        return FALSE;
-    }
-    */
-
     _cmdWL *cmd = _getCrntCmd(obj);
-    if (NULL == cmd)
-        return FALSE;
+    if (NULL == cmd) {
+        PRINTF("DEBUG: cmd = NULL\n");
+        g_assert(0);
 
-    return strncmp(cmd->param, name, S52_SMB_NMLN);
+        //return FALSE;  // 0 = equal!
+        return -1;
+    }
+
+    // FIXME: glib strncmp() equivalent - does PLib allow utf?
+    if (S52_SMB_NMLN == strlen(name))
+        return strncmp(cmd->param, name, S52_SMB_NMLN);
+    else
+        return strncmp(cmd->param, name, S52_PL_NMLN);
 }
 
 const char *S52_PL_getCmdText(_S52_obj *obj)
@@ -2935,7 +2992,7 @@ const char *S52_PL_getCmdText(_S52_obj *obj)
     return cmd->cmd.def->exposition.LXPO->str;
 }
 
-S52_DList  *S52_PL_getDLData(_S52_cmdDef *def)
+S52_DList  *S52_PL_getDLData(_S52_symDef *def)
 {
     return_if_null(def);
 
@@ -3006,8 +3063,8 @@ double      S52_PL_getSYorient(_S52_obj *obj)
 {
     return_if_null(obj);
 
-    //double noOrient =   0.0;
-    double noOrient =  -1.0;
+    double noOrient =   0.0;
+    //double noOrient =  -1.0;
     //double noOrient = 360.0;
 
     if (1 == isinf(obj->orient)) { // +inf
@@ -3030,20 +3087,38 @@ double      S52_PL_getSYorient(_S52_obj *obj)
                         S52_PL_setSYorient(obj, S52_atof(val));
 
                 } else {
-                    // FIXME: search orient, heading, ...
-                    obj->orient = noOrient;
+                    // debug - search for alternative orient, heading, ...
+                    GString *orientstr = S57_getAttVal(obj->geoData, "ORIENT");
+                    if (NULL != orientstr) {
+                        obj->orient = S52_atof(orientstr->str);
+                        PRINTF("DEBUG: %s:ORIENT found(%f)\n", S52_PL_getOBCL(obj), obj->orient);
+                    } else {
+                        GString *headngstr = S57_getAttVal(obj->geoData, "headng");
+                        if (NULL != headngstr) {
+                            obj->orient = S52_atof(headngstr->str);
+                            PRINTF("DEBUG: %s:headng found(%f)\n", S52_PL_getOBCL(obj), obj->orient);
+                        } else {
+                            PRINTF("DEBUG: %s:noOrient found(%f) .. search ???\n", S52_PL_getOBCL(obj), noOrient);
+                            obj->orient = noOrient;
+                        }
+                    }
                 }
-            } else
+            } else {
+                PRINTF("DEBUG: %s:noOrient found(%f) .. cmd NULL\n", S52_PL_getOBCL(obj), noOrient);
                 obj->orient = noOrient;
-        } else
+            }
+        } else {
+            PRINTF("DEBUG: %s:noOrient found(%f) .. no cmd array\n", S52_PL_getOBCL(obj), noOrient);
             obj->orient = noOrient;
+        }
     }
 
-    // debug
+    /* debug
     if (noOrient == obj->orient) {
         PRINTF("DEBUG: %s:noOrient found(%f) .. orient set to 0.0\n", S52_PL_getOBCL(obj), noOrient);
         obj->orient = 0.0;
     }
+    //*/
 
     return obj->orient;
 }
@@ -3377,7 +3452,7 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
         return &cmd->cmd.def->DListData;
 }
 
-S52_vec    *S52_PL_initVOCmd(_S52_cmdDef *def)
+S52_vec    *S52_PL_initVOCmd(_S52_symDef *def)
 {
     if (NULL == def) {
         PRINTF("WARNING: internal inconsistency\n");
@@ -3764,7 +3839,7 @@ static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
 
 const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
                          int *xoffs, int *yoffs, unsigned int *bsize,
-                         unsigned int *weight, int *dis)
+                         unsigned int *weight, int *dis, char *hjust, char *vjust)
 {
     return_if_null(obj);
 
@@ -3784,10 +3859,6 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
 
             if (NULL != cmd->cmd.text) {
                 _freeTXT(cmd->cmd.text);
-
-                // FIXME
-                //PRINTF("DEBUG: this should not be needed!\n");
-                //g_assert(0);
             }
 
             cmd->cmd.text = _parseTX(obj->geoData, cmd);
@@ -3800,10 +3871,6 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
 
             if (NULL != cmd->cmd.text) {
                 _freeTXT(cmd->cmd.text);
-
-                // FIXME
-                //PRINTF("DEBUG: this should not be needed!\n");
-                //g_assert(0);
             }
 
             cmd->cmd.text = _parseTE(obj->geoData, cmd);
@@ -3816,13 +3883,15 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
     if (NULL == cmd->cmd.text)
         return NULL;
 
-    //*col    = S52_PL_getColorAt(cmd->cmd.text->col->cidx);
     *col    = _getColorAt(cmd->cmd.text->col->cidx);
     *xoffs  = cmd->cmd.text->xoffs;
     *yoffs  = cmd->cmd.text->yoffs;
     *bsize  = cmd->cmd.text->bsize;
     *weight = cmd->cmd.text->weight - '4';
     *dis    = cmd->cmd.text->dis;
+    *hjust  = cmd->cmd.text->hjust;
+    *vjust  = cmd->cmd.text->vjust;
+
 
     return cmd->cmd.text->frmtd->str;
 }
@@ -3943,7 +4012,8 @@ S52_objSupp       _toggleObjType(_LUP *LUP)
 // toggle an S57 Class, return state
 // rules on BASE can't be suppressed
 {
-    if (DISPLAYBASE == _getDISC(LUP))
+    //if (DISPLAYBASE == _getDISC(LUP))
+    if (DISPLAYBASE == LUP->prios.DISC)
         return S52_SUPP_ERR;
 
     if (S52_SUPP_ERR == LUP->supp)
@@ -3997,7 +4067,7 @@ S52_objSupp S52_PL_getObjClassState(const char *className)
     for (int tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
         _LUP *LUPlist = (_LUP*)g_tree_lookup(_table[tblType], (gpointer*)className);
         while (NULL != LUPlist) {
-            if ('D' != LUPlist->DISC)
+            if ('D' != LUPlist->prios.DISC)
                 return LUPlist->supp;
              LUPlist = LUPlist->OBCLnext;
         }
@@ -4264,7 +4334,7 @@ long        S52_PL_getTimeSec(_S52_obj *obj)
 }
 
 #ifdef S52_USE_FREETYPE_GL
-guint       S52_PL_getFreetypeGL_VBO(_S52_obj *obj, guint *len)
+int         S52_PL_setFreetypeGL_VBO(_S52_obj *obj, guint vboID, guint len, double strWpx, double strHpx)
 {
     return_if_null(obj);
 
@@ -4272,40 +4342,50 @@ guint       S52_PL_getFreetypeGL_VBO(_S52_obj *obj, guint *len)
     if (NULL == cmd)
         return FALSE;
 
-    // Note: S52_CMD_SYM_PT pass here - speed text on leg
-    if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord) && (S52_CMD_SYM_PT!=cmd->cmdWord)) {
-        //PRINTF("DEBUG: not a text command [cmdWord:%i]\n", cmd->cmdWord);
-        return FALSE;
-    }
-
-    *len = cmd->len;
-
-    return cmd->vboID;
-}
-
-int         S52_PL_setFreetypeGL_VBO(_S52_obj *obj, guint vboID, guint len)
-{
-    return_if_null(obj);
-
-    _cmdWL *cmd = _getCrntCmd(obj);
-    if (NULL == cmd)
-        return FALSE;
-
-    // parano
-    // Note: S52_CMD_SYM_PT pass here - speed text on leg
-    if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord) && (S52_CMD_SYM_PT!=cmd->cmdWord)) {
+    //if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord) && (S52_CMD_SYM_PT!=cmd->cmdWord)) {
+    if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
         PRINTF("DEBUG: logic bug, not a text command [cmdWord:%i]\n", cmd->cmdWord);
         g_assert(0);
 
         return FALSE;
     }
 
-    cmd->vboID = vboID;
-    cmd->len   = len;
+    //cmd->vboID = vboID;
+    //cmd->len   = len;
+
+    cmd->cmd.text->vboID  = vboID;
+    cmd->cmd.text->len    = len;
+    cmd->cmd.text->strWpx = strWpx;
+    cmd->cmd.text->strHpx = strHpx;
 
     return TRUE;
 }
-#endif
+
+guint       S52_PL_getFreetypeGL_VBO(_S52_obj *obj, guint *len, double *strWpx, double *strHpx)
+{
+    return_if_null(obj);
+
+    _cmdWL *cmd = _getCrntCmd(obj);
+    if (NULL == cmd)
+        return FALSE;
+
+    //if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord) && (S52_CMD_SYM_PT!=cmd->cmdWord)) {
+    if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
+        PRINTF("DEBUG: not a text command [cmdWord:%i]\n", cmd->cmdWord);
+        g_assert(0);
+        return FALSE;
+    }
+
+    //*len = cmd->len;
+    //return cmd->vboID;
+
+    *len    = cmd->cmd.text->len;
+    *strWpx = cmd->cmd.text->strWpx;
+    *strHpx = cmd->cmd.text->strHpx;
+
+    return cmd->cmd.text->vboID;
+}
+#endif  // S52_USE_FREETYPE_GL
 
 #if 0
 int         S52_PL_setLOD(_S52_obj *obj, char LOD)
