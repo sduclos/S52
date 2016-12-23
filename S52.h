@@ -1076,7 +1076,7 @@ DLL int    STD S52_newCSYMB(void);
 #define S52_DBUS_OBJ_NAME  "nav.ecs.dbus"
 #define S52_DBUS_OBJ_PATH  "/nav/ecs/dbus"
 #define S52_DBUS_OBJ_IFACE "nav.ecs.dbus"
-//*
+//*/
 #endif
 
 

@@ -163,7 +163,7 @@ typedef enum S52_objSupp {
 
 } S52_objSupp;
 
-typedef struct _S52_cmdDef S52_cmdDef;
+typedef struct _S52_symDef S52_symDef;
 typedef struct _S52_vec    S52_vec;
 typedef struct _S52_obj    S52_obj;
 
@@ -191,16 +191,20 @@ const char    *S52_PL_getOBCL(S52_obj *obj);
 // Note: return the same thing as a call to S57_getObjtype()
 //S52_Obj_t      S52_PL_getFTYP(S52_obj *obj);
 S57_Obj_t      S52_PL_getFTYP(S52_obj *obj);
+
+// -- obj priority -----------------------------
 // get Display PRIority
 S52_disPrio    S52_PL_getDPRI(S52_obj *obj);
-// get DISplay Category
-S52_DisCat     S52_PL_getDISC(S52_obj *obj);
-// get LUP table name - not used anymore
-//S52_LUPtnm     S52_PL_getTNAM(S52_obj *obj);
-// get LUCM (view group) - not used
-//int            S52_PL_getLUCM(S52_obj *obj);
 // get RADAR Priority
 S52_RadPrio    S52_PL_getRPRI(S52_obj *obj);
+// get DISplay Category
+S52_DisCat     S52_PL_getDISC(S52_obj *obj);
+// get LUCM (view group) - not used {here for compliness
+int            S52_PL_getLUCM(S52_obj *obj);
+// -- obj priority -----------------------------
+
+// get LUP table name - not used anymore
+//S52_LUPtnm     S52_PL_getTNAM(S52_obj *obj);
 // return plain text info for this type (TNAM) of lookup
 const char    *S52_PL_infoLUP(S52_obj *obj);
 // debug
@@ -216,11 +220,11 @@ int            S52_PL_cmpCmdParam(S52_obj *obj, const char *name);
 // get str for the current command (PLib exposition field: LXPO/PXPO/SXPO)
 const char    *S52_PL_getCmdText(S52_obj *obj);
 
-S52_DList     *S52_PL_getDLData(S52_cmdDef *def);
+S52_DList     *S52_PL_getDLData(S52_symDef *def);
 
 //-------------------------------------------------------
 // init vector commands parser
-S52_vec    *S52_PL_initVOCmd(S52_cmdDef *def);
+S52_vec    *S52_PL_initVOCmd(S52_symDef *def);
 // free parser mem
 int         S52_PL_doneVOCmd(S52_vec *vecObj);
 // get (parse) next vector command, width in ASCII (1 pixel=0.32 mm)
@@ -273,7 +277,7 @@ S52_DList     *S52_PL_getDListData(S52_obj *obj);
 
 // text parser
 const char    *S52_PL_getEX(S52_obj *obj, S52_Color **col,
-                               int *xoffs, int *yoffs, unsigned int *bsize, unsigned int *weight, int *dis);
+                               int *xoffs, int *yoffs, unsigned int *bsize, unsigned int *weight, int *dis, char *hjust, char *vjust);
 
 // TRUE: flag to run the text parser again
 int            S52_PL_resetParseText(S52_obj *obj);
@@ -322,8 +326,8 @@ long           S52_PL_getTimeSec(S52_obj *obj);
 
 
 #ifdef S52_USE_FREETYPE_GL
-guint          S52_PL_getFreetypeGL_VBO(S52_obj *obj, guint *len);
-int            S52_PL_setFreetypeGL_VBO(S52_obj *obj, guint vboID, guint len);
+guint          S52_PL_getFreetypeGL_VBO(S52_obj *obj, guint *len, double *strWpx, double *strHpx);
+int            S52_PL_setFreetypeGL_VBO(S52_obj *obj, guint vboID, guint len, double strWpx, double strHpx);
 #endif
 
 //int            S52_PL_setLOD(S52_obj *obj, char LOD);
