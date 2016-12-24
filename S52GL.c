@@ -4305,12 +4305,31 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
     // dynamique text
     if (S52_GL_LAST == _crnt_GL_cycle) {
-        _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, NULL, NULL);
+        //_freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, NULL, NULL);
+        _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, &strWpx, &strHpx);
+
+        /* can't read back str W/H - done in renderTXT()
+        if (NULL != obj) {
+            //S52_PL_setFreetypeGL_VBO(obj, vboID, _freetype_gl_buffer->len, strWpx, strHpx);
+            S52_PL_setFreetypeGL_VBO(obj, 0, _freetype_gl_buffer->len, strWpx, strHpx);
+        }
+        */
+
+        //
+        // FIXME: apply text justification
+        //`
+
     }
 
-    // lone text - S52_drawStr()
+    // lone text - S52_GL_drawStr() / S52_GL_drawStrWorld()
     if (S52_GL_NONE == _crnt_GL_cycle) {
-        _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, NULL, NULL);
+        //_freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, NULL, NULL);
+        _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, &strWpx, &strHpx);
+
+        //
+        // FIXME: apply text justification
+        //
+
     }
 
 #ifdef S52_USE_TXT_SHADOW
@@ -4481,6 +4500,9 @@ static int       _renderTXT(S52_obj *obj)
     double uoffs  = ((10 * PICA * xoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_X)) * _scalex;
     double voffs  = ((10 * PICA * yoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_Y)) * _scaley;
 
+    // debug: draw all text sans just.
+    //_renderTXTAA(obj, color, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
+
     {  // compute H/V justification
         guint  len    = 0;    // dummy
         double strWpx = 0.0;
@@ -4489,21 +4511,21 @@ static int       _renderTXT(S52_obj *obj)
         double strWw  = strWpx * _scalex;
         double strHw  = strHpx * _scaley;
 
-        // FIXME: where is the origin of the str - assume LL
+        // FIXME: where is the origin of the str - LL or UL
         switch(hjust) {
-        case '1': strHw /= +2.0; break;  // CENTRE
-        case '2': strHw /= +1.0; break;  // RIGHT
-        case '3': strHw  =  0.0; break;  // LEFT
+        case '1': strWw  =  0.0; break;  // CENTRE
+        case '2': strWw  =  0.0; break;  // RIGHT
+        case '3': strWw  =  0.0; break;  // LEFT
         default:
             PRINTF("DEBUG: invalid hjust!\n");
             strWw = 0.0;
             g_assert(0);
         }
 
-        switch(vjust) {
-        case '1': strWw  =  0.0; break;  // BOTTOM
-        case '2': strWw /= +2.0; break;  // CENTRE
-        case '3': strWw /= +1.0; break;  // TOP
+        switch(vjust) {  // flip Y
+        case '1': strHw /= -1.0; break;  // BOTTOM
+        case '2': strHw /= -2.0; break;  // CENTRE
+        case '3': strHw  =  0.0; break;  // TOP
         default:
             PRINTF("DEBUG: invalid vjust!\n");
             strHw = 0.0;
