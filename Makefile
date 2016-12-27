@@ -688,4 +688,3 @@ doc: S52-$(LIBS52VERS).typelib
 # 3 - sync .git with sduclos git on GitHub
 # Pushes commits (.git) to your remote repo stored on GitHub
 # $ git push origin master
-

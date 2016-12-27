@@ -4,6 +4,9 @@
 #
 
 
+2016DEC27
+    -mod refactor text justification
+
 2016DEC22
     -rename S52_cmdmDef to S52_symDef
     -move freetype-gl data to _Text
