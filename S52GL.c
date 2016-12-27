@@ -4226,6 +4226,71 @@ static int       _traceOP(S52_obj *obj)
     return TRUE;
 }
 
+static int       _justifyTXTPos(double strWpx, double strHpx, char hjust, char vjust, double *x, double *y)
+// apply H/V justification to position X/Y
+// Note: see doc at struct _Text in S52PL.c:150 for interpretation
+{
+    double strWw = strWpx * _scalex;
+    double strHw = strHpx * _scaley;
+    double wx, wy;  // width
+    double hx, hy;  // height
+
+    // horizontal
+    switch(hjust) {
+    case '1':  // CENTRE
+        wx = (cos(_north*DEG_TO_RAD) * strWw) / 2.0;
+        wy = (sin(_north*DEG_TO_RAD) * strWw) / 2.0;
+        break;
+    case '2':  // RIGHT
+        wx = cos(_north*DEG_TO_RAD) * strWw;
+        wy = sin(_north*DEG_TO_RAD) * strWw;
+        break;
+    case '3':  // LEFT
+        wx = 0.0;
+        wy = 0.0;
+        break;
+
+    default:
+        PRINTF("DEBUG: invalid hjust!\n");
+        wx = 0.0;
+        wy = 0.0;
+        g_assert(0);
+    }
+
+    // vertical
+    switch(vjust) {
+    case '1':  // BOTTOM
+        hx = 0.0;
+        hy = 0.0;
+        break;
+    case '2':  // CENTRE
+        hx = (cos(_north*DEG_TO_RAD) * strHw) / 2.0;
+        hy = (sin(_north*DEG_TO_RAD) * strHw) / 2.0;
+        break;
+    case '3':  // TOP
+        hx = cos(_north*DEG_TO_RAD) * strHw;
+        hy = sin(_north*DEG_TO_RAD) * strHw;
+        break;
+
+    default:
+        PRINTF("DEBUG: invalid vjust!\n");
+        hx = 0.0;
+        hy = 0.0;
+        g_assert(0);
+    }
+
+    //PRINTF("DEBUG: px str W/H: %f/%f  scl X/Y: %f/%f\n", strWpx, strHpx, _scalex, _scaley);
+    //PRINTF("DEBUG: w  str W/H: %f/%f  pos X/Y: %f/%f\n", strWw,  strHw,  *x, *y);
+
+    // FIXME: do the math
+    *x += +hx - wx;
+
+    *y += -hy + wy;
+    //*y += hy - wy;
+
+    return TRUE;
+}
+
 static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
 // render text in AA if Mar Param set
 // Note: PLib C1 CHARS for TE() & TX() alway '15110' - ie style = 1 (alway), weigth = '5' (medium), width = 1 (alway), bsize = 10
@@ -4262,18 +4327,21 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
         return FALSE;
     }
 
+// ---- FREETYPE GL ----------------------------------------------------
 #ifdef S52_USE_FREETYPE_GL
 #ifdef S52_USE_GL2
     // static text
-    guint len = 0;
-    double strWpx;
-    double strHpx;
-    if ((S52_GL_DRAW==_crnt_GL_cycle) && (NULL!=obj)) {
-        GLuint vboID = S52_PL_getFreetypeGL_VBO(obj, &len, &strWpx, &strHpx);
+    guint  len    =   0;
+    double strWpx = 0.0;
+    double strHpx = 0.0;
+    char   hjust  = '3';  // LEFT   (default)
+    char   vjust  = '1';  // BOTTOM (default)
 
-        //if (GL_TRUE == glIsBuffer(vboID)) {
+    if ((NULL!=obj) && (S52_GL_DRAW==_crnt_GL_cycle)) {
+        GLuint vboID = S52_PL_getFreetypeGL_VBO(obj, &len, &strWpx, &strHpx, &hjust, &vjust);
         if (0 != vboID) {
-            // connect to data in VBO GPU
+        //if (GL_TRUE == glIsBuffer(vboID)) {
+            // connect to data in VBO on GPU
             glBindBuffer(GL_ARRAY_BUFFER, vboID);
         } else {
             _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, &strWpx, &strHpx);
@@ -4303,38 +4371,36 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
         }
     }
 
-    // dynamique text
+    //
+    // update dynamique str dim.
+    //
+
+    // dynamique text - layer 9
     if (S52_GL_LAST == _crnt_GL_cycle) {
-        //_freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, NULL, NULL);
         _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, &strWpx, &strHpx);
-
-        /* can't read back str W/H - done in renderTXT()
-        if (NULL != obj) {
-            //S52_PL_setFreetypeGL_VBO(obj, vboID, _freetype_gl_buffer->len, strWpx, strHpx);
-            S52_PL_setFreetypeGL_VBO(obj, 0, _freetype_gl_buffer->len, strWpx, strHpx);
-        }
-        */
-
-        //
-        // FIXME: apply text justification
-        //`
-
     }
 
     // lone text - S52_GL_drawStr() / S52_GL_drawStrWorld()
     if (S52_GL_NONE == _crnt_GL_cycle) {
-        //_freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, NULL, NULL);
         _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, &strWpx, &strHpx);
-
-        //
-        // FIXME: apply text justification
-        //
-
     }
+
+    /* debug: draw all text sans just. Change color to DNGHL
+    {
+        S52_Color *c = S52_PL_getColor("DNGHL");   // danger conspic.
+        _setFragColor(c);
+
+        _renderTXTAA_gl2(x, y, NULL, len);
+    }
+    //*/
+
+    // apply text justification
+    _justifyTXTPos(strWpx, strHpx, hjust, vjust, &x, &y);
+    //PRINTF("DEBUG: pos XY: %f/%f H/V: %c %c (%s)\n", x, y, hjust, vjust, str);
 
 #ifdef S52_USE_TXT_SHADOW
     if (NULL != color) {
-        S52_Color *c = S52_PL_getColor("UIBCK");   // opposite of CHBLK
+        S52_Color *c = S52_PL_getColor("UIBCK");  // opposite of CHBLK
         _setFragColor(c);
 
         // lower right - OK
@@ -4362,6 +4428,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 #endif  // S52_USE_GL2
 #endif  // S52_USE_FREETYPE_GL
 
+// ---- GLC -----------------------------------------------------------
 #ifdef S52_USE_GLC
     if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
 
@@ -4383,6 +4450,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     }
 #endif
 
+// ---- COGL -----------------------------------------------------------
 #ifdef S52_USE_COGL
     // debug - skip all cogl call
     //return TRUE;
@@ -4421,6 +4489,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     //cogl_pango_render_layout(_PangoLayout, p.u, p.v, &white, 0);
 #endif
 
+// ---- FTGL -----------------------------------------------------------
 #ifdef S52_USE_FTGL
     (void)obj;
 
@@ -4477,10 +4546,7 @@ static int       _renderTXT(S52_obj *obj)
     unsigned int bsize  = 0;
     unsigned int weight = 0;
     int          disIdx = 0;  // text view group
-    char         hjust  ='0';
-    char         vjust  ='0';
-
-    const char  *str    = S52_PL_getEX(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx, &hjust, &vjust);
+    const char  *str    = S52_PL_getEX(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx);
     //PRINTF("DEBUG: xoffs/yoffs/bsize/weight: %i/%i/%i/%i:%s\n", xoffs, yoffs, bsize, weight, str);
 
     // supress display of text
@@ -4496,48 +4562,22 @@ static int       _renderTXT(S52_obj *obj)
         return FALSE;
     }
 
-    // convert pivot point offset to PRJ
-    double uoffs  = ((10 * PICA * xoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_X)) * _scalex;
-    double voffs  = ((10 * PICA * yoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_Y)) * _scaley;
+    /* debug: draw all text sans just. Change color to DNGHL
+    {
+        S52_Color *c = S52_PL_getColor("DNGHL");   // danger conspic.
+        _setFragColor(c);
 
-    // debug: draw all text sans just.
-    //_renderTXTAA(obj, color, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
-
-    {  // compute H/V justification
-        guint  len    = 0;    // dummy
-        double strWpx = 0.0;
-        double strHpx = 0.0;
-        S52_PL_getFreetypeGL_VBO(obj, &len, &strWpx, &strHpx);
-        double strWw  = strWpx * _scalex;
-        double strHw  = strHpx * _scaley;
-
-        // FIXME: where is the origin of the str - LL or UL
-        switch(hjust) {
-        case '1': strWw  =  0.0; break;  // CENTRE
-        case '2': strWw  =  0.0; break;  // RIGHT
-        case '3': strWw  =  0.0; break;  // LEFT
-        default:
-            PRINTF("DEBUG: invalid hjust!\n");
-            strWw = 0.0;
-            g_assert(0);
-        }
-
-        switch(vjust) {  // flip Y
-        case '1': strHw /= -1.0; break;  // BOTTOM
-        case '2': strHw /= -2.0; break;  // CENTRE
-        case '3': strHw  =  0.0; break;  // TOP
-        default:
-            PRINTF("DEBUG: invalid vjust!\n");
-            strHw = 0.0;
-            g_assert(0);
-        }
-
-        // compute total u/v offset (pivot+just.)
-        uoffs += strWw;
-        voffs += strHw;
+        _renderTXTAA(obj, c, ppt[0], ppt[1], bsize, weight, str);
     }
+    //*/
 
-    //PRINTF("DEBUG: uoffs/voffs: %f/%f %s\n", uoffs, voffs, str);
+
+    // convert pivot point u/v offset to PRJ
+    double uoffs = ((bsize * PICA * xoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_X)) * _scalex;
+    double voffs = ((bsize * PICA * yoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_Y)) * _scaley;
+    // debug
+    //double uoffs = 0.0;
+    //double voffs = 0.0;
 
     if (S57_POINT_T == S57_getObjtype(geoData)) {
         _renderTXTAA(obj, color, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
@@ -6149,8 +6189,9 @@ int        S52_GL_delDL(S52_obj *obj)
         // delete text if any
         if (TRUE == S52_PL_hasText(obj)) {
             guint  len;
-            double dummy;
-            guint vboID = S52_PL_getFreetypeGL_VBO(obj, &len, &dummy, &dummy);
+            double dummy;  // str W/H
+            char   dum;    // just. H/V
+            guint vboID = S52_PL_getFreetypeGL_VBO(obj, &len, &dummy, &dummy, &dum, &dum);
             if (GL_TRUE == glIsBuffer(vboID)) {
                 glDeleteBuffers(1, &vboID);
 

@@ -368,6 +368,7 @@ static int       _init_freetype_gl(void)
 static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsigned int weight, double *strWpx, double *strHpx)
 // fill buffer with triangles strip, W/H can be NULL
 // experimental: smaller text size if second line
+// FIXME: use bsize instead of weight
 {
     int   pen_x = 0;
     int   pen_y = 0;

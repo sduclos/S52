@@ -277,7 +277,7 @@ S52_DList     *S52_PL_getDListData(S52_obj *obj);
 
 // text parser
 const char    *S52_PL_getEX(S52_obj *obj, S52_Color **col,
-                               int *xoffs, int *yoffs, unsigned int *bsize, unsigned int *weight, int *dis, char *hjust, char *vjust);
+                               int *xoffs, int *yoffs, unsigned int *bsize, unsigned int *weight, int *dis);
 
 // TRUE: flag to run the text parser again
 int            S52_PL_resetParseText(S52_obj *obj);
@@ -326,7 +326,7 @@ long           S52_PL_getTimeSec(S52_obj *obj);
 
 
 #ifdef S52_USE_FREETYPE_GL
-guint          S52_PL_getFreetypeGL_VBO(S52_obj *obj, guint *len, double *strWpx, double *strHpx);
+guint          S52_PL_getFreetypeGL_VBO(S52_obj *obj, guint *len, double *strWpx, double *strHpx, char *hjust, char *vjust);
 int            S52_PL_setFreetypeGL_VBO(S52_obj *obj, guint vboID, guint len, double strWpx, double strHpx);
 #endif
 

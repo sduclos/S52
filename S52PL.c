@@ -139,7 +139,7 @@ typedef struct _S52_symDef {
 
 } _S52_symDef;
 
-/*
+/* exerp of S52 p. I-25
 HJUST "horizontal justification" parameter:
     1 means CENTRE justified (i.e. pivot point is located at the centre of the overall length of text string)
     2 means RIGHT justified  (i.e. pivot point is located at the right side of the last character of text string)
@@ -155,19 +155,30 @@ SPACE "character spacing" parameter:
     2 means STANDARD spacing. This is the default value. (i.e. the standard spacing in accordance with the typeface given in CHARS should be used)
     3 means STANDARD spacing with word wrap (i.e. the standard spacing in accordance with the typeface given in CHARS should be used;
     text longer than 8 characters should be broken into separate lines)
+
+XOFFS "x-offset" parameter:
+    defines the X-offset of the pivot point given in units of BODY SIZE (see CHARS parameter) relative
+    to the location of the spatial object (0 is default if XOFFS is not given or undefined); positive x-offset
+    extends to the right (the "units of BODYSIZE" means that if for example, the body size is 10 pica
+    points each unit of offset is 10 (0.351) = 3.51 mm).
+
+YOFFS "y-offset" parameter:
+    defines the y-offset of the pivot point given in units of BODY SIZE (see CHARS parameter) relative
+    to the location of the spatial object (0 is default if YOFFS is not given or undefined); positive y-offset
+    extends downwards.
 */
 typedef struct _Text {
     GString   *frmtd;       // formated text string (could be NULL)
 
-    char       hjust;
-    char       vjust;
-    char       space;
+    char       hjust;       // (see above)
+    char       vjust;       // (see above)
+    char       space;       // (see above)
     char       style;       // CHARS
     char       weight;      // CHARS
     char       width;       // CHARS
     int        bsize;       // CHARS - body size
-    int        xoffs;       // pivot point, pica (1 = 0.351mm)
-    int        yoffs;       // pivot point, pica (1 = 0.351mm)
+    int        xoffs;       // pivot point, pica (1 = 0.351mm) (see above)
+    int        yoffs;       // pivot point, pica (1 = 0.351mm) (see above)
     S52_Color *col;         // colour
     int        dis;         // display (view group)
 
@@ -3839,7 +3850,7 @@ static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
 
 const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
                          int *xoffs, int *yoffs, unsigned int *bsize,
-                         unsigned int *weight, int *dis, char *hjust, char *vjust)
+                         unsigned int *weight, int *dis)
 {
     return_if_null(obj);
 
@@ -3889,9 +3900,6 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
     *bsize  = cmd->cmd.text->bsize;
     *weight = cmd->cmd.text->weight - '4';
     *dis    = cmd->cmd.text->dis;
-    *hjust  = cmd->cmd.text->hjust;
-    *vjust  = cmd->cmd.text->vjust;
-
 
     return cmd->cmd.text->frmtd->str;
 }
@@ -4361,7 +4369,7 @@ int         S52_PL_setFreetypeGL_VBO(_S52_obj *obj, guint vboID, guint len, doub
     return TRUE;
 }
 
-guint       S52_PL_getFreetypeGL_VBO(_S52_obj *obj, guint *len, double *strWpx, double *strHpx)
+guint       S52_PL_getFreetypeGL_VBO(_S52_obj *obj, guint *len, double *strWpx, double *strHpx, char *hjust, char *vjust)
 {
     return_if_null(obj);
 
@@ -4382,6 +4390,8 @@ guint       S52_PL_getFreetypeGL_VBO(_S52_obj *obj, guint *len, double *strWpx, 
     *len    = cmd->cmd.text->len;
     *strWpx = cmd->cmd.text->strWpx;
     *strHpx = cmd->cmd.text->strHpx;
+    *hjust  = cmd->cmd.text->hjust;
+    *vjust  = cmd->cmd.text->vjust;
 
     return cmd->cmd.text->vboID;
 }
