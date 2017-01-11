@@ -67,7 +67,7 @@ static GArray      *_tmpWorkBuffer = NULL;    // tmp buffer
 //static int          _identity_MODELVIEW = FALSE;   // TRUE then identity matrix for modelview is on GPU (optimisation for AC())
 //static int          _identity_MODELVIEW_cnt = 0;   // count saving
 
-static double       _north     = 0.0;
+static double       _north     = 0.0;  // from north to top / ship's head up (deg)
 static double       _rangeNM   = 0.0;
 static double       _centerLat = 0.0;
 static double       _centerLon = 0.0;
@@ -5791,7 +5791,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     if (S52_GL_NONE == cycle) {
         PRINTF("DEBUG: GL cycle out of sync\n");
-        //g_assert(0);
+        g_assert(0);
         return FALSE;
     }
 
@@ -6043,8 +6043,9 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     }
     break;
 
+    case S52_GL_BLIT: break;  // bitblit cycle - blit FB of first pass
+
     case S52_GL_NONE:  // state between 2 cycles
-    case S52_GL_BLIT:  // bitblit cycle - blit FB of first pass
     case S52_GL_INIT:  // state before first S52_GL_DRAW
     default: {
         PRINTF("DEBUG: invalide S52 GL cycle\n");
@@ -7015,15 +7016,20 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
         return FALSE;
     }
 
-    // FIXME: clear screen
-    //_renderAC_NODATA_layer0(void);
+    //
+    // FIXME: call _renderAC_NODATA_layer0() when drag - to erease line artefact
+    //_renderAC_NODATA_layer0(); nop!
+    // WRAP_S/T GL_REPEAT - nop!
+
+    // set rotation (via _glMatrixSet())
+    double northtmp = _north;
+    _north = north;
+    _glMatrixSet(VP_PRJ);
 
     glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
 
 #ifdef S52_USE_GL2
-    (void) north;
-
-    // turn ON 'sampler2d'
+     // turn ON 'sampler2d'
     glUniform1f(_uBlitOn, 1.0);
 
     GLfloat ppt[4*3 + 4*2] = {
@@ -7051,19 +7057,16 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     glDisableVertexAttribArray(_aPosition);
 
 #else
-    // set rotation temporatly to 0.0  (MatrixSet)
-    //double northtmp = _north;
-    //_north = north;
-
     (void)scale_x;
     (void)scale_y;
     (void)scale_z;
-
-    //_north = northtmp;
-
 #endif
 
     glBindTexture(GL_TEXTURE_2D, 0);
+
+    _glMatrixDel(VP_PRJ);
+
+    _north = northtmp;
 
     _checkError("S52_GL_drawBlit()");
 
