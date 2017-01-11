@@ -61,8 +61,8 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DSET_SCREEN_SIZE   - set screen size be hand (hard coded as dual-screen seem to confused the setup)
 # -DUSE_LOG_CB        - log every S52_* in tmp file
 # -DUSE_TEST_OBJ      - load test Mariners' Object
+# -DUSE_MESA3D_ENV    - set ENV for Mesa3D MSAA and vblank_mode
 
-# -DS52_USE_MESA3D    - set ENV for Mesa3D MSAA and vblank_mode
 # -DS52_USE_GLES2     - GLES2
 # -DS52_USE_GLES3     - GLES3.x / GLSL ES 3.0
 # -DS52_USE_EGL       - use EGL
@@ -79,7 +79,7 @@ CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl`
 
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
                       -DS52_USE_GL2          \
-                      -DS52_USE_MESA3D       \
+                      -DUSE_MESA3D_ENV       \
                       -DUSE_AIS
 
 s52gtk2gps: CFLAGS += `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1` \
@@ -91,7 +91,7 @@ s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
-                     -DS52_USE_MESA3D        \
+                     -DUSE_MESA3D_ENV        \
                      -DUSE_AIS               \
                      -DS52_USE_AFGLOW
 
@@ -99,14 +99,15 @@ s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
 #s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-2.0`
 #s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gobject-2.0 libgps gtk+-2.0`
 s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl gtk+-2.0 libgps ` \
+                     -DUSE_TEST_OBJ          \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
-                     -DUSE_TEST_OBJ          \
                      -DUSE_AIS               \
                      -DS52_USE_AFGLOW
 
 # same as s52eglx, but "gtk+-3.0" is added
 s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` \
+                     -DUSE_TEST_OBJ          \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2
 
@@ -149,7 +150,6 @@ s52gtk2gl2 : GTK2LIBS = `pkg-config --libs gtk+-2.0 gtkglext-1.0 gthread-2.0`
 s52eglx   : LIBS    = `pkg-config --libs egl x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS) -lm
 
 # same as s52eglx, add "gtk+-2.0"
-#s52gtk2egl: LIBS    = `pkg-config --libs egl glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 gtk+-2.0 libgps` $(S52_LIBS) -lm
 s52gtk2egl: LIBS    = `pkg-config --libs egl gtk+-2.0 libgps` $(S52_LIBS) -lm
 
 # same as s52eglx, add "gtk+-3.0"
