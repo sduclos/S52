@@ -239,6 +239,7 @@ static GTimeVal _timeTick;
 // New Line
 // Note: When S52_USE_SOCK, setVESSELlabel() in s52ais STANDALONE,
 // string need to escaped '\n' ('\\n')
+// fixme try "\\\\"
 #ifdef S52_USE_SOCK
 #define NL "\\n"  // New Line
 #else
