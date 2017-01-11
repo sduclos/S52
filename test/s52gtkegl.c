@@ -1,4 +1,4 @@
-// S52gtk3egl.c: simple S52 driver using EGL & GTK (2 & 3).
+// s52gtkegl.c: simple S52 driver using EGL & GTK (2 & 3).
 //
 // SD 2013AUG30 - Vitaly
 
@@ -21,12 +21,11 @@
 */
 
 
-#include <EGL/egl.h>
-#include <EGL/eglext.h>  // robustness
-
 #include <gtk/gtk.h>
+#include <gdk/gdk.h>                // GTK3 - GdkMonitor
 #include <gdk/gdkkeysyms.h>         // GDK_*
 #include <gdk/gdkkeysyms-compat.h>  // compat GDK_a/GDK_KEY_a
+//#include <math.h>                   // INFINITY
 
 #ifdef _MINGW
 #include <gdk/gdkwin32.h>
@@ -40,49 +39,14 @@
 #include "s52ais.h"       // s52ais_*()
 #endif
 
-
-// FIXME: mutex this share data
-typedef struct s52droid_state_t {
-    int        do_S52init;
-    // initial view
-    double     cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
-} s52droid_state_t;
-
-//
-typedef struct s52engine {
-	GtkWidget          *window;
-
-    EGLNativeWindowType eglWindow;         // GdkDrawable in GTK2 and GdkWindow in GTK3
-    EGLDisplay          eglDisplay;
-    EGLSurface          eglSurface;
-    EGLContext          eglContext;
-    EGLConfig           eglConfig;
-
-    // local
-    int                 do_S52draw;        // TRUE to call S52_draw()
-    int                 do_S52drawLast;    // TRUE to call S52_drawLast() - S52_draw() was called at least once
-    int                 do_S52setViewPort; // set in Android callback
-
-    int32_t             width;
-    int32_t             height;
-    // Xoom - dpi = 160 (density)
-    int32_t             dpi;            // = AConfiguration_getDensity(engine->app->config);
-    int32_t             wmm;
-    int32_t             hmm;
-
-    GTimeVal            timeLastDraw;
-
-    s52droid_state_t    state;
-} s52engine;
-
-static s52engine _engine;
+#define RAD2DEG    57.29577951308232
+#define DEG2RAD     0.0174532925199432958
 
 
 //----------------------------------------------
 //
 // Common stuff for s52egl.c, s52gtk2.c, s52gtkegl.c
 //
-
 
 #ifdef USE_TEST_OBJ
 #include "_s52_setupmarfea.i"  // _s52_setupmarfea()
@@ -102,11 +66,39 @@ static s52engine _engine;
 #include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*(), loadCell()
 
 #include "_egl.i"              // _egl_init(), _egl_beg(), _egl_end(), _egl_done()
+//-----------------------------------------------
 
+// FIXME: mutex this if share data
+typedef struct s52engState {
+    int        do_S52init;
+    // initial view
+    double     cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
+} s52engState;
 
-//-----------------------------
+//
+typedef struct s52engine {
+    s52engState         state;
+    EGLState            eglState;          // def in _egl.i
 
-static int      _s52_getView(s52droid_state_t *state)
+    // local
+    int                 do_S52draw;        // TRUE to call S52_draw()
+    int                 do_S52drawLast;    // TRUE to call S52_drawLast() - S52_draw() was called at least once
+    int                 do_S52setViewPort; // set in Android callback
+
+    int32_t             width;
+    int32_t             height;
+    int32_t             wmm;
+    int32_t             hmm;
+    // Xoom - dpi = 160 (density)
+    int32_t             dpi;            // = AConfiguration_getDensity(engine->app->config);
+
+    GTimeVal            timeLastDraw;
+
+} s52engine;
+
+static s52engine _engine;
+
+static int      _s52_getView(s52engState *state)
 {
     double S,W,N,E;
 
@@ -123,30 +115,43 @@ static int      _s52_getView(s52droid_state_t *state)
 
 static int      _s52_init   (s52engine *engine)
 {
-    if ((NULL==engine->eglDisplay) || (EGL_NO_DISPLAY==engine->eglDisplay)) {
+    if ((NULL==engine->eglState.eglDisplay) || (EGL_NO_DISPLAY==engine->eglState.eglDisplay)) {
         g_print("_init_S52(): no EGL display ..\n");
         return FALSE;
     }
 
-    eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
-    eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
+    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_WIDTH,  &engine->width);
+    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_HEIGHT, &engine->height);
 
     // return constant value EGL_UNKNOWN (-1) with Mesa
-    eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HORIZONTAL_RESOLUTION, &engine->wmm);
-    eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_VERTICAL_RESOLUTION,   &engine->hmm);
+    // The value returned is equal to the actual dot pitch, in pixels/meter, multiplied by the constant value EGL_DISPLAY_SCALING.
+    // EGL_DISPLAY_SCALING is the constant value 10000.
+    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_HORIZONTAL_RESOLUTION, &engine->wmm);
+    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_VERTICAL_RESOLUTION,   &engine->hmm);
 
     {
-		// FIXME: broken on some monitor
-		GdkScreen    *screen   = NULL;
-		gint         w,h;
-		gint         wmm,hmm;
+        // FIXME: broken on some monitor
+        GdkScreen    *screen   = NULL;
+        gint         w,h;
+        gint         wmm,hmm;
 
-		screen = gdk_screen_get_default();
-		w      = gdk_screen_get_width    (screen);
-		h      = gdk_screen_get_height   (screen);
-		wmm    = gdk_screen_get_width_mm (screen);
-		hmm    = gdk_screen_get_height_mm(screen);
+        screen = gdk_screen_get_default();
+        w      = gdk_screen_get_width    (screen);
+        h      = gdk_screen_get_height   (screen);
+        wmm    = gdk_screen_get_width_mm (screen);
+        hmm    = gdk_screen_get_height_mm(screen);
 
+        /*
+        GdkDisplay *gdpy = gdk_display_get_default();
+        GdkMonitor *gmon = gdk_display_get_primary_monitor(gdpy);
+        wmm = gdk_monitor_get_width_mm(gmon);
+        hmm = gdk_monitor_get_height_mm(gmon);
+
+        GdkRectangle workarea;
+        gdk_monitor_get_workarea(gmon, &workarea);
+        w = workarea.width;
+        h = workarea.height;
+        */
 
         //w   = 1280;
         //h   = 1024;
@@ -173,9 +178,9 @@ static int      _s52_init   (s52engine *engine)
     _s52_setupMain();
 
     // if first start find where we are looking
-    _s52_getView(&engine->state);
+    //_s52_getView(&engine->state);
     // then (re)position the 'camera'
-    S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
+    //S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
 
     _s52_setupMarPar();
 
@@ -227,10 +232,12 @@ static int      _s52_done   (s52engine *engine)
 static int      _s52_draw_cb(gpointer user_data)
 // return TRUE for the signal to be called again
 {
-    s52engine *engine = (s52engine*)user_data;
+    //s52engine *engine = (s52engine*)
+    (void)user_data;
+    s52engine *engine = (s52engine*)&_engine;
 
     // debug
-    //g_print("s52egl:_s52_draw_cb(): begin ..");
+    //g_print("s52gtkegl:_s52_draw_cb(): begin ..");
 
     /*
     GTimeVal now;  // 2 glong (at least 32 bits each - but amd64 !?
@@ -240,36 +247,36 @@ static int      _s52_draw_cb(gpointer user_data)
     //*/
 
     if (NULL == engine) {
-        g_print("_s52_draw_cb(): no engine ..\n");
+        g_print("DEBUG: s52gtkegl:_s52_draw_cb(): no engine ..\n");
         goto exit;
     }
 
-    if ((NULL==engine->eglDisplay) || (EGL_NO_DISPLAY==engine->eglDisplay)) {
-        g_print("_s52_draw_cb(): no display ..\n");
+    if ((NULL==engine->eglState.eglDisplay) || (EGL_NO_DISPLAY==engine->eglState.eglDisplay)) {
+        g_print("DEBUG: s52gtkegl:_s52_draw_cb(): no display ..\n");
         goto exit;
     }
 
     // wait for libS52 to init - no use to go further - bailout
     if (TRUE == engine->state.do_S52init) {
-        g_print("s52egl:_s52_draw_cb(): re-starting .. waiting for S52_init() to finish\n");
+        g_print("DEBUG: s52gtkegl:_s52_draw_cb(): re-starting .. waiting for S52_init() to finish\n");
         goto exit;
     }
 
     // no draw at all, the window is not visible
     if ((FALSE==engine->do_S52draw) && (FALSE==engine->do_S52drawLast)) {
-        g_print("s52egl:_s52_draw_cb(): nothing to draw (do_S52draw & do_S52drawLast FALSE)\n");
+        g_print("DEBUG: s52gtkegl:_s52_draw_cb(): nothing to draw (do_S52draw & do_S52drawLast FALSE)\n");
         goto exit;
     }
 
 #if !defined(S52_USE_EGL)
-    _egl_beg(engine, "test");
+    _egl_beg(engine->eglState, "test");
 #endif
 
     // draw background
     if (TRUE == engine->do_S52draw) {
         if (TRUE == engine->do_S52setViewPort) {
-            eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
-            eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
+            eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_WIDTH,  &engine->width);
+            eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_HEIGHT, &engine->height);
 
             S52_setViewPort(0, 0, engine->width, engine->height);
 
@@ -277,6 +284,7 @@ static int      _s52_draw_cb(gpointer user_data)
         }
 
         S52_draw();
+
         engine->do_S52draw = FALSE;
     }
 
@@ -290,17 +298,16 @@ static int      _s52_draw_cb(gpointer user_data)
     }
 
 #if !defined(S52_USE_EGL)
-    _egl_end(engine);
+    _egl_end(engine->eglState);
 #endif
 
 
 exit:
 
     // debug
-    //g_print("s52egl:_s52_draw_cb(): end .. \n");
-    //g_print(".. end\n");
+    //g_print("DEBUG: s52gtkegl:_s52_draw_cb(): end .. \n");
 
-    return EGL_TRUE;
+    return TRUE;
 }
 
 //static int      _s52_screenShot(void)
@@ -320,11 +327,13 @@ exit:
 static gboolean _scroll  (GdkEventKey *event)
 {
     switch(event->keyval) {
-        case GDK_KEY_Left : _engine.state.cLon -= _engine.state.rNM/(60.0*10.0); S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
-        case GDK_KEY_Right: _engine.state.cLon += _engine.state.rNM/(60.0*10.0); S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
-        case GDK_KEY_Up   : _engine.state.cLat += _engine.state.rNM/(60.0*10.0); S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
-        case GDK_KEY_Down : _engine.state.cLat -= _engine.state.rNM/(60.0*10.0); S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
+        case GDK_KEY_Left : _engine.state.cLon -= _engine.state.rNM/(60.0*10.0); break;
+        case GDK_KEY_Right: _engine.state.cLon += _engine.state.rNM/(60.0*10.0); break;
+        case GDK_KEY_Up   : _engine.state.cLat += _engine.state.rNM/(60.0*10.0); break;
+        case GDK_KEY_Down : _engine.state.cLat -= _engine.state.rNM/(60.0*10.0); break;
     }
+
+    S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north);
 
     return TRUE;
 }
@@ -332,11 +341,11 @@ static gboolean _scroll  (GdkEventKey *event)
 static gboolean _zoom    (GdkEventKey *event)
 {
     switch(event->keyval) {
-        // zoom in
-    	case GDK_KEY_Page_Up  : _engine.state.rNM /= 2.0; S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
-        // zoom out
-        case GDK_KEY_Page_Down: _engine.state.rNM *= 2.0; S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north); break;
+        case GDK_KEY_Page_Up  : _engine.state.rNM /= 2.0; break;  // zoom in
+        case GDK_KEY_Page_Down: _engine.state.rNM *= 2.0; break;  // zoom out
     }
+
+    S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north);
 
     return TRUE;
 }
@@ -426,14 +435,14 @@ static gboolean configure_event(GtkWidget         *widget,
     (void)event;
     (void)data;
 
-    //GtkAllocation allocation;
-    //gtk_widget_get_allocation(GTK_WIDGET(widget), &allocation);
-    //_engine.width  = allocation.width;
-    //_engine.height = allocation.height;
+    GtkAllocation allocation;
+    gtk_widget_get_allocation(widget, &allocation);
+    _engine.width  = allocation.width;
+    _engine.height = allocation.height;
     //_engine.width  = widget->allocation.width;
     //_engine.height = widget->allocation.height;
 
-    gtk_window_get_size(GTK_WINDOW(widget), &_engine.width, &_engine.height);
+    //gtk_window_get_size(GTK_WINDOW(widget), &_engine.width, &_engine.height);
 
     // GTK 3.0
     //gtk_widget_get_size_request(GTK_WIDGET(widget), gint *width, gint *height);
@@ -443,10 +452,10 @@ static gboolean configure_event(GtkWidget         *widget,
     S52_setViewPort(0, 0, _engine.width, _engine.height);
 
     _engine.do_S52draw = TRUE;
+    _engine.do_S52drawLast = TRUE;
 
-    // debug
-    //g_print("'configure_event' .. done\n");
-
+    g_print("DEBUG: s52gtkegl:configure_event() \n");
+ 
     return TRUE;
 }
 
@@ -454,7 +463,7 @@ static gboolean key_release_event(GtkWidget   *widget,
                                   GdkEventKey *event,
                                   gpointer     data)
 {
-    (void)widget;
+    //(void)widget;
     (void)data;
 
     switch(event->keyval) {
@@ -568,12 +577,13 @@ static gboolean key_release_event(GtkWidget   *widget,
     _engine.do_S52draw     = TRUE;
     _engine.do_S52drawLast = TRUE;
 
-    _s52_draw_cb(&_engine.window);
+    //_s52_draw_cb(&_engine);
+    gtk_widget_queue_draw(widget);
 
     return TRUE;
 }
 
-#if 0
+#if GTK_MAJOR_VERSION == 3
 //////////////////////////////////////////////////
 // code lifted from gtk/demos/gtk-demo/gesture.c
 //
@@ -584,72 +594,44 @@ static gboolean key_release_event(GtkWidget   *widget,
 //  demo reacts to long presses and swipes from all devices, plus
 //  multi-touch rotate and zoom gestures.
 
-static GtkGesture *_rotate       = NULL;
-static GtkGesture *_zoom         = NULL;
-static gdouble     _swipe_x      = 0;
-static gdouble     _swipe_y      = 0;
-static gboolean    _long_pressed = FALSE;
+//static gdouble     _gswipe_x      = 0;
+//static gdouble     _gswipe_y      = 0;
+//static gboolean    _glong_pressed = FALSE;
+static gdouble     _gstart_x      = 0.0;
+static gdouble     _gstart_y      = 0.0;
+static GtkGesture *_grotate       = NULL;
+static GtkGesture *_gzoom         = NULL;
+static gdouble     _gdelta        = 0.0;
+static gdouble     _gscale        = 0.0;
 
-static void     swipe_gesture_swept(GtkGestureSwipe *gesture,
-                                    gdouble          velocity_x,
-                                    gdouble          velocity_y,
-                                    GtkWidget       *widget)
-{
-    _swipe_x = velocity_x / 10;
-    _swipe_y = velocity_y / 10;
-    gtk_widget_queue_draw(widget);
-}
-
-static void     long_press_gesture_pressed(GtkGestureLongPress *gesture,
-                                           gdouble              x,
-                                           gdouble              y,
-                                           GtkWidget           *widget)
-{
-    _long_pressed = TRUE;
-    gtk_widget_queue_draw(widget);
-}
-
-static void     long_press_gesture_end(GtkGesture       *gesture,
-                                       GdkEventSequence *sequence,
-                                       GtkWidget        *widget)
-{
-    _long_pressed = FALSE;
-    gtk_widget_queue_draw(widget);
-}
-
-static void     rotation_angle_changed(GtkGestureRotate *gesture,
-                                       gdouble           angle,
-                                       gdouble           delta,
-                                       GtkWidget        *widget)
-{
-    gtk_widget_queue_draw(widget);
-}
-
-static void     zoom_scale_changed(GtkGestureZoom *gesture,
-                                   gdouble         scale,
-                                   GtkWidget      *widget)
-{
-    gtk_widget_queue_draw(widget);
-}
-
+#if 0
 static gboolean drawing_area_draw(GtkWidget *widget,
                                   cairo_t   *cr)
 {
-    GtkAllocation allocation;
+    (void)cr;
 
+    g_print("drawing_area_draw(): \n");
+
+    GtkAllocation allocation;
     gtk_widget_get_allocation(widget, &allocation);
 
-    if (_swipe_x != 0 || _swipe_y != 0) {
+    if (_gswipe_x != 0 || _gswipe_y != 0) {
+        /*
         cairo_save (cr);
         cairo_set_line_width (cr, 6);
         cairo_move_to (cr, allocation.width / 2, allocation.height / 2);
-        cairo_rel_line_to (cr, _swipe_x, _swipe_y);
+        cairo_rel_line_to (cr, _gswipe_x, _gswipe_y);
         cairo_set_source_rgba (cr, 1, 0, 0, 0.5);
         cairo_stroke (cr);
         cairo_restore (cr);
+        */
     }
 
-    if (gtk_gesture_is_recognized(_rotate) || gtk_gesture_is_recognized(_zoom)) {
+    if (gtk_gesture_is_recognized(_grotate) || gtk_gesture_is_recognized(_gzoom)) {
+        //double angle = gtk_gesture_rotate_get_angle_delta(GTK_GESTURE_ROTATE(_grotate));
+        //double scale = gtk_gesture_zoom_get_scale_delta(GTK_GESTURE_ZOOM(_gzoom));
+
+        /*
         cairo_pattern_t *pat;
         cairo_matrix_t matrix;
         gdouble angle, scale;
@@ -659,10 +641,10 @@ static gboolean drawing_area_draw(GtkWidget *widget,
 
         cairo_save (cr);
 
-        angle = gtk_gesture_rotate_get_angle_delta(GTK_GESTURE_ROTATE(_rotate));
+        angle = gtk_gesture_rotate_get_angle_delta(GTK_GESTURE_ROTATE(_grotate));
         cairo_matrix_rotate(&matrix, angle);
 
-        scale = gtk_gesture_zoom_get_scale_delta(GTK_GESTURE_ZOOM(_zoom));
+        scale = gtk_gesture_zoom_get_scale_delta(GTK_GESTURE_ZOOM(_gzoom));
         cairo_matrix_scale (&matrix, scale, scale);
 
         cairo_set_matrix (cr, &matrix);
@@ -677,9 +659,11 @@ static gboolean drawing_area_draw(GtkWidget *widget,
         cairo_restore (cr);
 
         cairo_pattern_destroy (pat);
+        */
     }
 
-    if (_long_pressed) {
+    if (_glong_pressed) {
+        /*
         cairo_save (cr);
         cairo_arc (cr, allocation.width / 2, allocation.height / 2, 50, 0, 2 * G_PI);
 
@@ -687,78 +671,397 @@ static gboolean drawing_area_draw(GtkWidget *widget,
         cairo_stroke (cr);
 
         cairo_restore (cr);
+        */
     }
 
     return TRUE;
 }
 
+static void     swipe_gesture_swept(GtkGestureSwipe *gesture,
+                                    gdouble          velocity_x,
+                                    gdouble          velocity_y,
+                                    GtkWidget       *widget)
+{
+    (void)gesture;
+
+    g_print("swipe_gesture_swept(): \n");
+
+    _gswipe_x = velocity_x / 10;
+    _gswipe_y = velocity_y / 10;
+    gtk_widget_queue_draw(widget);
+}
+
+static void     long_press_gesture_pressed(GtkGestureLongPress *gesture,
+                                           gdouble              x,
+                                           gdouble              y,
+                                           gpointer             user_data)
+{
+    (void)gesture;
+    (void)x;
+    (void)y;
+    (void)user_data;
+
+    g_print("-----------DEBUG: long_press_gesture_pressed(): start\n");
+
+    _glong_pressed = TRUE;
+
+    return;
+}
+
+static void     long_press_gesture_end(GtkGesture       *gesture,
+                                       GdkEventSequence *sequence,
+                                       gpointer          user_data)
+{
+    (void)gesture;
+    (void)sequence;
+
+    _glong_pressed = FALSE;
+
+    // start draw loop
+    _engine.do_S52draw     = TRUE;
+    _engine.do_S52drawLast = TRUE;
+
+    (void)user_data;
+    //GtkWidget *widget = (GtkWidget *)user_data;
+    //gtk_widget_queue_draw(widget);
+
+    g_print("-----------DEBUG: long_press_gesture_end(): \n");
+
+    return;
+}
+#endif  // 0
+
+static void     rotation_angle_changed(GtkGestureRotate *gesture,
+                                       gdouble           angle,
+                                       gdouble           delta,
+                                       GtkWidget        *widget)
+{
+    (void)gesture;
+    //(void)angle;
+    (void)widget;
+
+    _gdelta = 360.0 - delta*RAD2DEG;
+    if (360.0 <= _gdelta) _gdelta -= 360.0;
+    if (_gdelta < 0.0)    _gdelta += 360.0;
+    S52_drawBlit(0.0, 0.0, _gscale-1.0, _gdelta);
+
+    g_print("XXXXXXXXXXXDEBUG: s52gtkegl:rotation_angle_changed(): angle:%f delta:%f _gdelta:%f\n", angle*RAD2DEG, delta*RAD2DEG, _gdelta);
+
+    return;
+}
+
+static void     zoom_scale_changed(GtkGestureZoom *gesture,
+                                   gdouble         scale,
+                                   gpointer        user_data)
+{
+    (void)gesture;
+    (void)user_data;
+
+    // Note: scale [0.0 .. max] --> scale-1 [-0.5 .. +0.5] (initialy scale is 1:1)
+    _gscale = scale;
+    S52_drawBlit(0.0, 0.0, _gscale-1.0, _gdelta);
+
+    g_print("XXXXXXXXXXX DEBUG: s52gtkegl:zoom_scale_changed(): rNM:%f scale:%f scale-1:%f\n", _engine.state.rNM, scale, scale-1.0);
+
+    return;
+}
+
+static void     drag_beg(GtkGestureDrag *gesture,
+                         gdouble         start_x,
+                         gdouble         start_y,
+                         gpointer        user_data)
+{
+    (void)gesture;
+    (void)user_data;
+
+    g_print("-----------DEBUG: drag_beg(): x:%f y:%f\n", start_x, start_y);
+
+    _gstart_x = start_x;
+    _gstart_y = start_y;
+
+    return;
+}
+
+static void     drag_upd(GtkGestureDrag *gesture,
+                         gdouble         offset_x,
+                         gdouble         offset_y,
+                         gpointer        user_data)
+{
+    (void)gesture;
+
+    GtkWidget *drawing_area = (GtkWidget *)user_data;
+
+    GtkAllocation allocation;
+    gtk_widget_get_allocation(drawing_area, &allocation);
+
+    //g_print("-----------DEBUG: drag_upd(): w:%i h:%i ox:%f oy:%f\n", allocation.width, allocation.height, offset_x, offset_y);
+
+    double dx_pc = -offset_x / allocation.width;  //
+    double dy_pc =  offset_y / allocation.height; //
+    S52_drawBlit(dx_pc, dy_pc, 0.0, 0.0);
+
+    return;
+}
+
+static void     drag_end(GtkGestureDrag *gesture,
+                         gdouble         offset_x,
+                         gdouble         offset_y,
+                         gpointer        user_data)
+{
+    (void)gesture;
+
+    GtkWidget *drawing_area = (GtkWidget *)user_data;
+
+    GtkAllocation allocation;
+    gtk_widget_get_allocation(drawing_area, &allocation);
+
+    double h  = allocation.height;
+    double x0  = _gstart_x;
+    double y0  = h - _gstart_y;
+    double x1  = x0 + offset_x;
+    double y1  = y0 + offset_y;
+    S52_xy2LL(&x0, &y0);
+    S52_xy2LL(&x1, &y1);
+    double dx = x1 - x0;
+    double dy = y1 - y0;
+
+    _engine.state.cLat += dy;
+    _engine.state.cLon -= dx;
+    S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north);
+
+    // start draw loop
+    //_engine.do_S52draw     = TRUE;
+    //_engine.do_S52drawLast = TRUE;
+    //gtk_widget_queue_draw(drawing_area);
+
+    g_print("-----------DEBUG: drag_end(): \n");
+
+    return;
+}
+
+static gboolean _event_cb(GtkWidget *widget,
+                          GdkEvent  *event,
+                          gpointer   user_data)
+{
+    //(void)widget;
+    (void)user_data;
+
+    static int nSeq = 0;
+
+    /*
+    char *str = NULL;
+    switch(event->type) {
+        case GDK_MOTION_NOTIFY : str = "GDK_MOTION_NOTIFY ";  break;
+        case GDK_CONFIGURE     : str = "GDK_CONFIGURE ";      break;
+
+        case GDK_TOUCH_BEGIN   : str = "GDK_TOUCH_BEGIN";     break;
+        case GDK_TOUCH_UPDATE  : str = "GDK_TOUCH_UPDATE";    break;
+        case GDK_TOUCH_END     : str = "GDK_TOUCH_END";       break;
+        case GDK_TOUCH_CANCEL  : str = "GDK_TOUCH_CANCEL";    break;
+        default                : str = ">>> EVENT ???";
+    }
+    g_print("event->type:%i %s\n", event->type, str);
+    //*/
+
+    if (GDK_TOUCH_BEGIN  == event->type) {
+        ++nSeq;
+
+        // stop draw loop
+        _engine.do_S52draw     = FALSE;
+        _engine.do_S52drawLast = FALSE;
+    }
+
+    //if (GDK_TOUCH_UPDATE == event->type) {
+    //}
+
+    if (GDK_TOUCH_END    == event->type) {
+        --nSeq;
+
+        if (0 == nSeq) {
+            g_print("event->type:GDK_TOUCH_END nSeq:%i\n", nSeq);
+
+            // zoom
+            double rNMnew;
+            if (_gscale < 1.0) {
+                rNMnew = _engine.state.rNM + (_engine.state.rNM * _gscale);
+            } else {
+                rNMnew = _engine.state.rNM - (_engine.state.rNM * _gscale);
+            }
+            rNMnew = (rNMnew < 0.0) ? -rNMnew : rNMnew; // ABS()
+
+            // rotation
+            double delta = _engine.state.north + _gdelta;
+            if (360.0 <= delta) delta -= 360.0;
+            if (delta <  0.0  ) delta += 360.0;
+
+            if (TRUE == S52_setView(_engine.state.cLat, _engine.state.cLon, rNMnew, delta)) {
+                _engine.state.rNM   = rNMnew;
+                _engine.state.north = delta;
+                _gdelta             = 0.0;
+                _gscale             = 0.0;
+            }
+
+            // start draw loop
+            _engine.do_S52draw     = TRUE;
+            _engine.do_S52drawLast = TRUE;
+
+            gtk_widget_queue_draw(widget);
+        }
+    }
+
+    if (GDK_TOUCH_CANCEL == event->type) {
+        nSeq = 0;
+
+        // start draw loop
+        _engine.do_S52draw     = TRUE;
+        _engine.do_S52drawLast = TRUE;
+
+        gtk_widget_queue_draw(widget);
+
+        return TRUE;
+    }
+
+
+    /*
+    //if (event->type == GDK_LEAVE_NOTIFY) {
+    //if (event->type == GDK_BUTTON_PRESS || event->type == GDK_BUTTON_RELEASE) {
+    */
+
+    return FALSE;  // event will propagate
+    //return TRUE; // stop event propagation
+}
+
 static int      _gtk_init_gestures(GtkWidget *window)
 {
-    //static GtkWidget *window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-    //gtk_window_set_default_size (GTK_WINDOW (window), 400, 400);
-    //gtk_window_set_title (GTK_WINDOW (window), "Gestures");
-
     GtkWidget *drawing_area = gtk_drawing_area_new();
     gtk_container_add(GTK_CONTAINER(window), drawing_area);
     gtk_widget_add_events(drawing_area,
-                           GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK |
-                           GDK_POINTER_MOTION_MASK | GDK_TOUCH_MASK);
+                          GDK_BUTTON_PRESS_MASK   |
+                          GDK_BUTTON_RELEASE_MASK |
+                          GDK_POINTER_MOTION_MASK |
+                          GDK_TOUCH_MASK
+                         );
 
-    g_signal_connect(drawing_area, "draw", G_CALLBACK(drawing_area_draw), NULL);
+    g_signal_connect(drawing_area, "draw",  G_CALLBACK(_s52_draw_cb), &_engine);
+    g_signal_connect(drawing_area, "event", G_CALLBACK(_event_cb),    &_engine);
+
+    // Drag
+    GtkGesture *_gdrag = gtk_gesture_drag_new(drawing_area);
+    g_signal_connect(_gdrag, "drag-begin",  G_CALLBACK(drag_beg), drawing_area);
+    g_signal_connect(_gdrag, "drag-update", G_CALLBACK(drag_upd), drawing_area);
+    g_signal_connect(_gdrag, "drag-end",    G_CALLBACK(drag_end), drawing_area);
+    gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(_gdrag), GTK_PHASE_BUBBLE);
+    //g_object_weak_ref(G_OBJECT(drawing_area), (GWeakNotify)g_object_unref, _gdrag);
+
+    // Rotate
+    _grotate = gtk_gesture_rotate_new(drawing_area);
+    g_signal_connect(_grotate, "angle-changed", G_CALLBACK(rotation_angle_changed), drawing_area);
+    gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(_grotate), GTK_PHASE_BUBBLE);
+    //g_object_weak_ref(G_OBJECT(drawing_area), (GWeakNotify) g_object_unref, _grotate);
+
+    // Zoom
+    _gzoom = gtk_gesture_zoom_new(drawing_area);
+    g_signal_connect(_gzoom, "scale-changed", G_CALLBACK(zoom_scale_changed), drawing_area);
+    gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(_gzoom), GTK_PHASE_BUBBLE);
+    //g_object_weak_ref(G_OBJECT(drawing_area), (GWeakNotify) g_object_unref, _gzoom);
+
+
+    /*
+    // Long press
+    //GtkGesture *gesture = gtk_gesture_long_press_new(drawing_area);
+    //g_signal_connect(gesture, "pressed", G_CALLBACK(long_press_gesture_pressed), drawing_area);
+    //g_signal_connect(gesture, "end",     G_CALLBACK(long_press_gesture_end),     drawing_area);
+    //gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(gesture),  GTK_PHASE_BUBBLE);
+    //g_object_weak_ref(G_OBJECT(drawing_area), (GWeakNotify) g_object_unref, gesture);
 
     // Swipe
     GtkGesture *gesture = gtk_gesture_swipe_new(drawing_area);
     g_signal_connect(gesture, "swipe", G_CALLBACK(swipe_gesture_swept), drawing_area);
     gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(gesture), GTK_PHASE_BUBBLE);
     g_object_weak_ref(G_OBJECT(drawing_area), (GWeakNotify) g_object_unref, gesture);
-
-    // Long press
-    gesture = gtk_gesture_long_press_new(drawing_area);
-    g_signal_connect(gesture, "pressed", G_CALLBACK(long_press_gesture_pressed), drawing_area);
-    g_signal_connect(gesture, "end",     G_CALLBACK(long_press_gesture_end),     drawing_area);
-    gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(gesture),  GTK_PHASE_BUBBLE);
-    g_object_weak_ref(G_OBJECT(drawing_area), (GWeakNotify) g_object_unref, gesture);
-
-    // Rotate
-    _rotate = gesture = gtk_gesture_rotate_new(drawing_area);
-    g_signal_connect(gesture, "angle-changed", G_CALLBACK(rotation_angle_changed), drawing_area);
-    gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(gesture), GTK_PHASE_BUBBLE);
-    g_object_weak_ref(G_OBJECT(drawing_area), (GWeakNotify) g_object_unref, gesture);
-
-    // Zoom
-    _zoom = gesture = gtk_gesture_zoom_new(drawing_area);
-    g_signal_connect(gesture, "scale-changed", G_CALLBACK(zoom_scale_changed), drawing_area);
-    gtk_event_controller_set_propagation_phase(GTK_EVENT_CONTROLLER(gesture), GTK_PHASE_BUBBLE);
-    g_object_weak_ref(G_OBJECT(drawing_area), (GWeakNotify) g_object_unref, gesture);
-
+    */
 
     return TRUE;
 }
-#endif  // 0
+#endif  // GTK_MAJOR_VERSION == 3
 
 static int      _gtk_init(int argc, char** argv)
 {
     gtk_init(&argc, &argv);
 
-    _engine.window = GTK_WIDGET(gtk_window_new(GTK_WINDOW_TOPLEVEL));
-    gtk_window_set_default_size(GTK_WINDOW(_engine.window), 800, 600);
+    // gtk window stuff --------------------------------------------------------
+    _engine.eglState.window = GTK_WIDGET(gtk_window_new(GTK_WINDOW_TOPLEVEL));
+    gtk_window_set_default_size(GTK_WINDOW(_engine.eglState.window), 800, 600);
     //gtk_window_fullscreen      (GTK_WINDOW(_engine.window));
-    gtk_window_set_title       (GTK_WINDOW(_engine.window), "EGL / OpenGL ES2 in GTK application");
+    gtk_window_set_title       (GTK_WINDOW(_engine.eglState.window), "EGL / OpenGL ES2 in GTK application");
 
-    gtk_widget_set_app_paintable     (GTK_WIDGET(_engine.window), TRUE );
-    gtk_widget_set_double_buffered   (GTK_WIDGET(_engine.window), FALSE);
-    gtk_widget_set_redraw_on_allocate(GTK_WIDGET(_engine.window), TRUE );
+    //gtk_window_set_position(GTK_WINDOW(_engine.window), GTK_WIN_POS_CENTER);
+    gtk_window_set_position(GTK_WINDOW(_engine.eglState.window), GTK_WIN_POS_MOUSE);
+
+
+/*                                        default for toplevel
+NONE                          = 1 << 0
+GDK_EXPOSURE_MASK             = 1 << 1,
+GDK_POINTER_MOTION_MASK       = 1 << 2,
+GDK_POINTER_MOTION_HINT_MASK  = 1 << 3,
+
+GDK_BUTTON_MOTION_MASK        = 1 << 4,   X
+GDK_BUTTON1_MOTION_MASK       = 1 << 5,
+GDK_BUTTON2_MOTION_MASK       = 1 << 6,
+GDK_BUTTON3_MOTION_MASK       = 1 << 7,
+
+GDK_BUTTON_PRESS_MASK         = 1 << 8,   X
+GDK_BUTTON_RELEASE_MASK       = 1 << 9,   X
+GDK_KEY_PRESS_MASK            = 1 << 10,
+GDK_KEY_RELEASE_MASK          = 1 << 11,
+
+GDK_ENTER_NOTIFY_MASK         = 1 << 12,
+GDK_LEAVE_NOTIFY_MASK         = 1 << 13,
+GDK_FOCUS_CHANGE_MASK         = 1 << 14,
+GDK_STRUCTURE_MASK            = 1 << 15,
+
+GDK_PROPERTY_CHANGE_MASK      = 1 << 16,
+GDK_VISIBILITY_NOTIFY_MASK    = 1 << 17,
+GDK_PROXIMITY_IN_MASK         = 1 << 18,
+GDK_PROXIMITY_OUT_MASK        = 1 << 19,
+
+GDK_SUBSTRUCTURE_MASK         = 1 << 20,
+GDK_SCROLL_MASK               = 1 << 21,
+GDK_TOUCH_MASK                = 1 << 22,  X
+GDK_SMOOTH_SCROLL_MASK        = 1 << 23,
+
+GDK_TOUCHPAD_GESTURE_MASK     = 1 << 24,
+*/
+
+    // gtk widget stuff --------------------------------------------------------
+    g_print("EventMask:0x%X\n", gtk_widget_get_events(_engine.eglState.window));
+    // =>EventMask:0x400310  -->  0100 0000 0000 0011 0001 0000
+
+    //gtk_widget_add_events(GTK_WIDGET(_engine.eglState.window), GDK_EXPOSURE_MASK);
+
+    //gtk_widget_set_app_paintable     (GTK_WIDGET(_engine.eglState.window), TRUE );
+    gtk_widget_set_redraw_on_allocate(GTK_WIDGET(_engine.eglState.window), TRUE );
+
+    // not in GTK3
+    //gtk_widget_set_double_buffered   (GTK_WIDGET(_engine.window), FALSE);
 
     //g_signal_connect(G_OBJECT(_engine.window), "destroy",           G_CALLBACK(gtk_widget_destroyed), &window);
-    g_signal_connect(G_OBJECT(_engine.window), "destroy",           G_CALLBACK(gtk_main_quit),     NULL);
-    g_signal_connect(G_OBJECT(_engine.window), "key_release_event", G_CALLBACK(key_release_event), NULL);
-    g_signal_connect(G_OBJECT(_engine.window), "configure_event",   G_CALLBACK(configure_event),   NULL);
+    g_signal_connect(G_OBJECT(_engine.eglState.window), "destroy",           G_CALLBACK(gtk_main_quit),     NULL);
+    g_signal_connect(G_OBJECT(_engine.eglState.window), "key_release_event", G_CALLBACK(key_release_event), NULL);
+    g_signal_connect(G_OBJECT(_engine.eglState.window), "configure_event",   G_CALLBACK(configure_event),   NULL);
 
-    g_timeout_add(500, _s52_draw_cb, &_engine); // 0.5 sec
 
-    //_gtk_init_gestures(_engine.window);
+    // FIXME: something about swap buffer in EGL is afoot
+    g_timeout_add(100, _s52_draw_cb, &_engine); // 0.1 sec
+    //g_timeout_add(500, _s52_draw_cb, &_engine); // 0.5 sec
+    //g_timeout_add(500*4, _s52_draw_cb, &_engine); // 2.0 sec debug
+    //g_timeout_add(500*4*2, _s52_draw_cb, &_engine); // 4.0 sec debug
 
-    gtk_widget_show_all(_engine.window);
+#if GTK_MAJOR_VERSION == 3
+    _gtk_init_gestures(_engine.eglState.window);  // only in GTK3
+#endif  // GTK_MAJOR_VERSION == 3
+
+    gtk_widget_show_all(_engine.eglState.window);
 
     return TRUE;
 }
@@ -767,13 +1070,13 @@ int main(int argc, char** argv)
 {
     _gtk_init(argc, argv);
 
-    _egl_init(&_engine);
+    _egl_init(&_engine.eglState);
     _s52_init(&_engine);
 
     gtk_main();
 
     _s52_done(&_engine);
-    _egl_done(&_engine);
+    _egl_done(&_engine.eglState);
 
     g_print("%s .. done\n", argv[0]);
 
