@@ -665,7 +665,6 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
             PRINTF("WARNING: unknown Mariner's Parameter type (%i)\n", paramID);
 
             GMUTEXUNLOCK(&_mp_mutex);
-
             return FALSE;
     }
 
@@ -2478,12 +2477,13 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 // GDAL:
 // - GeoTIFF
 {
-    S52_CHECK_MUTX_INIT;
 
     valueBuf chartPath = {'\0'};
     char    *fname     = NULL;
     _cell   *ch        = NULL;    // cell handle
     S52_loadLayer_cb loadLayer_cb = S52_loadLayer;
+
+    S52_CHECK_MUTX_INIT;
 
     if (NULL == loadObject_cb) {
         static int  silent = FALSE;
@@ -2517,6 +2517,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         fname = g_strdup(encPath);
     }
 
+    // strip blank
     fname = g_strstrip(fname);
 
     if (TRUE != g_file_test(fname, (GFileTest) (G_FILE_TEST_EXISTS | G_FILE_TEST_IS_DIR))) {
@@ -2643,6 +2644,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     _doCullLights = TRUE;
     // _app() - compute HO Data Limit
     _doDATCVR     = TRUE;
+
 exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
@@ -4419,19 +4421,19 @@ DLL int    STD S52_draw(void)
         g_assert(0);
     }
 
-#ifdef S52_DEBUG
-    {
-        gdouble sec = g_timer_elapsed(_timer, NULL);
-        PRINTF("    DRAW: %.0f msec --------------------------------------\n", sec * 1000);
-    }
-#endif
-
 exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
 #if !defined(S52_USE_RADAR)
     EGL_END(DRAW);
+#endif
+
+#ifdef S52_DEBUG
+    {
+        gdouble sec = g_timer_elapsed(_timer, NULL);
+        PRINTF("    DRAW: %.0f msec --------------------------------------\n", sec * 1000);
+    }
 #endif
 
     return ret;
@@ -4589,18 +4591,18 @@ DLL int    STD S52_drawLast(void)
         PRINTF("WARNING:S52_GL_begin() failed\n");
     }
 
+exit:
+
+    GMUTEXUNLOCK(&_mp_mutex);
+
+    EGL_END(LAST);
+
 #ifdef S52_DEBUG
     {
         //gdouble sec = g_timer_elapsed(_timer, NULL);
         //PRINTF("DRAWLAST: %.0f msec (cull/total) %i/%i\n", sec * 1000, _nCull, _nTotal);
     }
 #endif
-
-exit:
-
-    GMUTEXUNLOCK(&_mp_mutex);
-
-    EGL_END(LAST);
 
     return ret;
 }
@@ -4746,28 +4748,30 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
         goto exit;
 
     // debug
-    PRINTF("scale_x:%f, scale_y:%f, scale_z:%f, north:%f\n", scale_x, scale_y, scale_z, north);
+    //PRINTF("scale_x:%f, scale_y:%f, scale_z:%f, north:%f\n", scale_x, scale_y, scale_z, north);
 
     if (1.0 < ABS(scale_x)) {
-        PRINTF("zoom factor X overflow (>1.0) [%f]\n", scale_x);
+        PRINTF("WARNING: zoom factor X overflow (>1.0) [%f]\n", scale_x);
         goto exit;
     }
 
     if (1.0 < ABS(scale_y)) {
-        PRINTF("zoom factor Y overflow (>1.0) [%f]\n", scale_y);
+        PRINTF("WARNING: zoom factor Y overflow (>1.0) [%f]\n", scale_y);
         goto exit;
     }
 
     if (0.5 < ABS(scale_z)) {
-        PRINTF("zoom factor Z overflow (>0.5) [%f]\n", scale_z);
+        PRINTF("WARNING: zoom factor Z overflow (>0.5) [%f]\n", scale_z);
         goto exit;
     }
 
     if ((north<0.0) || (360.0<=north)) {
+    //if (360.0 <= north) {
         PRINTF("WARNING: north (%f), reset to %f\n", north, _view.north);
         // FIXME: get the real value
-        north = _view.north;
+        //north = _view.north;
         //north = 0.0;
+        goto exit;
     }
 
     g_timer_reset(_timer);
@@ -4778,13 +4782,13 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
         S52_GL_end(S52_GL_BLIT);
         ret = TRUE;
     } else {
-        PRINTF("WARNING:S52_GL_begin() failed\n");
+        PRINTF("WARNING: S52_GL_begin() failed\n");
     }
 
 #ifdef S52_DEBUG
     {
-        gdouble sec = g_timer_elapsed(_timer, NULL);
-        PRINTF("DRAWBLIT: %.0f msec\n", sec * 1000);
+        //gdouble sec = g_timer_elapsed(_timer, NULL);
+        //PRINTF("DRAWBLIT: %.0f msec\n", sec * 1000);
     }
 #endif
 
@@ -4864,6 +4868,8 @@ exit:
 
 DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
 {
+    int ret = FALSE;
+
     S52_CHECK_MUTX_INIT;
 
     // debug
@@ -4871,55 +4877,60 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
 
     //*
     if (ABS(cLat) > 90.0) {
-        PRINTF("WARNING: cLat outside [-90..+90](%f)\n", cLat);
-        GMUTEXUNLOCK(&_mp_mutex);
+        PRINTF("WARNING: FAIL, cLat outside [-90..+90](%f)\n", cLat);
+        //GMUTEXUNLOCK(&_mp_mutex);
         //g_assert(0);
-        return FALSE;
+        //return FALSE;
+        goto exit;
     }
 
     if (ABS(cLon) > 180.0) {
-        PRINTF("WARNING: cLon outside [-180..+180] (%f)\n", cLon);
-        GMUTEXUNLOCK(&_mp_mutex);
+        PRINTF("WARNING: FAIL, cLon outside [-180..+180] (%f)\n", cLon);
+        //GMUTEXUNLOCK(&_mp_mutex);
         //g_assert(0);
-        return FALSE;
+        //return FALSE;
+        goto exit;
     }
     //*/
 
-    if (rNM < 0) {
-        rNM = _view.rNM;
-    } else {
-        if ((rNM < MIN_RANGE) || (rNM > MAX_RANGE)) {
-            PRINTF("WARNING:  rNM outside limit (%f)\n", rNM);
-            GMUTEXUNLOCK(&_mp_mutex);
-            //g_assert(0);
-            return FALSE;
-        }
+    //if (rNM < 0) {
+    //    rNM = _view.rNM;
+    //} else {
+    if ((rNM < MIN_RANGE) || (rNM > MAX_RANGE)) {
+        PRINTF("WARNING: FAIL, rNM outside limit (%f)\n", rNM);
+        //GMUTEXUNLOCK(&_mp_mutex);
+        //g_assert(0);
+        //return FALSE;
+        goto exit;
     }
+    //}
 
     // FIXME: PROJ4 will explode here (INFINITY) for mercator
     // Note: must validate rNM first
     if ((ABS(cLat)*60.0 + rNM) > (90.0*60)) {
-        PRINTF("WARNING: rangeNM > 90*60 NM (%f)\n", rNM);
-        GMUTEXUNLOCK(&_mp_mutex);
+        PRINTF("WARNING: FAIL, rangeNM > 90*60 NM (%f)\n", rNM);
+        //GMUTEXUNLOCK(&_mp_mutex);
         //g_assert(0);
-        return FALSE;
+        //return FALSE;
+        goto exit;
     }
 
-    if (north < 0) {
-        north = _view.north;
-    } else {
-        if ((north>=360.0) || (north<0.0)) {
-            PRINTF("WARNING: north outside [0..360[ (%f)\n", north);
-            GMUTEXUNLOCK(&_mp_mutex);
-            //g_assert(0);
-            return FALSE;
-        }
+    //if (north < 0) {
+    //    north = _view.north;
+    //} else {
+    if ((north>=360.0) || (north<0.0)) {
+        PRINTF("WARNING: FAIL, north outside [0..360[ (%f)\n", north);
+        //GMUTEXUNLOCK(&_mp_mutex);
+        //g_assert(0);
+        //return FALSE;
+        goto exit;
     }
+    //}
 
     // debug
     //PRINTF("lat:%f, long:%f, range:%f north:%f\n", cLat, cLon, rNM, north);
 
-    S52_GL_setView(cLat, cLon, rNM, north);
+    ret = S52_GL_setView(cLat, cLon, rNM, north);
 
     // update local var _view
     _view.cLat  = cLat;
@@ -4931,7 +4942,8 @@ exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
-    return TRUE;
+    //return TRUE;
+    return ret;
 }
 
 DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *north)
