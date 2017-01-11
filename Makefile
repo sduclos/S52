@@ -196,7 +196,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_GOBJECT      - make S52objH an int64 for gjs (Javascript compiler)
 #
 # OpenGL:
-# -DS52_USE_MESA3D       - Mesa drive specific code
+# -DS52_USE_DUAL_MON     - dual monitor mess up dotpitch in GL2/_fixDPI_glScaled()
 # -DS52_USE_EGL          - EGL callback from libS52
 # GL FIX FUNC:
 # -DS52_USE_GL1          - GL1.x
@@ -273,7 +273,6 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
 
 #                  -DS52_USE_SUPP_LINE_OVERLAP
 #                  -DS52_USE_GLSC2
-#                  -DS52_USE_MESA3D
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                   `gdal-config --cflags`         \
@@ -292,6 +291,7 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_BACKTRACE            \
                   -DS52_USE_SYM_VESSEL_DNGHL     \
                   -DS52_USE_RASTER               \
+                  -DS52_USE_DUAL_MON             \
                   -DS52_DEBUG $(DBG)
 
 # CFLAGS="-mthumb" CXXFLAGS="-mthumb" LIBS="-lstdc++" ./configure --host=arm-eabi \
