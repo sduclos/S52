@@ -915,11 +915,10 @@ static int       _initTexture(void)
     //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, 32, 32);
     //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 32, GL_RGBA, GL_UNSIGNED_BYTE, _nodata_mask_rgba);
 #endif  // S52_USE_GLSC2
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     _checkError("_initTexture -1-");
 
@@ -939,12 +938,11 @@ static int       _initTexture(void)
     //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 1, GL_RGBA, GL_UNSIGNED_BYTE, _dottpa_mask_rgba);
 #endif
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+ 
     _checkError("_initTexture -2-");
 
     // ------------
@@ -971,13 +969,10 @@ static int       _initTexture(void)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
 
 #endif
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    _checkError("_initTexture -3.3-");
-
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     _checkError("_initTexture -3.4-");
 
 
@@ -1447,8 +1442,13 @@ static int       _init_gl2(void)
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     //_checkError("_init_es2() -4-");
 
@@ -1595,13 +1595,13 @@ static int       _fixDPI_glScaled(void)
 
 #else  // S52_USE_ANDROID
 
-#ifdef S52_USE_MESA3D
+#ifdef S52_USE_DUAL_MON
     double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 8.0;
     double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 8.0;
 #else
     // normal case - nothing to fix
-    //double scaleX = _dotpitch_mm_x;
-    //double scaleY = _dotpitch_mm_y;
+    double scaleX = _dotpitch_mm_x;
+    double scaleY = _dotpitch_mm_y;
 
     // -OR-
     //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X);
@@ -1612,11 +1612,11 @@ static int       _fixDPI_glScaled(void)
     //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 5.0;
     //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 5.0;
     //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 5.0;
-    double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 8.0;
-    double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 8.0;
+    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 8.0;
+    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 8.0;
     //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 10.0;
     //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 10.0;
-#endif
+#endif  // S52_USE_DUAL_MON
 #endif  // S52_USE_ANDROID
 
     ////////////////////////////////////////////////////////////////
