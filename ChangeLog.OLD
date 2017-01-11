@@ -4,6 +4,13 @@
 #
 
 
+2017JAN11
+    -add implementation of rotation in drawBlit()
+    -add basic test of drawBlit() (drag/zoom/rot) with gtk3 gesture in test/s52gtkegl.c
+
+2016DEC28
+    -mod rename S52_USE_MESA3D TO S52_USE_DUAL_MON
+
 2016DEC27
     -mod refactor text justification
 
@@ -1616,4 +1623,3 @@
     -add code for plugin,
     -add projection (mercator)
     -code clean up
-
