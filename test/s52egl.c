@@ -1312,7 +1312,6 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 
             //_android_done_external_sensors();
 
-            //_egl_doneSurface(engine);
             _egl_done(engine);
 
             break;
@@ -1614,7 +1613,6 @@ exit:
 
     _s52_done(&_engine);
 
-    //_egl_doneSurface(&_engine);
     _egl_done(&_engine);
 
     AConfiguration_delete(_engine.config);
@@ -2041,7 +2039,6 @@ int main(int argc, char *argv[])
 
     _s52_done(&_engine);
 
-    //_egl_doneSurface(&_engine);
     _egl_done(&_engine);
 
     //g_mem_profile();
