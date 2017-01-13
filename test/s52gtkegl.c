@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2016 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2017 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -178,9 +178,9 @@ static int      _s52_init   (s52engine *engine)
     _s52_setupMain();
 
     // if first start find where we are looking
-    //_s52_getView(&engine->state);
+    _s52_getView(&engine->state);
     // then (re)position the 'camera'
-    //S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
+    S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
 
     _s52_setupMarPar();
 
