@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2016 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2017 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -3760,6 +3760,9 @@ static int        _cullObj(_cell *c, GPtrArray *rbin)
         //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
         //    PRINTF("M_COVR found\n");
         //}
+        //if (0 == g_strcmp0("PRDARE", S52_PL_getOBCL(obj))) {
+        //    PRINTF("DEBUG: PRDARE FOUND\n");
+        //}
 
         // is *this* object suppressed by user
         if (TRUE == S52_PL_getSupp(obj)) {
@@ -4400,7 +4403,7 @@ DLL int    STD S52_draw(void)
         if (TRUE == (int) S52_MP_get(S52_MAR_DISP_LEGEND))
             _drawLegend();
 
-        S52_GL_end(S52_GL_DRAW);
+        ret = S52_GL_end(S52_GL_DRAW);
 
         // for each cell, not after all cell,
         // because city name appear twice
@@ -4411,7 +4414,7 @@ DLL int    STD S52_draw(void)
 
         //PRINTF("S52_draw() .. -2-\n");
 
-        ret = TRUE;
+        //ret = TRUE;
 
     } else {
         PRINTF("WARNING:S52_GL_begin() failed\n");
@@ -4585,7 +4588,9 @@ DLL int    STD S52_drawLast(void)
         //
         _nCull = 0;
         _nTotal= 0;
+
         ret = _drawLast();
+
         S52_GL_end(S52_GL_LAST);
     } else {
         PRINTF("WARNING:S52_GL_begin() failed\n");
@@ -4748,7 +4753,7 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
         goto exit;
 
     // debug
-    //PRINTF("scale_x:%f, scale_y:%f, scale_z:%f, north:%f\n", scale_x, scale_y, scale_z, north);
+    PRINTF("scale_x:%f, scale_y:%f, scale_z:%f, north:%f\n", scale_x, scale_y, scale_z, north);
 
     if (1.0 < ABS(scale_x)) {
         PRINTF("WARNING: zoom factor X overflow (>1.0) [%f]\n", scale_x);
@@ -4766,21 +4771,17 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
     }
 
     if ((north<0.0) || (360.0<=north)) {
-    //if (360.0 <= north) {
-        PRINTF("WARNING: north (%f), reset to %f\n", north, _view.north);
-        // FIXME: get the real value
-        //north = _view.north;
-        //north = 0.0;
+        //PRINTF("WARNING: north (%f), reset to %f\n", north, _view.north);
+        PRINTF("WARNING: north (%f) over/underflow\n", north);
         goto exit;
     }
 
     g_timer_reset(_timer);
 
     if (TRUE == S52_GL_begin(S52_GL_BLIT)) {
-        S52_GL_drawBlit(scale_x, scale_y, scale_z, north);
+        ret = S52_GL_drawBlit(scale_x, scale_y, scale_z, north);
 
         S52_GL_end(S52_GL_BLIT);
-        ret = TRUE;
     } else {
         PRINTF("WARNING: S52_GL_begin() failed\n");
     }

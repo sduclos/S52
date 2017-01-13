@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2016 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2017 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -5312,7 +5312,7 @@ int        S52_GL_isOFFview(S52_obj *obj)
     // FIXME: AIS + Vector / Heading, also beam bearing
 
     // debug
-    //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "pastrk")) {
+    //if (0 == g_strcmp0("pastrk", S52_PL_getOBCL(obj))) {
     //    PRINTF("DEBUG: pastrk FOUND\n");
     //}
     //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
@@ -5324,6 +5324,10 @@ int        S52_GL_isOFFview(S52_obj *obj)
     //if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
     //    PRINTF("DEBUG: sclbdy FOUND\n");
     //}
+    //if (0 == g_strcmp0("PRDARE", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: PRDARE FOUND\n");
+    //}
+
 
     // geo extent _gmin/max
     double x1,y1,x2,y2;
@@ -5672,6 +5676,9 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //}
     //if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
     //    PRINTF("DEBUG: sclbdy FOUND\n");
+    //}
+    //if (0 == g_strcmp0("clrlin", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: clrlin FOUND\n");
     //}
     //if (S52_GL_PICK == _crnt_GL_cycle) {
     //    S57_geo *geo = S52_PL_getGeo(obj);
@@ -6983,7 +6990,7 @@ int        S52_GL_drawFBPixels(void)
     glDisableVertexAttribArray(_aPosition);
 
     _glMatrixDel(VP_PRJ);
-    _north = northtmp;
+    //_north = northtmp;
 
 #else   // S52_USE_GL2
 
