@@ -4,6 +4,12 @@
 #
 
 
+2017JAN18
+    -fix shader regression
+    -fix lock mutex from AIS
+    -add NULL check in set/get freetypeGL
+    -add init done AIS in test/s52gtkrgl.c
+
 2017JAN11
     -add implementation of rotation in drawBlit()
     -add basic test of drawBlit() (drag/zoom/rot) with gtk3 gesture in test/s52gtkegl.c
