@@ -1073,7 +1073,15 @@ int main(int argc, char** argv)
     _egl_init(&_engine.eglState);
     _s52_init(&_engine);
 
+#ifdef USE_AIS
+    s52ais_initAIS();
+#endif
+
     gtk_main();
+
+#ifdef USE_AIS
+    s52ais_doneAIS();
+#endif
 
     _s52_done(&_engine);
     _egl_done(&_engine.eglState);
