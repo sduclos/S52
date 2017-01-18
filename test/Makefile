@@ -95,21 +95,22 @@ s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobj
                      -DUSE_AIS               \
                      -DS52_USE_AFGLOW
 
+#                     -DUSE_TEST_OBJ
 # same as s52eglx, but "gtk+-2.0" is added
 #s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-2.0`
 #s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gobject-2.0 libgps gtk+-2.0`
 s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl gtk+-2.0 libgps ` \
-                     -DUSE_TEST_OBJ          \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
                      -DUSE_AIS               \
                      -DS52_USE_AFGLOW
 
 # same as s52eglx, but "gtk+-3.0" is added
-s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps gtk+-3.0` \
-                     -DUSE_TEST_OBJ          \
+s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl gtk+-3.0 libgps` \
                      -DS52_USE_EGL           \
-                     -DS52_USE_GLES2
+                     -DS52_USE_GLES2         \
+`                    -DUSE_AIS               \
+                     -DS52_USE_AFGLOW
 
 s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`    \
                       -I$(OPENEV_HOME)                               \
