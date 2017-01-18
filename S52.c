@@ -4316,19 +4316,20 @@ DLL int    STD S52_draw(void)
     if (FALSE == g_mutex_trylock(&_mp_mutex)) {
 #endif
         PRINTF("WARNING: trylock failed\n");
-        goto exit;
+        //goto exit;
+        return FALSE;
     }
 
     S52_CHECK_INIT;
     if (NULL == S57_getPrjStr())
         goto exit;
 
+    g_timer_reset(_timer);
+
     EGL_BEG(DRAW);
 
     // debug
     //PRINTF("DRAW: start ..\n");
-
-    g_timer_reset(_timer);
 
     if (TRUE == S52_GL_begin(S52_GL_DRAW)) {
 
@@ -4424,10 +4425,6 @@ DLL int    STD S52_draw(void)
         g_assert(0);
     }
 
-exit:
-
-    GMUTEXUNLOCK(&_mp_mutex);
-
 #if !defined(S52_USE_RADAR)
     EGL_END(DRAW);
 #endif
@@ -4438,6 +4435,10 @@ exit:
         PRINTF("    DRAW: %.0f msec --------------------------------------\n", sec * 1000);
     }
 #endif
+
+exit:
+
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return ret;
 }
@@ -4551,7 +4552,8 @@ DLL int    STD S52_drawLast(void)
 #endif
         PRINTF("WARNING: trylock failed\n");
         //g_assert(0);
-        goto exit;
+        //goto exit;
+        return FALSE;
     }
 
     S52_CHECK_INIT;
@@ -4562,12 +4564,11 @@ DLL int    STD S52_drawLast(void)
     if (S52_MAR_DISP_LAYER_LAST_NONE == (int) S52_MP_get(S52_MAR_DISP_LAYER_LAST))
         goto exit;
 
+    g_timer_reset(_timer);
 
 #if !defined(S52_USE_RADAR)
     EGL_BEG(LAST);
 #endif
-
-    g_timer_reset(_timer);
 
     if (TRUE == S52_GL_begin(S52_GL_LAST)) {
 
@@ -4596,10 +4597,6 @@ DLL int    STD S52_drawLast(void)
         PRINTF("WARNING:S52_GL_begin() failed\n");
     }
 
-exit:
-
-    GMUTEXUNLOCK(&_mp_mutex);
-
     EGL_END(LAST);
 
 #ifdef S52_DEBUG
@@ -4608,6 +4605,11 @@ exit:
         //PRINTF("DRAWLAST: %.0f msec (cull/total) %i/%i\n", sec * 1000, _nCull, _nTotal);
     }
 #endif
+
+
+exit:
+
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return ret;
 }
