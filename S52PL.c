@@ -4361,6 +4361,9 @@ int         S52_PL_setFreetypeGL_VBO(_S52_obj *obj, guint vboID, guint len, doub
     //cmd->vboID = vboID;
     //cmd->len   = len;
 
+    if (NULL == cmd->cmd.text)
+         return FALSE;
+
     cmd->cmd.text->vboID  = vboID;
     cmd->cmd.text->len    = len;
     cmd->cmd.text->strWpx = strWpx;
@@ -4386,6 +4389,9 @@ guint       S52_PL_getFreetypeGL_VBO(_S52_obj *obj, guint *len, double *strWpx, 
 
     //*len = cmd->len;
     //return cmd->vboID;
+
+    if (NULL == cmd->cmd.text)
+         return FALSE;
 
     *len    = cmd->cmd.text->len;
     *strWpx = cmd->cmd.text->strWpx;
