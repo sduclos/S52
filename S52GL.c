@@ -1494,7 +1494,7 @@ static GLubyte   _setFragColor(S52_Color *c)
         _glColor4ub(dnghlcol->R, dnghlcol->G, dnghlcol->B, c->trans);
     }
 
-    /* trans
+    //* trans
     if (('0'!=c->trans) && (TRUE==(int) S52_MP_get(S52_MAR_ANTIALIAS))) {
         // FIXME: blending always ON
         glEnable(GL_BLEND);
@@ -1503,7 +1503,7 @@ static GLubyte   _setFragColor(S52_Color *c)
         glEnable(GL_ALPHA_TEST);
 #endif
     }
-    */
+    //*/
 
     // pen_w of SY
     // - AC, AP, TXT, doesn't have a pen_w
@@ -3146,7 +3146,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
         return TRUE;
     }
     if (0 == pti) {
-        PRINTF("DEBUG: afterglow pti = 0, .. exit\n");
+        //PRINTF("DEBUG: afterglow pti = 0, .. exit\n");
         //g_assert(0);
         return TRUE;
     }
@@ -5890,7 +5890,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     */
 
-    // FIXME: trigger reset to test this call
+    /* FIXME: trigger reset to test this call
     if (NULL!=_glGetGraphicsResetStatus && TRUE==_GL_EXT_robustness) {
         GLenum ret = _glGetGraphicsResetStatus();
         if (GL_NO_ERROR != ret) {
@@ -5902,6 +5902,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
         }
         _checkError("S52_GL_begin() - GL2 glGetGraphicsResetStatus");
     }
+    */
 
     // FrontFaceDirection
     //glFrontFace(GL_CW);
@@ -6990,7 +6991,6 @@ int        S52_GL_drawFBPixels(void)
     glDisableVertexAttribArray(_aPosition);
 
     _glMatrixDel(VP_PRJ);
-    //_north = northtmp;
 
 #else   // S52_USE_GL2
 
