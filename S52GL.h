@@ -123,7 +123,9 @@ int   S52_GL_delDL(S52_obj *obj);
 // delete raster
 int   S52_GL_delRaster(S52_GL_ras *raster, int texOnly);
 
-int   S52_GL_setView(double centerLat, double centerLon, double rangeNM, double north);
+int   S52_GL_setView(double  centerLat, double  centerLon, double  rangeNM, double  north);
+int   S52_GL_getView(double *centerLat, double *centerLon, double *rangeNM, double *north);
+
 int   S52_GL_setPRJView(double  s, double  w, double  n, double  e);
 int   S52_GL_getPRJView(double *s, double *w, double *n, double *e);
 int   S52_GL_setGEOView(double  s, double  w, double  n, double  e);
