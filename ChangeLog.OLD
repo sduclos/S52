@@ -4,6 +4,12 @@
 #
 
 
+2017JAN20
+    -modx end EGL before releasing mutex
+    -mod move _view_t struct to GL
+    -add S52_GL_getView() to GL
+    -fix behavior of test/s52gtkegl
+
 2017JAN18
     -fix shader regression
     -fix lock mutex from AIS
