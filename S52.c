@@ -240,11 +240,12 @@ static char      *_intl         = NULL;    // setlocal()
 static guint      _nCull        = 0;
 static guint      _nTotal       = 0;
 
-// helper - save user center of view in degree
+/* helper - save user center of view in degree
 typedef struct {
     double cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
 } _view_t;
 static _view_t _view = {0.0, 0.0, 0.0, 0.0};
+*/
 
 // CSYMB init scale bar, north arrow, unit, CHKSYM
 static int             _iniCSYMB = TRUE;
@@ -275,7 +276,6 @@ static void      *_EGLctx = NULL;
 #define EGL_BEG(tag)    if (NULL != _eglBeg) {                    \
                            if (FALSE == _eglBeg(_EGLctx,#tag)) {  \
                                 goto exit;                        \
-                                return FALSE;                     \
                            }                                      \
                         }
 
@@ -309,7 +309,6 @@ static GMutex        _mp_mutex;
 #define S52_CHECK_INIT  if (TRUE == _doInit) {                                                  \
                            PRINTF("WARNING: libS52 not initialized --call S52_init() first\n"); \
                            goto exit;                                                           \
-                           return FALSE;                                                        \
                         }
 #define S52_CHECK_MUTX                   GMUTEXLOCK(&_mp_mutex);
 #define S52_CHECK_MUTX_INIT              GMUTEXLOCK(&_mp_mutex); S52_CHECK_INIT
@@ -1356,18 +1355,23 @@ static int        _initPROJview(void)
         return FALSE;
     }
 
-    //double cLat = (ext.N + ext.S) / 2.0;
-    //double cLon = (ext.W + ext.E) / 2.0;
+    /*
     _view.cLat  =  (ext.N + ext.S) / 2.0;
     _view.cLon  =  (ext.W + ext.E) / 2.0;
     _view.rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
     _view.north = 0.0;
     S52_GL_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
+    */
+    double cLat  =  (ext.N + ext.S) / 2.0;
+    double cLon  =  (ext.W + ext.E) / 2.0;
+    double rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
+    double north = 0.0;
+    S52_GL_setView(cLat, cLon, rNM, north);
 
     // FIXME: cLon break bathy projection
     // anti-meridian trick: use cLon, but this break bathy
-    //S57_setMercPrj(cLat, cLon);
-    S57_setMercPrj(_view.cLat, _view.cLon);
+    S57_setMercPrj(cLat, cLon);
+    //S57_setMercPrj(_view.cLat, _view.cLon);
     //S57_setMercPrj(0.0, cLon); // test - 0 cLat
     //S57_setMercPrj(0.0, 0.0);  // test - 0 cLat
 
@@ -4425,6 +4429,8 @@ DLL int    STD S52_draw(void)
         g_assert(0);
     }
 
+exit:
+
 #if !defined(S52_USE_RADAR)
     EGL_END(DRAW);
 #endif
@@ -4435,8 +4441,6 @@ DLL int    STD S52_draw(void)
         PRINTF("    DRAW: %.0f msec --------------------------------------\n", sec * 1000);
     }
 #endif
-
-exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -4597,6 +4601,8 @@ DLL int    STD S52_drawLast(void)
         PRINTF("WARNING:S52_GL_begin() failed\n");
     }
 
+exit:
+
     EGL_END(LAST);
 
 #ifdef S52_DEBUG
@@ -4605,9 +4611,6 @@ DLL int    STD S52_drawLast(void)
         //PRINTF("DRAWLAST: %.0f msec (cull/total) %i/%i\n", sec * 1000, _nCull, _nTotal);
     }
 #endif
-
-
-exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -4736,9 +4739,9 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
 
 exit:
 
-    GMUTEXUNLOCK(&_mp_mutex);
-
     EGL_END(STR);
+
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return ret;
 }
@@ -4773,7 +4776,6 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
     }
 
     if ((north<0.0) || (360.0<=north)) {
-        //PRINTF("WARNING: north (%f), reset to %f\n", north, _view.north);
         PRINTF("WARNING: north (%f) over/underflow\n", north);
         goto exit;
     }
@@ -4798,9 +4800,9 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
 
 exit:
 
-    GMUTEXUNLOCK(&_mp_mutex);
-
     EGL_END(BLIT);
+
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return ret;
 }
@@ -4881,51 +4883,29 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
     //*
     if (ABS(cLat) > 90.0) {
         PRINTF("WARNING: FAIL, cLat outside [-90..+90](%f)\n", cLat);
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //g_assert(0);
-        //return FALSE;
         goto exit;
     }
 
     if (ABS(cLon) > 180.0) {
         PRINTF("WARNING: FAIL, cLon outside [-180..+180] (%f)\n", cLon);
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //g_assert(0);
-        //return FALSE;
         goto exit;
     }
     //*/
 
-    //if (rNM < 0) {
-    //    rNM = _view.rNM;
-    //} else {
     if ((rNM < MIN_RANGE) || (rNM > MAX_RANGE)) {
         PRINTF("WARNING: FAIL, rNM outside limit (%f)\n", rNM);
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //g_assert(0);
-        //return FALSE;
         goto exit;
     }
-    //}
 
     // FIXME: PROJ4 will explode here (INFINITY) for mercator
     // Note: must validate rNM first
     if ((ABS(cLat)*60.0 + rNM) > (90.0*60)) {
         PRINTF("WARNING: FAIL, rangeNM > 90*60 NM (%f)\n", rNM);
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //g_assert(0);
-        //return FALSE;
         goto exit;
     }
 
-    //if (north < 0) {
-    //    north = _view.north;
-    //} else {
     if ((north>=360.0) || (north<0.0)) {
         PRINTF("WARNING: FAIL, north outside [0..360[ (%f)\n", north);
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //g_assert(0);
-        //return FALSE;
         goto exit;
     }
     //}
@@ -4935,11 +4915,12 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
 
     ret = S52_GL_setView(cLat, cLon, rNM, north);
 
-    // update local var _view
+    /* update local var _view
     _view.cLat  = cLat;
     _view.cLon  = cLon;
     _view.rNM   = rNM;
     _view.north = north;
+    */
 
 exit:
 
@@ -4958,11 +4939,15 @@ DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *nort
 
     S52_CHECK_MUTX_INIT;
 
-    // update local var _view
+    /* update local var _view
     *cLat  = _view.cLat;
     *cLon  = _view.cLon;
     *rNM   = _view.rNM;
     *north = _view.north;
+    */
+
+    S52_getView(cLat, cLon, rNM, north);
+
     /*
     double LLv;
     double LLu;
@@ -5492,9 +5477,10 @@ cleanup:
     S52_MP_set(S52_MAR_ANTIALIAS, oldAA);
 
 exit:
-    GMUTEXUNLOCK(&_mp_mutex);
 
     EGL_END(PICK);
+
+    GMUTEXUNLOCK(&_mp_mutex);
 
     return name;
 }
@@ -6614,9 +6600,6 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label)
 
     char   attval[80];
 
-    //double xyz[3] = {_view.cLon, _view.cLat, 0.0};
-    //double xyz[3] = {0.0, 0.0, 0.0};
-
     SNPRINTF(attval, 80, "_vessel_label:%s", (NULL==label) ? "":label);
 
     // only one OWNSHP
@@ -7178,8 +7161,12 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
             latA = ppt[1];
         } else {
             // FIXME: get the real value
-            lonA = _view.cLon;
-            latA = _view.cLat;
+            double cLat, cLon, rNM, north;
+            S52_getView(&cLat, &cLon, &rNM, &north);
+            lonA = cLon;
+            latA = cLat;
+            //lonA = _view.cLon;
+            //latA = _view.cLat;
         }
         break;
     }
