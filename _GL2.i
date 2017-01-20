@@ -180,7 +180,24 @@ static const GLubyte _dashpa_mask_bits[4] = {     // 4 x 8 bits = 32 bits
 
 
 // other pattern are created using FBO
-static GLuint        _fboID = 0;
+static GLuint         _fboID = 0;
+
+// hold copy of FrameBuffer
+static guint          _fb_pixels_id   = 0;     // texture ID
+static unsigned char *_fb_pixels      = NULL;
+static guint          _fb_pixels_size = 0;
+static int            _fb_pixels_udp  = TRUE;  // TRUE flag that the FB changed
+
+#define _RGB           3
+#define _RGBA          4
+#ifdef S52_USE_ADRENO
+static int            _fb_pixels_format      = _RGB;   // alpha blending done in shader
+#else
+static int            _fb_pixels_format      = _RGBA;
+//static int            _fb_pixels_format      = _RGB ;  // NOTE: on TEGRA2 RGB (3) very slow
+#endif
+
+
 
 //---- PATTERN GL2 / GLES2 -----------------------------------------------------------
 
@@ -737,7 +754,7 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
     _pushScaletoPixel(FALSE);
 
     // horizontal text
-    _glRotated(-_north, 0.0, 0.0, 1.0);
+    _glRotated(-_view.north, 0.0, 0.0, 1.0);
 
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
@@ -895,7 +912,6 @@ static int       _initTexture(void)
     glGenTextures(1, &_dottpa_mask_texID);
     glGenTextures(1, &_dashpa_mask_texID);
 
-
     _checkError("_initTexture -0-");
 
     // ------------
@@ -975,11 +991,45 @@ static int       _initTexture(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     _checkError("_initTexture -3.4-");
 
+    // ------------
+    // setup mem buffer to save FB to
+    glGenTextures(1, &_fb_pixels_id);
+    glBindTexture  (GL_TEXTURE_2D, _fb_pixels_id);
+
+#ifdef S52_USE_TEGRA2
+    // Note: _fb_pixels must be in sync with _fb_format
+    glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    // modern way
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+#else
+#ifdef S52_USE_GLSC2
+    // modern way
+    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
+#else
+    // old way
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp.w, _vp.h, 0);
+    // modern way
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
+#endif
+#endif
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
+
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glBindTexture  (GL_TEXTURE_2D, 0);
 
     return TRUE;
 }
 
-#ifndef S52_USE_GLSC2
+#if !defined(S52_USE_GLSC2)
 static int       _saveShaderBin(GLuint programObject)
 // Save a GLSL shader bin into a file
 {
@@ -1092,7 +1142,7 @@ static GLuint    _loadShaderBin(void)
     return progId;
 }
 
-#ifndef S52_USE_GLSC2
+#if !defined(S52_USE_GLSC2)
 static GLuint    _loadShaderSrc(GLenum type, const char *shaderSrc)
 {
     GLint compiled = GL_FALSE;
@@ -1417,44 +1467,6 @@ static int       _init_gl2(void)
 #else
     glClear(GL_COLOR_BUFFER_BIT);
 #endif
-
-    // setup mem buffer to save FB to
-    glGenTextures(1, &_fb_texture_id);
-    glBindTexture  (GL_TEXTURE_2D, _fb_texture_id);
-
-#ifdef S52_USE_TEGRA2
-    // Note: _fb_pixels must be in sync with _fb_format
-    glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-    // modern way
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
-    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-#else
-#ifdef S52_USE_GLSC2
-    // modern way
-    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
-#else
-    // old way
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp.w, _vp.h, 0);
-    // modern way
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
-#endif
-#endif
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    //_checkError("_init_es2() -4-");
-
-    //_checkError("_init_es2() -5-");
-
-    glBindTexture  (GL_TEXTURE_2D, 0);
 
     _checkError("_init_es2() -fini-");
 
