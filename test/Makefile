@@ -106,10 +106,10 @@ s52gtk2egl: CFLAGS = -I.. -I. `pkg-config --cflags egl gtk+-2.0 libgps ` \
                      -DS52_USE_AFGLOW
 
 # same as s52eglx, but "gtk+-3.0" is added
-s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl gtk+-3.0 libgps` \
+s52gtk3egl: CFLAGS = -I.. -I. `pkg-config --cflags egl gtk+-3.0 libgps`\
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
-`                    -DUSE_AIS               \
+                     -DUSE_AIS               \
                      -DS52_USE_AFGLOW
 
 s52gv:      CFLAGS = `gtk-config --cflags` `glib-config --cflags`    \
