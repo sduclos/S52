@@ -70,29 +70,30 @@
 
 // FIXME: mutex this if share data
 typedef struct s52engState {
-    int        do_S52init;
+    int         do_S52init;
     // initial view
-    double     cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
+    double      cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
+
+    gint        width;
+    gint        height;
+    gint        wmm;
+    gint        hmm;
 } s52engState;
 
 //
 typedef struct s52engine {
-    s52engState         state;
-    EGLState            eglState;          // def in _egl.i
+    s52engState state;
+    EGLState    eglState;          // def in _egl.i
 
     // local
-    int                 do_S52draw;        // TRUE to call S52_draw()
-    int                 do_S52drawLast;    // TRUE to call S52_drawLast() - S52_draw() was called at least once
-    int                 do_S52setViewPort; // set in Android callback
+    int         do_S52draw;        // TRUE to call S52_draw()
+    int         do_S52drawLast;    // TRUE to call S52_drawLast() - S52_draw() was called at least once
+    int         do_S52setViewPort; // set in Android callback
 
-    int32_t             width;
-    int32_t             height;
-    int32_t             wmm;
-    int32_t             hmm;
     // Xoom - dpi = 160 (density)
-    int32_t             dpi;            // = AConfiguration_getDensity(engine->app->config);
+    //int32_t             dpi;            // = AConfiguration_getDensity(engine->app->config);
 
-    GTimeVal            timeLastDraw;
+    //GTimeVal            timeLastDraw;
 
 } s52engine;
 
@@ -107,8 +108,15 @@ static int      _s52_getView(s52engState *state)
 
     state->cLat  =  (N + S) / 2.0;
     state->cLon  =  (E + W) / 2.0;
-    state->rNM   = ((N - S) / 2.0) * 60.0;  // FIXME: pick dominan projected N-S or E-W
-    state->north = 0.0;
+    if (0.0 == state->rNM) {
+        if (state->width > state->height) {
+            state->rNM   = ((N - S) / 2.0) * 60.0;
+        } else {
+            state->rNM   = ((W - E) / 2.0) * 60.0;
+        }
+    }
+
+    //state->north = 0.0;
 
     return TRUE;
 }
@@ -120,14 +128,14 @@ static int      _s52_init   (s52engine *engine)
         return FALSE;
     }
 
-    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_WIDTH,  &engine->width);
-    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_HEIGHT, &engine->height);
+    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_WIDTH,  &engine->state.width);
+    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_HEIGHT, &engine->state.height);
 
     // return constant value EGL_UNKNOWN (-1) with Mesa
     // The value returned is equal to the actual dot pitch, in pixels/meter, multiplied by the constant value EGL_DISPLAY_SCALING.
     // EGL_DISPLAY_SCALING is the constant value 10000.
-    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_HORIZONTAL_RESOLUTION, &engine->wmm);
-    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_VERTICAL_RESOLUTION,   &engine->hmm);
+    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_HORIZONTAL_RESOLUTION, &engine->state.wmm);
+    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_VERTICAL_RESOLUTION,   &engine->state.hmm);
 
     {
         // FIXME: broken on some monitor
@@ -275,10 +283,10 @@ static int      _s52_draw_cb(gpointer user_data)
     // draw background
     if (TRUE == engine->do_S52draw) {
         if (TRUE == engine->do_S52setViewPort) {
-            eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_WIDTH,  &engine->width);
-            eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_HEIGHT, &engine->height);
+            eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_WIDTH,  &engine->state.width);
+            eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_HEIGHT, &engine->state.height);
 
-            S52_setViewPort(0, 0, engine->width, engine->height);
+            S52_setViewPort(0, 0, engine->state.width, engine->state.height);
 
             engine->do_S52setViewPort = FALSE;
         }
@@ -437,25 +445,29 @@ static gboolean configure_event(GtkWidget         *widget,
 
     GtkAllocation allocation;
     gtk_widget_get_allocation(widget, &allocation);
-    _engine.width  = allocation.width;
-    _engine.height = allocation.height;
-    //_engine.width  = widget->allocation.width;
-    //_engine.height = widget->allocation.height;
 
-    //gtk_window_get_size(GTK_WINDOW(widget), &_engine.width, &_engine.height);
+    if ((_engine.state.width!=allocation.width) || (_engine.state.height!= allocation.height)) {
 
-    // GTK 3.0
-    //gtk_widget_get_size_request(GTK_WIDGET(widget), gint *width, gint *height);
+        _engine.state.width  = allocation.width;
+        _engine.state.height = allocation.height;
+        //_engine.width  = widget->allocation.width;
+        //_engine.height = widget->allocation.height;
 
-    _s52_getView(&_engine.state);
-    S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north);
-    S52_setViewPort(0, 0, _engine.width, _engine.height);
+        //gtk_window_get_size(GTK_WINDOW(widget), &_engine.width, &_engine.height);
 
-    _engine.do_S52draw = TRUE;
-    _engine.do_S52drawLast = TRUE;
+        // GTK 3.0
+        //gtk_widget_get_size_request(GTK_WIDGET(widget), gint *width, gint *height);
+
+        //_s52_getView(&_engine.state);
+        //S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north);
+        S52_setViewPort(0, 0, _engine.state.width, _engine.state.height);
+
+        _engine.do_S52draw     = TRUE;
+        _engine.do_S52drawLast = TRUE;
+    }
 
     g_print("DEBUG: s52gtkegl:configure_event() \n");
- 
+
     return TRUE;
 }
 
@@ -1037,24 +1049,19 @@ GDK_TOUCHPAD_GESTURE_MASK     = 1 << 24,
     g_print("EventMask:0x%X\n", gtk_widget_get_events(_engine.eglState.window));
     // =>EventMask:0x400310  -->  0100 0000 0000 0011 0001 0000
 
-    //gtk_widget_add_events(GTK_WIDGET(_engine.eglState.window), GDK_EXPOSURE_MASK);
-
-    //gtk_widget_set_app_paintable     (GTK_WIDGET(_engine.eglState.window), TRUE );
+    gtk_widget_set_app_paintable     (GTK_WIDGET(_engine.eglState.window), TRUE );
     gtk_widget_set_redraw_on_allocate(GTK_WIDGET(_engine.eglState.window), TRUE );
+    // FIXME: GTK3 trigger GDK_DEPRECATED_IN_3_14
+    // but doc say its OK https://developer.gnome.org/gtk3/stable/chap-drawing-model.html#double-buffering
+    gtk_widget_set_double_buffered   (GTK_WIDGET(_engine.eglState.window), FALSE);
 
-    // not in GTK3
-    //gtk_widget_set_double_buffered   (GTK_WIDGET(_engine.window), FALSE);
-
-    //g_signal_connect(G_OBJECT(_engine.window), "destroy",           G_CALLBACK(gtk_widget_destroyed), &window);
     g_signal_connect(G_OBJECT(_engine.eglState.window), "destroy",           G_CALLBACK(gtk_main_quit),     NULL);
     g_signal_connect(G_OBJECT(_engine.eglState.window), "key_release_event", G_CALLBACK(key_release_event), NULL);
     g_signal_connect(G_OBJECT(_engine.eglState.window), "configure_event",   G_CALLBACK(configure_event),   NULL);
 
-
-    // FIXME: something about swap buffer in EGL is afoot
-    g_timeout_add(100, _s52_draw_cb, &_engine); // 0.1 sec
-    //g_timeout_add(500, _s52_draw_cb, &_engine); // 0.5 sec
-    //g_timeout_add(500*4, _s52_draw_cb, &_engine); // 2.0 sec debug
+    //g_timeout_add(100, _s52_draw_cb, &_engine); // 0.1 sec
+    g_timeout_add(500,     _s52_draw_cb, &_engine); // 0.5 sec
+    //g_timeout_add(500*4,   _s52_draw_cb, &_engine); // 2.0 sec debug
     //g_timeout_add(500*4*2, _s52_draw_cb, &_engine); // 4.0 sec debug
 
 #if GTK_MAJOR_VERSION == 3
