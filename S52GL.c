@@ -63,14 +63,24 @@ static GArray      *_tmpWorkBuffer = NULL;    // tmp buffer
 ////////////////////////////////////////////////////////////////////
 // Projection View
 
+
 // optimisation
 //static int          _identity_MODELVIEW = FALSE;   // TRUE then identity matrix for modelview is on GPU (optimisation for AC())
 //static int          _identity_MODELVIEW_cnt = 0;   // count saving
 
+/*
 static double       _north     = 0.0;  // from north to top / ship's head up (deg)
 static double       _rangeNM   = 0.0;
 static double       _centerLat = 0.0;
 static double       _centerLon = 0.0;
+*/
+
+//* helper - save user center of view in degree
+typedef struct _view_t{
+    double cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
+} _view_t;
+static _view_t _view = {0.0, 0.0, 0.0, 0.0};
+//*/
 
 static double       _SCAMIN    = 1.0;  // screen scale (SCAle MINimum in S57)
 static double       _scalex    = 1.0;  // meter per pixel in X
@@ -105,23 +115,6 @@ typedef enum _VP {
 
 ////////////////////////////////////////////////////////////////////
 
-#define S52_MAX_FONT  4
-
-// hold copy of FrameBuffer
-static int            _fb_update      = TRUE;  // TRUE flag that the FB changed
-static unsigned char *_fb_pixels      = NULL;
-static guint          _fb_pixels_size = 0;
-static guint          _fb_texture_id  = 0;
-
-#define _RGB           3
-#define _RGBA          4
-#ifdef S52_USE_ADRENO
-static int            _fb_format      = _RGB;   // alpha blending done in shader
-#else
-static int            _fb_format      = _RGBA;
-//static int            _fb_format      = _RGB ;  // NOTE: on TEGRA2 RGB (3) very slow
-#endif
-
 typedef struct  pt3  { double   x,y,z; } pt3;
 typedef struct  pt3v { vertex_t x,y,z; } pt3v;
 
@@ -132,6 +125,8 @@ static double _dotpitch_mm_x = 0.3;  // will be overwright at init()
 static double _dotpitch_mm_y = 0.3;  // will be overwright at init()
 #define MM2INCH  25.4
 #define PICA      0.351  // mm
+
+#define S52_MAX_FONT  4
 
 
 /////////////////////////////////////////////////////
@@ -190,18 +185,17 @@ static int     _drgare = 0;     // DRGARE
 static int     _depare = 0;     // DEPARE
 static int     _nAC    = 0;     // total AC (Area Color)
 
-// debug
-//static int   _debug  = 0;
-//static int   _DEBUG  = FALSE;
-//static guint _S57ID  = 0;
-
-
 // tesselated area stat
 static guint   _ntris     = 0;     // area GL_TRIANGLES      count
 static guint   _ntristrip = 0;     // area GL_TRIANGLE_STRIP count
 static guint   _ntrisfan  = 0;     // area GL_TRIANGLE_FAN   count
 static guint   _nCall     = 0;
 static guint   _npoly     = 0;     // total polys
+
+// debug
+//static int   _debug  = 0;
+//static int   _DEBUG  = FALSE;
+//static guint _S57ID  = 0;
 
 // GL utility
 #include "_GLU.i"
@@ -560,7 +554,7 @@ static void      _glLoadIdentity(int mode)
 {
     //(void)mode;
 
-    // debug - alway in GL_MODELVIEW mode in a GLcycle
+    //* debug - alway in GL_MODELVIEW mode in a GLcycle
     if (GL_MODELVIEW == mode) {
         g_assert(*_crntMat == *_mvm[_mvmTop]);
         ;
@@ -568,6 +562,8 @@ static void      _glLoadIdentity(int mode)
         g_assert(*_crntMat == *_pjm[_pjmTop]);
         ;
     }
+    //*/
+
 #ifdef S52_USE_GL2
     memset(_crntMat, 0, sizeof(GLfloat) * 16);
     _crntMat[0] = _crntMat[5] = _crntMat[10] = _crntMat[15] = 1.0;
@@ -751,7 +747,8 @@ static GLint     _glMatrixSet(VP vpcoord)
 
     //*
     _glTranslated(  (left+right)/2.0,  (bottom+top)/2.0, 0.0);
-    _glRotated   (_north, 0.0, 0.0, 1.0);
+    //_glRotated   (_north, 0.0, 0.0, 1.0);
+    _glRotated   (_view.north, 0.0, 0.0, 1.0);
     _glTranslated( -(left+right)/2.0, -(bottom+top)/2.0, 0.0);
     //PRINTF("DEBUG: north:%f\n", _north);
     //*/
@@ -1956,7 +1953,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
         _glTranslated(x, y, 0.0);
         _glScaled(1.0, -1.0, 1.0);            // flip Y
-        _glRotated(_north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
+        _glRotated(_view.north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
         _pushScaletoPixel(TRUE);
 
@@ -1982,9 +1979,11 @@ static int       _renderSY_CSYMB(S52_obj *obj)
     }
 
     //
-    // FIXME: something bellow is affecting LC() winding - maybe matrix rot +- north
-    //
+    // FIXME: looklike as if something bellow is affecting LC() winding - maybe matrix rot +- north
+    //        cannot reproduce the defect of (DATCOVR/M_COVR:CATCOV=2) - HO data limit __/__/__ - LC(HODATA01)
 
+
+    //*
     // north arrow
     if (0 == g_strcmp0(attval->str, "NORTHAR1")) {
         double x   = 30;
@@ -2006,16 +2005,19 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
         _win2prj(&x, &y);
 
-        _renderSY_POINT_T(obj, x, y, _north);
+        _renderSY_POINT_T(obj, x, y, _view.north);
 
         return TRUE;
     }
+    //*/
 
+    //*
     if (TRUE == (int) S52_MP_get(S52_MAR_DISP_CALIB)) {
         // check symbol physical size, should be 5mm by 5mm
         if (0 == g_strcmp0(attval->str, "CHKSYM01")) {
             double x      = _vp.x + 50;
             double y      = _vp.y + 50;
+            // Note: no S52_MP_get(S52_MAR_DOTPITCH_MM_X) because we need exactly 5mm
             double scalex = _scalex / (_dotpitch_mm_x * 100.0);
             double scaley = _scaley / (_dotpitch_mm_y * 100.0);
 
@@ -2024,7 +2026,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
             _glTranslated(x, y, 0.0);
             _glScaled(scalex, scaley, 1.0);
             //_glRotated(_north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
-            _glRotated(-_north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
+            _glRotated(-_view.north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
             _glCallList(DListData);
 
@@ -2037,16 +2039,17 @@ static int       _renderSY_CSYMB(S52_obj *obj)
             // top left (witch is under CPU usage on Android)
             double x   = _vp.w - 50;
             double y   = _vp.h - 50;
-            //double rot = 0.0;
 
             _win2prj(&x, &y);
 
-            _renderSY_POINT_T(obj, x, y,  _north);
+            _renderSY_POINT_T(obj, x, y,  _view.north);
 
             return TRUE;
         }
     }
+    //*/
 
+    //*
     {   // C1 ed3.1: AA5C1ABO.000
         // LOWACC01 QUESMRK1 CHINFO11 CHINFO10 REFPNT02 QUAPOS01
         // CURSRA01 CURSRB01 CHINFO09 CHINFO08 INFORM01
@@ -2055,11 +2058,12 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         GLdouble *ppt     = NULL;
         if (TRUE == S57_getGeoData(geoData, 0, &npt, &ppt)) {
 
-            _renderSY_POINT_T(obj, ppt[0], ppt[1], _north);
+            _renderSY_POINT_T(obj, ppt[0], ppt[1], _view.north);
 
             return TRUE;
         }
     }
+    //*/
 
     // debug --should not reach this point
     PRINTF("CSYMB symbol not rendere: %s\n", attval->str);
@@ -2454,7 +2458,7 @@ static int       _renderSY_leglin(S52_obj *obj)
         if (0.0 != plnspd) {
             // FIXME: strech the box to fit text
             // FIXME: place the box "close to the leg" (see S52 p. I-112)
-            _renderSY_POINT_T(obj, ppt[0], ppt[1], _north);
+            _renderSY_POINT_T(obj, ppt[0], ppt[1], _view.north);
 
 
             /* planned speed text
@@ -2953,7 +2957,7 @@ static int       _renderLS_ownshp(S52_obj *obj)
         // FIXME: draw to the edge of the screen
         // FIXME: coord. sys. must be in meter
         {
-            pt3v pt[2] = {{0.0, 0.0, 0.0}, {_rangeNM * NM_METER * 2.0, 0.0, 0.0}};
+            pt3v pt[2] = {{0.0, 0.0, 0.0}, {_view.rNM * NM_METER * 2.0, 0.0, 0.0}};
             _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
         }
     }
@@ -3082,12 +3086,17 @@ static int       _renderLS_vessel(S52_obj *obj)
             guint     npt    = 0;
 
             if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
-                pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
+                //pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
 
 #ifdef S52_USE_GL2
+                double pt[6] = {ppt[0], ppt[1], 0.0, ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0};
+                // 0 - undefined, 1 - AIS active, 2 - AIS sleeping, 3 - AIS active, close quarter (red)
                 GString *vestatstr = S57_getAttVal(geo, "vestat");
                 if (NULL!=vestatstr && '3'==*vestatstr->str) {
-                    // FIXME: move to _renderLS_setPatDott()
+                    _glLineWidth(3);
+                    _renderLS_gl2('D', 2, pt);
+
+                    /*
                     float dx       = pt[0].x - pt[1].x;
                     float dy       = pt[0].y - pt[1].y;
                     float leglen_m = sqrt(dx*dx + dy*dy);  // leg length in meter
@@ -3104,6 +3113,7 @@ static int       _renderLS_vessel(S52_obj *obj)
                     glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
                     glEnableVertexAttribArray(_aUV);
                     glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
+                    */
                 }
 
                 _glUniformMatrix4fv_uModelview();
@@ -3116,6 +3126,7 @@ static int       _renderLS_vessel(S52_obj *obj)
                 glDisableVertexAttribArray(_aUV);
                 glDisableVertexAttribArray(_aPosition);
 #else
+                pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
                 _glUniformMatrix4fv_uModelview();
                 _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
 #endif
@@ -4238,12 +4249,12 @@ static int       _justifyTXTPos(double strWpx, double strHpx, char hjust, char v
     // horizontal
     switch(hjust) {
     case '1':  // CENTRE
-        wx = (cos(_north*DEG_TO_RAD) * strWw) / 2.0;
-        wy = (sin(_north*DEG_TO_RAD) * strWw) / 2.0;
+        wx = (cos(_view.north*DEG_TO_RAD) * strWw) / 2.0;
+        wy = (sin(_view.north*DEG_TO_RAD) * strWw) / 2.0;
         break;
     case '2':  // RIGHT
-        wx = cos(_north*DEG_TO_RAD) * strWw;
-        wy = sin(_north*DEG_TO_RAD) * strWw;
+        wx = cos(_view.north*DEG_TO_RAD) * strWw;
+        wy = sin(_view.north*DEG_TO_RAD) * strWw;
         break;
     case '3':  // LEFT
         wx = 0.0;
@@ -4264,12 +4275,12 @@ static int       _justifyTXTPos(double strWpx, double strHpx, char hjust, char v
         hy = 0.0;
         break;
     case '2':  // CENTRE
-        hx = (cos(_north*DEG_TO_RAD) * strHw) / 2.0;
-        hy = (sin(_north*DEG_TO_RAD) * strHw) / 2.0;
+        hx = (cos(_view.north*DEG_TO_RAD) * strHw) / 2.0;
+        hy = (sin(_view.north*DEG_TO_RAD) * strHw) / 2.0;
         break;
     case '3':  // TOP
-        hx = cos(_north*DEG_TO_RAD) * strHw;
-        hy = sin(_north*DEG_TO_RAD) * strHw;
+        hx = cos(_view.north*DEG_TO_RAD) * strHw;
+        hy = sin(_view.north*DEG_TO_RAD) * strHw;
         break;
 
     default:
@@ -5055,7 +5066,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
         return FALSE;
 
 #ifdef S52_USE_OPENGL_VBO
-#ifndef S52_USE_GLSC2
+#if !defined(S52_USE_GLSC2)
     if (TRUE == glIsBuffer(DL->vboIds[0])) {
         // NOTE: DL->nbr is 1 - all pattern in PLib have only one color
         // but this is not in S52 specs (check this)
@@ -5072,10 +5083,10 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
         g_assert(0);
         return FALSE;
     }
-#endif  // !S52_USE_GLSC1
+#endif  // !S52_USE_GLSC2
 #else   // S52_USE_OPENGL_VBO
 
-#ifndef S52_USE_GLSC1
+#if !defined(S52_USE_GLSC1)
     // can't delete a display list - no garbage collector in GL SC
     // first delete DL
     //if (TRUE == glIsBuffer(DL->vboIds[0])) {
@@ -5154,7 +5165,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
     }
 
 #ifdef S52_USE_OPENGL_VBO
-#ifndef S52_USE_GLSC2
+#if !defined(S52_USE_GLSC2)
     if (TRUE == glIsBuffer(DL->vboIds[0])) {
         glDeleteBuffers(DL->nbr, &DL->vboIds[0]);
 
@@ -5168,7 +5179,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
 
 #else
 
-#ifndef S52_USE_GLSC1
+#if !defined(S52_USE_GLSC1)
     // in ES SC: can't delete a display list --no garbage collector
     if (0 != DL->vboIds[0]) {
         glDeleteLists(DL->vboIds[0], DL->nbr);
@@ -5459,7 +5470,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
         if (TRUE == raster->isRADAR) {
 
             // no ALPHA in GLSC2
-#ifndef S52_USE_GLSC2
+#if !defined(S52_USE_GLSC2)
             glGenTextures(1, &raster->texID);
             glBindTexture(GL_TEXTURE_2D, raster->texID);
 
@@ -5518,7 +5529,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
         }
     } else {
         // no ALPHA in GLSC2
-#ifndef S52_USE_GLSC2
+#if !defined(S52_USE_GLSC2)
         // update RADAR
         if (TRUE == raster->isRADAR) {
             glBindTexture(GL_TEXTURE_2D, raster->texID);
@@ -5966,7 +5977,8 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     // do projection if draw() since the view is the same for all other mode
     if (S52_GL_DRAW == _crnt_GL_cycle) {
         // this will setup _pmin/_pmax, need a valide _vp
-        _doProjection(_vp, _centerLat, _centerLon, _rangeNM/60.0);
+        //_doProjection(_vp, _centerLat, _centerLon, _rangeNM/60.0);
+        _doProjection(_vp, _view.cLat, _view.cLon, _view.rNM/60.0);
     }
 
     _glMatrixSet(VP_PRJ);
@@ -6035,7 +6047,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
         //if (S52_GL_LAST == _crnt_GL_cycle) {
         // user can draw on top of base
         // then call drawLast repeatdly
-        if (TRUE == _fb_update) {
+        if (TRUE == _fb_pixels_udp) {
 #ifdef S52_USE_GL2
             S52_GL_readFBPixels();
 #else
@@ -6043,7 +6055,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
             S52_GL_readFBPixels();
             glDrawBuffer(GL_BACK);  // GL1
 #endif
-            _fb_update = FALSE;
+            _fb_pixels_udp = FALSE;
         }
 
         // load FB that was filled with the previous draw() call
@@ -6100,7 +6112,7 @@ int        S52_GL_end(S52_GL_cycle cycle)
 
     // texture of FB need update
     if (S52_GL_DRAW == _crnt_GL_cycle) {
-        _fb_update = TRUE;
+        _fb_pixels_udp = TRUE;
     }
 
     /* debug - flush / finish and blit + swap
@@ -6140,7 +6152,7 @@ int        S52_GL_end(S52_GL_cycle cycle)
 #endif
 
 #ifdef S52_USE_GL2
-#ifndef S52_USE_GLSC2
+#if !defined(S52_USE_GLSC2)
     //* test - try save glsl prog after drawing - FAIL on Intel
     // Note: this test to sae bin also in _GL2.i:_compShaderbin()
     static int silent = FALSE;
@@ -6182,7 +6194,7 @@ int        S52_GL_delDL(S52_obj *obj)
             return FALSE;
 
 #ifdef S52_USE_OPENGL_VBO
-#ifndef S52_USE_GLSC2
+#if !defined(S52_USE_GLSC2)
         // delete VBO when program terminated
         if (GL_TRUE == glIsBuffer(vboID)) {
             glDeleteBuffers(1, &vboID);
@@ -6255,7 +6267,7 @@ int        S52_GL_delRaster(S52_GL_ras *raster, int texOnly)
         }
     }
 
-#ifndef S52_USE_GLSC2
+#if !defined(S52_USE_GLSC2)
     glDeleteTextures(1, &raster->texID);
 #endif
     raster->texID = 0;
@@ -6487,7 +6499,7 @@ int        S52_GL_done(void)
         g_array_free(_aftglwColorArr, TRUE);
         _aftglwColorArr = NULL;
     }
-#ifndef S52_USE_GLSC2
+#if !defined(S52_USE_GLSC2)
     if (0 != _vboIDaftglwColrID) {
         glDeleteBuffers(1, &_vboIDaftglwColrID);
         _vboIDaftglwColrID = 0;
@@ -6510,7 +6522,7 @@ int        S52_GL_done(void)
 #endif
 
     // done texture object
-#ifndef S52_USE_GLSC2
+#if !defined(S52_USE_GLSC2)
     glDeleteTextures(1, &_nodata_mask_texID);
     glDeleteTextures(1, &_dottpa_mask_texID);
     glDeleteTextures(1, &_dashpa_mask_texID);
@@ -6536,7 +6548,7 @@ int        S52_GL_done(void)
     _freetype_gl_font[3] = NULL;
 
     if (0 != _freetype_gl_textureID) {
-#ifndef S52_USE_GLSC2
+#if !defined(S52_USE_GLSC2)
         glDeleteBuffers(1, &_freetype_gl_textureID);
 #endif
         _freetype_gl_textureID = 0;
@@ -6584,13 +6596,17 @@ int        S52_GL_setDotPitch(int w, int h, int wmm, int hmm)
     _dotpitch_mm_x = (double)wmm / (double)w;
     _dotpitch_mm_y = (double)hmm / (double)h;
 
-    // debug
-    PRINTF("DOTPITCH(mm): X = %f, Y = %f\n", _dotpitch_mm_x, _dotpitch_mm_y);
+    PRINTF("DEBUG: DOTPITCH(mm): X = %f, Y = %f\n", _dotpitch_mm_x, _dotpitch_mm_y);
 
     S52_MP_set(S52_MAR_DOTPITCH_MM_X, _dotpitch_mm_x);
     S52_MP_set(S52_MAR_DOTPITCH_MM_Y, _dotpitch_mm_y);
 
-    _fb_pixels_size = w * h * _fb_format;
+    if (NULL != _fb_pixels) {
+        PRINTF("DEBUG: _fb_pixels allready alloc\n");
+        g_assert(0);
+    }
+
+    _fb_pixels_size = w * h * _fb_pixels_format;
     _fb_pixels      = g_new0(unsigned char, _fb_pixels_size);
 
     return TRUE;
@@ -6648,10 +6664,38 @@ int        S52_GL_getGEOView(double *LLv, double *LLu, double *URv, double *URu)
 
 int        S52_GL_setView(double centerLat, double centerLon, double rangeNM, double north)
 {
+    /*
     _centerLat = centerLat;
     _centerLon = centerLon;
     _rangeNM   = rangeNM;
     _north     = north;
+    //*/
+
+    //* update local var _view
+    _view.cLat  = centerLat;
+    _view.cLon  = centerLon;
+    _view.rNM   = rangeNM;
+    _view.north = north;
+    //*/
+
+    return TRUE;
+}
+
+int        S52_GL_getView(double *centerLat, double *centerLon, double *rangeNM, double *north)
+{
+    /*
+    *centerLat = _centerLat;
+    *centerLon = _centerLon;
+    *rangeNM   = _rangeNM;
+    *north     = _north;
+    //*/
+
+    //*
+    *centerLat = _view.cLat;
+    *centerLon = _view.cLon;
+    *rangeNM   = _view.rNM;
+    *north     = _view.north;
+    //*/
 
     return TRUE;
 }
@@ -6665,12 +6709,13 @@ int        S52_GL_setViewPort(int x, int y, int width, int height)
     _vp.y = y;
     _vp.w = width;
     _vp.h = height;
-    guint sz = width * height * _fb_format;
 
+    guint sz = width * height * _fb_pixels_format;
     if (_fb_pixels_size < sz) {
         _fb_pixels_size = sz;
-        _fb_pixels      = g_renew(unsigned char, _fb_pixels, _fb_pixels_size);
-        PRINTF("pixels buffer resized (%i)\n", _fb_pixels_size);
+        //_fb_pixels      = g_renew(unsigned char, _fb_pixels, _fb_pixels_size);
+        _fb_pixels      = g_renew(unsigned char, NULL, _fb_pixels_size);
+        PRINTF("DEBUG: pixels buffer resized (%i)\n", _fb_pixels_size);
     }
 
     return TRUE;
@@ -6704,7 +6749,7 @@ int        S52_GL_setScissor(int x, int y, int width, int height)
     //
     // FIXME: extent box if chart rotation - will mess MIO & HO data limit!
     // FIX: skip scissor _north != 0, add doc
-    if (0.0 != _north) {
+    if (0.0 != _view.north) {
         // FIXME: save S52_MAR_DISP_HODATA, reset when N = 0
         glDisable(GL_SCISSOR_TEST);
         return TRUE;
@@ -6896,7 +6941,7 @@ guchar    *S52_GL_readFBPixels(void)
 
 
 #ifdef S52_USE_GL2
-    glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
+    glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
 
 #ifdef S52_USE_GLSC2
     int bufSize =  _vp.w * _vp.h * 4;
@@ -6954,10 +6999,10 @@ int        S52_GL_drawFBPixels(void)
     //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
 
     // set rotation temporatly to 0.0 (via _glMatrixSet())
-    double northtmp = _north;
-    _north = 0.0;
+    double northtmp = _view.north;
+    _view.north = 0.0;
 
-    glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
+    glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
 
 #ifdef S52_USE_GL2
     _glMatrixSet(VP_PRJ);
@@ -7011,7 +7056,7 @@ int        S52_GL_drawFBPixels(void)
 
     _checkError("S52_GL_drawFBPixels() -fini-");
 
-    _north = northtmp;
+    _view.north = northtmp;
 
 
     return TRUE;
@@ -7029,11 +7074,11 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     // WRAP_S/T GL_REPEAT - nop!
 
     // set rotation (via _glMatrixSet())
-    double northtmp = _north;
-    _north = north;
+    double northtmp = _view.north;
+    _view.north = north;
     _glMatrixSet(VP_PRJ);
 
-    glBindTexture(GL_TEXTURE_2D, _fb_texture_id);
+    glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
 
 #ifdef S52_USE_GL2
      // turn ON 'sampler2d'
@@ -7073,7 +7118,7 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
 
     _glMatrixDel(VP_PRJ);
 
-    _north = northtmp;
+    _view.north = northtmp;
 
     _checkError("S52_GL_drawBlit()");
 
@@ -7165,9 +7210,9 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     GDALRasterBandH bandG = GDALGetRasterBand(dataset, 2);
     GDALRasterBandH bandB = GDALGetRasterBand(dataset, 3);
 
-    // get framebuffer pixels
-    guint8 *pixels = g_new0(guint8, width * height * _fb_format);
+    guint8 *pixels = g_new0(guint8, width * height * _fb_pixels_format);
 
+    // get framebuffer pixels
 #ifdef S52_USE_GL2
     // FIXME: arm adreno will break here
     // FIXME: must be in sync with _fb_format
