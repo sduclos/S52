@@ -1355,13 +1355,6 @@ static int        _initPROJview(void)
         return FALSE;
     }
 
-    /*
-    _view.cLat  =  (ext.N + ext.S) / 2.0;
-    _view.cLon  =  (ext.W + ext.E) / 2.0;
-    _view.rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
-    _view.north = 0.0;
-    S52_GL_setView(_view.cLat, _view.cLon, _view.rNM, _view.north);
-    */
     double cLat  =  (ext.N + ext.S) / 2.0;
     double cLon  =  (ext.W + ext.E) / 2.0;
     double rNM   = ((ext.N - ext.S) / 2.0) * 60.0;
@@ -1371,7 +1364,6 @@ static int        _initPROJview(void)
     // FIXME: cLon break bathy projection
     // anti-meridian trick: use cLon, but this break bathy
     S57_setMercPrj(cLat, cLon);
-    //S57_setMercPrj(_view.cLat, _view.cLon);
     //S57_setMercPrj(0.0, cLon); // test - 0 cLat
     //S57_setMercPrj(0.0, 0.0);  // test - 0 cLat
 
@@ -2641,8 +2633,9 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     }
     ch->encPath = fname;
 
-    if (TRUE == _initPROJview())
+    if (TRUE == _initPROJview()) {
         _projectCells();
+    }
 
     // _app() specific to sector light
     _doCullLights = TRUE;
@@ -4946,7 +4939,7 @@ DLL int    STD S52_getView(double *cLat, double *cLon, double *rNM, double *nort
     *north = _view.north;
     */
 
-    S52_getView(cLat, cLon, rNM, north);
+    S52_GL_getView(cLat, cLon, rNM, north);
 
     /*
     double LLv;
