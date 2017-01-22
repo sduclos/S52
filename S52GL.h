@@ -89,8 +89,7 @@ int   S52_GL_setDotPitch(int w, int h, int wmm, int hmm);
 
 // -- framebuffer stuff --------------------------------
 // init frame, save OpenGL state
-// when mode is S52_GL_LAST and previous mode was S52_GL_DRAW
-// pull the FB of Draw() from memory
+// when mode is S52_GL_LAST pull the FB of Draw() from GPU memory
 int   S52_GL_begin(S52_GL_cycle cycle);
 // render an object to framebuffer
 int   S52_GL_draw(S52_obj *obj, gpointer user_data);
@@ -100,19 +99,13 @@ int   S52_GL_draw(S52_obj *obj, gpointer user_data);
 int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
 // draw RADAR,Bathy,...
 int   S52_GL_drawRaster(S52_GL_ras *raster);
+int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north);
+// done frame, restore OpenGL state
+int   S52_GL_end(S52_GL_cycle cycle);
 
-// copy from framebuffer to memory (or texture), return pixels
-unsigned
-char *S52_GL_readFBPixels(void);
 // debug
 int   S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height);
 
-// copy from memory to frame buffer
-int   S52_GL_drawFBPixels(void);
-int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north);
-
-// done frame, restore OpenGL state
-int   S52_GL_end(S52_GL_cycle cycle);
 // ----------------------------------
 
 int   S52_GL_isSupp(S52_obj *obj);
