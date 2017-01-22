@@ -101,22 +101,28 @@ static s52engine _engine;
 
 static int      _s52_getView(s52engState *state)
 {
-    double S,W,N,E;
+    // FIXME: if multiple cell are loaded indivitualy
+    // then get total extent with S52_getCellExtent() + S52_setView() to display all cells
 
+    if (TRUE != S52_getView(&state->cLat, &state->cLon, &state->rNM, &state->north)) {
+        g_print("_s52_getView(): S52_getView() failed\n");
+        g_assert(0);
+    }
+
+    /*
+    double S,W,N,E;
     if (FALSE == S52_getCellExtent(NULL, &S, &W, &N, &E))
         return FALSE;
 
     state->cLat  =  (N + S) / 2.0;
     state->cLon  =  (E + W) / 2.0;
-    if (0.0 == state->rNM) {
-        if (state->width > state->height) {
-            state->rNM   = ((N - S) / 2.0) * 60.0;
-        } else {
-            state->rNM   = ((W - E) / 2.0) * 60.0;
-        }
+    state->rNM   = ((N - S) / 2.0) * 60.0;
+    state->north = 0.0;
+    if (TRUE != S52_setView(&state->cLat, state->cLon, &state->rNM, &state->north)) {
+        g_print("_s52_getView(): S52_getView() failed\n");
+        g_assert(0);
     }
-
-    //state->north = 0.0;
+    */
 
     return TRUE;
 }
@@ -175,21 +181,15 @@ static int      _s52_init   (s52engine *engine)
             engine->state.do_S52init = FALSE;
             return FALSE;
         }
-
-        //g_print("_init_S52(): start -2- ..\n");
-
-        //S52_setViewPort(0, 0, w, h);
-
     }
 
     // load ENC, ..
     _s52_setupMain();
 
-    // if first start find where we are looking
+    // get where we are looking _AFTER_ loadCell
     _s52_getView(&engine->state);
-    // then (re)position the 'camera'
-    S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
 
+    // set Mariner's Parameter
     _s52_setupMarPar();
 
     // init decoration (scale bar, North arrow, unit, calib.)
@@ -202,7 +202,7 @@ static int      _s52_init   (s52engine *engine)
     _s52_setupVRMEBL(engine->state.cLat, engine->state.cLon);
 
     // guard zone OFF (pick need GL projection)
-    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
+    //S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
     _s52_setupIceRte();
     _s52_setupLEGLIN(engine->state.cLat, engine->state.cLon);
     S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
@@ -443,30 +443,18 @@ static gboolean configure_event(GtkWidget         *widget,
     (void)event;
     (void)data;
 
-    GtkAllocation allocation;
-    gtk_widget_get_allocation(widget, &allocation);
+    g_print("DEBUG: s52gtkegl:configure_event() \n");
 
-    if ((_engine.state.width!=allocation.width) || (_engine.state.height!= allocation.height)) {
+    gint width, height;
+    gtk_window_get_size(GTK_WINDOW(widget), &width, &height);
 
-        _engine.state.width  = allocation.width;
-        _engine.state.height = allocation.height;
-        //_engine.width  = widget->allocation.width;
-        //_engine.height = widget->allocation.height;
-
-        //gtk_window_get_size(GTK_WINDOW(widget), &_engine.width, &_engine.height);
-
-        // GTK 3.0
-        //gtk_widget_get_size_request(GTK_WIDGET(widget), gint *width, gint *height);
-
-        //_s52_getView(&_engine.state);
-        //S52_setView(_engine.state.cLat, _engine.state.cLon, _engine.state.rNM, _engine.state.north);
-        S52_setViewPort(0, 0, _engine.state.width, _engine.state.height);
+    if (TRUE == S52_setViewPort(0, 0, width, height)) {
+        _engine.state.width  = width;
+        _engine.state.height = height;
 
         _engine.do_S52draw     = TRUE;
         _engine.do_S52drawLast = TRUE;
     }
-
-    g_print("DEBUG: s52gtkegl:configure_event() \n");
 
     return TRUE;
 }
@@ -1051,8 +1039,8 @@ GDK_TOUCHPAD_GESTURE_MASK     = 1 << 24,
 
     gtk_widget_set_app_paintable     (GTK_WIDGET(_engine.eglState.window), TRUE );
     gtk_widget_set_redraw_on_allocate(GTK_WIDGET(_engine.eglState.window), TRUE );
-    // FIXME: GTK3 trigger GDK_DEPRECATED_IN_3_14
-    // but doc say its OK https://developer.gnome.org/gtk3/stable/chap-drawing-model.html#double-buffering
+
+    // FIXME: GTK3 GDK_DEPRECATED_IN_3_14, call work, but not portable.
     gtk_widget_set_double_buffered   (GTK_WIDGET(_engine.eglState.window), FALSE);
 
     g_signal_connect(G_OBJECT(_engine.eglState.window), "destroy",           G_CALLBACK(gtk_main_quit),     NULL);
