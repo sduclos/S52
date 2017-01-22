@@ -5802,6 +5802,137 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     return TRUE;
 }
 
+static guchar   *_readFBPixels(void)
+{
+    if (S52_GL_PICK == _crnt_GL_cycle) {
+        return NULL;
+    }
+
+    // debug
+    //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
+
+
+#ifdef S52_USE_GL2
+    glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
+
+#ifdef S52_USE_GLSC2
+    int bufSize =  _vp.w * _vp.h * 4;
+    _glReadnPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
+
+    _checkError("S52_GL_readFBPixels().. -0-");
+
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
+    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+
+    _checkError("S52_GL_readFBPixels().. -1-");
+
+#else  // S52_USE_GLSC2
+
+#ifdef S52_USE_TEGRA2
+    // Note: glCopyTexImage2D flip Y on TEGRA (Xoom)
+    // Note: must be in sync with _fb_format
+
+    // copy FB --> MEM
+    // RGBA
+    glReadPixels(_vp.x, _vp.y,  _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    // copy MEM --> Texture
+    // RGBA
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    // modern way
+    //glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h,);
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h,, 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+
+#else   // S52_USE_TEGRA2
+    // RGB
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp.w, _vp.h, 0);
+#endif  // S52_USE_TEGRA2
+#endif  // S52_USE_GLSC2
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+#else   // S52_USE_GL2
+    // GL1
+    glReadPixels(_vp.x, _vp.y,  _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+#endif  // S52_USE_GL2
+
+    _checkError("S52_GL_readFBPixels().. -end-");
+
+    return _fb_pixels;
+}
+
+static int       _drawFBPixels(void)
+{
+    if (S52_GL_PICK == _crnt_GL_cycle) {
+        return FALSE;
+    }
+
+    // debug
+    //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
+
+    // set rotation temporatly to 0.0 (via _glMatrixSet())
+    double northtmp = _view.north;
+    _view.north = 0.0;
+
+    glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
+
+#ifdef S52_USE_GL2
+    _glMatrixSet(VP_PRJ);
+
+    // turn ON 'sampler2d'
+    glUniform1f(_uBlitOn, 1.0);
+
+    GLfloat ppt[4*3 + 4*2] = {
+        _pmin.u, _pmin.v, 0.0,   0.0, 0.0,
+        _pmin.u, _pmax.v, 0.0,   0.0, 1.0,
+        _pmax.u, _pmax.v, 0.0,   1.0, 1.0,
+        _pmax.u, _pmin.v, 0.0,   1.0, 0.0
+    };
+
+    glEnableVertexAttribArray(_aUV);
+    glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
+
+    glEnableVertexAttribArray(_aPosition);
+    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
+
+    glFrontFace(GL_CW);
+
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    glFrontFace(GL_CCW);
+
+    // turn OFF 'sampler2d'
+    glUniform1f(_uBlitOn, 0.0);
+
+    glDisableVertexAttribArray(_aUV);
+    glDisableVertexAttribArray(_aPosition);
+
+    _glMatrixDel(VP_PRJ);
+
+#else   // S52_USE_GL2
+
+    _glMatrixSet(VP_WIN);
+    glRasterPos2i(0, 0);
+
+    // parameter must be in sync with glReadPixels()
+    // RGBA
+    glDrawPixels(_vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    // RGB
+    //glDrawPixels(_vp[2], _vp[3], GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
+
+    _glMatrixDel(VP_WIN);
+
+#endif  // S52_USE_GL2
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    _checkError("S52_GL_drawFBPixels() -fini-");
+
+    _view.north = northtmp;
+
+    return TRUE;
+}
+
 int        S52_GL_begin(S52_GL_cycle cycle)
 {
     // GL sanity check before start of cycle
@@ -5820,12 +5951,7 @@ int        S52_GL_begin(S52_GL_cycle cycle)
         g_assert(0);
         return FALSE;
     }
-
     _crnt_GL_cycle = cycle;
-
-    // optimisation
-    //_identity_MODELVIEW = FALSE;
-    //_identity_MODELVIEW_cnt = 0;
 
     S52_GL_init();
 
@@ -5835,13 +5961,16 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     _nAC    = 0;
     _nFrag  = 0;
 
-
     // stat
     _ntristrip = 0;
     _ntrisfan  = 0;
     _ntris     = 0;
     _nCall     = 0;
     _npoly     = 0;
+
+    // test optimisation
+    //_identity_MODELVIEW     = FALSE;
+    //_identity_MODELVIEW_cnt = 0;
 
 #ifdef S52_USE_COGL
     cogl_begin_gl();
@@ -6049,17 +6178,17 @@ int        S52_GL_begin(S52_GL_cycle cycle)
         // then call drawLast repeatdly
         if (TRUE == _fb_pixels_udp) {
 #ifdef S52_USE_GL2
-            S52_GL_readFBPixels();
+            _readFBPixels();
 #else
             glDrawBuffer(GL_FRONT); // GL1
-            S52_GL_readFBPixels();
+            _readFBPixels();
             glDrawBuffer(GL_BACK);  // GL1
 #endif
             _fb_pixels_udp = FALSE;
         }
 
         // load FB that was filled with the previous draw() call
-        S52_GL_drawFBPixels();
+        _drawFBPixels();
     }
     break;
 
@@ -6458,7 +6587,7 @@ int        S52_GL_init(void)
     if (0 == _vboIDaftglwVertID) {
         glGenBuffers(1, &_vboIDaftglwVertID);
 
-        // glIsBuffer() faild but _vboIDaftglwVertID is valid
+        // glIsBuffer() failed but _vboIDaftglwVertID is valid
         if (0 == _vboIDaftglwVertID) {
             PRINTF("ERROR: glGenBuffers() fail\n");
             g_assert(0);
@@ -6928,138 +7057,6 @@ cchar     *S52_GL_getNameObjPick(void)
     g_string_printf(_strPick, "%s:%i", name, S57ID);
 
     return (const char *)_strPick->str;
-}
-
-guchar    *S52_GL_readFBPixels(void)
-{
-    if (S52_GL_PICK == _crnt_GL_cycle) {
-        return NULL;
-    }
-
-    // debug
-    //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
-
-
-#ifdef S52_USE_GL2
-    glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
-
-#ifdef S52_USE_GLSC2
-    int bufSize =  _vp.w * _vp.h * 4;
-    _glReadnPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
-
-    _checkError("S52_GL_readFBPixels().. -0-");
-
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
-    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-
-    _checkError("S52_GL_readFBPixels().. -1-");
-
-#else  // S52_USE_GLSC2
-
-#ifdef S52_USE_TEGRA2
-    // Note: glCopyTexImage2D flip Y on TEGRA (Xoom)
-    // Note: must be in sync with _fb_format
-
-    // copy FB --> MEM
-    // RGBA
-    glReadPixels(_vp.x, _vp.y,  _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    // copy MEM --> Texture
-    // RGBA
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    // modern way
-    //glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h,);
-    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h,, 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-
-#else   // S52_USE_TEGRA2
-    // RGB
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp.w, _vp.h, 0);
-#endif  // S52_USE_TEGRA2
-#endif  // S52_USE_GLSC2
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-#else   // S52_USE_GL2
-    // GL1
-    glReadPixels(_vp.x, _vp.y,  _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-#endif  // S52_USE_GL2
-
-    _checkError("S52_GL_readFBPixels().. -end-");
-
-    return _fb_pixels;
-}
-
-int        S52_GL_drawFBPixels(void)
-{
-    if (S52_GL_PICK == _crnt_GL_cycle) {
-        return FALSE;
-    }
-
-    // debug
-    //PRINTF("VP: %i, %i, %i, %i\n", _vp[0], _vp[1], _vp[2], _vp[3]);
-
-    // set rotation temporatly to 0.0 (via _glMatrixSet())
-    double northtmp = _view.north;
-    _view.north = 0.0;
-
-    glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
-
-#ifdef S52_USE_GL2
-    _glMatrixSet(VP_PRJ);
-
-    // turn ON 'sampler2d'
-    glUniform1f(_uBlitOn, 1.0);
-
-    GLfloat ppt[4*3 + 4*2] = {
-        _pmin.u, _pmin.v, 0.0,   0.0, 0.0,
-        _pmin.u, _pmax.v, 0.0,   0.0, 1.0,
-        _pmax.u, _pmax.v, 0.0,   1.0, 1.0,
-        _pmax.u, _pmin.v, 0.0,   1.0, 0.0
-    };
-
-    glEnableVertexAttribArray(_aUV);
-    glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
-
-    glEnableVertexAttribArray(_aPosition);
-    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
-
-    glFrontFace(GL_CW);
-
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-    glFrontFace(GL_CCW);
-
-    // turn OFF 'sampler2d'
-    glUniform1f(_uBlitOn, 0.0);
-
-    glDisableVertexAttribArray(_aUV);
-    glDisableVertexAttribArray(_aPosition);
-
-    _glMatrixDel(VP_PRJ);
-
-#else   // S52_USE_GL2
-
-    _glMatrixSet(VP_WIN);
-    glRasterPos2i(0, 0);
-
-    // parameter must be in sync with glReadPixels()
-    // RGBA
-    glDrawPixels(_vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-    // RGB
-    //glDrawPixels(_vp[2], _vp[3], GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
-
-    _glMatrixDel(VP_WIN);
-
-#endif  // S52_USE_GL2
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    _checkError("S52_GL_drawFBPixels() -fini-");
-
-    _view.north = northtmp;
-
-
-    return TRUE;
 }
 
 int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north)
