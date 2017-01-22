@@ -25,6 +25,9 @@ static int _s52_setupLEGLIN(double cLat, double cLon)
         double lat, lon;
     } pt2;
 
+    // need to turn OFF guard zone because GL projection (used by pick)
+    //not set yet (set via the first call to S52_draw())
+    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
 
     /*
     _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, cLat - 0.01, cLon - 0.01, cLat - 0.010, cLon + 0.010);
@@ -94,6 +97,11 @@ static int _s52_setupLEGLIN(double cLat, double cLon)
     _leglin3  = S52_newLEGLIN(1, 12.0, 0.3, wpS.lat, wpS.lon, wpE.lat, wpE.lon, _leglin2);
     //*/
 
+    if (0==_leglin1 || 0==_leglin2 || 0==_leglin3) {
+        g_print("s52egl:_s52_setupLEGLIN(): S52_newLEGLIN() _leglinX failed\n");
+        g_assert(0);
+    }
+
 
 
     {   // waypoint
@@ -106,17 +114,22 @@ static int _s52_setupLEGLIN(double cLat, double cLon)
         double xyz4[3] = {wpW.lon,     wpW.lat,     0.0};
 
         _waypnt0 = S52_newMarObj("waypnt", S52_POINT, 1, xyz1,  attVal2);
-        S52_toggleDispMarObj(_waypnt0); // off
         _waypnt1 = S52_newMarObj("waypnt", S52_POINT, 1, xyz1,  attVal1);
         _waypnt2 = S52_newMarObj("waypnt", S52_POINT, 1, xyz2,  attVal2);
         _waypnt3 = S52_newMarObj("waypnt", S52_POINT, 1, xyz3,  attVal3);
         _waypnt4 = S52_newMarObj("waypnt", S52_POINT, 1, xyz4,  attVal1);
 
+        if (0==_waypnt0 || 0==_waypnt1 || 0==_waypnt2 || 0==_waypnt3 || 0==_waypnt4) {
+            g_print("s52egl:_s52_setupLEGLIN(): S52_newMarObj() _waypntX failed\n");
+            g_assert(0);
+        }
+
         // test
+        S52_toggleDispMarObj(_waypnt0); // off
         S52_toggleDispMarObj(_waypnt0); // on
         S52_toggleDispMarObj(_waypnt2); // off
 
-        // test - move to wp2 pos
+        // test - move to WP pos
         S52_pushPosition(_waypnt1,  cLat-0.01, cLon+0.01, 0.0);
 
         // test - over drawn a normal WP over an active WP (ugly)
@@ -235,8 +248,7 @@ route normale de navigation.
     _waypnt3 = S52_newMarObj("waypnt", S52_POINT, 1, (double*)&WPxyz[2], attVal3);
     _waypnt4 = S52_newMarObj("waypnt", S52_POINT, 1, (double*)&WPxyz[3], attVal4);
 
-    // need to turn OFF guard zone because projection not set yet (set via S52_loadCell())
-    //double gz = S52_getMarinerParam(S52_MAR_GUARDZONE_BEAM);
+    // need to turn OFF guard zone because GL projection not set yet (set via the first call to S52_draw())
     S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);  // trun off
 #define ALT_RTE 2
     // select: alternate (2) legline for Ice Route 2012-02-12T21:00:00Z
