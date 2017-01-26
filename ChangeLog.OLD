@@ -6,6 +6,7 @@
 
 2017JAN26
     -fix regression of s52glx s52gtk2 in matrix handling
+    -fix ifdef for s52gtk2gl2
 
 2017JAN20
     -modx end EGL before releasing mutex
