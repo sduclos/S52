@@ -888,6 +888,8 @@ static projXY    _prj2win(projXY p)
 
     if (GL_FALSE == _gluProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], vp, &u, &v, &dummy_z)) {
         PRINTF("WARNING: _gluProject() failed x/y: %f %f\n", p.u, p.v);
+        _glMatrixDump(GL_MODELVIEW);
+        _glMatrixDump(GL_PROJECTION);
         g_assert(0);
         return p;
     }
