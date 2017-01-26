@@ -102,7 +102,7 @@ static s52engine _engine;
 static int      _s52_getView(s52engState *state)
 {
     // FIXME: if multiple cell are loaded indivitualy
-    // then get total extent with S52_getCellExtent() + S52_setView() to display all cells
+    // then get total extent with S52_getCellExtent() + S52_setView() to display all cells at the start
 
     if (TRUE != S52_getView(&state->cLat, &state->cLon, &state->rNM, &state->north)) {
         g_print("_s52_getView(): S52_getView() failed\n");
@@ -443,7 +443,7 @@ static gboolean configure_event(GtkWidget         *widget,
     (void)event;
     (void)data;
 
-    g_print("DEBUG: s52gtkegl:configure_event() \n");
+    //g_print("DEBUG: s52gtkegl:configure_event() \n");
 
     gint width, height;
     gtk_window_get_size(GTK_WINDOW(widget), &width, &height);
@@ -489,6 +489,8 @@ static gboolean key_release_event(GtkWidget   *widget,
      //                   break;
         case GDK_KEY_v     :g_print("%s\n", S52_version());    break;
         //case GDK_KEY_x     :_dumpParam();                      break;
+
+        case GDK_KEY_Escape:
         case GDK_KEY_q     :gtk_main_quit();                   break;
 
         case GDK_KEY_w     :_toggle(S52_MAR_TWO_SHADES);       break;
