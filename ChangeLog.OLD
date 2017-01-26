@@ -4,6 +4,9 @@
 #
 
 
+2017JAN26
+    -fix regression of s52glx s52gtk2 in matrix handling
+
 2017JAN20
     -modx end EGL before releasing mutex
     -mod move _view_t struct to GL
