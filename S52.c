@@ -4285,14 +4285,15 @@ static int        _draw()
         g_ptr_array_foreach(c->objList_supp, (GFunc)S52_GL_draw, NULL);
 
         // USE_RASTER/RADAR
-#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
+#if defined(S52_USE_GL2)    || defined(S52_USE_GLES2)
+#if defined(S52_USE_RASTER) || defined(S52_USE_RADAR)
         // draw radar / raster
         // no raster in MARINER_CELL (i==1, cell idx 0)
         if ((1.0==S52_MP_get(S52_MAR_DISP_RADAR_LAYER)) && (1!=i)) {
             _drawRaster(&(c->geoExt));
         }
 #endif
-
+#endif
         // draw over radar
         g_ptr_array_foreach(c->objList_over, (GFunc)S52_GL_draw, NULL);
 
