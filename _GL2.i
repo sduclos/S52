@@ -1198,7 +1198,6 @@ static GLuint    _loadShaderBin(void)
         _glProgramBinaryOES(progId, binaryFormat, (const void *)binary, len);
         //_glProgramBinaryOES(progId, NULL, (const void *)binary, len);
     } else {
-        //g_assert(0);
         return 0;
     }
 #endif
