@@ -858,6 +858,7 @@ static PFNGLPROGRAMBINARYOESPROC          _glProgramBinaryOES       = NULL;
 static PFNGLTEXSTORAGE2DEXTPROC           _glTexStorage2DEXT        = NULL;
 #endif
 
+#ifdef S52_USE_EGL
 static int       _loadProcEXT()
 {
     typedef void (*proc)(void);
@@ -910,6 +911,7 @@ static int       _loadProcEXT()
 
     return TRUE;
 }
+#endif  // S52_USE_EGL
 
 static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
 // make a RGBA texture from 32x32 bitmask
@@ -1196,7 +1198,7 @@ static GLuint    _loadShaderBin(void)
         _glProgramBinaryOES(progId, binaryFormat, (const void *)binary, len);
         //_glProgramBinaryOES(progId, NULL, (const void *)binary, len);
     } else {
-        g_assert(0);
+        //g_assert(0);
         return 0;
     }
 #endif
@@ -1491,7 +1493,9 @@ static int       _init_gl2(void)
 
     _init_freetype_gl();
 
+#ifdef S52_USE_EGL
     _loadProcEXT();
+#endif
 
     _initTexture();
 
