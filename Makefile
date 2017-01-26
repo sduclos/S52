@@ -240,6 +240,7 @@ s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
                   -DS52_USE_FTGL                  \
                   -DS52_DEBUG $(DBG)
 
+#         -DS52_USE_SUPP_LINE_OVERLAP
 s52gtk2gl2 : CFLAGS =                                  \
          `pkg-config  --cflags glib-2.0 lcms gl freetype2`  \
          `gdal-config --cflags`                        \
@@ -250,7 +251,6 @@ s52gtk2gl2 : CFLAGS =                                  \
          -DS52_USE_OPENGL_VBO                          \
          -DS52_USE_GL2                                 \
          -DS52_USE_FREETYPE_GL                         \
-         -DS52_USE_SUPP_LINE_OVERLAP                   \
          -DS52_USE_BACKTRACE                           \
          -DS52_USE_TXT_SHADOW                          \
          -DS52_DEBUG $(DBG)
