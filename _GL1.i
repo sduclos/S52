@@ -40,12 +40,12 @@ static GLint    _pjm[16];       // OpenGL ES SC
 
 #else   // S52_USE_GLSC1
 
-#define _glScaled            glScaled
-#define _glRotated           glRotated
-#define _glTranslated        glTranslated
+#define _glScaled           glScaled
+#define _glRotated          glRotated
+#define _glTranslated       glTranslated
 
-static GLdouble _mvm[16];       // modelview  matrix used in _win2prj / _prj2win
-static GLdouble _pjm[16];       // projection matrix used in _win2prj / _prj2win
+static GLdouble _mvm[16];   // modelview  matrix used in _win2prj / _prj2win
+static GLdouble _pjm[16];   // projection matrix used in _win2prj / _prj2win
 #define GL_DBL_FLT          GL_DOUBLE
 
 #endif  // S52_USE_GLSC1
