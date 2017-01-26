@@ -1810,7 +1810,9 @@ static int        _suppLineOverlap()
                     g_atomic_int_get(&_atomicAbort);
                     if (TRUE == _atomicAbort) {
                         PRINTF("abort _suppLineOverlap() .. \n");
+#ifdef S52_USE_BACKTRACE
                         _backtrace();
+#endif
                         g_atomic_int_set(&_atomicAbort, FALSE);
                         goto exit;
                     }
@@ -4245,32 +4247,38 @@ static int        _draw()
         g_atomic_int_get(&_atomicAbort);
         if (TRUE == _atomicAbort) {
             PRINTF("abort drawing .. \n");
+#ifdef S52_USE_BACKTRACE
             _backtrace();
+#endif
             g_atomic_int_set(&_atomicAbort, FALSE);
             return TRUE;
         }
 
         // ----------------------------------------------------------------------------
-        // LL2XY(guint npt, double *ppt);
+        // FIXME: extract to _LL2XY(guint npt, double *ppt);
         double xyz[6] = {c->geoExt.W, c->geoExt.S, 0.0, c->geoExt.E, c->geoExt.N, 0.0};
+        //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
         if (FALSE == S57_geo2prj3dv(2, xyz)) {
             PRINTF("WARNING: S57_geo2prj3dv() failed\n");
             g_assert(0);
         }
+        //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
 
         S52_GL_prj2win(&xyz[0], &xyz[1]);
         S52_GL_prj2win(&xyz[3], &xyz[4]);
         // ----------------------------------------------------------------------------
 
-        {   // needed in combining HO DATA limit (check for corner overlap)
+        {   //* needed in combining HO DATA limit (check for corner overlap)
             // also mariners obj that overlapp cells
             // FIXME: this also clip calibration symbol if overlap cell & NODATA
             // need to augment the box size for chart rotation, but MIO will overlap!
+            //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
             int x = floor(xyz[0]);
             int y = floor(xyz[1]);
             int w = floor(xyz[3] - xyz[0]);
             int h = floor(xyz[4] - xyz[1]);
             S52_GL_setScissor(x, y, w, h);
+            //*/
         }
 
         // draw under radar
@@ -4478,7 +4486,9 @@ static int        _drawLast(void)
             g_atomic_int_get(&_atomicAbort);
             if (TRUE == _atomicAbort) {
                 PRINTF("abort drawing .. \n");
+#ifdef S52_USE_BACKTRACE
                 _backtrace();
+#endif
                 g_atomic_int_set(&_atomicAbort, FALSE);
                 return TRUE;
             }
@@ -4845,6 +4855,8 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude)
         goto exit;
 
 
+    // ----------------------------------------------------------------------------
+    // FIXME: extract to _LL2XY(guint npt, double *ppt);
     double xyz[3] = {*longitude, *latitude, 0.0};
     if (FALSE == S57_geo2prj3dv(1, xyz)) {
         PRINTF("WARNING: S57_geo2prj3dv() failed\n");
