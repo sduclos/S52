@@ -93,7 +93,7 @@ static double _y      = 0.0;
 #ifdef USE_FAKE_AIS
 #include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP() - fake AIS
 #include "_s52_setupVESSEL.i"  // _s52_setupVESSEL() - fake AIS
-#enbdif
+#endif
 
 #include "_s52_setupMarPar.i"  // _s52_setupMarPar(), buntch of call to S52_setMarinerParam()
 #include "_s52_setupMain.i"    // _s52_setupMain(), various loadCell(), loadPLib(), ..
@@ -402,7 +402,7 @@ static char   **_option(int argc, char **argv)
         { "outpng",   'o', 0, G_OPTION_ARG_STRING, &_outpng,  "output PNG fname",           NULL },
         //{ "s57id",    'i', 0, G_OPTION_ARG_INT,   &_s57id,   "S57 object ID (used w/ o)",  NULL },
         { "encnm",    'e', 0, G_OPTION_ARG_STRING, &_encnm,   "ENC name or $ENC_ROOT",      NULL },
-        { NULL }
+        { NULL, 0, 0, 0, NULL, NULL, NULL, }
     };
 
     {
@@ -638,7 +638,7 @@ static gboolean _inc(S52MarinerParameter paramName)
     return TRUE;
 }
 
-tatic gboolean _mmInc(S52MarinerParameter paramName)
+static gboolean _mmInc(S52MarinerParameter paramName)
 {
     double val = 0.0;
 
@@ -713,9 +713,8 @@ static int      _s52_init()
     // test loading objH _before_ loadPLib
     _s52_setupmarfea(_view.cLat, _view.cLon);
 
-    S52_setTextDisp(0, 100, TRUE);                      // show all text
-    // debug
-    //S52_setTextDisp(21, 1, FALSE);                    // BOYLAT
+    // debug - 21 = BOYLAT, display OFF
+    //S52_setTextDisp(21, 1, FALSE);
 
 #ifdef USE_FAKE_AIS
     _s52_setupOWNSHP(_view.cLat, _view.cLon);
@@ -726,8 +725,6 @@ static int      _s52_init()
 
     _s52_setupPASTRK(_view.cLat, _view.cLon);
 
-    // guard zone OFF (pick need GL projection)
-    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
     _s52_setupIceRte();
     _s52_setupLEGLIN(_view.cLat, _view.cLon);
     S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
@@ -908,8 +905,9 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_Page_Up:_zoom(widget, event);             break;
 
 
-        case GDK_Escape:_resetView(&_view);                break;
-        case GDK_r     : /*gtk_widget_draw(widget, NULL);*/break;
+        case GDK_r     : _resetView(&_view);
+                         //gtk_widget_draw(widget, NULL);
+                         break;
         case GDK_h     :
 //#if !defined(S52_USE_GLES2)
 //            _doRenderHelp = !_doRenderHelp;
@@ -918,6 +916,8 @@ static gboolean key_release_event(GtkWidget   *widget,
             break;
         case GDK_v     :g_print("%s\n", S52_version());    break;
         //case GDK_x     :_dumpParam();                      break;
+
+        case GDK_Escape:
         case GDK_q     :gtk_main_quit();                   break;
 
         case GDK_w     :_toggle(S52_MAR_TWO_SHADES);       break;
