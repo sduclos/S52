@@ -182,7 +182,7 @@ static const GLubyte _dashpa_mask_bits[4] = {     // 4 x 8 bits = 32 bits
 // other pattern are created using FBO
 static GLuint         _fboID = 0;
 
-// hold copy of FrameBuffer
+/* hold copy of FrameBuffer
 static guint          _fb_pixels_id   = 0;     // texture ID
 static unsigned char *_fb_pixels      = NULL;
 static guint          _fb_pixels_size = 0;
@@ -196,7 +196,7 @@ static int            _fb_pixels_format      = _RGB;   // alpha blending done in
 static int            _fb_pixels_format      = _RGBA;
 //static int            _fb_pixels_format      = _RGB ;  // NOTE: on TEGRA2 RGB (3) very slow
 #endif
-
+*/
 
 
 //---- PATTERN GL2 / GLES2 -----------------------------------------------------------
@@ -468,6 +468,73 @@ static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsi
 
     return ftglBuf;
 }
+
+static int       _justifyTXTPos(double strWpx, double strHpx, char hjust, char vjust, double *x, double *y)
+// apply H/V justification to position X/Y
+// Note: see doc at struct _Text in S52PL.c:150 for interpretation
+{
+    double strWw = strWpx * _scalex;
+    double strHw = strHpx * _scaley;
+    double wx, wy;  // width
+    double hx, hy;  // height
+
+    // horizontal
+    switch(hjust) {
+    case '1':  // CENTRE
+        wx = (cos(_view.north*DEG_TO_RAD) * strWw) / 2.0;
+        wy = (sin(_view.north*DEG_TO_RAD) * strWw) / 2.0;
+        break;
+    case '2':  // RIGHT
+        wx = cos(_view.north*DEG_TO_RAD) * strWw;
+        wy = sin(_view.north*DEG_TO_RAD) * strWw;
+        break;
+    case '3':  // LEFT
+        wx = 0.0;
+        wy = 0.0;
+        break;
+
+    default:
+        PRINTF("DEBUG: invalid hjust!\n");
+        wx = 0.0;
+        wy = 0.0;
+        g_assert(0);
+    }
+
+    // vertical
+    switch(vjust) {
+    case '1':  // BOTTOM
+        hx = 0.0;
+        hy = 0.0;
+        break;
+    case '2':  // CENTRE
+        hx = (cos(_view.north*DEG_TO_RAD) * strHw) / 2.0;
+        hy = (sin(_view.north*DEG_TO_RAD) * strHw) / 2.0;
+        break;
+    case '3':  // TOP
+        hx = cos(_view.north*DEG_TO_RAD) * strHw;
+        hy = sin(_view.north*DEG_TO_RAD) * strHw;
+        break;
+
+    default:
+        PRINTF("DEBUG: invalid vjust!\n");
+        hx = 0.0;
+        hy = 0.0;
+        g_assert(0);
+    }
+
+    //PRINTF("DEBUG: px str W/H: %f/%f  scl X/Y: %f/%f\n", strWpx, strHpx, _scalex, _scaley);
+    //PRINTF("DEBUG: w  str W/H: %f/%f  pos X/Y: %f/%f\n", strWw,  strHw,  *x, *y);
+
+    // FIXME: do the math
+    *x += +hx - wx;
+
+    *y += -hy + wy;
+    //*y += hy - wy;
+
+    return TRUE;
+}
+
+
 
 //-----------------------------------------
 //
@@ -989,10 +1056,13 @@ static int       _initTexture(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindTexture  (GL_TEXTURE_2D, 0);
+
     _checkError("_initTexture -3.4-");
 
     // ------------
-    // setup mem buffer to save FB to
+    /* setup mem buffer to save FB to
     glGenTextures(1, &_fb_pixels_id);
     glBindTexture  (GL_TEXTURE_2D, _fb_pixels_id);
 
@@ -1025,6 +1095,7 @@ static int       _initTexture(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     glBindTexture  (GL_TEXTURE_2D, 0);
+    */
 
     return TRUE;
 }
