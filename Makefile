@@ -233,6 +233,13 @@ CFLAGS = `pkg-config  --cflags glib-2.0 lcms gl ftgl`  \
          -DS52_USE_PROJ                                \
          -DS52_DEBUG $(DBG)
 
+s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
+                  `gdal-config --cflags`          \
+                  -DS52_USE_PROJ                  \
+                  -DS52_USE_GL1                   \
+                  -DS52_USE_FTGL                  \
+                  -DS52_DEBUG $(DBG)
+
 s52gtk2gl2 : CFLAGS =                                  \
          `pkg-config  --cflags glib-2.0 lcms gl freetype2`  \
          `gdal-config --cflags`                        \
@@ -264,13 +271,6 @@ s52clutter s52clutter.js : CFLAGS =                         \
 
 s52gtk2p : CFLAGS += -pg
 
-s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
-                  `gdal-config --cflags`          \
-                  -DS52_USE_PROJ                  \
-                  -DS52_USE_GL1                   \
-                  -DS52_USE_FTGL                  \
-                  -DS52_DEBUG $(DBG)
-
 #                  -DS52_USE_SUPP_LINE_OVERLAP
 #                  -DS52_USE_GLSC2
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
@@ -288,7 +288,6 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_SOCK                 \
                   -DS52_USE_TXT_SHADOW           \
                   -DS52_USE_AFGLOW               \
-                  -DS52_USE_BACKTRACE            \
                   -DS52_USE_SYM_VESSEL_DNGHL     \
                   -DS52_USE_RASTER               \
                   -DS52_USE_DUAL_MON             \
