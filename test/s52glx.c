@@ -93,13 +93,11 @@ static XVisualInfo* _getXvis(Display *dpy, int *attr)
 static Window       _setXwin(Display *dpy, XVisualInfo *visInfo)
 // create an X window with the selected visual
 {
-    Colormap             cmap;
+    Window   win  = RootWindow(dpy, visInfo->screen);
+    Colormap cmap = XCreateColormap(dpy, win, visInfo->visual, AllocNone);  // create an X colormap since probably not using default visual
+
+
     XSetWindowAttributes swa;
-    Window               win = RootWindow(dpy, visInfo->screen);
-
-    // create an X colormap since probably not using default visual
-    cmap = XCreateColormap(dpy, win, visInfo->visual, AllocNone);
-
     swa.colormap     = cmap;
     swa.border_pixel = 0;
     //swa.event_mask   = ExposureMask | ButtonPressMask | StructureNotifyMask;
@@ -170,7 +168,19 @@ int main(int argc, char* argv[])
         S52_init(w, h, wmm, hmm, NULL);
     }
 
+    // differ from w/h
     S52_setViewPort(0, 0, WIDTH, HEIGHT);
+
+    /* debug - use for timing rendering
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
+    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
+    //*/
+
+    // load cell from s52.cfg
     S52_loadCell(NULL, NULL);
 
     { // main loop
