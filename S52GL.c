@@ -197,6 +197,21 @@ static guint   _npoly     = 0;     // total polys
 //static int   _DEBUG  = FALSE;
 //static guint _S57ID  = 0;
 
+// hold copy of FrameBuffer
+static guint          _fb_pixels_id   = 0;     // texture ID
+static unsigned char *_fb_pixels      = NULL;
+static guint          _fb_pixels_size = 0;
+static int            _fb_pixels_udp  = TRUE;  // TRUE flag that the FB changed
+#define _RGB           3
+#define _RGBA          4
+#ifdef S52_USE_ADRENO
+static int            _fb_pixels_format      = _RGB;   // alpha blending done in shader
+#else
+static int            _fb_pixels_format      = _RGBA;
+//static int            _fb_pixels_format      = _RGB ;  // NOTE: on TEGRA2 RGB (3) very slow
+#endif
+
+
 // GL utility
 #include "_GLU.i"
 
@@ -552,8 +567,7 @@ static void      _glPopMatrix(int mode)
 
 static void      _glLoadIdentity(int mode)
 {
-    //(void)mode;
-
+#ifdef S52_USE_GL2
     //* debug - alway in GL_MODELVIEW mode in a GLcycle
     if (GL_MODELVIEW == mode) {
         g_assert(*_crntMat == *_mvm[_mvmTop]);
@@ -564,7 +578,6 @@ static void      _glLoadIdentity(int mode)
     }
     //*/
 
-#ifdef S52_USE_GL2
     memset(_crntMat, 0, sizeof(GLfloat) * 16);
     _crntMat[0] = _crntMat[5] = _crntMat[10] = _crntMat[15] = 1.0;
 
@@ -574,6 +587,7 @@ static void      _glLoadIdentity(int mode)
     //    _identity_MODELVIEW = TRUE;
 
 #else
+    (void)mode;
     glLoadIdentity();
 #endif
 
@@ -654,7 +668,7 @@ static GLint     _pushScaletoPixel(int scaleSym)
         scaley /= (S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 100.0);
     }
 
-    //_glMatrixMode(GL_MODELVIEW);
+    _glMatrixMode(GL_MODELVIEW);
     _glPushMatrix(GL_MODELVIEW);
     _glScaled(scalex, scaley, 1.0);
 
@@ -672,7 +686,7 @@ static GLint     _popScaletoPixel(void)
     return TRUE;
 }
 
-#if 0
+//#if 0
 static GLint     _glMatrixDump(int mode)
 // debug
 {
@@ -691,7 +705,7 @@ static GLint     _glMatrixDump(int mode)
 
     return TRUE;
 }
-#endif
+//#endif  // 0
 
 static GLint     _glMatrixSet(VP vpcoord)
 // push & reset matrix GL_PROJECTION & GL_MODELVIEW
@@ -762,6 +776,12 @@ static GLint     _glMatrixSet(VP vpcoord)
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 #endif
 
+#ifdef S52_USE_GL1
+    // GL1 read in matrix from GPU
+    glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
+    glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
+#endif
+
     return TRUE;
 }
 
@@ -796,6 +816,9 @@ static int       _win2prj(double *x, double *y)
 // convert coordinate: window --> projected
 {
     GLint vp[4] = {_vp.x, _vp.y, _vp.w, _vp.h};
+
+    _glLoadIdentity(GL_MODELVIEW);
+
 #ifdef S52_USE_GL2
     float u       = *x;
     float v       = *y;
@@ -810,10 +833,10 @@ static int       _win2prj(double *x, double *y)
     //*/
 
     // Note: this is CPU job - no need to send the matrix to the GPU
-    _glLoadIdentity(GL_MODELVIEW);
+    //_glLoadIdentity(GL_MODELVIEW);
 
     if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], vp, &u, &v, &dummy_z)) {
-        PRINTF("WARNING: UnProjection faild: _mvmTop=%i, _pjmTop=%i\n", _mvmTop, _pjmTop);
+        PRINTF("WARNING: _gluUnProject faild: _mvmTop=%i, _pjmTop=%i\n", _mvmTop, _pjmTop);
         g_assert(0);
         return FALSE;
     }
@@ -822,9 +845,15 @@ static int       _win2prj(double *x, double *y)
     *y = v;
 
 #else
+    //_glLoadIdentity(GL_MODELVIEW);
+
+    // read in matrix from GPU
+    glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
+    glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
+
     GLdouble dummy_z = 0.0;
     if (GL_FALSE == gluUnProject(*x, *y, dummy_z, _mvm, _pjm, vp, x, y, &dummy_z)) {
-        PRINTF("WARNING: UnProjection faild\n");
+        PRINTF("WARNING: gluUnProject faild\n");
         g_assert(0);
         return FALSE;
     }
@@ -837,6 +866,11 @@ static projXY    _prj2win(projXY p)
 // convert coordinate: projected --> window (pixel)
 {
     GLint vp[4] = {_vp.x,_vp.y,_vp.w,_vp.h};
+
+    // make sure that _gluProject() has the right coordinate
+    // but if call from 52_GL_prj2win() then matrix allready set so this is redundant
+    _glLoadIdentity(GL_MODELVIEW);
+
 #ifdef S52_USE_GL2
     // FIXME: find a better way to catch non initialyse matrix
     if (0 == _pjm[_pjmTop]) {
@@ -850,20 +884,25 @@ static projXY    _prj2win(projXY p)
 
     // make sure that _gluProject() has the right coordinate
     // but if call from 52_GL_prj2win() then matrix allready set so this is redundant
-    //_glMatrixMode  (GL_MODELVIEW);
-    _glLoadIdentity(GL_MODELVIEW);
+    //_glLoadIdentity(GL_MODELVIEW);
 
     if (GL_FALSE == _gluProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], vp, &u, &v, &dummy_z)) {
-        PRINTF("ERROR\n");
+        PRINTF("WARNING: _gluProject() failed x/y: %f %f\n", p.u, p.v);
         g_assert(0);
         return p;
     }
     p.u = u;
     p.v = v;
 #else
+    // read in matrix from GPU
+    glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
+    glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
+
     GLdouble dummy_z = 0.0;
     if (GL_FALSE == gluProject(p.u, p.v, dummy_z, _mvm, _pjm, vp, &p.u, &p.v, &dummy_z)) {
-        PRINTF("ERROR\n");
+        PRINTF("WARNING: gluProject() failed x/y: %f %f\n", p.u, p.v);
+        _glMatrixDump(GL_MODELVIEW);
+        _glMatrixDump(GL_PROJECTION);
         g_assert(0);
         return p;
     }
@@ -940,8 +979,11 @@ int        S52_GL_win2prj(double *x, double *y)
 // convert coordinate: window --> projected
 {
     // if symb OK imply that projection is OK
-    if (FALSE == _symbCreated)
-        return FALSE;
+    if (FALSE == _symbCreated) {
+       PRINTF("DEBUG: no symbol imply no projection\n");
+       g_assert(0);
+       return FALSE;
+    }
 
     _glMatrixSet(VP_PRJ);
 
@@ -957,8 +999,11 @@ int        S52_GL_prj2win(double *x, double *y)
 // convert coordinate: projected --> window
 {
     // if symbole OK imply that projection is OK
-    if (FALSE == _symbCreated)
+    if (FALSE == _symbCreated) {
+        PRINTF("DEBUG: no symbol imply no projection\n");
+        g_assert(0);
         return FALSE;
+    }
 
     _glMatrixSet(VP_PRJ);
 
@@ -1265,7 +1310,7 @@ static guint     _createDList(S57_prim *prim)
     guint DList = 0;
     DList = glGenLists(1);
     if (0 == DList) {
-        PRINTF("ERROR: glGenLists() failed\n");
+        PRINTF("WARNING: glGenLists() failed\n");
         g_assert(0);
         return FALSE;
     }
@@ -1952,7 +1997,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         _win2prj(&x, &y);
 
         _glTranslated(x, y, 0.0);
-        _glScaled(1.0, -1.0, 1.0);            // flip Y
+        _glScaled(1.0, -1.0, 1.0);                 // flip Y
         _glRotated(_view.north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
         _pushScaletoPixel(TRUE);
@@ -2015,6 +2060,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
     if (TRUE == (int) S52_MP_get(S52_MAR_DISP_CALIB)) {
         // check symbol physical size, should be 5mm by 5mm
         if (0 == g_strcmp0(attval->str, "CHKSYM01")) {
+            // FIXME: use _dotpitch_ ..
             double x      = _vp.x + 50;
             double y      = _vp.y + 50;
             // Note: no S52_MP_get(S52_MAR_DOTPITCH_MM_X) because we need exactly 5mm
@@ -2024,8 +2070,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
             _win2prj(&x, &y);
 
             _glTranslated(x, y, 0.0);
-            _glScaled(scalex, scaley, 1.0);
-            //_glRotated(_north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
+            _glScaled(scalex,  scaley, 1.0);
             _glRotated(-_view.north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
             _glCallList(DListData);
@@ -4237,71 +4282,6 @@ static int       _traceOP(S52_obj *obj)
     return TRUE;
 }
 
-static int       _justifyTXTPos(double strWpx, double strHpx, char hjust, char vjust, double *x, double *y)
-// apply H/V justification to position X/Y
-// Note: see doc at struct _Text in S52PL.c:150 for interpretation
-{
-    double strWw = strWpx * _scalex;
-    double strHw = strHpx * _scaley;
-    double wx, wy;  // width
-    double hx, hy;  // height
-
-    // horizontal
-    switch(hjust) {
-    case '1':  // CENTRE
-        wx = (cos(_view.north*DEG_TO_RAD) * strWw) / 2.0;
-        wy = (sin(_view.north*DEG_TO_RAD) * strWw) / 2.0;
-        break;
-    case '2':  // RIGHT
-        wx = cos(_view.north*DEG_TO_RAD) * strWw;
-        wy = sin(_view.north*DEG_TO_RAD) * strWw;
-        break;
-    case '3':  // LEFT
-        wx = 0.0;
-        wy = 0.0;
-        break;
-
-    default:
-        PRINTF("DEBUG: invalid hjust!\n");
-        wx = 0.0;
-        wy = 0.0;
-        g_assert(0);
-    }
-
-    // vertical
-    switch(vjust) {
-    case '1':  // BOTTOM
-        hx = 0.0;
-        hy = 0.0;
-        break;
-    case '2':  // CENTRE
-        hx = (cos(_view.north*DEG_TO_RAD) * strHw) / 2.0;
-        hy = (sin(_view.north*DEG_TO_RAD) * strHw) / 2.0;
-        break;
-    case '3':  // TOP
-        hx = cos(_view.north*DEG_TO_RAD) * strHw;
-        hy = sin(_view.north*DEG_TO_RAD) * strHw;
-        break;
-
-    default:
-        PRINTF("DEBUG: invalid vjust!\n");
-        hx = 0.0;
-        hy = 0.0;
-        g_assert(0);
-    }
-
-    //PRINTF("DEBUG: px str W/H: %f/%f  scl X/Y: %f/%f\n", strWpx, strHpx, _scalex, _scaley);
-    //PRINTF("DEBUG: w  str W/H: %f/%f  pos X/Y: %f/%f\n", strWw,  strHw,  *x, *y);
-
-    // FIXME: do the math
-    *x += +hx - wx;
-
-    *y += -hy + wy;
-    //*y += hy - wy;
-
-    return TRUE;
-}
-
 static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
 // render text in AA if Mar Param set
 // Note: PLib C1 CHARS for TE() & TX() alway '15110' - ie style = 1 (alway), weigth = '5' (medium), width = 1 (alway), bsize = 10
@@ -4504,30 +4484,32 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 #ifdef S52_USE_FTGL
     (void)obj;
 
-    double n = _north;
-    _north = 0.0;
+    double n = _view.north;
+    _view.north = 0.0;
 
     _setFragColor(color);
 
     //_setBlend(FALSE);
-    _glMatrixSet(VP_WIN);
+
 
     projUV p = {x, y};
     p = _prj2win(p);
 
-    glRasterPos2i(p.u, p.v);
+    _glMatrixSet(VP_WIN);    // new - set win coord
 
-    // debug
-    //PRINTF("ftgl:%s\n", str);
+    //glRasterPos2i(p.u, p.v);  // round to pixels
+    glRasterPos2d(p.u, p.v);
 
-    if (NULL != _ftglFont[weight])
+    if (NULL != _ftglFont[weight]) {
+        //PRINTF("DEBUG: ftgl:X/Y/str: %f %f %s\n", p.u, p.v, str);
         ftglRenderFont(_ftglFont[weight], str, FTGL_RENDER_ALL);
+    }
 
     _glMatrixDel(VP_WIN);
 
     _checkError("_renderTXTAA() / POINT_T");
 
-    _north = n;
+    _view.north = n;
 #endif // S52_USE_FTGL
 
 
@@ -5947,8 +5929,9 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     // Projection set in the DRAW cycle - hence need to be first
     // so that other calls depend on projection
     if (S52_GL_INIT==_crnt_GL_cycle && S52_GL_DRAW!=cycle) {
-        PRINTF("WARNING: very fist GL_begin must start a DRAW\n");
-        g_assert(0);
+        // Note: land here when AIS start sending target before the main loop call Draw()
+        PRINTF("WARNING: the very fist GL_begin must start a DRAW cycle\n");
+        //g_assert(0);
         return FALSE;
     }
     _crnt_GL_cycle = cycle;
@@ -5996,10 +5979,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     // draw both side
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);   // NOT in OpenGL ES SC
     glEnableClientState(GL_VERTEX_ARRAY);        // NOT in GLES2
-
-    // GL1 read in matrix from GPU
-    glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
-    glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
 
     // draw to back buffer then swap
     glDrawBuffer(GL_BACK);
@@ -6101,12 +6080,11 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 #endif
 
     // -------set matrix param ---------
-    glViewport(_vp.x, _vp.y, _vp.w, _vp.h);
-
     // do projection if draw() since the view is the same for all other mode
     if (S52_GL_DRAW == _crnt_GL_cycle) {
         // this will setup _pmin/_pmax, need a valide _vp
-        //_doProjection(_vp, _centerLat, _centerLon, _rangeNM/60.0);
+        glViewport(_vp.x, _vp.y, _vp.w, _vp.h);
+
         _doProjection(_vp, _view.cLat, _view.cLon, _view.rNM/60.0);
     }
 
@@ -6114,8 +6092,6 @@ int        S52_GL_begin(S52_GL_cycle cycle)
 
     // then create all S52 PLib symbol
     _createSymb();
-
-
 
     // ----- set cycle GL state --------------------------------------------------
     switch(_crnt_GL_cycle) {
@@ -6353,7 +6329,7 @@ int        S52_GL_delDL(S52_obj *obj)
             /* debug
             else
             {
-                PRINTF("WARNING: ivalid FreetypeGL VBOID(%i)\n", vboID);
+                PRINTF("WARNING: invalid FreetypeGL VBOID(%i)\n", vboID);
                 //g_assert(0);
             }
             */
@@ -6368,8 +6344,8 @@ int        S52_GL_delDL(S52_obj *obj)
             vboID = 0;
             S57_setPrimDList(prim, vboID);
         } else {
-            PRINTF("WARNING: ivalid DL\n");
-            g_assert(0);
+            //PRINTF("WARNING: invalid DL\n");
+            //g_assert(0);
             return FALSE;
         }
 #endif  // S52_USE_OPENGL_VBO
@@ -6429,7 +6405,7 @@ static int       _contextValid(void)
     // 16 bits:mode,r,g,b,a,s: 1 5 6 5 0 8
     // 24 bits:mode,r,g,b,a,s: 1 8 8 8 0 8
 
-#if S52_USE_GL1
+#ifdef S52_USE_GL1
     if (s <= 0)
         PRINTF("WARNING: no stencil buffer in cinfig for pattern on GL1\n");
 
@@ -6456,6 +6432,9 @@ static int       _contextValid(void)
             PRINTF("Extensions: %s\n", extensions);
         }
 #endif
+
+#ifdef S52_USE_GL2
+        // FIXME: use macro SETGLEXTENSION(_GL_OES_texture_npot) ..
 
         // npot
         if (NULL != g_strrstr((const char *)extensions, "GL_OES_texture_npot")) {
@@ -6503,6 +6482,8 @@ static int       _contextValid(void)
             PRINTF("DEBUG: GL_EXT/KHR/ARB_robustness %s\n", (NULL==str)? "FAILED": "OK");
             _GL_EXT_robustness = (NULL== str)? FALSE : TRUE;
         }
+#endif  // S52_USE_GL2
+
     }
 
     _checkError("_contextValid()");
@@ -6595,6 +6576,42 @@ int        S52_GL_init(void)
         }
     }
 #endif
+
+    // ------------
+    // setup mem buffer to save FB to
+    glGenTextures(1, &_fb_pixels_id);
+    glBindTexture  (GL_TEXTURE_2D, _fb_pixels_id);
+
+#ifdef S52_USE_TEGRA2
+    // Note: _fb_pixels must be in sync with _fb_format
+    glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    // modern way
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+#else
+#ifdef S52_USE_GLSC2
+    // modern way
+    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
+#else
+    // old way
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp.w, _vp.h, 0);
+    // modern way
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
+#endif
+#endif
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
+
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glBindTexture  (GL_TEXTURE_2D, 0);
+
 
     _doInit = FALSE;
 
@@ -6868,6 +6885,8 @@ int        S52_GL_setScissor(int x, int y, int width, int height)
 // when w & h < 0, GL_INVALID_VALUE is generated
 // so if either width or height is negative the turn of glDisable(GL_SCISSOR_TEST)
 {
+    //PRINTF("DEBUG: x/y/width/height: %i/%i/%i/%i\n", x, y, width, height);
+
     // NOTE: width & height are in fact GLsizei, a pseudo unsigned int
     // it is a 'int32' that can't be negative
     if (width<0 || height<0) {
