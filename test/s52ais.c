@@ -993,6 +993,7 @@ static int           _updateTimeTag(void)
 
     GTimeVal now;
     g_get_current_time(&now);
+
     for (guint i=0; i<_ais_list->len; ++i) {
         gchar    str[128] = {'\0'};
         _ais_t  *ais = &g_array_index(_ais_list, _ais_t, i);
