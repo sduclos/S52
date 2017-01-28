@@ -61,7 +61,6 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DSET_SCREEN_SIZE   - set screen size be hand (hard coded as dual-screen seem to confused the setup)
 # -DUSE_LOG_CB        - log every S52_* in tmp file
 # -DUSE_TEST_OBJ      - load test Mariners' Object
-# -DUSE_MESA3D_ENV    - set ENV for Mesa3D MSAA and vblank_mode
 
 # -DS52_USE_GLES2     - GLES2
 # -DS52_USE_GLES3     - GLES3.x / GLSL ES 3.0
@@ -79,7 +78,6 @@ CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl`
 
 s52gtk2gl2 : CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0` \
                       -DS52_USE_GL2          \
-                      -DUSE_MESA3D_ENV       \
                       -DUSE_AIS
 
 s52gtk2gps: CFLAGS += `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-glib-1` \
@@ -91,7 +89,6 @@ s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
-                     -DUSE_MESA3D_ENV        \
                      -DUSE_AIS               \
                      -DS52_USE_AFGLOW
 
