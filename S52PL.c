@@ -2642,6 +2642,9 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
         // https://mail.gnome.org/archives/gtk-devel-list/2014-December/thread.html
         // use g_array if in need of > 2^31 objects
         // tested with -1 (GUINTMAX) and glib barf saying can't alloc 2^35 something bytes
+
+        // FIX: g_uint_checked_add()
+
         g_ptr_array_set_size(_objList, _objList->len+1024);
     }
 
