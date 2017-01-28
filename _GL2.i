@@ -813,7 +813,6 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
 
     glBindTexture(GL_TEXTURE_2D, _freetype_gl_atlas->id);
 
-    //_glMatrixMode  (GL_MODELVIEW);
     _glLoadIdentity(GL_MODELVIEW);
 
     _glTranslated(x, y, 0.0);
