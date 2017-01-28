@@ -637,7 +637,6 @@ static void      _glOrtho(double left, double right, double bottom, double top, 
 static void      _glUniformMatrix4fv_uModelview(void)
 // optimisation - reset flag
 {
-    //_glMatrixMode  (GL_MODELVIEW);
     _glLoadIdentity(GL_MODELVIEW);
 
 #ifdef S52_USE_GL2
@@ -2866,7 +2865,6 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
     if (NULL != sectr2str) {
         double sectr2 = S52_atof(sectr2str->str);
 
-        //_glMatrixMode  (GL_MODELVIEW);
         _glLoadIdentity(GL_MODELVIEW);
 
         _glTranslated(ppt[0], ppt[1], 0.0);
@@ -2916,7 +2914,6 @@ static int       _renderLS_ownshp(S52_obj *obj)
     if ((NULL!=headngstr) && (TRUE==(int) S52_MP_get(S52_MAR_HEADNG_LINE)) && ('1'==pen_w)) {
         double orient = S52_PL_getSYorient(obj);
 
-        //_glMatrixMode  (GL_MODELVIEW);
         _glLoadIdentity(GL_MODELVIEW);
 
         _glTranslated(ppt[0], ppt[1], 0.0);
@@ -2941,7 +2938,6 @@ static int       _renderLS_ownshp(S52_obj *obj)
         double orient    = S52_PL_getSYorient(obj);
         double beambrgNM = S52_MP_get(S52_MAR_BEAM_BRG_NM);
 
-        //_glMatrixMode  (GL_MODELVIEW);
         _glLoadIdentity(GL_MODELVIEW);
 
         _glTranslated(ppt[0], ppt[1], 0.0);
@@ -2972,9 +2968,7 @@ static int       _renderLS_ownshp(S52_obj *obj)
             double veclenMX  = veclenM  * cos(orientRAD);
             double veclenMY  = veclenM  * sin(orientRAD);
             pt3v   pt[2]     = {{0.0, 0.0, 0.0}, {veclenMX, veclenMY, 0.0}};
-            //pt3v   pt[2]     = {{0.0, 0.0, 0.0}, {0.0, veclenM, 0.0}};
 
-            //_glMatrixMode  (GL_MODELVIEW);
             _glLoadIdentity(GL_MODELVIEW);
 
             _glTranslated(ppt[0], ppt[1], 0.0);
@@ -3025,7 +3019,6 @@ static int       _renderLS_vessel(S52_obj *obj)
                 // draw a line 50mm in length
                 pt3v pt[2] = {{0.0, 0.0, 0.0}, {50.0 / S52_MP_get(S52_MAR_DOTPITCH_MM_X), 0.0, 0.0}};
 
-                //_glMatrixMode  (GL_MODELVIEW);
                 _glLoadIdentity(GL_MODELVIEW);
 
                 _glTranslated(ppt[0], ppt[1], ppt[2]);
@@ -3063,14 +3056,15 @@ static int       _renderLS_vessel(S52_obj *obj)
                 //pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
 
 #ifdef S52_USE_GL2
-                double pt[6] = {ppt[0], ppt[1], 0.0, ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0};
+                //double pt[6] = {ppt[0], ppt[1], 0.0, ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0};
+                pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
                 // 0 - undefined, 1 - AIS active, 2 - AIS sleeping, 3 - AIS active, close quarter (red)
                 GString *vestatstr = S57_getAttVal(geo, "vestat");
                 if (NULL!=vestatstr && '3'==*vestatstr->str) {
-                    _glLineWidth(3);
-                    _renderLS_gl2('D', 2, pt);
+                    //_glLineWidth(3);
+                    //_renderLS_gl2('D', 2, pt);
 
-                    /*
+                    //*
                     float dx       = pt[0].x - pt[1].x;
                     float dy       = pt[0].y - pt[1].y;
                     float leglen_m = sqrt(dx*dx + dy*dy);  // leg length in meter
@@ -3087,7 +3081,7 @@ static int       _renderLS_vessel(S52_obj *obj)
                     glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
                     glEnableVertexAttribArray(_aUV);
                     glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
-                    */
+                    //*/
                 }
 
                 _glUniformMatrix4fv_uModelview();
@@ -3101,7 +3095,7 @@ static int       _renderLS_vessel(S52_obj *obj)
                 glDisableVertexAttribArray(_aPosition);
 #else
                 pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
-                _glUniformMatrix4fv_uModelview();
+                //_glUniformMatrix4fv_uModelview();
                 _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
 #endif
             }
@@ -3859,7 +3853,6 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
         //_setBlend(TRUE);
 
 
-        //_glMatrixMode  (GL_MODELVIEW);
         _glLoadIdentity(GL_MODELVIEW);
 
         _glTranslated(ppt[0], ppt[1], 0.0);
