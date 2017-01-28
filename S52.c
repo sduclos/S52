@@ -4327,12 +4327,14 @@ DLL int    STD S52_draw(void)
     }
 
     S52_CHECK_INIT;
+
+    EGL_BEG(DRAW);
+
     if (NULL == S57_getPrjStr())
         goto exit;
 
     g_timer_reset(_timer);
 
-    EGL_BEG(DRAW);
 
     // debug
     //PRINTF("DRAW: start ..\n");
@@ -4533,7 +4535,7 @@ static int        _drawLast(void)
                 S52_GL_draw(obj, NULL);
                 S52_GL_drawText(obj, NULL);
 
-                //PRINTF("DEBUG:%i: _drawLast() - %s\n", _nTotal, S57_getName(geo));
+                //PRINTF("DEBUG:%i: _drawLast() - %s\n", _nTotal, S52_PL_getOBCL(obj));
             } else {
                 ++_nCull;
 
@@ -4559,12 +4561,14 @@ DLL int    STD S52_drawLast(void)
     if (FALSE == g_mutex_trylock(&_mp_mutex)) {
 #endif
         PRINTF("WARNING: trylock failed\n");
-        //g_assert(0);
-        //goto exit;
         return FALSE;
     }
 
     S52_CHECK_INIT;
+
+#if !defined(S52_USE_RADAR)
+    EGL_BEG(LAST);
+#endif
 
     if (NULL == S57_getPrjStr())
         goto exit;
@@ -4573,10 +4577,6 @@ DLL int    STD S52_drawLast(void)
         goto exit;
 
     g_timer_reset(_timer);
-
-#if !defined(S52_USE_RADAR)
-    EGL_BEG(LAST);
-#endif
 
     if (TRUE == S52_GL_begin(S52_GL_LAST)) {
 
@@ -6944,7 +6944,7 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
     }
 
     // commented for debugging - clutter output
-    //PRINTF("label:%s\n", newLabel);
+    //PRINTF("newLabel:%s\n", newLabel);
 
     if (TRUE==_isObjNameValid(obj, "ownshp") || TRUE==_isObjNameValid(obj, "vessel")) {
         char attval[80] = {'\0'};
