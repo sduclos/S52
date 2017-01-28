@@ -141,6 +141,9 @@ static double _dotpitch_mm_y = 0.3;  // will be overwright at init()
 #if defined(S52_USE_GLSC2) && !defined(S52_USE_GL2)
 #define S52_USE_GL2  // this signal to load _GL2.i and
 #endif               // switch to GL2 code path
+#if defined(S52_USE_GL2) && !defined(S52_USE_OPENGL_VBO)
+#define S52_USE_OPENGL_VBO  // GL2 need VBO
+#endif
 
 #if defined(S52_USE_FREETYPE_GL) && !(defined(S52_USE_GL2) || defined(S52_USE_GLES2))
 #error "Need GL2 or GLES2 for Freetype GL"
@@ -817,7 +820,7 @@ static int       _win2prj(double *x, double *y)
 {
     GLint vp[4] = {_vp.x, _vp.y, _vp.w, _vp.h};
 
-    _glLoadIdentity(GL_MODELVIEW);
+    //_glLoadIdentity(GL_MODELVIEW);
 
 #ifdef S52_USE_GL2
     float u       = *x;
@@ -833,7 +836,6 @@ static int       _win2prj(double *x, double *y)
     //*/
 
     // Note: this is CPU job - no need to send the matrix to the GPU
-    //_glLoadIdentity(GL_MODELVIEW);
 
     if (GL_FALSE == _gluUnProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], vp, &u, &v, &dummy_z)) {
         PRINTF("WARNING: _gluUnProject faild: _mvmTop=%i, _pjmTop=%i\n", _mvmTop, _pjmTop);
@@ -845,7 +847,6 @@ static int       _win2prj(double *x, double *y)
     *y = v;
 
 #else
-    //_glLoadIdentity(GL_MODELVIEW);
 
     // read in matrix from GPU
     glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
@@ -869,7 +870,7 @@ static projXY    _prj2win(projXY p)
 
     // make sure that _gluProject() has the right coordinate
     // but if call from 52_GL_prj2win() then matrix allready set so this is redundant
-    _glLoadIdentity(GL_MODELVIEW);
+    //_glLoadIdentity(GL_MODELVIEW);
 
 #ifdef S52_USE_GL2
     // FIXME: find a better way to catch non initialyse matrix
@@ -881,11 +882,6 @@ static projXY    _prj2win(projXY p)
     float u       = p.u;
     float v       = p.v;
     float dummy_z = 0.0;
-
-    // make sure that _gluProject() has the right coordinate
-    // but if call from 52_GL_prj2win() then matrix allready set so this is redundant
-    //_glLoadIdentity(GL_MODELVIEW);
-
     if (GL_FALSE == _gluProject(u, v, dummy_z, _mvm[_mvmTop], _pjm[_pjmTop], vp, &u, &v, &dummy_z)) {
         PRINTF("WARNING: _gluProject() failed x/y: %f %f\n", p.u, p.v);
         _glMatrixDump(GL_MODELVIEW);
@@ -895,7 +891,9 @@ static projXY    _prj2win(projXY p)
     }
     p.u = u;
     p.v = v;
+
 #else
+
     // read in matrix from GPU
     glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
     glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
@@ -1275,84 +1273,7 @@ static int       _VBODraw_AREA(S57_prim *prim)
 
     return TRUE;
 }
-
-#else // S52_USE_OPENGL_VBO
-
-static int       _DrawArrays(S57_prim *prim)
-{
-    guint     primNbr = 0;
-    vertex_t *vert    = NULL;
-    guint     vertNbr = 0;      // dummy
-    guint     vboID   = 0;      // dummy
-
-    if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
-        return FALSE;
-
-    glVertexPointer(3, GL_DBL_FLT,  0, vert);
-
-    for (guint i=0; i<primNbr; ++i) {
-        GLint mode  = 0;
-        GLint first = 0;
-        GLint count = 0;
-
-        S57_getPrimIdx(prim, i, &mode, &first, &count);
-
-        glDrawArrays(mode, first, count);
-        //PRINTF("i:%i mode:%i first:%i count:%i\n", i, mode, first, count);
-    }
-
-    _checkError("_DrawArrays()");
-
-    return TRUE;
-}
-
-static guint     _createDList(S57_prim *prim)
-// create display list
-{
-    guint DList = 0;
-    DList = glGenLists(1);
-    if (0 == DList) {
-        PRINTF("WARNING: glGenLists() failed\n");
-        g_assert(0);
-        return FALSE;
-    }
-
-    glNewList(DList, GL_COMPILE);
-
-    _DrawArrays(prim);
-
-    glEndList();
-
-    S57_setPrimDList(prim, DList);
-
-    _checkError("_createDList()");
-
-    return DList;
-}
-
-static int       _callDList(S57_prim *prim)
-// run display list - create it first
-{
-    guint     primNbr = 0;
-    vertex_t *vert    = NULL;
-    guint     vertNbr = 0;
-    guint     DList   = 0;
-
-    if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &DList))
-        return FALSE;
-
-    // no glIsList() in "OpenGL ES SC"
-    if (GL_FALSE == glIsList(DList)) {
-        DList = _createDList(prim);
-    }
-
-    glCallList(DList);
-
-    _checkError("_callDList()");
-
-    return TRUE;
-}
-#endif // S52_USE_OPENGL_VBO
+#endif  // S52_USE_OPENGL_VBO
 
 static double    _getWorldGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx, double *URy, double *tileW, double *tileH)
 // called by _GL1.i and _GL2.i
@@ -1675,7 +1596,6 @@ static int       _glCallList(S52_DList *DListData)
             g_assert(0);
             return FALSE;
         }
-
 #endif  // S52_USE_OPENGL_VBO
 
 #ifdef S52_USE_GL1
@@ -1972,6 +1892,8 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
     S52_DList *DListData = S52_PL_getDListData(obj);
 
+    _glLoadIdentity(GL_MODELVIEW);
+
     // scale bar
     if (0==g_strcmp0(attval->str, "SCALEB10") ||
         0==g_strcmp0(attval->str, "SCALEB11") ) {
@@ -1997,6 +1919,8 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         double y = 10.0; // bottom justifier
 
         _win2prj(&x, &y);
+
+        //PRINTF("DEBUG: SCALEB XY `%f %f\n", x, y);
 
         _glTranslated(x, y, 0.0);
         _glScaled(1.0, -1.0, 1.0);                 // flip Y
@@ -2881,6 +2805,9 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
             ptlen.z = 0.0;
             if (FALSE == S57_geo2prj3dv(1, (double*)&ptlen))
                 return FALSE;
+
+            _glLoadIdentity(GL_MODELVIEW);
+
             {
                 projUV p = {ptlen.x, ptlen.y};
                 p   = _prj2win(p);
@@ -4826,7 +4753,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 GLdouble  inner  = 0.0;        // radius
 
                 GLdouble  outer  = radius;     // in 0.01mm unit
-
+/*
 #ifdef S52_USE_OPENGL_VBO
                 // compose symb need translation at render-time
                 // (or add offset everything afterward!)
@@ -4838,13 +4765,20 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                 glPushMatrix();
                 glTranslated(data[0], data[1], data[2]);
 #endif
-                // pass 'vertex' via global '_diskPrimTmp' used by _gluDisk()
-                _diskPrimTmp = vertex;
-
+*/
                 // FIXME: optimisation, draw a point instead of a filled disk
                 // use fillMode & radius * dotpitch = pixel
 
 #ifdef S52_USE_OPENGL_VBO
+                // compose symb need translation at render-time
+                // (or add offset everything afterward!)
+                _glBegin(_TRANSLATE, vertex);
+                S57_addPrimVertex(vertex, data);
+                _glEnd(vertex);
+
+                // pass 'vertex' via global '_diskPrimTmp' used by _gluDisk()
+                _diskPrimTmp = vertex;
+
                 if (GLU_FILL == fillMode) {
                     _gluQuadricDrawStyle(_qobj, GLU_FILL);
                     _gluDisk(_qobj, inner, outer, slices, loops);
@@ -4852,23 +4786,33 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                     _gluQuadricDrawStyle(_qobj, GLU_LINE);
                     _gluDisk(_qobj, inner, outer, slices, loops);
                 }
+                // finish with tmp pointer to buffer
+                _diskPrimTmp = NULL;
+
 #else
+                glMatrixMode(GL_MODELVIEW);
+                glPushMatrix();
+                glTranslated(data[0], data[1], data[2]);
+
                 if (GLU_FILL == fillMode) {
                     gluQuadricDrawStyle(_qobj, GLU_FILL);
                     gluDisk(_qobj, inner, outer, slices, loops);
                 }
-#endif
-                // finish with tmp pointer to buffer
-                _diskPrimTmp = NULL;
-
-
-#if !defined(S52_USE_OPENGL_VBO)
                 // when in fill mode draw outline (antialias)
                 gluQuadricDrawStyle(_qobj, GLU_SILHOUETTE);
                 gluDisk(_qobj, inner, outer, slices, loops);
                 glPopMatrix();
 #endif
 
+
+/*
+#if !defined(S52_USE_OPENGL_VBO)
+                // when in fill mode draw outline (antialias)
+                gluQuadricDrawStyle(_qobj, GLU_SILHOUETTE);
+                gluDisk(_qobj, inner, outer, slices, loops);
+                glPopMatrix();
+#endif
+*/
                 CI = TRUE;
                 //continue;
                 break;
