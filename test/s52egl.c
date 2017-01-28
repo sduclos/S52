@@ -44,8 +44,6 @@
 #include <glibconfig.h>
 #include <gio/gio.h>      // mutex
 
-//extern GMemVTable *glib_mem_profiler_table;
-
 #define DEG_TO_RAD     0.01745329238
 #define RAD_TO_DEG    57.29577951308232
 #define INCH2MM       25.4
@@ -62,6 +60,35 @@
 //#include <sys/types.h>
 //#include <glib-android/glib-android.h>  // g_android_init()
 #endif  // S52_USE_ANDROID
+
+
+//----------------------------------------------
+//
+// Common stuff for s52egl.c, s52gtk2.c, s52gtkegl.c
+//
+
+// debug - lap timer
+static GTimer *_timer = NULL;
+
+#ifdef USE_TEST_OBJ
+#include "_s52_setupVRMEBL.i"  // _s52_setupVRMEBL()
+#include "_s52_setupPASTRK.i"  // _s52_setupPASTRK()
+#include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
+#include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
+#include "_s52_setupmarfea.i"  // _s52_setupmarfea()
+#include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
+#include "_radar.i"            // _radar_init(), _radar_readLog(), _radar_done()
+#endif  // USE_TEST_OBJ
+
+#ifdef USE_FAKE_AIS
+#include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP()
+#include "_s52_setupVESSEL.i"  // _s52_setupVESSEL(), _s52_updFakeAIS()
+#endif  // USE_FAKE_AIS
+
+#include "_s52_setupMarPar.i"  // _s52_setupMarPar()
+#include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*(), loadCell()
+#include "_egl.i"              // _egl_init(), _egl_beg(), _egl_end(), _egl_done()
+//----------------------------------------------
 
 
 // FIXME: mutex this share data
@@ -92,69 +119,43 @@ typedef struct s52engine {
 
            GSocketConnection  *connection;
 
-#else  // EGL/X11
-           Display            *dpy;
+//#else  // EGL/X11
+//           Display            *dpy;
 #endif
 
-    // EGL - android or X11 window
-    EGLNativeWindowType eglWindow;
-    EGLDisplay          eglDisplay;
-    EGLSurface          eglSurface;
-    EGLContext          eglContext;
-    EGLConfig           eglConfig;
+           /* EGL - android or X11 window
+            EGLNativeWindowType eglWindow;
+            EGLDisplay          eglDisplay;
+            EGLSurface          eglSurface;
+            EGLContext          eglContext;
+            EGLConfig           eglConfig;
+            */
+           //EGLClientBuffer     eglClientBuf;
+           //EGLNativePixmapType eglPixmap;       // eglCopyBuffers()
+           EGLState            eglState;
 
-    //EGLClientBuffer     eglClientBuf;
-    //EGLNativePixmapType eglPixmap;       // eglCopyBuffers()
+           // draw thread
+           GMainLoop          *main_loop;
 
-     // draw thread
-    GMainLoop          *main_loop;
+           // flags use in _s52_draw_cb
+           int                 do_S52draw;        // TRUE to call S52_draw()
+           int                 do_S52drawLast;    // TRUE to call S52_drawLast() - S52_draw() was called at least once
+           int                 do_S52drawBlit;    // TRUE to call S52_drawBlit() - S52_draw() was called at least once
+           int                 do_S52setViewPort; // TRUE get orientation - set in Android callback
+           int32_t             orientation;       // 1=180, 2=090
 
-    // flags use in _s52_draw_cb
-    int                 do_S52draw;        // TRUE to call S52_draw()
-    int                 do_S52drawLast;    // TRUE to call S52_drawLast() - S52_draw() was called at least once
-    int                 do_S52drawBlit;    // TRUE to call S52_drawBlit() - S52_draw() was called at least once
-    int                 do_S52setViewPort; // TRUE get orientation - set in Android callback
-    int32_t             orientation;       // 1=180, 2=090
+           int32_t             width;
+           int32_t             height;
+           // Xoom - dpi = 160 (density)
+           int32_t             dpi;            // = AConfiguration_getDensity(engine->app->config);
+           int32_t             wmm;
+           int32_t             hmm;
 
-    int32_t             width;
-    int32_t             height;
-    // Xoom - dpi = 160 (density)
-    int32_t             dpi;            // = AConfiguration_getDensity(engine->app->config);
-    int32_t             wmm;
-    int32_t             hmm;
-
-    s52droid_state_t    state;
+           s52droid_state_t    state;
 } s52engine;
 
-static s52engine    _engine;
+static s52engine _engine;
 
-
-//----------------------------------------------
-//
-// Common stuff for s52egl.c, s52gtk2.c, s52gtkegl.c
-//
-
-// debug - lap timer
-static GTimer *_timer = NULL;
-
-#ifdef USE_TEST_OBJ
-#include "_s52_setupVRMEBL.i"  // _s52_setupVRMEBL()
-#include "_s52_setupPASTRK.i"  // _s52_setupPASTRK()
-#include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
-#include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
-#include "_s52_setupmarfea.i"  // _s52_setupmarfea()
-#include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
-#include "_radar.i"            // _radar_init(), _radar_readLog(), _radar_done()
-#endif  // USE_TEST_OBJ
-
-#ifdef USE_FAKE_AIS
-#include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP()
-#include "_s52_setupVESSEL.i"  // _s52_setupVESSEL(), _s52_updFakeAIS()
-#endif  // USE_FAKE_AIS
-
-#include "_s52_setupMarPar.i"  // _s52_setupMarPar()
-#include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*(), loadCell()
-#include "_egl.i"              // _egl_init(), _egl_beg(), _egl_end(), _egl_done()
 
 /*
 // GL not GLES2-3 When GL_EXT_framebuffer_multisample is supported, GL_EXT_framebuffer_object and GL_EXT_framebuffer_blit are also supported.
@@ -186,7 +187,7 @@ static int      _s52_getView    (s52droid_state_t *state)
 
     state->cLat  =  (N + S) / 2.0;
     state->cLon  =  (W + E) / 2.0;
-    state->rNM   = ((N - S) / 2.0) * 60.0;  // FIXME: pick dominan projected N-S or E-W
+    state->rNM   = ((N - S) / 2.0) * 60.0;  // latitude
     state->north = 0.0;
 
     // crossing anti-meridian
@@ -214,17 +215,17 @@ static int      _s52_init       (s52engine *engine)
 {
     LOGI("s52egl:_s52_init(): beg ..\n");
 
-    if ((NULL==engine->eglDisplay) || (EGL_NO_DISPLAY==engine->eglDisplay)) {
+    if ((NULL==engine->eglState.eglDisplay) || (EGL_NO_DISPLAY==engine->eglState.eglDisplay)) {
         LOGE("_s52_init(): no EGL display ..\n");
         return FALSE;
     }
 
-    eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
-    eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
+    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_WIDTH,  &engine->width);
+    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_HEIGHT, &engine->height);
 
     // return constant value EGL_UNKNOWN (-1) with Mesa, Adreno, Tegra2
-    eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HORIZONTAL_RESOLUTION, &engine->wmm);
-    eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_VERTICAL_RESOLUTION,   &engine->hmm);
+    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_HORIZONTAL_RESOLUTION, &engine->wmm);
+    eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_VERTICAL_RESOLUTION,   &engine->hmm);
 
     {
         int w   = 0;
@@ -256,10 +257,11 @@ static int      _s52_init       (s52engine *engine)
 #else   // SET_SCREEN_SIZE
 
         // dual-screen: 2646 x 1024 pixels, 700 x 271 mm
-        w   = XDisplayWidth   (engine->dpy, 0);
-        wmm = XDisplayWidthMM (engine->dpy, 0);
-        h   = XDisplayHeight  (engine->dpy, 0);
-        hmm = XDisplayHeightMM(engine->dpy, 0);
+        //engine->eglState.dpy = XOpenDisplay(NULL);
+        w   = XDisplayWidth   (engine->eglState.dpy, 0);
+        wmm = XDisplayWidthMM (engine->eglState.dpy, 0);
+        h   = XDisplayHeight  (engine->eglState.dpy, 0);
+        hmm = XDisplayHeightMM(engine->eglState.dpy, 0);
 
         //w   = 1280;
         //h   = 1024;
@@ -375,10 +377,9 @@ static int      _s52_draw_user  (s52engine *engine)
 
     // test
     //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test S52_drawStr()");
-    static GTimeVal now;
-    g_get_current_time(&now);
-    S52_drawStr(100, engine->height - 100, "ARPAT", 1, g_time_val_to_iso8601(&now));
-
+    //static GTimeVal now;
+    //g_get_current_time(&now);
+    //S52_drawStr(100, engine->height - 100, "ARPAT", 1, g_time_val_to_iso8601(&now));
 
     return TRUE;
 }
@@ -406,12 +407,12 @@ static int      _s52_draw_cb    (gpointer user_data)
     }
     */
 
-    if (EGL_NO_SURFACE == engine->eglSurface) {
+    if (EGL_NO_SURFACE == engine->eglState.eglSurface) {
         LOGE("_s52_draw_cb(): no Surface ..\n");
         goto exit;
     }
 
-    if (EGL_NO_DISPLAY == engine->eglDisplay) {
+    if (EGL_NO_DISPLAY == engine->eglState.eglDisplay) {
         LOGE("_s52_draw_cb(): no display ..\n");
         goto exit;
     }
@@ -432,8 +433,8 @@ static int      _s52_draw_cb    (gpointer user_data)
         engine->width  = ANativeWindow_getWidth (engine->app->window);
         engine->height = ANativeWindow_getHeight(engine->app->window);
 #else
-        eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_WIDTH,  &engine->width);
-        eglQuerySurface(engine->eglDisplay, engine->eglSurface, EGL_HEIGHT, &engine->height);
+        eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_WIDTH,  &engine->width);
+        eglQuerySurface(engine->eglState.eglDisplay, engine->eglState.eglSurface, EGL_HEIGHT, &engine->height);
 #endif
         LOGI("s52egl:_s52_draw_cb(): w:%i, h:%i\n", engine->width, engine->height);
         S52_setViewPort(0, 0, engine->width, engine->height);
@@ -456,7 +457,7 @@ static int      _s52_draw_cb    (gpointer user_data)
 #endif
         S52_draw();
 
-        // user can add stuff on top of draw()
+        // test that user can add stuff on top of draw()
         //_s52_draw_user(engine);
     }
 
@@ -468,7 +469,7 @@ static int      _s52_draw_cb    (gpointer user_data)
 #endif
         S52_drawLast();
 
-        // user can add stuff on top of drawLast()
+        // test that user can add stuff on top of drawLast()
         _s52_draw_user(engine);
     }
 
@@ -1681,9 +1682,9 @@ static int      _X11_handleXevent(gpointer user_data)
 {
     s52engine *engine = (s52engine *) user_data;
 
-    while (XPending(engine->dpy)) {
+    while (XPending(engine->eglState.dpy)) {
         XEvent event;
-        XNextEvent(engine->dpy, &event);
+        XNextEvent(engine->eglState.dpy, &event);
 
         switch (event.type) {
         case ConfigureNotify:
@@ -1691,11 +1692,6 @@ static int      _X11_handleXevent(gpointer user_data)
             engine->height = event.xconfigure.height;
             S52_setViewPort(0, 0, event.xconfigure.width, event.xconfigure.height);
             g_print("DEBUG: ConfigureNotify Event\n");
-
-#ifdef USE_AIS
-            // Note: data form AIS start too fast for the main loop
-            s52ais_initAIS();
-#endif
 
             break;
 
@@ -1819,7 +1815,7 @@ static int      _X11_handleXevent(gpointer user_data)
         case KeyRelease: {
             // /usr/include/X11/keysymdef.h
             unsigned int keycode = ((XKeyEvent *)&event)->keycode;
-            unsigned int keysym  = XkbKeycodeToKeysym(engine->dpy, keycode, 0, 1);
+            unsigned int keysym  = XkbKeycodeToKeysym(engine->eglState.dpy, keycode, 0, 1);
 
             // FIXME: use switch on keysym
 
@@ -2004,20 +2000,10 @@ int main(int argc, char *argv[])
 
     XSetErrorHandler(_X11_error);
 
-    _egl_init(&_engine);
+    _egl_init(&_engine.eglState);
     _s52_init(&_engine);
 
     _timer = g_timer_new();
-
-#ifdef S52_USE_MESA3D
-    // Mesa3D env - signal no vSync
-    g_setenv("vblank_mode", "0", 1);
-
-    // Mesa3D env - MSAA = 4
-    g_setenv("GALLIUM_MSAA", "4", 1);
-    //g_setenv("GALLIUM_MSAA", "2", 1);
-#endif
-
 
     g_timeout_add(500, _X11_handleXevent, (void*)&_engine);  // 0.5 sec
 
@@ -2028,7 +2014,9 @@ int main(int argc, char *argv[])
     g_timeout_add(500, _s52_draw_cb,      (void*)&_engine);  // 0.5 sec
 #endif
 
-    //g_mem_set_vtable(glib_mem_profiler_table);
+#ifdef USE_AIS
+    s52ais_initAIS();
+#endif
 
     _engine.main_loop = g_main_loop_new(NULL, FALSE);
     g_main_loop_run(_engine.main_loop);
@@ -2039,16 +2027,7 @@ int main(int argc, char *argv[])
 
     _s52_done(&_engine);
 
-    _egl_done(&_engine);
-
-    //g_mem_profile();
-
-#ifdef S52_USE_MESA3D
-    // Mesa3D env - remove from env (not stictly needed - env destroy at exit)
-    g_unsetenv("vblank_mode");
-    g_unsetenv("GALLIUM_MSAA");
-#endif
-
+    _egl_done(&_engine.eglState);
 
     g_print("%s .. done\n", argv[0]);
 
