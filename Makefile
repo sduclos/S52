@@ -22,13 +22,15 @@
 #all: s52gv          # GV  (GTK)
 #all: s52gv2         # GV2 (GTK2)
 #all: s52gtk2        # OGR & GTK2 & GL 1.5 (VBO)
-#all: s52gtk2gl2     # OGR & GTK2 & GL 2.x
+#all: s52win32       # build libS52.dll on GL1 to run on wine/win32 (MinGW)
 #all: s52gtk2p       # profiling
 #all: s52gtk2gps     # build s52gtk2 for testing with live data comming from GPSD
-all: s52gtk2egl     # GTK2 & EGL
-#all: s52gtk3egl     # GTK3 & EGL
+#all: s52gtk2gl2     # OGR & GTK2 & GL 2.x
+all: s52gtk2egl     # GTK2 & GL2 & EGL
+#all: s52gtk3egl     # GTK3 & GL2 & EGL
+
+##### EXP TARGETS #########
 #all: s52qt4         # OGR & Qt4 (build s52gtk2 to run on Qt4)
-#all: s52win32       # build libS52.dll on GL1 to run on wine/win32 (MinGW)
 #all: s52clutter     # use COGL for rendering text
 #all: s52clutter.js  # use COGL for rendering text and Javascript
 
@@ -201,7 +203,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # GL FIX FUNC:
 # -DS52_USE_GL1          - GL1.x
 # -DS52_USE_GLSC1        - GLSC1.x - Safety Critical 1.0 (subset of GL1.3)
-# -DS52_USE_OPENGL_VBO   - GL1.5 or greater. Vertex Buffer Object used also in GL2+
+# -DS52_USE_OPENGL_VBO   - GL1.5 or greater. Vertex Buffer Object used also in all GL2+
 # GL GLSL:
 # -DS52_USE_GL2          - GL2.x
 # -DS52_USE_GLES2        - GLES2.x
@@ -233,6 +235,8 @@ CFLAGS = `pkg-config  --cflags glib-2.0 lcms gl ftgl`  \
          -DS52_USE_PROJ                                \
          -DS52_DEBUG $(DBG)
 
+s52gtk2p : CFLAGS += -pg
+
 s52glx : CFLAGS = `pkg-config  --cflags glib-2.0 lcms glu gl ftgl` \
                   `gdal-config --cflags`          \
                   -DS52_USE_PROJ                  \
@@ -253,6 +257,7 @@ s52gtk2gl2 : CFLAGS =                                  \
          -DS52_USE_FREETYPE_GL                         \
          -DS52_USE_BACKTRACE                           \
          -DS52_USE_TXT_SHADOW                          \
+         -DS52_USE_AFGLOW                              \
          -DS52_DEBUG $(DBG)
 
 # FIXME: clutter use cogl not ftgl
@@ -268,8 +273,6 @@ s52clutter s52clutter.js : CFLAGS =                         \
          -DS52_USE_OPENGL_VBO                               \
          -DS52_USE_FTGL                                     \
          -DS52_DEBUG $(DBG)
-
-s52gtk2p : CFLAGS += -pg
 
 #                  -DS52_USE_SUPP_LINE_OVERLAP
 #                  -DS52_USE_GLSC2
