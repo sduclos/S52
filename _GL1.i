@@ -313,6 +313,84 @@ static int       _initCOGL(void)
 }
 #endif
 
+#if !defined(S52_USE_OPENGL_VBO)
+static int       _DrawArrays(S57_prim *prim)
+{
+    guint     primNbr = 0;
+    vertex_t *vert    = NULL;
+    guint     vertNbr = 0;      // dummy
+    guint     vboID   = 0;      // dummy
+
+    if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
+        return FALSE;
+
+    glVertexPointer(3, GL_DBL_FLT,  0, vert);
+
+    for (guint i=0; i<primNbr; ++i) {
+        GLint mode  = 0;
+        GLint first = 0;
+        GLint count = 0;
+
+        S57_getPrimIdx(prim, i, &mode, &first, &count);
+
+        glDrawArrays(mode, first, count);
+        //PRINTF("i:%i mode:%i first:%i count:%i\n", i, mode, first, count);
+    }
+
+    _checkError("_DrawArrays()");
+
+    return TRUE;
+}
+
+static guint     _createDList(S57_prim *prim)
+// create display list
+{
+    guint DList = 0;
+    DList = glGenLists(1);
+    if (0 == DList) {
+        PRINTF("WARNING: glGenLists() failed\n");
+        g_assert(0);
+        return FALSE;
+    }
+
+    glNewList(DList, GL_COMPILE);
+
+    _DrawArrays(prim);
+
+    glEndList();
+
+    S57_setPrimDList(prim, DList);
+
+    _checkError("_createDList()");
+
+    return DList;
+}
+
+static int       _callDList(S57_prim *prim)
+// run display list - create it first
+{
+    guint     primNbr = 0;
+    vertex_t *vert    = NULL;
+    guint     vertNbr = 0;
+    guint     DList   = 0;
+
+    if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &DList))
+        return FALSE;
+
+    // no glIsList() in "OpenGL ES SC"
+    if (GL_FALSE == glIsList(DList)) {
+        DList = _createDList(prim);
+    }
+
+    glCallList(DList);
+
+    _checkError("_callDList()");
+
+    return TRUE;
+}
+#endif  // !S52_USE_OPENGL_VBO
+
+#if 0
 // FIXME: same code as _renderAP_DRGARE_gl1
 static int       _renderAP_NODATA_gl1(S52_obj *obj)
 {
@@ -351,12 +429,36 @@ static int       _renderAP_DRGARE_gl1(S52_obj *obj)
         _fillArea(geoData);
 
         glDisable(GL_POLYGON_STIPPLE);
+
         return TRUE;
     }
 
     return FALSE;
 }
+#endif  // 0
 
+static int       _renderAP_mask_gl1(S52_obj *obj, const GLubyte *mask)
+{
+    S57_geo   *geoData   = S52_PL_getGeo(obj);
+    S52_DList *DListData = S52_PL_getDListData(obj);
+
+    if (NULL != DListData) {
+        S52_Color *col = DListData->colors;
+        _setFragColor(col);
+
+        glEnable(GL_POLYGON_STIPPLE);
+        //glPolygonStipple(_drgare_mask);
+        glPolygonStipple(mask);
+
+        _fillArea(geoData);
+
+        glDisable(GL_POLYGON_STIPPLE);
+
+        return TRUE;
+    }
+
+    return FALSE;
+}
 static int       _renderAP_gl1(S52_obj *obj)
 {
     // broken on GL1
@@ -381,8 +483,10 @@ static int       _renderAP_gl1(S52_obj *obj)
     // TODO: optimisation: if proven to be faster, compare S57 object number instead of string name
     if (0 == g_strcmp0("DRGARE", S52_PL_getOBCL(obj))) {
 
-        if (TRUE == (int) S52_MP_get(S52_MAR_DISP_DRGARE_PATTERN))
-            _renderAP_DRGARE_gl1(obj);
+        if (TRUE == (int) S52_MP_get(S52_MAR_DISP_DRGARE_PATTERN)) {
+            //_renderAP_DRGARE_gl1(obj);
+            _renderAP_mask_gl1(obj, _drgare_mask);
+        }
 
         //PRINTF("FIXME: \n");
 
@@ -390,7 +494,8 @@ static int       _renderAP_gl1(S52_obj *obj)
     } else {
         // fill area with NODATA pattern
         if (0==g_strcmp0("UNSARE", S52_PL_getOBCL(obj)) ) {
-            _renderAP_NODATA_gl1(obj);
+            //_renderAP_NODATA_gl1(obj);
+            _renderAP_mask_gl1(obj, _nodata_mask);
             return TRUE;
         }
         /*
