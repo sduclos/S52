@@ -33,12 +33,11 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 0.0);  // off
     S52_setMarinerParam(S52_MAR_SYMPLIFIED_PNT,  1.0);
 
-    S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);
-    //S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   1.0);
-    S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   0.0);
-    S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);
-    S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);
-    //S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);    // (default ON)
+    S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);    // on  (default OFF)
+    //S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   1.0);  // on  (default OFF)
+    //S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);  // on  (default OFF)
+    //S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);  // on  (default OFF)
+    //S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);  // off (default ON)
 
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // BASE always ON
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // STABDARD default
@@ -54,8 +53,8 @@ static int      _s52_setupMarPar(void)
 
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
-    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60 - need plib_COLS-3.4-a.rle
-    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60 - need plib_COLS-3.4-a.rle
+    //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   5.0);     // DAY 60 - need plib_COLS-3.4-a.rle
+    S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   6.0);     // DUSK 60 - need plib_COLS-3.4-a.rle
 
     //S52_setMarinerParam(S52_MAR_VECPER,         12.0);  // vecper: Vector-length time-period (min) (normaly 6 or 12)
     S52_setMarinerParam(S52_MAR_VECMRK,          1.0);  // vecmrk: Vector time-mark interval (0 - none, 1 - 1&6 min, 2 - 6 min)
