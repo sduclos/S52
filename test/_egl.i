@@ -13,7 +13,11 @@ typedef struct EGLState {
     EGLContext          eglContext;
     EGLConfig           eglConfig;
 
+#ifdef GTK_MAJOR_VERSION
     GtkWidget          *window;
+#else
+    Display            *dpy;
+#endif
 } EGLState;
 
 typedef void (*PFNGLINSERTEVENTMARKEREXT)(int length, const char *marker);
@@ -224,10 +228,10 @@ static int      _egl_init       (EGLState *eglState)
 
     // --- get eglDisplay ------------------------------------------------
 #if defined(S52_USE_ANDROID) || defined(GTK_MAJOR_VERSION)
-    eglDisplay  = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    eglDisplay    = eglGetDisplay(EGL_DEFAULT_DISPLAY);
 #else
-    engine->dpy = XOpenDisplay(NULL);
-    eglDisplay  = eglGetDisplay(engine->dpy);
+    eglState->dpy = XOpenDisplay(NULL);
+    eglDisplay    = eglGetDisplay(eglState->dpy);
 #endif
 
     if (EGL_NO_DISPLAY == eglDisplay) {
@@ -479,9 +483,13 @@ static int      _egl_init       (EGLState *eglState)
         g_assert(0);
     }
 
+#if defined(S52_USE_ANDROID) || defined(GTK_MAJOR_VERSION)
+    // FIXME: check that android and GTK work
+    // s52eglx fail if BUFFER_PRESERVED
     // when swapping Adreno clear old buffer
     // http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html
     eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
+#endif
 
     // --- get eglContext ------------------------------------------------
     // Then we can create the context and set it current:
