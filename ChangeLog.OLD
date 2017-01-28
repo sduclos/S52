@@ -4,6 +4,11 @@
 #
 
 
+2017JAN28
+    -fix regression in s52eglx
+    -del S52_USE_MESA3D in test/
+    -mod move DislayList func to _GL1.i
+
 2017JAN26
     -fix regression of s52glx s52gtk2 in matrix handling
     -fix ifdef for s52gtk2gl2
