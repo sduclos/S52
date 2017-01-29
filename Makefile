@@ -179,11 +179,11 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_C_AGGR_C_ASSO- return info C_AGGR C_ASSO on cursor pick (need OGR patch in doc/ogrfeature.cpp.diff)
 # -DS52_USE_SYM_AISSEL01 - need symbol in test/plib-test-priv.rle
 # -DS52_USE_WORLD        - need shapefile WORLD_SHP in S52.c:201 ("--0WORLD.shp")
-# -DS52_USE_RADAR        - GL2 / radar mode: skip swapbuffer between DRAW & LAST cycle, skip read/write FB - set S52_MAR_DISP_RADAR_LAYER
+# -DS52_USE_RADAR        - GL2 - radar mode: skip swapbuffer between DRAW & LAST cycle, skip read/write FB - set S52_MAR_DISP_RADAR_LAYER
 # -DS52_USE_RASTER       - GL2 - bathy raster (GeoTIFF) - set S52_MAR_DISP_RADAR_LAYER
 # -DS52_USE_AFGLOW       - experimental synthetic after glow
 # -DS52_USE_SYM_VESSEL_DNGHL
-#                        - vestat = 3, close quarter, show AIS in red (DNGHL)
+#                        - GL2 - vestat = 3, close quarter, show AIS in red (DNGHL)
 #
 # Debug:
 # -DS52_DEBUG            - add more info for debugging libS52 (ex _checkError() in S52GL.c)
