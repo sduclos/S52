@@ -847,7 +847,7 @@ static int       _win2prj(double *x, double *y)
 
 #else
 
-    // read in matrix from GPU
+    // FIXME: should be useless (how/why need that) - read in matrix from GPU
     glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
     glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
 
@@ -893,7 +893,7 @@ static projXY    _prj2win(projXY p)
 
 #else
 
-    // read in matrix from GPU
+    // FIXME: should be useless (how/why need that) - read in matrix from GPU
     glGetDoublev(GL_MODELVIEW_MATRIX,  _mvm);
     glGetDoublev(GL_PROJECTION_MATRIX, _pjm);
 
@@ -908,70 +908,6 @@ static projXY    _prj2win(projXY p)
 #endif
 
     return p;
-}
-
-static double    _setSCAMIN(void)
-// used by S52_GL_isSupp() and to set SCALEB10 or SCALEB11 (scale bar)
-{
-    _SCAMIN = (_scalex > _scaley) ? _scalex : _scaley;
-    _SCAMIN *= 10000.0;
-
-    return _SCAMIN;
-}
-
-static int       _doProjection(vp_t vp, double centerLat, double centerLon, double rangeDeg)
-{
-    pt3 NE = {0.0, 0.0, 0.0};  // Nort/East
-    pt3 SW = {0.0, 0.0, 0.0};  // South/West
-
-    NE.y = centerLat + rangeDeg;
-    SW.y = centerLat - rangeDeg;
-    NE.x = SW.x = centerLon;
-
-    if (FALSE == S57_geo2prj3dv(1, (double*)&NE))
-        return FALSE;
-    if (FALSE == S57_geo2prj3dv(1, (double*)&SW))
-        return FALSE;
-
-    {
-        // screen ratio
-        double r = (double)vp.h / (double)vp.w;   // > 1 'h' dominant, < 1 'w' dominant
-        //PRINTF("Viewport pixels (width x height): %i %i (r=%f)\n", w, h, r);
-        double dy = NE.y - SW.y;
-        //double dy = ABS(NE.y - SW.y);
-        // assume h dominant (latitude), so range
-        // fit on a landscape screen in latitude
-        // FIXME: in portrait screen logitude is dominant
-        // check if the ratio is the same on Xoom.
-        double dx = dy / r;
-
-        NE.x += (dx / 2.0);
-        SW.x -= (dx / 2.0);
-    }
-
-    _pmin.u = SW.x;  // left
-    _pmin.v = SW.y;  // bottom
-    _pmax.u = NE.x;  // right
-    _pmax.v = NE.y;  // top
-    //PRINTF("PROJ MIN: %f %f  MAX: %f %f\n", _pmin.u, _pmin.v, _pmax.u, _pmax.v);
-
-    // use to cull object base on there extent and view in deg
-    _gmin.u = SW.x;
-    _gmin.v = SW.y;
-    _gmin   = S57_prj2geo(_gmin);
-
-    _gmax.u = NE.x;
-    _gmax.v = NE.y;
-    _gmax   = S57_prj2geo(_gmax);
-
-    // MPP - Meter Per Pixel
-    _scalex = (_pmax.u - _pmin.u) / (double)vp.w;
-    _scaley = (_pmax.v - _pmin.v) / (double)vp.h;
-
-    //_SCAMIN = _computeSCAMIN() * 10000.0;
-    _setSCAMIN();
-
-    return TRUE;
 }
 
 int        S52_GL_win2prj(double *x, double *y)
@@ -2186,6 +2122,7 @@ static int       _renderSY_vessel(S52_obj *obj)
 #ifdef S52_USE_SYM_AISSEL01
     // AIS selected: experimental, put selected symbol on target
     if ((0 == S52_PL_cmpCmdParam(obj, "AISSEL01")) &&
+        // FIXME: why test vestat here?
         (NULL!=vestatstr                           &&
         ('1'==*vestatstr->str || '2'==*vestatstr->str || '3'==*vestatstr->str))
        ) {
@@ -3053,36 +2990,18 @@ static int       _renderLS_vessel(S52_obj *obj)
             guint     npt    = 0;
 
             if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
-                //pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
+                pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
 
 #ifdef S52_USE_GL2
-                //double pt[6] = {ppt[0], ppt[1], 0.0, ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0};
-                pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
+#ifdef S52_USE_SYM_VESSEL_DNGHL
                 // 0 - undefined, 1 - AIS active, 2 - AIS sleeping, 3 - AIS active, close quarter (red)
                 GString *vestatstr = S57_getAttVal(geo, "vestat");
                 if (NULL!=vestatstr && '3'==*vestatstr->str) {
-                    //_glLineWidth(3);
-                    //_renderLS_gl2('D', 2, pt);
-
-                    //*
-                    float dx       = pt[0].x - pt[1].x;
-                    float dy       = pt[0].y - pt[1].y;
-                    float leglen_m = sqrt(dx*dx + dy*dy);  // leg length in meter
-                    float leglen_px= leglen_m  / _scalex;  // leg length in pixel
-                    float sym_n    = leglen_px / 32.0;     // 32 pixels (rgba)
-                    float ptr[4] = {
-                        0.0,   0.0,
-                        sym_n, 1.0
-                    };
-
+                    double ppt[6] = {ppt[0], ppt[1], 0.0, ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0};
                     _glLineWidth(3);
-
-                    glUniform1f(_uTextOn, 1.0);
-                    glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
-                    glEnableVertexAttribArray(_aUV);
-                    glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
-                    //*/
-                }
+                    _renderLS_gl2('D', 2, ppt);
+                 }
+#endif  // S52_USE_SYM_VESSEL_DNGHL
 
                 _glUniformMatrix4fv_uModelview();
                 _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
@@ -3094,8 +3013,9 @@ static int       _renderLS_vessel(S52_obj *obj)
                 glDisableVertexAttribArray(_aUV);
                 glDisableVertexAttribArray(_aPosition);
 #else
-                pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
+                //pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
                 //_glUniformMatrix4fv_uModelview();
+                _glLoadIdentity(GL_MODELVIEW);
                 _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
 #endif
             }
@@ -3305,6 +3225,7 @@ static int       _renderLS(S52_obj *obj)
                     _renderLS_ownshp(obj);
                 else {
                     if (0 == g_strcmp0("vessel", S57_getName(geoData))) {
+#ifdef S52_USE_SYM_VESSEL_DNGHL
                         // AIS close quarters
                         GString *vestatstr = S57_getAttVal(geoData, "vestat");
                         if (NULL!=vestatstr && '3'==*vestatstr->str) {
@@ -3313,7 +3234,10 @@ static int       _renderLS(S52_obj *obj)
                             else
                                 // discard all other line not of DNGHL colour
                                 return TRUE;
-                        } else {
+                        }
+                        else
+#endif  // S52_USE_SYM_VESSEL_DNGHL
+                        {
                             // normal line
                             _renderLS_vessel(obj);
                         }
@@ -3358,7 +3282,9 @@ static int       _renderLS(S52_obj *obj)
 #ifdef S52_USE_GL2
                     _renderLS_gl2(style, npt, ppt);
 #else
-                    _glUniformMatrix4fv_uModelview();
+                    //_glUniformMatrix4fv_uModelview();
+                    _glLoadIdentity(GL_MODELVIEW);
+
                     _DrawArrays_LINE_STRIP(npt, (vertex_t *)ppt);
 #endif
                 }
@@ -5850,6 +5776,69 @@ static int       _drawFBPixels(void)
     _checkError("S52_GL_drawFBPixels() -fini-");
 
     _view.north = northtmp;
+
+    return TRUE;
+}
+
+static double    _set_SCAMIN(void)
+// used also by S52_GL_isSupp() and to set SCALEB10 or SCALEB11 (scale bar)
+{
+    _SCAMIN = (_scalex > _scaley) ? _scalex : _scaley;
+    _SCAMIN *= 10000.0;
+
+    return _SCAMIN;
+}
+
+static int       _doProjection(vp_t vp, double centerLat, double centerLon, double rangeDeg)
+{
+    pt3 NE = {0.0, 0.0, 0.0};  // Nort/East
+    pt3 SW = {0.0, 0.0, 0.0};  // South/West
+
+    NE.y = centerLat + rangeDeg;
+    SW.y = centerLat - rangeDeg;
+    NE.x = SW.x = centerLon;
+
+    if (FALSE == S57_geo2prj3dv(1, (double*)&NE))
+        return FALSE;
+    if (FALSE == S57_geo2prj3dv(1, (double*)&SW))
+        return FALSE;
+
+    {
+        // screen ratio
+        double r = (double)vp.h / (double)vp.w;   // > 1 'h' dominant, < 1 'w' dominant
+        //PRINTF("Viewport pixels (width x height): %i %i (r=%f)\n", w, h, r);
+        double dy = NE.y - SW.y;
+        //double dy = ABS(NE.y - SW.y);
+        // assume h dominant (latitude), so range
+        // fit on a landscape screen in latitude
+        // FIXME: in portrait screen logitude is dominant
+        // check if the ratio is the same on Xoom.
+        double dx = dy / r;
+
+        NE.x += (dx / 2.0);
+        SW.x -= (dx / 2.0);
+    }
+
+    _pmin.u = SW.x;  // left
+    _pmin.v = SW.y;  // bottom
+    _pmax.u = NE.x;  // right
+    _pmax.v = NE.y;  // top
+    //PRINTF("PROJ MIN: %f %f  MAX: %f %f\n", _pmin.u, _pmin.v, _pmax.u, _pmax.v);
+
+    // use to cull object base on there extent and view in deg
+    _gmin.u = SW.x;
+    _gmin.v = SW.y;
+    _gmin   = S57_prj2geo(_gmin);
+
+    _gmax.u = NE.x;
+    _gmax.v = NE.y;
+    _gmax   = S57_prj2geo(_gmax);
+
+    // MPP - Meter Per Pixel
+    _scalex = (_pmax.u - _pmin.u) / (double)vp.w;
+    _scaley = (_pmax.v - _pmin.v) / (double)vp.h;
+
+    _set_SCAMIN();
 
     return TRUE;
 }
