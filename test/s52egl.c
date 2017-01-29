@@ -375,8 +375,10 @@ static int      _s52_draw_user  (s52engine *engine)
     }
     */
 
-    // test
+    // debug
     //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test S52_drawStr()");
+
+    // FIXME: str flicker - maybe swapping ang egl beg end
     //static GTimeVal now;
     //g_get_current_time(&now);
     //S52_drawStr(100, engine->height - 100, "ARPAT", 1, g_time_val_to_iso8601(&now));
