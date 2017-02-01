@@ -4138,21 +4138,25 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 // Note: all text command pass here
 {
     // FIXME: use 'bsize'
-    (void) bsize;
+    //(void) bsize;
 
     if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
     if (weight >= S52_MAX_FONT) {
-        PRINTF("ERROR: weight(%i) >= S52_MAX_FONT(%i)\n", weight, S52_MAX_FONT);
+        PRINTF("WARNING: weight(%i) >= S52_MAX_FONT(%i)\n", weight, S52_MAX_FONT);
         g_assert(0);
         return FALSE;
     }
 
-    //if (bsize >= S52_MAX_FONT) {
-    //    PRINTF("ERROR: bsize(%i) >= S52_MAX_FONT(%i)\n", bsize, S52_MAX_FONT);
-    //    return FALSE;
-    //}
+    if (bsize >= S52_MAX_FONT) {
+        //bsize -= 10;  // 0 - too small
+        bsize -=  9;  // 1 - small
+
+
+        //PRINTF("WARNING: bsize(%i) >= S52_MAX_FONT(%i) str:%s\n", bsize, S52_MAX_FONT, str);
+        //return FALSE;
+    }
 
     // FIXME: cursor pick
     if (S52_GL_PICK == _crnt_GL_cycle) {
@@ -4183,7 +4187,8 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
             // connect to data in VBO on GPU
             glBindBuffer(GL_ARRAY_BUFFER, vboID);
         } else {
-            _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, &strWpx, &strHpx);
+            //_freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, &strWpx, &strHpx);
+            _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, bsize, &strWpx, &strHpx);
             if (0 == _freetype_gl_buffer->len)
                 return TRUE;
             else
@@ -4216,12 +4221,14 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 
     // dynamique text - layer 9
     if (S52_GL_LAST == _crnt_GL_cycle) {
-        _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, &strWpx, &strHpx);
+        //_freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, &strWpx, &strHpx);
+        _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, bsize, &strWpx, &strHpx);
     }
 
     // lone text - S52_GL_drawStr() / S52_GL_drawStrWorld()
     if (S52_GL_NONE == _crnt_GL_cycle) {
-        _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, &strWpx, &strHpx);
+        //_freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, weight, &strWpx, &strHpx);
+        _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, bsize, &strWpx, &strHpx);
     }
 
     /* debug: draw all text sans just. Change color to DNGHL
@@ -5649,6 +5656,117 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     return TRUE;
 }
 
+int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north)
+{
+    if (S52_GL_PICK == _crnt_GL_cycle) {
+        return FALSE;
+    }
+
+    //
+    // FIXME: call _renderAC_NODATA_layer0() when drag - to erease line artefact
+    //_renderAC_NODATA_layer0(); nop!
+    // WRAP_S/T GL_REPEAT - nop!
+
+    // set rotation (via _glMatrixSet())
+    double northtmp = _view.north;
+    _view.north = north;
+    _glMatrixSet(VP_PRJ);
+
+    glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
+
+#ifdef S52_USE_GL2
+     // turn ON 'sampler2d'
+    glUniform1f(_uBlitOn, 1.0);
+
+    GLfloat ppt[4*3 + 4*2] = {
+        _pmin.u, _pmin.v, 0.0,   0.0 + scale_x + scale_z, 0.0 + scale_y + scale_z,
+        _pmin.u, _pmax.v, 0.0,   0.0 + scale_x + scale_z, 1.0 + scale_y - scale_z,
+        _pmax.u, _pmax.v, 0.0,   1.0 + scale_x - scale_z, 1.0 + scale_y - scale_z,
+        _pmax.u, _pmin.v, 0.0,   1.0 + scale_x - scale_z, 0.0 + scale_y + scale_z
+    };
+
+    glEnableVertexAttribArray(_aUV);
+    glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
+
+    glEnableVertexAttribArray(_aPosition);
+    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
+
+    glFrontFace(GL_CW);
+
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    glFrontFace(GL_CCW);
+
+    // turn OFF 'sampler2d'
+    glUniform1f(_uBlitOn, 0.0);
+    glDisableVertexAttribArray(_aUV);
+    glDisableVertexAttribArray(_aPosition);
+
+#else
+    (void)scale_x;
+    (void)scale_y;
+    (void)scale_z;
+#endif
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    _glMatrixDel(VP_PRJ);
+
+    _view.north = northtmp;
+
+    _checkError("S52_GL_drawBlit()");
+
+    return TRUE;
+}
+
+int        S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight)
+// draw string in world coords
+{
+    S52_GL_cycle tmpCrntCycle = _crnt_GL_cycle;
+    _crnt_GL_cycle = S52_GL_NONE;
+
+    S52_Color *c = S52_PL_getColor("CHBLK");  // black
+    _renderTXTAA(NULL, c, x, y, bsize, weight, str);
+
+    _crnt_GL_cycle = tmpCrntCycle;
+
+    return TRUE;
+}
+
+int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
+// draw a string in window coords
+{
+    if (S52_GL_INIT == _crnt_GL_cycle) {
+        PRINTF("WARNING: init GL first (draw)\n");
+        return FALSE;
+    }
+
+    S52_Color *c = S52_PL_getColor(colorName);
+
+#ifdef S52_USE_GL2
+    S52_GL_win2prj(&pixels_x, &pixels_y);
+
+    _glMatrixSet(VP_PRJ);
+    //_renderTXTAA(NULL, c, pixels_x, pixels_y, bsize, 1, str);
+    _renderTXTAA(NULL, c, pixels_x, pixels_y, bsize, bsize, str);  // FIXME: weight
+    _glMatrixDel(VP_PRJ);
+
+#else  // S52_USE_GL2
+    glRasterPos2d(pixels_x, pixels_y);
+    _checkError("S52_GL_drawStrWin()");
+
+#ifdef S52_USE_FTGL
+    if (NULL != _ftglFont[bsize]) {
+        _setFragColor(c);
+        ftglRenderFont(_ftglFont[bsize], str, FTGL_RENDER_ALL);
+    }
+#endif
+
+#endif // S52_USE_GL2
+
+    return TRUE;
+}
+
 static guchar   *_readFBPixels(void)
 {
     if (S52_GL_PICK == _crnt_GL_cycle) {
@@ -7006,69 +7124,6 @@ cchar     *S52_GL_getNameObjPick(void)
     return (const char *)_strPick->str;
 }
 
-int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north)
-{
-    if (S52_GL_PICK == _crnt_GL_cycle) {
-        return FALSE;
-    }
-
-    //
-    // FIXME: call _renderAC_NODATA_layer0() when drag - to erease line artefact
-    //_renderAC_NODATA_layer0(); nop!
-    // WRAP_S/T GL_REPEAT - nop!
-
-    // set rotation (via _glMatrixSet())
-    double northtmp = _view.north;
-    _view.north = north;
-    _glMatrixSet(VP_PRJ);
-
-    glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
-
-#ifdef S52_USE_GL2
-     // turn ON 'sampler2d'
-    glUniform1f(_uBlitOn, 1.0);
-
-    GLfloat ppt[4*3 + 4*2] = {
-        _pmin.u, _pmin.v, 0.0,   0.0 + scale_x + scale_z, 0.0 + scale_y + scale_z,
-        _pmin.u, _pmax.v, 0.0,   0.0 + scale_x + scale_z, 1.0 + scale_y - scale_z,
-        _pmax.u, _pmax.v, 0.0,   1.0 + scale_x - scale_z, 1.0 + scale_y - scale_z,
-        _pmax.u, _pmin.v, 0.0,   1.0 + scale_x - scale_z, 0.0 + scale_y + scale_z
-    };
-
-    glEnableVertexAttribArray(_aUV);
-    glVertexAttribPointer    (_aUV,       2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &ppt[3]);
-
-    glEnableVertexAttribArray(_aPosition);
-    glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
-
-    glFrontFace(GL_CW);
-
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-    glFrontFace(GL_CCW);
-
-    // turn OFF 'sampler2d'
-    glUniform1f(_uBlitOn, 0.0);
-    glDisableVertexAttribArray(_aUV);
-    glDisableVertexAttribArray(_aPosition);
-
-#else
-    (void)scale_x;
-    (void)scale_y;
-    (void)scale_z;
-#endif
-
-    glBindTexture(GL_TEXTURE_2D, 0);
-
-    _glMatrixDel(VP_PRJ);
-
-    _view.north = northtmp;
-
-    _checkError("S52_GL_drawBlit()");
-
-    return TRUE;
-}
-
 #include "gdal.h"  // GDAL stuff to write .PNG
 int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height)
 // FIXME: width/height rounding error all over - fix: +0.5
@@ -7201,53 +7256,6 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     driver      = GDALGetDriverByName("PNG");
     dst_dataset = GDALCreateCopy(driver, toFilename, GDALOpen(tmpTif, GA_ReadOnly), FALSE, NULL, NULL, NULL);
     GDALClose(dst_dataset);
-
-    return TRUE;
-}
-
-int        S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight)
-// draw string in world coords
-{
-    S52_GL_cycle tmpCrntCycle = _crnt_GL_cycle;
-    _crnt_GL_cycle = S52_GL_NONE;
-
-    S52_Color *c = S52_PL_getColor("CHBLK");  // black
-    _renderTXTAA(NULL, c, x, y, bsize, weight, str);
-
-    _crnt_GL_cycle = tmpCrntCycle;
-
-    return TRUE;
-}
-
-int        S52_GL_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
-// draw a string in window coords
-{
-    if (S52_GL_INIT == _crnt_GL_cycle) {
-        PRINTF("WARNING: init GL first (draw)\n");
-        return FALSE;
-    }
-
-    S52_Color *c = S52_PL_getColor(colorName);
-
-#ifdef S52_USE_GL2
-    S52_GL_win2prj(&pixels_x, &pixels_y);
-
-    _glMatrixSet(VP_PRJ);
-    _renderTXTAA(NULL, c, pixels_x, pixels_y, bsize, 1, str);
-    _glMatrixDel(VP_PRJ);
-
-#else  // S52_USE_GL2
-    glRasterPos2d(pixels_x, pixels_y);
-    _checkError("S52_GL_drawStrWin()");
-
-#ifdef S52_USE_FTGL
-    if (NULL != _ftglFont[bsize]) {
-        _setFragColor(c);
-        ftglRenderFont(_ftglFont[bsize], str, FTGL_RENDER_ALL);
-    }
-#endif
-
-#endif // S52_USE_GL2
 
     return TRUE;
 }
