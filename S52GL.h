@@ -100,6 +100,8 @@ int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
 // draw RADAR,Bathy,...
 int   S52_GL_drawRaster(S52_GL_ras *raster);
 int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north);
+int   S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight);
+int   S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);
 // done frame, restore OpenGL state
 int   S52_GL_end(S52_GL_cycle cycle);
 
@@ -136,8 +138,6 @@ int   S52_GL_setScissor(int x, int y, int width, int height);
 const
 char *S52_GL_getNameObjPick(void);
 
-int   S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight);
-int   S52_GL_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);
 int   S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str);
 
 int   S52_GL_drawGraticule(void);
