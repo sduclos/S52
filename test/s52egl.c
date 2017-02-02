@@ -360,7 +360,7 @@ static int      _s52_done       (s52engine *engine)
 
 static int      _s52_draw_user  (s52engine *engine)
 {
-    (void) engine; // quiet compiler
+    //(void) engine; // quiet compiler
 
     /*
     // debug - S57 obj ID of Becancour Cell (CA579016.000)
@@ -378,10 +378,11 @@ static int      _s52_draw_user  (s52engine *engine)
     // debug
     //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test S52_drawStr()");
 
-    // FIXME: str flicker - maybe swapping ang egl beg end
-    //static GTimeVal now;
-    //g_get_current_time(&now);
-    //S52_drawStr(100, engine->height - 100, "ARPAT", 1, g_time_val_to_iso8601(&now));
+    // FIXME: str flicker - maybe swapping and egl beg end
+    static GTimeVal now;
+    g_get_current_time(&now);
+    //S52_drawStr(100, engine->height - 100, "ARPAT", 3, g_time_val_to_iso8601(&now));
+    S52_drawStr(100, engine->height - 100, "CURSR", 3, g_time_val_to_iso8601(&now));
 
     return TRUE;
 }
@@ -1826,6 +1827,21 @@ static int      _X11_handleXevent(gpointer user_data)
                 g_main_loop_quit(engine->main_loop);
                 return TRUE;
             }
+
+            // FIXME: k and K same keysym!
+            if (XK_k == keysym) {
+                double val = S52_getMarinerParam(S52_MAR_COLOR_PALETTE) + 1.0;
+                S52_setMarinerParam(S52_MAR_COLOR_PALETTE, val);
+                engine->do_S52draw = TRUE;
+                return TRUE;
+            }
+            if (XK_K == keysym) {
+                double val = S52_getMarinerParam(S52_MAR_COLOR_PALETTE) - 1.0;
+                S52_setMarinerParam(S52_MAR_COLOR_PALETTE, val);
+                engine->do_S52draw = TRUE;
+                return TRUE;
+            }
+
             // Load Cell
             if (XK_F1 == keysym) {
                 S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
