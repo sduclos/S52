@@ -742,6 +742,8 @@ static void     rotation_angle_changed(GtkGestureRotate *gesture,
     //(void)angle;
     (void)widget;
 
+    // FIXME: test min angle before blitting
+
     _gdelta = 360.0 - delta*RAD2DEG;
     if (360.0 <= _gdelta) _gdelta -= 360.0;
     if (_gdelta < 0.0)    _gdelta += 360.0;
