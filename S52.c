@@ -4736,9 +4736,9 @@ DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorNa
         goto exit;
     }
 
-    PRINTF("X:%f Y:%f color:%s bsize:%i str:%s\n", pixels_x, pixels_y, colorName, bsize, str);
+    //PRINTF("X:%f Y:%f color:%s bsize:%i str:%s\n", pixels_x, pixels_y, colorName, bsize, str);
 
-    ret = S52_GL_drawStr(pixels_x, pixels_y, colorName, bsize, str);
+    ret = S52_GL_drawStrWin(pixels_x, pixels_y, colorName, bsize, str);
 
 
 exit:
