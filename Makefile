@@ -211,7 +211,6 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_GL3          - GL3.x   -in a day (npot)
 # -DS52_USE_GLES3        - GLES3.x -in a day (npot)
 
-#
 # ARM:
 # -DS52_USE_ANDROID      - build for Android/ARM
 # -DS52_USE_TEGRA2       - must be in sync with Android.mk (Xoom)
@@ -222,6 +221,9 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 #
 # PROJ4
 # -DS52_USE_PROJ         - Mercator Projection, used by all but s52gv and s52gv2
+
+# LCMS
+# -DS52_USE_LCMS2        - use lcms2 instead of lcms1 - Note: mod pkg-config to lcms2
 
 
 # default CFLAGS for default target (s52gtk2)
