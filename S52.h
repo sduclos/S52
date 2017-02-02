@@ -329,7 +329,7 @@ DLL int    STD S52_drawLayer(const char *name);
  * @pixels_x:  (in): origin LL corner
  * @pixels_y:  (in): origin LL corner
  * @colorName: (in): S52 UI color name
- * @bsize:     (in): body size (1..)
+ * @bsize:     (in): body size (0..3)
  * @str:       (in):
  *
  * For reference S52 UI color name:
@@ -337,7 +337,7 @@ DLL int    STD S52_drawLayer(const char *name);
  * "UINFR", "UINFG", "UINFO", "UINFB",
  * "UINFM", "UIBDR", "UIAFF"
  *
- * Note: client must register EGL callback via S52_setEGLcb()
+ * Note: if using EGL, client must register EGL callback via S52_setEGLcb()
  * to handle the framebuffer (or handle FB by hand)
  *
  * Note: call will fail if no ENC loaded (via S52_loadCell)
