@@ -21,7 +21,6 @@
 */
 
 
-
 #include "S52PL.h"          // --
 
 #include "S52CS.h"          // S52_CS_condTable[]
@@ -396,7 +395,7 @@ INST   13SY(SCALEB11)
 DISC   12DISPLAYBASE
 LUCM    611030
 ****    0
-#endif
+#endif  // 0
 
 // 1 col: S-52 pslb03_2.pdf 13.4.3
 // 2 col: S-57 name for 'nature of surface' attribute  --NATSUR (113)
@@ -424,13 +423,6 @@ static const char *natsur[] = {
     "R "     //"boulder"   // 18 : boulder
 };
 #define N_NATSUR   19     // number of natsur
-
-// CMS: Color Management System --> lcms
-#include "lcms.h"
-static cmsHPROFILE   _xyzp = NULL;
-static cmsHPROFILE   _rgbp = NULL;
-static cmsHTRANSFORM _2RGB = NULL;
-static int           _lcmsError = FALSE;   // TRUE an error occur in lcms
 
 // optimisation: indexed
 static GPtrArray    *_objList = NULL;
@@ -2160,40 +2152,66 @@ YOFFS "y-offset" parameter:
 
 
 //---------
-// C M S
+// L C M S
 //---------
 
-static int        _cms_error(int no, const char *err)
-{
+// gimp/libgimpcolor/gimpcolortransform.c
+// LCMS: Little Color Management System --> lcms
+#ifdef S52_USE_LCMS2
+#include "lcms2.h"
+#else
+#include "lcms.h"
+#endif
+static cmsHTRANSFORM _XYZ2RGB = NULL;
 
-    PRINTF("ERROR: color management: %s (%i)", err, no);
+#if 0
+//static int        _lcmsError = FALSE;   // TRUE an error occur in lcms
+//static int        _cms_error(int no, const char *err)
+//typedef void  (* cmsLogErrorHandlerFunction)(cmsContext ContextID, cmsUInt32Number ErrorCode, const char *Text);
+static void        _cms_error(cmsContext ContextID, cmsUInt32Number ErrorCode, const char *Text)
+{
+    (void) ContextID;
+
+/* 0 - 13
+cmsERROR_UNDEFINED
+cmsERROR_FILE
+cmsERROR_RANGE
+cmsERROR_INTERNAL
+cmsERROR_NULL
+cmsERROR_READ
+cmsERROR_SEEK
+cmsERROR_WRITE
+cmsERROR_UNKNOWN_EXTENSION
+cmsERROR_COLORSPACE_CHECK
+cmsERROR_ALREADY_DEFINED
+cmsERROR_BAD_SIGNATURE
+cmsERROR_CORRUPTION_DETECTED
+cmsERROR_NOT_SUITABLE
+*/
+
+    //PRINTF("ERROR: color management: %s (%i)", err, no);
+    PRINTF("WARNING: lcms2 error: %s (%i)", Text, ErrorCode);
 
     _lcmsError = TRUE;
 
-    return TRUE;
+    g_assert(0);
+
+    //return TRUE;
+    return;
 }
 
+//#if 0
 static int        _cms_init()
 {
-    // this is all 'intent' of lcms
-    //int intent = INTENT_PERCEPTUAL;             // 0 - blueish
-    //int intent = INTENT_RELATIVE_COLORIMETRIC;  // 1 - blueish
-    //int intent = INTENT_SATURATION;             // 2 - blueish
-    int intent = INTENT_ABSOLUTE_COLORIMETRIC;  // 3 <<<< GOOD !!!
+    // lcms-1
+    //cmsSetErrorHandler(_cms_error);
+    // lcms-2
+    cmsSetLogErrorHandler(_cms_error);
 
-    DWORD dwFlags = 0;
-    //DWORD dwFlags = cmsFLAGS_NOTPRECALC;       // OK same result as '0'
-
-    //DWORD dwFlags = cmsFLAGS_NULLTRANSFORM;      // drak blue
-    //DWORD dwFlags = cmsFLAGS_HIGHRESPRECALC;   // same as '0'
-    //DWORD dwFlags = cmsFLAGS_BLACKPOINTCOMPENSATION;  // from Gimp source code (same result as '0')
-
-    cmsSetErrorHandler(_cms_error);
-
-    _xyzp = cmsCreateXYZProfile();
+    cmsHPROFILE xyzp = cmsCreateXYZProfile();
     //_xyzp = cmsOpenProfileFromFile("/home/sduclos/.color/icc/test2.icm", "r");
 
-    _rgbp = cmsCreate_sRGBProfile();
+    cmsHPROFILE rgbp = cmsCreate_sRGBProfile();
     //_rgbp = cmsOpenProfileFromFile("/home/sduclos/.color/icc/test-2.2.icm", "r");
     //_rgbp = cmsOpenProfileFromFile("/home/sduclos/.color/icc/test-2.2-D50.icm", "r");
     // more blue than g=2.2
@@ -2207,57 +2225,232 @@ static int        _cms_init()
     // full default sRGB (give the same as  cmsCreate_sRGBProfile())
     //_rgbp = cmsOpenProfileFromFile("/home/sduclos/.color/icc/test.icm", "r");
 
+
+    //PRINTF("XXXXX DEBUG: lcms2 cmsUInt32Number %i, guint %i\n", sizeof(cmsUInt32Number), sizeof(guint));
+
+    // lcms1 'iccc intent'
+    //int intent = INTENT_PERCEPTUAL;             // 0 - blueish
+    //int intent = INTENT_RELATIVE_COLORIMETRIC;  // 1 - blueish
+    //int intent = INTENT_SATURATION;             // 2 - blueish
+    //int intent = INTENT_ABSOLUTE_COLORIMETRIC;  // 3 <<<< GOOD !!!, lcms/doc/TUTORIAL.TXT say itsa bug!!
+
+
+    // lcms2 (same)
+    //cmsUInt32Number intent = INTENT_PERCEPTUAL;
+    cmsUInt32Number intent = INTENT_RELATIVE_COLORIMETRIC;
+    //cmsUInt32Number intent = INTENT_SATURATION;
+    //cmsUInt32Number intent = INTENT_ABSOLUTE_COLORIMETRIC;  // blueish !?!
+
+    // lcms1
+    //DWORD dwFlags = 0;
+    //DWORD dwFlags = cmsFLAGS_NOTPRECALC;              // OK same result as '0'
+    //DWORD dwFlags = cmsFLAGS_NULLTRANSFORM;           // drak blue
+    //DWORD dwFlags = cmsFLAGS_HIGHRESPRECALC;          // same as '0'
+    //DWORD dwFlags = cmsFLAGS_BLACKPOINTCOMPENSATION;  // from Gimp source code (same result as '0')
+
+    // lcms2
+    //cmsUInt32Number uFlags = 0;
+    cmsUInt32Number uFlags = cmsFLAGS_BLACKPOINTCOMPENSATION | cmsFLAGS_NOOPTIMIZE;  // gimp/app/widgets/gimpcolorframe.c
+
+    // gimp never use these
+    //cmsUInt32Number uFlags = cmsFLAGS_NOTPRECALC;
+    //cmsUInt32Number uFlags = cmsFLAGS_NULLTRANSFORM;
+    //cmsUInt32Number uFlags = cmsFLAGS_HIGHRESPRECALC;
+
+    /*
+    4.3.1.1 Color space chromaticities and luminance
+
+    The chromaticity coordinates for the color space primaries and white point shall be as follows:
+
+    Red   x=0.6400, y=0.3300
+    Green x=0.2100, y=0.7100
+    Blue  x=0.1500, y=0.0600
+    White x=0.3127, y=0.3290
+    */
+
+    //cmsWhitePointFromTemp(5600, &WhitePoint);
+    //hLab = cmsCreateLabProfile(&WhitePoint);
+
+    /*
+    cmsCIExyY WhitePoint =  {0.3127, 0.3290, 1.0};  // D65
+    cmsCIExyYTRIPLE Primaries = {
+        {0.6400, 0.3300, 1.0},
+        {0.3000, 0.6000, 1.0},
+        {0.1500, 0.0600, 1.0}
+    };
+
+    double GammaOfFile;
+    png_get_gAMA(png_ptr, info_ptr, &GammaOfFile);
+
+    LPGAMMATABLE GammaTable[3];
+    GammaTable[0] = GammaTable[1] = GammaTable[2] = cmsBuildGamma(256, 1/GammaOfFile);
+
+    cmsHPROFILE hReturn = cmsCreateRGBProfile(&WhitePoint, &Primaries, GammaTable);
+
+    cmsFreeGamma(GammaTable[0]);
+    //*/
+
+
+    _XYZ2RGB = cmsCreateTransform(xyzp, TYPE_XYZ_DBL,  // input double
+                                  rgbp, TYPE_RGB_8,    // output RGB in BYTE
+                                  intent,
+                                  uFlags);
+
     if (TRUE == _lcmsError) {
-        PRINTF("ERROR: lcms\n");
+        _lcmsError = FALSE;
         return FALSE;
     }
 
-    // sRGBProfile()
-    //_2RGB = cmsCreateTransform(_xyzp, TYPE_XYZ_DBL,
-    //                           _rgbp, TYPE_RGB_16,
-    //                           //_rgbp, TYPE_RGB_DBL,    // bus error
-    //                           intent, dwFlags);
+    //PRINTF("XXXXX DEBUG: lcms2 cmsFloat64Number(%i) == double(%i)\n", sizeof(cmsFloat64Number), sizeof(double));
 
-    // ProfileFromFile()
-    _2RGB = cmsCreateTransform(
-                               _xyzp, TYPE_XYZ_DBL,    // blueish (g=2.2)
-    //                           //_xyzp, TYPE_XYZ_16,     // nop (mixed color)
-                               //_xyzp, TYPE_XYZ_8,     // XYZ_8 doesn't existe
-    //
-                               _rgbp, TYPE_RGB_8,      // out RGB in BYTE
-    //                           //_rgbp, TYPE_RGB_16,
-    //                           //_rgbp, TYPE_RGB_DBL,  // bus error (!)
-                               intent, dwFlags);
+    cmsCloseProfile(rgbp);
+    cmsCloseProfile(xyzp);
+
+    return TRUE;
+}
+#endif  // 0
+
+static int        _cms_init()
+{
+    cmsHPROFILE xyzp = cmsCreateXYZProfile();
+
+#ifdef S52_USE_LCMS2
+    // lcms2
+    cmsToneCurve*   Curve[3]   = {  NULL,   NULL, NULL};
+    cmsCIExyY       WhitePoint = {0.3127, 0.3290,  1.0};  // D65
+    cmsCIExyYTRIPLE Primaries  =
+    {
+        // AdobeRGB
+        //{0.64, 0.33, 1.0},
+        //{0.21, 0.71, 1.0},
+        //{0.15, 0.06, 1.0}
+
+        // prim2
+        {0.7355, 0.2645, 1.0},
+        {0.2658, 0.7243, 1.0},
+        {0.1669, 0.0085, 1.0}
+    };
+
+
+    //CMSAPI cmsToneCurve*     CMSEXPORT cmsBuildGamma(cmsContext ContextID, cmsFloat64Number Gamma);
+    Curve[0] = Curve[1] = Curve[2] = cmsBuildGamma(0, 2.2);
+
+    //CMSAPI cmsBool           CMSEXPORT cmsWhitePointFromTemp(cmsCIExyY* WhitePoint, cmsFloat64Number  TempK);
+    //cmsWhitePointFromTemp(&D65, 6500);
+
+    //CMSAPI cmsHPROFILE      CMSEXPORT cmsCreateRGBProfile(const cmsCIExyY* WhitePoint,
+    //                                               const cmsCIExyYTRIPLE* Primaries,
+    //                                               cmsToneCurve* const TransferFunction[3]);
+
+    cmsHPROFILE rgbp  = cmsCreateRGBProfile(&WhitePoint, &Primaries, Curve);
+    cmsFreeToneCurve(Curve[0]);
+
+    // debug - predefined profile
+    //rgbp = cmsCreate_sRGBProfile();
+
+#else  // S52_USE_LCMS2
+
+    // lcms1
+    LPGAMMATABLE    Gamma3[3]    = {  NULL,   NULL, NULL};
+    cmsCIExyY       WhitePoint   = {0.3127, 0.3290,  1.0};  // D65
+    cmsCIExyYTRIPLE CIEPrimaries =
+    {
+        // AdobeRGB
+        //{0.64, 0.33, 1.0},
+        //{0.21, 0.71, 1.0},
+        //{0.15, 0.06, 1.0}
+
+        // prim2
+        {0.7355, 0.2645, 1.0},
+        {0.2658, 0.7243, 1.0},
+        {0.1669, 0.0085, 1.0}
+    };
+
+    //LCMSAPI LPGAMMATABLE  LCMSEXPORT cmsBuildGamma(int nEntries, double Gamma);
+	//Gamma3[0] = Gamma3[1] = Gamma3[2] = cmsBuildGamma(4096, 4.5);  // pale color
+	Gamma3[0] = Gamma3[1] = Gamma3[2] = cmsBuildGamma(256, 2.2);
+	//Gamma3[0] = Gamma3[1] = Gamma3[2] = cmsBuildGamma(4096, 2.2);  // same as 256
+
+    //cmsWhitePointFromTemp(6500, &WhitePoint);  // D65
+    //cmsWhitePointFromTemp(5600, &WhitePoint);
+
+    //LCMSAPI cmsHPROFILE   LCMSEXPORT cmsCreateRGBProfile(LPcmsCIExyY WhitePoint,
+    //                                    LPcmsCIExyYTRIPLE Primaries,
+    //                                    LPGAMMATABLE TransferFunction[3]);
+	cmsHPROFILE rgbp = cmsCreateRGBProfile(&WhitePoint, &CIEPrimaries, Gamma3);
+
+	cmsFreeGamma(Gamma3[0]);
+
+    // debug - predefined profile
+    //rgbp = cmsCreate_sRGBProfile();
+
+#endif  // S52_USE_LCMS2
+
+    _XYZ2RGB = cmsCreateTransform(xyzp, TYPE_XYZ_DBL,              // input  (3 x double)
+                                  rgbp, TYPE_RGB_8,                // output (3 x char)
+                                  INTENT_ABSOLUTE_COLORIMETRIC,    // intent
+                                  //INTENT_RELATIVE_COLORIMETRIC,
+
+                                  0                              // flags
+                                  //cmsFLAGS_NOTPRECALC            // no diff (but should, see lcms1/doc/TUTTORIAL.TXT:Annex B)
+                                  //cmsFLAGS_BLACKPOINTCOMPENSATION  // no diff, gimp src
+                                 );
+    if (NULL == _XYZ2RGB)
+        g_assert(0);
+
+    cmsCloseProfile(rgbp);
+    cmsCloseProfile(xyzp);
 
     return TRUE;
 }
 
-//static int        _cms_xyL2rgb(double *xr, double *yg, double *Lb)
 static int        _cms_xyL2rgb(S52_Color *c)
 {
-    //cmsCIExyY xyY    = { *xr, *yg, *Lb };
-    cmsCIExyY xyY    = { c->x, c->y, c->L };
-    cmsCIEXYZ xyz    = {   0,   0,   0 };
-    //WORD      rgb[3] = {   0,   0,   0 }; //unsigned short --16 bits
-    BYTE      rgb[3] = {   0,   0,   0 }; //unsigned short --16 bits
+    cmsCIExyY xyY    = {c->x, c->y, c->L};  // 3 x double
+    cmsCIEXYZ xyz    = { 0.0,  0.0,  0.0};  // 3 x double
+    guchar    rgb[3] = {   0,    0,    0};
 
     cmsxyY2XYZ(&xyz, &xyY);
-
-    //double Y = *Lb;
-    //double X = (*xr / *yg) * Y;
-    //double Z = ((1 - *xr - *yg) / *yg) * Y;
+    //xyz.Y = xyY.Y;
+    //xyz.X = (xyY.x / xyY.y) * xyz.Y;
+    //xyz.Z = ((1 - xyY.x - xyY.y) / xyY.y) * xyz.Y;
 
     xyz.X /= 100.0;
     xyz.Y /= 100.0;
     xyz.Z /= 100.0;
+    //xyz.Z /= 140.0;  // <<< lcms2 mod to get less blueish
 
-    cmsDoTransform(_2RGB, &xyz, rgb, 1);
+#ifdef S52_USE_LCMS2
+    cmsDoTransform(_XYZ2RGB, (const void *)&xyz, rgb, 1);  // lcms2
+#else
+    cmsDoTransform(_XYZ2RGB, (void*)&xyz, rgb, 1);  // lcms1
+#endif
+
+    c->R = rgb[0];
+    c->G = rgb[1];
+    c->B = rgb[2];
+
+    //PRINTF("DEBUG: %hhu, %hhu, %hhu \n", rgb[0], rgb[1], rgb[2]);
+
+
+    // ---- by hand (not good) ------------------------------------
+    /* xyL --> xyz
+    xyz.Y = c->L;
+    xyz.X = (c->x / c->y) * xyz.Y;
+    xyz.Z = ((1 - c->x - c->y) / c->y) * xyz.Y;
 
     // from OpenVG specs (for D65)
-    // R =  3.240479 X - 1.537150 Y - 0.498535 Z
-    // G = -0.969256 X + 1.875992 Y + 0.041556 Z
-    // B =  0.055648 X - 0.204043 Y + 1.057311 Z
-    //
+    c->R =  (3.240479 * xyz.X) - (1.537150 * xyz.Y) - (0.498535 * xyz.Z);
+    c->G = -(0.969256 * xyz.X) + (1.875992 * xyz.Y) + (0.041556 * xyz.Z);
+    c->B =  (0.055648 * xyz.X) - (0.204043 * xyz.Y) + (1.057311 * xyz.Z);
+    //*/
+
+    // RGB->sRGB (by gamma apply)
+    //if( RGB <= 0.04045 )
+    //    RGB / 12.92
+    //else
+    //    pow ( ( (0.055 + RGB)/ 1.055),  2.4 ) ;
+
     // and gamma mapping Ga
     //if x < 0.00304
     //    Ga(x) = 12.92 x
@@ -2269,34 +2462,15 @@ static int        _cms_xyL2rgb(S52_Color *c)
     // sG = Ga(G)
     // sB = Ga(B)
 
-    // from 'lcms' doc --> rgb[] * 255.0 / 65535.0 == 257.0
-    //*xr = rgb[0] / 257.0;
-    //*yg = rgb[1] / 257.0;
-    //*Lb = rgb[2] / 257.0;
-
-    //c->R = rgb[0] / 257.0;
-    //c->G = rgb[1] / 257.0;
-    //c->B = rgb[2] / 257.0;
-    c->R = rgb[0];
-    c->G = rgb[1];
-    c->B = rgb[2];
-
-    // debug
-    //PRINTF("%.2i, %.2i, %.2i \n", rgb[0], rgb[1], rgb[2]);
-
     return TRUE;
 }
 
 static int        _cms_done()
 {
-    cmsCloseProfile(_rgbp);
-    cmsCloseProfile(_xyzp);
+    if (NULL != _XYZ2RGB)
+        cmsDeleteTransform(_XYZ2RGB);
 
-    if (_2RGB) cmsDeleteTransform(_2RGB);
-
-    _rgbp = NULL;
-    _xyzp = NULL;
-    _2RGB = NULL;
+    _XYZ2RGB = NULL;
 
     return TRUE;
 }
@@ -3112,7 +3286,7 @@ double      S52_PL_getSYorient(_S52_obj *obj)
                             obj->orient = S52_atof(headngstr->str);
                             PRINTF("DEBUG: %s:headng found(%f)\n", S52_PL_getOBCL(obj), obj->orient);
                         } else {
-                            PRINTF("DEBUG: %s:noOrient found(%f) .. search ???\n", S52_PL_getOBCL(obj), noOrient);
+                            //PRINTF("DEBUG: %s:noOrient found(%f) .. search ???\n", S52_PL_getOBCL(obj), noOrient);
                             obj->orient = noOrient;
                         }
                     }
