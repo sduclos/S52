@@ -4,6 +4,11 @@
 #
 
 
+2017FEB02
+    -add port to lcms2
+    -mod lcms1 code to use RGB instead of sRGB profile
+    -add def S52_USE_LCMS2
+
 2017JAN28
     -fix regression in s52eglx
     -del S52_USE_MESA3D in test/
