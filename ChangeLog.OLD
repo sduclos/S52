@@ -4,6 +4,9 @@
 #
 
 
+2017FEB03
+    -fix lcms2 code path
+
 2017FEB02
     -add port to lcms2
     -mod lcms1 code to use RGB instead of sRGB profile
