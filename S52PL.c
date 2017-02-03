@@ -2155,6 +2155,9 @@ YOFFS "y-offset" parameter:
 // L C M S
 //---------
 
+// FIXME: load user calibration if available
+// (ex: _rgbp = cmsOpenProfileFromFile("/home/<user>/.color/icc/test-sRBG.icm", "r");)
+
 // gimp/libgimpcolor/gimpcolortransform.c
 // LCMS: Little Color Management System --> lcms
 #ifdef S52_USE_LCMS2
@@ -2162,16 +2165,18 @@ YOFFS "y-offset" parameter:
 #else
 #include "lcms.h"
 #endif
-static cmsHTRANSFORM _XYZ2RGB = NULL;
+static cmsHTRANSFORM _XYZ2RGB   = NULL;
+static int           _lcmsError = FALSE;   // TRUE an error occur in lcms
 
-#if 0
-//static int        _lcmsError = FALSE;   // TRUE an error occur in lcms
-//static int        _cms_error(int no, const char *err)
-//typedef void  (* cmsLogErrorHandlerFunction)(cmsContext ContextID, cmsUInt32Number ErrorCode, const char *Text);
-static void        _cms_error(cmsContext ContextID, cmsUInt32Number ErrorCode, const char *Text)
+#ifdef S52_USE_LCMS2
+static void        _cms_error_cb(cmsContext ContextID, cmsUInt32Number errCode, const char *errText)
+#else
+static int         _cms_error_cb(int errCode, const char *errText)
+#endif
 {
-    (void) ContextID;
-
+#ifdef S52_USE_LCMS2
+    (void) ContextID;  // queit compiler
+#endif
 /* 0 - 13
 cmsERROR_UNDEFINED
 cmsERROR_FILE
@@ -2189,24 +2194,26 @@ cmsERROR_CORRUPTION_DETECTED
 cmsERROR_NOT_SUITABLE
 */
 
-    //PRINTF("ERROR: color management: %s (%i)", err, no);
-    PRINTF("WARNING: lcms2 error: %s (%i)", Text, ErrorCode);
+    PRINTF("WARNING: lcms error: %s (%i)", errText, errCode);
 
     _lcmsError = TRUE;
 
     g_assert(0);
 
-    //return TRUE;
+#ifdef S52_USE_LCMS2
     return;
+#else
+    return TRUE;
+#endif
 }
 
-//#if 0
+#if 0
 static int        _cms_init()
 {
     // lcms-1
     //cmsSetErrorHandler(_cms_error);
     // lcms-2
-    cmsSetLogErrorHandler(_cms_error);
+    cmsSetLogErrorHandler(_cms_error_cb);
 
     cmsHPROFILE xyzp = cmsCreateXYZProfile();
     //_xyzp = cmsOpenProfileFromFile("/home/sduclos/.color/icc/test2.icm", "r");
@@ -2312,11 +2319,7 @@ static int        _cms_init()
 
 static int        _cms_init()
 {
-    cmsHPROFILE xyzp = cmsCreateXYZProfile();
-
-#ifdef S52_USE_LCMS2
-    // lcms2
-    cmsToneCurve*   Curve[3]   = {  NULL,   NULL, NULL};
+    cmsHPROFILE     xyzp       = cmsCreateXYZProfile();
     cmsCIExyY       WhitePoint = {0.3127, 0.3290,  1.0};  // D65
     cmsCIExyYTRIPLE Primaries  =
     {
@@ -2332,17 +2335,24 @@ static int        _cms_init()
     };
 
 
+#ifdef S52_USE_LCMS2
+    // lcms2
+    cmsToneCurve* Curve[3] = {NULL, NULL, NULL};
+
+    cmsSetLogErrorHandler(_cms_error_cb);
+
     //CMSAPI cmsToneCurve*     CMSEXPORT cmsBuildGamma(cmsContext ContextID, cmsFloat64Number Gamma);
     Curve[0] = Curve[1] = Curve[2] = cmsBuildGamma(0, 2.2);
 
     //CMSAPI cmsBool           CMSEXPORT cmsWhitePointFromTemp(cmsCIExyY* WhitePoint, cmsFloat64Number  TempK);
-    //cmsWhitePointFromTemp(&D65, 6500);
+    //cmsWhitePointFromTemp(&WhitePoint, 5600);
+    //cmsWhitePointFromTemp(&WhitePoint, 4000);
 
     //CMSAPI cmsHPROFILE      CMSEXPORT cmsCreateRGBProfile(const cmsCIExyY* WhitePoint,
     //                                               const cmsCIExyYTRIPLE* Primaries,
     //                                               cmsToneCurve* const TransferFunction[3]);
-
     cmsHPROFILE rgbp  = cmsCreateRGBProfile(&WhitePoint, &Primaries, Curve);
+
     cmsFreeToneCurve(Curve[0]);
 
     // debug - predefined profile
@@ -2351,35 +2361,25 @@ static int        _cms_init()
 #else  // S52_USE_LCMS2
 
     // lcms1
-    LPGAMMATABLE    Gamma3[3]    = {  NULL,   NULL, NULL};
-    cmsCIExyY       WhitePoint   = {0.3127, 0.3290,  1.0};  // D65
-    cmsCIExyYTRIPLE CIEPrimaries =
-    {
-        // AdobeRGB
-        //{0.64, 0.33, 1.0},
-        //{0.21, 0.71, 1.0},
-        //{0.15, 0.06, 1.0}
+    LPGAMMATABLE Gamma3[3] = {NULL, NULL, NULL};
 
-        // prim2
-        {0.7355, 0.2645, 1.0},
-        {0.2658, 0.7243, 1.0},
-        {0.1669, 0.0085, 1.0}
-    };
+    cmsSetErrorHandler(_cms_error_cb);
 
     //LCMSAPI LPGAMMATABLE  LCMSEXPORT cmsBuildGamma(int nEntries, double Gamma);
 	//Gamma3[0] = Gamma3[1] = Gamma3[2] = cmsBuildGamma(4096, 4.5);  // pale color
 	Gamma3[0] = Gamma3[1] = Gamma3[2] = cmsBuildGamma(256, 2.2);
 	//Gamma3[0] = Gamma3[1] = Gamma3[2] = cmsBuildGamma(4096, 2.2);  // same as 256
 
-    //cmsWhitePointFromTemp(6500, &WhitePoint);  // D65
     //cmsWhitePointFromTemp(5600, &WhitePoint);
 
     //LCMSAPI cmsHPROFILE   LCMSEXPORT cmsCreateRGBProfile(LPcmsCIExyY WhitePoint,
     //                                    LPcmsCIExyYTRIPLE Primaries,
     //                                    LPGAMMATABLE TransferFunction[3]);
 	cmsHPROFILE rgbp = cmsCreateRGBProfile(&WhitePoint, &CIEPrimaries, Gamma3);
-
 	cmsFreeGamma(Gamma3[0]);
+
+    // a bit lighter than CreateRGB
+    //cmsHPROFILE rgbp = cmsOpenProfileFromFile("/home/sduclos/.color/icc/test-sRGB.icm", "r");
 
     // debug - predefined profile
     //rgbp = cmsCreate_sRGBProfile();
@@ -2417,12 +2417,12 @@ static int        _cms_xyL2rgb(S52_Color *c)
 
     xyz.X /= 100.0;
     xyz.Y /= 100.0;
-    xyz.Z /= 100.0;
-    //xyz.Z /= 140.0;  // <<< lcms2 mod to get less blueish
 
 #ifdef S52_USE_LCMS2
+    xyz.Z /= 140.0;  // <<< lcms2 kludge to get less blueish
     cmsDoTransform(_XYZ2RGB, (const void *)&xyz, rgb, 1);  // lcms2
 #else
+    xyz.Z /= 100.0;
     cmsDoTransform(_XYZ2RGB, (void*)&xyz, rgb, 1);  // lcms1
 #endif
 
