@@ -278,13 +278,13 @@ s52clutter s52clutter.js : CFLAGS =                         \
 
 #                  -DS52_USE_SUPP_LINE_OVERLAP
 #                  -DS52_USE_GLSC2
+#                  -DS52_USE_LCMS2
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
-                  `pkg-config  --cflags glib-2.0 gio-2.0 lcms2 glesv2 freetype2` \
+                  `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                   `gdal-config --cflags`         \
                   -I./lib/freetype-gl            \
                   -I./lib/libtess                \
                   -I./lib/parson                 \
-                  -DS52_USE_LCMS2                \
                   -DS52_USE_PROJ                 \
                   -DS52_USE_BACKTRACE            \
                   -DS52_USE_EGL                  \
@@ -431,7 +431,7 @@ s52clutter, s52clutter.js : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl` \
 s52glx : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl ftgl` \
                 `gdal-config --libs` -lproj
 
-s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms2 glesv2 freetype2` \
+s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                                       `gdal-config --libs` -lproj
 
 
