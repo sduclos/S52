@@ -378,7 +378,8 @@ static int      _s52_draw_user  (s52engine *engine)
     // debug
     //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test S52_drawStr()");
 
-    // FIXME: str flicker - maybe swapping and egl beg end
+    // FIXME: str seem to flicker
+    // - maybe swapping and egl beg end - nop EGL handled here (and called after str) -> same flicker
     static GTimeVal now;
     g_get_current_time(&now);
     //S52_drawStr(100, engine->height - 100, "ARPAT", 3, g_time_val_to_iso8601(&now));
@@ -447,7 +448,7 @@ static int      _s52_draw_cb    (gpointer user_data)
 
 
 #if !defined(S52_USE_EGL)
-    _egl_beg(engine, "test");
+    _egl_beg(&engine->eglState, "test");
 #endif
 
     // draw background - IHO layer 0-8
@@ -461,6 +462,7 @@ static int      _s52_draw_cb    (gpointer user_data)
         S52_draw();
 
         // test that user can add stuff on top of draw()
+        // FIXME: flicker
         //_s52_draw_user(engine);
     }
 
@@ -477,7 +479,7 @@ static int      _s52_draw_cb    (gpointer user_data)
     }
 
 #if !defined(S52_USE_EGL)
-    _egl_end(engine);
+    _egl_end(&engine->eglState, "test");
 #endif
 
 exit:
@@ -1971,9 +1973,9 @@ static int      _X11_handleXevent(gpointer user_data)
 #ifdef S52_USE_EGL
                 S52_drawBlit(0.0, 0.0, 0.0, -10.0);
 #else
-                _egl_beg(engine, "test");
+                _egl_beg(&engine->eglState, "test");
                 S52_drawBlit(0.0, 0.0, 0.0, -10.0);
-                _egl_end(engine);
+                _egl_end(&engine->eglState, "test");
 #endif
                 engine->state.north -= 10.0;
                 if (0.0 > engine->state.north)
@@ -1985,11 +1987,10 @@ static int      _X11_handleXevent(gpointer user_data)
 #ifdef S52_USE_EGL
                 S52_drawBlit(0.0, 0.0, 0.0, +10.0);
 #else
-                _egl_beg(engine, "test");
+                _egl_beg(&engine->eglState, "test");
                 S52_drawBlit(0.0, 0.0, 0.0, +10.0);
-                _egl_end(engine);
+                _egl_end(&engine->eglState, "test");
 #endif
-
 
                 engine->state.north += 10.0;  // +10.0 deg
                 if (360.0 <= engine->state.north)
