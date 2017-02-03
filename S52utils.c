@@ -145,6 +145,9 @@ static const char _version[] = S52_VERSION
 #ifdef  S52_USE_C_AGGR_C_ASSO
       ",S52_USE_C_AGGR_C_ASSO"
 #endif
+#ifdef  S52_USE_LCMS2
+      ",S52_USE_LCMS2"
+#endif
 "\n";
 
 cchar   *S52_utils_version(void)
