@@ -26,15 +26,15 @@ all: s52gtk2egl    # GTK2 & GLES2 & EGL
 
 # GCC
 #CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=gnu99
-CC   = gcc -O0 -g -Wall -Wextra -pedantic -pipe -std=c99 -D_POSIX_C_SOURCE=199309L
+#CC   = gcc -O0 -g -Wall -Wextra -pedantic -pipe -std=c99 -D_POSIX_C_SOURCE=199309L
 # test - compile C code as C++
 #CC   = g++ -fPIC -O0 -g -Wall
-CXX   = g++ -O0 -g -Wall
+#CXX   = g++ -O0 -g -Wall
 
 # CLANG
-CC   = clang   -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
+CC   = clang -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
 #CC   += --analyze
-
+#CC   += -fsanitize=address 
 #CXX  = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
 
 MINGW = /usr/bin/i586-mingw32msvc-
