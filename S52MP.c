@@ -100,6 +100,26 @@ static char *ColorStrings[] = { COLORS };
 #undef X
 */
 
+/* from HN commentor
+Or a higher-order macro:
+
+#define CMD_LIST(X) X(1) X(2) X(3) X(4)
+
+  enum {
+  #define CMD(x) CMD##x = x - 1,
+    CMD_LIST(CMD)
+  #undef CMD
+  };
+*/
+
+/* so S52 mar par wold look:
+ #define S52MARPARS        \
+ //   #  enum symbol          enum name           default
+    X(0, S52_MAR_ERROR,      "S52_MAR_ERROR",     0.0)  \
+    X(1, S52_MAR_SHOW_TEXT,  "S52_MAR_SHOW_TEXT", 1.0) \
+    X(..)
+*/
+
 // WARNING: must be in sync with S52MarinerParameter (see X macro above)
 static double _MARparamVal[] = {
     0.0,      // 0 - ERROR: 0 - no error,
