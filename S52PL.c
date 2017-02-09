@@ -2213,12 +2213,12 @@ static int        _cms_init()
     // lcms-1
     //cmsSetErrorHandler(_cms_error);
     // lcms-2
-    cmsSetLogErrorHandler(_cms_error_cb);
+    //cmsSetLogErrorHandler(_cms_error_cb);
 
-    cmsHPROFILE xyzp = cmsCreateXYZProfile();
+    //cmsHPROFILE xyzp = cmsCreateXYZProfile();
     //_xyzp = cmsOpenProfileFromFile("/home/sduclos/.color/icc/test2.icm", "r");
 
-    cmsHPROFILE rgbp = cmsCreate_sRGBProfile();
+    //cmsHPROFILE rgbp = cmsCreate_sRGBProfile();
     //_rgbp = cmsOpenProfileFromFile("/home/sduclos/.color/icc/test-2.2.icm", "r");
     //_rgbp = cmsOpenProfileFromFile("/home/sduclos/.color/icc/test-2.2-D50.icm", "r");
     // more blue than g=2.2
@@ -2231,7 +2231,32 @@ static int        _cms_init()
     //_rgbp = cmsOpenProfileFromFile("/home/sduclos/.color/icc/test-G2.2-sRGB.icm", "r");
     // full default sRGB (give the same as  cmsCreate_sRGBProfile())
     //_rgbp = cmsOpenProfileFromFile("/home/sduclos/.color/icc/test.icm", "r");
-
+/*
+/usr/share/color/icc/colord/AdobeRGB1998.icc
+/usr/share/color/icc/colord/AppleRGB.icc
+/usr/share/color/icc/colord/BestRGB.icc
+/usr/share/color/icc/colord/BetaRGB.icc
+/usr/share/color/icc/colord/Bluish.icc
+/usr/share/color/icc/colord/BruceRGB.icc
+/usr/share/color/icc/colord/CIE-RGB.icc
+/usr/share/color/icc/colord/ColorMatchRGB.icc
+/usr/share/color/icc/colord/Crayons.icc
+/usr/share/color/icc/colord/DonRGB4.icc
+/usr/share/color/icc/colord/ECI-RGBv1.icc
+/usr/share/color/icc/colord/ECI-RGBv2.icc
+/usr/share/color/icc/colord/EktaSpacePS5.icc
+/usr/share/color/icc/colord/Gamma5000K.icc
+/usr/share/color/icc/colord/Gamma5500K.icc
+/usr/share/color/icc/colord/Gamma6500K.icc
+/usr/share/color/icc/colord/NTSC-RGB.icc
+/usr/share/color/icc/colord/PAL-RGB.icc
+/usr/share/color/icc/colord/ProPhotoRGB.icc
+/usr/share/color/icc/colord/SMPTE-C-RGB.icc
+/usr/share/color/icc/colord/SwappedRedAndGreen.icc
+/usr/share/color/icc/colord/WideGamutRGB.icc
+/usr/share/color/icc/colord/sRGB.icc
+/usr/share/color/icc/colord/x11-colors.icc
+*/
 
     //PRINTF("XXXXX DEBUG: lcms2 cmsUInt32Number %i, guint %i\n", sizeof(cmsUInt32Number), sizeof(guint));
 
@@ -2244,7 +2269,7 @@ static int        _cms_init()
 
     // lcms2 (same)
     //cmsUInt32Number intent = INTENT_PERCEPTUAL;
-    cmsUInt32Number intent = INTENT_RELATIVE_COLORIMETRIC;
+    //cmsUInt32Number intent = INTENT_RELATIVE_COLORIMETRIC;
     //cmsUInt32Number intent = INTENT_SATURATION;
     //cmsUInt32Number intent = INTENT_ABSOLUTE_COLORIMETRIC;  // blueish !?!
 
@@ -2257,7 +2282,7 @@ static int        _cms_init()
 
     // lcms2
     //cmsUInt32Number uFlags = 0;
-    cmsUInt32Number uFlags = cmsFLAGS_BLACKPOINTCOMPENSATION | cmsFLAGS_NOOPTIMIZE;  // gimp/app/widgets/gimpcolorframe.c
+    //cmsUInt32Number uFlags = cmsFLAGS_BLACKPOINTCOMPENSATION | cmsFLAGS_NOOPTIMIZE;  // gimp/app/widgets/gimpcolorframe.c
 
     // gimp never use these
     //cmsUInt32Number uFlags = cmsFLAGS_NOTPRECALC;
@@ -2273,12 +2298,10 @@ static int        _cms_init()
     Green x=0.2100, y=0.7100
     Blue  x=0.1500, y=0.0600
     White x=0.3127, y=0.3290
-    */
 
     //cmsWhitePointFromTemp(5600, &WhitePoint);
     //hLab = cmsCreateLabProfile(&WhitePoint);
 
-    /*
     cmsCIExyY WhitePoint =  {0.3127, 0.3290, 1.0};  // D65
     cmsCIExyYTRIPLE Primaries = {
         {0.6400, 0.3300, 1.0},
@@ -2295,7 +2318,6 @@ static int        _cms_init()
     cmsHPROFILE hReturn = cmsCreateRGBProfile(&WhitePoint, &Primaries, GammaTable);
 
     cmsFreeGamma(GammaTable[0]);
-    //*/
 
 
     _XYZ2RGB = cmsCreateTransform(xyzp, TYPE_XYZ_DBL,  // input double
@@ -2308,12 +2330,11 @@ static int        _cms_init()
         return FALSE;
     }
 
-    //PRINTF("XXXXX DEBUG: lcms2 cmsFloat64Number(%i) == double(%i)\n", sizeof(cmsFloat64Number), sizeof(double));
-
     cmsCloseProfile(rgbp);
     cmsCloseProfile(xyzp);
 
     return TRUE;
+    */
 }
 #endif  // 0
 
@@ -2366,20 +2387,24 @@ static int        _cms_init()
     cmsSetErrorHandler(_cms_error_cb);
 
     //LCMSAPI LPGAMMATABLE  LCMSEXPORT cmsBuildGamma(int nEntries, double Gamma);
-	//Gamma3[0] = Gamma3[1] = Gamma3[2] = cmsBuildGamma(4096, 4.5);  // pale color
-	Gamma3[0] = Gamma3[1] = Gamma3[2] = cmsBuildGamma(256, 2.2);
-	//Gamma3[0] = Gamma3[1] = Gamma3[2] = cmsBuildGamma(4096, 2.2);  // same as 256
+    //Gamma3[0] = Gamma3[1] = Gamma3[2] = cmsBuildGamma(4096, 4.5);  // pale color
+    //Gamma3[0] = Gamma3[1] = Gamma3[2] = cmsBuildGamma(4096, 2.2);  // same as 256
+    Gamma3[0] = Gamma3[1] = Gamma3[2] = cmsBuildGamma(256, 2.2);
 
     //cmsWhitePointFromTemp(5600, &WhitePoint);
 
     //LCMSAPI cmsHPROFILE   LCMSEXPORT cmsCreateRGBProfile(LPcmsCIExyY WhitePoint,
     //                                    LPcmsCIExyYTRIPLE Primaries,
     //                                    LPGAMMATABLE TransferFunction[3]);
-	cmsHPROFILE rgbp = cmsCreateRGBProfile(&WhitePoint, &CIEPrimaries, Gamma3);
-	cmsFreeGamma(Gamma3[0]);
+    cmsHPROFILE rgbp = cmsCreateRGBProfile(&WhitePoint, &Primaries, Gamma3);
 
+    cmsFreeGamma(Gamma3[0]);
+
+    // other way to create RGB profile
     // a bit lighter than CreateRGB
     //cmsHPROFILE rgbp = cmsOpenProfileFromFile("/home/sduclos/.color/icc/test-sRGB.icm", "r");
+    //cmsHPROFILE rgbp = cmsOpenProfileFromFile("/usr/share/color/icc/colord/BestRGB.icc", "r");
+    //cmsHPROFILE rgbp = cmsOpenProfileFromFile("/usr/share/color/icc/colord/WideGamutRGB.icc", "r");
 
     // debug - predefined profile
     //rgbp = cmsCreate_sRGBProfile();
@@ -2404,6 +2429,24 @@ static int        _cms_init()
     return TRUE;
 }
 
+    /*  experiment
+    static int gam_sRGB(double v) {
+        if(v<=0.0031308)
+            v *= 12.92;
+        else
+            v = 1.055*pow(v,1.0/2.4)-0.055;
+
+        return (int)v*255+0.5;
+    }
+
+    static double inv_gam_sRGB(int ic) {
+        double c = ic/255.0;
+        if ( c <= 0.04045 )
+            return c/12.92;
+        else
+            return pow(((c+0.055)/(1.055)),2.4);
+    }
+    //*/
 static int        _cms_xyL2rgb(S52_Color *c)
 {
     cmsCIExyY xyY    = {c->x, c->y, c->L};  // 3 x double
@@ -2411,9 +2454,6 @@ static int        _cms_xyL2rgb(S52_Color *c)
     guchar    rgb[3] = {   0,    0,    0};
 
     cmsxyY2XYZ(&xyz, &xyY);
-    //xyz.Y = xyY.Y;
-    //xyz.X = (xyY.x / xyY.y) * xyz.Y;
-    //xyz.Z = ((1 - xyY.x - xyY.y) / xyY.y) * xyz.Y;
 
     xyz.X /= 100.0;
     xyz.Y /= 100.0;
@@ -2433,8 +2473,11 @@ static int        _cms_xyL2rgb(S52_Color *c)
     //PRINTF("DEBUG: %hhu, %hhu, %hhu \n", rgb[0], rgb[1], rgb[2]);
 
 
-    // ---- by hand (not good) ------------------------------------
+    // ---- by hand (not good - dark) ------------------------------------
     /* xyL --> xyz
+    //xyz.Y = xyY.Y;
+    //xyz.X = (xyY.x / xyY.y) * xyz.Y;
+    //xyz.Z = ((1 - xyY.x - xyY.y) / xyY.y) * xyz.Y;
     xyz.Y = c->L;
     xyz.X = (c->x / c->y) * xyz.Y;
     xyz.Z = ((1 - c->x - c->y) / c->y) * xyz.Y;
@@ -2443,13 +2486,46 @@ static int        _cms_xyL2rgb(S52_Color *c)
     c->R =  (3.240479 * xyz.X) - (1.537150 * xyz.Y) - (0.498535 * xyz.Z);
     c->G = -(0.969256 * xyz.X) + (1.875992 * xyz.Y) + (0.041556 * xyz.Z);
     c->B =  (0.055648 * xyz.X) - (0.204043 * xyz.Y) + (1.057311 * xyz.Z);
+    //double R =  (3.240479 * xyz.X) - (1.537150 * xyz.Y) - (0.498535 * xyz.Z);
+    //double G = -(0.969256 * xyz.X) + (1.875992 * xyz.Y) + (0.041556 * xyz.Z);
+    //double B =  (0.055648 * xyz.X) - (0.204043 * xyz.Y) + (1.057311 * xyz.Z);
     //*/
+    // ---- by hand (not good - dark) ------------------------------------
 
-    // RGB->sRGB (by gamma apply)
-    //if( RGB <= 0.04045 )
-    //    RGB / 12.92
-    //else
-    //    pow ( ( (0.055 + RGB)/ 1.055),  2.4 ) ;
+
+    // ------ experiment -------------------------------------
+    /* sRGB luminance(Y) values
+    const double rY = 0.212655;
+    const double gY = 0.715158;
+    const double bY = 0.072187;
+
+    // Inverse of sRGB "gamma" function. (approx 2.2)
+    double inv_gam_sRGB(int ic) {
+        double c = ic/255.0;
+        if ( c <= 0.04045 )
+            return c/12.92;
+        else
+            return pow(((c+0.055)/(1.055)),2.4);
+    }
+
+    // sRGB "gamma" function (approx 2.2)
+    int gam_sRGB(double v) {
+        if(v<=0.0031308)
+            v *= 12.92;
+        else
+            v = 1.055*pow(v,1.0/2.4)-0.055;
+        return int(v*255+.5);
+    }
+
+    // GRAY VALUE ("brightness")
+    int gray(int r, int g, int b) {
+        return gam_sRGB(
+                        rY*inv_gam_sRGB(r) +
+                        gY*inv_gam_sRGB(g) +
+                        bY*inv_gam_sRGB(b)
+                       );
+    }
+    */
 
     // and gamma mapping Ga
     //if x < 0.00304
@@ -2461,6 +2537,15 @@ static int        _cms_xyL2rgb(S52_Color *c)
     // sR = Ga(R)
     // sG = Ga(G)
     // sB = Ga(B)
+
+    //c->R = gam_sRGB(R);
+    //c->G = gam_sRGB(G);
+    //c->B = gam_sRGB(B);
+
+    //c->R = inv_gam_sRGB(R);
+    //c->G = inv_gam_sRGB(G);
+    //c->B = inv_gam_sRGB(B);
+    // ------ experiment -------------------------------------
 
     return TRUE;
 }
@@ -3846,37 +3931,35 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
                 }
             }  // while
 
-            // terminate primitive if we're starting a new one
-            // and we're not into poly
-            // or there is nothing left (ex ..;PD;PD;)
-            /*
-            if (('\0' != *(vecObj->str+1)) ||
-                ('U'  == *(vecObj->str+2) && PM_BEG!=vecObj->pm))
+            // debug - terminate primitive and we're not into poly
+            // code refactor to fix clang -fsanitize=address
+            if (PM_BEG != vecObj->pm) {
                 S57_endPrim(vecObj->prim);
-            */
-            if ('\0' != *(vecObj->str+1))
-                S57_endPrim(vecObj->prim);
-            else {
-                if ('U' == *(vecObj->str+2) && PM_BEG!=vecObj->pm)
-                    S57_endPrim(vecObj->prim);
+
+                //PRINTF("DEBUG: read coord. loop end\n");
+                //g_assert(0);
             }
-        }
+
+        }  // read coord.
 
         vecObj->str++; // skip ';'
 
         // if still into a poly continue to read for PMx and FP/EP
-        if (PM_BEG == vecObj->pm)
-            continue;
+        if (PM_BEG == vecObj->pm) {
+            // debug - trap this odd case
+            //PRINTF("DEBUG: in poly mode outside read coord. loop \n");
+            //g_assert(0);
 
-        // signal ready for drawing
-        //return S52_VC_PU;
+            continue;
+        }
 
         // return last command read
         if (S52_VC__P == c2)
             return c1;
         else
             return c2;
-    }
+
+    }  // while
 
     return S52_VC_NONE;
 }
