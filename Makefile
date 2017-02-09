@@ -80,17 +80,16 @@ DBG    = $(DBG3)
 # GCC
 #CC   = gcc -std=c99 -fPIC -pipe -D_POSIX_C_SOURCE=199309L # to get siginfo_t
 #CC   = gcc -std=c99 -fPIC -pipe -D_POSIX_C_SOURCE=200809L # 199309L to get siginfo_t
-
 #CC   = gcc -std=c99 -fPIC -D_POSIX_C_SOURCE=200112L
 #CC   = gcc -std=c99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
 #CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI and sigtrap()
-# test - compile C code as C++
-#CC   = g++ -fPIC -O0 -g -Wall
+#CC   = g++ -fPIC -O0 -g -Wall  # test - compile C code as C++
 #CXX  = g++ -fPIC
 
 # CLANG
 CC    = clang   -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
 #CC   += --analyze
+#CC   += -fsanitize=address
 CXX   = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
 
 # FIXME: check this
@@ -504,7 +503,7 @@ libS52gl2.so:  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 
 libS52egl.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 	$(CC) -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
-	-ln -sf libS52egl.so libS52.so
+	-ln -sf libS52egl.so libS52.so  # -sf soft link, -P hard link
 
 libS52gv.so: $(OBJS_S52) $(OBJS_GV)
 	$(CC) -shared $(OBJS_S52) $(OBJS_GV) $(LIBS) -o libS52.so
