@@ -34,7 +34,7 @@ all: s52gtk2egl    # GTK2 & GLES2 & EGL
 # CLANG
 CC   = clang -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
 #CC   += --analyze
-#CC   += -fsanitize=address 
+#CC   += -fsanitize=address
 #CXX  = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
 
 MINGW = /usr/bin/i586-mingw32msvc-
