@@ -4523,7 +4523,9 @@ static int       _renderTXT(S52_obj *obj)
 
             // find segment's center point closess to view center
             // FIXME: clip segments to view
-            for (guint i=0; i<npt; ++i) {
+            // clang -fsanitize=address choke here
+            //for (guint i=0; i<npt; ++i) {
+            for (guint i=0; i<npt-1; ++i) {
                 double x = (ppt[i*3+3] + ppt[i*3+0]) / 2.0;
                 double y = (ppt[i*3+4] + ppt[i*3+1]) / 2.0;
                 double d = sqrt(pow(x-cView_x, 2) + pow(y-cView_y, 2));
