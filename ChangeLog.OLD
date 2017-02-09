@@ -4,6 +4,9 @@
 #
 
 
+2017FEB07
+    -fix clang -fsanitize=address in _renderTXT() and S52_PL_getNextVOCmd() read past buffer
+
 2017FEB03
     -fix lcms2 code path
 
