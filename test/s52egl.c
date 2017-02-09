@@ -382,6 +382,7 @@ static int      _s52_draw_user  (s52engine *engine)
     // - maybe swapping and egl beg end - nop EGL handled here (and called after str) -> same flicker
     static GTimeVal now;
     g_get_current_time(&now);
+    now.tv_usec = 0;  // will print time without frac of sec
     //S52_drawStr(100, engine->height - 100, "ARPAT", 3, g_time_val_to_iso8601(&now));
     S52_drawStr(100, engine->height - 100, "CURSR", 3, g_time_val_to_iso8601(&now));
 
@@ -1818,7 +1819,7 @@ static int      _X11_handleXevent(gpointer user_data)
 
         case KeyPress:
         case KeyRelease: {
-            // /usr/include/X11/keysymdef.h
+            // ref: /usr/include/X11/keysymdef.h
             unsigned int keycode = ((XKeyEvent *)&event)->keycode;
             unsigned int keysym  = XkbKeycodeToKeysym(engine->eglState.dpy, keycode, 0, 1);
 
@@ -1830,15 +1831,8 @@ static int      _X11_handleXevent(gpointer user_data)
                 return TRUE;
             }
 
-            // FIXME: k and K same keysym!
-            if (XK_k == keysym) {
-                double val = S52_getMarinerParam(S52_MAR_COLOR_PALETTE) + 1.0;
-                S52_setMarinerParam(S52_MAR_COLOR_PALETTE, val);
-                engine->do_S52draw = TRUE;
-                return TRUE;
-            }
             if (XK_K == keysym) {
-                double val = S52_getMarinerParam(S52_MAR_COLOR_PALETTE) - 1.0;
+                double val = S52_getMarinerParam(S52_MAR_COLOR_PALETTE) + 1.0;
                 S52_setMarinerParam(S52_MAR_COLOR_PALETTE, val);
                 engine->do_S52draw = TRUE;
                 return TRUE;
@@ -1846,16 +1840,17 @@ static int      _X11_handleXevent(gpointer user_data)
 
             // Load Cell
             if (XK_F1 == keysym) {
-                S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
-                //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA379035.000", NULL);
-                //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
+                //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
+                S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA379035.000", NULL);
+                S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
                 engine->do_S52draw = TRUE;
                 return TRUE;
             }
             // Done Cell
             if (XK_F2 == keysym) {
-                S52_doneCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000");
-                //S52_doneCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000");
+                //S52_doneCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000");
+                S52_doneCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA379035.000");
+                S52_doneCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000");
                 engine->do_S52draw = TRUE;
                 return TRUE;
             }
@@ -1925,7 +1920,7 @@ static int      _X11_handleXevent(gpointer user_data)
 
             // debug
             g_print("s52egl.c:keysym: 0X%X\n", keysym);
-            //g_print("s52egl.c:keysym: 0X%X\n", XK_q);
+            //g_print("s52egl.c:keysym: 0X%X\n", XK_c);
 
 
             //
