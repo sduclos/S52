@@ -1882,10 +1882,11 @@ static GString *OBSTRN04 (S57_geo *geo)
         if (S57_AREAS_T == S57_getObjtype(geo))
             least_depth = _DEPVAL01(geo, least_depth);
 
-        //if (UNKNOWN != least_depth) {
+        //if (UNKNOWN != least_depth) {  // <<< BUG
         if (UNKNOWN == least_depth) {
+            /*
 #ifdef S52_DEBUG
-            {  // debug - check impact of this bug: seem that the code can recover and ==/!= make no diff in the end
+            {   // this bug skip symbol ISODGR01 in shallow water
                 static int silent = FALSE;
                 if (FALSE == silent) {
                     PRINTF("DEBUG: chenzunfeng found this should be (UNKNOWN == least_depth)[not !=], %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
@@ -1893,9 +1894,11 @@ static GString *OBSTRN04 (S57_geo *geo)
                     silent = TRUE;
                     PRINTF("       (this msg will not repeat)\n");
                 }
-                S57_highlightON(geo);
+                S57_highlightON(geo);  // Bic island CA279037.000
             }
 #endif
+            */
+
             GString *catobsstr = S57_getAttVal(geo, "CATOBS");
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
 
@@ -1990,13 +1993,14 @@ static GString *OBSTRN04 (S57_geo *geo)
                 int     objl       = (NULL == objlstr)? 0 : S52_atoi(objlstr->str);
                 GString *watlevstr = S57_getAttVal(geo, "WATLEV");
 
-                // debug --this should not trigger an assert since
+                /* debug --this should not trigger an assert since
                 // there is no object number zero
                 if (0 == objl) {
-                    PRINTF("ERROR: no OBJL\n");
+                    PRINTF("DEBUG: no OBJL\n");
                     g_assert(0);
                     return obstrn04str;
                 }
+                */
 
                 if (UWTROC == objl) {
                     if (NULL == watlevstr)  // default
