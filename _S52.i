@@ -44,7 +44,7 @@ static int                 _encode(char *buffer, const char *frmt, ...)
         return TRUE;
     } else {
         buffer[SOCK_BUF-1] = '\0';
-        PRINTF("g_vsnprintf(): fail - no space in buffer\n");
+        PRINTF("WARNING: g_vsnprintf(): fail - no space in buffer\n");
         return FALSE;
     }
 }
@@ -410,7 +410,7 @@ static int                 _handleS52method(const gchar *str, char *result, char
         unsigned char B;
         int ret = S52_getRGB(colorName, &R, &G, &B);
 
-        PRINTF("%i, %i, %i\n", R,G,B);
+        //PRINTF("%i, %i, %i\n", R,G,B);
 
         if (TRUE == ret)
             _encode(result, "[%i,%i,%i]", R, G, B);
@@ -748,7 +748,7 @@ static guint               _encodeWebSocket(gchar *str_send, gchar *response, gs
              bytesFormatted[9] = ( bytesRaw.length       )
              */
             // FIXME: n == 0 !
-            PRINTF("WebSocket Frame: FIXME: dataLen > 65535 not handled (%i)\n", respLen);
+            PRINTF("ERROR: WebSocket Frame: FIXME: dataLen > 65535 not handled (%i)\n", respLen);
             g_assert(0);
         }
     }
@@ -914,7 +914,7 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
             if (NULL != WSKeystr) {
                 return _handshakeWebSocket(source, WSKeystr);
             } else {
-                PRINTF("ERROR: unknown socket msg\n");
+                PRINTF("WARNING: unknown socket msg\n");
                 return FALSE;
             }
         }
@@ -949,7 +949,7 @@ static gboolean            _new_connection(GSocketService    *service,
     GInetAddress   *addr     = g_inet_socket_address_get_address(G_INET_SOCKET_ADDRESS(sockaddr));
     guint16         port     = g_inet_socket_address_get_port   (G_INET_SOCKET_ADDRESS(sockaddr));
 
-    PRINTF("New Connection from %s:%d\n", g_inet_address_to_string(addr), port);
+    PRINTF("NOTE: New Connection from %s:%d\n", g_inet_address_to_string(addr), port);
 
     GSocket    *socket  = g_socket_connection_get_socket(connection);
     gint        fd      = g_socket_get_fd(socket);
@@ -960,7 +960,7 @@ static gboolean            _new_connection(GSocketService    *service,
     GIOStatus   stat    = g_io_channel_set_encoding(channel, NULL, &error);
     if (NULL != error) {
         g_object_unref(connection);
-        PRINTF("g_io_channel_set_encoding(): failed [stat:%i err:%s]\n", stat, error->message);
+        PRINTF("ERROR: g_io_channel_set_encoding(): failed [stat:%i err:%s]\n", stat, error->message);
         g_error_free(error);
         return FALSE;
     }
@@ -1001,7 +1001,7 @@ static int                 _initSock(void)
 
     g_signal_connect(service, "incoming", G_CALLBACK(_new_connection), NULL);
 
-    PRINTF("start to listen to socket ..\n");
+    PRINTF("NOTE: start to listen to socket ..\n");
 
     return TRUE;
 }
@@ -1344,7 +1344,7 @@ static DBusHandlerResult   _dbus_newMarObj          (DBusConnection *dbus, DBusM
             xyz[i*3 + 0] = g_ascii_strtod(*str++, NULL);
             xyz[i*3 + 1] = g_ascii_strtod(*str++, NULL);
             xyz[i*3 + 2] = g_ascii_strtod(*str++, NULL);
-            PRINTF("received: %f, %f, %f\n", xyz[i*3 + 0], xyz[i*3 + 1], xyz[i*3 + 2]);
+            //PRINTF("received: %f, %f, %f\n", xyz[i*3 + 0], xyz[i*3 + 1], xyz[i*3 + 2]);
         }
 
 
@@ -1399,7 +1399,7 @@ static DBusHandlerResult   _dbus_signal_draw        (DBusConnection *dbus, DBusM
         //g_print("received: %i\n", i);
         ;
     } else {
-        g_print("ERROR: %s\n", error.message);
+        g_print("WARNING: %s\n", error.message);
         dbus_error_free(&error);
         return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
@@ -1443,7 +1443,7 @@ static DBusHandlerResult   _dbus_signal_drawLast    (DBusConnection *dbus, DBusM
         //g_print("received: %i\n", i);
         ;
     } else {
-        g_print("ERROR: %s\n", error.message);
+        g_print("WARNING: %s\n", error.message);
         dbus_error_free(&error);
         return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
@@ -1494,7 +1494,7 @@ static DBusHandlerResult   _dbus_setVESSELstate     (DBusConnection *dbus, DBusM
                               DBUS_TYPE_INVALID)) {
         //g_print("received: %lX %i %i\n", (long unsigned int)o, sel, vestat);
     } else {
-        g_print("ERROR:: %s\n", error.message);
+        g_print("WARNING: %s\n", error.message);
         dbus_error_free(&error);
         return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
     }
@@ -1517,7 +1517,7 @@ static DBusHandlerResult   _dbus_setVESSELstate     (DBusConnection *dbus, DBusM
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT64, &ret)) {
     //if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_DOUBLE, &ret)) {
     //if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_INT32, &ret)) {
-         PRINTF("Out Of Memory!\n");
+        PRINTF("ERROR: Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -1560,7 +1560,7 @@ static DBusHandlerResult   _dbus_getPLibsIDList     (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &str)) {
-        PRINTF("Out Of Memory!\n");
+        PRINTF("ERROR: Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -1603,7 +1603,7 @@ static DBusHandlerResult   _dbus_getPalettesNameList(DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &str)) {
-        PRINTF("Out Of Memory!\n");
+        PRINTF("ERROR: Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -1647,7 +1647,7 @@ static DBusHandlerResult   _dbus_getCellNameList    (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &str)) {
-        PRINTF("Out Of Memory!\n");
+        PRINTF("ERROR: Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -1691,7 +1691,7 @@ static DBusHandlerResult   _dbus_getS57ClassList    (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &str)) {
-        PRINTF("Out Of Memory!\n");
+        PRINTF("ERROR: Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -1742,7 +1742,7 @@ static DBusHandlerResult   _dbus_getObjList         (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &str)) {
-        PRINTF("Out Of Memory!\n");
+        PRINTF("ERROR: Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -1789,7 +1789,7 @@ static DBusHandlerResult   _dbus_getAttList         (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &str)) {
-        PRINTF("Out Of Memory!\n");
+        PRINTF("ERROR: Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -1838,7 +1838,7 @@ static DBusHandlerResult   _dbus_getS57ObjClassSupp (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_INT32, &ret)) {
-        PRINTF("Out Of Memory!\n");
+        PRINTF("ERROR: Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -1886,7 +1886,7 @@ static DBusHandlerResult   _dbus_setS57ObjClassSupp (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_INT32, &ret)) {
-        PRINTF("Out Of Memory!\n");
+        PRINTF("ERROR: Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -1934,7 +1934,7 @@ static DBusHandlerResult   _dbus_loadCell           (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT64, &ret)) {
-        PRINTF("Out Of Memory!\n");
+        PRINTF("ERROR: Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -1981,7 +1981,7 @@ static DBusHandlerResult   _dbus_loadPLib           (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT64, &ret)) {
-        PRINTF("Out Of Memory!\n");
+        PRINTF("ERROR: Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -2035,7 +2035,7 @@ static DBusHandlerResult   _dbus_dumpS57IDPixels    (DBusConnection *dbus, DBusM
     dbus_message_iter_init_append(reply, &args);
 
     if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_UINT64, &ret)) {
-        PRINTF("Out Of Memory!\n");
+        PRINTF("ERROR: Out Of Memory!\n");
         g_assert(0);
     }
 
@@ -2111,7 +2111,7 @@ static DBusHandlerResult   _dbus_selectCall         (DBusConnection *dbus, DBusM
     PRINTF("interface: %s\n", dbus_message_get_interface(message));
 
     if (0 == strncmp(dbus_message_get_member(message), "Disconnected", 12)) {
-        PRINTF("ERROR: received DBus msg member 'Disconnected' .. \n" \
+        PRINTF("WARNING: received DBus msg member 'Disconnected' .. \n" \
                "DBus force exit if dbus_connection_set_exit_on_disconnect(_dbus, TRUE);!\n");
 
 
@@ -2142,7 +2142,7 @@ static int                 _initDBus()
     if (NULL != _dbus)
         return FALSE;
 
-    PRINTF("starting DBus ..\n");
+    PRINTF("NOTE: starting DBus ..\n");
 
     dbus_g_thread_init();
 
@@ -2161,14 +2161,14 @@ static int                 _initDBus()
 
     ret = dbus_bus_request_name(_dbus, S52_DBUS_OBJ_NAME, DBUS_NAME_FLAG_REPLACE_EXISTING, &_dbusError);
     if (-1 == ret) {
-        PRINTF("%s:%s\n", _dbusError.name, _dbusError.message);
+        PRINTF("ERROR: %s:%s\n", _dbusError.name, _dbusError.message);
         dbus_error_free(&_dbusError);
         return 1;
     } else {
         if (DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER == ret)
-            PRINTF("dbus_bus_request_name() reply OK: DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER (%i)\n", ret);
+            PRINTF("NOTE: dbus_bus_request_name() reply OK: DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER (%i)\n", ret);
         else
-            PRINTF("dbus_bus_request_name() reply OK (%i)\n", ret);
+            PRINTF("NOTE: dbus_bus_request_name() reply OK (%i)\n", ret);
     }
 
     dbus_connection_setup_with_g_main(_dbus, NULL);
@@ -2202,10 +2202,10 @@ static int                 _initDBus()
     //dbus_bus_add_match(_dbus, "type='signal',sender='org.ecs.dbus',member='signal_S52_drawLast'",      &_dbusError);
     //dbus_bus_add_match(_dbus, "type='signal',sender='org.ecs.dbus',member='signal_S52_setState'",      &_dbusError);
 
-    PRINTF("%s:%s\n", _dbusError.name, _dbusError.message);
+    PRINTF("ERROR: %s:%s\n", _dbusError.name, _dbusError.message);
 
     if (FALSE == dbus_connection_add_filter(_dbus, _dbus_selectCall, NULL, NULL)) {
-        PRINTF("fail .. \n");
+        PRINTF("ERROR: fail .. \n");
         exit(0);
     }
 
@@ -2232,7 +2232,7 @@ static gboolean            _pipeReadWrite(GIOChannel *source, GIOCondition condi
     PRINTF("GIOStatus: %i\n", stat);
 
     if (NULL != error) {
-        PRINTF("ERROR: %s\n", error->message);
+        PRINTF("WARNING: %s\n", error->message);
         g_error_free(error);
     }
 
@@ -2252,7 +2252,7 @@ static gboolean            _pipeReadWrite(GIOChannel *source, GIOCondition condi
         PRINTF("GIOStatus: %i\n", stat);
 
         if (NULL != error) {
-            PRINTF("ERROR: %s\n", error->message);
+            PRINTF("WARNING: %s\n", error->message);
             g_error_free(error);
         }
     }
