@@ -160,7 +160,8 @@ S57_geo   *S57_gvLoadObject(const char *objname, void *shape)
 
         default: {
             // FIXME: find a decent default (see openev/gvshapes.h)!!!
-            PRINTF("ERROR: invalid object type GVSHAPE_??? = %i\n", shapetype);
+            PRINTF("WARNING: invalid object type GVSHAPE_??? = %i\n", shapetype);
+            g_assert(0);
         }
     }
 
