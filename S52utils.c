@@ -38,14 +38,19 @@
 #define CFG_NAME   "s52.cfg"
 #endif
 
+// user provided lob msg callback
+static S52_log_cb _log_cb  = NULL;
+
+//#if defined(S52_DEBUG) || defined(S52_USE_LOGFILE)
+//static GTimeVal   _now;
+
 #ifdef S52_USE_LOGFILE
 static gint       _logFile = 0;
-static GTimeVal   _now;
 typedef void (*GPrintFunc)(const gchar *string);
 static GPrintFunc _oldPrintHandler = NULL;
-#endif
+#endif  // S52_USE_LOGFILE
+//#endif  // S52_DEBUG || S52_USE_LOGFILE
 
-static S52_log_cb _log_cb          = NULL;
 
 // internal libS52.so version + build def's
 static const char _version[] = S52_VERSION
@@ -204,7 +209,9 @@ int      S52_utils_getConfig(cchar *label, char *vbuf)
    return FALSE;
 }
 
+#if defined(S52_DEBUG) || defined(S52_USE_LOGFILE)
 void _printf(const char *file, int line, const char *function, const char *frmt, ...)
+// FIXME: filter msg type: NOTE:, DEBUG:, FIXME:, WARNING:, ERROR:
 {
     int  MAX = 1024;
     char buf[MAX];
@@ -253,19 +260,23 @@ void _printf(const char *file, int line, const char *function, const char *frmt,
 static void     _S52_printf(cchar *string)
 {
     char str[MAXL];
-    g_get_current_time(&_now);
+    //static
+    GTimeVal now;
+    g_get_current_time(&now);
 
-    snprintf(str, MAXL-1, "%s %s", g_time_val_to_iso8601(&_now), string);
+    snprintf(str, MAXL-1, "%s %s", g_time_val_to_iso8601(&now), string);
 
     // if user set a callback .. call it
     if (NULL != _log_cb) {
         _log_cb(str);
     }
 
+//#ifdef S52_USE_LOGFILE
     // log to file
     if (NULL != _logFile) {
         write(_logFile, str, strlen(str));
     }
+//#endif
 
     // STDOUT
     g_printf("%s", str);
@@ -317,6 +328,7 @@ int      S52_utils_doneLog()
 
     return TRUE;
 }
+#endif  // S52_DEBUG || S52_USE_LOGFILE
 
 int      S52_atoi(cchar *str)
 // safe atoi()
