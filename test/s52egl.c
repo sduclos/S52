@@ -283,9 +283,7 @@ static int      _s52_init       (s52engine *engine)
         if (FALSE == S52_init(w, h, wmm, hmm, NULL))
 #endif
         {
-            LOGE("ERROR:_init_S52():S52_init(%i,%i,%i,%i)\n", w, h, wmm, hmm);
-            g_assert(0);
-            exit(0);
+            LOGE("s52egl.c:_init_S52() failed [S52_init(%i,%i,%i,%i)]\n", w, h, wmm, hmm);
             return FALSE;
         }
 
@@ -304,7 +302,11 @@ static int      _s52_init       (s52engine *engine)
     _s52_setupMain();
 
     // if first start find where we are looking
-    _s52_getView(&engine->state);
+    if (FALSE == _s52_getView(&engine->state)) {
+        LOGE("s52egl.c:_init_S52() failed [_s52_getView()]\n");
+        return FALSE;
+    }
+
     // then (re)position the 'camera'
     S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
 
@@ -341,7 +343,7 @@ static int      _s52_init       (s52engine *engine)
 
     LOGI("s52egl:_s52_init(): end ..\n");
 
-    return EGL_TRUE;
+    return TRUE;
 }
 
 static int      _s52_done       (s52engine *engine)
@@ -761,7 +763,7 @@ static gpointer _android_display_init(gpointer user_data)
         return FALSE;
     }
     if (FALSE == _s52_init(engine)) {
-        LOGI("DEBUG: S52 allready up\n");
+        LOGI("DEBUG: S52 allready up or fail to init\n");
         return FALSE;
     }
 
@@ -2015,7 +2017,11 @@ int main(int argc, char *argv[])
     XSetErrorHandler(_X11_error);
 
     _egl_init(&_engine.eglState);
-    _s52_init(&_engine);
+
+    if (FALSE == _s52_init(&_engine)) {
+        LOGI("DEBUG: S52 allready up or fail to init\n");
+        return FALSE;
+    }
 
     _timer = g_timer_new();
 
