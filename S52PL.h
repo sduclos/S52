@@ -29,8 +29,8 @@
 
 #include <glib.h>        // GArray
 
-#define S52_PL_NMLN   6  // lookup name lenght
-#define S52_PL_COLN   5  // color name lenght
+#define S52_PL_SMB_NMLN   8    // symbology name lenght
+#define S52_PL_COL_NMLN   5    // color name lenght
 
 // S52 symbology table name
 typedef enum S52_SMBtblName {
@@ -112,7 +112,7 @@ typedef struct S52_Color {
     char     trans;     // command word can change this so 'trans' is linked to an object not a color
     //--------------------------
 
-    char     colName[S52_PL_COLN+1];   // '\0' terminated
+    char     colName[S52_PL_COL_NMLN +1];   // '\0' terminated
     double   x;
     double   y;
     double   L;
@@ -216,7 +216,8 @@ S52_CmdWrd     S52_PL_iniCmd(S52_obj *obj);
 S52_CmdWrd     S52_PL_getCmdNext(S52_obj *obj);
 
 // compare name to parameter of current command word
-int            S52_PL_cmpCmdParam(S52_obj *obj, const char *name);
+int            S52_PL_cmpCmdParam   (S52_obj *obj, const char *name);  // 8 chars
+int            S52_PL_cmpCmdParamLUP(S52_obj *obj, const char *name);  // 8 chars
 // get str for the current command (PLib exposition field: LXPO/PXPO/SXPO)
 const char    *S52_PL_getCmdText(S52_obj *obj);
 
