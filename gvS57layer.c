@@ -64,7 +64,7 @@ static void gv_S57_layer_setup(GvShapesLayer *layer, GvViewArea *view)
     //printf("start S52 gv_S57_layer_setup\n");
 
     if (NULL==layer || NULL==view) {
-        PRINTF("ERROR: no GvShapesLayer or GvViewArea\n");
+        PRINTF("WARNING: no GvShapesLayer or GvViewArea\n");
         return;
     }
 
