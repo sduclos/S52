@@ -66,7 +66,8 @@ static pt3    _pcin;
 // valid GLenum for glDrawArrays mode is 0-9
 // This is an attempt to signal VBO drawing func
 // to glTranslate() (eg to put a '!' inside a circle)
-#define _TRANSLATE    0x000A
+#define _TRANSLATE    0x000A  // mode=10, glTranslated()
+#define _TRANSLATE0   0x000B  // mode=11, glLoadIdentity() + glTranslated()
 
 typedef struct _GLUquadricObj {
     GLint style;
@@ -77,9 +78,9 @@ typedef struct _GLUquadricObj {
 } _GLUquadricObj;
 
 static _GLUquadricObj *_qobj = NULL;
-#else
+#else   // S52_USE_OPENGL_VBO
 static  GLUquadricObj *_qobj = NULL;
-#endif
+#endif  // S52_USE_OPENGL_VBO
 
 static S57_prim       *_diskPrimTmp = NULL;
 
@@ -95,7 +96,7 @@ static int       _gluQuadricCallback(_GLUquadricObj* qobj, GLenum which, f fn)
 {
     switch (which) {
       case _QUADRIC_ERROR:
-          qobj->cb_error  = (fint)fn;
+           qobj->cb_error  = (fint)fn;
            break;
       case _QUADRIC_BEGIN_DATA:
            qobj->cb_begin  = (f2)fn;
@@ -107,7 +108,7 @@ static int       _gluQuadricCallback(_GLUquadricObj* qobj, GLenum which, f fn)
            qobj->cb_vertex = (fpp)fn;
            break;
       default:
-          PRINTF("gluQuadricError(qobj, GLU_INVALID_ENUM)\n");
+          PRINTF("WARNING: gluQuadricError(qobj, GLU_INVALID_ENUM)\n");
           g_assert(0);
           return FALSE;
     }
@@ -248,7 +249,7 @@ static void_cb_t _quadricError(GLenum err)
 #ifdef S52_DEBUG
     //const GLubyte *str = gluErrorString(err);
     const char *str = "FIXME: no gluErrorString(err)";
-    PRINTF("QUADRIC ERROR:%s (%d) (%0x)\n", str, err, err);
+    PRINTF("%s (%d) (%0x)\n", str, err, err);
 #endif
 
     g_assert(0);
@@ -291,7 +292,6 @@ static void_cb_t _combineCallback(GLdouble   coords[3],
 
 static void_cb_t _glBegin(GLenum mode, S57_prim *prim)
 {
-    // Note: mode=10 is _TRANSLATE, defined as 0x000A
     S57_begPrim(prim, mode);
 }
 
@@ -404,7 +404,7 @@ static GLint     _initGLU(void)
 
         _tobj = gluNewTess();
         if (NULL == _tobj) {
-            PRINTF("ERROR: gluNewTess() failed\n");
+            PRINTF("WARNING: gluNewTess() failed\n");
             return FALSE;
         }
 
@@ -453,7 +453,7 @@ static GLint     _initGLU(void)
     {
         _tcen = gluNewTess();
         if (NULL == _tcen) {
-            PRINTF("ERROR: gluNewTess() failed\n");
+            PRINTF("WARNING: gluNewTess() failed\n");
             return FALSE;
         }
         _centroids = g_array_new(FALSE, FALSE, sizeof(double)*3);
@@ -482,7 +482,7 @@ static GLint     _initGLU(void)
 
         _tcin = gluNewTess();
         if (NULL == _tcin) {
-            PRINTF("ERROR: gluNewTess() failed\n");
+            PRINTF("WARNING: gluNewTess() failed\n");
             return FALSE;
         }
 
@@ -508,7 +508,7 @@ static GLint     _initGLU(void)
 
         _tUnion = gluNewTess();
         if (NULL == _tUnion) {
-            PRINTF("ERROR: gluNewTess() failed\n");
+            PRINTF("WARNING: gluNewTess() failed\n");
             return FALSE;
         }
 
