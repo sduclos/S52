@@ -40,7 +40,7 @@ static int         _glMatrixSet(VP);
 static int         _glMatrixDel(VP);
 static int         _pushScaletoPixel(int);
 static int         _popScaletoPixel(void);
-static GLubyte     _setFragColor(S52_Color *);
+static GLubyte     _setFragAttrib(S52_Color *);
 static void        _glLineWidth(GLfloat);
 static void        _glPointSize(GLfloat);
 static inline void _checkError(const char *);
@@ -325,11 +325,11 @@ static int       _init_freetype_gl(void)
 
     valueBuf TTFPath = {'\0'};
     if (FALSE == S52_utils_getConfig(CFG_TTF, TTFPath)) {
-        PRINTF("loading hard-coded TTF filename: %s\n", _freetype_gl_fontfilename);
+        PRINTF("NOTE: loading hard-coded TTF filename: %s\n", _freetype_gl_fontfilename);
     } else {
         if (TRUE == g_file_test(TTFPath, G_FILE_TEST_EXISTS)) {
             _freetype_gl_fontfilename = TTFPath;
-            PRINTF("loading TTF found in s52.cfg (%s)\n", TTFPath);
+            PRINTF("NOTE: loading TTF found in s52.cfg (%s)\n", TTFPath);
         } else {
             //FIXME: test this path
             PRINTF("WARNING: no TTF found (no text)\n", TTFPath);
@@ -1160,7 +1160,7 @@ static GLuint    _loadShaderBin(void)
 {
     FILE* fp = g_fopen("shader.bin", "rb");
     if (NULL == fp) {
-        PRINTF("'shader.bin' loading failed\n");
+        PRINTF("WARNING: 'shader.bin' loading failed\n");
         return 0;
     }
 
@@ -1205,7 +1205,7 @@ static GLuint    _loadShaderBin(void)
     GLint success = 0;
     glGetProgramiv(progId, GL_LINK_STATUS, &success);
     if (!success) {
-        PRINTF("'shader.bin' linking failed\n");
+        PRINTF("WARNING: 'shader.bin' linking failed\n");
         return 0;
     }
     _checkError("_loadShaderBin() -end-");
@@ -1482,7 +1482,7 @@ static int       _init_gl2(void)
         return TRUE;
     }
 
-    PRINTF("begin GL2/GLSL init ..\n");
+    PRINTF("NOTE: begin GL2/GLSL init ..\n");
 
     if (NULL == _tessWorkBuf_d)
         _tessWorkBuf_d = g_array_new(FALSE, FALSE, sizeof(double)*3);
@@ -1606,7 +1606,7 @@ static int       _initFBO(GLuint mask_texID)
 
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE) {
-        PRINTF("ERROR: glCheckFramebufferStatus() fail, status: %i\n", status);
+        PRINTF("WARNING: glCheckFramebufferStatus() fail, status: %i\n", status);
 
         //*
         switch(status)
@@ -1641,7 +1641,7 @@ static int       _initFBO(GLuint mask_texID)
 //*/
 
         default:
-            PRINTF("Some video driver error or programming error occured. Framebuffer object status is invalid. (FBO - 823)");
+            PRINTF("ERROR: Some video driver error or programming error occured. Framebuffer object status is invalid. (FBO - 823)");
             break;
         }
 
@@ -1965,7 +1965,7 @@ static int       _renderAP_gl2(S52_obj *obj)
     }
 
     S52_DList *DListData = S52_PL_getDListData(obj);
-    _setFragColor(DListData->colors);
+    _setFragAttrib(DListData->colors);
 
     // debug - red conspic
     //glUniform4f(_uColor, 1.0, 0.0, 0.0, 0.0);
