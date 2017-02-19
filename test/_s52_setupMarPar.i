@@ -107,6 +107,10 @@ static int      _s52_setupMarPar(void)
     // NOTE: S52 pixels for symb are 0.3 mm
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.3);
     S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.3);
+
+    // debug - big symb
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_X, 0.1);
+    //S52_setMarinerParam(S52_MAR_DOTPITCH_MM_Y, 0.1);
 #endif  // S52_USE_ANDROID
 
     // -------------------------------------------- -----------------------------
