@@ -241,7 +241,7 @@ int        S57_initPROJ()
 
     // setup source projection
     if (!(_pjsrc = pj_init_plus(_argssrc))){
-        PRINTF("error init src PROJ4\n");
+        PRINTF("ERROR: init src PROJ4\n");
         S57_donePROJ();
         g_assert(0);
         return FALSE;
@@ -851,6 +851,9 @@ GArray    *S57_getPrimVertex(_S57_prim *prim)
 {
     return_if_null(prim);
 
+    // debug
+    return_if_null(prim->vertex);
+
     return prim->vertex;
 }
 
@@ -930,18 +933,20 @@ int        S57_setExt(_S57_geo *geo, double x1, double y1, double x2, double y2)
 int        S57_getExt(_S57_geo *geo, double *x1, double *y1, double *x2, double *y2)
 // assume: extent canonical
 {
-    // inside cull loop this check is useless
-    // but other are not
+    // called from inside cull loop this check is useless
+    // but other call are not
     return_if_null(geo);
+
+    // no extent: "$CSYMB", afgves, vessel, ..
+    if (TRUE == isinf(geo->rect.x1)) {
+        PRINTF("DEBUG: no extent for %s:%i\n", geo->name, geo->S57ID);
+        return FALSE;
+    }
 
     *x1 = geo->rect.x1;  // W
     *y1 = geo->rect.y1;  // S
     *x2 = geo->rect.x2;  // E
     *y2 = geo->rect.y2;  // N
-
-    // no extent: "m_covr", "$CSYMB", ..
-    if (TRUE == isinf(geo->rect.x1))
-            return FALSE;
 
     return TRUE;
 }
@@ -990,7 +995,7 @@ static void   _getAttValues(GQuark key_id, gpointer data, gpointer user_data)
     if (S57_ATT_NM_LN == strlen(attName)){
         strcpy(attData->value[attData->currentIdx], attValue->str);
         strcpy(attData->name [attData->currentIdx], attName );
-        PRINTF("inserting %s %s %d", attName, attValue->str, attData->currentIdx);
+        PRINTF("NOTE: inserting %s %s %d", attName, attValue->str, attData->currentIdx);
         attData->currentIdx += 1;
     } else {
         ;//      PRINTF("sjov Att: %s  = %s \n",attName, attValue->str);
