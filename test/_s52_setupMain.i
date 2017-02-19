@@ -119,7 +119,10 @@ static int _s52_setupMain(void)
     //g_setenv("CPL_DEBUG", "ON", 1);
 
     // read cell location from s52.cfg
-    S52_loadCell(NULL, NULL);
+    if (FALSE == S52_loadCell(NULL, NULL)) {
+        LOGI("_s52_setupMain(): loadCell fail\n");
+        return FALSE;
+    }
 
     // S-64 ENC
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/GB5X01SE.000", NULL);
