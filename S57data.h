@@ -129,6 +129,7 @@ int       S57_setPrimDList (S57_prim *prim, guint DList);
 
 // get/set extend
 int       S57_setExt(S57_geo *geo, double  x1, double  y1, double  x2, double  y2);
+// FIXME: return WSNE in param (S57_geo *geo, S57_extent **ext)
 int       S57_getExt(S57_geo *geo, double *x1, double *y1, double *x2, double *y2);
 
 // get geo type (P,L,A) of this object
