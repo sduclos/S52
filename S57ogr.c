@@ -414,7 +414,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
         case wkbGeometryCollection:
         case wkbMultiLineString: {
             PRINTF("WARNING: wkbGeometryCollection & wkbMultiLineString not handled \n");
-            g_assert(0);  // land here if GDAL/OGR was patched multi-line
+            //g_assert(0);  // land here if GDAL/OGR was patched multi-line, C1 SLCONS
             break;
         }
 
@@ -438,7 +438,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
 
         default:
             // FIXME: find a decent default (see openev/gvshapes.h)!!!
-            PRINTF("WKB type not handled  = %i %0x\n", eType, eType);
+            PRINTF("FIXME: WKB type not handled  = %i %0x\n", eType, eType);
             g_assert(0); 
 
     }
