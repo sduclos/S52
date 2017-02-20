@@ -4,6 +4,13 @@
 #
 
 
+2017FEB20
+    -fix PRINTF str prefix
+    -fix draw handling when no cell loaded
+    -fix extent uniform handling
+    -mod _rename setFragColor() to _setFragAttrib()
+    -fix _TRANSLATE handling
+
 2017FEB07
     -fix clang -fsanitize=address in _renderTXT() and S52_PL_getNextVOCmd() read past buffer
 
