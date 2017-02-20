@@ -250,7 +250,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
                 if (NULL != S57_getTouchLIGHTS(light)) {
                     if (FALSE == silent) {
                         PRINTF("FIXME: more than 1 light for the same buoy!!!\n");
-                        PRINTF("       (this msg will not repeat)\n");
+                        PRINTF("FIXME: (this msg will not repeat)\n");
                         silent = TRUE;
                     }
                 }
@@ -262,7 +262,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             } else {
                 if (FALSE == silent) {
                     PRINTF("FIXME: more than 1 light for the same buoy!!!\n");
-                    PRINTF("       (this msg will not repeat)\n");
+                    PRINTF("FIXME: (this msg will not repeat)\n");
                     silent = TRUE;
                 }
             }
@@ -762,7 +762,7 @@ static GString *DATCVR01 (S57_geo *geo)
     static int silent = FALSE;
     if (FALSE == silent) {
         PRINTF("NOTE: DATCVR01/OVERSCALE not computed\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("NOTE: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -775,7 +775,7 @@ static GString *DATCVR02 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(DATCVR02) switch to CS(DATCVR01)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -834,7 +834,7 @@ static GString *DEPARE02 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(DEPARE02) --> CS(DEPARE01)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -847,7 +847,7 @@ static GString *DEPARE03 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(DEPARE03) --> CS(DEPARE01)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -934,14 +934,17 @@ static GString *DEPCNT02 (S57_geo *geo)
                 }
             } else {
             //    else {
-                    // collect area DEPARE & DRGARE that touch this line
+                // collect area DEPARE & DRGARE that touch this line
+                    GString *drval1touchstr = NULL;
                     S57_geo *geoTouch       = S57_getTouchDEPARE(geo);
                     if (NULL == geoTouch) {
                         PRINTF("DEBUG: NULL geo getTouchDEPARE\n");
-                        return depcnt02;
+                        //return depcnt02;
+                    } else {
+                        drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
                     }
 
-                    GString *drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
+                    //GString *drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
                     double   drval1touch    = (NULL == drval1touchstr) ? 0.0 : S52_atof(drval1touchstr->str);
 
                     // debug - adjuste datum, clang - val never read
@@ -1010,13 +1013,16 @@ static GString *DEPCNT02 (S57_geo *geo)
         } else {
             if (valdco > S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
                 // collect area DEPARE & DRGARE that touche this line
+                GString *drval1str = NULL;
                 S57_geo *geoTmp    = S57_getTouchDEPARE(geo);
                 if (NULL == geoTmp) {
                     PRINTF("DEBUG: NULL geo getTouchDEPARE\n");
-                    return depcnt02;
+                    //return depcnt02;
+                } else {
+                    drval1str = S57_getAttVal(geoTmp, "DRVAL1");
                 }
 
-                GString *drval1str = S57_getAttVal(geoTmp, "DRVAL1");
+                //GString *drval1str = S57_getAttVal(geoTmp, "DRVAL1");
                 double   drval1    = (NULL == drval1str) ? 0.0 : S52_atof(drval1str->str);
 
                 // debug
@@ -1089,7 +1095,7 @@ static GString *DEPCNT03 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(DEPCNT03) --> CS(DEPCNT02)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -1110,12 +1116,15 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
 // NOTE: UNSARE test is useless since least_depth is already UNKNOWN
 {
     // Note: collect group 1 area DEPARE & DRGARE that touch this point/line/area is done at load-time
+    GString *drval1str = NULL;
     S57_geo *geoTmp    = S57_getTouchDEPVAL(geo);
     if (NULL == geoTmp) {
         PRINTF("DEBUG: NULL geo getTouchDEPVAL\n");
-        return UNKNOWN;
+        //return UNKNOWN;
+    } else {
+        drval1str = S57_getAttVal(geoTmp, "DRVAL1");
     }
-    GString *drval1str = S57_getAttVal(geoTmp, "DRVAL1");
+    //GString *drval1str = S57_getAttVal(geoTmp, "DRVAL1");
     double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
 
     // NOTE: change procedure to use any incomming geometry
@@ -1210,7 +1219,7 @@ static double   _DEPVAL02(S57_geo *geo, double least_depth)
 
     if (FALSE == silent) {
         PRINTF("FIXME: _DEPVAL02 --> _DEPVAL01\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -1266,7 +1275,7 @@ static GString *LEGLIN03 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(LEGLIN03) switching to CS(LEGLIN02)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -1532,7 +1541,7 @@ static GString *LIGHTS06 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(LIGHTS06) --> CS(LIGHTS05)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -1913,7 +1922,7 @@ static GString *OBSTRN04 (S57_geo *geo)
                     PRINTF("DEBUG: chenzunfeng found this should be (UNKNOWN == least_depth)[not !=], %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
 
                     silent = TRUE;
-                    PRINTF("       (this msg will not repeat)\n");
+                    PRINTF("DEBUG: (this msg will not repeat)\n");
                 }
                 //S57_highlightON(geo);  // Bic island CA279037.000
             }
@@ -2224,7 +2233,7 @@ static GString *OBSTRN05 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(OBSTRN05) --> CS(OBSTRN04)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -2237,7 +2246,7 @@ static GString *OBSTRN06 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(OBSTRN06) --> CS(OBSTRN04)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -2731,7 +2740,7 @@ static GString *RESARE03 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(RESARE03) --> CS(RESARE02)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -3227,6 +3236,7 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
         if (NULL == geoTmp) {
             PRINTF("DEBUG: NULL geo getTouchDEPARE\n");
 
+            // no need to process further - bailout
             return udwhaz03str;
         }
 
@@ -3412,7 +3422,7 @@ static GString *VESSEL02 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(VESSEL02) --> CS(VESSEL01)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -3457,7 +3467,7 @@ static GString *VRMEBL02 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(VRMEBL02) --> CS(VRMEBL01)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -3711,7 +3721,7 @@ static GString *WRECKS03 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(WRECKS03) --> CS(WRECKS02)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -3724,7 +3734,7 @@ static GString *WRECKS04 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(WRECKS04) --> CS(WRECKS02)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
@@ -3737,7 +3747,7 @@ static GString *WRECKS05 (S57_geo *geo)
 
     if (FALSE == silent) {
         PRINTF("FIXME: CS(WRECKS05) --> CS(WRECKS02)\n");
-        PRINTF("       (this msg will not repeat)\n");
+        PRINTF("FIXME: (this msg will not repeat)\n");
         silent = TRUE;
     }
 
