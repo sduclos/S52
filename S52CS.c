@@ -176,8 +176,8 @@ int       S52_CS_add(_localObj *local, S57_geo *geo)
 static int      _intersecGEO(S57_geo *A, S57_geo *B)
 // TRUE if A instersec B, else FALSE
 {
-    double Ax1, Ay1, Ax2, Ay2;
-    double Bx1, By1, Bx2, By2;
+    double Ax1=INFINITY, Ay1=INFINITY, Ax2=-INFINITY, Ay2=-INFINITY;
+    double Bx1=INFINITY, By1=INFINITY, Bx2=-INFINITY, By2=-INFINITY;
 
     S57_getExt(A, &Ax1, &Ay1, &Ax2, &Ay2);
     S57_getExt(B, &Bx1, &By1, &Bx2, &By2);
@@ -588,7 +588,7 @@ static int      _parseList(const char *str, char *buf)
     if (NULL != str && *str != '\0') {
         do {
             if ( i>= LISTSIZE-1) {
-                PRINTF("OVERFLOW - value in list lost!!\n");
+                PRINTF("WARNING: value in list lost!!\n");
                 break;
             }
 
@@ -723,6 +723,7 @@ static GString *DATCVR01 (S57_geo *geo)
         //g_string_append(datcvr01, ";OP(3OS21030);LS(SOLD,1,CHGRD)");
         // -OR-
         //g_string_append(datcvr01, ";OP(3OS21030);LC(SCLBDYnn)");
+        PRINTF("DEBUG: M_COVR found\n");
         g_assert(0);
     }
     // 3.2 - Graphical index of navigational purpose
@@ -739,7 +740,7 @@ static GString *DATCVR01 (S57_geo *geo)
     // M_CSCL:CSCALE
     if (0 == g_strcmp0(S57_getName(geo), "M_CSCL")) {
         PRINTF("DEBUG: M_CSCL found\n");
-        g_assert(0);
+        //g_assert(0);
     }
     //
     // 4.1 - Overscale indication
@@ -935,6 +936,11 @@ static GString *DEPCNT02 (S57_geo *geo)
             //    else {
                     // collect area DEPARE & DRGARE that touch this line
                     S57_geo *geoTouch       = S57_getTouchDEPARE(geo);
+                    if (NULL == geoTouch) {
+                        PRINTF("DEBUG: NULL geo getTouchDEPARE\n");
+                        return depcnt02;
+                    }
+
                     GString *drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
                     double   drval1touch    = (NULL == drval1touchstr) ? 0.0 : S52_atof(drval1touchstr->str);
 
@@ -1005,6 +1011,11 @@ static GString *DEPCNT02 (S57_geo *geo)
             if (valdco > S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
                 // collect area DEPARE & DRGARE that touche this line
                 S57_geo *geoTmp    = S57_getTouchDEPARE(geo);
+                if (NULL == geoTmp) {
+                    PRINTF("DEBUG: NULL geo getTouchDEPARE\n");
+                    return depcnt02;
+                }
+
                 GString *drval1str = S57_getAttVal(geoTmp, "DRVAL1");
                 double   drval1    = (NULL == drval1str) ? 0.0 : S52_atof(drval1str->str);
 
@@ -1100,6 +1111,10 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
 {
     // Note: collect group 1 area DEPARE & DRGARE that touch this point/line/area is done at load-time
     S57_geo *geoTmp    = S57_getTouchDEPVAL(geo);
+    if (NULL == geoTmp) {
+        PRINTF("DEBUG: NULL geo getTouchDEPVAL\n");
+        return UNKNOWN;
+    }
     GString *drval1str = S57_getAttVal(geoTmp, "DRVAL1");
     double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
 
@@ -1124,7 +1139,7 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
     //PRINTF("DEBUG: %s:%c\n", S57_getName(geo), S57_getObjtype(geo));
     //S57_dumpData(geo, FALSE);
 
-    //* clang complain - move bellow
+    /* clang complain - move bellow
     if (UNKNOWN != least_depth) {
         least_depth += S52_MP_get(S52_MAR_DATUM_OFFSET);  // !?! clang - val in least_depth never read
     }
@@ -1141,14 +1156,16 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
         //}
 
 #ifdef S52_DEBUG
-        // debug - check impact of this bug: no impact since drval1str is allway NULL in St-Laurent
-        // FIXME: see bellow - this branch never reach
-        //if (least_depth < drval1) {
-        //if (least_depth >= drval1) {
-            PRINTF("DEBUG: chenzunfeng found this bug: 'least_depth<drval1' (should be '>='), %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
-            S57_highlightON(geo);
-            g_assert(0);
-        //}
+        // debug - check impact of this bug:
+        // - NO  impact in St-Laurent since drval1str is allway NULL
+        // - YES impact in GB4X0000.000 (S64 test ENC
+        //if (least_depth < drval1) {  // SDUC BUG
+        if (least_depth >= drval1) {   // chenzunfeng fix
+            least_depth  = drval1;
+            //PRINTF("DEBUG: chenzunfeng found this bug: 'least_depth<drval1' (should be '>='), %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
+            //S57_highlightON(geo);
+            //g_assert(0);
+        }
 #endif
 
         /* litteraly psbl03_2.pdf say:
@@ -1166,6 +1183,10 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
         //if (UNKNOWN==least_depth || least_depth>=drval1)
         //    least_depth = drval1;
 
+    }
+
+    if (UNKNOWN != least_depth) {
+        least_depth += S52_MP_get(S52_MAR_DATUM_OFFSET);
     }
 
     return least_depth;
@@ -1742,7 +1763,7 @@ static GString *_LITDSN01(S57_geo *geo)
                 default:
                     // FIXME: what is a good default
                     // or should it be left empty!
-                    tmp = "FIXME:COLOUR ";
+                    tmp = "FIXME: COLOUR ";
                     //PRINTF("WARNING: no abreviation for COLOUR (%i)\n", colour[0]);
             }
             g_string_append(litdsn01, tmp);
@@ -1833,7 +1854,7 @@ static GString *_LITDSN01(S57_geo *geo)
             default:
                 // FIXME: what is a good default
                 // or should it be left empty!
-                tmp = "FIXME:STATUS ";
+                tmp = "FIXME: STATUS ";
                 //PRINTF("WARNING: no abreviation for STATUS (%i)\n", status[0]);
         }
         g_string_append(litdsn01, tmp);
@@ -1882,8 +1903,8 @@ static GString *OBSTRN04 (S57_geo *geo)
         if (S57_AREAS_T == S57_getObjtype(geo))
             least_depth = _DEPVAL01(geo, least_depth);
 
-        //if (UNKNOWN != least_depth) {  // <<< BUG
-        if (UNKNOWN == least_depth) {
+        //if (UNKNOWN != least_depth) {  // <<< SDUC BUG
+        if (UNKNOWN == least_depth) {    // chenzunfeng fix
             /*
 #ifdef S52_DEBUG
             {   // this bug skip symbol ISODGR01 in shallow water
@@ -1894,10 +1915,10 @@ static GString *OBSTRN04 (S57_geo *geo)
                     silent = TRUE;
                     PRINTF("       (this msg will not repeat)\n");
                 }
-                S57_highlightON(geo);  // Bic island CA279037.000
+                //S57_highlightON(geo);  // Bic island CA279037.000
             }
 #endif
-            */
+            //*/
 
             GString *catobsstr = S57_getAttVal(geo, "CATOBS");
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
@@ -2878,13 +2899,13 @@ static GString *SOUNDG02 (S57_geo *geo)
     double *ppt = NULL;
 
     if (S57_POINT_T != S57_getObjtype(geo)) {
-        PRINTF("invalid object type (not POINT_T)\n");
+        PRINTF("WARNING: invalid object type (not POINT_T)\n");
         g_assert(0);
         return NULL;
     }
 
     if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt)) {
-        PRINTF("invalid object type (not POINT_T)\n");
+        PRINTF("WARNING: invalid object type (not POINT_T)\n");
         g_assert(0);
         return NULL;
     }
@@ -3203,6 +3224,11 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
         // that intersect this point/area      for WRECKS02
         //S57_geo *geoTmp = geo;
         S57_geo *geoTmp = S57_getTouchDEPARE(geo);
+        if (NULL == geoTmp) {
+            PRINTF("DEBUG: NULL geo getTouchDEPARE\n");
+
+            return udwhaz03str;
+        }
 
         //  collect area/line DEPARE & area DRGARE that touche this point/line/area
         //S57_ogrTouche(geoTmp, N_OBJ_T);
