@@ -31,7 +31,8 @@
 #include <glib.h>
 #include <math.h>           // INFINITY
 
-#define S52_SMB_NMLN   8    // symbology name lenght
+#define S52_COL_NUM   63    // number of color (#64 is transparent)
+#define S52_LUP_NMLN   6    // lookup name lenght
 
 
 //-- PLIB ID MODULE STRUCTURE ---------------------------------------
@@ -73,9 +74,6 @@ typedef enum _colorTableStat {
     _COL_TBL_NUM    =  4    // number of color table status
 } _colorTableStat;
 
-#define S52_COL_NMLN   5     // color name lenght
-#define S52_COL_NUM   63     // number of color (#64 is transparent)
-
 // Following 4 additional colors could be made available as alternative colors for non-charted items.
 // Draft PLib 4.0 has 4 more color of MIO's: "MARBL", "MARCY", "MARMG", "MARWH" (resp.: blue, cyan, magenta, white)
 // FIXME: how to handle these
@@ -114,9 +112,9 @@ typedef struct _Shape {
 // symbology definition: LINE,    PATTERN, SYMBOL
 typedef struct _S52_symDef {
     int      RCID;
-    union    {char       LINM[S52_SMB_NMLN+1],  // symbology name
-                         PANM[S52_SMB_NMLN+1],  // '\0' teminated
-                         SYNM[S52_SMB_NMLN+1];
+    union    {char       LINM[S52_PL_SMB_NMLN+1],  // symbology name
+                         PANM[S52_PL_SMB_NMLN+1],  // '\0' teminated
+                         SYNM[S52_PL_SMB_NMLN+1];
              } name;
     union    {char       dummy,   PADF,    SYDF;   } definition;
     union    {char       dummy1,  PATP,    dummy2; } fillType;
@@ -245,7 +243,7 @@ typedef struct _prios {
 
 typedef struct _LUP {
     int          RCID;          // record identifier
-    char         OBCL[S52_PL_NMLN+1]; // LUP name --'\0' terminated
+    char         OBCL[S52_LUP_NMLN+1]; // LUP name --'\0' terminated
     S57_Obj_t    FTYP;          // 'A' Area, 'L' Line, 'P' Point
        _LUPtnm   TNAM;          // FTYP:  areas, points, lines
        _prios    prios;
@@ -554,7 +552,7 @@ static GTree     *_selLUP(_LUPtnm TNAM)
 
        case _LUP_NUM:
        default:
-           PRINTF("ERROR unknown lookup table (%i)\n", TNAM);
+           PRINTF("WARNING: unknown lookup table (%i)\n", TNAM);
            g_assert(0);
    }
 
@@ -570,7 +568,7 @@ static GTree     *_selSMB(S52_SMBtblName name)
        case S52_SMB_SYMB: return _table[SMB_SYMB];
        case S52_SMB_COND: return _table[SMB_COND];
        default:
-           PRINTF("ERROR unknown symbology table!!\n");
+           PRINTF("WARNING: unknown symbology table!!\n");
            g_assert(0);
    }
 
@@ -581,7 +579,7 @@ static gint       _cmpCOL(gconstpointer nameA, gconstpointer nameB)
 // compare color name
 {
     //PRINTF("%s - %s\n",(char*)nameA,(char*)nameB);
-    return strncmp((char*)nameA, (char*)nameB, S52_COL_NMLN);
+    return strncmp((char*)nameA, (char*)nameB, S52_PL_COL_NMLN);
 }
 
 static gint       _cmpLUP(gconstpointer nameA, gconstpointer nameB, gpointer user_data)
@@ -591,7 +589,7 @@ static gint       _cmpLUP(gconstpointer nameA, gconstpointer nameB, gpointer use
     (void) user_data;
 
     //PRINTF("%s - %s\n",(char*)nameA,(char*)nameB);
-    return strncmp((char*)nameA, (char*)nameB, S52_PL_NMLN);
+    return strncmp((char*)nameA, (char*)nameB, S52_LUP_NMLN);
 }
 
 static gint       _cmpSMB(gconstpointer nameA, gconstpointer nameB, gpointer user_data)
@@ -600,13 +598,13 @@ static gint       _cmpSMB(gconstpointer nameA, gconstpointer nameB, gpointer use
     // 'user_data' useless warning
     (void) user_data;
 
-    return strncmp((char*)nameA, (char*)nameB, S52_SMB_NMLN);
+    return strncmp((char*)nameA, (char*)nameB, S52_PL_SMB_NMLN);
 }
 
 static gint       _cmpCOND(gconstpointer nameA, gconstpointer nameB)
 // compare Cond Symbology name
 {
-   return strncmp((char*)nameA, (char*)nameB, S52_SMB_NMLN);
+   return strncmp((char*)nameA, (char*)nameB, S52_PL_SMB_NMLN);
 }
 
 
@@ -717,7 +715,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
     }
 
     // special case [S52-A-2:8.3.3.4(iii)]
-    if (0 == strncmp(LUP->OBCL, "TSSLPT", S52_PL_NMLN)){
+    if (0 == strncmp(LUP->OBCL, "TSSLPT", S52_LUP_NMLN)){
         if (NULL == S57_getAttVal(geoData, "ORIENT")) {
             // FIXME: hit this in S-64 ENC
             PRINTF("FIXME: TSSLPT found ... check this ... no ORIENT\n");
@@ -840,7 +838,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
                 best_nATTmatch = nATTmatch;
                 LUP = LUPlist;
                 if (trace)
-                    PRINTF("CANDIDATE(%i): %s\n", best_nATTmatch, LUPlist->ATTC->str);
+                    PRINTF("DEBUG: CANDIDATE(%i): %s\n", best_nATTmatch, LUPlist->ATTC->str);
         }
 
         LUPlist = LUPlist->OBCLnext;
@@ -849,7 +847,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
     } // while
 
     if (trace)
-        PRINTF("SELECTED LUP: %s\n", LUP->INST->str);
+        PRINTF("DEBUG: SELECTED LUP: %s\n", LUP->INST->str);
 
     return LUP;
 }
@@ -1092,6 +1090,7 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
         }
     } else {
         PRINTF("ERROR: CS not found (%s)\n", S57_getName(obj->geoData));
+        g_assert(0);
         return FALSE;
     }
 
@@ -1494,30 +1493,24 @@ static int        _flushColors()
         return FALSE;
     }
 
-    //_flush_Colors = FALSE;
-
     return TRUE;
 }
 
 static int        _parseCOLS(_PL *fp)
 {
-    //unsigned int i = 0;
     _colTable *pct = NULL;
-    //int replaceColor = FALSE;
 
-    //if (TRUE == _flush_Colors)
-    //    _flushColors();
-
-    // trap color status that are not implemented
     switch (_pBuf[16]) {
-    case _COL_TBL_NIL: break;  // NEW
-    case _COL_TBL_ADD: ;       // TODO
-    case _COL_TBL_MOD: ;       // TODO
-    case _COL_TBL_DEL: ;       // TODO
-    default:
-        PRINTF("ERROR: unknown color table status\n");
-        g_assert(0);
-        return FALSE;
+        case _COL_TBL_NIL: break;  // new table
+
+        // trap color status that are not implemented
+        case _COL_TBL_ADD: ;
+        case _COL_TBL_MOD: ;
+        case _COL_TBL_DEL: ;
+        default:
+            PRINTF("WARNING: unknown color table status\n");
+            g_assert(0);
+            return FALSE;
     }
 
     pct = _findColTbl(_pBuf+19);
@@ -1565,7 +1558,7 @@ static int        _parseLUPT(_PL *fp)
 
     sscanf(_pBuf+11, "%d", &LUP->RCID);
     //sscanf(_pBuf+11, "%i", &LUP->RCID);
-    strncpy(LUP->OBCL, _pBuf+19, S52_PL_NMLN);
+    strncpy(LUP->OBCL, _pBuf+19, S52_LUP_NMLN);
     LUP->FTYP       = (S57_Obj_t  )  _pBuf[25];
     LUP->prios.DPRI = (S52_disPrio) (_pBuf[30] - '0');
     LUP->prios.RPRI = (S52_RadPrio)  _pBuf[31];
@@ -1584,7 +1577,8 @@ static int        _parseLUPT(_PL *fp)
         FIELD(ATTC) {                     // field do repeat
             if (_pBuf[9] != '\0') {            // could be empty!
                 if (NULL != LUP->ATTC) {
-                    PRINTF("ERROR repeating field ATTC not implemented!\n");
+                    PRINTF("ERROR: repeating field ATTC not implemented!\n");
+                    g_assert(0);
                 } else {
                     _pBuf[len-1] = EOL;  // change "\0\0" to "EOL\0" for _chopS52Line()
                     // FIXME: use g_string_new_len () in glib-2.0
@@ -1737,7 +1731,7 @@ static int        _parseLNST(_PL *fp)
     _readS52Line(fp, _pBuf);
     do {
         FIELD(LIND) {
-            strncpy(lnst->name.LINM, _pBuf+9, S52_SMB_NMLN);
+            strncpy(lnst->name.LINM, _pBuf+9, S52_PL_SMB_NMLN);
             _parsePos(&lnst->pos.line, _pBuf+17, FALSE);
         }
 
@@ -1789,7 +1783,7 @@ static int        _parsePATT(_PL *fp)
 
     do {
         FIELD(PATD) {
-            strncpy(patt->name.PANM, _pBuf+9, S52_SMB_NMLN);
+            strncpy(patt->name.PANM, _pBuf+9, S52_PL_SMB_NMLN);
             //PRINTF("%8s ", patt->name.PANM);
             patt->definition.PADF = _pBuf[17];
             patt->fillType.PATP   = _pBuf[18];
@@ -1797,7 +1791,7 @@ static int        _parsePATT(_PL *fp)
             _parsePos(&patt->pos.patt, _pBuf+24, TRUE);
         }
 
-        FIELD(PBTM) { PRINTF("ERROR: pattern bitmap not in specs\n"); }
+        FIELD(PBTM) { PRINTF("WARNING: pattern bitmap not in specs\n"); }
         FIELD(PXPO) { patt->exposition.PXPO        = g_string_append(patt->exposition.PXPO, _pBuf+9); }
         FIELD(PVCT) { patt->shape.patt.vector.PVCT = g_string_append(patt->shape.patt.vector.PVCT, _pBuf+9); }
         FIELD(PCRF) { patt->colRef.PCRF            = g_string_new(_pBuf+9); } // CIDX + CTOK
@@ -1843,7 +1837,7 @@ static int        _parseSYMB(_PL *fp)
 
     do {
         FIELD(SYMD) {
-            strncpy(symb->name.SYNM, _pBuf+9, S52_SMB_NMLN);
+            strncpy(symb->name.SYNM, _pBuf+9, S52_PL_SMB_NMLN);
             symb->definition.SYDF = _pBuf[17];
             _parsePos(&symb->pos.symb, _pBuf+18, FALSE);
         }
@@ -2029,11 +2023,11 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
 
         if (vallen >= bsz) {
             vallen =  bsz;
-            PRINTF("ERROR: chopping attribut value !? \n");
+            PRINTF("WARNING: chopping attribut value !? \n");
         }
 
         // special case ENC return an index
-        if (0 == strncmp(buf, "NATSUR", S52_PL_NMLN)) {
+        if (0 == strncmp(buf, "NATSUR", S52_LUP_NMLN)) {
             gchar** attvalL = g_strsplit_set(valstr->str, ",", 0);  // can't handle UTF-8, check g_strsplit() if needed
             gchar** freeL   = attvalL;
             buf[0]          = '\0';
@@ -2623,13 +2617,13 @@ int         S52_PL_load(const char *PLib)
         int ret;
         GMappedFile *mf = g_mapped_file_new(PLib, FALSE, NULL);
         if (NULL == mf) {
-            PRINTF("ERROR: in openning file (%s)\n", PLib);
+            PRINTF("WARNING: in openning file (%s)\n", PLib);
             return FALSE;
         }
 
         ret = g_file_test(PLib, G_FILE_TEST_EXISTS);
         if (TRUE != ret) {
-            PRINTF("ERROR: file not found (%s)\n", PLib);
+            PRINTF("WARNING: file not found (%s)\n", PLib);
             return FALSE;
         }
 
@@ -2775,7 +2769,7 @@ static int        _linkLUP(_S52_obj *obj, int alt)
         case S57_LINES_T: tblNm = _LUP_LINES;                         break;
         case S57_AREAS_T: tblNm = (0==alt) ? _LUP_SYMBO : _LUP_PLAIN; break;
         case S57__META_T: tblNm = _LUP_NONAM;                         break;
-        default     : PRINTF("ERROR: unkown geometry!\n");
+        default     : PRINTF("WARNING: unkown geometry!\n");
                       g_assert(0);
                       return FALSE;
     }
@@ -2799,8 +2793,9 @@ static int        _linkLUP(_S52_obj *obj, int alt)
 
         obj->LUP = (_LUP*)g_tree_lookup(tbl, (gpointer*)DEFOBJ);
         if (NULL == obj->LUP) {
-            PRINTF("ERROR: no PLIB program EXIT! [%s]\n", objName);
-            exit(0);
+            PRINTF("ERROR: no PLIB! [%s]\n", objName);
+            g_assert(0);
+            //exit(0);
         }
 
         obj->LUP->prios.DPRI = S52_PRIO_HAZRDS;
@@ -3059,12 +3054,6 @@ S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
     return dpri;
 }
 
-// useless
-//static S52_DisCat _getDISC(_LUP *LUP)
-//{
-//    return LUP->DISC;
-//}
-
 S52_DisCat  S52_PL_getDISC(_S52_obj *obj)
 // get DISplay Category
 {
@@ -3076,10 +3065,8 @@ S52_DisCat  S52_PL_getDISC(_S52_obj *obj)
 
     if (NULL == obj->LUP)
         return NO_DISP_CAT;    // we get here on 'DISD'
-    else {
-        //return _getDISC(obj->LUP);
+    else
         return obj->LUP->prios.DISC;
-    }
 }
 
 //#if 0
@@ -3102,8 +3089,6 @@ S52_RadPrio S52_PL_getRPRI(_S52_obj *obj)
     //if (NULL == obj) {
     //    return S52_RAD_OVER;
     //}
-
-    //return obj->RPRI;
 
     // initialy oPrios = prios, but might change after CS are resolve
     if (TRUE == obj->prioOveride)
@@ -3128,7 +3113,8 @@ const char *S52_PL_infoLUP(_S52_obj *obj)
         case _LUP_SYMBO: info = "areas SYMBOLIZED_BOUNDARIES";break;
 
         default:
-            PRINTF("ERROR: %s\n", info);
+            PRINTF("WARNING: %s\n", info);
+            g_assert(0);
     }
 
     return info;
@@ -3248,10 +3234,33 @@ int         S52_PL_cmpCmdParam(_S52_obj *obj, const char *name)
     }
 
     // FIXME: glib strncmp() equivalent - does PLib allow utf?
-    if (S52_SMB_NMLN == strlen(name))
-        return strncmp(cmd->param, name, S52_SMB_NMLN);
-    else
-        return strncmp(cmd->param, name, S52_PL_NMLN);
+    //if (S52_SMB_NMLN == strlen(name))
+        return strncmp(cmd->param, name, S52_PL_SMB_NMLN);
+    //else
+    //    return strncmp(cmd->param, name, S52_PL_NMLN);
+}
+
+int         S52_PL_cmpCmdParamLUP(_S52_obj *obj, const char *name)
+// Note: some param are LUP name - 6 chars, and not \0 terminated
+{
+    return_if_null(obj);
+    return_if_null(name);
+
+    _cmdWL *cmd = _getCrntCmd(obj);
+    if (NULL == cmd) {
+        PRINTF("DEBUG: cmd = NULL\n");
+        g_assert(0);
+
+        //return FALSE;  // 0 = equal!
+        return -1;
+    }
+
+    // FIXME: glib strncmp() equivalent - does PLib allow utf?
+    // Note: some param are LUP name - 6 chars, and not \0 terminated
+    //if (S52_SMB_NMLN == strlen(name))
+    //    return strncmp(cmd->param, name, S52_SMB_NMLN);
+    //else
+        return strncmp(cmd->param, name, S52_LUP_NMLN);
 }
 
 const char *S52_PL_getCmdText(_S52_obj *obj)
@@ -3747,17 +3756,8 @@ S52_vec    *S52_PL_initVOCmd(_S52_symDef *def)
     vecObj->name    = def->name.LINM;
     vecObj->pm      = PM_END;
 
-    //if (NULL == _vec.vertex)
-    //    _vec.vertex = g_array_new(FALSE, FALSE, sizeof(double));
-    //if (NULL == _vec.prim)
-
     // set/reset
     vecObj->prim = S57_initPrim(vecObj->prim);
-
-    // debug
-    //if (0 == strcmp(def->name.LINM, "BCNSPP21")) {
-    //    PRINTF("FOUND BCNSPP21\n");
-    //}
 
     return vecObj;
 }
@@ -3800,7 +3800,7 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
 
         // debug
         if (';' == c1 || ';' == c2) {
-            PRINTF("vCmd ERROR: vecObj: %c%c%s\n", c1, c2, vecObj->str);
+            PRINTF("ERROR: vecObj: %c%c%s\n", c1, c2, vecObj->str);
             g_assert(0);
         }
 
@@ -3852,7 +3852,7 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
                     case S52_VC_EP: // Edge Polygon --not used
                     case S52_VC_SP: // Color --should note happen now
                     default:
-                        PRINTF("ERROR: first vector command unknown (%c)\n", c1);
+                        PRINTF("WARNING: first vector command unknown (%c)\n", c1);
                         PRINTF("vecObj: %s\n", vecObj->str);
                         g_assert(0);
 
@@ -3880,7 +3880,8 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
         {   // origine pivot_x/y
             double off_x = vecObj->pivot_x;
             double off_y = vecObj->pivot_y;
-            // origine bbox_x/y
+
+            // debug - origine bbox_x/y
             //double off_x = vecObj->bbx;
             //double off_y = vecObj->bby;
             //double off_x = 0.0;
@@ -4528,9 +4529,10 @@ const char* S52_PL_getPalTableNm(unsigned int idx)
     if (NULL != _colTables) {
         _colTable *ct  = NULL;
         if (idx > _colTables->len-1) {
-            PRINTF("ERROR: unknown colors table\n");
             // failsafe --select active one
             idx = (int) S52_MP_get(S52_MAR_COLOR_PALETTE);;
+            PRINTF("ERROR: unknown colors table\n");
+            g_assert(0);
         }
 
         ct = &g_array_index(_colTables, _colTable, idx);
