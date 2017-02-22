@@ -178,7 +178,7 @@ int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadO
         static int  silent  = FALSE;
         if (FALSE == silent) {
             PRINTF("NOTE: using default S52_loadObject() callback\n");
-            PRINTF("       (this msg will not repeat)\n");
+            PRINTF("NOTE: (this msg will not repeat)\n");
             silent = TRUE;
         }
         loadObject_cb = S52_loadObject;
