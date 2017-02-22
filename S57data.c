@@ -939,6 +939,10 @@ int        S57_getExt(_S57_geo *geo, double *x1, double *y1, double *x2, double 
 
     // no extent: "$CSYMB", afgves, vessel, ..
     if (TRUE == isinf(geo->rect.x1)) {
+        // system generated symb has no extent
+        if (0 == g_strcmp0(geo->name, "$CSYMB"))
+            return FALSE;
+
         PRINTF("DEBUG: no extent for %s:%i\n", geo->name, geo->S57ID);
         return FALSE;
     }
@@ -1045,7 +1049,7 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
     if (!silent && NULL!=att && 0==att->len) {
         //PRINTF("NOTE: attribute (%s) has no value [obj:%s]\n", att_name, geo->name->str);
         PRINTF("NOTE: attribute (%s) has no value [obj:%s]\n", att_name, geo->name);
-        PRINTF("      (this msg will not repeat)\n");
+        PRINTF("NOTE: (this msg will not repeat)\n");
         silent = TRUE;
         return NULL;
     }
