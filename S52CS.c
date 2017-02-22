@@ -176,11 +176,16 @@ int       S52_CS_add(_localObj *local, S57_geo *geo)
 static int      _intersecGEO(S57_geo *A, S57_geo *B)
 // TRUE if A instersec B, else FALSE
 {
+    //double Ax1, Ay1, Ax2, Ay2;
+    //double Bx1, By1, Bx2, By2;
     double Ax1=INFINITY, Ay1=INFINITY, Ax2=-INFINITY, Ay2=-INFINITY;
     double Bx1=INFINITY, By1=INFINITY, Bx2=-INFINITY, By2=-INFINITY;
-
-    S57_getExt(A, &Ax1, &Ay1, &Ax2, &Ay2);
-    S57_getExt(B, &Bx1, &By1, &Bx2, &By2);
+    if (FALSE == S57_getExt(A, &Ax1, &Ay1, &Ax2, &Ay2)) {
+        g_assert(0);
+    }
+    if (FALSE == S57_getExt(B, &Bx1, &By1, &Bx2, &By2)) {
+        g_assert(0);
+    }
 
     if (By2 < Ay1) return FALSE;
     if (Bx2 < Ax1) return FALSE;
@@ -357,9 +362,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         // debug
         //if (491 == S57_getGeoS57ID(geo)) {
         //    PRINTF("491 found\n");
-        //}
-        //if (127 == S57_getGeoS57ID(geo)) {
-        //    PRINTF("127 found\n");
         //}
 
         for (guint i=0; i<local->depare_list->len; ++i) {
@@ -935,10 +937,11 @@ static GString *DEPCNT02 (S57_geo *geo)
             } else {
             //    else {
                 // collect area DEPARE & DRGARE that touch this line
+
                     GString *drval1touchstr = NULL;
                     S57_geo *geoTouch       = S57_getTouchDEPARE(geo);
                     if (NULL == geoTouch) {
-                        PRINTF("DEBUG: NULL geo getTouchDEPARE\n");
+                        PRINTF("DEBUG: NULL geoTouch depcnt02-1/getTouchDEPARE\n");
                         //return depcnt02;
                     } else {
                         drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
@@ -1016,7 +1019,7 @@ static GString *DEPCNT02 (S57_geo *geo)
                 GString *drval1str = NULL;
                 S57_geo *geoTmp    = S57_getTouchDEPARE(geo);
                 if (NULL == geoTmp) {
-                    PRINTF("DEBUG: NULL geo getTouchDEPARE\n");
+                    PRINTF("DEBUG: NULL geoTmp depcnt02-2/getTouchDEPARE\n");
                     //return depcnt02;
                 } else {
                     drval1str = S57_getAttVal(geoTmp, "DRVAL1");
@@ -1119,7 +1122,7 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
     GString *drval1str = NULL;
     S57_geo *geoTmp    = S57_getTouchDEPVAL(geo);
     if (NULL == geoTmp) {
-        PRINTF("DEBUG: NULL geo getTouchDEPVAL\n");
+        PRINTF("DEBUG: NULL geo _DEPVAL01/getTouchDEPVAL\n");
         //return UNKNOWN;
     } else {
         drval1str = S57_getAttVal(geoTmp, "DRVAL1");
@@ -1165,16 +1168,18 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
         //}
 
 #ifdef S52_DEBUG
-        // debug - check impact of this bug:
+        //* debug - check impact of this bug:
         // - NO  impact in St-Laurent since drval1str is allway NULL
-        // - YES impact in GB4X0000.000 (S64 test ENC
+        // - YES impact in GB4X0000.000 (S64 test ENC)
         //if (least_depth < drval1) {  // SDUC BUG
-        if (least_depth >= drval1) {   // chenzunfeng fix
-            least_depth  = drval1;
+        //if (least_depth >= drval1) {   // chenzunfeng fix
+        if (least_depth > drval1) {   // chenzunfeng fix
+            least_depth = drval1;
             //PRINTF("DEBUG: chenzunfeng found this bug: 'least_depth<drval1' (should be '>='), %s:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
             //S57_highlightON(geo);
             //g_assert(0);
         }
+        //*/
 #endif
 
         /* litteraly psbl03_2.pdf say:
@@ -3234,7 +3239,7 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
         //S57_geo *geoTmp = geo;
         S57_geo *geoTmp = S57_getTouchDEPARE(geo);
         if (NULL == geoTmp) {
-            PRINTF("DEBUG: NULL geo getTouchDEPARE\n");
+            PRINTF("DEBUG: NULL geo _UDWHAZ03/getTouchDEPARE\n");
 
             // no need to process further - bailout
             return udwhaz03str;
