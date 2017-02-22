@@ -2498,7 +2498,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         static int  silent = FALSE;
         if (FALSE == silent) {
             PRINTF("NOTE: using default S52_loadObject() callback\n");
-            PRINTF("       (this msg will not repeat)\n");
+            PRINTF("NOTE: (this msg will not repeat)\n");
             silent = TRUE;
         }
         // FIXME: add macro in S52_utils.h
@@ -3009,7 +3009,7 @@ int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_
         static int silent = FALSE;
         if (FALSE == silent) {
             PRINTF("NOTE: using default S52_loadObject() callback\n");
-            PRINTF("       (this msg will not repeat)\n");
+            PRINTF("NOTE: (this msg will not repeat)\n");
             silent = TRUE;
         }
         loadObject_cb = S52_loadObject;
@@ -3082,7 +3082,7 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
         return NULL;
     }
 
-    //* debug - show obj on NODATA layer
+    /* debug - show obj on NODATA layer
     if (S52_PRIO_NODATA == disPrioIdx) {
         extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
         if (TRUE == S57_getExt(geo, &ext.W, &ext.S, &ext.E, &ext.N)) {
@@ -3302,7 +3302,9 @@ int            S52_loadObject(const char *objname, void *shape)
                 //*/
 
             //}  // CATCOV=1
-            }  // extent
+            } else { // extent
+                g_assert(0);
+            }
         }  // S57_AREAS_T/M_COVR
 
         {
@@ -3399,6 +3401,7 @@ int            S52_loadObject(const char *objname, void *shape)
 
     _insertS57geo(_crntCell, geoData);
 
+    S52_CS_add(_crntCell->local, geoData);
 
 #ifdef S52_USE_C_AGGR_C_ASSO
     //--------------------------------------------------
@@ -3411,7 +3414,6 @@ int            S52_loadObject(const char *objname, void *shape)
     if (NULL != key_lnam)
         g_tree_insert(_lnamBBT, key_lnam->str, geoData);
 
-    S52_CS_add(_crntCell->local, geoData);
     //--------------------------------------------------
 #endif  // S52_USE_C_AGGR_C_ASSO
 
