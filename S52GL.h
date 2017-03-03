@@ -26,18 +26,33 @@
 #define _S52GL_H_
 
 #ifdef S52_USE_RADAR
-#include "S52.h"    // S52_RADAR_cb
+#include "S52.h"     // S52_RADAR_cb
 #endif
 
-#include "S52PL.h"	// S52_obj
+#include "S52PL.h"	 // S52_obj (will pull S57data.h:ObjExt_t a different extent struct)
 
-#include <glib.h>   // guchar, guint
+#include <glib.h>    // guchar, guint
 
-// Raster (RADAR, Bathy, ...)
+/* helper
 typedef struct extent {
-    double S,W,N,E;
-} extent;
+    // (minY,minX) --> lat/lng
+    double S;        // LL - y1
+    double W;        // LL - x1
+    // (maxY,maxX) --> lat/lng
+    double N;        // UR - y2
+    double E;        // UR - x2
 
+    // Note: S57data.h:ObjExt_t order is different
+    // (minX,minY) --> lng/lat
+    //double W;        // LL - x1
+    //double S;        // LL - y1
+    // (maxX,maxY) --> lng/lat
+    //double E;        // UR - x2
+    //double N;        // UR - y2
+} extent;
+*/
+
+// Raster (RADAR, Bathy, ...) and dumpPixels
 typedef struct S52_GL_ras {
     GString *fnameMerc;       // Mercator GeoTiff file name
 
@@ -52,8 +67,10 @@ typedef struct S52_GL_ras {
     double  gt[6];            // GeoTransform
 
     //double S,W,N,E;
-    extent pext;              // prj extent
-    extent gext;              // geo extent
+    //extent pext;              // prj extent
+    //extent gext;              // geo extent
+    ObjExt_t pext;              // prj extent
+    ObjExt_t gext;              // geo extent
 
     // dst texture size
     guint npotX;
@@ -145,12 +162,11 @@ int   S52_GL_movePoint(double *x, double *y, double angle, double dist_m);
 
 int   S52_GL_isHazard(int nxyz, double *xyz);
 
-//#if 0
 // -------- GLU ------------
 // helper for CS DATCVR01
 void  S52_GLU_begUnion(void);
-void  S52_GLU_addUnion(S57_geo *geo);
-void  S52_GLU_endUnion(guint *npt, double **xyz);
-//#endif  // 0
+//void  S52_GLU_addUnion(S57_geo *geo);
+void  S52_GLU_addUnion(guint  npt, double  *ppt);
+void  S52_GLU_endUnion(guint *npt, double **ppt);
 
 #endif // _S52GL_H_
