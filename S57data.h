@@ -36,8 +36,7 @@
 #define S57_CELL_NAME_MAX_LEN 8  // cell name maximum lenght
 #define S57_OBJ_ATT_LEN       6  // attribute name lenght
 
-// push Z in geo (Z not used, alway 0)
-// could be use as a clip plane for LS()
+// push Z in geo - use as a clip plane for LS() and LC()
 #define S57_OVERLAP_GEO_Z 10.0
 
 // internal geo enum used to link S52 to S57 geo
@@ -60,14 +59,23 @@ typedef enum S57_AW_t {
 } S57_AW_t;
 */
 
-// ReCord NaMe for S57 primitive - use second digit
+/* Not used - ReCord NaMe for S57 primitive - use second digit
 typedef enum S57_RCNM_t {
     S57_RCNM_NONE =  0,
     S57_RCNM_VI   = '1',  // 110 - isolated node
-    S57_RCNM_VC  =  '2',  // 120 - connected node
-    S57_RCNM_VE  =  '3',  // 130 - edge
-    S57_RCNM_MAX =   4
+    S57_RCNM_VC   = '2',  // 120 - connected node
+    S57_RCNM_VE   = '3',  // 130 - edge
+    S57_RCNM_MAX  =  4
 } S57_RCNM_t;
+*/
+
+// S52/S57 geo object extent (enveloppe in OGR parlance)
+typedef struct ObjExt_t {
+    double W;        // LL - x1
+    double S;        // LL - y1
+    double E;        // UR - x2
+    double N;        // UR - y2
+} ObjExt_t;
 
 typedef double geocoord;
 typedef struct _S57_geo  S57_geo;
@@ -128,9 +136,10 @@ int       S57_getPrimIdx   (S57_prim *prim, unsigned int i, int *mode, int *firs
 int       S57_setPrimDList (S57_prim *prim, guint DList);
 
 // get/set extend
-int       S57_setExt(S57_geo *geo, double  x1, double  y1, double  x2, double  y2);
+int       S57_setExt(S57_geo *geo, double  W, double  S, double  E, double  N);
 // FIXME: return WSNE in param (S57_geo *geo, S57_extent **ext)
-int       S57_getExt(S57_geo *geo, double *x1, double *y1, double *x2, double *y2);
+//int       S57_getExt(S57_geo *geo, double *W, double *S, double *E, double *N);
+ObjExt_t  S57_getExt(S57_geo *geo);
 
 // get geo type (P,L,A) of this object
 // Note: return the same thing as a call to S52_PL_getFTYP()
@@ -192,7 +201,7 @@ guint     S57_setGeoSize(S57_geo *geo, guint size);
 
 int       S57_newCentroid(S57_geo *geo);
 int       S57_addCentroid(S57_geo *geo, double  x, double  y);
-int       S57_getNextCentroid(S57_geo *geo, double *x, double *y);
+int       S57_getNextCent(S57_geo *geo, double *x, double *y);
 int       S57_hasCentroid(S57_geo *geo);
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
