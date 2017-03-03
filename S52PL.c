@@ -319,7 +319,7 @@ typedef struct _S52_obj {
     int          prioOveride;   // CS overide display priority
     _prios       oPrios;
 
-    S57_geo     *geoData;       // S-57
+    S57_geo     *geo;           // S-57
 
     // --- Auxiliary Info --------------------------------
     // FIXME: make that a struct
@@ -675,7 +675,7 @@ static int        _dumpATT(char *str)
     return TRUE;
 }
 
-static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
+static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
 // Get the LUP with maximum Object attribute match.
 //
 // Note: reference are maide to section "8.3 How to use the look-up table"
@@ -686,7 +686,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
     int best_nATTmatch = 0;  // best attribute value match
 
     return_if_null(LUPlist);
-    return_if_null(geoData);
+    return_if_null(geo);
 
     // setup default LUP to the first LUP
     _LUP *LUP = LUPlist;
@@ -694,12 +694,12 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
     // debug
     //if (0 == strncmp(LUPlist->OBCL, "SBDARE", 6)) {
     //    trace = 1;
-    //    S57_dumpData(geoData, FALSE);
+    //    S57_dumpData(geo, FALSE);
     //}
-    //GString *FIDNstr = S57_getAttVal(geoData, "FIDN");
+    //GString *FIDNstr = S57_getAttVal(geo, "FIDN");
     //if (0==strcmp("2135158878", FIDNstr->str)) {
     //    trace = 1;
-    //    S57_dumpData(geoData);
+    //    S57_dumpData(geo);
     //    PRINTF("%s\n", FIDNstr->str);
     //}
 
@@ -716,7 +716,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
 
     // special case [S52-A-2:8.3.3.4(iii)]
     if (0 == strncmp(LUP->OBCL, "TSSLPT", S52_LUP_NMLN)){
-        if (NULL == S57_getAttVal(geoData, "ORIENT")) {
+        if (NULL == S57_getAttVal(geo, "ORIENT")) {
             // FIXME: hit this in S-64 ENC
             PRINTF("FIXME: TSSLPT found ... check this ... no ORIENT\n");
             //g_assert(0);
@@ -751,7 +751,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geoData)
             // scan object attribute name (ie propertie name in OGR)
             // for a name match
             strncat(attl, attlv, 6);
-            attv = S57_getAttVal(geoData, attl);
+            attv = S57_getAttVal(geo, attl);
             if (NULL != attv) {
                 //PRINTF("attv: %s\n", attv->str);
 
@@ -1016,8 +1016,8 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
 // also fill the command Array
 {
     // debug
-    //S57_geo *geoData = S52_PL_getGeo(obj);
-    //GString *FIDNstr = S57_getAttVal(geoData, "FIDN");
+    //S57_geo *geo = S52_PL_getGeo(obj);
+    //GString *FIDNstr = S57_getAttVal(geo, "FIDN");
     //if (NULL != FIDNstr && 0==strcmp("2135161787", FIDNstr->str)) {
     //    PRINTF("%s\n",FIDNstr->str);
     //}
@@ -1049,7 +1049,7 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
     // expand CS
     S52_CS_cb CScb = cmd->cmd.CS->CScb;
     if (NULL != CScb) {
-        obj->CSinst[alt] = CScb(obj->geoData);
+        obj->CSinst[alt] = CScb(obj->geo);
         if (NULL != obj->CSinst[alt]) {
             _cmdWL *tmp   = NULL;
             obj->CScmdL[alt] = _parseINST(obj->CSinst[alt]);
@@ -1084,12 +1084,12 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
             }
         } else {
             // FIXME: ENC_ROOT/US3NY21M/US3NY21M.000 land here
-            PRINTF("NOTE: CS for object %s expand to NULL\n", S57_getName(obj->geoData));
+            PRINTF("NOTE: CS for object %s expand to NULL\n", S57_getName(obj->geo));
             //g_assert(0);
             return FALSE;
         }
     } else {
-        PRINTF("ERROR: CS not found (%s)\n", S57_getName(obj->geoData));
+        PRINTF("ERROR: CS not found (%s)\n", S57_getName(obj->geo));
         g_assert(0);
         return FALSE;
     }
@@ -1942,7 +1942,7 @@ static int        _loadPL(_PL *fp)
     return TRUE;
 }
 
-static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
+static char      *_getParamVal(S57_geo *geo, char *str, char *buf, int bsz)
 // Symbology Command Word Parameter Value Parser.
 // Put in 'buf' one of:
 //  1 - LUP constant value,
@@ -1974,7 +1974,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
         return str;
 
         /*
-        valstr = S57_getAttVal(geoData, tmp);
+        valstr = S57_getAttVal(geo, tmp);
         if (NULL == valstr)
             return str;
         else
@@ -2007,12 +2007,12 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
     //if (0 == g_strncasecmp(buf, "DRVAL1", 6))
     //    PRINTF("DRVAL1 found\n");
 
-    valstr = S57_getAttVal(geoData, buf);
+    valstr = S57_getAttVal(geo, buf);
     if (NULL == valstr) {
         // debug
-        //S57_dumpData(geoData);
+        //S57_dumpData(geo);
         if (defval)
-            _getParamVal(geoData, buf+7, buf, bsz-7);    // default value --recursion
+            _getParamVal(geo, buf+7, buf, bsz-7);    // default value --recursion
         else {
             // PRINTF("NOTE: skipping TEXT no value for attribute:%s\n", buf);
             return NULL;                        // abort
@@ -2096,7 +2096,7 @@ static char      *_getParamVal(S57_geo *geoData, char *str, char *buf, int bsz)
 }
 
 
-static _Text     *_parseTEXT(S57_geo *geoData, char *str)
+static _Text     *_parseTEXT(S57_geo *geo, char *str)
 {
     _Text *text = NULL;
     char buf[MAXL] = {'\0'};   // output string
@@ -2106,12 +2106,12 @@ static _Text     *_parseTEXT(S57_geo *geoData, char *str)
     if (NULL == text)
         g_assert(0);
 
-    str = _getParamVal(geoData, str, &text->hjust, 1);  // HJUST
-    str = _getParamVal(geoData, str, &text->vjust, 1);  // VJUST
-    str = _getParamVal(geoData, str, &text->space, 1);  // SPACE
+    str = _getParamVal(geo, str, &text->hjust, 1);  // HJUST
+    str = _getParamVal(geo, str, &text->vjust, 1);  // VJUST
+    str = _getParamVal(geo, str, &text->space, 1);  // SPACE
 
     // CHARS
-    str         = _getParamVal(geoData, str, buf, 5);
+    str         = _getParamVal(geo, str, buf, 5);
     text->style = buf[0];
     // debug - there is only one weight: medium (default)
     //if ('5' != buf[1]) PRINTF("TEXT WEIGHT DIFF FROM MEDIUM ********************\n");
@@ -2131,14 +2131,14 @@ YOFFS "y-offset" parameter:
     to the location of the spatial object (0 is default if YOFFS is not given or undefined); positive y-offset
     extends downwards.
 */
-    str         = _getParamVal(geoData, str, buf, MAXL);
+    str         = _getParamVal(geo, str, buf, MAXL);
     text->xoffs = S52_atoi(buf);             // XOFFS
-    str         = _getParamVal(geoData, str, buf, MAXL);
+    str         = _getParamVal(geo, str, buf, MAXL);
     text->yoffs = S52_atoi(buf);             // YOFFS
-    str         = _getParamVal(geoData, str, buf, MAXL);
+    str         = _getParamVal(geo, str, buf, MAXL);
     text->col   = S52_PL_getColor(buf);      // COLOUR
-    //str         = _getParamVal(geoData, str, buf, MAXL);
-                  _getParamVal(geoData, str, buf, MAXL);  // clang - str never used
+    //str         = _getParamVal(geo, str, buf, MAXL);
+                  _getParamVal(geo, str, buf, MAXL);  // clang - str never used
     text->dis   = S52_atoi(buf);             // DISPLAY
 
     return text;
@@ -2761,10 +2761,10 @@ static int        _linkLUP(_S52_obj *obj, int alt)
     _LUP       *LUPlist = NULL;
     GTree      *tbl     = NULL;
     _LUPtnm     tblNm   = _LUP_NUM;
-    const char *objName = S57_getName(obj->geoData);
+    const char *objName = S57_getName(obj->geo);
 
     // find proper LUP table for this type of S57 object
-    switch (S57_getObjtype(obj->geoData)) {
+    switch (S57_getObjtype(obj->geo)) {
         case S57_POINT_T: tblNm = (0==alt) ? _LUP_SIMPL : _LUP_PAPER; break;
         case S57_LINES_T: tblNm = _LUP_LINES;                         break;
         case S57_AREAS_T: tblNm = (0==alt) ? _LUP_SYMBO : _LUP_PLAIN; break;
@@ -2787,7 +2787,7 @@ static int        _linkLUP(_S52_obj *obj, int alt)
     // get list of LUP for S57 object of this class
     LUPlist = (_LUP*)g_tree_lookup(tbl, (gpointer*)objName);
     if (NULL != LUPlist) {
-        obj->LUP = _lookUpLUP(LUPlist, obj->geoData);
+        obj->LUP = _lookUpLUP(LUPlist, obj->geo);
     } else {
         PRINTF("WARNING: defaulting to QUESMRK1, no LUP found for object name: %s\n", objName);
 
@@ -2806,8 +2806,8 @@ static int        _linkLUP(_S52_obj *obj, int alt)
 
 
     // also hold parameter for CS command found in CSinst
-    //LUP->cmdList = _LUP2cmd(LUP, geoData);
-    //LUP->cmdList = _parseINST(LUP->INST, geoData);
+    //LUP->cmdList = _LUP2cmd(LUP, geo);
+    //LUP->cmdList = _parseINST(LUP->INST, geo);
 
 
     // priority overide
@@ -2834,14 +2834,14 @@ static int        _linkLUP(_S52_obj *obj, int alt)
     return TRUE;
 }
 
-S52_obj    *S52_PL_newObj(S57_geo *geoData)
+S52_obj    *S52_PL_newObj(S57_geo *geo)
 // wrap an S52 object around an S57 object
 // create new S52 object or reused it
 {
-    return_if_null(geoData);
+    return_if_null(geo);
 
     S52_obj *obj = NULL;
-    guint    idx = S57_getGeoS57ID(geoData);
+    guint    idx = S57_getGeoS57ID(geo);
     if (idx<_objList->len && (NULL != (obj = g_ptr_array_index(_objList, idx)))) {
         S52_PL_delObj(obj, FALSE);
     } else {
@@ -2864,7 +2864,7 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
     obj->orient        = INFINITY;
     obj->speed         = INFINITY;
 
-    obj->geoData       = geoData;     // S57_geo
+    obj->geo           = geo;     // S57_geo
 
     /*
     // init Aux Info - this is the default anyway (ie g_new0)
@@ -2910,7 +2910,7 @@ S52_obj    *S52_PL_newObj(S57_geo *geoData)
 
 S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
 // free data in S52 obj
-// return S57 obj geoData
+// return S57 obj geo
 // WARNING: note that Aux Info is not touched - still in 'obj'
 // Note: when new PLib loaded, raz rules change hence S52_obj change definition.
 // But not S57 obj. So S57 id stay the same and so is the index. So no NULL because
@@ -2975,13 +2975,13 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
     // WARNING: note that Aux Info is not touched - still in 'obj'
     //
 
-    S52_obj *objFree = (S52_obj *)g_ptr_array_index(_objList, S57_getGeoS57ID(obj->geoData));
+    S52_obj *objFree = (S52_obj *)g_ptr_array_index(_objList, S57_getGeoS57ID(obj->geo));
     if (NULL == objFree) {
-        PRINTF("DEBUG: should not be NULL (%u)\n", S57_getGeoS57ID(obj->geoData));
+        PRINTF("DEBUG: should not be NULL (%u)\n", S57_getGeoS57ID(obj->geo));
         g_assert(0);
     }
 
-    S57_geo *geo = obj->geoData;
+    S57_geo *geo = obj->geo;
     if (TRUE == updateObjL) {
         // nullify obj in array at index
         g_ptr_array_index(_objList, S57_getGeoS57ID(geo)) = NULL;
@@ -2996,21 +2996,21 @@ S57_geo    *S52_PL_getGeo(_S52_obj *obj)
     // might slow down a bit (must mesure)
     //return_if_null(obj);
 
-    return obj->geoData;
+    return obj->geo;
 }
 
 #if 0
-S57_geo    *S52_PL_setGeo(_S52_obj *obj, S57_geo *geoData)
+S57_geo    *S52_PL_setGeo(_S52_obj *obj, S57_geo *geo)
 {
     return_if_null(obj);
 
-    return obj->geoData = geoData;
+    return obj->geo = geo;
 }
 #endif  // 0
 
 const char *S52_PL_getOBCL(_S52_obj *obj)
-// NOTE: geoData.name is the same as LUP.OBCL
-// but not all geoData.name has LUP.OBCL
+// NOTE: geo.name is the same as LUP.OBCL
+// but not all geo.name has LUP.OBCL
 // ex: DSID, EdjeNode, ConnectedNode, ..
 // (ie S57_getName(geo))
 {
@@ -3018,12 +3018,13 @@ const char *S52_PL_getOBCL(_S52_obj *obj)
 
     if (NULL == obj->LUP) {
         // DSID layer/obj have no LUP
-        return S57_getName(obj->geoData);
+        return S57_getName(obj->geo);
     } else {
         return obj->LUP->OBCL;
     }
 }
 
+/*
 S57_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -3033,6 +3034,7 @@ S57_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
     else
         return obj->LUP->FTYP;
 }
+*/
 
 S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
 {
@@ -3047,7 +3049,7 @@ S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
 #ifdef S52_DEBUG
     if ((0==dpri) && (0!=obj->LUP->INST->len)) {
         PRINTF("DEBUG: rendering object on IHO layer 0 [%s:%s]\n",
-               S57_getName(obj->geoData), S52_PL_infoLUP(obj));
+               S57_getName(obj->geo), S52_PL_infoLUP(obj));
     }
 #endif
 
@@ -3127,11 +3129,13 @@ static int        _getAlt(_S52_obj *obj)
     int alt = 0;
 
     // use alternate point symbol
-    if ((S57_POINT_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
+    //if ((S57_POINT_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
+    if ((S57_POINT_T==S57_getObjtype(obj->geo)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
         alt = 1;
 
     // use alternate area symbol
-    if ((S57_AREAS_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
+    //if ((S57_AREAS_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
+    if ((S57_POINT_T==S57_getObjtype(obj->geo)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
         alt = 1;
 
     return alt;
@@ -3300,9 +3304,9 @@ int         S52_PL_getLSdata(_S52_obj *obj, char *pen_w, char *style, S52_Color 
     *pen_w = cmd->param[5];
     *style = cmd->param[2];
 
-    if (TRUE == S57_isHighlighted(obj->geoData)) {
+    if (TRUE == S57_isHighlighted(obj->geo)) {
         *color = S52_PL_getColor("DNGHL");
-        //S57_highlightOFF(obj->geoData);
+        //S57_highlightOFF(obj->geo);
     } else {
         // color can change because of dratf/depth - safety contour
         *color = S52_PL_getColor(cmd->param+7);
@@ -3349,7 +3353,7 @@ double      S52_PL_getSYorient(_S52_obj *obj)
     //double noOrient =  -1.0;
     //double noOrient = 360.0;
 
-    if (1 == isinf(obj->orient)) { // +inf
+    if (0 != isinf(obj->orient)) { // +inf
         if (NULL != obj->crntA) {
             _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
 
@@ -3360,7 +3364,7 @@ double      S52_PL_getSYorient(_S52_obj *obj)
                 if (NULL!=str && ',' == *(str+8)) {
                     char  val[MAXL] = {'\0'};   // output string
 
-                    str = _getParamVal(obj->geoData, str+9, val, MAXL);
+                    str = _getParamVal(obj->geo, str+9, val, MAXL);
                     //obj->orient = (NULL==str) ? noOrient : S52_atof(val);
 
                     if (NULL == str)
@@ -3370,12 +3374,12 @@ double      S52_PL_getSYorient(_S52_obj *obj)
 
                 } else {
                     // debug - search for alternative orient, heading, ...
-                    GString *orientstr = S57_getAttVal(obj->geoData, "ORIENT");
+                    GString *orientstr = S57_getAttVal(obj->geo, "ORIENT");
                     if (NULL != orientstr) {
                         obj->orient = S52_atof(orientstr->str);
                         PRINTF("DEBUG: %s:ORIENT found(%f)\n", S52_PL_getOBCL(obj), obj->orient);
                     } else {
-                        GString *headngstr = S57_getAttVal(obj->geoData, "headng");
+                        GString *headngstr = S57_getAttVal(obj->geo, "headng");
                         if (NULL != headngstr) {
                             obj->orient = S52_atof(headngstr->str);
                             PRINTF("DEBUG: %s:headng found(%f)\n", S52_PL_getOBCL(obj), obj->orient);
@@ -3434,7 +3438,7 @@ int         S52_PL_getSYspeed(_S52_obj *obj, double *speed)
     return_if_null(obj);
     return_if_null(speed);
 
-    if (1 == isinf(obj->speed)) {  // +inf
+    if (0 != isinf(obj->speed)) {  // +inf
         // FIXME: try to get the speed from att !!
 
         *speed = 0.0;
@@ -3503,7 +3507,7 @@ S52_Color  *S52_PL_getACdata(_S52_obj *obj)
         return NULL;
 
     S52_Color *color = NULL;
-    if (TRUE == S57_isHighlighted(obj->geoData)) {
+    if (TRUE == S57_isHighlighted(obj->geo)) {
         color = S52_PL_getColor("DNGHL");
     } else {
         // color of water can change because of dratf/depth
@@ -3703,7 +3707,7 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
     */
 
     for (guint i=0; i<nbr; ++i) {
-        if (TRUE == S57_isHighlighted(obj->geoData)) {
+        if (TRUE == S57_isHighlighted(obj->geo)) {
             S52_Color *colhigh = S52_PL_getColor("DNGHL");
             //c[i] = *colhigh;
             c[i].R = colhigh->R;
@@ -3998,17 +4002,17 @@ const char *S52_PL_getVOname(_S52_vec *vecObj)
 //
 //-----------------------------
 
-static _Text     *_parseTX(S57_geo *geoData, _cmdWL *cmd)
+static _Text     *_parseTX(S57_geo *geo, _cmdWL *cmd)
 {
     return_if_null(cmd);
 
     char buf[MAXL] = {'\0'};   // output string
-    char *str = _getParamVal(geoData, cmd->param, buf, MAXL);   // STRING
+    char *str = _getParamVal(geo, cmd->param, buf, MAXL);   // STRING
     if (NULL == str) {
         return NULL;
     }
 
-    _Text *text = _parseTEXT(geoData, str);
+    _Text *text = _parseTEXT(geo, str);
 
 #ifdef S52_USE_ANDROID
     // no g_convert() on android
@@ -4026,7 +4030,7 @@ static _Text     *_parseTX(S57_geo *geoData, _cmdWL *cmd)
 }
 
 
-static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
+static _Text     *_parseTE(S57_geo *geo, _cmdWL *cmd)
 // same as _parseTX put parse 'C' format first
 {
     char arg[MAXL] = {'\0'};   // ATTRIB list
@@ -4042,12 +4046,12 @@ static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
         return NULL;
 
     // get FORMAT
-    str = _getParamVal(geoData, cmd->param, fmt, MAXL);
+    str = _getParamVal(geo, cmd->param, fmt, MAXL);
     if (NULL == str)
         return NULL;   // abort this command word if mandatory param absent
 
     // get ATTRIB list
-    str = _getParamVal(geoData, str, arg, MAXL);
+    str = _getParamVal(geo, str, arg, MAXL);
     if (NULL == str)
         return NULL;   // abort this command word if mandatory param absent
 
@@ -4061,7 +4065,7 @@ static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
             int  cc        = 0;        // 1 == Convertion Character found
 
             // get value for this attribute
-            parg = _getParamVal(geoData, parg, val, MAXL);
+            parg = _getParamVal(geo, parg, val, MAXL);
             if (NULL == parg)
                 return NULL;   // abort
 
@@ -4092,7 +4096,7 @@ static _Text     *_parseTE(S57_geo *geoData, _cmdWL *cmd)
         }
     }
 
-    text = _parseTEXT(geoData, str);
+    text = _parseTEXT(geo, str);
 
 #ifdef S52_USE_ANDROID
     // no g_convert() on android
@@ -4133,10 +4137,10 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
                 _freeTXT(cmd->cmd.text);
             }
 
-            cmd->cmd.text = _parseTX(obj->geoData, cmd);
+            cmd->cmd.text = _parseTX(obj->geo, cmd);
 
             // debug - will return NULL
-            //cmd->cmd.text = _parseTX(obj->geoData, NULL);
+            //cmd->cmd.text = _parseTX(obj->geo, NULL);
         }
 
         if (S52_CMD_TXT_TE == cmd->cmdWord) {
@@ -4145,10 +4149,10 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
                 _freeTXT(cmd->cmd.text);
             }
 
-            cmd->cmd.text = _parseTE(obj->geoData, cmd);
+            cmd->cmd.text = _parseTE(obj->geo, cmd);
 
             // debug - will return NULL
-            //cmd->cmd.text = _parseTE(obj->geoData, NULL);
+            //cmd->cmd.text = _parseTE(obj->geo, NULL);
         }
     }
 
@@ -4181,18 +4185,6 @@ int         S52_PL_resetParseText(_S52_obj *obj)
 int         S52_PL_setTextParsed(_S52_obj *obj)
 {
     return_if_null(obj);
-
-    /* useless !?!
-    _cmdWL *cmd = _getCrntCmd(obj);
-    if (NULL == cmd)
-        return FALSE;
-
-    if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
-        PRINTF("WARNING: not a text command\n");
-        //g_assert(0);
-        return FALSE;
-    }
-    */
 
     // flag text as parsed
     obj->textParsed[_getAlt(obj)] = TRUE;
@@ -4316,7 +4308,6 @@ S52_objSupp S52_PL_toggleObjClass(const char *className)
 // toggle an S57 object class
 {
     S52_objSupp supp = S52_SUPP_ERR;
-    //_LUP  *LUPlist = NULL;
 
     for (_table_t tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
         _LUP *LUPlist = (_LUP*)g_tree_lookup(_table[tblType], (gpointer*)className);
@@ -4330,14 +4321,12 @@ S52_objSupp S52_PL_toggleObjClass(const char *className)
 S52_objSupp S52_PL_getObjClassState(const char *className)
 // get S57 object class supp state (other then DISPLAYBASE)
 {
-    //S52_objSupp supp = S52_SUPP_ERR;
-    //_LUP  *LUPlist = NULL;
-
     for (int tblType=LUP_PT_SIMPL; tblType<=LUP_AREA_SYM; ++tblType) {
         _LUP *LUPlist = (_LUP*)g_tree_lookup(_table[tblType], (gpointer*)className);
         while (NULL != LUPlist) {
             if ('D' != LUPlist->prios.DISC)
                 return LUPlist->supp;
+
              LUPlist = LUPlist->OBCLnext;
         }
     }
@@ -4717,7 +4706,7 @@ S52_obj    *S52_PL_isObjValid(unsigned int objH)
         return NULL;
     }
 
-    if (objH != S57_getGeoS57ID(obj->geoData)) {
+    if (objH != S57_getGeoS57ID(obj->geo)) {
         PRINTF("WARNING: idx obj mismatch obj geoID \n");
 
         g_assert(0);
