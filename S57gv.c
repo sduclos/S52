@@ -40,7 +40,7 @@
 
 typedef struct GvShape _srcData;
 
-static int    _loadAtt(S57_geo *geoData, GvShape *shape)
+static int    _loadAtt(S57_geo *geo, GvShape *shape)
 {
     GvProperties *props = gv_shape_get_properties(shape);
     int           nProp = gv_properties_count(props);
@@ -55,7 +55,7 @@ static int    _loadAtt(S57_geo *geoData, GvShape *shape)
             return FALSE;
         }
 
-        S57_setAtt(geoData, propName, propValue);
+        S57_setAtt(geo, propName, propValue);
     }
 
     return TRUE;
@@ -79,7 +79,7 @@ int        S57_gvLoadCell (const char *filename,  S52_loadLayer_cb cb)
 int        S57_gvLoadLayer(const char *layername, void *layer, S52_loadObj_cb cb)
 {
     GvShapesLayer *l = (GvShapesLayer*) layer;
-    int nShapes = gv_shapes_num_shapes(l->data);
+    int nShapes      = gv_shapes_num_shapes(l->data);
 
     // check that geometric data type are in sync with OpenGL
     g_assert(sizeof(geocoord) == sizeof(double));
@@ -97,18 +97,18 @@ S57_geo   *S57_gvLoadObject(const char *objname, void *shape)
 // get object geo data from openev GvShape
 // NOTE: caller responsible to free mem for the moment
 {
-    S57_geo *geoData   = NULL;
+    S57_geo *geo       = NULL;
     int      shapetype = 0;
     GvRect   rect;
 
     // return empty shape --for pick & Mariners' object
     if (NULL==shape) {
-        geoData = S57_set_META();
+        geo = S57_set_META();
 
         if (NULL != objname)
-            S57_setName(geoData, objname);
+            S57_setName(geo, objname);
 
-        return geoData;
+        return geo;
     }
 
     gv_shape_compute_extents((GvShape*)shape, &rect);
@@ -122,14 +122,14 @@ S57_geo   *S57_gvLoadObject(const char *objname, void *shape)
         case GVSHAPE_POINT: {
             GvPointShape *point  = (GvPointShape *) shape;
             geocoord *pt = &point->x;
-            geoData = S57_setPOINT(pt);
+            geo = S57_setPOINT(pt);
             break;
         }
 
         case GVSHAPE_LINE: {
             GvLineShape  *line   = (GvLineShape *) shape;
 
-            geoData = S57_setLINES(line->num_nodes, line->xyz_nodes);
+            geo = S57_setLINES(line->num_nodes, line->xyz_nodes);
 
             break;
         }
@@ -138,7 +138,7 @@ S57_geo   *S57_gvLoadObject(const char *objname, void *shape)
             // FIXME: check if winding is OK (at load time)
             GvAreaShape *area    = (GvAreaShape *) shape;
 
-            geoData = S57_setAREAS((guint)area->num_rings, (guint*)area->num_ring_nodes, area->xyz_ring_nodes, S57_AW_NONE);
+            geo = S57_setAREAS((guint)area->num_rings, (guint*)area->num_ring_nodes, area->xyz_ring_nodes, S57_AW_NONE);
 
             break;
         }
@@ -153,7 +153,7 @@ S57_geo   *S57_gvLoadObject(const char *objname, void *shape)
             PRINTF("FIXME: wkbMultiLineString found ???\n");
             g_assert_not_reached(); // MultiLineString (need this for line removal)
 
-            geoData = S57_set_META();
+            geo = S57_set_META();
 
             break;
         }
@@ -165,13 +165,13 @@ S57_geo   *S57_gvLoadObject(const char *objname, void *shape)
         }
     }
 
-    S57_setName(geoData, objname);
-    S57_setExt(geoData, rect.x, rect.y, rect.x+rect.width, rect.y+rect.height);
+    S57_setName(geo, objname);
+    S57_setExt(geo, rect.x, rect.y, rect.x+rect.width, rect.y+rect.height);
 
-    _loadAtt(geoData, (GvShape*)shape);
+    _loadAtt(geo, (GvShape*)shape);
 
     // debug
-    //_dumpData(geoData);
+    //_dumpData(geo);
 
-    return geoData;
+    return geo;
 }
