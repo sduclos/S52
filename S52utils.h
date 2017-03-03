@@ -25,7 +25,7 @@
 #ifndef _S52UTILS_H_
 #define _S52UTILS_H_
 
-#include "S52.h"          // S52_log_cb, S52_VERSION
+#include "S52.h"          // S52_log_cb
 
 #ifdef SOLARIS
 // well should be cc
