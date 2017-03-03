@@ -4,6 +4,13 @@
 #
 
 
+2017MAR03
+    -mod refactor S52GL.h:extent to S57data.h:ObjExt_t
+
+2017FEB27
+    -fix _intersecGEO() S-S comp
+    -mob rename all 'geoData' var to 'geo'
+
 2017FEB20
     -fix PRINTF str prefix
     -fix draw handling when no cell loaded
