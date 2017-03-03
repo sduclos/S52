@@ -24,7 +24,8 @@
 #include "S57data.h"    // S57_geo
 #include "S52utils.h"   // PRINTF()
 
-#include <math.h>       // INFINITY, nearbyint()
+#define _ISOC99_SOURCE
+#include <math.h>       // INFINITY, NAN, nearbyint()
 
 #ifdef S52_USE_PROJ
 static projPJ      _pjsrc   = NULL;   // projection source
@@ -43,21 +44,25 @@ static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 // it is then turn into a string in gv_properties
 //#define EMPTY_NUMBER_MARKER "2147483641"  /* MAXINT-6 */
 
-#define UNKNOWN  (1.0/0.0)   //HUGE_VAL   // INFINITY/NAN
+//#define UNKNOWN  (1.0/0.0)   //HUGE_VAL   // INFINITY/NAN
+// FIXME: this fail in CS - why?
+//#define UNKNOWN  NAN
+#define UNKNOWN  FP_NAN  // OK
 
-// debug: current object's internal ID
+// object's internal ID
 static unsigned int _S57ID = 1;  // start at 1, the number of object loaded
 
 typedef struct _pt3 { double x,y,z; } pt3;
 typedef struct _pt2 { double x,y;   } pt2;
 
-// assume: extent canonical: x1 < x2, y1 < y2
-typedef struct _rect {
-    double x1;        // W  LL
-    double y1;        // S  LL
-    double x2;        // E  UR
-    double y2;        // N  UR
-} _rect;
+/* assume: extent canonical: W < E, S < N
+typedef struct _ext {
+    double W;        // W  LL
+    double S;        // S  LL
+    double E;        // E  UR
+    double N;        // N  UR
+} _ext;
+*/
 
 // data for glDrawArrays()
 typedef struct _prim {
@@ -88,7 +93,8 @@ typedef struct _S57_geo {
 
     S57_Obj_t    obj_t;       // PL & S57 - P/L/A
 
-    _rect        rect;        // lat/lon extent of this S75 object
+    //_ext        ext;        // lat/lon extent of this S75 object
+    ObjExt_t     ext;
 
     // length of geo data (POINT, LINE, AREA) currently in buffer
     guint        geoSize;        // max is 1 point / linexyznbr / ringxyznbr[0]
@@ -463,10 +469,10 @@ S57_geo   *S57_setPOINT(geocoord *xyz)
     geo->obj_t    = S57_POINT_T;
     geo->pointxyz = xyz;
 
-    geo->rect.x1  =  INFINITY;
-    geo->rect.y1  =  INFINITY;
-    geo->rect.x2  = -INFINITY;
-    geo->rect.y2  = -INFINITY;
+    geo->ext.W  =  INFINITY;
+    geo->ext.S  =  INFINITY;
+    geo->ext.E  = -INFINITY;
+    geo->ext.N  = -INFINITY;
 
     geo->scamin   =  INFINITY;
 
@@ -505,10 +511,10 @@ S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
     geo->linexyznbr = xyznbr;
     geo->linexyz    = xyz;
 
-    geo->rect.x1    =  INFINITY;
-    geo->rect.y1    =  INFINITY;
-    geo->rect.x2    = -INFINITY;
-    geo->rect.y2    = -INFINITY;
+    geo->ext.W    =  INFINITY;
+    geo->ext.S    =  INFINITY;
+    geo->ext.E    = -INFINITY;
+    geo->ext.N    = -INFINITY;
 
     geo->scamin     =  INFINITY;
 
@@ -559,10 +565,10 @@ S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
     geo->ringxyznbr = ringxyznbr;
     geo->ringxyz    = ringxyz;
 
-    geo->rect.x1    =  INFINITY;
-    geo->rect.y1    =  INFINITY;
-    geo->rect.x2    = -INFINITY;
-    geo->rect.y2    = -INFINITY;
+    geo->ext.W    =  INFINITY;
+    geo->ext.S    =  INFINITY;
+    geo->ext.E    = -INFINITY;
+    geo->ext.N    = -INFINITY;
 
     geo->scamin     =  INFINITY;
 
@@ -589,10 +595,10 @@ S57_geo   *S57_set_META()
     geo->S57ID   = _S57ID++;
     geo->obj_t   = S57__META_T;
 
-    geo->rect.x1 =  INFINITY;
-    geo->rect.y1 =  INFINITY;
-    geo->rect.x2 = -INFINITY;
-    geo->rect.y2 = -INFINITY;
+    geo->ext.W =  INFINITY;
+    geo->ext.S =  INFINITY;
+    geo->ext.E = -INFINITY;
+    geo->ext.N = -INFINITY;
 
     geo->scamin  =  INFINITY;
 
@@ -888,49 +894,50 @@ int        S57_getPrimIdx(_S57_prim *prim, unsigned int i, int *mode, int *first
     return TRUE;
 }
 
-int        S57_setExt(_S57_geo *geo, double x1, double y1, double x2, double y2)
+int        S57_setExt(_S57_geo *geo, double W, double S, double E, double N)
 // assume: extent canonical - W, S, E, N
 {
     return_if_null(geo);
 
     // debug
     //if (0 == g_strncasecmp(geo->name->str, "M_COVR", 6)) {
-    //    PRINTF("DEBUG: %s: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
+    //    PRINTF("DEBUG: %s: %f, %f  UR: %f, %f\n", geo->name->str, W, S, E, N);
     //}
 
     // canonize lng
-    //x1 = (x1 < -180.0) ? 0.0 : (x1 > 180.0) ? 0.0 : x1;
-    //x2 = (x2 < -180.0) ? 0.0 : (x2 > 180.0) ? 0.0 : x2;
+    //W = (W < -180.0) ? 0.0 : (W > 180.0) ? 0.0 : W;
+    //E = (E < -180.0) ? 0.0 : (E > 180.0) ? 0.0 : E;
     // canonize lat
-    //y1 = (y1 < -90.0) ? 0.0 : (y1 > 90.0) ? 0.0 : y1;
-    //y2 = (y2 < -90.0) ? 0.0 : (y2 > 90.0) ? 0.0 : y2;
+    //S = (S < -90.0) ? 0.0 : (S > 90.0) ? 0.0 : S;
+    //N = (N < -90.0) ? 0.0 : (N > 90.0) ? 0.0 : N;
 
     /*
     // check prime-meridian crossing
-    if ((x1 < 0.0) && (0.0 < x2)) {
-        PRINTF("DEBUG: prime-meridian crossing %s: LL: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
+    if ((W < 0.0) && (0.0 < E)) {
+        PRINTF("DEBUG: prime-meridian crossing %s: LL: %f, %f  UR: %f, %f\n", geo->name->str, W, S, E, N);
         g_assert(0);
     }
     */
 
     /* newVRMEBL pass here now, useless anyway
-    if (isinf(x1) && isinf(x2)) {
-        //PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geo->name->str, x1, y1, x2, y2);
-        PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geo->name, x1, y1, x2, y2);
+    if (isinf(W) && isinf(E)) {
+        //PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geo->name->str, W, S, E, N);
+        PRINTF("DEBUG: %s: LL: %f, %f  UR: %f, %f\n", geo->name, W, S, E, N);
         g_assert(0);
         return FALSE;
     }
     */
 
-    geo->rect.x1 = x1;
-    geo->rect.y1 = y1;
-    geo->rect.x2 = x2;
-    geo->rect.y2 = y2;
+    geo->ext.W = W;
+    geo->ext.S = S;
+    geo->ext.E = E;
+    geo->ext.N = N;
 
     return TRUE;
 }
 
-int        S57_getExt(_S57_geo *geo, double *x1, double *y1, double *x2, double *y2)
+#if 0
+int        S57_getExt(_S57_geo *geo, double *W, double *S, double *E, double *N)
 // assume: extent canonical
 {
     // called from inside cull loop this check is useless
@@ -938,21 +945,48 @@ int        S57_getExt(_S57_geo *geo, double *x1, double *y1, double *x2, double 
     return_if_null(geo);
 
     // no extent: "$CSYMB", afgves, vessel, ..
-    if (TRUE == isinf(geo->rect.x1)) {
-        // system generated symb has no extent
-        if (0 == g_strcmp0(geo->name, "$CSYMB"))
-            return FALSE;
+    //if (0 != isinf(geo->ext.W)) {  // inf
+    if (INFINITY == geo->ext.W) {  // inf
+        geo->ext.W = -INFINITY;  // W
+        geo->ext.S = -INFINITY;  // S
+        geo->ext.E =  INFINITY;  // E
+        geo->ext.N =  INFINITY;  // N
 
-        PRINTF("DEBUG: no extent for %s:%i\n", geo->name, geo->S57ID);
+
+        // filter out system generated symb (scale, unit, ..) have no extent
+        if (0 != g_strcmp0(geo->name, "$CSYMB")) {
+            //PRINTF("DEBUG: no extent for %s:%i\n", geo->name, geo->S57ID);
+            S57_dumpData(geo, TRUE);
+        }
+
         return FALSE;
+        //return TRUE;
     }
 
-    *x1 = geo->rect.x1;  // W
-    *y1 = geo->rect.y1;  // S
-    *x2 = geo->rect.x2;  // E
-    *y2 = geo->rect.y2;  // N
+    *W = geo->ext.W;  // W
+    *S = geo->ext.S;  // S
+    *E = geo->ext.E;  // E
+    *N = geo->ext.N;  // N
 
     return TRUE;
+}
+#endif  // 0
+
+ObjExt_t   S57_getExt(_S57_geo *geo)
+// test returning ObjExt_t extent intead of four double in param
+{
+    // no extent: "$CSYMB", afgves, vessel, ..
+    if (0 != isinf(geo->ext.W)) {  // inf
+        geo->ext.W = -INFINITY;  // W
+        geo->ext.S = -INFINITY;  // S
+        geo->ext.E =  INFINITY;  // E
+        geo->ext.N =  INFINITY;  // N
+    }
+
+    //ObjExt_t ext = {geo->ext.W, geo->ext.S, geo->ext.E, geo->ext.N};
+
+    //return ext;
+    return geo->ext;
 }
 
 S57_Obj_t  S57_getObjtype(_S57_geo *geo)
@@ -1057,7 +1091,7 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
     return att;
 }
 
-static void _string_free(gpointer data)
+static void   _string_free(gpointer data)
 {
     g_string_free((GString*)data, TRUE);
 }
@@ -1217,7 +1251,7 @@ S57_geo  * S57_getRelationship(_S57_geo *geo)
 }
 #endif  // S52_USE_C_AGGR_C_ASSO
 
-static void   _printAtt(GQuark key_id, gpointer data, gpointer user_data)
+static void   _printAttVal(GQuark key_id, gpointer data, gpointer user_data)
 {
     // 'user_data' not used
     (void) user_data;
@@ -1227,55 +1261,44 @@ static void   _printAtt(GQuark key_id, gpointer data, gpointer user_data)
     // print only S57 attrib - assuming that OGR att are not 6 char in lenght!!
     if (S57_ATT_NM_LN == strlen(attName)) {
         GString *attValue = (GString*) data;
-        PRINTF("\t%s : %s\n", attName, attValue->str);
+        PRINTF("%s: %s\n", attName, attValue->str);
     }
 }
 
 int        S57_dumpData(_S57_geo *geo, int dumpCoords)
-// debug
-// if dumpCoords is TRUE dump all coordinates else dump extent
+// debug - if dumpCoords is TRUE dump all coordinates
 {
     return_if_null(geo);
 
-
-    PRINTF("S57ID : %i\n", geo->S57ID);
-    //PRINTF("NAME  : %s\n", geo->name->str);
+    PRINTF("----------------\n");
     PRINTF("NAME  : %s\n", geo->name);
+    PRINTF("S57ID : %i\n", geo->S57ID);
 
-    g_datalist_foreach(&geo->attribs, _printAtt, NULL);
+    switch (geo->obj_t) {
+        case S57__META_T:  PRINTF("obj_t : _META_T\n"); break;
+        case S57_POINT_T:  PRINTF("obj_t : POINT_T\n"); break;
+        case S57_LINES_T:  PRINTF("obj_t : LINES_T\n"); break;
+        case S57_AREAS_T:  PRINTF("obj_t : AREAS_T\n"); break;
+        default:
+            PRINTF("WARNING: invalid object type; %i\n", geo->obj_t);
+    }
 
-    {    // print coordinate
+    // dump Att/Val
+    g_datalist_foreach(&geo->attribs, _printAttVal, NULL);
+
+    // dump extent
+    PRINTF("EXTENT: %f, %f  --  %f, %f\n", geo->ext.S, geo->ext.W, geo->ext.N, geo->ext.E);
+
+    if (TRUE == dumpCoords) {
         guint     npt = 0;
-        geocoord *ppt;
-
+        geocoord *ppt = NULL;
         S57_getGeoData(geo, 0, &npt, &ppt);
-
-        switch (geo->obj_t) {
-            case S57__META_T:  PRINTF("_META_T (%i)\n", npt); break;
-            case S57_POINT_T:  PRINTF("POINT_T (%i)\n", npt); break;
-            case S57_LINES_T:  PRINTF("LINES_T (%i)\n", npt); break;
-            case S57_AREAS_T:  PRINTF("AREAS_T (%i)\n", npt); break;
-            default:
-                PRINTF("WARNING: invalid object type; %i\n", geo->obj_t);
+        PRINTF("COORDS: %i\n", npt);
+        for (guint i=0; i<npt; ++i) {
+            PRINTF("\t\t(%f, %f, %f)\n", ppt[0], ppt[1], ppt[2]);
+            ppt += 3;
         }
-
-        if (TRUE == dumpCoords) {
-            guint     npt = 0;
-            geocoord *ppt = NULL;
-
-            if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
-                return FALSE;
-
-            for (guint i=0; i<npt; ++i) {
-                PRINTF("\t\t(%f, %f, %f)\n", ppt[0], ppt[1], ppt[2]);
-                ppt += 3;
-            }
-        } else {
-            // dump extent
-            PRINTF("EXTENT: %f, %f  --  %f, %f\n",
-                   geo->rect.y1, geo->rect.x1, geo->rect.y2, geo->rect.x2);
-
-        }
+        //PRINTF("\n");
     }
 
     return TRUE;
@@ -1618,7 +1641,7 @@ int        S57_addCentroid(_S57_geo *geo, double  x, double  y)
     return TRUE;
 }
 
-int        S57_getNextCentroid(_S57_geo *geo, double *x, double *y)
+int        S57_getNextCent(_S57_geo *geo, double *x, double *y)
 {
     return_if_null(geo);
     return_if_null(geo->centroid);
@@ -1643,7 +1666,7 @@ int        S57_hasCentroid(_S57_geo *geo)
     if (NULL == geo->centroid) {
         S57_newCentroid(geo);
     } else {
-        // reset idx for call S57_getNextCentroid
+        // reset idx for call S57_getNextCent()
         geo->centroidIdx = 0;
     }
 
