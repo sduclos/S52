@@ -34,6 +34,11 @@ all: s52gtk2egl     # GTK2 & GL2 & EGL
 #all: s52clutter     # use COGL for rendering text
 #all: s52clutter.js  # use COGL for rendering text and Javascript
 
+# debug GL
+#export LIBGL_DEBUG=verbose
+
+# debug GDAL
+#export CPL_DEBUG=on
 
 SHELL = /bin/sh
 
@@ -80,8 +85,6 @@ DBG    = $(DBG3)
 # GCC
 # gcov: -fprofile-arcs -ftest-coverage
 CC   = gcc -std=c99 -fPIC -pipe -D_POSIX_C_SOURCE=199309L # to get siginfo_t
-#CC   = gcc -std=c99 -fPIC -pipe -D_POSIX_C_SOURCE=200809L # 199309L to get siginfo_t
-#CC   = gcc -std=c99 -fPIC -D_POSIX_C_SOURCE=200112L
 #CC   = gcc -std=c99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
 #CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI and sigtrap()
 #CC   = g++ -fPIC -O0 -g -Wall  # test - compile C code as C++
@@ -642,7 +645,8 @@ cppcheck:
 	cppcheck --version
 	cppcheck --enable=all --std=c99 --template='{file}:{line}: {severity},{id},{message}' $(DEFS) $(SRCS_S52) ./test/s52gtkegl.c
 
-# get version - "libS52-2014DEC27-1.157" --> 2014DEC27-1.145
+# get version - "libS52-2014DEC27-1.157" --> 2014DEC27-1.157
+#FIXME: version str in S52.h
 LIBS52VERS = $(shell grep libS52- S52utils.c | sed 's/.*"libS52-\(.*\)"/\1/' )
 
 S52-$(LIBS52VERS).gir: S52.h
