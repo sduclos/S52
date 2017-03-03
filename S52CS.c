@@ -28,12 +28,16 @@
 #include "S52MP.h"      // S52_MP_get/set()
 #include "S52utils.h"   // PRINTF(), S52_atof(), S52_atoi()
 
-#include <math.h>       // floor()
+//#define _ISOC99_SOURCE
+#include <math.h>       // NAN, floor()
 
 #define version "3.2.0"
 
 //#define UNKNOWN HUGE_VAL   // INFINITY/NAN
-#define UNKNOWN  (1.0/0.0)   //HUGE_VAL   // INFINITY/NAN
+//#define UNKNOWN  (1.0/0.0)   //HUGE_VAL   // INFINITY/NAN
+// FIXME: this fail - why? man say work (but fail) when _ISOC99_SOURCE define!
+//#define UNKNOWN  NAN
+#define UNKNOWN  FP_NAN  // OK
 
 #define COALNE   30   // Coastline
 #define DEPARE   42   // Depth area
@@ -175,9 +179,10 @@ int       S52_CS_add(_localObj *local, S57_geo *geo)
 
 static int      _intersecGEO(S57_geo *A, S57_geo *B)
 // TRUE if A instersec B, else FALSE
-{
+{   //         w    s    e    n
     //double Ax1, Ay1, Ax2, Ay2;
     //double Bx1, By1, Bx2, By2;
+    /*
     double Ax1=INFINITY, Ay1=INFINITY, Ax2=-INFINITY, Ay2=-INFINITY;
     double Bx1=INFINITY, By1=INFINITY, Bx2=-INFINITY, By2=-INFINITY;
     if (FALSE == S57_getExt(A, &Ax1, &Ay1, &Ax2, &Ay2)) {
@@ -189,8 +194,41 @@ static int      _intersecGEO(S57_geo *A, S57_geo *B)
 
     if (By2 < Ay1) return FALSE;
     if (Bx2 < Ax1) return FALSE;
-    if (By1 > Ay1) return FALSE;
+    if (By1 > Ay1) return FALSE;  // << BUG should be Ay2
     if (Bx1 > Ax2) return FALSE;
+
+    return TRUE;
+    */
+
+    ObjExt_t extA = S57_getExt(A);
+    ObjExt_t extB = S57_getExt(B);
+
+    if (extB.N < extA.S) return FALSE;
+    if (extB.E < extA.W) return FALSE;
+    if (extB.S > extA.N) return FALSE;
+    if (extB.W > extA.E) return FALSE;
+
+
+    /* FIXME: obj extent handling when overlapping anti-meridian
+    // FIX: need test case
+    // N-S
+    if (B.N < A.S) return FALSE;
+    if (B.S > A.N) return FALSE;
+
+    // E-W
+    if (B.W > B.E) {
+        // anti-meridian
+        if (((A.W < B.W) || (A.W > B.E)) && ((A.E < B.W) || (A.E > B.E))) {
+        //if ((B.E > A.W) && (B.W > A.E)) {
+        //if ((A.W < B.E) && (B.W > A.E))
+            return TRUE;
+        } else
+            return FALSE;
+    } else {
+        if (B.E < A.W) return FALSE;
+        if (B.W > A.E) return FALSE;
+    }
+    */
 
     return TRUE;
 }
