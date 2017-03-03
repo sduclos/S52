@@ -32,16 +32,16 @@
 // WARNING: must be in sync with S52.c:WORLD_SHP
 #define WORLD_BASENM   "--0WORLD"
 
-static int        _setExtent(S57_geo *geoData, OGRGeometryH geometry)
+static int        _setExtent(S57_geo *geo, OGRGeometryH geometry)
 {
-    return_if_null(geoData);
+    return_if_null(geo);
     return_if_null(geometry);
 
     OGREnvelope envelope;
 
     OGR_G_GetEnvelope(geometry, &envelope);
 
-    S57_setExt(geoData, envelope.MinX, envelope.MinY, envelope.MaxX, envelope.MaxY);
+    S57_setExt(geo, envelope.MinX, envelope.MinY, envelope.MaxX, envelope.MaxY);
                   
     return TRUE;
 }
@@ -66,7 +66,7 @@ static int        _getGeoPtCount(OGRGeometryH hGeom, int iGeo, OGRGeometryH *hGe
     return vert_count;
 }
 
-static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
+static int        _setAtt(S57_geo *geo, OGRFeatureH hFeature)
 {
     int field_count = OGR_F_GetFieldCount(hFeature);
     for (int field_index=0; field_index<field_count; ++field_index) {
@@ -74,16 +74,16 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
             const char *propName  = OGR_Fld_GetNameRef(OGR_F_GetFieldDefnRef(hFeature,field_index));
             const char *propValue = OGR_F_GetFieldAsString(hFeature, field_index);
 
-            S57_setAtt(geoData, propName, propValue);
+            S57_setAtt(geo, propName, propValue);
 
             /* debug
-            if (0 == g_strcmp0(S57_getName(geoData), "M_NPUB")) {
+            if (0 == g_strcmp0(S57_getName(geo), "M_NPUB")) {
                 PRINTF("DEBUG: M_NPUB-%i: %s --> %s\n", field_index, propName, propValue);
             }
-            if (0 == g_strcmp0(S57_getName(geoData), "C_AGGR")) {
+            if (0 == g_strcmp0(S57_getName(geo), "C_AGGR")) {
                 PRINTF("DEBUG: C_AGGR-%i: %s --> %s\n", field_index, propName, propValue);
             }
-            if (0 == g_strcmp0(S57_getName(geoData), "C_ASSO")) {
+            if (0 == g_strcmp0(S57_getName(geo), "C_ASSO")) {
                 PRINTF("DEBUG: C_ASSO-%i: %s --> %s\n", field_index, propName, propValue);
             }
             */
@@ -92,9 +92,9 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
 
     // optimisation: direct link to the value of Att (GString)
     // save the search in attList
-    GString  *scamin = S57_getAttVal(geoData, "SCAMIN");
+    GString  *scamin = S57_getAttVal(geo, "SCAMIN");
     if ((NULL!=scamin) && (NULL!=scamin->str)){
-        S57_setScamin(geoData, S52_atof(scamin->str));
+        S57_setScamin(geo, S52_atof(scamin->str));
     }
 
     return TRUE;
@@ -103,8 +103,8 @@ static int        _setAtt(S57_geo *geoData, OGRFeatureH hFeature)
 DLL int   STD  S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
 static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
 {
-    OGRDataSourceH hDS         = NULL;;
-    OGRSFDriverH   hDriver     = NULL;
+    OGRDataSourceH hDS     = NULL;;
+    OGRSFDriverH   hDriver = NULL;
 
     PRINTF("DEBUG: starting to load cell (%s)\n", filename);
 
@@ -204,10 +204,11 @@ int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadO
 
 
 static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometryH hGeomNext)
+// Note: OGR use 25D primitivve
 {
-    S57_geo           *geoData = NULL;
-    OGRGeometryH       hGeom   = NULL;
-    OGRwkbGeometryType eType   = wkbNone;
+    S57_geo           *geo   = NULL;
+    OGRGeometryH       hGeom = NULL;
+    OGRwkbGeometryType eType = wkbNone;
 
     if (NULL != feature)
         hGeom = OGR_F_GetGeometryRef((OGRFeatureH)feature);
@@ -229,8 +230,8 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
             pointxyz[1] = OGR_G_GetY(hGeom, 0);
             pointxyz[2] = OGR_G_GetZ(hGeom, 0);
 
-            geoData = S57_setPOINT(pointxyz);
-            _setExtent(geoData, hGeom);
+            geo = S57_setPOINT(pointxyz);
+            _setExtent(geo, hGeom);
 
             break;
         }
@@ -259,9 +260,9 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 linexyz[node*3+2] = OGR_G_GetZ(hGeom, node);
             }
 
-            geoData = S57_setLINES(count, linexyz);
+            geo = S57_setLINES(count, linexyz);
 
-            _setExtent(geoData, hGeom);
+            _setExtent(geo, hGeom);
 
             break;
         }
@@ -376,18 +377,18 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 }
             }     // for loop
 
-            //geoData = S57_setAREAS(nRingCount, ringxyznbr, ringxyz, (area <= 0.0) ? S57_AW_CW : S57_AW_CCW);
-            geoData = S57_setAREAS(nRingCount, ringxyznbr, ringxyz);
-            _setExtent(geoData, hGeom);
+            //geo = S57_setAREAS(nRingCount, ringxyznbr, ringxyz, (area <= 0.0) ? S57_AW_CW : S57_AW_CCW);
+            geo = S57_setAREAS(nRingCount, ringxyznbr, ringxyz);
+            _setExtent(geo, hGeom);
 
             if (0 == g_strcmp0(WORLD_BASENM, objname)) {
                 // Note: loading shapefile as a 'marfea' use a transparent fill so NODATA
                 // is still visible (seem better than 'mnufea' wich has no colour fill)
-                S57_setName(geoData, "marfea");
+                S57_setName(geo, "marfea");
 
                 // pslb3_2.pdf (p. II-22): Mariners' Object Class: Manufacturers' feature
                 //    Note that manufacturers' areas, whether non-chart or chart areas, should not use area colour fill.
-                //S57_setName(geoData, "mnufea");
+                //S57_setName(geo, "mnufea");
             }
 
             break;
@@ -401,10 +402,10 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 OGRGeometryH hGeomNext = OGR_G_GetGeometryRef(hGeom, iPoly);
                 // recursion
                 S57_geo *geo = _ogrLoadObject(objname, NULL, hGeomNext);
-                if (NULL == geoData)
-                    geoData = geo;
+                if (NULL == geo)
+                    geo = geo;
                 else
-                    S57_setNextPoly(geoData, geo);
+                    S57_setNextPoly(geo, geo);
 
             }
             break;
@@ -420,7 +421,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
 
         case wkbNone:
             // DSID layer get here
-            geoData = S57_set_META();
+            geo = S57_set_META();
             break; // META_T
 
         case wkbMultiPoint:
@@ -430,7 +431,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
             //PRINTF("FIXME: or wkbMultiLineString found!\n");
             //g_assert_not_reached(); // MultiLineString (need this for line removal)
 
-            //geoData = S57_set_META();
+            //geo = S57_set_META();
 
             //GvCollectionShape *collection  = (GvCollectionShape *) shape;
             //int nCollection = gv_shape_collection_get_count(shape);
@@ -446,7 +447,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
     // debug
     //PRINTF("name: %s\n", objname);
 
-    return geoData;
+    return geo;
 }
 
 S57_geo       *S57_ogrLoadObject(const char *objname, void *feature)
@@ -457,20 +458,20 @@ S57_geo       *S57_ogrLoadObject(const char *objname, void *feature)
     // debug
     //PRINTF("DEBUG: start loading object (%s:%X)\n", objname, feature);
 
-    S57_geo *geoData = _ogrLoadObject(objname, feature, NULL);
-    if (NULL == geoData)
+    S57_geo *geo = _ogrLoadObject(objname, feature, NULL);
+    if (NULL == geo)
         return NULL;
 
     // FIXME: world has no name!
     //if (0 != g_strcmp0(WORLD_BASENM, objname)) {
-        S57_setName(geoData, objname);
+        S57_setName(geo, objname);
     //}
 
-    _setAtt(geoData, feature);
+    _setAtt(geo, feature);
 
     //PRINTF("DEBUG: finish loading object (%s)\n", objname);
 
-    return geoData;
+    return geo;
 }
 
 
