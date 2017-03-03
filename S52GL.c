@@ -1235,9 +1235,11 @@ static double    _getWorldGridRef(S52_obj *obj, double *LLx, double *LLy, double
     //double x2, y2;   // UR of region of area
     double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
 
-    S57_geo *geoData = S52_PL_getGeo(obj);
-    S57_getExt(geoData, &x1, &y1, &x2, &y2);
-    double xyz[6] = {x1, y1, 0.0, x2, y2, 0.0};
+    S57_geo *geo = S52_PL_getGeo(obj);
+    //S57_getExt(geo, &x1, &y1, &x2, &y2);
+    ObjExt_t ext = S57_getExt(geo);
+    //double xyz[6] = {x1, y1, 0.0, x2, y2, 0.0};
+    double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
     if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
         return FALSE;
 
@@ -1281,16 +1283,16 @@ static double    _getWorldGridRef(S52_obj *obj, double *LLx, double *LLy, double
     return stagOffsetPix;
 }
 
-static int       _fillArea(S57_geo *geoData)
+static int       _fillArea(S57_geo *geo)
 {
-    S57_prim *prim = S57_getPrimGeo(geoData);
+    S57_prim *prim = S57_getPrimGeo(geo);
     if (NULL == prim) {
-        prim = _tessd(_tobj, geoData);
+        prim = _tessd(_tobj, geo);
     }
 
 #ifdef S52_USE_OPENGL_VBO
     if (FALSE == _VBODraw_AREA(prim)) {
-        PRINTF("DEBUG: _VBODraw_AREA() failed [%s]\n", S57_getName(geoData));
+        PRINTF("DEBUG: _VBODraw_AREA() failed [%s]\n", S57_getName(geo));
     }
 #else
     _callDList(prim);
@@ -1485,7 +1487,6 @@ static int       _glCallList(S52_DList *DListData)
                     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
                     _glPopMatrix (GL_MODELVIEW);
 #else
-                    // FIXME: test GL1 push/pop matrix
                     _glPushMatrix(GL_MODELVIEW);
                     _glTranslated(x, y, z);
 #endif
@@ -1511,7 +1512,7 @@ static int       _glCallList(S52_DList *DListData)
 #ifdef S52_USE_GL2
                         glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 #else
-                        // FIXME: test GL1 push/pop matrix
+                        // FIXME: GL1 pop matrix if pushed on _TRANSLATE
                         _glPopMatrix (GL_MODELVIEW);
 #endif
                     }
@@ -1555,7 +1556,7 @@ static int       _glCallList(S52_DList *DListData)
     return TRUE;
 }
 
-static int       _computeCentroid(S57_geo *geoData)
+static int       _computeCentroid(S57_geo *geo)
 // return centroids
 // fill global array _centroid
 {
@@ -1566,30 +1567,32 @@ static int       _computeCentroid(S57_geo *geoData)
 
     guint   npt = 0;
     double *ppt = NULL;
-    if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt))
+    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
     if (npt < 4)
         return FALSE;
 
     // debug
-    //GString *FIDNstr = S57_getAttVal(geoData, "FIDN");
+    //GString *FIDNstr = S57_getAttVal(geo, "FIDN");
     //if (0==strcmp("2135158891", FIDNstr->str)) {
     //    PRINTF("%s\n",FIDNstr->str);
     //}
-    //if (0 ==  g_strcmp0("ISTZNE", S57_getName(geoData))) {
+    //if (0 ==  g_strcmp0("ISTZNE", S57_getName(geo))) {
     //    PRINTF("ISTZNEA found\n");
     //}
-    //if (0 ==  g_strcmp0("PRDARE", S57_getName(geoData))) {
+    //if (0 ==  g_strcmp0("PRDARE", S57_getName(geo))) {
     //    PRINTF("PRDARE found\n");
     //}
 
 
-    //PRINTF("%s EXT %f,%f -- %f,%f\n", S57_getName(geoData), _pmin.u, _pmin.v, _pmax.u, _pmax.v);
+    //PRINTF("%s EXT %f,%f -- %f,%f\n", S57_getName(geo), _pmin.u, _pmin.v, _pmax.u, _pmax.v);
 
     double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
-    S57_getExt(geoData, &x1, &y1, &x2, &y2);
-    double xyz[6] = {x1, y1, 0.0, x2, y2, 0.0};
+    //S57_getExt(geo, &x1, &y1, &x2, &y2);
+    ObjExt_t ext = S57_getExt(geo);
+    //double xyz[6] = {x1, y1, 0.0, x2, y2, 0.0};
+    double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
     if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
         return FALSE;
 
@@ -1603,7 +1606,7 @@ static int       _computeCentroid(S57_geo *geoData)
         g_array_set_size(_centroids, 0);
 
         _getCentroidClose(npt, ppt);
-        //PRINTF("no clip: %s\n", S57_getName(geoData));
+        //PRINTF("no clip: %s\n", S57_getName(geo));
 
         return TRUE;
     }
@@ -1819,10 +1822,10 @@ static int       _renderSY_silhoutte(S52_obj *obj)
 static int       _renderSY_CSYMB(S52_obj *obj)
 // FIXME: use dotpitch for XY placement
 {
-    S57_geo *geoData = S52_PL_getGeo(obj);
+    S57_geo *geo = S52_PL_getGeo(obj);
     char    *attname = "$SCODE";
 
-    GString *attval  =  S57_getAttVal(geoData, attname);
+    GString *attval  =  S57_getAttVal(geo, attname);
     if (NULL == attval) {
         PRINTF("DEBUG: no attval\n");
         return FALSE;
@@ -1970,7 +1973,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
         guint     npt     = 0;
         GLdouble *ppt     = NULL;
-        if (TRUE == S57_getGeoData(geoData, 0, &npt, &ppt)) {
+        if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
             _glLoadIdentity(GL_MODELVIEW);
             _renderSY_POINT_T(obj, ppt[0], ppt[1], _view.north);
 
@@ -1988,12 +1991,12 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
 static int       _renderSY_ownshp(S52_obj *obj)
 {
-    S57_geo  *geoData = S52_PL_getGeo(obj);
+    S57_geo  *geo = S52_PL_getGeo(obj);
     GLdouble  orient  = S52_PL_getSYorient(obj);
 
     guint     npt     = 0;
     GLdouble *ppt     = NULL;
-    if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt))
+    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
     if (0 == S52_PL_cmpCmdParam(obj, "OWNSHP05")) {
@@ -2002,8 +2005,8 @@ static int       _renderSY_ownshp(S52_obj *obj)
     }
 
     if (0 == S52_PL_cmpCmdParam(obj, "OWNSHP01")) {
-        //GString *shpbrdstr = S57_getAttVal(geoData, "shpbrd");
-        GString *shplenstr = S57_getAttVal(geoData, "shplen");
+        //GString *shpbrdstr = S57_getAttVal(geo, "shpbrd");
+        GString *shplenstr = S57_getAttVal(geo, "shplen");
         //double   shpbrd    = (NULL==shpbrdstr) ? 0.0 : S52_atof(shpbrdstr->str);
         double   shplen    = (NULL==shplenstr) ? 0.0 : S52_atof(shplenstr->str);
 
@@ -2434,28 +2437,28 @@ static int       _renderSY(S52_obj *obj)
     //    return TRUE;
 
     // failsafe
-    S57_geo *geoData = S52_PL_getGeo(obj);
+    S57_geo *geo = S52_PL_getGeo(obj);
     GLdouble orient  = S52_PL_getSYorient(obj);
 
     guint     npt = 0;
     GLdouble *ppt = NULL;
-    if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt)) {
+    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt)) {
         return FALSE;
     }
 
-    if (S57_POINT_T == S57_getObjtype(geoData)) {
+    if (S57_POINT_T == S57_getObjtype(geo)) {
 
-        if (0 == g_strcmp0(S57_getName(geoData), "ownshp")) {
+        if (0 == g_strcmp0(S57_getName(geo), "ownshp")) {
             _renderSY_ownshp(obj);
             return TRUE;
         }
 
-        if (0 == g_strcmp0(S57_getName(geoData), "$CSYMB")) {
+        if (0 == g_strcmp0(S57_getName(geo), "$CSYMB")) {
             _renderSY_CSYMB(obj);
             return TRUE;
         }
 
-        if (0 == g_strcmp0(S57_getName(geoData), "vessel")) {
+        if (0 == g_strcmp0(S57_getName(geo), "vessel")) {
             _renderSY_vessel(obj);
             return TRUE;
         }
@@ -2466,8 +2469,8 @@ static int       _renderSY(S52_obj *obj)
 
         // experimental --turn buoy light
         if (0.0 != S52_MP_get(S52_MAR_ROT_BUOY_LIGHT)) {
-            if (0 == g_strcmp0(S57_getName(geoData), "LIGHTS")) {
-                S57_geo *other = S57_getTouchLIGHTS(geoData);
+            if (0 == g_strcmp0(S57_getName(geo), "LIGHTS")) {
+                S57_geo *other = S57_getTouchLIGHTS(geo);
                 // this light 'touch' a buoy
                 if ((NULL!=other) && (0==g_strcmp0(S57_getName(other), "BOYLAT"))) {
                     // assume that light have a single color in List
@@ -2485,11 +2488,11 @@ static int       _renderSY(S52_obj *obj)
         }
 
         // debug
-        //if (0 == g_strcmp0(S57_getName(geoData), "BOYLAT")) {
+        //if (0 == g_strcmp0(S57_getName(geo), "BOYLAT")) {
         //    PRINTF("DEBUG: BOYLAT found\n");
         //    //g_assert(0);
         //}
-        //if (0 == g_strcmp0(S57_getName(geoData), "BOYCAR")) {  // cardinal buoy
+        //if (0 == g_strcmp0(S57_getName(geo), "BOYCAR")) {  // cardinal buoy
         //    PRINTF("DEBUG: BOYCAR found\n");
         //    //g_assert(0);
         //}
@@ -2507,7 +2510,7 @@ static int       _renderSY(S52_obj *obj)
     //return TRUE;
 
     // an SY command on a line object (ex light on power line)
-    if (S57_LINES_T == S57_getObjtype(geoData)) {
+    if (S57_LINES_T == S57_getObjtype(geo)) {
 
         // computer 'center' of line
         double cView_x = (_pmax.u + _pmin.u) / 2.0;
@@ -2515,11 +2518,11 @@ static int       _renderSY(S52_obj *obj)
 
         guint     npt = 0;
         GLdouble *ppt = NULL;
-        if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt)) {
+        if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt)) {
             return FALSE;
         }
 
-        if (0 == g_strcmp0("ebline", S57_getName(geoData))) {
+        if (0 == g_strcmp0("ebline", S57_getName(geo))) {
             if (0 == S52_PL_cmpCmdParam(obj, "EBLVRM11")) {
                 _renderSY_POINT_T(obj, ppt[0], ppt[1], orient);
             } else {
@@ -2531,7 +2534,7 @@ static int       _renderSY(S52_obj *obj)
             return TRUE;
         }
 
-        if (0 == g_strcmp0("vrmark", S57_getName(geoData))) {
+        if (0 == g_strcmp0("vrmark", S57_getName(geo))) {
             if (0 == S52_PL_cmpCmdParam(obj, "EBLVRM11")) {
                 _renderSY_POINT_T(obj, ppt[0], ppt[1], orient);
             }
@@ -2540,19 +2543,19 @@ static int       _renderSY(S52_obj *obj)
             return TRUE;
         }
 
-        if (0 == g_strcmp0("pastrk", S57_getName(geoData))) {
+        if (0 == g_strcmp0("pastrk", S57_getName(geo))) {
             _renderSY_pastrk(obj);
             //_setBlend(FALSE);
             return TRUE;
         }
 
-        if (0 == g_strcmp0("leglin", S57_getName(geoData))) {
+        if (0 == g_strcmp0("leglin", S57_getName(geo))) {
             _renderSY_leglin(obj);
             //_setBlend(FALSE);
             return TRUE;
         }
 
-        if (0 == g_strcmp0("clrlin", S57_getName(geoData))) {
+        if (0 == g_strcmp0("clrlin", S57_getName(geo))) {
             double orient = ATAN2TODEG(ppt);
             _renderSY_POINT_T(obj, ppt[3], ppt[4], orient);
             //_setBlend(FALSE);
@@ -2588,10 +2591,10 @@ static int       _renderSY(S52_obj *obj)
     //debug - skip AREAS_T (cost 30msec; from ~110ms to ~80ms on Estuaire du St-L CA279037.000)
     //return TRUE;
 
-    if (S57_AREAS_T == S57_getObjtype(geoData)) {
+    if (S57_AREAS_T == S57_getObjtype(geo)) {
         guint     npt = 0;
         GLdouble *ppt = NULL;
-        if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt)) {
+        if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt)) {
             return FALSE;
         }
 
@@ -2610,13 +2613,13 @@ static int       _renderSY(S52_obj *obj)
                 _glUniformMatrix4fv_uModelview();
 
                 // when in pick mode, fill the area
-                _fillArea(geoData);
+                _fillArea(geo);
             }
 
             // centroid offset might put the symb outside the area
-            if (TRUE == S57_hasCentroid(geoData)) {
+            if (TRUE == S57_hasCentroid(geo)) {
                 double x,y;
-                while (TRUE == S57_getNextCentroid(geoData, &x, &y)) {
+                while (TRUE == S57_getNextCent(geo, &x, &y)) {
                     //_renderSY_POINT_T(obj, x, y, orient+_north);
                     _renderSY_POINT_T(obj, x, y, orient);
                 }
@@ -2630,23 +2633,26 @@ static int       _renderSY(S52_obj *obj)
             double offset_y;
 
             // corner case where scrolling set area is clipped by view
-            double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
-            S57_getExt(geoData, &x1, &y1, &x2, &y2);
-            if ((y1 < _gmin.v) || (y2 > _gmax.v) || (x1 < _gmin.u) || (x2 > _gmax.u)) {
+            //double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
+            //S57_getExt(geo, &x1, &y1, &x2, &y2);
+
+            ObjExt_t ext = S57_getExt(geo);
+            //if ((y1 < _gmin.v) || (y2 > _gmax.v) || (x1 < _gmin.u) || (x2 > _gmax.u)) {
+            if ((ext.S < _gmin.v) || (ext.N > _gmax.v) || (ext.W < _gmin.u) || (ext.E > _gmax.u)) {
                 // reset centroid
-                S57_newCentroid(geoData);
+                S57_newCentroid(geo);
             }
 
             // debug - skip centroid (cost 30% CPU and no glDraw(); from 120ms to 80ms on Estuaire du St-L CA279037.000)
-            if (TRUE == S57_hasCentroid(geoData)) {
+            if (TRUE == S57_hasCentroid(geo)) {
                 double x,y;
-                while (TRUE == S57_getNextCentroid(geoData, &x, &y)) {
+                while (TRUE == S57_getNextCent(geo, &x, &y)) {
                     //_renderSY_POINT_T(obj, x, y, orient+_north);
                     _renderSY_POINT_T(obj, x, y, orient);
                 }
                 return TRUE;
             } else {
-                _computeCentroid(geoData);
+                _computeCentroid(geo);
             }
 
             // compute offset
@@ -2662,7 +2668,7 @@ static int       _renderSY(S52_obj *obj)
                 offset_x *= _scalex;
                 offset_y *= _scaley;
 
-                S57_newCentroid(geoData);
+                S57_newCentroid(geo);
             }
 
             for (guint i=0; i<_centroids->len; ++i) {
@@ -2672,7 +2678,7 @@ static int       _renderSY(S52_obj *obj)
                 //PRINTF("drawing centered at: %f/%f\n", pt->x, pt->y);
 
                 // save centroid
-                S57_addCentroid(geoData, pt->x, pt->y);
+                S57_addCentroid(geo, pt->x, pt->y);
 
                 // check if offset move the object outside pick region
                 // that symbole 'Y' axis is down, so '-offsety'
@@ -2698,15 +2704,15 @@ static int       _renderSY(S52_obj *obj)
 
 static int       _renderLS_LIGHTS05(S52_obj *obj)
 {
-    S57_geo *geoData   = S52_PL_getGeo(obj);
-    GString *orientstr = S57_getAttVal(geoData, "ORIENT");
-    GString *sectr1str = S57_getAttVal(geoData, "SECTR1");
-    GString *sectr2str = S57_getAttVal(geoData, "SECTR2");
+    S57_geo *geo   = S52_PL_getGeo(obj);
+    GString *orientstr = S57_getAttVal(geo, "ORIENT");
+    GString *sectr1str = S57_getAttVal(geo, "SECTR1");
+    GString *sectr2str = S57_getAttVal(geo, "SECTR2");
     double   leglenpix = 25.0 / S52_MP_get(S52_MAR_DOTPITCH_MM_X);
 
     GLdouble *ppt = NULL;
     guint     npt = 0;
-    if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt))
+    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
     /* debug
@@ -2728,24 +2734,29 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
 
     // this is part of CS
     if (TRUE == (int) S52_MP_get(S52_MAR_FULL_SECTORS)) {
-        GString  *valnmrstr = S57_getAttVal(geoData, "VALNMR");
+        GString  *valnmrstr = S57_getAttVal(geo, "VALNMR");
         if (NULL != valnmrstr) {
             //PRINTF("FIXME: compute leglen to scale (NM)\n");
             pt3 pt, ptlen;
             double valnmr = S52_atof(valnmrstr->str);
 
-            double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
-            S57_getExt(geoData, &x1, &y1, &x2, &y2);
+            //double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
+            //S57_getExt(geo, &x1, &y1, &x2, &y2);
+            ObjExt_t ext = S57_getExt(geo);
 
             // light position
-            pt.x = x1;  // not used
-            pt.y = y1;
+            //pt.x = x1;  // not used
+            //pt.y = y1;
+            pt.x = ext.W;  // not used
+            pt.y = ext.S;
             pt.z = 0.0;
             if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
                 return FALSE;
             // position of end of sector nominal range
-            ptlen.x = x1; // not used
-            ptlen.y = y1 + (valnmr / 60.0);
+            //ptlen.x = x1; // not used
+            //ptlen.y = y1 + (valnmr / 60.0);
+            ptlen.x = ext.W; // not used
+            ptlen.y = ext.S + (valnmr / 60.0);
             ptlen.z = 0.0;
             if (FALSE == S57_geo2prj3dv(1, (double*)&ptlen))
                 return FALSE;
@@ -3223,19 +3234,19 @@ static int       _renderLS(S52_obj *obj)
     }
 
     {
-        S57_geo  *geoData = S52_PL_getGeo(obj);
+        S57_geo  *geo = S52_PL_getGeo(obj);
 
-        if (S57_POINT_T == S57_getObjtype(geoData)) {
-            if (0 == g_strcmp0("LIGHTS", S57_getName(geoData)))
+        if (S57_POINT_T == S57_getObjtype(geo)) {
+            if (0 == g_strcmp0("LIGHTS", S57_getName(geo)))
                 _renderLS_LIGHTS05(obj);
             else {
-                if (0 == g_strcmp0("ownshp", S57_getName(geoData)))
+                if (0 == g_strcmp0("ownshp", S57_getName(geo)))
                     _renderLS_ownshp(obj);
                 else {
-                    if (0 == g_strcmp0("vessel", S57_getName(geoData))) {
+                    if (0 == g_strcmp0("vessel", S57_getName(geo))) {
 #ifdef S52_USE_SYM_VESSEL_DNGHL
                         // AIS close quarters
-                        GString *vestatstr = S57_getAttVal(geoData, "vestat");
+                        GString *vestatstr = S57_getAttVal(geo, "vestat");
                         if (NULL!=vestatstr && '3'==*vestatstr->str) {
                             if (0 == g_strcmp0("DNGHL", col->colName))
                                 _renderLS_vessel(obj);
@@ -3261,14 +3272,14 @@ static int       _renderLS(S52_obj *obj)
             // FIX: one more call to fillarea()
             GLdouble *ppt     = NULL;
             guint     npt     = 0;
-            S57_getGeoData(geoData, 0, &npt, &ppt);
+            S57_getGeoData(geo, 0, &npt, &ppt);
 
             // get the current number of positon (this grow as GPS/AIS pos come in)
-            if (0 == g_strcmp0("pastrk", S57_getName(geoData))) {
-                npt = S57_getGeoSize(geoData);
+            if (0 == g_strcmp0("pastrk", S57_getName(geo))) {
+                npt = S57_getGeoSize(geo);
             }
 
-            if (0 == g_strcmp0("ownshp", S57_getName(geoData))) {
+            if (0 == g_strcmp0("ownshp", S57_getName(geo))) {
                 // what symbol for ownshp of type line or area ?
                 // when ownshp is a POINT_T type !!!
                 PRINTF("DEBUG: ownshp obj of type LINES_T, AREAS_T\n");
@@ -3277,8 +3288,8 @@ static int       _renderLS(S52_obj *obj)
             } else {
 #ifdef S52_USE_AFGLOW
                 // afterglow
-                if ((0 == g_strcmp0("afgves", S57_getName(geoData))) ||
-                    (0 == g_strcmp0("afgshp", S57_getName(geoData)))
+                if ((0 == g_strcmp0("afgves", S57_getName(geo))) ||
+                    (0 == g_strcmp0("afgshp", S57_getName(geo)))
                    ) {
                     //PRINTF("DEBUG: XXXXXXXXXXXXXXX afgves\n");
                     _renderLS_afterglow(obj);
@@ -3706,9 +3717,9 @@ static int       _renderAC_NODATA_layer0(void)
 static int       _renderAC_LIGHTS05(S52_obj *obj)
 // this code is specific to CS LIGHTS05
 {
-    S57_geo   *geoData   = S52_PL_getGeo(obj);
-    GString   *sectr1str = S57_getAttVal(geoData, "SECTR1");
-    GString   *sectr2str = S57_getAttVal(geoData, "SECTR2");
+    S57_geo   *geo   = S52_PL_getGeo(obj);
+    GString   *sectr1str = S57_getAttVal(geo, "SECTR1");
+    GString   *sectr2str = S57_getAttVal(geo, "SECTR2");
 
     if ((NULL!=sectr1str) && (NULL!=sectr2str)) {
         S52_Color *c         = S52_PL_getACdata(obj);
@@ -3716,13 +3727,13 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
         GLdouble   sectr1    = S52_atof(sectr1str->str);
         GLdouble   sectr2    = S52_atof(sectr2str->str);
         double     sweep     = (sectr1 > sectr2) ? sectr2-sectr1+360 : sectr2-sectr1;
-        GString   *extradstr = S57_getAttVal(geoData, "extend_arc_radius");
+        GString   *extradstr = S57_getAttVal(geo, "extend_arc_radius");
         GLdouble   radius    = 0.0;
         GLint      loops     = 1;
 
         GLdouble  *ppt       = NULL;
         guint      npt       = 0;
-        if (FALSE==S57_getGeoData(geoData, 0, &npt, &ppt))
+        if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
             return FALSE;
 
         if (NULL!=extradstr && 'Y'==*extradstr->str) {
@@ -4079,11 +4090,11 @@ static int       _renderAP(S52_obj *obj)
     /*
     // when in pick mode, fill the area
     if (S52_GL_PICK == _crnt_GL_cycle) {
-        S57_geo *geoData = S52_PL_getGeo(obj);
+        S57_geo *geo = S52_PL_getGeo(obj);
         S52_Color dummy;
 
         _setFragAttrib(&dummy);
-        _fillArea(geoData);
+        _fillArea(geo);
 
         return TRUE;
     }
@@ -4392,8 +4403,8 @@ static int       _renderTXT(S52_obj *obj)
 
     guint      npt   = 0;
     GLdouble  *ppt   = NULL;
-    S57_geo *geoData = S52_PL_getGeo(obj);
-    if (FALSE == S57_getGeoData(geoData, 0, &npt, &ppt))
+    S57_geo *geo = S52_PL_getGeo(obj);
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
     S52_Color   *color  = NULL;
@@ -4435,14 +4446,14 @@ static int       _renderTXT(S52_obj *obj)
     //double uoffs = 0.0;
     //double voffs = 0.0;
 
-    if (S57_POINT_T == S57_getObjtype(geoData)) {
+    if (S57_POINT_T == S57_getObjtype(geo)) {
         _renderTXTAA(obj, color, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
 
         return TRUE;
     }
 
-    if (S57_LINES_T == S57_getObjtype(geoData)) {
-        if (0 == g_strcmp0("pastrk", S57_getName(geoData))) {
+    if (S57_LINES_T == S57_getObjtype(geo)) {
+        if (0 == g_strcmp0("pastrk", S57_getName(geo))) {
             // past track time
             for (guint i=0; i<npt; ++i) {
                 int timeHH = ppt[i*3 + 2] / 100;
@@ -4458,7 +4469,7 @@ static int       _renderTXT(S52_obj *obj)
             return TRUE;
         }
 
-        if (0 == g_strcmp0("clrlin", S57_getName(geoData))) {
+        if (0 == g_strcmp0("clrlin", S57_getName(geo))) {
             double orient = ATAN2TODEG(ppt);
             double x = (ppt[3] + ppt[0]) / 2.0;
             double y = (ppt[4] + ppt[1]) / 2.0;
@@ -4473,7 +4484,7 @@ static int       _renderTXT(S52_obj *obj)
             return TRUE;
         }
 
-        if (0 == g_strcmp0("leglin", S57_getName(geoData))) {
+        if (0 == g_strcmp0("leglin", S57_getName(geo))) {
             // cog
             if (0 == S52_PL_cmpCmdParamLUP(obj, "leglin")) {
                 // TX(leglin,3,1,2,'15112',0,0,CHBLK,51)
@@ -4498,7 +4509,7 @@ static int       _renderTXT(S52_obj *obj)
             // planned speed
             if (0 == S52_PL_cmpCmdParamLUP(obj, "plnspd")) {
                 // TX(plnspd,1,2,2,'15110',0,0,CHBLK,51)
-                GString *plnspdstr = S57_getAttVal(geoData, "plnspd");
+                GString *plnspdstr = S57_getAttVal(geo, "plnspd");
                 double   plnspd    = (NULL==plnspdstr) ? 0.0 : S52_atof(plnspdstr->str);
 
                 if (0.0 != plnspd) {
@@ -4553,9 +4564,9 @@ static int       _renderTXT(S52_obj *obj)
         return TRUE;
     }
 
-    if (S57_AREAS_T == S57_getObjtype(geoData)) {
+    if (S57_AREAS_T == S57_getObjtype(geo)) {
 
-        _computeCentroid(geoData);
+        _computeCentroid(geo);
 
         for (guint i=0; i<_centroids->len; ++i) {
             pt3 *pt = &g_array_index(_centroids, pt3, i);
@@ -5196,17 +5207,24 @@ int        S52_GL_isOFFview(S52_obj *obj)
     //}
 
 
-    // geo extent _gmin/max
     S57_geo *geo = S52_PL_getGeo(obj);
+    /*
     double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
-    if (FALSE == S57_getExt(geo, &x1, &y1, &x2, &y2))
+    if (FALSE == S57_getExt(geo, &x1, &y1, &x2, &y2)) {
+        //ObjExt_t ext = S57_getExtRec(geo);
+        //PRINTF("DEBUG: S57_getExtRec\n");
+
         return FALSE;
+    }
+    //*/
+    ObjExt_t ext = S57_getExt(geo);
 
     // FIXME: look for trick to bailout if func fail
     //(TRUE==S57_getExt(geo, &x1, &y1, &x2, &y2)? TRUE : return FALSE;
 
     // S-N limits
-    if ((y2 < _gmin.v) || (y1 > _gmax.v)) {
+    //if ((y2 < _gmin.v) || (y1 > _gmax.v)) {
+    if ((ext.N < _gmin.v) || (ext.S > _gmax.v)) {
         ++_oclip;
         return TRUE;
     }
@@ -5214,12 +5232,14 @@ int        S52_GL_isOFFview(S52_obj *obj)
     // E-W limits
     if (_gmax.u < _gmin.u) {
         // anti-meridian E-W limits
-        if ((x2 < _gmin.u) && (x1 > _gmax.u)) {
+        //if ((x2 < _gmin.u) && (x1 > _gmax.u)) {
+        if ((ext.E < _gmin.u) && (ext.W > _gmax.u)) {
             ++_oclip;
             return TRUE;
         }
     } else {
-        if ((x2 < _gmin.u) || (x1 > _gmax.u)) {
+        //if ((x2 < _gmin.u) || (x1 > _gmax.u)) {
+        if ((ext.E < _gmin.u) || (ext.W > _gmax.u)) {
             ++_oclip;
             return TRUE;
         }
@@ -5316,8 +5336,7 @@ static int       _newTexture(S52_GL_ras *raster)
 int        S52_GL_drawRaster(S52_GL_ras *raster)
 {
     // bailout if not in view
-    // FIXME: test anti-meridien
-    //if ((raster->pext.E < _pmin.u) || (raster->pext.N < _pmin.v) || (raster->pext.W > _pmax.u) || (raster->pext.S > _pmax.v)) {
+    // FIXME: crossing of anti-meridian
     if ((raster->gext.E < _gmin.u) || (raster->gext.N < _gmin.v) || (raster->gext.W > _gmax.u) || (raster->gext.S > _gmax.v)) {
         return TRUE;
     }
@@ -6328,8 +6347,8 @@ int        S52_GL_delDL(S52_obj *obj)
 // delete the GL part of S57 geo object (Display List)
 // S52_obj is use only by FREETYPE_GL
 {
-    S57_geo  *geoData = S52_PL_getGeo(obj);
-    S57_prim *prim    = S57_getPrimGeo(geoData);
+    S57_geo  *geo = S52_PL_getGeo(obj);
+    S57_prim *prim    = S57_getPrimGeo(geo);
 
 #ifdef S52_USE_GLSC1
     // SC can't delete a display list --no garbage collector
@@ -7158,13 +7177,16 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         }
 
         // get extent to compute center in pixels coords
-        S57_geo  *geoData = S52_PL_getGeo(obj);
-        double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
-        S57_getExt(geoData, &x1, &y1, &x2, &y2);
+        S57_geo  *geo = S52_PL_getGeo(obj);
+        //double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
+        //S57_getExt(geo, &x1, &y1, &x2, &y2);
+        ObjExt_t ext = S57_getExt(geo);
         // position
         pt3 pt;
-        pt.x = (x1+x2) / 2.0;  // lon center
-        pt.y = (y1+y2) / 2.0;  // lat center
+        //pt.x = (x1+x2) / 2.0;  // lon center
+        //pt.y = (y1+y2) / 2.0;  // lat center
+        pt.x = (ext.W+ext.E) / 2.0;  // lon center
+        pt.y = (ext.S+ext.N) / 2.0;  // lat center
         pt.z = 0.0;
         if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
             return FALSE;
@@ -7531,9 +7553,7 @@ int        S52_GL_drawArc(S52_obj *objA, S52_obj *objB)
 
     return TRUE;
 }
-#endif  // 0
 
-#if 0
 int              _intersect(double x1, double y1, double x2, double y2,
                             double x3, double y3, double x4, double y4)
 // TRUE if line segment intersect, else FALSE
@@ -7576,7 +7596,7 @@ int              _intersect(double x1, double y1, double x2, double y2,
 
     return TRUE;
 }
-#endif
+#endif  // 0
 
 int        S52_GL_isHazard(int nxyz, double *xyz)
 // TRUE if hazard found
