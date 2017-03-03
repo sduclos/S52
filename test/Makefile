@@ -26,7 +26,7 @@ all: s52gtk2egl    # GTK2 & GLES2 & EGL
 
 # GCC
 #CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=gnu99
-CC   = gcc -O0 -g -Wall -Wextra -pedantic -pipe -std=c99 -D_POSIX_C_SOURCE=199309L
+CC   = gcc -O0 -g -Wall -Wextra -pedantic -pipe -std=c99 -D_POSIX_C_SOURCE=199309L  # for signal in ais_standalone
 # test - compile C code as C++
 #CC   = g++ -fPIC -O0 -g -Wall
 #CXX   = g++ -O0 -g -Wall
