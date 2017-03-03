@@ -595,11 +595,11 @@ static int       _g_ptr_array_clear(GPtrArray *arr)
     return TRUE;
 }
 
-static S57_prim *_tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
+static S57_prim *_tessd(GLUtriangulatorObj *tobj, S57_geo *geo)
 // WARNING: not re-entrant (tmpV)
 {
-    guint     nr   = S57_getRingNbr(geoData);
-    S57_prim *prim = S57_initPrimGeo(geoData);
+    guint     nr   = S57_getRingNbr(geo);
+    S57_prim *prim = S57_initPrimGeo(geo);
 
     _g_ptr_array_clear(_tmpV);
 
@@ -611,7 +611,7 @@ static S57_prim *_tessd(GLUtriangulatorObj *tobj, S57_geo *geoData)
         guint     npt = 0;
         GLdouble *ppt = NULL;
 
-        if (TRUE == S57_getGeoData(geoData, i, &npt, &ppt)) {
+        if (TRUE == S57_getGeoData(geo, i, &npt, &ppt)) {
             gluTessBeginContour(tobj);
             for (guint j=0; j<npt-1; ++j, ppt+=3) {
                 ppt[2] = 0.0;  // delete possible S57_OVERLAP_GEO_Z
@@ -637,11 +637,12 @@ void      S52_GLU_begUnion(void)
     return;
 }
 
-void      S52_GLU_addUnion(S57_geo *geo)
+//void      S52_GLU_addUnion(S57_geo *geo)
+void      S52_GLU_addUnion(guint npt, double *ppt)
 {
-    guint   npt = 0;
-    double *ppt = NULL;
-    if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
+    //guint   npt = 0;
+    //double *ppt = NULL;
+    //if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
         gluTessBeginContour(_tUnion);
         //ppt += npt*3 - 3;
         //for (guint i=npt; i>0; --i, ppt-=3) {  // CCW
@@ -651,7 +652,7 @@ void      S52_GLU_addUnion(S57_geo *geo)
             //PRINTF("x/y/z %f/%f/%f\n", d[0],d[1],d[2]);
         }
         gluTessEndContour(_tUnion);
-    }
+    //}
 
     return;
 }
