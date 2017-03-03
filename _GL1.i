@@ -394,7 +394,7 @@ static int       _callDList(S57_prim *prim)
 // FIXME: same code as _renderAP_DRGARE_gl1
 static int       _renderAP_NODATA_gl1(S52_obj *obj)
 {
-    S57_geo   *geoData   = S52_PL_getGeo(obj);
+    S57_geo   *geo       = S52_PL_getGeo(obj);
     S52_DList *DListData = S52_PL_getDListData(obj);
 
     if (NULL != DListData) {
@@ -404,7 +404,7 @@ static int       _renderAP_NODATA_gl1(S52_obj *obj)
         glEnable(GL_POLYGON_STIPPLE);
         glPolygonStipple(_nodata_mask);
 
-        _fillArea(geoData);
+        _fillArea(geo);
 
         glDisable(GL_POLYGON_STIPPLE);
 
@@ -416,7 +416,7 @@ static int       _renderAP_NODATA_gl1(S52_obj *obj)
 
 static int       _renderAP_DRGARE_gl1(S52_obj *obj)
 {
-    S57_geo   *geoData   = S52_PL_getGeo(obj);
+    S57_geo   *geo       = S52_PL_getGeo(obj);
     S52_DList *DListData = S52_PL_getDListData(obj);
 
     if (NULL != DListData) {
@@ -426,7 +426,7 @@ static int       _renderAP_DRGARE_gl1(S52_obj *obj)
         glEnable(GL_POLYGON_STIPPLE);
         glPolygonStipple(_drgare_mask);
 
-        _fillArea(geoData);
+        _fillArea(geo);
 
         glDisable(GL_POLYGON_STIPPLE);
 
@@ -439,7 +439,7 @@ static int       _renderAP_DRGARE_gl1(S52_obj *obj)
 
 static int       _renderAP_mask_gl1(S52_obj *obj, const GLubyte *mask)
 {
-    S57_geo   *geoData   = S52_PL_getGeo(obj);
+    S57_geo   *geo       = S52_PL_getGeo(obj);
     S52_DList *DListData = S52_PL_getDListData(obj);
 
     if (NULL != DListData) {
@@ -450,7 +450,7 @@ static int       _renderAP_mask_gl1(S52_obj *obj, const GLubyte *mask)
         //glPolygonStipple(_drgare_mask);
         glPolygonStipple(mask);
 
-        _fillArea(geoData);
+        _fillArea(geo);
 
         glDisable(GL_POLYGON_STIPPLE);
 
@@ -559,8 +559,8 @@ static int       _renderAP_gl1(S52_obj *obj)
         glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
 
         // fill stencil
-        S57_geo *geoData = S52_PL_getGeo(obj);
-        _fillArea(geoData);
+        S57_geo *geo = S52_PL_getGeo(obj);
+        _fillArea(geo);
 
         // setup stencil to clip pattern
         // all color to pass stencil filter
