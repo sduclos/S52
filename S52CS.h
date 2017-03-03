@@ -32,7 +32,7 @@
 
 // Cond. Symb. callback
 // WARNING: caller of the callback has to free the returned GString
-typedef GString *(*S52_CS_cb)(S57_geo *geoData);
+typedef GString *(*S52_CS_cb)(S57_geo *geo);
 
 // Conditional Symbologie
 typedef struct S52_CS_condSymb {
