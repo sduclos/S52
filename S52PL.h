@@ -25,7 +25,7 @@
 #ifndef _S52PL_H_
 #define _S52PL_H_
 
-#include "S57data.h"     // S57_geo, S57_Obj_t
+#include "S57data.h"     // S57_geo, S57_prim
 
 #include <glib.h>        // GArray
 
@@ -121,7 +121,7 @@ typedef struct S52_Color {
     guchar   B;
 } S52_Color;
 
-// symbol's OpenGL Display List sub-list for color switch
+// symbol's OpenGL Display List sub-list for color/pen_w/trans switch
 #define MAX_SUBLIST 10  // ex: SCALEB10 need to switch color 9 times (2 colors)
 //#define MAX_SUBLIST 11  // ex: SCALEB10 need to switch color 9 times (2 colors)
 typedef struct S52_DList {
@@ -178,19 +178,19 @@ int            S52_PL_done();
 S52_Color     *S52_PL_getColor(const char *colorName);
 
 // get a rasterising rules for this S57 object
-S52_obj       *S52_PL_newObj(S57_geo *geoData);
+S52_obj       *S52_PL_newObj(S57_geo *geo);
 S57_geo       *S52_PL_delObj(S52_obj *obj, gboolean updateObjL);
 // get the geo part (S57) of this S52 object
 S57_geo       *S52_PL_getGeo(S52_obj *obj);
 // not used
-//S57_geo       *S52_PL_setGeo(S52_obj *obj, S57_geo *geoData);
+//S57_geo       *S52_PL_setGeo(S52_obj *obj, S57_geo *geo);
 
 // get LUP name
 const char    *S52_PL_getOBCL(S52_obj *obj);
 // get addressed object TYPe
 // Note: return the same thing as a call to S57_getObjtype()
-//S52_Obj_t      S52_PL_getFTYP(S52_obj *obj);
-S57_Obj_t      S52_PL_getFTYP(S52_obj *obj);
+// DEPRECATED: use S57_getObjtype() instead
+//S57_Obj_t      S52_PL_getFTYP(S52_obj *obj);
 
 // -- obj priority -----------------------------
 // get Display PRIority
