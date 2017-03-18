@@ -68,13 +68,6 @@ static GArray      *_tmpWorkBuffer = NULL;    // tmp buffer
 //static int          _identity_MODELVIEW = FALSE;   // TRUE then identity matrix for modelview is on GPU (optimisation for AC())
 //static int          _identity_MODELVIEW_cnt = 0;   // count saving
 
-/*
-static double       _north     = 0.0;  // from north to top / ship's head up (deg)
-static double       _rangeNM   = 0.0;
-static double       _centerLat = 0.0;
-static double       _centerLon = 0.0;
-*/
-
 //* helper - save user center of view in degree
 typedef struct _view_t{
     double cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
@@ -118,7 +111,7 @@ typedef enum _VP {
 typedef struct  pt3  { double   x,y,z; } pt3;
 typedef struct  pt3v { vertex_t x,y,z; } pt3v;
 
-// NOTE: S52 pixels for symb are 0.3 mm
+// Note: S52 pixels for symb are 0.3 mm
 // this is the real (physical) dotpitch of the device as computed at init() time
 // virtual dotpitch is set by user with S52_MP_set(S52_MAR_DOTPITCH_MM_X/Y, ..);
 static double _dotpitch_mm_x = 0.3;  // will be overwright at init()
@@ -211,7 +204,7 @@ static int            _fb_pixels_udp  = TRUE;  // TRUE flag that the FB changed
 static int            _fb_pixels_format      = _RGB;   // alpha blending done in shader
 #else
 static int            _fb_pixels_format      = _RGBA;
-//static int            _fb_pixels_format      = _RGB ;  // NOTE: on TEGRA2 RGB (3) very slow
+//static int            _fb_pixels_format      = _RGB ;  // Note: on TEGRA2 RGB (3) very slow
 #endif
 
 
@@ -483,6 +476,200 @@ static int       _getCentroidClose(guint npt, double *ppt)
 
     return FALSE;
 }
+
+static int       _computeCentroid(S57_geo *geo)
+// return centroids
+// fill global array _centroid
+{
+#ifdef S52_USE_GV
+    // FIXME: there is a bug, tesselator fail
+    return _centroids;
+#endif
+
+    guint   npt = 0;
+    double *ppt = NULL;
+    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
+        return FALSE;
+
+    // Note: assume close poly - first == last
+    if (npt < 4) {
+        PRINTF("DEBUG: skip degenerated poly (npt:%i)\n", npt);
+        return FALSE;
+    }
+
+    /* paranoid - check allready done or will be later!
+    if ((ppt[0]!=ppt[3*(npt-1) + 0]) || (ppt[1]!=ppt[3*(npt-1) + 1]))  {
+        PRINTF("DEBUG: first pt != last pt\n");
+        g_assert(0);
+    }
+    */
+
+    // debug
+    //GString *FIDNstr = S57_getAttVal(geo, "FIDN");
+    //if (0==strcmp("2135158891", FIDNstr->str)) {
+    //    PRINTF("%s\n",FIDNstr->str);
+    //}
+    //if (0 ==  g_strcmp0("ISTZNE", S57_getName(geo))) {
+    //    PRINTF("ISTZNEA found\n");
+    //}
+    //if (0 ==  g_strcmp0("PRDARE", S57_getName(geo))) {
+    //    PRINTF("PRDARE found\n");
+    //}
+
+    /* optimisation: decimate then save in S57 LODx
+    guint  nptLOD1 = 1;
+    double pptLOD1[npt*3];
+
+    // set first pt
+    pptLOD1[0] = ppt[0];
+    pptLOD1[1] = ppt[1];
+
+    pt3 *pt     = (pt3*)ppt;
+    pt3 *ptLOD1 = (pt3*)pptLOD1;
+
+    ++pt;
+    //++ptLOD1;
+
+    for (guint i=1; i<npt-1; ++i, ++pt) {
+        // test - 1km
+        double x = nearbyint(pt->x / 1000.0) * 1000.0;
+        double y = nearbyint(pt->y / 1000.0) * 1000.0;
+        // -OR-
+        //#include <math.h>
+        //double x = fmod(pt->x, _scalex);
+        //double y = fmod(pt->y, _scaley);
+
+        if ((x!=ptLOD1->x) || (y!=ptLOD1->y)) {
+            ++nptLOD1;
+            ++ptLOD1;
+            ptLOD1->x = x;
+            ptLOD1->y = y;
+            //ptLOD1->z = pt->y;
+        }
+    }
+    // close poly
+    ++nptLOD1;
+    ++ptLOD1;
+    ptLOD1->x = ppt[3*(npt-1) + 0];
+    ptLOD1->y = ppt[3*(npt-1) + 1];
+    */
+
+    ObjExt_t ext = S57_getExt(geo);
+    double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
+    if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
+        return FALSE;
+
+    // LL of region of area
+    double x1  = xyz[0];
+    double y1  = xyz[1];
+    // UR of region of area
+    double x2  = xyz[3];
+    double y2  = xyz[4];
+
+    //PRINTF("%s VIEW EXT %f,%f -- %f,%f\n", S57_getName(geo), _pmin.u, _pmin.v, _pmax.u, _pmax.v);
+
+    // extent inside view, compute normal centroid, no clip
+    if ((_pmin.u < x1) && (_pmin.v < y1) && (_pmax.u > x2) && (_pmax.v > y2)) {
+        g_array_set_size(_centroids, 0);
+
+        _getCentroidClose(npt, ppt);
+        //_getCentroidClose(nptLOD1, pptLOD1);
+        //PRINTF("no clip: %s\n", S57_getName(geo));
+
+        return TRUE;
+    }
+
+    // CSG - Computational Solid Geometry  (clip poly)
+    {
+        _g_ptr_array_clear(_tmpV);
+
+        g_array_set_size(_centroids, 0);
+        g_array_set_size(_vertexs,   0);
+        g_array_set_size(_nvertex,   0);
+
+        //gluTessProperty(_tcen, GLU_TESS_BOUNDARY_ONLY, GLU_TRUE);
+
+        // debug
+        //PRINTF("npt: %i\n", npt);
+
+        gluTessBeginPolygon(_tcen, NULL);
+
+        // place the area --CW (BUG: should be CCW!)
+        gluTessBeginContour(_tcen);
+
+        //*
+        for (guint i=0; i<npt-1; ++i) {
+            gluTessVertex(_tcen, (GLdouble*)ppt, (void*)ppt);
+            ppt += 3;
+        }
+        //*/
+
+        /* LOD1
+        ptLOD1 = (pt3*)pptLOD1;
+        for (guint i=0; i<nptLOD1-1; ++i, ++ptLOD1) {
+            gluTessVertex(_tcen, (GLdouble*)ptLOD1, (void*)ptLOD1);
+        }
+        */
+
+        gluTessEndContour(_tcen);
+
+        // place the screen
+        gluTessBeginContour(_tcen);
+        {
+            GLdouble d[4*3] = {
+                _pmin.u, _pmin.v, 0.0,
+                _pmax.u, _pmin.v, 0.0,
+                _pmax.u, _pmax.v, 0.0,
+                _pmin.u, _pmax.v, 0.0,
+            };
+            GLdouble *p = NULL;
+
+            // CCW
+            /*
+            p = d;
+            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
+            p += 3;
+            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
+            p += 3;
+            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
+            p += 3;
+            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
+            */
+
+            // CW
+            p = d + (3*3);
+            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
+            p -= 3;
+            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
+            p -= 3;
+            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
+            p -= 3;
+            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
+
+        }
+        gluTessEndContour(_tcen);
+
+        // finish
+        gluTessEndPolygon(_tcen);
+
+        // compute centroid
+        {   // debug: land here is extent of area overlap but not the area itself
+            //if (0 == _nvertex->len)
+            //    PRINTF("not intersecting with screen .. !!\n");
+
+            int offset = 0;
+            for (guint i=0; i<_nvertex->len; ++i) {
+                int npt = g_array_index(_nvertex, int, i);
+                pt3 *p = &g_array_index(_vertexs, pt3, offset);
+                _getCentroidOpen(npt-offset, p);
+                offset = npt;
+            }
+        }
+    }
+
+    return TRUE;
+}
+
 
 static void      _glMatrixMode(GLenum  mode)
 {
@@ -1209,6 +1396,7 @@ static int       _VBODraw_AREA(S57_prim *prim)
 #endif  // S52_USE_OPENGL_VBO
 
 static double    _getWorldGridRef(S52_obj *obj, double *LLx, double *LLy, double *URx, double *URy, double *tileW, double *tileH)
+// grid alignment
 // called by _GL1.i and _GL2.i
 {
     //
@@ -1230,23 +1418,18 @@ static double    _getWorldGridRef(S52_obj *obj, double *LLx, double *LLy, double
     double w0 = tileWidthPix  * _scalex;
     double h0 = tileHeightPix * _scaley;
 
-    // grid alignment
-    //double x1, y1;   // LL of region of area
-    //double x2, y2;   // UR of region of area
-    double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
-
     S57_geo *geo = S52_PL_getGeo(obj);
-    //S57_getExt(geo, &x1, &y1, &x2, &y2);
     ObjExt_t ext = S57_getExt(geo);
-    //double xyz[6] = {x1, y1, 0.0, x2, y2, 0.0};
     double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
     if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
         return FALSE;
 
-    x1  = xyz[0];
-    y1  = xyz[1];
-    x2  = xyz[3];
-    y2  = xyz[4];
+    // LL of region of area
+    double x1  = xyz[0];
+    double y1  = xyz[1];
+    // UR of region of area
+    double x2  = xyz[3];
+    double y2  = xyz[4];
 
     x1  = floor(x1 / w0) * w0;
     //y1  = floor(y1 / (2*h0)) * (2*h0);
@@ -1386,17 +1569,17 @@ static GLubyte   _setFragAttrib(S52_Color *c)
     }
 
     // normal
-    _glColor4ub(c->R, c->G, c->B, c->trans);
+    _glColor4ub(c->R, c->G, c->B, c->fragAtt.trans);
 
     // reset color if highlighting (pick / alarm / indication)
     // FIXME: red / yellow (danger / warning)
     if (TRUE == _doHighlight) {
         S52_Color *dnghlcol = S52_PL_getColor("DNGHL");
-        _glColor4ub(dnghlcol->R, dnghlcol->G, dnghlcol->B, c->trans);
+        _glColor4ub(dnghlcol->R, dnghlcol->G, dnghlcol->B, c->fragAtt.trans);
     }
 
     //* trans
-    if (('0'!=c->trans) && (TRUE==(int) S52_MP_get(S52_MAR_ANTIALIAS))) {
+    if (('0'!=c->fragAtt.trans) && (TRUE==(int) S52_MP_get(S52_MAR_ANTIALIAS))) {
         // FIXME: blending always ON
         glEnable(GL_BLEND);
 
@@ -1409,15 +1592,15 @@ static GLubyte   _setFragAttrib(S52_Color *c)
     // pen_w of SY
     // - AC, AP, TXT, doesn't have a pen_w
     // - LS, LC have there own pen_w
-    if (0 != c->pen_w) {
-        _glLineWidth(c->pen_w - '0');
+    if (0 != c->fragAtt.pen_w) {
+        _glLineWidth(c->fragAtt.pen_w - '0');
 
         // FIXME: used by _DrawArrays_POINTS
         // move to the call
         //_glPointSize(c->pen_w - '0');
     }
 
-    return c->trans;
+    return c->fragAtt.trans;
 }
 
 static int       _glCallList(S52_DList *DListData)
@@ -1552,141 +1735,6 @@ static int       _glCallList(S52_DList *DListData)
     glEnable(GL_CULL_FACE);
 
     _checkError("_glCallList(): -end-");
-
-    return TRUE;
-}
-
-static int       _computeCentroid(S57_geo *geo)
-// return centroids
-// fill global array _centroid
-{
-#ifdef S52_USE_GV
-    // FIXME: there is a bug, tesselator fail
-    return _centroids;
-#endif
-
-    guint   npt = 0;
-    double *ppt = NULL;
-    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
-        return FALSE;
-
-    if (npt < 4)
-        return FALSE;
-
-    // debug
-    //GString *FIDNstr = S57_getAttVal(geo, "FIDN");
-    //if (0==strcmp("2135158891", FIDNstr->str)) {
-    //    PRINTF("%s\n",FIDNstr->str);
-    //}
-    //if (0 ==  g_strcmp0("ISTZNE", S57_getName(geo))) {
-    //    PRINTF("ISTZNEA found\n");
-    //}
-    //if (0 ==  g_strcmp0("PRDARE", S57_getName(geo))) {
-    //    PRINTF("PRDARE found\n");
-    //}
-
-
-    //PRINTF("%s EXT %f,%f -- %f,%f\n", S57_getName(geo), _pmin.u, _pmin.v, _pmax.u, _pmax.v);
-
-    double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
-    //S57_getExt(geo, &x1, &y1, &x2, &y2);
-    ObjExt_t ext = S57_getExt(geo);
-    //double xyz[6] = {x1, y1, 0.0, x2, y2, 0.0};
-    double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
-    if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
-        return FALSE;
-
-    x1 = xyz[0];
-    y1 = xyz[1];
-    x2 = xyz[3];
-    y2 = xyz[4];
-
-    // extent inside view, compute normal centroid, no clip
-    if ((_pmin.u < x1) && (_pmin.v < y1) && (_pmax.u > x2) && (_pmax.v > y2)) {
-        g_array_set_size(_centroids, 0);
-
-        _getCentroidClose(npt, ppt);
-        //PRINTF("no clip: %s\n", S57_getName(geo));
-
-        return TRUE;
-    }
-
-    // CSG - Computational Solid Geometry  (clip poly)
-    {
-        _g_ptr_array_clear(_tmpV);
-
-        g_array_set_size(_centroids, 0);
-        g_array_set_size(_vertexs,   0);
-        g_array_set_size(_nvertex,   0);
-
-        //gluTessProperty(_tcen, GLU_TESS_BOUNDARY_ONLY, GLU_TRUE);
-
-        // debug
-        //PRINTF("npt: %i\n", npt);
-
-        gluTessBeginPolygon(_tcen, NULL);
-
-        // place the area --CW (BUG: should be CCW!)
-        gluTessBeginContour(_tcen);
-        for (guint i=0; i<npt-1; ++i) {
-            gluTessVertex(_tcen, (GLdouble*)ppt, (void*)ppt);
-            ppt += 3;
-        }
-        gluTessEndContour(_tcen);
-
-        // place the screen
-        gluTessBeginContour(_tcen);
-        {
-            GLdouble d[4*3] = {
-                _pmin.u, _pmin.v, 0.0,
-                _pmax.u, _pmin.v, 0.0,
-                _pmax.u, _pmax.v, 0.0,
-                _pmin.u, _pmax.v, 0.0,
-            };
-            GLdouble *p = NULL;
-
-            // CCW
-            /*
-            p = d;
-            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
-            p += 3;
-            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
-            p += 3;
-            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
-            p += 3;
-            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
-            */
-
-            // CW
-            p = d + (3*3);
-            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
-            p -= 3;
-            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
-            p -= 3;
-            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
-            p -= 3;
-            gluTessVertex(_tcen, (GLdouble*)p, (void*)p);
-
-        }
-        gluTessEndContour(_tcen);
-
-        // finish
-        gluTessEndPolygon(_tcen);
-
-        // compute centroid
-        {   // debug: land here is extent of area overlap but not the area itself
-            //if (0 == _nvertex->len)
-            //    PRINTF("not intersecting with screen .. !!\n");
-
-            int offset = 0;
-            for (guint i=0; i<_nvertex->len; ++i) {
-                int npt = g_array_index(_nvertex, int, i);
-                pt3 *p = &g_array_index(_vertexs, pt3, offset);
-                _getCentroidOpen(npt-offset, p);
-                offset = npt;
-            }
-        }
-    }
 
     return TRUE;
 }
@@ -2423,6 +2471,7 @@ static int       _renderSY_leglin(S52_obj *obj)
 
 static int       _renderSY(S52_obj *obj)
 // SYmbol
+// FIXME: centroid VERY CPU expensive
 {
     // FIXME: second draw of the same Mariners' Object misplace centroid!
     // and fail to be cursor picked
@@ -2433,12 +2482,12 @@ static int       _renderSY(S52_obj *obj)
 #endif
 
     // debug - filter is also in _glCallList():glDrawArray()
-    //if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_CMD_WRD_FILTER))
-    //    return TRUE;
+    if (S52_CMD_WRD_FILTER_SY & (int) S52_MP_get(S52_CMD_WRD_FILTER))
+        return TRUE;
 
     // failsafe
-    S57_geo *geo = S52_PL_getGeo(obj);
-    GLdouble orient  = S52_PL_getSYorient(obj);
+    S57_geo *geo    = S52_PL_getGeo(obj);
+    GLdouble orient = S52_PL_getSYorient(obj);
 
     guint     npt = 0;
     GLdouble *ppt = NULL;
@@ -2594,9 +2643,19 @@ static int       _renderSY(S52_obj *obj)
     if (S57_AREAS_T == S57_getObjtype(geo)) {
         guint     npt = 0;
         GLdouble *ppt = NULL;
-        if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt)) {
+
+        /* debug
+        if (TRUE == S57_getGeoData(geo, 1, &npt, &ppt)) {
+            PRINTF("DEBUG: inner ring found: %s:%i (%i)\n", S57_getName(geo), S57_getS57ID(geo), npt);
+            //g_assert(0);
+        }
+        */
+
+        if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
             return FALSE;
         }
+
+        PRINTF("DEBUG: outer ring found: %s:%i (%i)\n", S57_getName(geo), S57_getS57ID(geo), npt);
 
         // clutter - skip rendering LOWACC01
         if ((0==S52_PL_cmpCmdParam(obj, "LOWACC01")) && (0.0==S52_MP_get(S52_MAR_QUAPNT01)))
@@ -2633,17 +2692,14 @@ static int       _renderSY(S52_obj *obj)
             double offset_y;
 
             // corner case where scrolling set area is clipped by view
-            //double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
-            //S57_getExt(geo, &x1, &y1, &x2, &y2);
-
             ObjExt_t ext = S57_getExt(geo);
-            //if ((y1 < _gmin.v) || (y2 > _gmax.v) || (x1 < _gmin.u) || (x2 > _gmax.u)) {
             if ((ext.S < _gmin.v) || (ext.N > _gmax.v) || (ext.W < _gmin.u) || (ext.E > _gmax.u)) {
                 // reset centroid
                 S57_newCentroid(geo);
             }
 
-            // debug - skip centroid (cost 30% CPU and no glDraw(); from 120ms to 80ms on Estuaire du St-L CA279037.000)
+            // skip centroid computation if allready available
+            // (cost 30% CPU and no glDraw(); from 120ms to 80ms on Estuaire du St-L CA279037.000)
             if (TRUE == S57_hasCentroid(geo)) {
                 double x,y;
                 while (TRUE == S57_getNextCent(geo, &x, &y)) {
@@ -2651,9 +2707,10 @@ static int       _renderSY(S52_obj *obj)
                     _renderSY_POINT_T(obj, x, y, orient);
                 }
                 return TRUE;
-            } else {
-                _computeCentroid(geo);
             }
+
+            // no centroid - compute new one
+            _computeCentroid(geo);
 
             // compute offset
             if (0 < _centroids->len) {
@@ -2671,11 +2728,12 @@ static int       _renderSY(S52_obj *obj)
                 S57_newCentroid(geo);
             }
 
+            // add new centroid
             for (guint i=0; i<_centroids->len; ++i) {
                 pt3 *pt = &g_array_index(_centroids, pt3, i);
 
-                // debug
-                //PRINTF("drawing centered at: %f/%f\n", pt->x, pt->y);
+                //S57_highlightON(geo);
+                //PRINTF("DEBUG: drawing centered at: %f/%f\n", pt->x, pt->y);
 
                 // save centroid
                 S57_addCentroid(geo, pt->x, pt->y);
@@ -2740,21 +2798,16 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
             pt3 pt, ptlen;
             double valnmr = S52_atof(valnmrstr->str);
 
-            //double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
-            //S57_getExt(geo, &x1, &y1, &x2, &y2);
             ObjExt_t ext = S57_getExt(geo);
 
             // light position
-            //pt.x = x1;  // not used
-            //pt.y = y1;
             pt.x = ext.W;  // not used
             pt.y = ext.S;
             pt.z = 0.0;
             if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
                 return FALSE;
+
             // position of end of sector nominal range
-            //ptlen.x = x1; // not used
-            //ptlen.y = y1 + (valnmr / 60.0);
             ptlen.x = ext.W; // not used
             ptlen.y = ext.S + (valnmr / 60.0);
             ptlen.z = 0.0;
@@ -3742,7 +3795,7 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
             radius = 20.0 / S52_MP_get(S52_MAR_DOTPITCH_MM_X);    // (not 20 mm on xoom)
         }
 
-        // NOTE: specs say unit, assume it mean pixel
+        // Note: specs say unit, assume it mean pixel
 #ifdef S52_USE_OPENGL_VBO
         _gluQuadricDrawStyle(_qobj, GLU_FILL);
 #else
@@ -4064,7 +4117,7 @@ static int       _renderAP_NODATA_layer0(void)
 
 static int       _renderAP(S52_obj *obj)
 // Area Pattern
-// NOTE: S52 define pattern rotation but doesn't use it in PLib, so not implemented.
+// Note: S52 define pattern rotation but doesn't use it in PLib, so not implemented.
 {
     // debug - this filter also in _VBODrawArrays_AREA():glDraw()
     if (S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_CMD_WRD_FILTER))
@@ -4176,6 +4229,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
         //PRINTF("WARNING: bsize(%i) >= S52_MAX_FONT(%i) str:%s\n", bsize, S52_MAX_FONT, str);
         //return FALSE;
     }
+    //PRINTF("DEBUG: bsize(%i), str:%s\n", bsize, str);
 
     // FIXME: cursor pick
     if (S52_GL_PICK == _crnt_GL_cycle) {
@@ -4498,7 +4552,6 @@ static int       _renderTXT(S52_obj *obj)
                 //if (orient < 0.0) orient += 360.0;
 
                 char s[80];
-                //SNPRINTF(s, 80, "%03.f cog", orient);
                 SNPRINTF(s, 80, "%03.f deg", orient);
 
                 //PRINTF("DEBUG: xoffs/yoffs/bsize/weight: %i/%i/%i/%i:%s\t%s\n", xoffs, yoffs, bsize, weight, str, s);
@@ -4665,7 +4718,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
             case S52_VC_NONE: break;
             case S52_VC_NEW:  break;
 
-            // NOTE: entering poly mode fill a circle (CI) when a CI command
+            // Note: entering poly mode fill a circle (CI) when a CI command
             // is found between PM0 and PM2
             case S52_VC_PM: // poly mode PM0/PM2, fill disk when not in PM
                 fillMode = (GLU_FILL==fillMode) ? GLU_SILHOUETTE : GLU_FILL;
@@ -4935,7 +4988,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
 #ifdef S52_USE_OPENGL_VBO
 #if !defined(S52_USE_GLSC2)
     if (TRUE == glIsBuffer(DL->vboIds[0])) {
-        // NOTE: DL->nbr is 1 - all pattern in PLib have only one color
+        // Note: DL->nbr is 1 - all pattern in PLib have only one color
         // but this is not in S52 specs (check this)
         glDeleteBuffers(DL->nbr, &DL->vboIds[0]);
 
@@ -5208,22 +5261,12 @@ int        S52_GL_isOFFview(S52_obj *obj)
 
 
     S57_geo *geo = S52_PL_getGeo(obj);
-    /*
-    double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
-    if (FALSE == S57_getExt(geo, &x1, &y1, &x2, &y2)) {
-        //ObjExt_t ext = S57_getExtRec(geo);
-        //PRINTF("DEBUG: S57_getExtRec\n");
-
-        return FALSE;
-    }
-    //*/
     ObjExt_t ext = S57_getExt(geo);
 
     // FIXME: look for trick to bailout if func fail
     //(TRUE==S57_getExt(geo, &x1, &y1, &x2, &y2)? TRUE : return FALSE;
 
     // S-N limits
-    //if ((y2 < _gmin.v) || (y1 > _gmax.v)) {
     if ((ext.N < _gmin.v) || (ext.S > _gmax.v)) {
         ++_oclip;
         return TRUE;
@@ -5232,13 +5275,11 @@ int        S52_GL_isOFFview(S52_obj *obj)
     // E-W limits
     if (_gmax.u < _gmin.u) {
         // anti-meridian E-W limits
-        //if ((x2 < _gmin.u) && (x1 > _gmax.u)) {
         if ((ext.E < _gmin.u) && (ext.W > _gmax.u)) {
             ++_oclip;
             return TRUE;
         }
     } else {
-        //if ((x2 < _gmin.u) || (x1 > _gmax.u)) {
         if ((ext.E < _gmin.u) || (ext.W > _gmax.u)) {
             ++_oclip;
             return TRUE;
@@ -5430,10 +5471,10 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
     if (TRUE == raster->isRADAR) {
         // "RADHI", "RADLO"
         S52_Color *radhi = S52_PL_getColor("RADHI");
-        glUniform4f(_uColor, radhi->R/255.0, radhi->G/255.0, radhi->B/255.0, (4 - (radhi->trans - '0'))*TRNSP_FAC_GLES2);
+        glUniform4f(_uColor, radhi->R/255.0, radhi->G/255.0, radhi->B/255.0, (4 - (radhi->fragAtt.trans - '0'))*TRNSP_FAC_GLES2);
     } else {
         S52_Color *dnghl = S52_PL_getColor("DNGHL");
-        glUniform4f(_uColor, dnghl->R/255.0, dnghl->G/255.0, dnghl->B/255.0, (4 - (dnghl->trans - '0'))*TRNSP_FAC_GLES2);
+        glUniform4f(_uColor, dnghl->R/255.0, dnghl->G/255.0, dnghl->B/255.0, (4 - (dnghl->fragAtt.trans - '0'))*TRNSP_FAC_GLES2);
     }
 
     // to fit an image in a POT texture
@@ -5575,12 +5616,12 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //}
     /*
     S57_geo *geo = S52_PL_getGeo(obj);
-    //PRINTF("drawing geo ID: %i\n", S57_getGeoS57ID(geo));
-    //if (2184==S57_getGeoS57ID(geo)) {
-    //if (140 == S57_getGeoS57ID(geo)) {
-    //if (103 == S57_getGeoS57ID(geo)) {  // Hawaii ISODNG
-    if (567 == S57_getGeoS57ID(geo)) {
-        PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getGeoS57ID(geo));
+    //PRINTF("drawing geo ID: %i\n", S57_getS57ID(geo));
+    //if (2184==S57_getS57ID(geo)) {
+    //if (140 == S57_getS57ID(geo)) {
+    //if (103 == S57_getS57ID(geo)) {  // Hawaii ISODNG
+    if (567 == S57_getS57ID(geo)) {
+        PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getS57ID(geo));
         S57_highlightON(geo);
     ////    return TRUE;
     }
@@ -5610,7 +5651,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
         g_ptr_array_add(_objPick, obj);
 
         //S57_geo *geo = S52_PL_getGeo(obj);
-        //PRINTF("DEBUG: %i - pick: %s:%i\n", _cIdx.color.r, S52_PL_getOBCL(obj), S57_getGeoS57ID(geo));
+        //PRINTF("DEBUG: %i - pick: %s:%i\n", _cIdx.color.r, S52_PL_getOBCL(obj), S57_getS57ID(geo));
     }
 
     ++_nobj;
@@ -5976,6 +6017,7 @@ static int       _doProjection(vp_t vp, double centerLat, double centerLon, doub
     // MPP - Meter Per Pixel
     _scalex = (_pmax.u - _pmin.u) / (double)vp.w;
     _scaley = (_pmax.v - _pmin.v) / (double)vp.h;
+    PRINTF("DEBUG: SCALE: X:%f Y:%f\n", _scalex, _scaley);
 
     _set_SCAMIN();
 
@@ -6915,7 +6957,7 @@ int        S52_GL_getView(double *centerLat, double *centerLon, double *rangeNM,
 
 int        S52_GL_setViewPort(int x, int y, int width, int height)
 {
-    // NOTE: width & height are in fact GLsizei, a pseudo unsigned int
+    // Note: width & height are in fact GLsizei, a pseudo unsigned int
     // it is a 'int32' that can't be negative
 
     _vp.x = x;
@@ -6954,7 +6996,7 @@ int        S52_GL_setScissor(int x, int y, int width, int height)
 {
     //PRINTF("DEBUG: x/y/width/height: %i/%i/%i/%i\n", x, y, width, height);
 
-    // NOTE: width & height are in fact GLsizei, a pseudo unsigned int
+    // Note: width & height are in fact GLsizei, a pseudo unsigned int
     // it is a 'int32' that can't be negative
     if (width<0 || height<0) {
         glDisable(GL_SCISSOR_TEST);
@@ -7029,7 +7071,7 @@ cchar     *S52_GL_getNameObjPick(void)
             S57_geo *geo = S52_PL_getGeo(obj);
 
             name  = S57_getName(geo);
-            //S57ID = S57_getGeoS57ID(geo);
+            //S57ID = S57_getS57ID(geo);
 
             PRINTF("%i  : %s\n", i, name);
             PRINTF("LUP : %s\n", S52_PL_getCMDstr(obj));
@@ -7090,7 +7132,7 @@ cchar     *S52_GL_getNameObjPick(void)
     S57_highlightON(geoHighLight);
 
     name  = S57_getName (geoHighLight);
-    S57ID = S57_getGeoS57ID(geoHighLight);
+    S57ID = S57_getS57ID(geoHighLight);
 
     // Note: compile with S52_USE_C_AGGR_C_ASSO
 #ifdef S52_USE_C_AGGR_C_ASSO
@@ -7118,11 +7160,11 @@ cchar     *S52_GL_getNameObjPick(void)
                 sscanf(*splitRefs, "%p", (void**)&geoRelAssoc);
                 S57_highlightON(geoRelAssoc);
 
-                guint idAssoc = S57_getGeoS57ID(geoRelAssoc);
+                guint idAssoc = S57_getS57ID(geoRelAssoc);
 
                 if (NULL == geoRelIDs) {
                     geoRelIDs = g_string_new("");
-                    g_string_printf(geoRelIDs, ":%i,%i", S57_getGeoS57ID(geoRel), idAssoc);
+                    g_string_printf(geoRelIDs, ":%i,%i", S57_getS57ID(geoRel), idAssoc);
                 } else {
                     g_string_append_printf(geoRelIDs, ",%i", idAssoc);
                 }
@@ -7178,13 +7220,10 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
 
         // get extent to compute center in pixels coords
         S57_geo  *geo = S52_PL_getGeo(obj);
-        //double x1=INFINITY, y1=INFINITY, x2=-INFINITY, y2=-INFINITY;
-        //S57_getExt(geo, &x1, &y1, &x2, &y2);
-        ObjExt_t ext = S57_getExt(geo);
+        ObjExt_t  ext = S57_getExt(geo);
+
         // position
         pt3 pt;
-        //pt.x = (x1+x2) / 2.0;  // lon center
-        //pt.y = (y1+y2) / 2.0;  // lat center
         pt.x = (ext.W+ext.E) / 2.0;  // lon center
         pt.y = (ext.S+ext.N) / 2.0;  // lat center
         pt.z = 0.0;
