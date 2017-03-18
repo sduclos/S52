@@ -276,7 +276,7 @@ typedef struct _S52_vec {
     _poly_mode pm;          // polygon mode
 } _S52_vec;
 
-// NOTE: order important --index to '_table[]'
+// Note: order important --index to '_table[]'
 // agreegated tables name
 typedef enum _table_t {
     //S52_PL_ID,            // S52 Library Identification Module DB
@@ -325,7 +325,7 @@ typedef struct _S52_obj {
     // FIXME: make that a struct
 
     //char       LOD;           // optimisation: chart purpose: cell->filename->str[2]
-    // NOTE: this is a general holder for orient/speed depending on
+    // Note: this is a general holder for orient/speed depending on
     // the object type. So it could be for current, ship, AIS, ...
     gdouble      orient;        // LIGHT angle (after parsing), heading of 'ownshp'
     gdouble      speed;         // 'ownshp' speed for drawing vertor lenght
@@ -895,7 +895,7 @@ static _cmdWL    *_parseINST(GString *inst)
         ////////////////////////////////
         // parse Symbology Command Word
         //
-        // NOTE: command might repeat except:
+        // Note: command might repeat except:
         //  -S52_CMD_COM_LN: complex line,
         //  -S52_CMD_ARE_CO: area color,
         //  -S52_CMD_CND_SY: conditional symbology
@@ -1284,8 +1284,10 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
         if (TRUE == newSub) {
             // copy the S52_Color struct (A <-- B)
             *colors = *_parseCol(desc.ccolor, colRef);
-            colors->pen_w = desc.cpen_w;
-            colors->trans = desc.ctrans;
+            //colors->pen_w = desc.cpen_w;
+            //colors->trans = desc.ctrans;
+            colors->fragAtt.pen_w = desc.cpen_w;
+            colors->fragAtt.trans = desc.ctrans;
 
             ++colors;
 
@@ -1440,7 +1442,7 @@ static int        _readColor(_PL *fp, GArray *colors)
         c.x     = S52_atof(_pBuf+14);
         c.y     = S52_atof(_pBuf+21);
         c.L     = S52_atof(_pBuf+28);
-        c.trans = '0';  // default to opaque
+        c.fragAtt.trans = '0';  // default to opaque
 
         _cms_xyL2rgb(&c);
         //PRINTF("%s %f %f %f -> %i %i %i\n", c.colName, c.x, c.y, c.L, c.R, c.G, c.B);
@@ -1457,7 +1459,7 @@ static int        _readColor(_PL *fp, GArray *colors)
                 return FALSE;
             }
 
-            c.cidx = i; // optimisation
+            c.fragAtt.cidx = i; // optimisation
 
             S52_Color *c1 = &g_array_index(colors, S52_Color, i);
 
@@ -2841,7 +2843,7 @@ S52_obj    *S52_PL_newObj(S57_geo *geo)
     return_if_null(geo);
 
     S52_obj *obj = NULL;
-    guint    idx = S57_getGeoS57ID(geo);
+    guint    idx = S57_getS57ID(geo);
     if (idx<_objList->len && (NULL != (obj = g_ptr_array_index(_objList, idx)))) {
         S52_PL_delObj(obj, FALSE);
     } else {
@@ -2859,7 +2861,7 @@ S52_obj    *S52_PL_newObj(S57_geo *geo)
     obj->textParsed[0] = FALSE;
     obj->textParsed[1] = FALSE;
 
-    // NOTE: this is a general holder for orient/speed depending on
+    // Note: this is a general holder for orient/speed depending on
     // the object type. So it could be for current, ship, AIS, ...
     obj->orient        = INFINITY;
     obj->speed         = INFINITY;
@@ -2975,16 +2977,16 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
     // WARNING: note that Aux Info is not touched - still in 'obj'
     //
 
-    S52_obj *objFree = (S52_obj *)g_ptr_array_index(_objList, S57_getGeoS57ID(obj->geo));
+    S52_obj *objFree = (S52_obj *)g_ptr_array_index(_objList, S57_getS57ID(obj->geo));
     if (NULL == objFree) {
-        PRINTF("DEBUG: should not be NULL (%u)\n", S57_getGeoS57ID(obj->geo));
+        PRINTF("DEBUG: should not be NULL (%u)\n", S57_getS57ID(obj->geo));
         g_assert(0);
     }
 
     S57_geo *geo = obj->geo;
     if (TRUE == updateObjL) {
         // nullify obj in array at index
-        g_ptr_array_index(_objList, S57_getGeoS57ID(geo)) = NULL;
+        g_ptr_array_index(_objList, S57_getS57ID(geo)) = NULL;
     }
 
     return geo;
@@ -3009,7 +3011,7 @@ S57_geo    *S52_PL_setGeo(_S52_obj *obj, S57_geo *geo)
 #endif  // 0
 
 const char *S52_PL_getOBCL(_S52_obj *obj)
-// NOTE: geo.name is the same as LUP.OBCL
+// Note: geo.name is the same as LUP.OBCL
 // but not all geo.name has LUP.OBCL
 // ex: DSID, EdjeNode, ConnectedNode, ..
 // (ie S57_getName(geo))
@@ -3024,7 +3026,7 @@ const char *S52_PL_getOBCL(_S52_obj *obj)
     }
 }
 
-/*
+#if 0
 S57_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -3034,7 +3036,7 @@ S57_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
     else
         return obj->LUP->FTYP;
 }
-*/
+#endif  // 0
 
 S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
 {
@@ -3229,13 +3231,8 @@ int         S52_PL_cmpCmdParam(_S52_obj *obj, const char *name)
     return_if_null(name);
 
     _cmdWL *cmd = _getCrntCmd(obj);
-    if (NULL == cmd) {
-        PRINTF("DEBUG: cmd = NULL\n");
-        g_assert(0);
-
-        //return FALSE;  // 0 = equal!
+    if (NULL == cmd)
         return -1;
-    }
 
     // FIXME: glib strncmp() equivalent - does PLib allow utf?
     //if (S52_SMB_NMLN == strlen(name))
@@ -3251,13 +3248,8 @@ int         S52_PL_cmpCmdParamLUP(_S52_obj *obj, const char *name)
     return_if_null(name);
 
     _cmdWL *cmd = _getCrntCmd(obj);
-    if (NULL == cmd) {
-        PRINTF("DEBUG: cmd = NULL\n");
-        g_assert(0);
-
-        //return FALSE;  // 0 = equal!
+    if (NULL == cmd)
         return -1;
-    }
 
     // FIXME: glib strncmp() equivalent - does PLib allow utf?
     // Note: some param are LUP name - 6 chars, and not \0 terminated
@@ -3272,7 +3264,10 @@ const char *S52_PL_getCmdText(_S52_obj *obj)
     return_if_null(obj);
 
     _cmdWL *cmd = _getCrntCmd(obj);
-    if ((NULL==cmd) || (NULL==cmd->cmd.def) || (NULL==cmd->cmd.def->exposition.LXPO))
+    if (NULL == cmd)
+        return NULL;
+
+    if ((NULL==cmd->cmd.def) || (NULL==cmd->cmd.def->exposition.LXPO))
         return NULL;
 
     return cmd->cmd.def->exposition.LXPO->str;
@@ -3414,8 +3409,14 @@ int         S52_PL_getSYbbox(_S52_obj *obj, int *width, int *height)
     return_if_null(obj);
 
     _cmdWL *cmd = _getCrntCmd(obj);
-    if ((NULL==cmd) || (NULL==cmd->cmd.def))
+    if (NULL == cmd)
         return FALSE;
+
+    if (NULL == cmd->cmd.def) {
+        PRINTF("DEBUG: cmd.def NULL\n");
+        g_assert(0);
+        return FALSE;
+    }
 
     *width  = cmd->cmd.def->pos.symb.bbox_w.SYHL;
     *height = cmd->cmd.def->pos.symb.bbox_h.SYVL;
@@ -3464,7 +3465,12 @@ int         S52_PL_getLCdata(_S52_obj *obj, double *symlen, char *pen_w)
     *pen_w  = '1';
 
     _cmdWL *cmd = _getCrntCmd(obj);
-    if ((NULL==cmd) || (NULL==cmd->cmd.def)) {
+    if (NULL == cmd)
+        return FALSE;
+
+    if (NULL == cmd->cmd.def) {
+        PRINTF("DEBUG: cmd.def NULL\n");
+        g_assert(0);
         return FALSE;
     }
 
@@ -3486,7 +3492,7 @@ int         S52_PL_getLCdata(_S52_obj *obj, double *symlen, char *pen_w)
 
 
     //*pen_w = cmd->cmd.def->LC_pen_w;
-    *pen_w = cmd->cmd.def->DListData.colors[0].pen_w;
+    *pen_w = cmd->cmd.def->DListData.colors[0].fragAtt.pen_w;
     if (*pen_w < '1' || '9' < *pen_w) {
         PRINTF("WARNING: out of bound pen width for LC (%c)\n", *pen_w);
         g_assert(0);
@@ -3515,9 +3521,9 @@ S52_Color  *S52_PL_getACdata(_S52_obj *obj)
     }
 
     if (cmd->param[5] == ',')
-        color->trans = cmd->param[6];
+        color->fragAtt.trans = cmd->param[6];
     else
-        color->trans = '0';  // FIXME: this is useless
+        color->fragAtt.trans = '0';  // FIXME: this is useless
 
     return color;
 }
@@ -3527,8 +3533,15 @@ int         S52_PL_getAPTileDim(_S52_obj *obj, double *w, double *h, double *dx)
     return_if_null(obj);
 
     _cmdWL *cmd = _getCrntCmd(obj);
-    if ((NULL==cmd) || (NULL==cmd->cmd.def))
+    if (NULL == cmd)
         return FALSE;
+
+    if (NULL == cmd->cmd.def) {
+        PRINTF("DEBUG: cmd.def NULL\n");
+        g_assert(0);
+        return FALSE;
+    }
+
 
     int bbx     = cmd->cmd.def->pos.patt.bbox_x.LBXC;
     int bby     = cmd->cmd.def->pos.patt.bbox_y.LBXR;
@@ -3580,8 +3593,14 @@ int         S52_PL_getAPTilePos(_S52_obj *obj, double *bbox_x, double *bbox_y, d
     return_if_null(obj);
 
     _cmdWL *cmd = _getCrntCmd(obj);
-    if ((NULL==cmd) || (NULL==cmd->cmd.def))
+    if (NULL == cmd)
         return FALSE;
+
+    if (NULL == cmd->cmd.def) {
+        PRINTF("DEBUG: cmd.def NULL\n");
+        g_assert(0);
+        return FALSE;
+    }
 
     *bbox_x  = cmd->cmd.def->pos.patt.bbox_x.LBXC;
     *bbox_y  = cmd->cmd.def->pos.patt.bbox_y.LBXR;
@@ -3596,8 +3615,14 @@ int         S52_PL_setAPtexID(_S52_obj *obj, guint mask_texID)
     return_if_null(obj);
 
     _cmdWL *cmd = _getCrntCmd(obj);
-    if ((NULL==cmd) || (NULL==cmd->cmd.def))
+    if (NULL == cmd)
         return FALSE;
+
+    if (NULL == cmd->cmd.def) {
+        PRINTF("DEBUG: cmd.def NULL\n");
+        g_assert(0);
+        return FALSE;
+    }
 
     cmd->cmd.def->mask_texID = mask_texID;
 
@@ -3609,8 +3634,14 @@ guint       S52_PL_getAPtexID(_S52_obj *obj)
     return_if_null(obj);
 
     _cmdWL *cmd = _getCrntCmd(obj);
-    if ((NULL==cmd) || (NULL==cmd->cmd.def))
+    if (NULL == cmd)
         return FALSE;
+
+    if (NULL == cmd->cmd.def) {
+        PRINTF("DEBUG: cmd.def NULL\n");
+        g_assert(0);
+        return FALSE;
+    }
 
     return cmd->cmd.def->mask_texID;
 }
@@ -3662,20 +3693,8 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
     if (NULL == cmd)
         return NULL;
 
-    // parano
-    //S52_CMD_SYM_PT,     // SY --SHOWPOINT
-    //S52_CMD_SIM_LN,     // LS --SHOWLINE
-    //S52_CMD_COM_LN,     // LC --SHOWLINE
-    //S52_CMD_ARE_CO,     // AC --SHOWAREA`
-    //S52_CMD_ARE_PA,     // AP --SHOWAREA
-
-    //if ((S52_CMD_COM_LN!=cmd->cmdWord) &&
-    //    (S52_CMD_ARE_PA!=cmd->cmdWord) &&
-    //    (S52_CMD_ARE_CO!=cmd->cmdWord) &&   // _renderAC_LIGHTS05() pass here now
-    //    (S52_CMD_SYM_PT!=cmd->cmdWord))
-
     if (S52_CMD_SIM_LN == cmd->cmdWord) {
-        PRINTF("ERROR: S52_CMD_SIM_LN has no DList\n");
+        PRINTF("DEBUG: S52_CMD_SIM_LN has no DList\n");
         g_assert(0);
         return NULL;
     }
@@ -3717,7 +3736,7 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
             // this will also copy the 'cidx/trans/pen_w' from the color table
             //c[i] = *col;
 
-            S52_Color *col = _getColorAt(c[i].cidx);
+            S52_Color *col = _getColorAt(c[i].fragAtt.cidx);
             c[i].R = col->R;
             c[i].G = col->G;
             c[i].B = col->B;
@@ -4159,7 +4178,7 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
     if (NULL == cmd->cmd.text)
         return NULL;
 
-    *col    = _getColorAt(cmd->cmd.text->col->cidx);
+    *col    = _getColorAt(cmd->cmd.text->col->fragAtt.cidx);
     *xoffs  = cmd->cmd.text->xoffs;
     *yoffs  = cmd->cmd.text->yoffs;
     *bsize  = cmd->cmd.text->bsize;
@@ -4194,7 +4213,7 @@ int         S52_PL_setTextParsed(_S52_obj *obj)
 
 int         S52_PL_hasText(_S52_obj *obj)
 // return TRUE if there is at least one TEXT command word
-// NOTE: the text itself could be unvailable yet!
+// Note: the text itself could be unvailable yet!
 {
     // called from foreach() so can it be NULL?
     return_if_null(obj);
@@ -4451,7 +4470,7 @@ S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
         }
     }
 
-    // NOTE: this is the standard display with object added (from 'other'
+    // Note: this is the standard display with object added (from 'other'
     // category) or removed (from 'standard') but not from the base display.
     return S52_SUPP_ERR;
 }
@@ -4461,8 +4480,14 @@ int         S52_PL_getPivotOffset(_S52_obj *obj, double *offset_x, double *offse
     return_if_null(obj);
 
     _cmdWL *cmd = _getCrntCmd(obj);
-    if ((NULL==cmd) || (NULL==cmd->cmd.def))
+    if (NULL == cmd)
         return FALSE;
+
+    if (NULL == cmd->cmd.def) {
+        PRINTF("DEBUG: cmd.def NULL\n");
+        g_assert(0);
+        return FALSE;
+    }
 
     int bbw = cmd->cmd.def->pos.symb.bbox_w.SYHL;
     int bbh = cmd->cmd.def->pos.symb.bbox_h.SYVL;
@@ -4706,7 +4731,7 @@ S52_obj    *S52_PL_isObjValid(unsigned int objH)
         return NULL;
     }
 
-    if (objH != S57_getGeoS57ID(obj->geo)) {
+    if (objH != S57_getS57ID(obj->geo)) {
         PRINTF("WARNING: idx obj mismatch obj geoID \n");
 
         g_assert(0);
