@@ -3,8 +3,8 @@
 // SD 2016APR26
 
 
-#define VESSELTURN_UNDEFINED 129
-#define VESSELLABEL "~~MV Non Such~~ "           // last char will be trimmed
+#define VESSEL_TURN_UNDEFINED 129
+#define VESSEL_LABEL "~~MV Non Such~~ "           // last char will be trimmed
 
 static S52ObjectHandle _vessel_ais        = FALSE;
 
@@ -32,7 +32,7 @@ static int _s52_setupVESSEL(double cLat, double cLon)
     S52_setVector(_vessel_ais, 1, 060.0, 16.0);   // ground
 
     // (re) set label
-    S52_setVESSELlabel(_vessel_ais, VESSELLABEL);
+    S52_setVESSELlabel(_vessel_ais, VESSEL_LABEL);
 
     {
         //int vesselSelect = 0;  // OFF
@@ -40,7 +40,7 @@ static int _s52_setupVESSEL(double cLat, double cLon)
         int vestat       = 1; // AIS active
         //int vestat       = 2; // AIS sleeping
         //int vestat       = 3;  // AIS red, close quarters (compile with S52_USE_SYM_VESSEL_DNGHL)
-        int vesselTurn   = VESSELTURN_UNDEFINED;
+        int vesselTurn   = VESSEL_TURN_UNDEFINED;
         S52_setVESSELstate(_vessel_ais, vesselSelect, vestat, vesselTurn);
     }
 
