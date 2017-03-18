@@ -31,7 +31,7 @@
 //
 //   GLOBAL MARINER PARAMETER (will move out)
 //
-// NOTE: value for Chart No 1 found in README
+// Note: value for Chart No 1 found in README
 //
 // Soundings      ON
 // Text           ON
