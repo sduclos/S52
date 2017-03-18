@@ -55,15 +55,6 @@ static unsigned int _S57ID = 1;  // start at 1, the number of object loaded
 typedef struct _pt3 { double x,y,z; } pt3;
 typedef struct _pt2 { double x,y;   } pt2;
 
-/* assume: extent canonical: W < E, S < N
-typedef struct _ext {
-    double W;        // W  LL
-    double S;        // S  LL
-    double E;        // E  UR
-    double N;        // N  UR
-} _ext;
-*/
-
 // data for glDrawArrays()
 typedef struct _prim {
     int mode;
@@ -93,7 +84,6 @@ typedef struct _S57_geo {
 
     S57_Obj_t    obj_t;       // PL & S57 - P/L/A
 
-    //_ext        ext;        // lat/lon extent of this S75 object
     ObjExt_t     ext;
 
     // length of geo data (POINT, LINE, AREA) currently in buffer
@@ -122,8 +112,10 @@ typedef struct _S57_geo {
     S57_geo     *relation;
 #endif
 
-    // for CS - object "touched" by this object
+    // for CS - object "touched" by this object - ref to object local to tihs object
+    // FIXME: union assume use is exclusif - check this!
     union {
+    //struct {
         S57_geo *TOPMAR; // break out objet class "touched"
         S57_geo *LIGHTS; // break out objet class "touched"
         S57_geo *DEPARE; // break out objet class "touched"
@@ -144,7 +136,7 @@ typedef struct _S57_geo {
 #endif
 
     // centroid - save current centroids of this object
-    // optimisation mostly for layer 9 AREA
+    // optimisation mostly for layer 9 AREA (FIXME: exemple of centroid on layer 9 ?!)
     guint        centroidIdx;
     GArray      *centroid;
 
@@ -235,7 +227,7 @@ int        S57_doneData   (_S57_geo *geo, gpointer user_data)
 }
 
 int        S57_initPROJ()
-// NOTE: corrected for PROJ 4.6.0 ("datum=WGS84")
+// Note: corrected for PROJ 4.6.0 ("datum=WGS84")
 {
     if (FALSE == _doInit)
         return FALSE;
@@ -417,8 +409,9 @@ int        S57_geo2prj3dv(guint npt, double *data)
 
     /*
     // FIXME: heuristic to reduce the number of point (for LOD):
-    //try to (and check) reduce the number of points by flushing decimal
+    // try to (and check) reduce the number of points by flushing decimal
     // then libtess should remove coincident points.
+    //
     // Other trick, try to reduce more by rounding using cell scale
     // pt->x = nearbyint(pt->x / (? * 10)) / (? * 10);
     //
@@ -709,7 +702,7 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
     }
 
     // alloc'ed mem for xyz vs xyz size
-    if (*npt < geo->geoSize) {
+    if ((0==ringNo) && (*npt<geo->geoSize)) {
         PRINTF("ERROR: geo lenght greater then npt - internal error\n");
         g_assert(0);
         return FALSE;
@@ -952,7 +945,6 @@ int        S57_getExt(_S57_geo *geo, double *W, double *S, double *E, double *N)
         geo->ext.E =  INFINITY;  // E
         geo->ext.N =  INFINITY;  // N
 
-
         // filter out system generated symb (scale, unit, ..) have no extent
         if (0 != g_strcmp0(geo->name, "$CSYMB")) {
             //PRINTF("DEBUG: no extent for %s:%i\n", geo->name, geo->S57ID);
@@ -983,9 +975,6 @@ ObjExt_t   S57_getExt(_S57_geo *geo)
         geo->ext.N =  INFINITY;  // N
     }
 
-    //ObjExt_t ext = {geo->ext.W, geo->ext.S, geo->ext.E, geo->ext.N};
-
-    //return ext;
     return geo->ext;
 }
 
@@ -1127,6 +1116,20 @@ int        S57_setTouchTOPMAR(_S57_geo *geo, S57_geo *touch)
 {
     return_if_null(geo);
 
+    //* debug
+    if ((0==g_strcmp0(touch->name, "LITFLT")) ||
+        (0==g_strcmp0(touch->name, "LITVES")) ||
+        (0==strncmp  (touch->name, "BOY", 3)))
+    {
+        if (NULL != geo->touch.TOPMAR) {
+            PRINTF("DEBUG: touch.TOMAR allready in use by %s\n", geo->touch.TOPMAR->name);
+        }
+    } else {
+        PRINTF("DEBUG: not TOMAR: %s\n", touch->name);
+        g_assert(0);
+    }
+    //*/
+
     geo->touch.TOPMAR = touch;
 
     return TRUE;
@@ -1142,6 +1145,19 @@ S57_geo   *S57_getTouchTOPMAR(_S57_geo *geo)
 int        S57_setTouchLIGHTS(_S57_geo *geo, S57_geo *touch)
 {
     return_if_null(geo);
+
+    // WARNING: reverse chaining
+
+    //* debug
+    if (0 == g_strcmp0(geo->name, "LIGHTS")) {
+        if (NULL != touch->touch.LIGHTS) {
+            PRINTF("DEBUG: touch.LIGHTS allready in use by %s\n", touch->touch.LIGHTS->name);
+        }
+    } else {
+        PRINTF("DEBUG: not LIGHTS: %s\n", geo->name);
+        g_assert(0);
+    }
+    //*/
 
     geo->touch.LIGHTS = touch;
 
@@ -1159,6 +1175,27 @@ int        S57_setTouchDEPARE(_S57_geo *geo, S57_geo *touch)
 {
     return_if_null(geo);
 
+    //* debug
+    if ((0==g_strcmp0(touch->name, "DEPARE")) ||
+        (0==g_strcmp0(touch->name, "DRGARE")) ||
+        (0==g_strcmp0(touch->name, "OBSTRN")) ||
+        (0==g_strcmp0(touch->name, "UWTROC")) ||
+        (0==g_strcmp0(touch->name, "WRECKS"))
+       )
+    {
+        if (NULL != geo->touch.DEPARE) {
+            PRINTF("DEBUG: touch.DEPARE allready in use by %s\n", geo->touch.DEPARE->name);
+            //if (0 != g_strcmp0(geo->name, geo->touch.DEPARE->name)) {
+            //    PRINTF("DEBUG: %s:%i touch.DEPARE allready  in use by %s:%i will be replace by %s:%i\n",
+            //           geo->name, geo->S57ID, geo->touch.DEPARE->name, geo->touch.DEPARE->S57ID, touch->name, touch->S57ID);
+            //}
+        }
+    } else {
+        PRINTF("DEBUG: not DEPARE: %s\n", touch->name);
+        g_assert(0);
+    }
+    //*/
+
     geo->touch.DEPARE = touch;
 
     return TRUE;
@@ -1174,6 +1211,22 @@ S57_geo   *S57_getTouchDEPARE(_S57_geo *geo)
 int        S57_setTouchDEPVAL(_S57_geo *geo, S57_geo *touch)
 {
     return_if_null(geo);
+
+    //* debug
+    if ((0==g_strcmp0(touch->name, "DEPARE")) ||
+        (0==g_strcmp0(touch->name, "DRGARE")) ||    // not in S52!
+        (0==g_strcmp0(touch->name, "UNSARE"))       // this does nothing!
+       )
+    {
+        if (NULL != geo->touch.DEPVAL) {
+            PRINTF("DEBUG: %s:%i touch.DEPVAL allready in use by %s:%i\n",
+                   geo->name, geo->S57ID, geo->touch.DEPVAL->name, geo->touch.DEPVAL->S57ID);
+        }
+    } else {
+        PRINTF("DEBUG: not DEPVAL: %s\n", touch->name);
+        g_assert(0);
+    }
+    //*/
 
     geo->touch.DEPVAL = touch;
 
@@ -1503,7 +1556,7 @@ S57_geo   *S57_delNextPoly(_S57_geo *geo)
 }
 #endif
 
-guint      S57_getGeoS57ID(_S57_geo *geo)
+guint      S57_getS57ID(_S57_geo *geo)
 {
     return_if_null(geo);
 
