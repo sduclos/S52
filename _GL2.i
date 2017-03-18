@@ -95,8 +95,8 @@ static GLint _aAlpha      = 0;
 
 //---- PATTERN GL2 / GLES2 -----------------------------------------------------------
 //
-// NOTE: 4 mask are drawn to fill the square made of 2 triangles (fan)
-// NOTE: MSB 0x01, LSB 0xE0 - so it left most pixels is at 0x01 0x00
+// Note: 4 mask are drawn to fill the square made of 2 triangles (fan)
+// Note: MSB 0x01, LSB 0xE0 - so it left most pixels is at 0x01 0x00
 // and the right most pixel in a byte is at 0xE0
 // 1 bit in _nodata_mask is 4 bytes (RGBA) in _rgba_nodata_mask (s0 x 8 bits x 4 )
 
@@ -194,7 +194,7 @@ static int            _fb_pixels_udp  = TRUE;  // TRUE flag that the FB changed
 static int            _fb_pixels_format      = _RGB;   // alpha blending done in shader
 #else
 static int            _fb_pixels_format      = _RGBA;
-//static int            _fb_pixels_format      = _RGB ;  // NOTE: on TEGRA2 RGB (3) very slow
+//static int            _fb_pixels_format      = _RGB ;  // Note: on TEGRA2 RGB (3) very slow
 #endif
 */
 
@@ -382,10 +382,10 @@ static int       _init_freetype_gl(void)
     return TRUE;
 }
 
-static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsigned int weight, double *strWpx, double *strHpx)
+//static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsigned int weight, double *strWpx, double *strHpx)
+static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsigned int bsize, double *strWpx, double *strHpx)
 // fill buffer with triangles strip, W/H can be NULL
 // experimental: smaller text size if second line
-// FIXME: use bsize instead of weight
 {
     int   pen_x = 0;
     int   pen_y = 0;
@@ -402,15 +402,19 @@ static GArray   *_fill_freetype_gl_buffer(GArray *ftglBuf, const char *str, unsi
     for (glong i=0; i<len; ++i) {
         gchar           *utfc  = g_utf8_offset_to_pointer(str, i);
         gunichar         unic  = g_utf8_get_char(utfc);
-        texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], unic);
+        //texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], unic);
+        texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[bsize], unic);
         if (NULL == glyph) {
+            PRINTF("DEBUG: NULL glyph %lc: \n", unic);
             continue;
         }
 
         // experimental: smaller text size if second line
         if (NL == unic) {
-            weight = (0<weight) ? weight-1 : weight;
-            texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], 'A');
+            //weight = (0<weight) ? weight-1 : weight;
+            //texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[weight], 'A');
+            bsize = (0<bsize) ? bsize-1 : bsize;
+            texture_glyph_t *glyph = texture_font_get_glyph(_freetype_gl_font[bsize], 'A');
             pen_x =  0;
             pen_y = (NULL!=glyph) ? -(glyph->height+5) : 10 ;
             nl    = TRUE;
@@ -1749,7 +1753,7 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
     glGenTextures(1, &mask_texID);
     glBindTexture(GL_TEXTURE_2D, mask_texID);
 
-    // NOTE: GL_RGBA is needed for:
+    // Note: GL_RGBA is needed for:
     // - Vendor: Tungsten Graphics, Inc. - Renderer: Mesa DRI Intel(R) 965GM x86/MMX/SSE2
     // - Vendor: Qualcomm                - Renderer: Adreno (TM) 320
 #ifdef S52_USE_GLSC2
