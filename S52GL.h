@@ -67,8 +67,6 @@ typedef struct S52_GL_ras {
     double  gt[6];            // GeoTransform
 
     //double S,W,N,E;
-    //extent pext;              // prj extent
-    //extent gext;              // geo extent
     ObjExt_t pext;              // prj extent
     ObjExt_t gext;              // geo extent
 
