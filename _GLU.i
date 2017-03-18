@@ -414,7 +414,7 @@ static GLint     _initGLU(void)
         gluTessCallback(_tobj, GLU_TESS_VERTEX_DATA,(f)_vertex3d);
         gluTessCallback(_tobj, GLU_TESS_COMBINE,    (f)_combineCallback);
 
-        // NOTE: _*NOT*_ NULL to trigger GL_TRIANGLES tessallation
+        // Note: _*NOT*_ NULL to trigger GL_TRIANGLES tessallation
         gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) _edgeFlag);
         //gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) NULL);
 
@@ -524,7 +524,7 @@ static GLint     _initGLU(void)
         gluTessCallback(_tUnion, GLU_TESS_ERROR,     (f)_tessError);
         gluTessCallback(_tUnion, GLU_TESS_COMBINE,   (f)_combineCallback);
 
-        // NOTE: _*NOT*_ NULL to trigger GL_TRIANGLES tessallation
+        // Note: _*NOT*_ NULL to trigger GL_TRIANGLES tessallation
         //gluTessCallback(_tUnion, GLU_TESS_EDGE_FLAG, (f)_edgeFlag);
         gluTessCallback(_tUnion, GLU_TESS_EDGE_FLAG, (f)NULL);
 
@@ -603,7 +603,7 @@ static S57_prim *_tessd(GLUtriangulatorObj *tobj, S57_geo *geo)
 
     _g_ptr_array_clear(_tmpV);
 
-    // NOTE: _*NOT*_ NULL to trigger GL_TRIANGLES tessallation
+    // Note: _*NOT*_ NULL to trigger GL_TRIANGLES tessallation
     //gluTessCallback(_tobj, GLU_TESS_EDGE_FLAG,  (f) _edgeFlag);
 
     gluTessBeginPolygon(tobj, prim);
