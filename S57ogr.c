@@ -241,7 +241,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
         case wkbLineString: {
             int count = OGR_G_GetPointCount(hGeom);
 
-            // NOTE: when S52_USE_SUPP_LINE_OVERLAP then Edge might have 0 node
+            // Note: when S52_USE_SUPP_LINE_OVERLAP then Edge might have 0 node
             /* so this code fail
             if (count < 2) {
                 PRINTF("WARNING: a line with less than 2 points!?\n");
@@ -279,7 +279,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
             ringxyznbr = g_new(guint,      nRingCount);
             ringxyz    = g_new(geocoord *, nRingCount);
 
-            // NOTE: to check winding on an open area
+            // Note: to check winding on an open area
             //for (i = n-1, j = 0; j < n; i = j, j++) {
             //     ai = x[i] * y[j] - x[j] * y[i];
             //}
