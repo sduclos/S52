@@ -101,8 +101,8 @@ typedef enum S52_CmdWrd {
                         // 3-7 - viewing group,
 } S52_CmdWrd;
 
-// color definition
-typedef struct S52_Color {
+//* FIXME: fragment attributes - to fix S52_PL_getDListData() kludge
+typedef struct S52_fragAtt {
     //--- not S52 field --------
     // FIXME: index of a GArray - pointer arithmetic - so guchar must be conveted gpointer!
     // #define g_ptr_array_index(array,index_) ((array)->pdata)[index_]
@@ -110,6 +110,20 @@ typedef struct S52_Color {
     guchar   cidx;      // index of this color in palette [0..63], used as lookup when palette change
     char     pen_w;     // using VBO's we need to know this, Display List store this but not VBO
     char     trans;     // command word can change this so 'trans' is linked to an object not a color
+    //--------------------------
+} S52_fragAtt;
+//*/
+
+// color definition
+typedef struct S52_Color {
+    //--- not S52 field --------
+    // FIXME: index of a GArray - pointer arithmetic - so guchar must be conveted gpointer!
+    // #define g_ptr_array_index(array,index_) ((array)->pdata)[index_]
+    // so i * sizeof(S52_Color)
+    //guchar   cidx;      // index of this color in palette [0..63], used as lookup when palette change
+    //char     pen_w;     // using VBO's we need to know this, Display List store this but not VBO
+    //char     trans;     // command word can change this so 'trans' is linked to an object not a color
+    S52_fragAtt fragAtt;
     //--------------------------
 
     char     colName[S52_PL_COL_NMLN +1];   // '\0' terminated
