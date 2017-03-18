@@ -35,8 +35,8 @@ static int      _s52_setupMarPar(void)
 
     S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);    // on  (default OFF)
     //S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   1.0);  // on  (default OFF)
-    //S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);  // on  (default OFF)
-    //S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);  // on  (default OFF)
+    S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);  // on  (default OFF)
+    S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);  // on - 1NM (default OFF - 0.0)
     //S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);  // off (default ON)
 
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // BASE always ON
