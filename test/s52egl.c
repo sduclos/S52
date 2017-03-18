@@ -1757,10 +1757,10 @@ static int      _X11_handleXevent(gpointer user_data)
 
         case ButtonRelease:
             {
-                XButtonReleasedEvent *mouseEvent = (XButtonReleasedEvent *)&event;
+                //XButtonReleasedEvent *mouseEvent = (XButtonReleasedEvent *)&event;
 
                 // test pick
-                //*
+                /*
                 const char *name = S52_pickAt(mouseEvent->x, engine->height - mouseEvent->y);
                 if (NULL != name) {
                     unsigned int S57ID = atoi(name+7);
@@ -1784,7 +1784,9 @@ static int      _X11_handleXevent(gpointer user_data)
                         if (0 != vessel) {
                             int vesselSelect = 1;  // ON
                             int vestat       = 0;  // AIS state undifined
-                            S52_setVESSELstate(vessel, vesselSelect, vestat, VESSELTURN_UNDEFINED);
+                            // Note: VESSEL_TURN_UNDEFINED defined in VESSEL.i
+                            //S52_setVESSELstate(vessel, vesselSelect, vestat, VESSEL_TURN_UNDEFINED);
+                            S52_setVESSELstate(vessel, vesselSelect, vestat, 129);
                             //g_print("AttList: %s\n", S52_getAttList(S57ID));
                         }
                     }
