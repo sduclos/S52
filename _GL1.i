@@ -3,7 +3,7 @@
 // SD 2014MAY20
 
 
-// NOTE: rubber band in GL1.x
+// Note: rubber band in GL1.x
 // glEnable(GL_COLOR_LOGIC_OP);
 // glLogicOp(GL_XOR);
 
@@ -604,7 +604,7 @@ static int       _renderAP_gl1(S52_obj *obj)
     */
 
 
-    // NOTE: pattern that do not fit entirely inside an area
+    // Note: pattern that do not fit entirely inside an area
     // are displayed  (hence pattern are clipped) because ajacent area
     // filled with same pattern will complete the clipped pattern.
     // No test y+th<y2 and x+tw<x2 to check for the end of a row/collum.
