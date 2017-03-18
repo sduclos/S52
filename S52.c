@@ -57,7 +57,7 @@
 
 typedef guint64 _S52ObjectHandle;
 
-// NOTE: gjs doesn't seem to understand 'gpointer', so send the
+// Note: gjs doesn't seem to understand 'gpointer', so send the
 // handle as a 64 bits unsigned integer (guint64)
 // FIXME: try gdouble that is also 64bits on 32 and 64 bits machine
 
@@ -125,14 +125,8 @@ static struct sigaction _old_signal_handler_SIGTERM;  // 15
 
 //#define S57_CELL_NAME_MAX_LEN 8 // cell name maximum lenght
 
-// move to GL
-//typedef struct _extent {
-//    double S,W,N,E;
-//} _extent;
-
 typedef struct _cell {
-    //extent    geoExt;     // cell geo extent
-    ObjExt_t    geoExt;     // cell geo extent
+    ObjExt_t   geoExt;     // cell geo extent
 
     GString   *filename;  // encName/baseName
     gchar     *encPath;   // original user path/name
@@ -243,13 +237,6 @@ static char      *_intl         = NULL;    // setlocal()
 // statistic
 static guint      _nCull        = 0;
 static guint      _nTotal       = 0;
-
-/* helper - save user center of view in degree
-typedef struct {
-    double cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
-} _view_t;
-static _view_t _view = {0.0, 0.0, 0.0, 0.0};
-*/
 
 // CSYMB init scale bar, north arrow, unit, CHKSYM
 static int             _iniCSYMB = TRUE;
@@ -835,7 +822,7 @@ static S52_obj   *_delObj(S52_obj *obj)
 {
     S52_GL_delDL(obj);
 
-    // NOTE: cleanup here, can't be done in PL - collision
+    // Note: cleanup here, can't be done in PL - collision
     S57_geo *geo = S52_PL_delObj(obj, TRUE);
     g_free(obj);
 
@@ -1346,22 +1333,12 @@ static int        _initSIG(void)
     return TRUE;
 }
 
-//static int        _getCellsExt(extent* ext);  // forward decl
-static ObjExt_t   _getCellsExt(void);
-
+static ObjExt_t   _getCellsExt(void);  // forward decl
 static int        _initPROJview(void)
 {
     // skip if Projection allready set
     if (NULL != S57_getPrjStr())
         return TRUE;
-
-    /*extent ext = {0.0, 0.0, 0.0, 0.0};
-    //extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
-    if (FALSE == _getCellsExt(&ext)) {
-        PRINTF("WARNING: failed, no cell loaded\n");
-        return FALSE;
-    }
-    */
 
     ObjExt_t ext = _getCellsExt();
     double cLat  =  (ext.N + ext.S) / 2.0;
@@ -1434,7 +1411,7 @@ static int        _collect_CS_touch(_cell* c)
                 S57_geo *geo = S52_PL_getGeo(obj);
 
                 // debug
-                //if (== S57_getGeoS57ID(geo)) {
+                //if (== S57_getS57ID(geo)) {
                 //    PRINTF("found\n");
                 //    S57_dumpData(geo);
                 //}
@@ -1582,9 +1559,9 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     S52_MP_setTextDisp(0, 100, TRUE);
 
     // setup the virtual cell that will hold mariner's objects
-    // NOTE: there is no IHO cell at scale '6', this garanty that
+    // Note: there is no IHO cell at scale '6', this garanty that
     // objects of this 'cell' will be drawn last (ie on top)
-    // NOTE: most Mariners' Object land on the "fast" layer 9
+    // Note: most Mariners' Object land on the "fast" layer 9
     // But 'pastrk' (and other) are drawn on layer < 9.
     if (NULL == _cellList)
         _cellList = g_ptr_array_new();
@@ -1906,7 +1883,7 @@ static int        _suppLineOverlap()
                         for (guint i=0; i<n; ++splitMASK, ++i) {
                             if (('1'==*splitMASK[0]) || ('5'==*splitMASK[1])) {
                                 // debug
-                                PRINTF("DEBUG: 'MASK' FOUND ---> %s:%i : %s\n", S57_getName(geo), S57_getGeoS57ID(geo), maskstr->str);
+                                PRINTF("DEBUG: 'MASK' FOUND ---> %s:%i : %s\n", S57_getName(geo), S57_getS57ID(geo), maskstr->str);
                                 // TSSLPT:5339 : (7:1,2,255,255,255,255,2)
                                 // TSSLPT:5340 : (5:1,2,255,255,2)
                                 //g_assert(0);
@@ -2010,7 +1987,7 @@ static int        _suppLineOverlap()
 
                             // failsafe
                             if (NULL == name_rcidstr) {
-                                PRINTF("DEBUG: RCID NULL geo: %s ID:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
+                                PRINTF("DEBUG: RCID NULL geo: %s ID:%i\n", S57_getName(geo), S57_getS57ID(geo));
                                 g_assert(0);
                                 continue;
                             }
@@ -2020,7 +1997,7 @@ static int        _suppLineOverlap()
                                 if (NULL == S57_getEdgeOwner(geoEdge)) {
                                     S57_setEdgeOwner(geoEdge, geo);
                                 } else {
-                                    //PRINTF("DEBUG: edge overlap found on %s ID:%i\n", S57_getName(geo), S57_getGeoS57ID(geo));
+                                    //PRINTF("DEBUG: edge overlap found on %s ID:%i\n", S57_getName(geo), S57_getS57ID(geo));
                                     S57_markOverlapGeo(geo, geoEdge);
                                 }
 
@@ -2748,10 +2725,10 @@ DLL int    STD S52_doneCell(const char *encPath)
         }
     }
 
+exit:
     // _app() - compute HO Data Limit
     _doDATCVR = TRUE;
 
-exit:
     g_free(basename);
     g_free(fname);
 
@@ -3089,7 +3066,7 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
 
         ObjExt_t ext = S57_getExt(geo);
         PRINTF("DEBUG: %s:%i object on layer 0 moved to layer %i, highlightON() - %f %f -- %f %f\n",
-               S57_getName(geo), S57_getGeoS57ID(geo), disPrioIdx, ext.W, ext.S, ext.E, ext.N);
+               S57_getName(geo), S57_getS57ID(geo), disPrioIdx, ext.W, ext.S, ext.E, ext.N);
     }
 #endif
 
@@ -3193,7 +3170,7 @@ static S52_obj   *_removeObj(_cell *c, S52_obj *obj)
 // remove the S52 object from the cell (not the object itself)
 // return the oject removed, else return NULL if object not found
 {
-    // NOTE: cannot find the right renderBin from 'obj'
+    // Note: cannot find the right renderBin from 'obj'
     // because 'obj' could be dandling
 
     for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
@@ -3241,7 +3218,7 @@ int            S52_loadObject(const char *objname, void *shape)
     }
 
     // set cell extent from each area object
-    // NOTE: should be the same as CATALOG.03x
+    // Note: should be the same as CATALOG.03x
     if (S57__META_T != S57_getObjtype(geo)) {
 
         // combine HODATA ==> union gluTessProperty(tobj, ..);
@@ -3249,54 +3226,63 @@ int            S52_loadObject(const char *objname, void *shape)
         // LUPT   40LU00102NILM_COVRA00001SPLAIN_BOUNDARIES
         // LUPT   45LU00357NILM_COVRA00001SSYMBOLIZED_BOUNDARIES
 
-        // C1-ed3.1 has no M_COVR
-        // FIXME: coverage in catalog -OR- use gdal to get m_covr if existe
+        // Note: C1-ed3.1 has no M_COVR - will fail to display
+
+        // FIXME: coverage in catalog
+        // -OR-
+        // use gdal to get M_COVR if existe
+
         //if ((S57_AREAS_T==S57_getObjtype(geo)) && (0==g_strcmp0(objname, "M_COVR"))) {
         if (S57_AREAS_T == S57_getObjtype(geo)) {
             ObjExt_t ext = S57_getExt(geo);
 
-            // Note: obj on layer 0 moved up (layer 6) have no extent
+            // Note: debug obj on layer 0 moved up (layer 6-8) have no extent
 
             // Note: it is CATCOV (not CATCVR as in doc/pslb03_2.pdf)
-            // M_COVR:CATCOV=1, HO data limit
+
             // FIXME: optimisation: skip getAttVal, save S57obj M_COVR:CATCOV quark
+
+            // Note: commented for C1-ed3.1, same as above with M_COVR
+
+
+            // M_COVR:CATCOV=1, HO data limit
             //GString *catcovstr = S57_getAttVal(geo, "CATCOV");
             //if ((NULL!=catcovstr) && ('1'==*catcovstr->str)) {
-            //PRINTF("DEBUG: OBJNAME:%s CATCOV == 1\n", objname);
+                //PRINTF("DEBUG: OBJNAME:%s CATCOV == 1\n", objname);
 
-            // +inf
-            if (0 != isinf(_crntCell->geoExt.S)) {
-                _crntCell->geoExt.S = ext.S;
-                _crntCell->geoExt.W = ext.W;
-                _crntCell->geoExt.N = ext.N;
-                _crntCell->geoExt.E = ext.E;
-            } else {
-                // lat
-                if (_crntCell->geoExt.N < ext.N)
-                    _crntCell->geoExt.N = ext.N;
-                if (_crntCell->geoExt.S > ext.S)
+                // +inf
+                if (0 != isinf(_crntCell->geoExt.S)) {
                     _crntCell->geoExt.S = ext.S;
-
-                // init W,E limits
-                // put W-E in first quadrant [0..360]
-                if ((_crntCell->geoExt.W + 180.0) > (ext.W + 180.0))
                     _crntCell->geoExt.W = ext.W;
-                if ((_crntCell->geoExt.E + 180.0) < (ext.E + 180.0))
+                    _crntCell->geoExt.N = ext.N;
                     _crntCell->geoExt.E = ext.E;
-            }
+                } else {
+                    // lat
+                    if (_crntCell->geoExt.N < ext.N)
+                        _crntCell->geoExt.N = ext.N;
+                    if (_crntCell->geoExt.S > ext.S)
+                        _crntCell->geoExt.S = ext.S;
 
-            /* debug: check if this cell is crossing the prime-meridian
-             if ((_crntCell->geoExt.W < 0.0) && (0.0 < _crntCell->geoExt.E)) {
-             PRINTF("DEBUG: CELL crossing prime:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->geoExt.W, _crntCell->geoExt.S, _crntCell->geoExt.E, _crntCell->geoExt.N);
-             g_assert(0);
-             }
-             // check if this cell is crossing the anti-meridian
-             if ((_crntCell->geoExt.W > -180.0) && (180.0 > _crntCell->geoExt.E)) {
-             PRINTF("DEBUG: CELL crossing anti:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->geoExt.W, _crntCell->geoExt.S, _crntCell->geoExt.E, _crntCell->geoExt.N);
-             g_assert(0);
-             }
-             //*/
+                    // init W,E limits
+                    // put W-E in first quadrant [0..360]
+                    if ((_crntCell->geoExt.W + 180.0) > (ext.W + 180.0))
+                        _crntCell->geoExt.W = ext.W;
+                    if ((_crntCell->geoExt.E + 180.0) < (ext.E + 180.0))
+                        _crntCell->geoExt.E = ext.E;
+                }
 
+                /* debug: check if this cell is crossing the prime-meridian
+                 if ((_crntCell->geoExt.W < 0.0) && (0.0 < _crntCell->geoExt.E)) {
+                 PRINTF("DEBUG: CELL crossing prime:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->geoExt.W, _crntCell->geoExt.S, _crntCell->geoExt.E, _crntCell->geoExt.N);
+                 g_assert(0);
+                 }
+                 // check if this cell is crossing the anti-meridian
+                 if ((_crntCell->geoExt.W > -180.0) && (180.0 > _crntCell->geoExt.E)) {
+                 PRINTF("DEBUG: CELL crossing anti:%s :: MIN: %f %f  MAX: %f %f\n", objname, _crntCell->geoExt.W, _crntCell->geoExt.S, _crntCell->geoExt.E, _crntCell->geoExt.N);
+                 g_assert(0);
+                 }
+                 //*/
+            //}  // CATCOV
         }  // S57_AREAS_T/M_COVR
 
         {
@@ -3419,7 +3405,6 @@ int            S52_loadObject(const char *objname, void *shape)
 //
 //---------------------------------------------------
 
-//static int        _intersecEXT(extent A, extent B)
 static int        _intersecEXT(ObjExt_t A, ObjExt_t B)
 // TRUE if intersec, FALSE if outside
 // A - ENC ext, B - view ext
@@ -3607,6 +3592,7 @@ static int        _app()
             S52ObjectHandle objH = (S52ObjectHandle) g_array_index(_sclbdyList, unsigned int, i);
             _delMarObj(objH);
         }
+        g_array_set_size(_sclbdyList, 0);
 
         // SCALE BOUNDARIES: system generated CS DATCVR01-3
         for (guint i=0; i<_cellList->len; ++i) {
@@ -3635,16 +3621,16 @@ static int        _app()
 
                             S52_GLU_addUnion(npt, ppt);
 
-                            //extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
-                            //S57_getExt(geo, &ext.W, &ext.S, &ext.E, &ext.N);
                             ObjExt_t ext = S57_getExt(geo);
 
                             for (guint j=i+1; j<_cellList->len; ++j) {
                                 _cell *cj = (_cell*) g_ptr_array_index(_cellList, j);
 
                                 // check nav purp (INTU)
-                                if (*ci->dsid_intustr->str < *cj->dsid_intustr->str)
+                                if (*ci->dsid_intustr->str < *cj->dsid_intustr->str) {
+                                    PRINTF("DEBUG: check nav purp ci:%s cj:%s\n", ci->filename->str, cj->filename->str);
                                     continue;
+                                }
 
                                 //  M_COVR intersect smaller scale extent
                                 if (TRUE == _intersecEXT(cj->geoExt, ext))
@@ -3693,9 +3679,9 @@ static int        _app()
                 S52_obj *obj = S52_PL_isObjValid(_HODATAUnion);
                 _updateGeo(obj, (double*)rev);
 
-                // optimisation: setExtent
-                S57_geo *geo = S52_PL_getGeo(obj);
-                _setExt(geo, npt, (double*)rev);
+                // FIXME: fail optimisation: setExtent
+                //S57_geo *geo = S52_PL_getGeo(obj);
+                //_setExt(geo, npt, (double*)rev);
             } else {
                 PRINTF("WARNING: 'm_cover' fail check PLib AUX\n");
                 g_assert(0);
@@ -3739,10 +3725,7 @@ static int        _cullLights(void)
         for (guint j=0; j<c->lights_sector->len; ++j) {
             S52_obj *obj  = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
             S57_geo *geo  = S52_PL_getGeo(obj);
-            //extent   oext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
-            //ObjExt_t   oext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
-            //S57_getExt(geo, &oext.W, &oext.S, &oext.E, &oext.N);
-            ObjExt_t   oext = S57_getExt(geo);
+            ObjExt_t oext = S57_getExt(geo);
 
             S52_PL_resloveSMB(obj);
 
@@ -3784,7 +3767,7 @@ static int        _cullObj(_cell *c, GPtrArray *rbin)
         ++_nTotal;
 
         // debug - anti-meridian, US5HA06M/US5HA06M.000
-        //if (103 == S57_getGeoS57ID(geo)) {
+        //if (103 == S57_getS57ID(geo)) {
         //    PRINTF("ISODGR01 found\n");
         //}
 
@@ -3799,11 +3782,14 @@ static int        _cullObj(_cell *c, GPtrArray *rbin)
         //    PRINTF("BOYLAT found\n");
         //    //g_assert(0);
         //}
+        //if (0 == g_strcmp0("PRDARE", S52_PL_getOBCL(obj))) {
+        //    PRINTF("DEBUG: PRDARE FOUND\n");
+        //}
         //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
         //    PRINTF("M_COVR found\n");
         //}
-        //if (0 == g_strcmp0("PRDARE", S52_PL_getOBCL(obj))) {
-        //    PRINTF("DEBUG: PRDARE FOUND\n");
+        //if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
+        //    PRINTF("sclbdy found\n");
         //}
 
         // is *this* object suppressed by user
@@ -3819,7 +3805,7 @@ static int        _cullObj(_cell *c, GPtrArray *rbin)
         }
 
         // outside view
-        // NOTE: object can be inside 'ext' but outside the 'view' (cursor pick)
+        // Note: object can be inside 'ext' but outside the 'view' (cursor pick)
         if (TRUE == S52_GL_isOFFview(obj)) {
             ++_nCull;
             continue;
@@ -3875,7 +3861,6 @@ static int        _cullLayer(_cell *c)
     return TRUE;
 }
 
-//static int        _cull(extent ext)
 static int        _cull(ObjExt_t ext)
 // cull chart not in view extent
 // - viewport
@@ -3921,7 +3906,6 @@ static int        _cull(ObjExt_t ext)
 
 #if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
 #if defined(S52_USE_RASTER) || defined(S52_USE_RADAR)
-//static int        _drawRaster(extent *cellExt)
 static int        _drawRaster(ObjExt_t *cellExt)
 {
     for (guint i=0; i<_rasterList->len; ++i) {
@@ -3969,7 +3953,6 @@ static int        _drawRaster(ObjExt_t *cellExt)
 #endif  // S52_USE_RASTER S52_USE_RADAR
 #endif  // S52_USE_GL2 S52_USE_GLES2
 
-//static int        _drawLayer(extent ext, int layer)
 static int        _drawLayer(ObjExt_t ext, int layer)
 {
     // all cells --larger region first
@@ -4414,7 +4397,6 @@ DLL int    STD S52_draw(void)
         uv1 = S57_prj2geo(uv1);
         uv2 = S57_prj2geo(uv2);
 
-        //extent ext = {
         ObjExt_t ext = {
             .S = uv1.v,
             .W = uv1.u,
@@ -4465,7 +4447,7 @@ DLL int    STD S52_draw(void)
         // for each cell, not after all cell,
         // because city name appear twice
         // FIXME: cull object of overlapping region of cell of DIFFERENT nav pourpose
-        // NOTE: no culling of object of overlapping region of cell of SAME nav pourpose
+        // Note: no culling of object of overlapping region of cell of SAME nav pourpose
         // display priority 8
         // FIX: it's seem like a HO could handle this, but when zoomig-out it's a S52 overlapping symb. probleme
 
@@ -4569,7 +4551,7 @@ static int        _drawLast(void)
             }
 
             // outside view
-            // NOTE: object can be inside 'ext' but outside the 'view' (cursor pick)
+            // Note: object can be inside 'ext' but outside the 'view' (cursor pick)
             if (TRUE == S52_GL_isOFFview(obj)) {
                 ++_nCull;
 
@@ -5042,10 +5024,8 @@ exit:
     return TRUE;
 }
 
-//static int        _getCellsExt(extent* extSum)
 static ObjExt_t   _getCellsExt(void)
 {
-    //int ret = FALSE;
     ObjExt_t extSum = {
         .W =  INFINITY,
         .S =  INFINITY,
@@ -5069,18 +5049,6 @@ static ObjExt_t   _getCellsExt(void)
         if (0 != isinf(c->geoExt.S)) {
             continue;
         }
-
-        /* first pass init extent
-        if (FALSE == ret) {
-            extSum->S = c->geoExt.S;
-            extSum->W = c->geoExt.W;
-            extSum->N = c->geoExt.N;
-            extSum->E = c->geoExt.E;
-
-            ret = TRUE;
-            continue;
-        }
-        */
 
         // N-S limits
         if (extSum.N < c->geoExt.N)
@@ -5168,15 +5136,6 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
     S52_CHECK_MUTX_INIT;
 
     if (NULL == filename) {
-        //extent ext = {0.0, 0.0, 0.0, 0.0};
-        //extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
-
-        /*_getCellsExt(&ext);
-        if (FALSE == _getCellsExt(&ext)) {
-            //return FALSE;
-            goto exit;
-        }
-        */
         ObjExt_t ext = _getCellsExt();
         *S = ext.S;  // !?! clang - assign garbage or undefined
         *W = ext.W;
@@ -5465,58 +5424,57 @@ DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
     oldAA = S52_MP_get(S52_MAR_ANTIALIAS);
     S52_MP_set(S52_MAR_ANTIALIAS, FALSE);
 
-    //extent ext = {0.0, 0.0, 0.0, 0.0};          // pick extent
-    ObjExt_t ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
+    // compute pick view parameter
 
-    {   // compute pick view parameter
+    // mouse has 'Y' down, opengl is up
+    S52_GL_getViewPort(&x, &y, &width, &height);
+    double tmp_px_y = y + pixels_y;
 
-        // mouse has 'Y' down, opengl is up
-        S52_GL_getViewPort(&x, &y, &width, &height);
-        double tmp_px_y = y + pixels_y;
+    // debug
+    PRINTF("DEBUG: pixels_x:%f, pixels_y:%f\n", pixels_x, pixels_y);
 
-        // debug
-        PRINTF("DEBUG: pixels_x:%f, pixels_y:%f\n", pixels_x, pixels_y);
+    // FIXME: check bound
+    // Nexus/Adreno ReadPixels must be POT, hence 8 x 8 extent
 
-        // FIXME: check bound
-        // Nexus/Adreno ReadPixels must be POT, hence 8 x 8 extent
+    // pick extent
+    ObjExt_t ext = {
+        .N = tmp_px_y + 4,
+        .S = tmp_px_y - 4,
+        .E = pixels_x + 3,
+        .W = pixels_x - 3
+    };
 
-        ext.N = tmp_px_y + 4;
-        ext.S = tmp_px_y - 4;
-        ext.E = pixels_x + 3;
-        ext.W = pixels_x - 3;
-        S52_GL_win2prj(&ext.W, &ext.S);
-        S52_GL_win2prj(&ext.E, &ext.N);
+    S52_GL_win2prj(&ext.W, &ext.S);
+    S52_GL_win2prj(&ext.E, &ext.N);
 
-        // save current view
-        S52_GL_getPRJView(&ps, &pw, &pn, &pe);
-        // set view of the pick
-        S52_GL_setPRJView(ext.S, ext.W, ext.N, ext.E);
-        //S52_GL_setViewPort(pixels_x-4, tmp_px_y-4, 8, 8);
-        S52_GL_setViewPort(pixels_x, tmp_px_y, 1, 1);
-        //PRINTF("PICK PRJ EXTENT (swne): %f, %f  %f, %f \n", ext.s, ext.w, ext.n, ext.e);
+    // save current view
+    S52_GL_getPRJView(&ps, &pw, &pn, &pe);
+    // set view of the pick
+    S52_GL_setPRJView(ext.S, ext.W, ext.N, ext.E);
+    //S52_GL_setViewPort(pixels_x-4, tmp_px_y-4, 8, 8);
+    S52_GL_setViewPort(pixels_x, tmp_px_y, 1, 1);
+    //PRINTF("PICK PRJ EXTENT (swne): %f, %f  %f, %f \n", ext.s, ext.w, ext.n, ext.e);
 
-        {   // extent prj --> geo
-            // compute geographic filter extent
-            projUV uv;
-            uv.u = ext.W;
-            uv.v = ext.S;
-            uv = S57_prj2geo(uv);
-            ext.W = uv.u;
-            ext.S = uv.v;
+    {   // extent prj --> geo
+        // compute geographic filter extent
+        projUV uv;
+        uv.u = ext.W;
+        uv.v = ext.S;
+        uv = S57_prj2geo(uv);
+        ext.W = uv.u;
+        ext.S = uv.v;
 
-            uv.u  = ext.E;
-            uv.v  = ext.N;
-            uv = S57_prj2geo(uv);
-            ext.E = uv.u;
-            ext.N = uv.v;
+        uv.u  = ext.E;
+        uv.v  = ext.N;
+        uv = S57_prj2geo(uv);
+        ext.E = uv.u;
+        ext.N = uv.v;
 
-            S52_GL_getGEOView(&gs, &gw, &gn, &ge);         // hold GEO view
-            S52_GL_setGEOView(ext.S, ext.W, ext.N, ext.E);
+        S52_GL_getGEOView(&gs, &gw, &gn, &ge);         // hold GEO view
+        S52_GL_setGEOView(ext.S, ext.W, ext.N, ext.E);
 
-            PRINTF("DEBUG: PICK LL EXTENT (swne): %f, %f  %f, %f \n", ext.S, ext.W, ext.N, ext.E);
-        }
+        PRINTF("DEBUG: PICK LL EXTENT (swne): %f, %f  %f, %f \n", ext.S, ext.W, ext.N, ext.E);
     }
-
 
     if (TRUE == S52_GL_begin(S52_GL_PICK)) {
         _nTotal = 0;
@@ -5714,7 +5672,7 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
                             S57_geo *geo = S52_PL_getGeo(obj);
                             //  S57ID / geo / disp cat / disp prio
                             g_string_append_printf(_S52ObjNmList, ",%i:%c:%c:%i",
-                                                   S57_getGeoS57ID(geo),
+                                                   S57_getS57ID(geo),
                                                    S57_getObjtype(geo),    // return same val as S52_PL_getFTYP()
                                                    //S52_PL_getFTYP(obj),  // same as 'j', but in text (char) equivalent
                                                    S52_PL_getDISC(obj),    //
@@ -6029,7 +5987,12 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
 static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
 {
     // FIXME: crossing of anti-meridian
-    ObjExt_t ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
+    ObjExt_t ext = {
+        .S =  INFINITY,
+        .W =  INFINITY,
+        .N = -INFINITY,
+        .E = -INFINITY
+    };
 
     for (guint i=0; i<xyznbr; ++i) {
         // X - longitude
@@ -6104,6 +6067,13 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
             // transfer and project xyz
             double *dst  = NULL;
             double *src  = xyz;
+
+            /* FIXME: check area: close poly
+             if ((ppt[0]!=ppt[3*(npt-1) + 0]) || (ppt[1]!=ppt[3*(npt-1) + 1]))  {
+             PRINTF("DEBUG: first pt != last pt\n");
+             g_assert(0);
+             }
+             */
 
             dst = gxyz = g_new(double, xyznbr*3);
             for (guint npt=0; npt<(xyznbr*3); ++npt) {
@@ -6211,7 +6181,7 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
     }
 #endif
 
-    return S57_getGeoS57ID(geo);
+    return S57_getS57ID(geo);
 }
 
 DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
@@ -6249,7 +6219,7 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
 
     // debug
     //PRINTF("objH:%u, plibObjName:%s, ID:%i, objType:%i, xyznbr:%u, xyz:%p, listAttVal:<%s>\n",
-    //        obj,     plibObjName, S57_getGeoS57ID(geo), objType, xyznbr, gxyz,
+    //        obj,     plibObjName, S57_getS57ID(geo), objType, xyznbr, gxyz,
     //       (NULL==listAttVal)?"NULL":listAttVal);
 
 exit:
@@ -6418,9 +6388,13 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         double ps,pw,pn,pe;  // hold PRJ view
         double gs,gw,gn,ge;  // hold GEO view
         int    x,y,w,h;      // hold ViewPort
-        //extent ext = {0.0, 0.0, 0.0, 0.0};
-        ObjExt_t ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
 
+        ObjExt_t ext = {
+            .S =  INFINITY,
+            .W =  INFINITY,
+            .N = -INFINITY,
+            .E = -INFINITY
+        };
 
         // set pick to stack mode
         S52_MP_set(S52_MAR_DISP_CRSR_PICK, 2.0);
@@ -6481,7 +6455,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
                             continue;
 
                         // outside view
-                        // NOTE: object can be inside 'ext' but outside the 'view' (cursor pick)
+                        // Note: object can be inside 'ext' but outside the 'view' (cursor pick)
                         if (TRUE == S52_GL_isOFFview(obj)) {
                             ++_nCull;
                             continue;
@@ -6646,7 +6620,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
             goto exit;
         }
 
-        // NOTE: FALSE == (VOID*)NULL or FALSE == (int) 0
+        // Note: FALSE == (VOID*)NULL or FALSE == (int) 0
         if (FALSE != previousLEGLIN) {
             S52_obj *objPrevLeg = S52_PL_isObjValid(previousLEGLIN);
             if (NULL == objPrevLeg) {
@@ -6938,8 +6912,6 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
             // first pos set extent directly
             S57_setExt(geo, longitude, latitude, longitude, latitude);
         } else {
-            //extent ext = {INFINITY, INFINITY, -INFINITY, -INFINITY};
-            //S57_getExt(geo, &ext.W, &ext.S, &ext.E, &ext.N);
             ObjExt_t ext = S57_getExt(geo);
             double xyz[3*3] = {longitude, latitude, 0.0, ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
 
