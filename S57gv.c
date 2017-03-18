@@ -95,7 +95,7 @@ int        S57_gvLoadLayer(const char *layername, void *layer, S52_loadObj_cb cb
 
 S57_geo   *S57_gvLoadObject(const char *objname, void *shape)
 // get object geo data from openev GvShape
-// NOTE: caller responsible to free mem for the moment
+// Note: caller responsible to free mem for the moment
 {
     S57_geo *geo       = NULL;
     int      shapetype = 0;
