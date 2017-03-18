@@ -195,7 +195,7 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
  *
  * Return: (transfer none): String with the version of libS52 and the '#define' used to build it
  */
-#define S52_VERSION "libS52-2017MAR03-1.201"
+#define S52_VERSION "libS52-2017MAR18-1.202"
 DLL const char * STD S52_version(void);
 
 /**
