@@ -367,7 +367,7 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
  * @pixels_y: (in): origin LL corner
  *
  *
- * NOTE:
+ * Note:
  *  - in the next frame, the object is drawn with the "DNGHL" color (experimental))
  *  - using 'double' instead of 'unsigned int' because X11 handle mouse in 'double'.
  *
@@ -597,7 +597,7 @@ DLL int    STD S52_getS57ObjClassSupp(const char *className);
  *
  * set suppression (TRUE/FALSE) from display of all Objects of the S57 class @className
  *
- * NOTE: S52_MAR_DISP_CATEGORY must be set to SELECT.
+ * Note: S52_MAR_DISP_CATEGORY must be set to SELECT.
  *
  *
  * Return: TRUE if call successfull to set new value else FALSE, error -1 (DISPLAYBASE or invalid className)
@@ -754,7 +754,7 @@ DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, u
 //        mnufea (5), ownshp (9), plnpos (5), positn (5), refpnt (7),
 //        tidcur (7), vessel (9), waypnt (8)
 
-// NOTE: Mariners' Object *not* on layer 9
+// Note: Mariners' Object *not* on layer 9
 // need a call to S52_draw() to be drawn
 
 /**
@@ -769,7 +769,7 @@ typedef unsigned int S52ObjectHandle;  // guint S75ID
 
 /**
  * S52_newMarObj:
- * @plibObjName: (in) (type gchar*):
+ * @plibObjName: (in) (type gchar*): object name (ie: PLib LUPT name)
  * @objType:     (in): S52ObjectType
  * @xyznbrmax:   (in): maximum number of xyz (point)(see S52_pushPosition()) (one or more)
  * @xyz:         (in) (type gpointer):
@@ -779,7 +779,9 @@ typedef unsigned int S52ObjectHandle;  // guint S75ID
  * Create new S52_obj - Basic Call.
  * All other call of the form S52_new*() are a specialisation of this one.
  *
- * NOTE: LIFO stack so 'cursor' should be created first to be drawn on top.
+ * Note: S52_AREAS are expected to have the same first and last point (as any S57 area).
+
+ * Note: LIFO stack so 'cursor' should be created first to be drawn on top.
  *
  * In 'listAttVal', in S52 attribute name (ex: att1) of 6 lower case letters are reserve
  * for Mariners' Object. Lower case attribute name starting with an unserscore ('_')
@@ -942,7 +944,7 @@ DLL S52ObjectHandle STD S52_newPASTRK(int catpst, unsigned int xyznbrmax);
  *
  * Push a position on a FIFO stack. The size of the stack is one for object of type S52_POINT.
  * For object of type S52_LINES and S52_AREAS the size of the stack is set via 'xyznbrmax'.
- * S52_AREAS are expected to have the same first and last point (as any S57 area).
+ * Note: S52_AREAS are expected to have the same first and last point (as any S57 area).
  *
  * 'data' is used to display time (hh.mm) if the object is PASTRK.
  * If the object is VESSEL or OWNSHP then 'data' is the heading.
