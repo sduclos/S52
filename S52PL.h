@@ -309,9 +309,14 @@ int            S52_PL_hasText(S52_obj *obj);
 
 // toggle display suppression of this class of object
 S52_objSupp    S52_PL_toggleObjClass(const char *className);
-// get display state for this type of object
-S52_objSupp    S52_PL_getObjToggleState(S52_obj *obj);
+// get display state for this class of object
 S52_objSupp    S52_PL_getObjClassState(const char *className);
+// get display state
+S52_objSupp    S52_PL_getObjToggleState(S52_obj *obj);
+
+// set/get Mariner obj suppression
+gboolean       S52_PL_setSupp(S52_obj *obj, gboolean supp);
+gboolean       S52_PL_getSupp(S52_obj *obj);
 
 int            S52_PL_resloveSMB(S52_obj *obj);
 // dx/dy between center and pivot
@@ -347,9 +352,6 @@ int            S52_PL_setFreetypeGL_VBO(S52_obj *obj, guint vboID, guint len, do
 
 //int            S52_PL_setLOD(S52_obj *obj, char LOD);
 //char           S52_PL_getLOD(S52_obj *obj);
-
-gboolean       S52_PL_setSupp(S52_obj *obj, gboolean supp);
-gboolean       S52_PL_getSupp(S52_obj *obj);
 
 S52_obj       *S52_PL_isObjValid(unsigned int objH);
 
