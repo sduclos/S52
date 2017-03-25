@@ -150,11 +150,11 @@ static int      _s52_setupMarPar(void)
                                           // -1 - display highlight
     S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, -1.0);  // debug - alarm
 
-    //S52_MAR_DISP_HODATA         = 49,   // 0 - union HO data limit "m_covr"(default), 1 - all HO data limit (M_COVR+m_covr)
+    //S52_MAR_DISP_HODATA_UNION   = 49,   // 0 - union HO data limit "m_covr"(default), 1 - all HO data limit (M_COVR+m_covr)
     // CS DATCVY01:M_COVR:CATCOV=2, "M_COVR" OTHER
-    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 1.0);  // draw all M_COVR individualy
+    //S52_setMarinerParam(S52_MAR_DISP_HODATA_UNION, 1.0);  // draw all M_COVR individualy
     //CS DATCVY01:M_COVR:CATCOV=1, "m_covr" BASE, (LUPT in PLAUX_00.DAI)
-    //S52_setMarinerParam(S52_MAR_DISP_HODATA, 0.0);  // union: combite M_COVR as one poly 'm_covr' (default)
+    //S52_setMarinerParam(S52_MAR_DISP_HODATA_UNION, 0.0);  // union: combite M_COVR as one poly 'm_covr' (default)
 
 
     //* debug - use for timing rendering
