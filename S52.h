@@ -146,9 +146,11 @@ typedef enum S52MarinerParameter {
     S52_MAR_GUARDZONE_ALARM     = 48,   // FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
                                         // -1 - display highlight
 
-    S52_MAR_DISP_HODATA         = 49,   // 0 - union HO data limit "m_covr" (default), 1 - all HO data limit "M_COVR+m_covr" (debug)
+    S52_MAR_DISP_HODATA_UNION   = 49,   // 0 - union HO data limit "m_covr" (default), 1 - all HO data limit "M_COVR+m_covr" (debug)
 
-    S52_MAR_NUM                 = 50    // number of parameters
+    S52_MAR_DISP_SCLBDY_UNION   = 50,   // 0 - union Scale Boundary (default), 1 - all Scale Boundary (debug)
+
+    S52_MAR_NUM                 = 51    // number of parameters
 } S52MarinerParameter;
 
 // [3] debug - command word filter for profiling
@@ -763,7 +765,7 @@ DLL int    STD S52_dumpS57IDPixels(const char *toFilename, unsigned int S57ID, u
  * Type used for storing references to S52 objects, the S52ObjectHandle
  * is a fully opaque type without any public data members.
  */
-typedef unsigned int S52ObjectHandle;  // guint S75ID
+typedef unsigned int S52ObjectHandle;  // guint S57ID
 
 // ---- Basic Call (all other S52_new*() call are a specialisation of this one) ----
 
