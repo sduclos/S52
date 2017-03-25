@@ -290,12 +290,12 @@ static void_cb_t _combineCallback(GLdouble   coords[3],
 
 }
 
-static void_cb_t _glBegin(GLenum mode, S57_prim *prim)
+static void_cb_t _glBeg(GLenum mode, S57_prim *prim)
 {
     S57_begPrim(prim, mode);
 }
 
-static void_cb_t _beginCen(GLenum data)
+static void_cb_t _begCen(GLenum data)
 {
     // quiet compiler
     (void) data;
@@ -304,7 +304,7 @@ static void_cb_t _beginCen(GLenum data)
     //PRINTF("%i\n", data);
 }
 
-static void_cb_t _beginCin(GLenum data)
+static void_cb_t _begCin(GLenum data)
 {
     /* from gl.h
      #define GL_LINE_LOOP       0x0002
@@ -408,7 +408,7 @@ static GLint     _initGLU(void)
             return FALSE;
         }
 
-        gluTessCallback(_tobj, GLU_TESS_BEGIN_DATA, (f)_glBegin);
+        gluTessCallback(_tobj, GLU_TESS_BEGIN_DATA, (f)_glBeg);
         gluTessCallback(_tobj, GLU_TESS_END_DATA,   (f)_glEnd);
         gluTessCallback(_tobj, GLU_TESS_ERROR,      (f)_tessError);
         gluTessCallback(_tobj, GLU_TESS_VERTEX_DATA,(f)_vertex3d);
@@ -448,9 +448,11 @@ static GLint     _initGLU(void)
 
     ///////////////////////////////////////////////////////////////
     //
-    // centroid (CSG)
+    // centroid (CSG - Computational Solid Geometry)
     //
     {
+        //-----------------------------------------------------------
+        //  area center
         _tcen = gluNewTess();
         if (NULL == _tcen) {
             PRINTF("WARNING: gluNewTess() failed\n");
@@ -469,7 +471,7 @@ static GLint     _initGLU(void)
         // Note: tolerance not implemented in libtess
         //gluTessProperty(_tcen, GLU_TESS_TOLERANCE, 0.000001);
 
-        gluTessCallback(_tcen, GLU_TESS_BEGIN,  (f)_beginCen);
+        gluTessCallback(_tcen, GLU_TESS_BEGIN,  (f)_begCen);
         gluTessCallback(_tcen, GLU_TESS_END,    (f)_endCen);
         gluTessCallback(_tcen, GLU_TESS_VERTEX, (f)_vertexCen);
         gluTessCallback(_tcen, GLU_TESS_ERROR,  (f)_tessError);
@@ -479,7 +481,7 @@ static GLint     _initGLU(void)
         gluTessNormal(_tcen, 0.0, 0.0, 1.0);
 
         //-----------------------------------------------------------
-
+        //  area center
         _tcin = gluNewTess();
         if (NULL == _tcin) {
             PRINTF("WARNING: gluNewTess() failed\n");
@@ -494,7 +496,7 @@ static GLint     _initGLU(void)
         // Note: tolerance not implemented in libtess
         //gluTessProperty(_tcin, GLU_TESS_TOLERANCE, 0.000001);
 
-        gluTessCallback(_tcin, GLU_TESS_BEGIN,     (f)_beginCin);
+        gluTessCallback(_tcin, GLU_TESS_BEGIN,     (f)_begCin);
         gluTessCallback(_tcin, GLU_TESS_END,       (f)_endCin);
         gluTessCallback(_tcin, GLU_TESS_VERTEX,    (f)_vertexCin);
         gluTessCallback(_tcin, GLU_TESS_ERROR,     (f)_tessError);
@@ -505,7 +507,7 @@ static GLint     _initGLU(void)
         gluTessNormal(_tcin, 0.0, 0.0, 1.0);
 
         //-----------------------------------------------------------
-
+        // area union
         _tUnion = gluNewTess();
         if (NULL == _tUnion) {
             PRINTF("WARNING: gluNewTess() failed\n");
@@ -518,7 +520,7 @@ static GLint     _initGLU(void)
         gluTessProperty(_tUnion, GLU_TESS_BOUNDARY_ONLY, GLU_TRUE);
 
         // use _vertexs to hold Union
-        gluTessCallback(_tUnion, GLU_TESS_BEGIN,     (f)_beginCin);  // do nothing
+        gluTessCallback(_tUnion, GLU_TESS_BEGIN,     (f)_begCin);  // do nothing
         gluTessCallback(_tUnion, GLU_TESS_END,       (f)_endCin);    // do nothing
         gluTessCallback(_tUnion, GLU_TESS_VERTEX,    (f)_vertexUnion);  // fill _vertexs
         gluTessCallback(_tUnion, GLU_TESS_ERROR,     (f)_tessError);
@@ -539,7 +541,7 @@ static GLint     _initGLU(void)
     {
 #ifdef S52_USE_OPENGL_VBO
         _qobj = _gluNewQuadric();
-        _gluQuadricCallback(_qobj, _QUADRIC_BEGIN_DATA, (f)_glBegin);
+        _gluQuadricCallback(_qobj, _QUADRIC_BEGIN_DATA, (f)_glBeg);
         _gluQuadricCallback(_qobj, _QUADRIC_END_DATA,   (f)_glEnd);
         _gluQuadricCallback(_qobj, _QUADRIC_VERTEX_DATA,(f)_vertex3d);
         _gluQuadricCallback(_qobj, _QUADRIC_ERROR,      (f)_quadricError);
@@ -627,6 +629,7 @@ static S57_prim *_tessd(GLUtriangulatorObj *tobj, S57_geo *geo)
     return prim;
 }
 
+// CSG - Computational Solid Geometry
 void      S52_GLU_begUnion(void)
 {
     _g_ptr_array_clear(_tmpV);
@@ -637,12 +640,12 @@ void      S52_GLU_begUnion(void)
     return;
 }
 
-//void      S52_GLU_addUnion(S57_geo *geo)
-void      S52_GLU_addUnion(guint npt, double *ppt)
+void      S52_GLU_addUnion(S57_geo *geo)
+//void      S52_GLU_addUnion(guint npt, double *ppt)
 {
-    //guint   npt = 0;
-    //double *ppt = NULL;
-    //if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
+    guint   npt = 0;
+    double *ppt = NULL;
+    if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
         gluTessBeginContour(_tUnion);
         //ppt += npt*3 - 3;
         //for (guint i=npt; i>0; --i, ppt-=3) {  // CCW
@@ -652,7 +655,7 @@ void      S52_GLU_addUnion(guint npt, double *ppt)
             //PRINTF("x/y/z %f/%f/%f\n", d[0],d[1],d[2]);
         }
         gluTessEndContour(_tUnion);
-    //}
+    }
 
     return;
 }
@@ -661,7 +664,7 @@ void      S52_GLU_endUnion(guint *npt, double **ppt)
 {
     gluTessEndPolygon(_tUnion);
 
-    *npt = _vertexs->len;
+    *npt =          _vertexs->len;
     *ppt = (double*)_vertexs->data;
 
     return;
