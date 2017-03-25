@@ -4,6 +4,27 @@
 #
 
 
+2017MAR23
+    -del S52_USE_GOBJECT not use anymore
+    -mod S52_MAR_DISP_HODATA to S52_MAR_DISP_HODATA_UNION
+    -add S52_MAR_DISP_SCLBDY_UNION
+    -mod *Begin() to *Beg()
+
+2017MAR22
+    -mod rename _moveObj() to _appMoveObj()
+    -mod refactor scale boundary generation
+    -add scale boundary union
+    
+2017MAR20
+    -fix use bsize param in _renderTXTAA()
+    -fix scale boundary to draw only M_COVR:CATCOV=1
+
+2017MAR18
+    -mod rename S57_getGeoS57ID to S57_getS57ID
+    -mod comment format; NOTE to Note
+    -fix HO data limit on doneCell()
+    -mod leglin text bsize form 12 to 11
+
 2017MAR03
     -mod refactor S52GL.h:extent to S57data.h:ObjExt_t
 
