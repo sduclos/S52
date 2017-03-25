@@ -104,7 +104,7 @@ typedef struct _Position {
 } _Position;
 
 typedef struct _Shape {
-   // note: bitmap/vector mutually exclusive
+   // Note: bitmap/vector mutually exclusive
     union { GString   *dummy,  *PBTM,   *SBTM;  } bitmap;  // unused
     union { GString   *LVCT,   *PVCT,   *SVCT;  } vector;  //
 } _Shape;
@@ -4354,6 +4354,7 @@ S52_objSupp S52_PL_getObjClassState(const char *className)
 }
 
 S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
+// get obj supp state set by user
 {
     // test useless since the only caller allready did that
     //if (NULL == obj)
@@ -4473,6 +4474,24 @@ S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
     // Note: this is the standard display with object added (from 'other'
     // category) or removed (from 'standard') but not from the base display.
     return S52_SUPP_ERR;
+}
+
+gboolean    S52_PL_setSupp(_S52_obj *obj, gboolean supp)
+// set display suppression of THIS S52 obj
+{
+    return_if_null(obj);
+
+    obj->supp = supp;
+
+    return obj->supp;
+}
+
+gboolean    S52_PL_getSupp(_S52_obj *obj)
+{
+    // this test is in the CULL loop
+    //return_if_null(obj);
+
+    return obj->supp;
 }
 
 int         S52_PL_getPivotOffset(_S52_obj *obj, double *offset_x, double *offset_y)
@@ -4696,24 +4715,6 @@ char        S52_PL_getLOD(_S52_obj *obj)
     return obj->LOD;
 }
 #endif
-
-gboolean    S52_PL_setSupp(_S52_obj *obj, gboolean supp)
-// set display suppression of THIS S52 obj
-{
-    return_if_null(obj);
-
-    obj->supp = supp;
-
-    return obj->supp;
-}
-
-gboolean    S52_PL_getSupp(_S52_obj *obj)
-{
-    // this test is in the CULL loop
-    //return_if_null(obj);
-
-    return obj->supp;
-}
 
 S52_obj    *S52_PL_isObjValid(unsigned int objH)
 {
