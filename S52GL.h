@@ -115,7 +115,8 @@ int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
 // draw RADAR,Bathy,...
 int   S52_GL_drawRaster(S52_GL_ras *raster);
 int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north);
-int   S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight);
+//int   S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight);
+int   S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize);
 int   S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str);
 // done frame, restore OpenGL state
 int   S52_GL_end(S52_GL_cycle cycle);
@@ -161,10 +162,11 @@ int   S52_GL_movePoint(double *x, double *y, double angle, double dist_m);
 int   S52_GL_isHazard(int nxyz, double *xyz);
 
 // -------- GLU ------------
-// helper for CS DATCVR01
+// helper for CS DATCVR01 -
+// CSG - Computational Solid Geometry
 void  S52_GLU_begUnion(void);
-//void  S52_GLU_addUnion(S57_geo *geo);
-void  S52_GLU_addUnion(guint  npt, double  *ppt);
+void  S52_GLU_addUnion(S57_geo *geo);
+//void  S52_GLU_addUnion(guint  npt, double  *ppt);
 void  S52_GLU_endUnion(guint *npt, double **ppt);
 
 #endif // _S52GL_H_
