@@ -198,7 +198,6 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_DBUS         - mimic S52.h
 # -DS52_USE_SOCK         - same as DBus - socket & WebSocket - need ./lib/parson
 # -DS52_USE_PIPE         - same as DBus, in a day
-# -DS52_USE_GOBJECT      - make S52objH an int64 for gjs (Javascript compiler)
 #
 # OpenGL:
 # -DS52_USE_DUAL_MON     - dual monitor mess up dotpitch in GL2/_fixDPI_glScaled()
