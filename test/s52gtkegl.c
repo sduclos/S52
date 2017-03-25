@@ -569,7 +569,7 @@ static gboolean key_release_event(GtkWidget   *widget,
         case GDK_KEY_F8    :_mmInc(S52_MAR_DOTPITCH_MM_Y); break;
 
         case GDK_KEY_F9    :_toggle(S52_MAR_DISP_NODATA_LAYER); break;
-        case GDK_KEY_F10   :_toggle(S52_MAR_DISP_HODATA);       break;
+        case GDK_KEY_F10   :_toggle(S52_MAR_DISP_HODATA_UNION); break;
 
         default:
             g_print("key: 0x%04x\n", event->keyval);
