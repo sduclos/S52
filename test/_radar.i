@@ -73,7 +73,7 @@ static guchar  *_s52_radar_cb1  (double *cLat, double *cLng, double *rNM)
     //return (unsigned char *)NULL;
 }
 
-/*
+#if 0
 static guchar  *_s52_radar_cb2  (double *cLat, double *cLng, double *rNM)
 {
     *cLat = _engine.state.cLat - 0.01;
@@ -86,7 +86,7 @@ static guchar  *_s52_radar_cb2  (double *cLat, double *cLng, double *rNM)
     return (unsigned char *)_RADARtex;
     //return (unsigned char *)NULL;
 }
-*/
+#endif  // 0
 
 static int      _radar_init()
 {
