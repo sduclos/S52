@@ -2397,7 +2397,8 @@ static int       _renderSY_pastrk(S52_obj *obj)
 }
 
 // forward decl
-static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y, unsigned int bsize, unsigned int weight, const char *str);
+//static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y, unsigned int bsize, unsigned int weight, const char *str);
+static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y, unsigned int bsize, const char *str);
 static int       _renderSY_leglin(S52_obj *obj)
 {
     S57_geo  *geo = S52_PL_getGeo(obj);
@@ -4202,32 +4203,36 @@ static int       _traceOP(S52_obj *obj)
     return TRUE;
 }
 
-static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
+//static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y, unsigned int bsize, unsigned int weight, const char *str)
+static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y, unsigned int bsize, const char *str)
 // render text in AA if Mar Param set
 // Note: PLib C1 CHARS for TE() & TX() alway '15110' - ie style = 1 (alway), weigth = '5' (medium), width = 1 (alway), bsize = 10
 // Note: weight is already converted from '4','5','6' to int 0,1,2
 // Note: obj can be NULL
 // Note: all text command pass here
 {
-    // FIXME: use 'bsize'
-    //(void) bsize;
-
     if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
+    /*
     if (weight >= S52_MAX_FONT) {
         PRINTF("WARNING: weight(%i) >= S52_MAX_FONT(%i)\n", weight, S52_MAX_FONT);
         g_assert(0);
         return FALSE;
     }
+    */
 
     if (bsize >= S52_MAX_FONT) {
+        // FIXME: get magic val from MarPar
         //bsize -= 10;  // 0 - too small
         bsize -=  9;  // 1 - small
 
-
-        //PRINTF("WARNING: bsize(%i) >= S52_MAX_FONT(%i) str:%s\n", bsize, S52_MAX_FONT, str);
-        //return FALSE;
+        // check uint rollover
+        if (bsize >= S52_MAX_FONT) {
+            PRINTF("WARNING: bsize(%i) >= S52_MAX_FONT(%i) str:%s\n", bsize, S52_MAX_FONT, str);
+            g_assert(0);
+            //return FALSE;
+        }
     }
     //PRINTF("DEBUG: bsize(%i), str:%s\n", bsize, str);
 
@@ -4501,7 +4506,8 @@ static int       _renderTXT(S52_obj *obj)
     //double voffs = 0.0;
 
     if (S57_POINT_T == S57_getObjtype(geo)) {
-        _renderTXTAA(obj, color, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
+        //_renderTXTAA(obj, color, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
+        _renderTXTAA(obj, color, ppt[0]+uoffs, ppt[1]-voffs, bsize, str);
 
         return TRUE;
     }
@@ -4517,7 +4523,8 @@ static int       _renderTXT(S52_obj *obj)
                 //SNPRINTF(s, 80, "t%04.f", ppt[i*3 + 2]);     // S52 PASTRK01 say prefix a 't'
                 SNPRINTF(s, 80, "%02i:%02i", timeHH, timeMM);  // ISO say HH:MM
 
-                _renderTXTAA(obj, color, ppt[i*3 + 0]+uoffs, ppt[i*3 + 1]-voffs, bsize, weight, s);
+                //_renderTXTAA(obj, color, ppt[i*3 + 0]+uoffs, ppt[i*3 + 1]-voffs, bsize, weight, s);
+                _renderTXTAA(obj, color, ppt[i*3 + 0]+uoffs, ppt[i*3 + 1]-voffs, bsize, s);
             }
 
             return TRUE;
@@ -4533,7 +4540,8 @@ static int       _renderTXT(S52_obj *obj)
             char s[80];
             SNPRINTF(s, 80, "%s %03.f", str, orient);
 
-            _renderTXTAA(obj, color, x+uoffs, y-voffs, bsize, weight, s);
+            //_renderTXTAA(obj, color, x+uoffs, y-voffs, bsize, weight, s);
+            _renderTXTAA(obj, color, x+uoffs, y-voffs, bsize, s);
 
             return TRUE;
         }
@@ -4556,7 +4564,8 @@ static int       _renderTXT(S52_obj *obj)
 
                 //PRINTF("DEBUG: xoffs/yoffs/bsize/weight: %i/%i/%i/%i:%s\t%s\n", xoffs, yoffs, bsize, weight, str, s);
 
-                _renderTXTAA(obj, color, x+uoffs, y-voffs, bsize, weight, s);
+                //_renderTXTAA(obj, color, x+uoffs, y-voffs, bsize, weight, s);
+                _renderTXTAA(obj, color, x+uoffs, y-voffs, bsize, s);
             }
 
             // planned speed
@@ -4579,7 +4588,8 @@ static int       _renderTXT(S52_obj *obj)
                     //S52_Color *color = S52_PL_getColor("???");
 
                     //PRINTF("DEBUG: xoffs/yoffs/bsize/weight: %i/%i/%i/%i:%s\t%s\n", xoffs, yoffs, bsize, weight, str, s);
-                    _renderTXTAA(obj, color, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, s);
+                    //_renderTXTAA(obj, color, ppt[0]+offset_x, ppt[1]-offset_y, 0, 0, s);
+                    _renderTXTAA(obj, color, ppt[0]+offset_x, ppt[1]-offset_y, 0, s);
                 }
             }
 
@@ -4610,7 +4620,8 @@ static int       _renderTXT(S52_obj *obj)
             }
 
             if (INFINITY != dmin) {
-                _renderTXTAA(obj, color, xmin+uoffs, ymin-voffs, bsize, weight, str);
+                //_renderTXTAA(obj, color, xmin+uoffs, ymin-voffs, bsize, weight, str);
+                _renderTXTAA(obj, color, xmin+uoffs, ymin-voffs, bsize, str);
             }
         }
 
@@ -4624,7 +4635,8 @@ static int       _renderTXT(S52_obj *obj)
         for (guint i=0; i<_centroids->len; ++i) {
             pt3 *pt = &g_array_index(_centroids, pt3, i);
 
-            _renderTXTAA(obj, color, pt->x+uoffs, pt->y-voffs, bsize, weight, str);
+            //_renderTXTAA(obj, color, pt->x+uoffs, pt->y-voffs, bsize, weight, str);
+            _renderTXTAA(obj, color, pt->x+uoffs, pt->y-voffs, bsize, str);
             //PRINTF("TEXT (%s): %f/%f\n", str, pt->x, pt->y);
 
             // only draw the first centroid
@@ -4776,7 +4788,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                     //data[1] += fristCoord[1];
                 }
 
-                _glBegin(_TRANSLATE, vertex);
+                _glBeg(_TRANSLATE, vertex);
                 S57_addPrimVertex(vertex, data);
                 _glEnd(vertex);
 
@@ -4891,7 +4903,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
                     }
                     //*/
 
-                   _glBegin(GL_LINES,  vertex);
+                   _glBeg(GL_LINES,  vertex);
                     while ((S52_VC_PD==vcmd) || (S52_VC_PU==vcmd)) {
                         GArray   *vec  = S52_PL_getVOdata(vecObj);
                         vertex_t *data = (vertex_t *)vec->data;
@@ -5225,7 +5237,8 @@ int        S52_GL_isSupp(S52_obj *obj)
     }
 
     // FIXME: not great - test every obj
-    if (0 == (int) S52_MP_get(S52_MAR_DISP_HODATA)) {
+    // FIX: suppress display of M_COVR/m_covr
+    if (0 == (int) S52_MP_get(S52_MAR_DISP_HODATA_UNION)) {
         if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
             //PRINTF("DEBUG: M_COVR FOUND\n");
             return TRUE;
@@ -5781,14 +5794,16 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     return TRUE;
 }
 
-int        S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight)
+//int        S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight)
+int        S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize)
 // draw string in world coords
 {
     S52_GL_cycle tmpCrntCycle = _crnt_GL_cycle;
     _crnt_GL_cycle = S52_GL_NONE;
 
     S52_Color *c = S52_PL_getColor("CHBLK");  // black
-    _renderTXTAA(NULL, c, x, y, bsize, weight, str);
+    //_renderTXTAA(NULL, c, x, y, bsize, weight, str);
+    _renderTXTAA(NULL, c, x, y, bsize, str);
 
     _crnt_GL_cycle = tmpCrntCycle;
 
@@ -5810,7 +5825,8 @@ int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *color
 
     _glMatrixSet(VP_PRJ);
     //_renderTXTAA(NULL, c, pixels_x, pixels_y, bsize, 1, str);
-    _renderTXTAA(NULL, c, pixels_x, pixels_y, bsize, bsize, str);  // FIXME: weight
+    //_renderTXTAA(NULL, c, pixels_x, pixels_y, bsize, bsize, str);  // FIXME: weight
+    _renderTXTAA(NULL, c, pixels_x, pixels_y, bsize, str);
     _glMatrixDel(VP_PRJ);
 
 #else  // S52_USE_GL2
@@ -7007,7 +7023,7 @@ int        S52_GL_setScissor(int x, int y, int width, int height)
     // FIXME: extent box if chart rotation - will mess MIO & HO data limit!
     // FIX: skip scissor _north != 0, add doc
     if (0.0 != _view.north) {
-        // FIXME: save S52_MAR_DISP_HODATA, reset when N = 0
+        // FIXME: save S52_MAR_DISP_HODATA_UNION, reset when N = 0
         glDisable(GL_SCISSOR_TEST);
         return TRUE;
     }
@@ -7593,7 +7609,7 @@ int        S52_GL_drawArc(S52_obj *objA, S52_obj *objB)
     return TRUE;
 }
 
-int              _intersect(double x1, double y1, double x2, double y2,
+int              _intersectLINES(double x1, double y1, double x2, double y2,
                             double x3, double y3, double x4, double y4)
 // TRUE if line segment intersect, else FALSE
 // inspire from GEM III
@@ -7641,9 +7657,9 @@ int        S52_GL_isHazard(int nxyz, double *xyz)
 // TRUE if hazard found
 {
     // Port
-    //_intersect(x1, y1, x2, y2, x3, y3, x4, y4);
+    //_intersectLINES(x1, y1, x2, y2, x3, y3, x4, y4);
     // Starboard
-    //_intersect(x1, y1, x2, y2, x3, y3, x4, y4);
+    //_intersectLINES(x1, y1, x2, y2, x3, y3, x4, y4);
 
 #ifdef S52_USE_GL2
     _d2f(_tessWorkBuf_f, nxyz, xyz);
