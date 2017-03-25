@@ -248,9 +248,11 @@ static double _MARparamVal[] = {
     0.0,      // 48 - S52_MAR_GUARDZONE_ALARM  // FIXME: put MAR_ERROR code here
               //      FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
 
-    0.0,      // 49 - S52_MAR_DISP_HODATA, 0 - union HO data limit "m_covr" (default), 1 - all HO data limit (M_COVR+m_covr)
+    0.0,      // 49 - S52_MAR_DISP_HODATA_UNION, 0 - union HO data limit "m_covr" (default), 1 - all HO data limit (M_COVR+m_covr)
 
-    50.0      // number of parameter type
+    0.0,      // 50 - S52_MAR_DISP_SCLBDY_UNION, 0 - union Scale Boundary (default), 1 - all Scale Boundary "sclbdy" (debug)
+
+    51.0      // number of parameter type
 };
 
 double S52_MP_get(S52MarinerParameter param)
