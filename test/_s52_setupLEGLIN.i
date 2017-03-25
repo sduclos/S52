@@ -99,7 +99,8 @@ static int _s52_setupLEGLIN(double cLat, double cLon)
 
     if (0==_leglin1 || 0==_leglin2 || 0==_leglin3) {
         g_print("s52egl:_s52_setupLEGLIN(): S52_newLEGLIN() _leglinX failed\n");
-        g_assert(0);
+        //g_assert(0);
+        return FALSE;
     }
 
 
@@ -121,7 +122,8 @@ static int _s52_setupLEGLIN(double cLat, double cLon)
 
         if (0==_waypnt0 || 0==_waypnt1 || 0==_waypnt2 || 0==_waypnt3 || 0==_waypnt4) {
             g_print("s52egl:_s52_setupLEGLIN(): S52_newMarObj() _waypntX failed\n");
-            g_assert(0);
+            //g_assert(0);
+            return FALSE;
         }
 
         // test
