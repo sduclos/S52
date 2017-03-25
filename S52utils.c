@@ -84,9 +84,6 @@ static const char _version[] = S52_VERSION
 #ifdef  S52_USE_SOCK
       ",S52_USE_SOCK"
 #endif
-#ifdef  S52_USE_GOBJECT
-      ",S52_USE_GOBJECT"
-#endif
 #ifdef  S52_USE_BACKTRACE
       ",S52_USE_BACKTRACE"
 #endif
