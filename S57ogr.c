@@ -204,7 +204,7 @@ int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadO
 
 
 static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometryH hGeomNext)
-// Note: OGR use 25D primitivve
+// Note: OGR use 25D primitive
 {
     S57_geo           *geo   = NULL;
     OGRGeometryH       hGeom = NULL;
