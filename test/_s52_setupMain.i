@@ -126,7 +126,6 @@ static int _s52_setupMain(void)
     //*/
 
     // S-64 ENC
-    //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/GB5X01SE.000", NULL);
     //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/ENC_ROOT/GB4X0000.000", NULL);
     //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/ENC_ROOT/GB5X01NE.000", NULL);
     //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/ENC_ROOT/GB5X01NW.000", NULL);
