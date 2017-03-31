@@ -147,8 +147,9 @@ typedef enum S52MarinerParameter {
                                         // -1 - display highlight
 
     S52_MAR_DISP_HODATA_UNION   = 49,   // 0 - union HO data limit "m_covr" (default), 1 - all HO data limit "M_COVR+m_covr" (debug)
-
-    S52_MAR_DISP_SCLBDY_UNION   = 50,   // 0 - union Scale Boundary (default), 1 - all Scale Boundary (debug)
+                                        // Note: m_covr:BASE, M_COVR:OTHER
+    S52_MAR_DISP_SCLBDY_UNION   = 50,   // 0 - scldbU, union Scale Boundary (default), 1 - sclbdy, all Scale Boundary (debug)
+                                        // Note: sclbdU:STD, sclbdy:STD
 
     S52_MAR_NUM                 = 51    // number of parameters
 } S52MarinerParameter;
