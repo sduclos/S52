@@ -141,8 +141,8 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 0.0);  // default
     //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 1.0);
 
-    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);
-    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);  // default
+    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);   // OFF
+    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);  // ON (default)
 
     //S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters) [0.0 - off]
     //S52_MAR_GUARDZONE_LENGTH    = 47,   // Danger/Indication Highlight used by Position (meters, user computed from speed/time or distance)
@@ -153,8 +153,13 @@ static int      _s52_setupMarPar(void)
     //S52_MAR_DISP_HODATA_UNION   = 49,   // 0 - union HO data limit "m_covr"(default), 1 - all HO data limit (M_COVR+m_covr)
     // CS DATCVY01:M_COVR:CATCOV=2, "M_COVR" OTHER
     //S52_setMarinerParam(S52_MAR_DISP_HODATA_UNION, 1.0);  // draw all M_COVR individualy
-    //CS DATCVY01:M_COVR:CATCOV=1, "m_covr" BASE, (LUPT in PLAUX_00.DAI)
-    //S52_setMarinerParam(S52_MAR_DISP_HODATA_UNION, 0.0);  // union: combite M_COVR as one poly 'm_covr' (default)
+    // CS DATCVY01:M_COVR:CATCOV=1, "m_covr" BASE, (LUPT in PLAUX_00.DAI)
+    //S52_setMarinerParam(S52_MAR_DISP_HODATA_UNION, 0.0);  // union: combite M_COVR as one poly 'm_covr' (default:BASE)
+
+    //S52_MAR_DISP_SCLBDY_UNION   = 50,   // 0 - union Scale Boundary (default), 1 - all Scale Boundary (debug)
+    // CS
+    S52_setMarinerParam(S52_MAR_DISP_SCLBDY_UNION, 0.0);  // union: combite sclbdy as one poly 'sclbdU' (default)
+    //S52_setMarinerParam(S52_MAR_DISP_SCLBDY_UNION, 1.0);  // display all sclbdy (debug)
 
 
     //* debug - use for timing rendering
