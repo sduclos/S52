@@ -747,7 +747,7 @@ static GString *DATCVR01 (S57_geo *geo)
     // DSID:DSPM_CSCL (Data Set ID - metadata)
     // M_CSCL:CSCALE
     if (0 == g_strcmp0(S57_getName(geo), "M_CSCL")) {
-        PRINTF("DEBUG: M_CSCL found\n");
+        PRINTF("FIXME: overscale M_CSCL not computed\n");
         //g_assert(0);
     }
     //
