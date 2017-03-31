@@ -249,8 +249,10 @@ static double _MARparamVal[] = {
               //      FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
 
     0.0,      // 49 - S52_MAR_DISP_HODATA_UNION, 0 - union HO data limit "m_covr" (default), 1 - all HO data limit (M_COVR+m_covr)
+              //      Note: M_COVR:OTHER, m_covr:BASE
 
     0.0,      // 50 - S52_MAR_DISP_SCLBDY_UNION, 0 - union Scale Boundary (default), 1 - all Scale Boundary "sclbdy" (debug)
+              //      Note: sclbdU:STD, sclbdy:STD
 
     51.0      // number of parameter type
 };
