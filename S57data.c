@@ -1148,7 +1148,7 @@ int        S57_setTouchLIGHTS(_S57_geo *geo, S57_geo *touch)
 
     // WARNING: reverse chaining
 
-    //* debug
+    /* debug
     if (0 == g_strcmp0(geo->name, "LIGHTS")) {
         if (NULL != touch->touch.LIGHTS) {
             PRINTF("DEBUG: touch.LIGHTS allready in use by %s\n", touch->touch.LIGHTS->name);
@@ -1175,7 +1175,7 @@ int        S57_setTouchDEPARE(_S57_geo *geo, S57_geo *touch)
 {
     return_if_null(geo);
 
-    //* debug
+    /* debug
     if ((0==g_strcmp0(touch->name, "DEPARE")) ||
         (0==g_strcmp0(touch->name, "DRGARE")) ||
         (0==g_strcmp0(touch->name, "OBSTRN")) ||
@@ -1212,7 +1212,7 @@ int        S57_setTouchDEPVAL(_S57_geo *geo, S57_geo *touch)
 {
     return_if_null(geo);
 
-    //* debug
+    /* debug
     if ((0==g_strcmp0(touch->name, "DEPARE")) ||
         (0==g_strcmp0(touch->name, "DRGARE")) ||    // not in S52!
         (0==g_strcmp0(touch->name, "UNSARE"))       // this does nothing!
