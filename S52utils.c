@@ -346,7 +346,8 @@ int      S52_atoi(cchar *str)
     // the to (int) might not be such a great idea!  (no rounding)
     //return (int)S52_atof(str);
     //return (int)g_strtod(str, NULL);
-    return atoi(str);
+    return (int)g_ascii_strtod(str, NULL);
+    //return atoi(str);
 }
 
 double   S52_atof(cchar *str)
@@ -365,7 +366,8 @@ double   S52_atof(cchar *str)
     }
 
     //return g_strtod(str, NULL);
-    return atof(str);
+    return g_ascii_strtod(str, NULL);
+    //return atof(str);
 }
 
 
