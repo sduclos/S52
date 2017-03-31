@@ -25,6 +25,7 @@
 #ifndef _S52PL_H_
 #define _S52PL_H_
 
+#include "S52.h"         // S52ObjectType
 #include "S57data.h"     // S57_geo, S57_prim
 
 #include <glib.h>        // GArray
@@ -203,10 +204,15 @@ S57_geo       *S52_PL_getGeo(S52_obj *obj);
 const char    *S52_PL_getOBCL(S52_obj *obj);
 // get addressed object TYPe
 // Note: return the same thing as a call to S57_getObjtype()
-// DEPRECATED: use S57_getObjtype() instead
+// DEPRECATED: use S57_getObjtype() instead - WHY!
+// because DSID layer/obj have no LUP
+// FIXME: unify access of S57/S52 obj type
 //S57_Obj_t      S52_PL_getFTYP(S52_obj *obj);
+S52ObjectType  S52_PL_getFTYP(S52_obj *obj);
 
 // -- obj priority -----------------------------
+// get override prio state
+int            S52_PL_isPrioO(S52_obj *obj);
 // get Display PRIority
 S52_disPrio    S52_PL_getDPRI(S52_obj *obj);
 // get RADAR Priority
