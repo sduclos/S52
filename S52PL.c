@@ -324,7 +324,8 @@ typedef struct _S52_obj {
     // --- Auxiliary Info --------------------------------
     // FIXME: make that a struct
 
-    //char       LOD;           // optimisation: chart purpose: cell->filename->str[2]
+    //char       LOD;           // optimisation: chart purpose: cell->dsid_intustr->str
+
     // Note: this is a general holder for orient/speed depending on
     // the object type. So it could be for current, ship, AIS, ...
     gdouble      orient;        // LIGHT angle (after parsing), heading of 'ownshp'
@@ -1120,12 +1121,12 @@ int         S52_PL_resloveSMB(_S52_obj *obj)
     return TRUE;
 }
 
+
 //-------------------------
 //
 // PLIB PARSER SECTION
 //
 //-------------------------
-
 
 static int        _parsePos(_Position *pos, char *buf, gboolean patt)
 {
@@ -3026,17 +3027,60 @@ const char *S52_PL_getOBCL(_S52_obj *obj)
     }
 }
 
-#if 0
-S57_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
+//#if 0
+// Note: return the same thing as a call to S57_getObjtype()
+// DEPRECATED: use S57_getObjtype() instead - WHY!
+// because DSID layer/obj have no LUP
+// FIXME: unify access of S57/S52 obj type
+//S57_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
+S52ObjectType S52_PL_getFTYP(_S52_obj *obj)
 {
     return_if_null(obj);
 
-    if (NULL == obj->LUP)
-        return S57__META_T;    // special case --noting to display
-    else
-        return obj->LUP->FTYP;
+    //if (NULL == obj->LUP)
+    //    return S57__META_T;    // special case --noting to display
+    //else
+    //    return obj->LUP->FTYP;
+
+    S57_Obj_t FTYP = S57__META_T;
+    if (NULL != obj->LUP)
+        FTYP = obj->LUP->FTYP;
+
+    S57_Obj_t objType = S57__META_T;
+    if (NULL != obj->geo)
+        objType = S57_getObjtype(obj->geo);
+
+    // paranoid - how can mismacth happen since it must be sync from loadCell time!
+    if (FTYP != objType) {
+        PRINTF("DEBUG: mismatch addressed object type\n");
+        g_assert(0);
+    }
+
+    S52ObjectType obj_t = S52_N_OBJ;
+    switch (FTYP) {
+        case S57__META_T: obj_t = S52__META; break; // meta geo stuff (ex: C_AGGR)
+        case S57_AREAS_T: obj_t = S52_AREAS; break;
+        case S57_LINES_T: obj_t = S52_LINES; break;
+        case S57_POINT_T: obj_t = S52_POINT; break;
+        default: {
+            // debug
+            PRINTF("DEBUG: unknown index of addressed object type\n");
+            g_assert(0);
+        }
+    }
+
+    //return FTYP;
+    return obj_t;
 }
-#endif  // 0
+//#endif  // 0
+
+int         S52_PL_isPrioO(_S52_obj *obj)
+// get override prio state
+{
+    return_if_null(obj);
+
+    return obj->prioOveride;
+}
 
 S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
 {
