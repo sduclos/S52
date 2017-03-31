@@ -4,6 +4,13 @@
 #
 
 
+2017MAR31
+    -mod refactor APP/overide prio
+    -add combine scale boundary
+    -add S52_PL_isPrioO() 
+    -mod S52ObjectType S52_PL_getFTYP()
+    -del M_COVR test in S52_GL_isSupp()
+
 2017MAR23
     -del S52_USE_GOBJECT not use anymore
     -mod S52_MAR_DISP_HODATA to S52_MAR_DISP_HODATA_UNION
