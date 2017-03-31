@@ -2656,7 +2656,7 @@ static int       _renderSY(S52_obj *obj)
             return FALSE;
         }
 
-        PRINTF("DEBUG: outer ring found: %s:%i (%i)\n", S57_getName(geo), S57_getS57ID(geo), npt);
+        //PRINTF("DEBUG: outer ring found: %s:%i (%i)\n", S57_getName(geo), S57_getS57ID(geo), npt);
 
         // clutter - skip rendering LOWACC01
         if ((0==S52_PL_cmpCmdParam(obj, "LOWACC01")) && (0.0==S52_MP_get(S52_MAR_QUAPNT01)))
@@ -5232,15 +5232,6 @@ int        S52_GL_isSupp(S52_obj *obj)
 
         if (scamin < _SCAMIN) {
             ++_oclip;
-            return TRUE;
-        }
-    }
-
-    // FIXME: not great - test every obj
-    // FIX: suppress display of M_COVR/m_covr
-    if (0 == (int) S52_MP_get(S52_MAR_DISP_HODATA_UNION)) {
-        if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
-            //PRINTF("DEBUG: M_COVR FOUND\n");
             return TRUE;
         }
     }
