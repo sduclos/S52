@@ -1040,8 +1040,13 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
 
     // CS found, merge cmd list in command array (normal + CS)
 
-    // reset priority override
-    obj->prioOveride = FALSE;
+    // overide with original LUP prio so that
+    // if CS epdand to no OP in this code path
+    // obj will be move to there default renderBin
+    //obj->prioOveride = FALSE;
+    obj->prioOveride = TRUE;
+
+    // reset original priority from LUP
     obj->oPrios.DPRI = obj->LUP->prios.DPRI;
     obj->oPrios.RPRI = obj->LUP->prios.RPRI;
     obj->oPrios.DISC = obj->LUP->prios.DISC;
@@ -1052,15 +1057,15 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
     if (NULL != CScb) {
         obj->CSinst[alt] = CScb(obj->geo);
         if (NULL != obj->CSinst[alt]) {
-            _cmdWL *tmp   = NULL;
+            //_cmdWL *tmp   = NULL;
             obj->CScmdL[alt] = _parseINST(obj->CSinst[alt]);
-            tmp = obj->CScmdL[alt];
+            _cmdWL *tmp      = obj->CScmdL[alt];
             while (NULL != tmp) {
                 // change object Display Priority, if any, at this point
                 if (S52_CMD_OVR_PR == tmp->cmdWord) {
                     char *c = tmp->param;
 
-                    obj->prioOveride = TRUE;
+                    //obj->prioOveride = TRUE;
 
                     // Display Priority
                     if (S52_PRIO_NOPRIO != c[0])
@@ -1086,7 +1091,9 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
         } else {
             // FIXME: ENC_ROOT/US3NY21M/US3NY21M.000 land here
             PRINTF("NOTE: CS for object %s expand to NULL\n", S57_getName(obj->geo));
-            //g_assert(0);
+            // FIXME: find wich CS generate a NULL
+            g_assert(0);
+
             return FALSE;
         }
     } else {
@@ -3027,12 +3034,6 @@ const char *S52_PL_getOBCL(_S52_obj *obj)
     }
 }
 
-//#if 0
-// Note: return the same thing as a call to S57_getObjtype()
-// DEPRECATED: use S57_getObjtype() instead - WHY!
-// because DSID layer/obj have no LUP
-// FIXME: unify access of S57/S52 obj type
-//S57_Obj_t   S52_PL_getFTYP(_S52_obj *obj)
 S52ObjectType S52_PL_getFTYP(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -3069,10 +3070,8 @@ S52ObjectType S52_PL_getFTYP(_S52_obj *obj)
         }
     }
 
-    //return FTYP;
     return obj_t;
 }
-//#endif  // 0
 
 int         S52_PL_isPrioO(_S52_obj *obj)
 // get override prio state
@@ -3094,8 +3093,7 @@ S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
 
 #ifdef S52_DEBUG
     if ((0==dpri) && (0!=obj->LUP->INST->len)) {
-        PRINTF("DEBUG: rendering object on IHO layer 0 [%s:%s]\n",
-               S57_getName(obj->geo), S52_PL_infoLUP(obj));
+        PRINTF("DEBUG: rendering object on IHO layer 0 [%s:%s]\n", S57_getName(obj->geo), S52_PL_infoLUP(obj));
     }
 #endif
 
