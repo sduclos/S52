@@ -3056,10 +3056,9 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
 // insert a S52_obj in a cell from a S57_geo
 // return the new S52_obj
 {
-    S52ObjectType obj_t      = S52__META;
     S52_obj      *obj        = S52_PL_newObj(geo);
-    S57_Obj_t     ot         = S57_getObjtype(geo);
     S52_disPrio   disPrioIdx = S52_PL_getDPRI(obj);
+    S52ObjectType obj_t      = S52_PL_getFTYP(obj);
 
     if (NULL == obj) {
         PRINTF("WARNING: S52 object build failed\n");
@@ -3080,19 +3079,6 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
                S57_getName(geo), S57_getS57ID(geo), disPrioIdx, ext.W, ext.S, ext.E, ext.N);
     }
 #endif
-
-    // FIXME: extract to S52ObjectType _S57toS52_Obj_t(S57_Obj_t ot);
-    // used also by _insertS52obj()
-    // connect S52ObjectType (public enum) to S57 object type (private)
-    switch (ot) {
-        case S57__META_T: obj_t = S52__META; break; // meta geo stuff (ex: C_AGGR)
-        case S57_AREAS_T: obj_t = S52_AREAS; break;
-        case S57_LINES_T: obj_t = S52_LINES; break;
-        case S57_POINT_T: obj_t = S52_POINT; break;
-        default:
-            PRINTF("WARNING: unknown index of addressed object type\n");
-            g_assert(0);
-    }
 
     // optimisation: set LOD
     //S52_PL_setLOD(obj, *c->dsid_intustr->str);
@@ -3138,33 +3124,8 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
 static S52_obj   *_insertS52obj(_cell *c, S52_obj *obj)
 // inster 'obj' in cell 'c'
 {
-    S57_geo      *geo        = S52_PL_getGeo(obj);
     S52_disPrio   disPrioIdx = S52_PL_getDPRI(obj);
-    S57_Obj_t     ot         = S57_getObjtype(geo);
-    S52ObjectType obj_t      = S52_N_OBJ;
-
-    /* debug - paranoid
-    if (S57_getObjtype(geo) != S52_PL_getFTYP(obj)) {
-        PRINTF("DEBUG: S52/S57 object type mismatch\n");
-        g_assert(0);
-        return NULL;
-    }
-    */
-
-    // FIXME: extract to S52ObjectType _S57toS52_Obj_t(S57_Obj_t ot);
-    // used also by _insertS57obj()
-    // connect S52ObjectType (public enum) to S57 object type (private)
-    switch (ot) {
-        case S57__META_T: obj_t = S52__META; break; // meta geo stuff (ex: C_AGGR)
-        case S57_AREAS_T: obj_t = S52_AREAS; break;
-        case S57_LINES_T: obj_t = S52_LINES; break;
-        case S57_POINT_T: obj_t = S52_POINT; break;
-        default: {
-            // debug
-            PRINTF("DEBUG: unknown index of addressed object type\n");
-            g_assert(0);
-        }
-    }
+    S52ObjectType obj_t      = S52_PL_getFTYP(obj);
 
     // special prossesing for light sector
     if (FALSE == _insertLightSec(c, obj)) {
@@ -3608,7 +3569,7 @@ static int        _appSCLBDU(GArray *sclbdyList, GArray *sclbdUList)
         double *ppt = NULL;
         S52_GLU_endUnion(&npt, &ppt);
         if (0 == npt) {
-            PRINTF("DEBUG: 'sclbdU' no union\n");
+            PRINTF("DEBUG: 'sclbdU' no poly\n");
             continue;
         } else {
             PRINTF("DEBUG: 'sclbdU' union\n");
@@ -3655,69 +3616,13 @@ static int        _appSCLBDU(GArray *sclbdyList, GArray *sclbdUList)
     return TRUE;
 }
 
-// forward decl
-static S52ObjectHandle _delMarObj(S52ObjectHandle objH);
-static int        _appMoveObj1(_cell *cell, S52_disPrio oldPrio, S52ObjectType obj_t, GPtrArray *oldBin, guint idx)
-// TRUE if an 'obj' switched layer (priority), else FALSE
-// this is to solve the problem of moving an object from one 'set' to an other
-// it shuffle the array that act as a 'set'
-{
-    S52_obj *obj = NULL;
-
-    if (idx<oldBin->len)
-        obj = (S52_obj *)g_ptr_array_index(oldBin, idx);
-    else {
-        PRINTF("DEBUG: render bin index out of bound: %i max: %i\n", idx, oldBin->len);
-        g_assert(0);
-
-        return FALSE;
-    }
-
-    // Note: if the newPrio is greater than oldPrio then the obj will pass here again
-    S52_disPrio newPrio = S52_PL_getDPRI(obj);
-    if (newPrio != oldPrio) {
-        GPtrArray *newBin = cell->renderBin[newPrio][obj_t];
-
-        // add obj to rbin of newPrio
-        g_ptr_array_add(newBin, obj);
-
-        // del obj to rbin of oldPrio
-        if (NULL == g_ptr_array_remove_index_fast(oldBin, idx)) {
-            PRINTF("WARNING: no object to remove\n");
-            g_assert(0);
-            return FALSE;
-        }
-
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
-static int        _appMoveObj2(_cell *ci, GPtrArray *tmpRenderBin)
-// TRUE
+static int        _appMoveObj(_cell *ci, GPtrArray *tmpRenderBin)
 {
     for (guint idx=0; idx<tmpRenderBin->len; ++idx) {
         S52_obj      *obj   = (S52_obj *)g_ptr_array_index(tmpRenderBin, idx);
         S52_disPrio   prio  = S52_PL_getDPRI(obj);
-        S57_geo      *geo   = S52_PL_getGeo(obj);
-        S57_Obj_t     ot    = S57_getObjtype(geo);
-        S52ObjectType obj_t = S52_N_OBJ;
+        S52ObjectType obj_t = S52_PL_getFTYP(obj);
 
-        // FIXME: extract to S52ObjectType _S57toS52_Obj_t(S57_Obj_t ot);
-        // used also by _insertS57obj()
-        // connect S52ObjectType (public enum) to S57 object type (private)
-        switch (ot) {
-            case S57__META_T: obj_t = S52__META; break; // meta geo stuff (ex: C_AGGR)
-            case S57_AREAS_T: obj_t = S52_AREAS; break;
-            case S57_LINES_T: obj_t = S52_LINES; break;
-            case S57_POINT_T: obj_t = S52_POINT; break;
-            default: {
-                // debug
-                PRINTF("DEBUG: unknown index of addressed object type\n");
-                g_assert(0);
-            }
-        }
         g_ptr_array_add(ci->renderBin[prio][obj_t], obj);
     }
     g_ptr_array_set_size(tmpRenderBin, 0);
@@ -3725,8 +3630,8 @@ static int        _appMoveObj2(_cell *ci, GPtrArray *tmpRenderBin)
     return TRUE;
 }
 
+static S52ObjectHandle _delMarObj(S52ObjectHandle objH);  // forward decl
 static int        _app()
-
 // FIXME: doCSMar Mariner Only - time the cost of APP
 // -OR-
 // try to move Mariner CS logique in GL
@@ -3757,31 +3662,10 @@ static int        _app()
             }
         }
 
-        /* 2.2 - move obj
-        // FIXME: check if use of S52_PL_isPrioO(obj) simplify this obj juggling
-        for (guint i=0; i<_cellList->len; ++i) {
-            _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
-            // one cell
-            for (S52_disPrio prio=S52_PRIO_NODATA; prio<S52_PRIO_NUM; ++prio) {
-                // one layer
-                for (S52ObjectType obj_t=S52__META; obj_t<S52_N_OBJ; ++obj_t) {
-                    // one object type (render bin)
-                    GPtrArray *rbin = ci->renderBin[prio][obj_t];
-                    for (guint idx=0; idx<rbin->len; ++idx) {
-                        // one object
-                        int check = TRUE;
-                        while (TRUE == check)
-                            check = _appMoveObj1(ci, prio, obj_t, rbin, idx);
-                    }
-                }
-            }
-        }
-        */
-
         // 2.2 - move obj
-        // FIXME: test that both approach give the same resulte
         for (guint i=0; i<_cellList->len; ++i) {
             _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
+
             // one cell
             for (S52_disPrio prio=S52_PRIO_NODATA; prio<S52_PRIO_NUM; ++prio) {
                 // one layer
@@ -3792,11 +3676,7 @@ static int        _app()
                     while (idx<rbin->len) {
                         S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                         if (TRUE == S52_PL_isPrioO(obj)) {
-                            if (NULL == g_ptr_array_remove_index_fast(rbin, idx)) {
-                                PRINTF("DEBUG: no object to remove\n");
-                                g_assert(0);
-                                return FALSE;
-                            }
+                            g_ptr_array_remove_index_fast(rbin, idx);
                             g_ptr_array_add(_tmpRenderBin, obj);
                         } else {
                             ++idx;
@@ -3804,36 +3684,8 @@ static int        _app()
                     }
                 }
             }
-            _appMoveObj2(ci, _tmpRenderBin);
-
-            /* refactor of _appMoveObj()
-            for (guint idx=0; idx<_tmpRenderBin->len; ++idx) {
-                S52_obj      *obj   = (S52_obj *)g_ptr_array_index(_tmpRenderBin, idx);
-                S52_disPrio   prio  = S52_PL_getDPRI(obj);
-                S57_geo      *geo   = S52_PL_getGeo(obj);
-                S57_Obj_t     ot    = S57_getObjtype(geo);
-                S52ObjectType obj_t = S52_N_OBJ;
-
-                // FIXME: extract to S52ObjectType _S57toS52_Obj_t(S57_Obj_t ot);
-                // used also by _insertS57obj()
-                // connect S52ObjectType (public enum) to S57 object type (private)
-                switch (ot) {
-                    case S57__META_T: obj_t = S52__META; break; // meta geo stuff (ex: C_AGGR)
-                    case S57_AREAS_T: obj_t = S52_AREAS; break;
-                    case S57_LINES_T: obj_t = S52_LINES; break;
-                    case S57_POINT_T: obj_t = S52_POINT; break;
-                    default: {
-                        // debug
-                        PRINTF("DEBUG: unknown index of addressed object type\n");
-                        g_assert(0);
-                    }
-                }
-                g_ptr_array_add(ci->renderBin[prio][obj_t], obj);
-            }
-            g_ptr_array_set_size(_tmpRenderBin, 0);
-            */
+            _appMoveObj(ci, _tmpRenderBin);
         }
-
 
         // 2.3 - flush all texApha, when raster is bathy, if S52_MAR_SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR has change
         // FIXME: find if SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR has change
