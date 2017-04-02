@@ -1921,6 +1921,30 @@ static int      _X11_handleXevent(gpointer user_data)
                 return TRUE;
             }
 #endif
+            // debug - CS handling of OP() (overide prio)
+            if (XK_F10 == keysym) {
+                S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
+                //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);     // for triggering symb ISODGR01 (ODD winding) at Rimouski
+                //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
+                //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
+
+                engine->do_S52draw = TRUE;
+
+                return TRUE;
+            }
+
+            // debug - CS handling of OP() (overide prio)
+            if (XK_F11 == keysym) {
+                //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);
+                //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);     // for triggering symb ISODGR01 (ODD winding) at Rimouski
+                S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
+                //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
+
+                engine->do_S52draw = TRUE;
+
+                return TRUE;
+            }
+
 
             // debug
             g_print("s52egl.c:keysym: 0X%X\n", keysym);
