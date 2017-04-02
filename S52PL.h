@@ -202,12 +202,7 @@ S57_geo       *S52_PL_getGeo(S52_obj *obj);
 
 // get LUP name
 const char    *S52_PL_getOBCL(S52_obj *obj);
-// get addressed object TYPe
-// Note: return the same thing as a call to S57_getObjtype()
-// DEPRECATED: use S57_getObjtype() instead - WHY!
-// because DSID layer/obj have no LUP
-// FIXME: unify access of S57/S52 obj type
-//S57_Obj_t      S52_PL_getFTYP(S52_obj *obj);
+// get addressed object S52 obj TYPe
 S52ObjectType  S52_PL_getFTYP(S52_obj *obj);
 
 // -- obj priority -----------------------------
