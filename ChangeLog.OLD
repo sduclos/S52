@@ -4,6 +4,11 @@
 #
 
 
+2017APR02
+    -refactor APP/moveObj()
+    -mod set to TRUE prioOveride with default LUP prio
+    -refactor S57 to S52 obj type convertion
+
 2017MAR31
     -mod refactor APP/overide prio
     -add combine scale boundary
