@@ -2039,7 +2039,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
 static int       _renderSY_ownshp(S52_obj *obj)
 {
-    S57_geo  *geo = S52_PL_getGeo(obj);
+    S57_geo  *geo     = S52_PL_getGeo(obj);
     GLdouble  orient  = S52_PL_getSYorient(obj);
 
     guint     npt     = 0;
@@ -2763,7 +2763,7 @@ static int       _renderSY(S52_obj *obj)
 
 static int       _renderLS_LIGHTS05(S52_obj *obj)
 {
-    S57_geo *geo   = S52_PL_getGeo(obj);
+    S57_geo *geo       = S52_PL_getGeo(obj);
     GString *orientstr = S57_getAttVal(geo, "ORIENT");
     GString *sectr1str = S57_getAttVal(geo, "SECTR1");
     GString *sectr2str = S57_getAttVal(geo, "SECTR2");
@@ -3771,7 +3771,7 @@ static int       _renderAC_NODATA_layer0(void)
 static int       _renderAC_LIGHTS05(S52_obj *obj)
 // this code is specific to CS LIGHTS05
 {
-    S57_geo   *geo   = S52_PL_getGeo(obj);
+    S57_geo   *geo       = S52_PL_getGeo(obj);
     GString   *sectr1str = S57_getAttVal(geo, "SECTR1");
     GString   *sectr2str = S57_getAttVal(geo, "SECTR2");
 
@@ -4460,9 +4460,9 @@ static int       _renderTXT(S52_obj *obj)
     if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
-    guint      npt   = 0;
-    GLdouble  *ppt   = NULL;
-    S57_geo *geo = S52_PL_getGeo(obj);
+    guint      npt = 0;
+    GLdouble  *ppt = NULL;
+    S57_geo *geo   = S52_PL_getGeo(obj);
     if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
@@ -6396,8 +6396,8 @@ int        S52_GL_delDL(S52_obj *obj)
 // delete the GL part of S57 geo object (Display List)
 // S52_obj is use only by FREETYPE_GL
 {
-    S57_geo  *geo = S52_PL_getGeo(obj);
-    S57_prim *prim    = S57_getPrimGeo(geo);
+    S57_geo  *geo  = S52_PL_getGeo(obj);
+    S57_prim *prim = S57_getPrimGeo(geo);
 
 #ifdef S52_USE_GLSC1
     // SC can't delete a display list --no garbage collector
