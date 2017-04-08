@@ -1539,6 +1539,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 
     // FIXME: check setlocale (LC_ALL, ""); (see https://developer.gnome.org/glib/stable/glib-running.html#local)
     // FIXME: check if g_ascii_*() in utils alone will do on no-english machine
+    // - Warning: what about sscanf()
     _intl = setlocale(LC_ALL, "C");
 
 
@@ -2390,7 +2391,12 @@ int               _loadRaster(const char *fname)
 
         // 32 bits
         unsigned char *data = g_new0(unsigned char, w * h * gdtSz);
-        GDALRasterIO(bandA, GF_Read, 0, 0, w, h, data, w, h, gdt, 0, 0);
+        CPLErr err = CE_None;
+        err = GDALRasterIO(bandA, GF_Read, 0, 0, w, h, data, w, h, gdt, 0, 0);
+        if (CE_None != err) {
+            g_assert(0);
+        }
+
 
         double gt[6] = {0.0,1.0,0.0,0.0,0.0,1.0};
         if (CE_None != GDALGetGeoTransform(datasetDST, (double *) &gt)) {
@@ -3007,7 +3013,7 @@ int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_
         loadObject_cb = S52_loadObject;
     }
 
-    // save S57 object name
+    // save S57 class name
     if (0 != _crntCell->S57ClassList->len)
         g_string_append(_crntCell->S57ClassList, ",");
 
@@ -3067,9 +3073,10 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
     }
 
 #ifdef S52_DEBUG
-    // debug - show obj on NODATA layer
+    /* debug - show obj on NODATA layer
     if (S52_PRIO_NODATA == disPrioIdx) {
-        S57_highlightON(geo);
+        //S57_highlightON(geo);
+        S57_setHighlight(geo, TRUE);
 
         //disPrioIdx = S52_PRIO_SYM_AR;  // layer 6
         disPrioIdx = S52_PRIO_HAZRDS;  // layer 8
@@ -3078,6 +3085,7 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
         PRINTF("DEBUG: %s:%i object on layer 0 moved to layer %i, highlightON() - %f %f -- %f %f\n",
                S57_getName(geo), S57_getS57ID(geo), disPrioIdx, ext.W, ext.S, ext.E, ext.N);
     }
+    //*/
 #endif
 
     // optimisation: set LOD
@@ -3257,6 +3265,11 @@ int            S52_loadObject(const char *objname, void *shape)
             }
 
 #ifdef S52_DEBUG
+            // debug - check M_NSYS:
+            //if (0 == g_strcmp0(objname, "M_NSYS")) {
+            //    S57_dumpData(geo, FALSE);
+            //}
+
             /*
              {   // debug - check for LNAM_REFS in regular S57 object
              GString *key_lnam_refs = S57_getAttVal(geo, "LNAM_REFS");
@@ -3394,7 +3407,7 @@ static int        _intersectM_COVR(_cell *c, S57_geo *geoM_COVR)
 
         // check that the new cell nav purp (INTU) is strictly bigger
         if (*c->dsid_intustr->str <= *cj->dsid_intustr->str) {
-            PRINTF("DEBUG: check nav purp ci:%s cj:%s\n", c->filename->str, cj->filename->str);
+            //PRINTF("DEBUG: check nav purp ci:%s cj:%s\n", c->filename->str, cj->filename->str);
             continue;
         }
         //PRINTF("DEBUG: check nav purp ci:%s cj:%s\n", c->dsid_intustr->str, cj->dsid_intustr->str);
@@ -3408,6 +3421,21 @@ static int        _intersectM_COVR(_cell *c, S57_geo *geoM_COVR)
     return FALSE;
 }
 
+static double    *_revArray(guint npt, double *ppt, double *outArr)
+// reverse winding
+{
+    typedef struct pt3 { double x, y, z; } pt3;
+    //struct pt3 *ppt3 = (struct pt3 *)ppt;
+    pt3 *ppt3 = (pt3 *)ppt;
+    //struct pt3 [npt];
+    //struct pt3 *rev = (struct pt3 *)outArr;
+    pt3 *rev = (pt3 *)outArr;
+    for (guint i=0; i<npt; ++i) {
+        rev[(npt - 1) - i] = ppt3[i];
+    }
+    //ppt = (double*)rev;
+    return outArr;
+}
 
 // forward decl
 static S52ObjectHandle _newMarObj(const char *plibObjName, S52ObjectType objType, unsigned int xyznbr, double *xyz, const char *listAttVal);
@@ -3504,14 +3532,10 @@ static int        _appHODATA(GArray *sclbdyList)
     if (0 == npt)
         return FALSE;
 
-    // convert CCW to CW (S57 winding)
-    struct pt3 { double x, y, z; };
-    struct pt3 *ppt3 = (struct pt3 *)ppt;
-    struct pt3 rev[npt];
-    for (guint i=0; i<npt; ++i) {
-        rev[(npt - 1) - i] = ppt3[i];
+    {   // reverse Union output - CCW -> CW (S57 winding)
+        double rev[npt*3];
+        ppt = _revArray(npt, ppt, rev);
     }
-    ppt = (double*)rev;
 
     // PLib AUX link to "m_covr" ;OP(3OD11060);LC(HODATA01)
     _HODATAUnion = _newMarObj("m_covr", S52_AREAS, npt, NULL, "CATCOV:1");
@@ -3575,14 +3599,10 @@ static int        _appSCLBDU(GArray *sclbdyList, GArray *sclbdUList)
             PRINTF("DEBUG: 'sclbdU' union\n");
         }
 
-        // convert CCW to CW (S57 winding)
-        struct pt3 { double x, y, z; };
-        struct pt3 *ppt3 = (struct pt3 *)ppt;
-        struct pt3 rev[npt];
-        for (guint ii=0; ii<npt; ++ii) {
-            rev[(npt - 1) - ii] = ppt3[ii];
+        {   // reverse Union output - CCW -> CW (S57 winding)
+            double rev[npt*3];
+            ppt = _revArray(npt, ppt, rev);
         }
-        ppt = (double*)rev;
 
         // PLib AUX link to "sclbdU"
         S52ObjectHandle sclbdyUnion = _newMarObj("sclbdU", S52_AREAS, npt, NULL, NULL);
@@ -3818,21 +3838,19 @@ static int        _cullObj(_cell *c, GPtrArray *rbin)
         //if (0 == g_strcmp0("mnufea", S52_PL_getOBCL(obj))) {
         //    PRINTF("mnufea found\n");
         //}
-        //if (0 == g_strcmp0("PIPSOL", S52_PL_getOBCL(obj))) {
-        //    PRINTF("PIPSOL found\n");
-        //}
-        //if (0 == g_strcmp0("BOYLAT", S52_PL_getOBCL(obj))) {
-        //    PRINTF("BOYLAT found\n");
-        //    //g_assert(0);
-        //}
-        //if (0 == g_strcmp0("PRDARE", S52_PL_getOBCL(obj))) {
-        //    PRINTF("DEBUG: PRDARE FOUND\n");
-        //}
         //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
         //    PRINTF("M_COVR found\n");
         //}
         //if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
         //    PRINTF("sclbdy found\n");
+        //}
+        //if (0 == strcmp("M_NSYS", S52_PL_getOBCL(obj))) {
+        //    PRINTF("M_NSYS found\n");
+        //}
+        //if (0 == g_strcmp0("OBSTRN", S52_PL_getOBCL(obj))) {
+        //    PRINTF("DEBUG: OBSTRN found\n");
+        //    //S57_dumpData(S52_PL_getGeo(obj), FALSE);
+        //
         //}
 
         // is *this* object suppressed by user
@@ -3865,8 +3883,10 @@ static int        _cullObj(_cell *c, GPtrArray *rbin)
             // switch OFF highlight if user acknowledge Alarm / Indication by
             // resetting S52_MAR_GUARDZONE_ALARM to 0 (OFF - no alarm)
             // Note: at this time only S52_PRIO_HAZRDS / S52_RAD_OVER
-            if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_isHighlighted(geo))
-                S57_highlightOFF(geo);
+            //if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_isHighlighted(geo))
+            if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_getHighlight(geo))
+                //S57_highlightOFF(geo);
+                S57_setHighlight(geo, FALSE);
         }
 
         // if this object has TX or TE, draw text last (on top)
@@ -3932,9 +3952,9 @@ static int        _cull(ObjExt_t ext)
         // suppress display of SCLBDY
         if (0 == (int) S52_MP_get(S52_MAR_DISP_SCLBDY_UNION)) {
             if (S52_SUPP_OFF == S52_PL_getObjClassState("sclbdy"))
-                S52_PL_toggleObjClass("sclbdy");
+                S52_PL_toggleObjClass("sclbdy");  // switch to SUPP ON
             if (S52_SUPP_ON == S52_PL_getObjClassState("sclbdU"))
-                S52_PL_toggleObjClass("sclbdU");
+                S52_PL_toggleObjClass("sclbdU");  // switch to SUPP OFF
         }
         // show all SCLBDY
         if (1 == (int) S52_MP_get(S52_MAR_DISP_SCLBDY_UNION)) {
@@ -6764,7 +6784,8 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
             // this test is not required since the obj has just been created
             if (NULL == obj) {
                 S57_geo *geo = S52_PL_getGeo(obj);
-                S57_highlightON(geo);
+                //S57_highlightON(geo);
+                S57_setHighlight(geo, TRUE);
             }
         }
     }
