@@ -71,7 +71,7 @@ typedef enum S52_DisCat {
     DISPLAYBASE        = 'D',    // 68
     STANDARD           = 'S',    // 83
     OTHER              = 'O',    // 79
-    SELECT             = 'A',    // 65 user selection (All)
+    SELECT             = 'A',    // 65 - user selection (All)
 
     // index 18 (9 + 9) when index 9 is 'M' take 9th caracter further down
     MARINERS_STANDARD  = 'T',    // 'S' + 1 (dec 84)
@@ -313,7 +313,8 @@ S52_objSupp    S52_PL_toggleObjClass(const char *className);
 // get display state for this class of object
 S52_objSupp    S52_PL_getObjClassState(const char *className);
 // get display state
-S52_objSupp    S52_PL_getObjToggleState(S52_obj *obj);
+//S52_objSupp    S52_PL_getObjToggleState(S52_obj *obj);
+S52_objSupp    S52_PL_getObjSuppState(S52_obj *obj);
 
 // set/get Mariner obj suppression
 gboolean       S52_PL_setSupp(S52_obj *obj, gboolean supp);
