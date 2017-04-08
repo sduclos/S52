@@ -130,7 +130,7 @@ static const GLubyte _nodata_mask[4*32] = {
 static double      _getWorldGridRef(S52_obj *, double *, double *, double *, double *, double *, double *);
 static int         _fillArea(S57_geo *);
 static int         _glCallList(S52_DList *);
-static GLubyte     _setFragAttrib(S52_Color *);
+static GLubyte     _setFragAttrib(S52_Color *, gboolean);
 static int         _pushScaletoPixel(int);
 static int         _popScaletoPixel(void);
 static inline void _checkError(const char *);
@@ -399,7 +399,7 @@ static int       _renderAP_NODATA_gl1(S52_obj *obj)
 
     if (NULL != DListData) {
         S52_Color *col = DListData->colors;
-        _setFragAttrib(col);
+        _setFragAttrib(col, S57_getHighlight(geo));
 
         glEnable(GL_POLYGON_STIPPLE);
         glPolygonStipple(_nodata_mask);
@@ -421,7 +421,7 @@ static int       _renderAP_DRGARE_gl1(S52_obj *obj)
 
     if (NULL != DListData) {
         S52_Color *col = DListData->colors;
-        _setFragAttrib(col);
+        _setFragAttrib(col, S57_getHighlight(geo));
 
         glEnable(GL_POLYGON_STIPPLE);
         glPolygonStipple(_drgare_mask);
@@ -444,7 +444,7 @@ static int       _renderAP_mask_gl1(S52_obj *obj, const GLubyte *mask)
 
     if (NULL != DListData) {
         S52_Color *col = DListData->colors;
-        _setFragAttrib(col);
+        _setFragAttrib(col, S57_getHighlight(geo));
 
         glEnable(GL_POLYGON_STIPPLE);
         //glPolygonStipple(_drgare_mask);
