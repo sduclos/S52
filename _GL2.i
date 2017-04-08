@@ -40,7 +40,7 @@ static int         _glMatrixSet(VP);
 static int         _glMatrixDel(VP);
 static int         _pushScaletoPixel(int);
 static int         _popScaletoPixel(void);
-static GLubyte     _setFragAttrib(S52_Color *);
+static GLubyte     _setFragAttrib(S52_Color *, gboolean);
 static void        _glLineWidth(GLfloat);
 static void        _glPointSize(GLfloat);
 static inline void _checkError(const char *);
@@ -1969,7 +1969,7 @@ static int       _renderAP_gl2(S52_obj *obj)
     }
 
     S52_DList *DListData = S52_PL_getDListData(obj);
-    _setFragAttrib(DListData->colors);
+    _setFragAttrib(DListData->colors, S57_getHighlight(S52_PL_getGeo(obj)));
 
     // debug - red conspic
     //glUniform4f(_uColor, 1.0, 0.0, 0.0, 0.0);
