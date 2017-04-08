@@ -1085,7 +1085,7 @@ static void   _string_free(gpointer data)
     g_string_free((GString*)data, TRUE);
 }
 
-// FIXME: returning GData useless
+// FIXME: returning GData is useless
 GData     *S57_setAtt(_S57_geo *geo, const char *name, const char *val)
 {
     return_if_null(geo);
@@ -1898,25 +1898,16 @@ gchar     *S57_getRCIDstr(_S57_geo *geo)
 //}
 #endif  // S52_USE_SUPP_LINE_OVERLAP
 
-int        S57_highlightON (_S57_geo *geo)
+int        S57_setHighlight(S57_geo *geo, gboolean highlight)
 {
     return_if_null(geo);
 
-    geo->highlight = TRUE;
+    geo->highlight = highlight;
 
     return TRUE;
 }
 
-int        S57_highlightOFF(_S57_geo *geo)
-{
-    return_if_null(geo);
-
-    geo->highlight = FALSE;
-
-    return TRUE;
-}
-
-gboolean   S57_isHighlighted(_S57_geo *geo)
+gboolean   S57_getHighlight(_S57_geo *geo)
 {
     return_if_null(geo);
 
