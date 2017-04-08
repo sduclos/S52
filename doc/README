@@ -48,3 +48,14 @@ doc/graphic/
 - Call_FlowChart-1.152-2014DEC07.svg
 - libS52_files_deps-1.152-2014DEC08.dia
 - libS52_files_deps-1.152-2014DEC08.svg
+
+
+GDAL BUILD
+==========
+
+* GDAL Source: https://github.com/OSGeo/gdal
+
+* patch:
+
+* From https://trac.osgeo.org/gdal/wiki/BuildingOnUnixWithMinimizedDrivers
+  ommiting --prefix option to use default install path
