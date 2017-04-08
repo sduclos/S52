@@ -1041,7 +1041,7 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
     // CS found, merge cmd list in command array (normal + CS)
 
     // overide with original LUP prio so that
-    // if CS epdand to no OP in this code path
+    // if CS expdand to no OP in this code path
     // obj will be move to there default renderBin
     //obj->prioOveride = FALSE;
     obj->prioOveride = TRUE;
@@ -1057,7 +1057,6 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
     if (NULL != CScb) {
         obj->CSinst[alt] = CScb(obj->geo);
         if (NULL != obj->CSinst[alt]) {
-            //_cmdWL *tmp   = NULL;
             obj->CScmdL[alt] = _parseINST(obj->CSinst[alt]);
             _cmdWL *tmp      = obj->CScmdL[alt];
             while (NULL != tmp) {
@@ -1090,8 +1089,7 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
             }
         } else {
             // FIXME: ENC_ROOT/US3NY21M/US3NY21M.000 land here
-            PRINTF("NOTE: CS for object %s expand to NULL\n", S57_getName(obj->geo));
-            // FIXME: find wich CS generate a NULL
+            PRINTF("NOTE: CS %s for object %s expand to NULL\n", cmd->cmd.CS->name, S57_getName(obj->geo));
             g_assert(0);
 
             return FALSE;
@@ -2814,33 +2812,6 @@ static int        _linkLUP(_S52_obj *obj, int alt)
     // get tokenized instruction list
     obj->cmdLorig[alt] = _parseINST(obj->LUP->INST);
 
-
-    // also hold parameter for CS command found in CSinst
-    //LUP->cmdList = _LUP2cmd(LUP, geo);
-    //LUP->cmdList = _parseINST(LUP->INST, geo);
-
-
-    // priority overide
-    /* FIXME: change DISP for this object rather then this LUP
-     // OVERRIDE PRIORITY (not in S52 specs.)
-     else CMDWRD(OP, S52_CMD_OVR_PR)
-     {
-     char *c = cmd->param;
-
-     if (S52_PRIO_NOPRIO != *c) LUP->DPRI = *c - '0';    // Display Priority
-     c++;
-     if (S52_PRIO_NOPRIO != *c) LUP->RPRI = *c;          // 'O' or 'S', Radar Priority
-     c++;
-     if (S52_PRIO_NOPRIO != *c) LUP->DISC = *c;          // Display Categorie: B/S/O, Base, Standard, Other
-     c++;
-     if (S52_PRIO_NOPRIO != *c) sscanf(c, "%d",&LUP->LUCM);     // Look-Up Comment (PLib3.x put 'groupes' here,
-     //if (S52_PRIO_NOPRIO != *c) sscanf(c, "%i",&LUP->LUCM);     // Look-Up Comment (PLib3.x put 'groupes' here,
-
-     }
-     SCANFWRD
-     */
-
-
     return TRUE;
 }
 
@@ -3179,7 +3150,7 @@ static int        _getAlt(_S52_obj *obj)
 
     // use alternate area symbol
     //if ((S57_AREAS_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
-    if ((S57_POINT_T==S57_getObjtype(obj->geo)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
+    if ((S57_AREAS_T==S57_getObjtype(obj->geo)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
         alt = 1;
 
     return alt;
@@ -3253,7 +3224,7 @@ _cmdWL           *_getCrntCmd(_S52_obj *obj)
 
     if (obj->crntAidx >= obj->crntA->len) {
         PRINTF("DEBUG: idx >= len\n");
-        //g_assert(0);
+        g_assert(0);
         return NULL;
     }
 
@@ -3268,6 +3239,7 @@ _cmdWL           *_getCrntCmd(_S52_obj *obj)
 }
 
 int         S52_PL_cmpCmdParam(_S52_obj *obj, const char *name)
+// Note: param is 8 chars, and not \0 terminated
 {
     return_if_null(obj);
     return_if_null(name);
@@ -3277,10 +3249,14 @@ int         S52_PL_cmpCmdParam(_S52_obj *obj, const char *name)
         return -1;
 
     // FIXME: glib strncmp() equivalent - does PLib allow utf?
-    //if (S52_SMB_NMLN == strlen(name))
-        return strncmp(cmd->param, name, S52_PL_SMB_NMLN);
-    //else
-    //    return strncmp(cmd->param, name, S52_PL_NMLN);
+    //return strncmp(cmd->param, name, S52_PL_SMB_NMLN);
+
+    //*
+    if (NULL != g_strrstr_len(cmd->param, S52_PL_SMB_NMLN, name))
+        return 0;
+    else
+        return 1;
+    //*/
 }
 
 int         S52_PL_cmpCmdParamLUP(_S52_obj *obj, const char *name)
@@ -3293,12 +3269,15 @@ int         S52_PL_cmpCmdParamLUP(_S52_obj *obj, const char *name)
     if (NULL == cmd)
         return -1;
 
-    // FIXME: glib strncmp() equivalent - does PLib allow utf?
     // Note: some param are LUP name - 6 chars, and not \0 terminated
-    //if (S52_SMB_NMLN == strlen(name))
-    //    return strncmp(cmd->param, name, S52_SMB_NMLN);
-    //else
-        return strncmp(cmd->param, name, S52_LUP_NMLN);
+    //return strncmp(cmd->param, name, S52_LUP_NMLN);
+
+    //*
+    if (NULL != g_strrstr_len(cmd->param, S52_LUP_NMLN, name))
+        return 0;
+    else
+        return 1;
+    //*/
 }
 
 const char *S52_PL_getCmdText(_S52_obj *obj)
@@ -3341,23 +3320,12 @@ int         S52_PL_getLSdata(_S52_obj *obj, char *pen_w, char *style, S52_Color 
     *pen_w = cmd->param[5];
     *style = cmd->param[2];
 
-    if (TRUE == S57_isHighlighted(obj->geo)) {
+    if (TRUE == S57_getHighlight(obj->geo)) {
         *color = S52_PL_getColor("DNGHL");
-        //S57_highlightOFF(obj->geo);
     } else {
         // color can change because of dratf/depth - safety contour
         *color = S52_PL_getColor(cmd->param+7);
     }
-
-    /*
-    // FIXME: line can't have transparency - check colorAt and then table that
-    // should be set to '0' rather than here
-    if ('0' != color->trans) {
-        PRINTF("ERROR: color->trans != '0'\n");
-        g_assert(0);
-        return FALSE;
-    }
-    */
 
     return TRUE;
 }
@@ -3532,8 +3500,6 @@ int         S52_PL_getLCdata(_S52_obj *obj, double *symlen, char *pen_w)
     }
     //PRINTF("ppx:%i bbx:%i bbw:%i \n", ppx, bbx, bbw);
 
-
-    //*pen_w = cmd->cmd.def->LC_pen_w;
     *pen_w = cmd->cmd.def->DListData.colors[0].fragAtt.pen_w;
     if (*pen_w < '1' || '9' < *pen_w) {
         PRINTF("WARNING: out of bound pen width for LC (%c)\n", *pen_w);
@@ -3555,7 +3521,7 @@ S52_Color  *S52_PL_getACdata(_S52_obj *obj)
         return NULL;
 
     S52_Color *color = NULL;
-    if (TRUE == S57_isHighlighted(obj->geo)) {
+    if (TRUE == S57_getHighlight(obj->geo)) {
         color = S52_PL_getColor("DNGHL");
     } else {
         // color of water can change because of dratf/depth
@@ -3768,7 +3734,8 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
     */
 
     for (guint i=0; i<nbr; ++i) {
-        if (TRUE == S57_isHighlighted(obj->geo)) {
+        //if (TRUE == S57_isHighlighted(obj->geo)) {
+        if (TRUE == S57_getHighlight(obj->geo)) {
             S52_Color *colhigh = S52_PL_getColor("DNGHL");
             //c[i] = *colhigh;
             c[i].R = colhigh->R;
@@ -4395,7 +4362,8 @@ S52_objSupp S52_PL_getObjClassState(const char *className)
     return S52_SUPP_ERR;
 }
 
-S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
+//S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
+S52_objSupp S52_PL_getObjSuppState(_S52_obj *obj)
 // get obj supp state set by user
 {
     // test useless since the only caller allready did that
@@ -4409,13 +4377,17 @@ S52_objSupp S52_PL_getObjToggleState(_S52_obj *obj)
     //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
     //    PRINTF("DEBUG: M_COVR found\n");
     //}
+    //if (0 == g_strcmp0("OBSTRN", S52_PL_getOBCL(obj))) {
+    //    PRINTF("DEBUG: OBSTRN found\n");
+    //}
 
 
     // META's can't be displayed (ex: C_AGGR)
     if (NULL == obj->LUP)
         return S52_SUPP_ON;
 
-    int lupDisp = S52_PL_getDISC(obj);
+    //int lupDisp = S52_PL_getDISC(obj);
+    S52_DisCat lupDisp = S52_PL_getDISC(obj);
 
     // Mariners Objects
     if (MARINERS_STANDARD==lupDisp || MARINERS_OTHER==lupDisp) {
@@ -4687,16 +4659,12 @@ int         S52_PL_setFreetypeGL_VBO(_S52_obj *obj, guint vboID, guint len, doub
     if (NULL == cmd)
         return FALSE;
 
-    //if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord) && (S52_CMD_SYM_PT!=cmd->cmdWord)) {
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
         PRINTF("DEBUG: logic bug, not a text command [cmdWord:%i]\n", cmd->cmdWord);
         g_assert(0);
 
         return FALSE;
     }
-
-    //cmd->vboID = vboID;
-    //cmd->len   = len;
 
     if (NULL == cmd->cmd.text)
          return FALSE;
@@ -4717,15 +4685,11 @@ guint       S52_PL_getFreetypeGL_VBO(_S52_obj *obj, guint *len, double *strWpx, 
     if (NULL == cmd)
         return FALSE;
 
-    //if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord) && (S52_CMD_SYM_PT!=cmd->cmdWord)) {
     if ((S52_CMD_TXT_TX!=cmd->cmdWord) && (S52_CMD_TXT_TE!=cmd->cmdWord)) {
         PRINTF("DEBUG: not a text command [cmdWord:%i]\n", cmd->cmdWord);
         g_assert(0);
         return FALSE;
     }
-
-    //*len = cmd->len;
-    //return cmd->vboID;
 
     if (NULL == cmd->cmd.text)
          return FALSE;
