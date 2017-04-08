@@ -5,10 +5,20 @@
 
 static int      _s52_setupMarPar(void)
 {
-    // -- DEPTH COLOR ------------------------------------
-    S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
-    //S52_setMarinerParam(S52_MAR_TWO_SHADES,      1.0);   // 1.0 --> 2 shades
+    // S-64
+    //Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
+    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);
+    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    4.0);
 
+    //Symbolized boundaries, Simplified symbols, Multicolour
+    S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND,  1.0);
+    S52_setMarinerParam(S52_MAR_SYMPLIFIED_PNT,  1.0);
+    S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);
+
+
+    /* -- DEPTH COLOR ------------------------------------
     // sounding color
     //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    10.0);
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
@@ -27,9 +37,13 @@ static int      _s52_setupMarPar(void)
 
     S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
     //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GPU expentive)
-    // -- DEPTH COLOR ------------------------------------
+    //-- DEPTH COLOR ------------------------------------
+    */
 
-    S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 1.0);  // on (default) [Note: this tax the CPU/GPU]
+    S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
+    //S52_setMarinerParam(S52_MAR_TWO_SHADES,      1.0);   // 1.0 --> 2 shades
+
+    S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND,  1.0);  // on (default) [Note: this tax the CPU/GPU]
     //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 0.0);  // off
     S52_setMarinerParam(S52_MAR_SYMPLIFIED_PNT,  1.0);
 
@@ -37,7 +51,7 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   1.0);  // on  (default OFF)
     S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);  // on  (default OFF)
     S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);  // on - 1NM (default OFF - 0.0)
-    //S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);  // off (default ON)
+    S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);  // off (default ON)
 
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // BASE always ON
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // STABDARD default
@@ -64,8 +78,8 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_DATUM_OFFSET,    0.0);
     //S52_setMarinerParam(S52_MAR_DATUM_OFFSET,    5.0);
 
-    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
+    //S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
+    S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
 
     // remove clutter QUAPNT01 symbole (black diagonal and a '?')
     S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);   // off
@@ -73,8 +87,8 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_DISP_CALIB,      1.0);
 
     // cell's legend
-    //S52_setMarinerParam(S52_MAR_DISP_LEGEND, 1.0);   // show
-    S52_setMarinerParam(S52_MAR_DISP_LEGEND, 0.0);   // hide (default)
+    //S52_setMarinerParam(S52_MAR_DISP_LEGEND,     1.0);   // show
+    S52_setMarinerParam(S52_MAR_DISP_LEGEND,     0.0);   // hide (default)
 
     //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
     S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
@@ -83,7 +97,7 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
 
     //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 0.0);  // none
-    S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 1.0);  // pick/highlight top object
+    S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK,  1.0);  // pick/highlight top object
     //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 2.0);  // pick stack/highlight top
     //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 3.0);  // pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
 
@@ -154,7 +168,7 @@ static int      _s52_setupMarPar(void)
     // CS DATCVY01:M_COVR:CATCOV=2, "M_COVR" OTHER
     //S52_setMarinerParam(S52_MAR_DISP_HODATA_UNION, 1.0);  // draw all M_COVR individualy
     // CS DATCVY01:M_COVR:CATCOV=1, "m_covr" BASE, (LUPT in PLAUX_00.DAI)
-    //S52_setMarinerParam(S52_MAR_DISP_HODATA_UNION, 0.0);  // union: combite M_COVR as one poly 'm_covr' (default:BASE)
+    S52_setMarinerParam(S52_MAR_DISP_HODATA_UNION, 0.0);  // union: combite M_COVR as one poly 'm_covr' (default:BASE)
 
     //S52_MAR_DISP_SCLBDY_UNION   = 50,   // 0 - union Scale Boundary (default), 1 - all Scale Boundary (debug)
     // CS
