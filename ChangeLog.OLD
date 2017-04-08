@@ -4,6 +4,12 @@
 #
 
 
+2017APR03
+    -fix light extend_arc_radius sector when not overlapping
+    -mod _setFragAttrib() to handle highlight
+    -add S57_setHighlight(ON/OFF) to replace HighlightON HighlightOFF
+    -mon replace atoi/atof by g_ascii_strtod() local agnostic
+
 2017APR02
     -refactor APP/moveObj()
     -mod set to TRUE prioOveride with default LUP prio
