@@ -48,10 +48,8 @@ static int          _doInit        = TRUE;    // initialize (but GL context --ne
 static int          _ctxValidated  = FALSE;   // validate GL context
 static GPtrArray   *_objPick       = NULL;    // list of object picked
 static GString     *_strPick       = NULL;    // hold temps val
-static int          _doHighlight   = FALSE;   // TRUE then _objhighlight point to the object to hightlight
+//static int          _doHighlight   = FALSE;   // TRUE then _objhighlight point to the object to hightlight
 static S52_GL_cycle _crnt_GL_cycle = S52_GL_INIT; // state before first S52_GL_DRAW
-
-//    S52_GL_NONE; // failsafe - keep cycle in sync between begin / end
 
 // FIXME: rename to something like _doInitViewFirstTime
 static int          _symbCreated   = FALSE;   // TRUE if PLib symb created (DList/VBO)
@@ -62,7 +60,6 @@ static GArray      *_tmpWorkBuffer = NULL;    // tmp buffer
 
 ////////////////////////////////////////////////////////////////////
 // Projection View
-
 
 // optimisation
 //static int          _identity_MODELVIEW = FALSE;   // TRUE then identity matrix for modelview is on GPU (optimisation for AC())
@@ -1542,9 +1539,6 @@ static int       _setBlend(int blend)
 
 static int       _glColor4ub(GLubyte r, GLubyte g, GLubyte b, GLubyte a)
 {
-    // debug
-    //printf("_glColor4ub: set current cIdx R to : %X\n", _cIdx.color.r);
-
 #ifdef S52_USE_GL2
     GLfloat alpha = (4 - (a - '0')) * TRNSP_FAC_GLES2;
     glUniform4f(_uColor, r/255.0, g/255.0, b/255.0, alpha);
@@ -1558,7 +1552,7 @@ static int       _glColor4ub(GLubyte r, GLubyte g, GLubyte b, GLubyte a)
     return TRUE;
 }
 
-static GLubyte   _setFragAttrib(S52_Color *c)
+static GLubyte   _setFragAttrib(S52_Color *c, gboolean highlight)
 // set fragment attributes: color/highlight, trans, pen_w
 // return transparancy/alpha
 {
@@ -1568,17 +1562,18 @@ static GLubyte   _setFragAttrib(S52_Color *c)
         return (GLubyte) 1;
     }
 
-    // normal
-    _glColor4ub(c->R, c->G, c->B, c->fragAtt.trans);
-
-    // reset color if highlighting (pick / alarm / indication)
     // FIXME: red / yellow (danger / warning)
-    if (TRUE == _doHighlight) {
+    if (TRUE == highlight) {
+        // reset color if highlighting (pick / alarm / indication)
         S52_Color *dnghlcol = S52_PL_getColor("DNGHL");
         _glColor4ub(dnghlcol->R, dnghlcol->G, dnghlcol->B, c->fragAtt.trans);
+    } else
+    {
+        // normal
+        _glColor4ub(c->R, c->G, c->B, c->fragAtt.trans);
+
     }
 
-    //* trans
     if (('0'!=c->fragAtt.trans) && (TRUE==(int) S52_MP_get(S52_MAR_ANTIALIAS))) {
         // FIXME: blending always ON
         glEnable(GL_BLEND);
@@ -1587,7 +1582,6 @@ static GLubyte   _setFragAttrib(S52_Color *c)
         glEnable(GL_ALPHA_TEST);
 #endif
     }
-    //*/
 
     // pen_w of SY
     // - AC, AP, TXT, doesn't have a pen_w
@@ -1628,7 +1622,7 @@ static int       _glCallList(S52_DList *DListData)
     for (guint i=0; i<DListData->nbr; ++i, ++lst, ++col) {
 
         //GLubyte trans =
-        _setFragAttrib(col);
+        _setFragAttrib(col, FALSE);
 
 #ifdef S52_USE_OPENGL_VBO
         GLuint vboId = DListData->vboIds[i];
@@ -2668,7 +2662,7 @@ static int       _renderSY(S52_obj *obj)
             {
                 S52_DList *DListData = S52_PL_getDListData(obj);
                 S52_Color *col = DListData->colors;
-                _setFragAttrib(col);
+                _setFragAttrib(col, S57_getHighlight(geo));
 
                 _glUniformMatrix4fv_uModelview();
 
@@ -3128,7 +3122,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
         char       style;   // dummy
         char       pen_w;   // dummy
         S52_PL_getLSdata(obj, &pen_w, &style, &col);
-        _setFragAttrib(col);
+        _setFragAttrib(col, S57_getHighlight(geo));
     }
 
     //_setBlend(TRUE);
@@ -3243,7 +3237,7 @@ static int       _renderLS(S52_obj *obj)
     char       style;   // L/S/T
     char       pen_w;
     S52_PL_getLSdata(obj, &pen_w, &style, &col);
-    _setFragAttrib(col);
+    _setFragAttrib(col, S57_getHighlight(S52_PL_getGeo(obj)));
 
     _glLineWidth(pen_w - '0');
     //_glLineWidth(pen_w - '0' + 0.1);  // WARNING: THIS +0.1 SLOW DOWN EVERYTHING
@@ -3672,7 +3666,8 @@ static int       _renderLC(S52_obj *obj)
 
         //* draw guard zone if highligthed
         // FIXME: what about arc!
-        if (TRUE == S57_isHighlighted(geo)) {
+        //if (TRUE == S57_isHighlighted(geo)) {
+        if (TRUE == S57_getHighlight(geo)) {
             _glLoadIdentity(GL_MODELVIEW);
 
 #ifdef S52_USE_GL2
@@ -3700,7 +3695,7 @@ static int       _renderLC(S52_obj *obj)
     // be set via call list --short line
     S52_DList *DListData = S52_PL_getDListData(obj);
     S52_Color *c = DListData->colors;
-    _setFragAttrib(c);
+    _setFragAttrib(c, S57_getHighlight(geo));
 
     //GLdouble symlen_pixl = 0.0;
     //GLdouble symlen_wrld = 0.0;
@@ -3892,7 +3887,7 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
     }
 
     S52_Color *c = DListData->colors;
-    _setFragAttrib(c);
+    _setFragAttrib(c, S57_getHighlight(geo));
 
     GLdouble slice  = 360.0;
     GLdouble loops  = 1.0;
@@ -3987,7 +3982,7 @@ static int       _renderAC(S52_obj *obj)
     //*/
 
 
-    _setFragAttrib(c);
+    _setFragAttrib(c, S57_getHighlight(geo));
 
     _glUniformMatrix4fv_uModelview();
 
@@ -4022,7 +4017,7 @@ static int       _renderAP_NODATA_layer0(void)
     pt3.y = _pmin.v;
 
     S52_Color *chgrd = S52_PL_getColor("CHGRD");  // grey, conspic
-    _setFragAttrib(chgrd);
+    _setFragAttrib(chgrd, FALSE);
 
 #ifdef S52_USE_GL2
     // draw using texture as a stencil -------------------
@@ -4312,7 +4307,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     /* debug: draw all text sans just. Change color to DNGHL
     {
         S52_Color *c = S52_PL_getColor("DNGHL");   // danger conspic.
-        _setFragAttrib(c);
+        _setFragAttrib(c, TRUE);
 
         _renderTXTAA_gl2(x, y, NULL, len);
     }
@@ -4325,7 +4320,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 #ifdef S52_USE_TXT_SHADOW
     if (NULL != color) {
         S52_Color *c = S52_PL_getColor("UIBCK");  // opposite of CHBLK
-        _setFragAttrib(c);
+        _setFragAttrib(c, FALSE);
 
         // lower right - OK
         if ((S52_GL_LAST==_crnt_GL_cycle) || (S52_GL_NONE==_crnt_GL_cycle)) {
@@ -4338,7 +4333,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
 #endif  // S52_USE_TXT_SHADOW
 
     if (NULL != color)
-        _setFragAttrib(color);
+        _setFragAttrib(color, FALSE);
 
     if ((S52_GL_LAST==_crnt_GL_cycle) || (S52_GL_NONE==_crnt_GL_cycle)) {
         // some MIO change age of target - need to resend the string
@@ -4420,7 +4415,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     double n = _view.north;
     _view.north = 0.0;
 
-    _setFragAttrib(color);
+    _setFragAttrib(color, FALSE);
 
     //_setBlend(FALSE);
 
@@ -4491,7 +4486,7 @@ static int       _renderTXT(S52_obj *obj)
     /* debug: draw all text sans just. Change color to DNGHL
     {
         S52_Color *c = S52_PL_getColor("DNGHL");   // danger conspic.
-        _setFragAttrib(c);
+        _setFragAttrib(c, TRUE);
 
         _renderTXTAA(obj, c, ppt[0], ppt[1], bsize, weight, str);
     }
@@ -5220,7 +5215,8 @@ int        S52_GL_isSupp(S52_obj *obj)
         return FALSE;
     }
 
-    if (S52_SUPP_ON == S52_PL_getObjToggleState(obj)) {
+    //if (S52_SUPP_ON == S52_PL_getObjToggleState(obj)) {
+    if (S52_SUPP_ON == S52_PL_getObjSuppState(obj)) {
         ++_oclip;
         return TRUE;
     }
@@ -5581,62 +5577,15 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     //------------------------------------------------------
     // debug
     //return TRUE;
-    //if (0 == strcmp("HRBFAC", S52_PL_getOBCL(obj))) {
-    //    PRINTF("HRBFAC found\n");
-    //    //return;
-    //}
-    //if (0 == strcmp("ebline", S52_PL_getOBCL(obj))) {
-    //    PRINTF("ebline found\n");
-    //}
-    //if (0 == strcmp("UNSARE", S52_PL_getOBCL(obj))) {
-    //    PRINTF("UNSARE found\n");
-    //    //return;
-    //}
-    //if (0 == strcmp("$CSYMB", S52_PL_getOBCL(obj))) {
-    //    PRINTF("$CSYMB found\n");
-    //    //return;
-    //}
-    //if (0 == g_strcmp0(S52_PL_getOBCL(obj), "pastrk")) {
-    //    PRINTF("DEBUG: pastrk FOUND\n");
-    //}
-    //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
-    //    PRINTF("DEBUG: M_COVR FOUND\n");
-    //}
-    //if (0 == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) {
-    //    PRINTF("DEBUG: m_covr FOUND\n");
-    //}
-    //if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
-    //    PRINTF("DEBUG: sclbdy FOUND\n");
-    //}
-    //if (0 == g_strcmp0("clrlin", S52_PL_getOBCL(obj))) {
-    //    PRINTF("DEBUG: clrlin FOUND\n");
-    //}
-    //if (S52_GL_PICK == _crnt_GL_cycle) {
-    //    S57_geo *geo = S52_PL_getGeo(obj);
-    //    GString *FIDNstr = S57_getAttVal(geo, "FIDN");
-    //    if (0==strcmp("2135161787", FIDNstr->str)) {
-    //        PRINTF("%s\n", FIDNstr->str);
-    //    }
-    //}
-    /*
-    S57_geo *geo = S52_PL_getGeo(obj);
-    //PRINTF("drawing geo ID: %i\n", S57_getS57ID(geo));
-    //if (2184==S57_getS57ID(geo)) {
-    //if (140 == S57_getS57ID(geo)) {
-    //if (103 == S57_getS57ID(geo)) {  // Hawaii ISODNG
-    if (567 == S57_getS57ID(geo)) {
-        PRINTF("found %i XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n", S57_getS57ID(geo));
-        S57_highlightON(geo);
-    ////    return TRUE;
-    }
-    */
     //if (S52_GL_PICK == _crnt_GL_cycle) {
     //    if (0 == strcmp("PRDARE", S52_PL_getOBCL(obj))) {
     //        PRINTF("PRDARE found\n");
     //    }
     //}
     //------------------------------------------------------
-
+    //if (0 == strcmp("M_NSYS", S52_PL_getOBCL(obj))) {
+    //    PRINTF("M_NSYS found\n");
+    //}
 
     /* FIXME: check atomic for each obj
     // but _atomicAbort is local to S52.c!
@@ -5826,7 +5775,7 @@ int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *color
 
 #ifdef S52_USE_FTGL
     if (NULL != _ftglFont[bsize]) {
-        _setFragAttrib(c);
+        _setFragAttrib(c, FALSE);
         ftglRenderFont(_ftglFont[bsize], str, FTGL_RENDER_ALL);
     }
 #endif
@@ -6024,7 +5973,8 @@ static int       _doProjection(vp_t vp, double centerLat, double centerLon, doub
     // MPP - Meter Per Pixel
     _scalex = (_pmax.u - _pmin.u) / (double)vp.w;
     _scaley = (_pmax.v - _pmin.v) / (double)vp.h;
-    PRINTF("DEBUG: SCALE: X:%f Y:%f\n", _scalex, _scaley);
+
+    //PRINTF("DEBUG: SCALE: X:%f Y:%f\n", _scalex, _scaley);
 
     _set_SCAMIN();
 
@@ -7091,11 +7041,11 @@ cchar     *S52_GL_getNameObjPick(void)
                     const char *cmdType = NULL;
 
                     switch (cmdWrd) {
-                    case S52_CMD_SYM_PT: cmdType = "SXPO"; break;   // SY
-                    case S52_CMD_COM_LN: cmdType = "LXPO"; break;   // LC
-                    case S52_CMD_ARE_PA: cmdType = "PXPO"; break;   // AP
+                        case S52_CMD_SYM_PT: cmdType = "SXPO"; break;   // SY
+                        case S52_CMD_COM_LN: cmdType = "LXPO"; break;   // LC
+                        case S52_CMD_ARE_PA: cmdType = "PXPO"; break;   // AP
 
-                    default: break;
+                        default: break;
                     }
 
                     //*
@@ -7136,7 +7086,8 @@ cchar     *S52_GL_getNameObjPick(void)
 
     S52_obj *objHighLight = (S52_obj *)g_ptr_array_index(_objPick, idx);
     S57_geo *geoHighLight = S52_PL_getGeo(objHighLight);
-    S57_highlightON(geoHighLight);
+    //S57_highlightON(geoHighLight);
+    S57_setHighlight(geoHighLight, TRUE);
 
     name  = S57_getName (geoHighLight);
     S57ID = S57_getS57ID(geoHighLight);
@@ -7165,7 +7116,8 @@ cchar     *S52_GL_getNameObjPick(void)
                 S57_geo *geoRelAssoc = NULL;
 
                 sscanf(*splitRefs, "%p", (void**)&geoRelAssoc);
-                S57_highlightON(geoRelAssoc);
+                //S57_highlightON(geoRelAssoc);
+                S57_setHighlightON(geoRelAssoc, TRUE);
 
                 guint idAssoc = S57_getS57ID(geoRelAssoc);
 
@@ -7315,9 +7267,13 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
     }
 
     // write to temp file
-    GDALRasterIO(bandR, GF_Write, 0, 0, width, height, pixels+0, width, height, GDT_Byte, 3, 0 );
-    GDALRasterIO(bandG, GF_Write, 0, 0, width, height, pixels+1, width, height, GDT_Byte, 3, 0 );
-    GDALRasterIO(bandB, GF_Write, 0, 0, width, height, pixels+2, width, height, GDT_Byte, 3, 0 );
+    CPLErr err = CE_None;
+    err |= GDALRasterIO(bandR, GF_Write, 0, 0, width, height, pixels+0, width, height, GDT_Byte, 3, 0 );
+    err |= GDALRasterIO(bandG, GF_Write, 0, 0, width, height, pixels+1, width, height, GDT_Byte, 3, 0 );
+    err |= GDALRasterIO(bandB, GF_Write, 0, 0, width, height, pixels+2, width, height, GDT_Byte, 3, 0 );
+    if (CE_None != err) {
+        g_assert(0);
+    }
 
     GDALClose(dataset);
     g_free(pixels);
@@ -7362,7 +7318,7 @@ int        S52_GL_drawGraticule(void)
 
     char   str[80];
     S52_Color *black = S52_PL_getColor("CHBLK");
-    _setFragAttrib(black);
+    _setFragAttrib(black, FALSE);
     // FIXME: set black->lineW
     _glLineWidth(1.0);
 
@@ -7542,7 +7498,7 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
 
     S52_DList *DListData = S52_PL_getDListData(objA);
     S52_Color *color     = DListData->colors;
-    _setFragAttrib(color);
+    _setFragAttrib(color, S57_getHighlight(S52_PL_getGeo(objA)));
 
 
     // draw arc
@@ -7672,7 +7628,8 @@ int        S52_GL_isHazard(int nxyz, double *xyz)
 
         for (guint j=0; j<npt; ++j) {
             if (TRUE == S57_isPtInside(nxyz, xyz, TRUE, ppt[j*3 + 0], ppt[j*3 + 1])) {
-                S57_highlightON(geo);
+                //S57_highlightON(geo);
+                S57_setHighlight(geo, TRUE);
                 found = TRUE;
                 break;
             }
