@@ -213,11 +213,9 @@ gchar    *S57_getRCIDstr(S57_geo *geo);
 
 #endif  // S52_USE_SUPP_LINE_OVERLAP
 
-// FIXME: setHL() rather than hl ON/OFF !
-//int     S57_setHighlight(S57_geo *geo, gboolean highlight);
-int       S57_highlightON (S57_geo *geo);
-int       S57_highlightOFF(S57_geo *geo);
-gboolean  S57_isHighlighted(S57_geo *geo);
+// Note: CS call these where S57_geo is available (no S52_obj so can't move these call to PL)
+int       S57_setHighlight(S57_geo *geo, gboolean highlight);
+gboolean  S57_getHighlight(S57_geo *geo);
 
 int       S57_setHazard(S57_geo *geo, gboolean hazard);
 gboolean  S57_isHazard (S57_geo *geo);
