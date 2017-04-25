@@ -44,7 +44,6 @@ SHELL = /bin/sh
 
 .PHONY: test/* clean distclean
 
-
 DBG0   = -O0 -g
 DBG1   = -O0 -g1 -Wall -Wpedantic -Wextra
 DBG2   = -O0 -g2 -Wall -Wpedantic -Wextra
@@ -84,17 +83,18 @@ DBG    = $(DBG3)
 
 # GCC
 # gcov: -fprofile-arcs -ftest-coverage
-CC   = gcc -std=c99 -fPIC -pipe -D_POSIX_C_SOURCE=199309L # to get siginfo_t
+#CC   = gcc -std=c99 -fPIC -pipe -D_POSIX_C_SOURCE=199309L # to get siginfo_t
+#CC  += -fsanitize=address -fno-omit-frame-pointer
 #CC   = gcc -std=c99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
 #CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI and sigtrap()
 #CC   = g++ -fPIC -O0 -g -Wall  # test - compile C code as C++
-CXX  = g++ -fPIC
+#CXX  = g++ -fPIC
 
 # CLANG
-#CC    = clang   -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
+CC    = clang -std=c99 -pipe  -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
 #CC   += --analyze
 #CC   += -fsanitize=address
-#CXX   = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
+CXX   = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
 
 # FIXME: check this
 # LLVM-AddressSanitizer: http://clang.llvm.org/docs/AddressSanitizer.html
@@ -299,6 +299,8 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_SYM_VESSEL_DNGHL     \
                   -DS52_USE_RASTER               \
                   -DS52_USE_DUAL_MON             \
+                  -DS52_USE_SUPP_LINE_OVERLAP    \
+                  -DS52_USE_C_AGGR_C_ASSO        \
                   -DS52_DEBUG $(DBG)
 
 # CFLAGS="-mthumb" CXXFLAGS="-mthumb" LIBS="-lstdc++" ./configure --host=arm-eabi \
@@ -478,7 +480,7 @@ S52raz-3.2.rle.o: S52raz.s
 %.o: %.c *.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-S52GL.o: S52GL.c _GL1.i _GL2.i _GLU.i S52.h
+S52GL.o: S52GL.c S52GL.h _GL1.i _GL2.i _GLU.i S52.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 S52.o: S52.c _S52.i *.h
