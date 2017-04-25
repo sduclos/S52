@@ -1,4 +1,4 @@
-// S57ogr.c: interface to OGR S57 object data
+// S57ogr.c: OGR S57 object data
 //
 // Project:  OpENCview
 

@@ -1,4 +1,4 @@
-// S57gv.c: interface to OpenEV (GV) S57 geo data
+// S57gv.c: OpenEV (GV) S57 geo data
 //
 // Project:  OpENCview/OpenEV
 
