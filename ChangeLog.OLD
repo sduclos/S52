@@ -4,6 +4,23 @@
 #
 
 
+2017APR24
+    -mod refactor _delMarObj()
+
+2017APR19
+    -mod check if palette has changed before re-loading RGB in S52_PL_getDListData()
+    -mod refactor raster code path
+    -mod refactor renderBin traversal
+    -mod refactor S52_PL_getGeo() into S52PLGETGEO(), mod S52_obj 
+    -add _doAPP_RASTER to flags that bathy texture need be reseted
+
+2017APR14
+    -fix mem leak of META obj when relinking to new PLib on loadPLib()
+
+2017APR08
+    -mod kludge udwhaz04 diff into CS udwhaz03 to get approx S64 NE.000 plot
+    -mod refractor _revArray() use to reverse array from CCW to CW (S57 winding)
+
 2017APR03
     -fix light extend_arc_radius sector when not overlapping
     -mod _setFragAttrib() to handle highlight
