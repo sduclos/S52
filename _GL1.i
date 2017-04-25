@@ -129,7 +129,7 @@ static const GLubyte _nodata_mask[4*32] = {
 // forward decl
 static double      _getWorldGridRef(S52_obj *, double *, double *, double *, double *, double *, double *);
 static int         _fillArea(S57_geo *);
-static int         _glCallList(S52_DList *);
+static int         _glCallList(S52_DListData *);
 static GLubyte     _setFragAttrib(S52_Color *, gboolean);
 static int         _pushScaletoPixel(int);
 static int         _popScaletoPixel(void);
@@ -394,8 +394,8 @@ static int       _callDList(S57_prim *prim)
 // FIXME: same code as _renderAP_DRGARE_gl1
 static int       _renderAP_NODATA_gl1(S52_obj *obj)
 {
-    S57_geo   *geo       = S52_PL_getGeo(obj);
-    S52_DList *DListData = S52_PL_getDListData(obj);
+    S57_geo       *geo       = S52_PL_getGeo(obj);
+    S52_DListData *DListData = S52_PL_getDListData(obj);
 
     if (NULL != DListData) {
         S52_Color *col = DListData->colors;
@@ -416,8 +416,8 @@ static int       _renderAP_NODATA_gl1(S52_obj *obj)
 
 static int       _renderAP_DRGARE_gl1(S52_obj *obj)
 {
-    S57_geo   *geo       = S52_PL_getGeo(obj);
-    S52_DList *DListData = S52_PL_getDListData(obj);
+    S57_geo       *geo       = S52_PL_getGeo(obj);
+    S52_DListData *DListData = S52_PL_getDListData(obj);
 
     if (NULL != DListData) {
         S52_Color *col = DListData->colors;
@@ -439,8 +439,8 @@ static int       _renderAP_DRGARE_gl1(S52_obj *obj)
 
 static int       _renderAP_mask_gl1(S52_obj *obj, const GLubyte *mask)
 {
-    S57_geo   *geo       = S52_PL_getGeo(obj);
-    S52_DList *DListData = S52_PL_getDListData(obj);
+    S57_geo       *geo       = S52_PL_getGeo(obj);
+    S52_DListData *DListData = S52_PL_getDListData(obj);
 
     if (NULL != DListData) {
         S52_Color *col = DListData->colors;
@@ -615,7 +615,7 @@ static int       _renderAP_gl1(S52_obj *obj)
     double hw = tileHeightPix * _scaley;  // pattern height in world
     double d  = stagOffsetPix * _scalex;  // stag offset in world
 
-    S52_DList *DListData = S52_PL_getDListData(obj);
+    S52_DListData *DListData = S52_PL_getDListData(obj);
 
     glMatrixMode(GL_MODELVIEW);
 
