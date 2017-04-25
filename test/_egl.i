@@ -34,6 +34,8 @@ static PFNGLINSERTEVENTMARKEREXT _glInsertEventMarkerEXT = NULL;
 //static PFNEGLGETSYSTEMTIMEFREQUENCYNVPROC _eglGetSystemTimeFrequencyNV = NULL;
 //static PFNEGLGETSYSTEMTIMENVPROC          _eglGetSystemTimeNV          = NULL;
 //#endif
+#define EGL_KHR_create_context_no_error 1
+#define EGL_CONTEXT_OPENGL_NO_ERROR_KHR   0x31B3
 
 static int _EGL_EXT_create_context_robustness = FALSE;
 
@@ -501,6 +503,11 @@ static int      _egl_init       (EGLState *eglState)
         EGL_CONTEXT_CLIENT_VERSION, 2,
         //EGL_CONTEXT_CLIENT_VERSION, 3,  // test
 #endif
+
+//#ifdef EGL_KHR_create_context_no_error
+//        EGL_CONTEXT_OPENGL_NO_ERROR_KHR,  // 0x31B3
+//#endif
+
         EGL_NONE
     };
 
