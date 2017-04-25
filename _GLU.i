@@ -8,19 +8,20 @@
 // tessallation
 // mingw specific, with gcc APIENTRY expand to nothing
 #ifdef _MINGW
-#define _CALLBACK __attribute__ ((__stdcall__))
-//#define _CALLBACK
+#define _CALLBACK void __attribute__ ((__stdcall__))
 #else
-#define _CALLBACK
+#define _CALLBACK void
 #endif
 
-#define void_cb_t GLvoid _CALLBACK
+//#define void_cb_t GLvoid _CALLBACK
+#define void_cb_t _CALLBACK
 
-typedef void (_CALLBACK *f)    ();
-typedef void (_CALLBACK *fint) (GLint);
-typedef void (_CALLBACK *f2)   (GLint, void*);
-typedef void (_CALLBACK *fp)   (void*);
-typedef void (_CALLBACK *fpp)  (void*, void*);
+//typedef void (_CALLBACK *f)    ();
+typedef _CALLBACK (*f)    ();
+typedef _CALLBACK (*fint) (GLint);
+typedef _CALLBACK (*f2)   (GLint, void*);
+typedef _CALLBACK (*fp)   (void*);
+typedef _CALLBACK (*fpp)  (void*, void*);
 
 // tesselator for area
 static GLUtriangulatorObj *_tobj       = NULL;
@@ -95,18 +96,10 @@ static _GLUquadricObj *_gluNewQuadric(void)
 static int       _gluQuadricCallback(_GLUquadricObj* qobj, GLenum which, f fn)
 {
     switch (which) {
-      case _QUADRIC_ERROR:
-           qobj->cb_error  = (fint)fn;
-           break;
-      case _QUADRIC_BEGIN_DATA:
-           qobj->cb_begin  = (f2)fn;
-           break;
-      case _QUADRIC_END_DATA:
-           qobj->cb_end    = (fp)fn;
-           break;
-      case _QUADRIC_VERTEX_DATA:
-           qobj->cb_vertex = (fpp)fn;
-           break;
+      case _QUADRIC_ERROR:       qobj->cb_error  = (fint)fn; break;
+      case _QUADRIC_BEGIN_DATA:  qobj->cb_begin  = (f2)fn;   break;
+      case _QUADRIC_END_DATA:    qobj->cb_end    = (fp)fn;   break;
+      case _QUADRIC_VERTEX_DATA: qobj->cb_vertex = (fpp)fn;  break;
       default:
           PRINTF("WARNING: gluQuadricError(qobj, GLU_INVALID_ENUM)\n");
           g_assert(0);
@@ -262,7 +255,6 @@ static void_cb_t _edgeFlag(GLboolean flag)
     // debug
     //PRINTF("%i\n", flag);
 }
-
 
 static void_cb_t _combineCallback(GLdouble   coords[3],
                                   GLdouble  *vertex_data[4],
@@ -561,27 +553,27 @@ static GLint     _initGLU(void)
 static GLint     _freeGLU(void)
 {
     //tess
-    if (_tmpV) g_ptr_array_free(_tmpV, TRUE);
-    if (_tobj) gluDeleteTess(_tobj);
+    if (NULL != _tmpV) g_ptr_array_free(_tmpV, TRUE);
+    if (NULL != _tobj) gluDeleteTess(_tobj);
 
 #ifdef S52_USE_OPENGL_VBO
-    if (_qobj) _gluDeleteQuadric(_qobj);
+    if (NULL != _qobj) _gluDeleteQuadric(_qobj);
 #else
-    if (_qobj)  gluDeleteQuadric(_qobj);
+    if (NULL != _qobj)  gluDeleteQuadric(_qobj);
 #endif
     _tmpV = NULL;
     _tobj = NULL;
     _qobj = NULL;
 
-    if (_tcen) gluDeleteTess(_tcen);
+    if (NULL != _tcen) gluDeleteTess(_tcen);
     _tcen = NULL;
-    if (_tcin) gluDeleteTess(_tcin);
+    if (NULL != _tcin) gluDeleteTess(_tcin);
     _tcin = NULL;
-    if (_centroids) g_array_free(_centroids, TRUE);
+    if (NULL != _centroids) g_array_free(_centroids, TRUE);
     _centroids = NULL;
-    if (_vertexs)   g_array_free(_vertexs,   TRUE);
+    if (NULL != _vertexs)   g_array_free(_vertexs,   TRUE);
     _vertexs = NULL;
-    if (_nvertex)   g_array_free(_nvertex,   TRUE);
+    if (NULL != _nvertex)   g_array_free(_nvertex,   TRUE);
     _nvertex = NULL;
 
     return TRUE;
