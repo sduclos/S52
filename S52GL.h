@@ -30,63 +30,34 @@
 #endif
 
 #include "S52PL.h"	 // S52_obj (will pull S57data.h:ObjExt_t a different extent struct)
+#include "S57data.h" // ObjExt_t
 
 #include <glib.h>    // guchar, guint
 
-/* helper
-typedef struct extent {
-    // (minY,minX) --> lat/lng
-    double S;        // LL - y1
-    double W;        // LL - x1
-    // (maxY,maxX) --> lat/lng
-    double N;        // UR - y2
-    double E;        // UR - x2
 
-    // Note: S57data.h:ObjExt_t order is different
-    // (minX,minY) --> lng/lat
-    //double W;        // LL - x1
-    //double S;        // LL - y1
-    // (maxX,maxY) --> lng/lat
-    //double E;        // UR - x2
-    //double N;        // UR - y2
-} extent;
-*/
-
+#ifdef S52_USE_RASTER
 // Raster (RADAR, Bathy, ...) and dumpPixels
 typedef struct S52_GL_ras {
-    GString *fnameMerc;       // Mercator GeoTiff file name
-
     // src
-    int     w;
-    int     h;
-    int     gdtSz;            // gdt: GDALDataType
-    guchar *data;             // size =  w * h * nbyte_gdt
-    double  nodata;           // nodata value
-    double  min;              // exclusing nodata
-    double  max;              // exclusing nodata
-    double  gt[6];            // GeoTransform
+    int            w;
+    int            h;
 
-    //double S,W,N,E;
-    ObjExt_t pext;              // prj extent
-    ObjExt_t gext;              // geo extent
-
-    // dst texture size
-    guint npotX;
-    guint npotY;
+    ObjExt_t       pext;      // prj extent
+    ObjExt_t       gext;      // geo extent
 
     int            isRADAR;   // TRUE if texAlpha is a RADAR image
-
+#ifdef S52_USE_RADAR
+    S52_RADAR_cb   RADAR_cb;  // user CB to fill texAlpha during draw()
     double         cLat;      // projected
     double         cLng;      // projected
     double         rNM;       // RADAR range
-
-#ifdef S52_USE_RADAR
-    S52_RADAR_cb   RADAR_cb;  //
+#else
+    GString       *fnameMerc; // Mercator GeoTiff file name
+    guchar        *data;      // size =  w * h * nbyte_gdt
+    double         nodata;    // nodata value
 #endif
-
-    unsigned char *texAlpha;  // size = potX * potY
-    unsigned int   texID;
 } S52_GL_ras;
+#endif  // S52_USE_RASTER
 
 typedef enum S52_GL_cycle {
     S52_GL_NONE,              // state between 2 cycles
@@ -131,8 +102,14 @@ int   S52_GL_isOFFview(S52_obj *obj);
 
 // delete GL data of object (DL of geo)
 int   S52_GL_delDL(S52_obj *obj);
+
+#ifdef S52_USE_RASTER
+S52_GL_ras *S52_GL_newRaster(char *fnameMerc);
+// FIXME: update raster
+//int   S52_GL_udtRaster(S52_GL_ras *raster);
 // delete raster
 int   S52_GL_delRaster(S52_GL_ras *raster, int texOnly);
+#endif  // S52_USE_RASTER
 
 int   S52_GL_setView(double  centerLat, double  centerLon, double  rangeNM, double  north);
 int   S52_GL_getView(double *centerLat, double *centerLon, double *rangeNM, double *north);

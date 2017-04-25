@@ -102,30 +102,21 @@ typedef enum S52_CmdWrd {
                         // 3-7 - viewing group,
 } S52_CmdWrd;
 
-//* FIXME: fragment attributes - to fix S52_PL_getDListData() kludge
+// fragment attributes - to fix S52_PL_getDListData() kludge
 typedef struct S52_fragAtt {
     //--- not S52 field --------
     // FIXME: index of a GArray - pointer arithmetic - so guchar must be conveted gpointer!
     // #define g_ptr_array_index(array,index_) ((array)->pdata)[index_]
     // so i * sizeof(S52_Color)
-    guchar   cidx;      // index of this color in palette [0..63], used as lookup when palette change
-    char     pen_w;     // using VBO's we need to know this, Display List store this but not VBO
-    char     trans;     // command word can change this so 'trans' is linked to an object not a color
+    guchar   cidx;      // 2^6: index of this color in palette [0..63], used as lookup when palette change
+    char     pen_w;     // 2^2: using VBO's we need to know this, Display List store this but not VBO
+    char     trans;     // 2^2: command word can change this so 'trans' is linked to an object not a color
     //--------------------------
 } S52_fragAtt;
-//*/
 
 // color definition
 typedef struct S52_Color {
-    //--- not S52 field --------
-    // FIXME: index of a GArray - pointer arithmetic - so guchar must be conveted gpointer!
-    // #define g_ptr_array_index(array,index_) ((array)->pdata)[index_]
-    // so i * sizeof(S52_Color)
-    //guchar   cidx;      // index of this color in palette [0..63], used as lookup when palette change
-    //char     pen_w;     // using VBO's we need to know this, Display List store this but not VBO
-    //char     trans;     // command word can change this so 'trans' is linked to an object not a color
-    S52_fragAtt fragAtt;
-    //--------------------------
+    S52_fragAtt fragAtt;  //--- not S52 field --------
 
     char     colName[S52_PL_COL_NMLN +1];   // '\0' terminated
     double   x;
@@ -139,13 +130,15 @@ typedef struct S52_Color {
 // symbol's OpenGL Display List sub-list for color/pen_w/trans switch
 #define MAX_SUBLIST 10  // ex: SCALEB10 need to switch color 9 times (2 colors)
 //#define MAX_SUBLIST 11  // ex: SCALEB10 need to switch color 9 times (2 colors)
-typedef struct S52_DList {
+typedef struct S52_DListData {
     int       create;                // TRUE create new DL
     guint     nbr;                   // number of Display List / VBO
     guint     vboIds[MAX_SUBLIST];   // array of starting index of Display List / VBO ids
     S52_Color colors[MAX_SUBLIST];   // color of each Display List / VBO
     S57_prim *prim  [MAX_SUBLIST];   // hold PLib sym prim info for VBO
-} S52_DList;
+
+    int       crntPalIDX;            // -1 - init, 0..n palette index
+} S52_DListData;
 
 // Vector Command (a la HPGL)
 typedef enum S52_vCmd {
@@ -194,12 +187,11 @@ S52_Color     *S52_PL_getColor(const char *colorName);
 
 // get a rasterising rules for this S57 object
 S52_obj       *S52_PL_newObj(S57_geo *geo);
-S57_geo       *S52_PL_delObj(S52_obj *obj, gboolean updateObjL);
+// nilAuxInfo: TRUE del ref to obj, also in objlist
+S57_geo       *S52_PL_delObj(S52_obj *obj, gboolean nilAuxInfo);
 // get the geo part (S57) of this S52 object
-S57_geo       *S52_PL_getGeo(S52_obj *obj);
-// not used
-//S57_geo       *S52_PL_setGeo(S52_obj *obj, S57_geo *geo);
-
+#define        S52PLGETGEO(S52OBJ) (*(S57_geo **)S52OBJ)
+#define        S52_PL_getGeo(obj) S52PLGETGEO(obj)
 // get LUP name
 const char    *S52_PL_getOBCL(S52_obj *obj);
 // get addressed object S52 obj TYPe
@@ -236,7 +228,7 @@ int            S52_PL_cmpCmdParamLUP(S52_obj *obj, const char *name);  // 8 char
 // get str for the current command (PLib exposition field: LXPO/PXPO/SXPO)
 const char    *S52_PL_getCmdText(S52_obj *obj);
 
-S52_DList     *S52_PL_getDLData(S52_symDef *def);
+S52_DListData *S52_PL_getDLData(S52_symDef *def);
 
 //-------------------------------------------------------
 // init vector commands parser
@@ -288,8 +280,8 @@ guint          S52_PL_getAPtexID(S52_obj *obj);
 gint           S52_PL_traverse(S52_SMBtblName tableNm, GTraverseFunc callBack);
 
 // return a list of Display List --one per color/pen_w/trans
-S52_DList     *S52_PL_newDListData(S52_obj *obj);
-S52_DList     *S52_PL_getDListData(S52_obj *obj);
+S52_DListData *S52_PL_newDListData(S52_obj *obj);
+S52_DListData *S52_PL_getDListData(S52_obj *obj);
 
 // text parser
 const char    *S52_PL_getEX(S52_obj *obj, S52_Color **col,
@@ -320,7 +312,7 @@ S52_objSupp    S52_PL_getObjSuppState(S52_obj *obj);
 gboolean       S52_PL_setSupp(S52_obj *obj, gboolean supp);
 gboolean       S52_PL_getSupp(S52_obj *obj);
 
-int            S52_PL_resloveSMB(S52_obj *obj);
+void           S52_PL_resloveSMB(S52_obj *obj, void *);
 // dx/dy between center and pivot
 int            S52_PL_getPivotOffset(S52_obj *obj, double *offset_x, double *offset_y);
 
@@ -351,9 +343,6 @@ long           S52_PL_getTimeSec(S52_obj *obj);
 guint          S52_PL_getFreetypeGL_VBO(S52_obj *obj, guint *len, double *strWpx, double *strHpx, char *hjust, char *vjust);
 int            S52_PL_setFreetypeGL_VBO(S52_obj *obj, guint vboID, guint len, double strWpx, double strHpx);
 #endif
-
-//int            S52_PL_setLOD(S52_obj *obj, char LOD);
-//char           S52_PL_getLOD(S52_obj *obj);
 
 S52_obj       *S52_PL_isObjValid(unsigned int objH);
 

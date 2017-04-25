@@ -1,4 +1,4 @@
-// S52cs.h: interface to Conditional Symbology (CS) instruction
+// S52CS.h: interface to Conditional Symbology (CS) instruction
 //
 // Project:  OpENCview
 

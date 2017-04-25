@@ -59,7 +59,7 @@ typedef enum S57_AW_t {
 } S57_AW_t;
 */
 
-/* Not used - ReCord NaMe for S57 primitive - use second digit
+//* ReCord NaMe for S57 primitive - use second digit
 typedef enum S57_RCNM_t {
     S57_RCNM_NONE =  0,
     S57_RCNM_VI   = '1',  // 110 - isolated node
@@ -67,7 +67,7 @@ typedef enum S57_RCNM_t {
     S57_RCNM_VE   = '3',  // 130 - edge
     S57_RCNM_MAX  =  4
 } S57_RCNM_t;
-*/
+//*/
 
 // S52/S57 geo object extent (enveloppe in OGR parlance)
 typedef struct ObjExt_t {
@@ -179,7 +179,9 @@ int       S57_getAttributes(S57_geo *geo, char **name, char **val);
 
 // debug
 int       S57_dumpData(S57_geo *geo, int dumpCoords);
-guint     S57_getS57ID(S57_geo *geo);
+#define   S57GETS57ID(GEO)    (*(guint *)GEO)
+#define   S57_getS57ID(geo) S57GETS57ID(geo)
+//guint     S57_getS57ID(S57_geo *geo);
 
 #ifdef S52_USE_PROJ
 #include <proj_api.h>   // projXY, projUV, projPJ
@@ -219,5 +221,10 @@ gboolean  S57_getHighlight(S57_geo *geo);
 
 int       S57_setHazard(S57_geo *geo, gboolean hazard);
 gboolean  S57_isHazard (S57_geo *geo);
+
+
+//int       S57_setLOD(S52_obj *obj, char LOD);
+//char      S57_getLOD(S52_obj *obj);
+
 
 #endif // _S57DATA_H_

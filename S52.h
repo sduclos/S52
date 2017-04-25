@@ -77,7 +77,7 @@ typedef enum S52MarinerParameter {
     S52_MAR_SYMPLIFIED_PNT      = 13,   // simplified point (on/off) [default ON]
     S52_MAR_DISP_CATEGORY       = 14,   // display category (see [1] bellow)
     S52_MAR_COLOR_PALETTE       = 15,   // color palette  (0 - DAY_BRIGHT, 1 - DAY_BLACKBACK, 2 - DAY_WHITEBACK, 3 - DUSK, 4 - NIGHT)
-                                        // (call S52_getPalettesNameList() to get the current palette list
+                                        // (call S52_getPalettesNameList() to get the current palette list)
 
     S52_MAR_VECPER              = 16,   // vecper: OWNSHP & VESSEL: Vector-length time-period (min) (normaly 6 or 12)
     S52_MAR_VECMRK              = 17,   // vecmrk: OWNSHP & VESSEL: Vector time-mark interval (0 - none, 1 - 1&6 min, 2 - 6 min)
@@ -323,7 +323,7 @@ DLL int    STD S52_draw(void);
 DLL int    STD S52_drawLast(void);
 
 
-// deprecated
+// DEPRECATED
 DLL int    STD S52_drawLayer(const char *name);
 
 
@@ -498,7 +498,7 @@ typedef int (*S52_loadObject_cb)(const char *objname, /* OGRFeatureH */ void *fe
  *       and Longitude of any futher S52_loadCell() call(s)
  * Note: Interrupt 2 (ANSI) - user press Ctrl-C to stop long running process
  *       (if compiled with S52_USE_SUPP_LINE_OVERLAP and/or S52_USE_C_AGGR_C_ASSO,
- *        analysis can be expensive in large file)
+ *        analysis can be expensive in large ENC)
  *
  * Return: TRUE on success, else FALSE
  */
@@ -802,10 +802,11 @@ DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType obj
  * S52_delMarObj:
  * @objH: (in) (transfer none): addressed S52ObjectHandle
  *
- * Delete ressources in libS52 for this S52_obj.
+ * Delete ressources in libS52 for this objH.
+ * Note: will fail if an AIS self-destruct (see S52_MAR_DISP_VESSEL_DELAY)
  *
  *
- * Return: NULL if S52_obj was deleted successfully, if call fail return @S52ObjectHandle
+ * Return: FALSE if objH was deleted successfully, else return @S52ObjectHandle
  */
 DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH);
 
