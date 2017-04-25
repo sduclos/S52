@@ -11,7 +11,7 @@
     -mod check if palette has changed before re-loading RGB in S52_PL_getDListData()
     -mod refactor raster code path
     -mod refactor renderBin traversal
-    -mod refactor S52_PL_getGeo() into S52PLGETGEO(), mod S52_obj 
+    -mod refactor S52_PL_getGeo() into S52PLGETGEO(), mod S52_obj
     -add _doAPP_RASTER to flags that bathy texture need be reseted
 
 2017APR14
@@ -35,7 +35,7 @@
 2017MAR31
     -mod refactor APP/overide prio
     -add combine scale boundary
-    -add S52_PL_isPrioO() 
+    -add S52_PL_isPrioO()
     -mod S52ObjectType S52_PL_getFTYP()
     -del M_COVR test in S52_GL_isSupp()
 
@@ -49,7 +49,7 @@
     -mod rename _moveObj() to _appMoveObj()
     -mod refactor scale boundary generation
     -add scale boundary union
-    
+
 2017MAR20
     -fix use bsize param in _renderTXTAA()
     -fix scale boundary to draw only M_COVR:CATCOV=1
