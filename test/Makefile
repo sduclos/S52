@@ -26,16 +26,16 @@ all: s52gtk2egl    # GTK2 & GLES2 & EGL
 
 # GCC
 #CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=gnu99
-CC   = gcc -O0 -g -Wall -Wextra -pedantic -pipe -std=c99 -D_POSIX_C_SOURCE=199309L  # for signal in ais_standalone
+#CC   = gcc -O0 -g -Wall -Wextra -pedantic -pipe -std=c99 -D_POSIX_C_SOURCE=199309L  # for signal in ais_standalone
 # test - compile C code as C++
 #CC   = g++ -fPIC -O0 -g -Wall
 #CXX   = g++ -O0 -g -Wall
 
 # CLANG
-#CC   = clang -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
+CC   = clang -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
 #CC   += --analyze
 #CC   += -fsanitize=address
-#CXX  = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
+CXX  = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
 
 MINGW = /usr/bin/i586-mingw32msvc-
 #MINGW = /usr/bin/i686-w64-mingw32-
@@ -86,6 +86,7 @@ s52gtk2gps: CFLAGS += `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-gl
 s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 
 #                     -DSET_SCREEN_SIZE
+#                     -DUSE_TEST_OBJ
 s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
@@ -174,7 +175,7 @@ s52glx: s52glx.c
 #	$(CC) $(CFLAGS) -DS52AIS_STANDALONE s52ais.c $(LIBS) -o s52ais
 
 #FIXME: with -DUSE_FAKE_AIS no need to build AIS
-s52eglx: s52egl.c s52ais.c *.i
+s52eglx: s52egl.c s52ais.c *.i Makefile
 	$(CC) $(CFLAGS) s52egl.c s52ais.c $(LIBS) -o $@
 
 s52gtk2egl: s52gtkegl.c s52ais.c *.i
