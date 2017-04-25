@@ -9,7 +9,6 @@ Last update:
 Curent focus (top priority *):
 
     GL:
-*   -rotate extent when chart rotate
 *   -handle overlaping symbol at the center of the screen (find test case to debug)
     -send XYZ to GPU where Z=(idx col pal 6bits + trans 2bits) = 64 colors + 4 levels of transparancy
     -implement pattern scale spacing (PASP field)
@@ -54,6 +53,7 @@ DONE
 ====
 (put here TODO's that has been done)
 
+    -rotate extent when chart rotate / augment view extent to fill screen
     -experimental: supression of overlapping simple lines (ie overlaping LS() not processed) (also of same disp prio AREAS/LINES)
     -combined adjacent areas of M_COVR, CATCOV=1; HODATA01 - boundary marking end of HO data. Use CSG as in _computeCentroid().
     -alarm safety perimeter (pick GL trick) and route planning -try fast geo route instead of the pick GL trick
