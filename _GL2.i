@@ -15,9 +15,6 @@
 #else  // S52_USE_GLSC2
 #ifdef S52_USE_GL2
 #include <GLES2/gl2.h>
-
-//#include <GLES2/gl2ext.h>  // GL_MULTISAMPLE_EXT / NV
-
 #define GL_GLEXT_PROTOTYPES
 #include <GLES2/gl2ext.h>  // glReadnPixelsEXT / KHR, glTexStorage2DEXT
 #endif  // S52_USE_GL2
@@ -57,7 +54,7 @@ static int _GL_OES_texture_npot = FALSE;
 static int _GL_EXT_debug_marker = FALSE;
 static int _GL_OES_point_sprite = FALSE;
 static int _GL_EXT_robustness   = FALSE;
-
+static int _GL_KHR_no_error     = FALSE;
 
 // used to convert float to double for tesselator
 static GArray *_tessWorkBuf_d = NULL;
@@ -182,26 +179,9 @@ static const GLubyte _dashpa_mask_bits[4] = {     // 4 x 8 bits = 32 bits
 // other pattern are created using FBO
 static GLuint         _fboID = 0;
 
-/* hold copy of FrameBuffer
-static guint          _fb_pixels_id   = 0;     // texture ID
-static unsigned char *_fb_pixels      = NULL;
-static guint          _fb_pixels_size = 0;
-static int            _fb_pixels_udp  = TRUE;  // TRUE flag that the FB changed
-
-#define _RGB           3
-#define _RGBA          4
-#ifdef S52_USE_ADRENO
-static int            _fb_pixels_format      = _RGB;   // alpha blending done in shader
-#else
-static int            _fb_pixels_format      = _RGBA;
-//static int            _fb_pixels_format      = _RGB ;  // Note: on TEGRA2 RGB (3) very slow
-#endif
-*/
-
 
 //---- PATTERN GL2 / GLES2 -----------------------------------------------------------
-
-
+//
 //static int _debugMatrix = 1;
 #define   MATRIX_STACK_MAX 8
 
@@ -1550,7 +1530,7 @@ static int       _init_gl2(void)
     return TRUE;
 }
 
-static int       _renderTile(S52_DList *DListData)
+static int       _renderTile(S52_DListData *DListData)
 {
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
@@ -1899,7 +1879,7 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
 
     _fixDPI_glScaled();
 
-    S52_DList *DListData = S52_PL_getDListData(obj);
+    S52_DListData *DListData = S52_PL_getDListData(obj);
     _renderTile(DListData);
 
     if (0.0 != stagOffsetPix) {
@@ -1968,7 +1948,7 @@ static int       _renderAP_gl2(S52_obj *obj)
         }
     }
 
-    S52_DList *DListData = S52_PL_getDListData(obj);
+    S52_DListData *DListData = S52_PL_getDListData(obj);
     _setFragAttrib(DListData->colors, S57_getHighlight(S52_PL_getGeo(obj)));
 
     // debug - red conspic
