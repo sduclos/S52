@@ -19,7 +19,6 @@ doc/
 - C1.dispPrioSwitch.txt
 - ogrfeature.cpp.diff       (gdal/ogr patch for -DS52_USE_SUPP_LINE_OVERLAP)
 - s57filecollector.cpp.diff (gdal/ogr patch to fix DOS path in CATALOG.031 on Unix)
-- ogr_core.h.diff           (not a real diff, quiet compiler for S52 -pedantic switch - recompile OGR)
 
 doc/html/
 - index.html            (root of libS52 interface (S52.h) annotation)
