@@ -1,4 +1,4 @@
-# README: note to apitrace OpenGL
+# README: various note on: apitrace OpenGL, Gimp diff, S-64 Test Data
 #
 # SD 21014MAY14
 
@@ -34,3 +34,11 @@ GIMP:
 2 - in layers mode selecte: Difference
 
 3 - optionally, use mask to endence remaining pixels
+
+
+S-64:
+-----
+
+1 - ENC_TDS_PLOTS: various screenshot
+
+2 - ENC: S-64/2.1.1 Power Up/ENC_ROOT/
