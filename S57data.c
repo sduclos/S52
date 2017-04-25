@@ -1,4 +1,4 @@
-// S57data.c: interface to S57 geo data
+// S57data.c: S57 geo data
 //
 // Project:  OpENCview
 
@@ -73,9 +73,11 @@ typedef struct _S57_prim {
 
 // S57 object geo data
 #define S57_ATT_NM_LN    6   // S57 Class Attribute Name lenght
-#define S57_GEO_NM_LN   13   // GDAL/OGR primitive name: "ConnectedNode"
+#define S57_GEO_NM_LN   13   // GDAL/OGR primitive max name length: "ConnectedNode"
 typedef struct _S57_geo {
     guint        S57ID;          // record ID / S52ObjectHandle use as index in S52_obj GPtrArray
+                                 // Note: must be the first member for S57GETS57ID(GEO)
+
     //guint        s52objID;     // optimisation: numeric value of OBCL string
 
     char         name[S57_GEO_NM_LN+1]; //  6 - object name    + '\0'
@@ -147,6 +149,10 @@ typedef struct _S57_geo {
     gboolean     highlight;  // highlight this geo object (cursor pick / hazard - experimental)
 
     gboolean     hazard;     // TRUE if a Safety Contour / hazard - use by leglin and GUARDZONE
+
+    // optimisation: set LOD
+    //S57_setLOD(obj, *c->dsid_intustr->str);
+    //char       LOD;           // optimisation: chart purpose: cell->dsid_intustr->str
 
 } _S57_geo;
 
@@ -386,14 +392,8 @@ int        S57_geo2prj3dv(guint npt, double *data)
 #ifdef S52_USE_PROJ
     // deg to rad --latlon
     for (guint i=0; i<npt; ++i, ++pt) {
-        pt->x *= DEG_TO_RAD,
+        pt->x *= DEG_TO_RAD;
         pt->y *= DEG_TO_RAD;
-
-        // debug
-        //if (-10.0 == pt->z) {
-        //    PRINTF("DEBUG: overlap found\n");
-        //    //g_assert(0);
-        //}
     }
 
     // reset to beginning
@@ -408,7 +408,7 @@ int        S57_geo2prj3dv(guint npt, double *data)
     }
 
     /*
-    // FIXME: heuristic to reduce the number of point (for LOD):
+    // FIXME: test heuristic to reduce the number of point (for LOD):
     // try to (and check) reduce the number of points by flushing decimal
     // then libtess should remove coincident points.
     //
@@ -429,7 +429,8 @@ int        S57_geo2prj3dv(guint npt, double *data)
 
 int        S57_geo2prj(_S57_geo *geo)
 {
-    return_if_null(geo);
+    // useless - rbin
+    //return_if_null(geo);
 
     if (TRUE == _doInit)
         S57_initPROJ();
@@ -1382,7 +1383,7 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     g_string_append_c(attList, ':');
     g_string_append(attList, attValue->str);
 
-    // FIXME: do not replace '\n' by ' ', for JSON
+    /* FIXME: do not replace '\n' by ' ', for JSON
     if (0 == g_strcmp0("_vessel_label", attName)) {
         for (guint i=0; i<attList->len; ++i) {
             if ('\n' == attList->str[i]) {
@@ -1392,6 +1393,8 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
             }
         }
     }
+    */
+
     //PRINTF("\t%s : %s\n", attName, (char*)attValue->str);
 
     return;
@@ -1556,12 +1559,11 @@ S57_geo   *S57_delNextPoly(_S57_geo *geo)
 }
 #endif
 
-guint      S57_getS57ID(_S57_geo *geo)
-{
-    return_if_null(geo);
-
-    return  geo->S57ID;
-}
+//guint      S57_getS57ID(_S57_geo *geo)
+//{
+//    return_if_null(geo);
+//    return  geo->S57ID;
+//}
 
 int        S57_isPtInside(int npt, double *xyz, gboolean close, double x, double y)
 // return TRUE if (x,y) inside area (close/open) xyz else FALSE
@@ -1929,6 +1931,24 @@ int        S57_isHazard(_S57_geo *geo)
 
     return geo->hazard;
 }
+
+#if 0
+int        S57_setLOD(_S52_obj *obj, char LOD)
+{
+    return_if_null(obj);
+
+    obj->LOD = LOD;
+
+    return TRUE;
+}
+
+char       S57_getLOD(_S52_obj *obj)
+{
+    return_if_null(obj);
+
+    return obj->LOD;
+}
+#endif
 
 
 #if 0

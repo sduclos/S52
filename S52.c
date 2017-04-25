@@ -1,4 +1,4 @@
-// S52.c: top-level interface to libS52.so plug-in
+// S52.c: top-level interface to libS52.so
 //
 // Project:  OpENCview
 
@@ -156,6 +156,7 @@ typedef struct _cell {
     GString   *valacmstr;
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
+    // must inside a cell because muti cell loading
     guint      baseRCID;        // offset of "ConnectedNode" (first primitive)
     GPtrArray *ConnectedNodes;  // Note: ConnectedNodes rcid are random in some case (CA4579016)
     GPtrArray *S57Edges;        // final segment build from ENs and CNs
@@ -176,7 +177,7 @@ typedef struct _cell {
     // optimisation - do CS only on obj affected by a change in a MP
     // instead of resolving the CS logic at render-time.
     // Will help to clean up the render-time code.
-    // list of S52_obj that have CS in theire LUP
+    // list of ref of S52_obj that have CS in their LUP
     GPtrArray *DEPARElist;
     GPtrArray *DEPCNTlist;
     GPtrArray *OBSTRNlist;
@@ -209,8 +210,9 @@ static GString   *_cellNameList = NULL;    // string that gather cell name
 static int        _doInit       = TRUE;    // init the lib
 
 // FIXME: reparse CS of the affected MP only (ex: ship outline MP need only to reparse OWNSHP CS)
-static int        _doCS         = FALSE;   // TRUE will recreate *all* CS at next draw() or drawLast()
-static int        _doDATCVR     = FALSE;   // TRUE will compute HO Data Limit (CSP union), scale boundary, ..
+static int        _doAPP_CS     = FALSE;   // TRUE will recreate *all* CS at next draw() or drawLast()
+static int        _doAPP_DATCVR = FALSE;   // TRUE will compute HO Data Limit (CSP union), scale boundary, ..
+static int        _doAPP_RASTER = FALSE;   // TRUE will compute raster texture 
 
 static int        _doCullLights = FALSE;   // TRUE will do lights_sector culling when _cellList change
 
@@ -295,6 +297,51 @@ static GMutex        _mp_mutex;
 #define S52_CHECK_MUTX_INIT              GMUTEXLOCK(&_mp_mutex); S52_CHECK_INIT
 #define S52_CHECK_MUTX_INIT_EGLBEG(tag)  GMUTEXLOCK(&_mp_mutex); S52_CHECK_INIT EGL_BEG(tag)
 
+/* FIXME: iterating on _cell then on renderBin is common to a lot calls
+typedef struct func {
+    //void (*GFunc) (gpointer data, gpointer user_data);
+    void (*func1) (gpointer data, gpointer user_data);
+    void (*func2) (gpointer data, gpointer user_data);
+} func;
+func f = {func1, func2};
+
+g_ptr_array_foreach(_cellList, f.func1, f.func2);
+
+-OR- where func1 == _delObj()
+#define travRBin1(cell, func1) \
+    for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) { \
+        for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {    \
+            //g_ptr_array_foreach(cell->renderBin[i][j], func1, NULL); \
+            //-OR-                                                     \
+            //(func1);                                                   \
+        }  \
+    }
+
+#define travRBin1(cell, printf("test\n"))
+#define travRBin2(cell, func1, func2) ...
+*/
+
+// traverse Render Bin and call func1() on each bin
+#define TRAV_RBIN_ij(func1)                                    \
+    for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) { \
+        for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {    \
+            func1;                                             \
+        }                                                      \
+    }
+
+//TRAV_RBIN_ij(printf("test\n"))
+
+#define ALL_C_TRAV_RBIN_ij(func1)                                  \
+    for (guint k=0; k<_cellList->len; ++k) {                       \
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, k);       \
+        for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) { \
+            for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {    \
+                (func1);                                           \
+            }                                                      \
+        }                                                          \
+    }
+
+//ALL_C_TRAV_RBIN_ij(g_ptr_array_foreach(c->renderBin[i][j], S52_PL_resloveSMB, NULL))
 
 ////////////////////////////////////////////////////
 //
@@ -583,27 +630,35 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
         return FALSE;
     }
 
+    // FIXME: _doAPP_RAS find if S52_MAR_SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR / S52_MAR_DATUM_OFFSET has change
+
     switch (paramID) {
         case S52_MAR_ERROR               : break;
         case S52_MAR_SHOW_TEXT           : val = _validate_bool(val);                   break;
         // _SEABED01->DEPARE01;
-        case S52_MAR_TWO_SHADES          : val = _validate_bool(val);  _doCS = TRUE;    break;
+        case S52_MAR_TWO_SHADES          : val = _validate_bool(val);  _doAPP_CS = TRUE;break;
         // DEPCNT02; _SEABED01->DEPARE01; _UDWHAZ03->OBSTRN04, WRECKS02;
-        case S52_MAR_SAFETY_CONTOUR      : val = _validate_meter(val); _doCS = TRUE;    break;
+        case S52_MAR_SAFETY_CONTOUR      : val           = _validate_meter(val);
+                                           _doAPP_CS     = TRUE;
+                                           _doAPP_RASTER = TRUE;
+                                           break;
         // _SNDFRM02->OBSTRN04, WRECKS02;
-        case S52_MAR_SAFETY_DEPTH        : val = _validate_meter(val); _doCS = TRUE;    break;
+        case S52_MAR_SAFETY_DEPTH        : val = _validate_meter(val); _doAPP_CS = TRUE;break;
         // _SEABED01->DEPARE01;
-        case S52_MAR_SHALLOW_CONTOUR     : val = _validate_meter(val); _doCS = TRUE;    break;
+        case S52_MAR_SHALLOW_CONTOUR     : val = _validate_meter(val); _doAPP_CS = TRUE;break;
         // _SEABED01->DEPARE01;
-        case S52_MAR_DEEP_CONTOUR        : val = _validate_meter(val); _doCS = TRUE;    break;
+        case S52_MAR_DEEP_CONTOUR        : val           = _validate_meter(val);
+                                           _doAPP_CS     = TRUE;
+                                           _doAPP_RASTER = TRUE;
+                                           break;
         // _SEABED01->DEPARE01;
-        case S52_MAR_SHALLOW_PATTERN     : val = _validate_bool(val);  _doCS = TRUE;    break;
+        case S52_MAR_SHALLOW_PATTERN     : val = _validate_bool(val);  _doAPP_CS = TRUE;break;
         case S52_MAR_SHIPS_OUTLINE       : val = _validate_bool(val);                   break;
         case S52_MAR_DISTANCE_TAGS       : val = _validate_nm(val);    _fixme(paramID); break;
         case S52_MAR_TIME_TAGS           : val = _validate_min(val);   _fixme(paramID); break;
         case S52_MAR_FULL_SECTORS        : val = _validate_bool(val);                   break;
         // RESARE02;
-        case S52_MAR_SYMBOLIZED_BND      : val = _validate_bool(val);  _doCS = TRUE;    break;
+        case S52_MAR_SYMBOLIZED_BND      : val = _validate_bool(val);  _doAPP_CS = TRUE;break;
         case S52_MAR_SYMPLIFIED_PNT      : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_CATEGORY       : val = _validate_disp(val);                   break;
         case S52_MAR_COLOR_PALETTE       : val = _validate_pal(val);                    break;
@@ -625,7 +680,10 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
         //
         case S52_MAR_FONT_SOUNDG         : val = _fixme(val);                           break;
         // DEPARE01; DEPCNT02; _DEPVAL01; SLCONS03; _UDWHAZ03;
-        case S52_MAR_DATUM_OFFSET        : val = _validate_meter(val); _doCS = TRUE;    break;
+        case S52_MAR_DATUM_OFFSET        : val           = _validate_meter(val);
+                                           _doAPP_CS     = TRUE;
+                                           _doAPP_RASTER = TRUE;
+                                           break;
         case S52_MAR_SCAMIN              : val = _validate_bool(val);                   break;
         case S52_MAR_ANTIALIAS           : val = _validate_bool(val);                   break;
         case S52_MAR_QUAPNT01            : val = _validate_bool(val);                   break;
@@ -668,7 +726,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
     int ret = S52_MP_set(paramID, val);
 
     ///////////////////////////////////////////////
-    // FIXME: process _doCS == TRUE immediatly
+    // FIXME: process _doAPP_CS == TRUE immediatly
     //
 
     //S52_MAR_SYMBOLIZED_BND
@@ -742,19 +800,19 @@ DLL int    STD S52_getTextDisp(unsigned int prioIdx)
     return ret;
 }
 
-static gint       _cmpCell(gconstpointer a, gconstpointer b)
+static gint       _cmpCellINTU(gconstpointer a, gconstpointer b)
 // sort cell: bigger region (small scale) last (eg 553311)
 {
-    //gconstpointer A = *a;
-    //_cell *B = (_cell*) b;
     _cell *A = *(_cell**) a;
     _cell *B = *(_cell**) b;
 
-    // FIXME: use A->dsid_intustr;       // intended usage (nav purp)
+    // Note: _marinerCell as no dsid_intustr
     if (A->filename->str[2] ==  B->filename->str[2])
+    //if (A->dsid_intustr->str[0] ==  B->dsid_intustr->str[0])
         return 0;
 
     if (A->filename->str[2] >  B->filename->str[2])
+    //if (A->dsid_intustr->str[0] >  B->dsid_intustr->str[0])
         return -1;
     else
         return  1;
@@ -773,6 +831,7 @@ static int        _isCellLoaded(const char *baseName)
     return FALSE;
 }
 
+//static void       _delObj(S52_obj *obj);  // forward decl
 static _cell     *_newCell(const char *filename)
 // add this cell else NULL (if allready loaded)
 // assume filename is not NULL
@@ -786,10 +845,18 @@ static _cell     *_newCell(const char *filename)
 
     {   // init cell
         _cell *cell = g_new0(_cell, 1);
+
+        // FIXME: refactor _newRBin(), same code also in loadPLib()
+        //*
         for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
-            for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j)
+            for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
                 cell->renderBin[i][j] = g_ptr_array_new();
+
+                //cell->renderBin[i][j] = g_ptr_array_new_with_free_func((GDestroyNotify)_delObj);
+            }
         }
+        //*/
+        //TRAV_RBIN_ij(cell->renderBin[i][j] = g_ptr_array_new_with_free_func((GDestroyNotify)_delObj))
 
         cell->filename = g_string_new(baseName);
         g_free(baseName);
@@ -824,9 +891,11 @@ static _cell     *_newCell(const char *filename)
     return _crntCell;
 }
 
-static S52_obj   *_delObj(S52_obj *obj)
-// return NULL
+static void       _delObj(S52_obj *obj, gpointer user_data)
+//static void       _delObj(S52_obj *obj)
 {
+    (void)user_data;
+
     S52_GL_delDL(obj);
 
     // Note: cleanup here, can't be done in PL - collision
@@ -835,7 +904,7 @@ static S52_obj   *_delObj(S52_obj *obj)
 
     S57_doneData(geo, NULL);
 
-    return NULL;
+    return;
 }
 
 static int        _freeCell(_cell *c)
@@ -845,79 +914,56 @@ static int        _freeCell(_cell *c)
         return FALSE;
     }
 
-    if (NULL != c->filename)
-        g_string_free(c->filename, TRUE);
+    if (NULL != c->filename) g_string_free(c->filename, TRUE);
+    if (NULL != c->encPath)  g_free(c->encPath);
 
-    if (NULL != c->encPath)
-        g_free(c->encPath);
-
+    //*
     for (S52_disPrio j=S52_PRIO_NODATA; j<S52_PRIO_NUM; ++j) {
         for (S52ObjectType k=S52__META; k<S52_N_OBJ; ++k) {
-            GPtrArray *rbin = c->renderBin[j][k];
-            for (guint idx=0; idx<rbin->len; ++idx) {
-                S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+            //FIXME: check all 'foreach' where META is used (ex: C_AGGR)
 
-                //obj = _delObj(obj);  // clang - return obj never read
-                _delObj(obj);
-            }
-            g_ptr_array_free(rbin, TRUE);
+            //GPtrArray *rbin = c->renderBin[j][k];
+            //for (guint idx=0; idx<rbin->len; ++idx) {
+            //    S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+            //    _delObj(obj);
+            //}
+            //g_ptr_array_free(rbin, TRUE);
+
+            g_ptr_array_foreach(c->renderBin[j][k], (GFunc)_delObj, NULL);
+            //g_ptr_array_free(c->renderBin[j][k], TRUE);
         }
     }
+    //*/
+    //TRAV_RBIN_ij(g_ptr_array_free(c->renderBin[i][j], TRUE));
 
     S52_CS_done(c->local);
 
+    // FIXME: g_ptr_array_new_with_free_func((GDestroyNotify)_delObj);
     if (NULL != c->lights_sector) {
         for (guint idx=0; idx<c->lights_sector->len; ++idx) {
             S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, idx);
 
-            //obj = _delObj(obj);  // clang - return obj never read
-            _delObj(obj);
+            //_delObj(obj);
+            _delObj(obj, NULL);
         }
         g_ptr_array_free(c->lights_sector, TRUE);
     }
 
-    if (NULL != c->textList) {
-        g_ptr_array_free(c->textList, TRUE);
-        c->textList = NULL;
-    }
+    // Note: all bellow are ref to obj - no _delObj()
+    if (NULL != c->textList)     g_ptr_array_free(c->textList,     TRUE);
+    if (NULL != c->objList_supp) g_ptr_array_free(c->objList_supp, TRUE);
+    if (NULL != c->objList_over) g_ptr_array_free(c->objList_over, TRUE);
 
-    if (NULL != c->objList_supp) {
-        g_ptr_array_free(c->objList_supp, TRUE);
-        c->objList_supp = NULL;
-    }
-
-    if (NULL != c->objList_over) {
-        g_ptr_array_free(c->objList_over, TRUE);
-        c->objList_over = NULL;
-    }
 
     /*
-    if (NULL != cell->DEPARElist) {
-        g_ptr_array_free(c->objList_over, TRUE);
-        cell->DEPARElist = NULL;
-    }
-    if (NULL != cell->DEPCNTlist) {
-        g_ptr_array_free(c->objList_over, TRUE);
-        cell->DEPCNTlist = NULL;
-    }
-    if (NULL != cell->OBSTRNlist) {
-        g_ptr_array_free(c->objList_over, TRUE);
-        cell->OBSTRNlist = NULL;
-    }
-    if (NULL != cell->RESARElist) {
-        g_ptr_array_free(c->objList_over, TRUE);
-        cell->RESARElist = NULL;
-    }
-    if (NULL != cell->WRECKSlist) {
-        g_ptr_array_free(c->objList_over, TRUE);
-        cell->WRECKSlist = NULL;
-    }
+    if (NULL != c->DEPARElist)   g_ptr_array_free(c->DEPARElist, TRUE);
+    if (NULL != c->DEPCNTlist)   g_ptr_array_free(c->DEPCNTlist, TRUE);
+    if (NULL != c->OBSTRNlist)   g_ptr_array_free(c->OBSTRNlist, TRUE);
+    if (NULL != c->RESARElist)   g_ptr_array_free(c->RESARElist, TRUE);
+    if (NULL != c->WRECKSlist)   g_ptr_array_free(c->WRECKSlist, TRUE);
     */
 
-    if (NULL != c->S57ClassList) {
-        g_string_free(c->S57ClassList, TRUE);
-        c->S57ClassList = NULL;
-    }
+    if (NULL != c->S57ClassList) g_string_free(c->S57ClassList, TRUE);
 
     g_free(c);
 
@@ -1376,33 +1422,39 @@ static int        _initPROJview(void)
 
 static int        _projectCells(void)
 {
-#ifdef S52_USE_PROJ
     for (guint k=0; k<_cellList->len; ++k) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
         if (FALSE == c->projDone) {
+
+            //TRAV_RBIN_ij(printf("test\n"))
+
             for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
-                for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
+                //for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
+                for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
                     GPtrArray *rbin = c->renderBin[i][j];
                     for (guint idx=0; idx<rbin->len; ++idx) {
-                        S52_obj *obj  = (S52_obj *)g_ptr_array_index(rbin, idx);
-                        S57_geo *geo  = S52_PL_getGeo(obj);
-                        S57_geo2prj(geo);
+                        S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+                        //S57_geo *geo = S52_PL_getGeo(obj);
+                        //S57_geo2prj(geo);
+                        S57_geo2prj(S52PLGETGEO(obj));
                     }
                 }
             }
+            //TRAV_RBIN_ij(g_ptr_array_foreach(c->renderBin[i][j], GFunc, NULL));
 
             // then project lights of this cell, if any
             if (NULL != c->lights_sector) {
                 for (guint i=0; i<c->lights_sector->len; ++i) {
-                    S52_obj *obj  = (S52_obj *)g_ptr_array_index(c->lights_sector, i);
-                    S57_geo *geo  = S52_PL_getGeo(obj);
-                    S57_geo2prj(geo);
+                    S52_obj *obj = (S52_obj *)g_ptr_array_index(c->lights_sector, i);
+                    //S57_geo *geo = S52_PL_getGeo(obj);
+                    //S57_geo2prj(geo);
+                    S57_geo2prj(S52PLGETGEO(obj));
                 }
+                //g_ptr_array_foreach(c->lights_sector, GFunc, NULL);
             }
             c->projDone = TRUE;
         }
     }
-#endif
 
     return TRUE;
 }
@@ -1410,36 +1462,34 @@ static int        _projectCells(void)
 static int        _collect_CS_touch(_cell* c)
 // setup object used by CS
 {
+    /*
     for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
-        for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
+        //for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
+        for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
             GPtrArray *rbin = c->renderBin[i][j];
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                S57_geo *geo = S52_PL_getGeo(obj);
-
-                // debug
-                //if (== S57_getS57ID(geo)) {
-                //    PRINTF("found\n");
-                //    S57_dumpData(geo);
-                //}
-
-                S52_CS_touch(c->local, geo);
+                S52_CS_touch(c->local, S52PLGETGEO(obj));
             }
         }
     }
+    */
+    TRAV_RBIN_ij(GPtrArray *rbin = c->renderBin[i][j];
+                 for (guint idx=0; idx<rbin->len; ++idx) {
+                     S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+                     S52_CS_touch(c->local, S52PLGETGEO(obj));
+                 });
 
     // then process lights_sector
     if (NULL != c->lights_sector) {
         for (guint i=0; i<c->lights_sector->len; ++i) {
             S52_obj *obj  = (S52_obj *)g_ptr_array_index(c->lights_sector, i);
-            S57_geo *geo  = S52_PL_getGeo(obj);
-
-            S52_CS_touch(c->local, geo);
+            S52_CS_touch(c->local, S52PLGETGEO(obj));
         }
     }
 
     // need to do a _resolveCS() at the next _app()
-    _doCS = TRUE;
+    _doAPP_CS = TRUE;
 
     return TRUE;
 }
@@ -1567,7 +1617,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 
     _marinerCell = _newCell(MARINER_CELL);
     g_ptr_array_add (_cellList, _marinerCell);
-    g_ptr_array_sort(_cellList, _cmpCell);
+    g_ptr_array_sort(_cellList, _cmpCellINTU);
 
     // init extend
     _marinerCell->geoExt.S = -INFINITY;
@@ -1610,6 +1660,9 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     ///////////////////////////////////////////////////////////
 
 
+    // flag APP() stage
+    _doAPP_CS     = TRUE;
+    _doAPP_RASTER = TRUE;
 
     _timer =  g_timer_new();
 
@@ -1633,18 +1686,14 @@ DLL int    STD S52_done(void)
 {
     S52_CHECK_MUTX_INIT;
 
-    if (NULL != _cellList) {
-        // FIXME: check if foreach() work here
-        for (guint i=0; i<_cellList->len; ++i) {
-            _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
-            _freeCell(c);
-        }
-        g_ptr_array_free(_cellList, TRUE);
-        _cellList = NULL;
+    // FIXME: g_ptr_array_new_with_free_func((GDestroyNotify)_freeCell);
+    for (guint i=0; i<_cellList->len; ++i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+        _freeCell(c);
     }
-
+    g_ptr_array_free(_cellList, TRUE);
+    _cellList    = NULL;
     _marinerCell = NULL;
-
 
     S52_GL_done();
     S52_PL_done();
@@ -1652,9 +1701,6 @@ DLL int    STD S52_done(void)
     S57_donePROJ();
 
     _intl   = NULL;
-
-    //g_mem_profile();
-
 
     S52_utils_doneLog();
 
@@ -1675,10 +1721,10 @@ DLL int    STD S52_done(void)
     g_string_free(_S52ObjNmList, TRUE); _S52ObjNmList = NULL;
 
     // flush raster (bathy,..)
+    // FIXME: foreach
     for (guint i=0; i<_rasterList->len; ++i) {
         S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
         S52_GL_delRaster(r, FALSE);
-        g_free(r);
     }
     g_ptr_array_free(_rasterList, TRUE);
     _rasterList = NULL;
@@ -1710,7 +1756,9 @@ exit:
 }
 
 #ifdef S52_USE_C_AGGR_C_ASSO
+/*
 static int        _linkRel2LNAM(_cell* c)
+//void (*GFunc) (gpointer data, gpointer user_data);
 // link geo to C_AGGR / C_ASSO geo
 {
     for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
@@ -1719,9 +1767,10 @@ static int        _linkRel2LNAM(_cell* c)
             GPtrArray *rbin = c->renderBin[i][j];
             for (guint idx=0; idx<rbin->len; ++idx) {
                 S52_obj *obj    = (S52_obj *)g_ptr_array_index(rbin, idx);
-                S57_geo *geoRel = S52_PL_getGeo(obj);
+                S57_geo *geoRel = S52PLGETGEO(obj);
 
                 GString *lnam_refsstr = S57_getAttVal(geoRel, "LNAM_REFS");
+                //GString *lnam_refsstr = S57_getAttVal(S52PLGETGEO(obj), "LNAM_REFS");
                 if (NULL != lnam_refsstr) {
                     GString *refs_geo  = NULL;
                     gchar  **splitLNAM = g_strsplit_set(lnam_refsstr->str+1, "():,", 0);
@@ -1743,6 +1792,7 @@ static int        _linkRel2LNAM(_cell* c)
 
                         // link geo to C_AGGR / C_ASSO geo
                         S57_setRelationship(geo, geoRel);
+                        //S57_setRelationship(geo, S52PLGETGEO(obj));
 
                         if (NULL == refs_geo) {
                             refs_geo = g_string_new("");
@@ -1753,9 +1803,10 @@ static int        _linkRel2LNAM(_cell* c)
                         splitLNAM++;
                     }
                     // add geo to C_AGGR / C_ASSO LNAM_REFS_GEO
-                    if (NULL != refs_geo)
+                    if (NULL != refs_geo) {
                         S57_setAtt(geoRel, "_LNAM_REFS_GEO", refs_geo->str);
-
+                        //S57_setAtt(S52PLGETGEO(obj), "_LNAM_REFS_GEO", refs_geo->str);
+                    }
                     g_string_free(refs_geo, TRUE);
 
                     g_strfreev(topLNAM);
@@ -1770,6 +1821,61 @@ static int        _linkRel2LNAM(_cell* c)
     }
 
     return TRUE;
+}
+*/
+
+static void       _linkRel2LNAM(S52_obj *obj, gpointer user_data)
+// link geo to C_AGGR / C_ASSO geo
+{
+    (void)user_data;
+
+    S57_geo *geoRel = S52PLGETGEO(obj);
+
+    GString *lnam_refsstr = S57_getAttVal(geoRel, "LNAM_REFS");
+    //GString *lnam_refsstr = S57_getAttVal(S52PLGETGEO(obj), "LNAM_REFS");
+    if (NULL != lnam_refsstr) {
+        GString *refs_geo  = NULL;
+        gchar  **splitLNAM = g_strsplit_set(lnam_refsstr->str+1, "():,", 0);
+        gchar  **topLNAM   = splitLNAM;
+
+        splitLNAM++;  // skip number of item
+        while (NULL != *splitLNAM) {
+            if ('\000' == **splitLNAM) {
+                splitLNAM++;
+                continue;
+            }
+
+            S57_geo *geo = (S57_geo *)g_tree_lookup(_lnamBBT, *splitLNAM);
+            if (NULL == geo) {
+                PRINTF("WARNING: LNAM (%s) not found\n", *splitLNAM);
+                splitLNAM++;
+                continue;
+            }
+
+            // link geo to C_AGGR / C_ASSO geo
+            S57_setRelationship(geo, geoRel);
+            //S57_setRelationship(geo, S52PLGETGEO(obj));
+
+            if (NULL == refs_geo) {
+                refs_geo = g_string_new("");
+                g_string_printf(refs_geo, "%p", (void*)geo);
+            } else {
+                g_string_append_printf(refs_geo, ",%p", (void*)geo);
+            }
+            splitLNAM++;
+        }
+        // add geo to C_AGGR / C_ASSO LNAM_REFS_GEO
+        if (NULL != refs_geo) {
+            S57_setAtt(geoRel, "_LNAM_REFS_GEO", refs_geo->str);
+            //S57_setAtt(S52PLGETGEO(obj), "_LNAM_REFS_GEO", refs_geo->str);
+        }
+        g_string_free(refs_geo, TRUE);
+
+        g_strfreev(topLNAM);
+    }
+
+    //return TRUE;
+    return;
 }
 
 static int        _compLNAM(gconstpointer a, gconstpointer b)
@@ -1793,12 +1899,6 @@ static int        _suppLineOverlap()
 // NAME_RCNM (IntegerList) = (1:130)
 // NAME_RCID (IntegerList) = (1:72)
 {
-
-    // FIXME: abort if too slow on large area
-    // (define slow - or - C^ trap --> show something - heartbeat)
-    // -OR- skip general INTUS = 1
-
-
     return_if_null(_crntCell->S57Edges);
     //return_if_null(_crntCell->ConnectedNodes); // not used (yet!)
 
@@ -2049,7 +2149,7 @@ exit:
 
 static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
 {
-    _cell *ch = NULL;
+    // FIXME: upgrade to 2.2: gboolean g_str_has_suffix(const gchar *str, const gchar *suffix);
 
     // skip file not terminated by .000
     char *base = g_path_get_basename(filename);
@@ -2060,14 +2160,14 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
     }
     g_free(base);
 
-    ch = _newCell(filename);
-    if (NULL == ch) {
+    _cell *c = _newCell(filename);
+    if (NULL == c) {
         PRINTF("WARNING: _newCell() failed\n");
         //g_assert(0);
         return NULL;
     }
-    g_ptr_array_add(_cellList, ch);
-    g_ptr_array_sort(_cellList, _cmpCell);
+    g_ptr_array_add(_cellList, c);
+    g_ptr_array_sort(_cellList, _cmpCellINTU);
 
     //if (NULL == cb) {
     //    PRINTF("NOTE: using default S52_loadLayer() callback\n");
@@ -2092,20 +2192,25 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 #endif
 
 #ifdef S52_USE_C_AGGR_C_ASSO
-    _linkRel2LNAM(ch);
+    TRAV_RBIN_ij(g_ptr_array_foreach(c->renderBin[i][j],  (GFunc)_linkRel2LNAM, NULL));
+    // finish with this BBTree
+    if (NULL != _lnamBBT) {
+        g_tree_destroy(_lnamBBT);
+        _lnamBBT = NULL;
+    }
 #endif
 
-    _collect_CS_touch(ch);
+    _collect_CS_touch(c);
 
 
     {   // failsafe - check if a PLib put an object on the NODATA layer
         PRINTF("DEBUG: NODATA Layer check -START- ==============================================\n");
         for (guint i=0; i<_cellList->len; ++i) {
             // one cell
-            _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
+            _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
             for (S52ObjectType obj_t=S52__META; obj_t<S52_N_OBJ; ++obj_t) {
                 // one object type
-                GPtrArray *rbin = ci->renderBin[S52_PRIO_NODATA][obj_t];
+                GPtrArray *rbin = c->renderBin[S52_PRIO_NODATA][obj_t];
                 for (guint idx=0; idx<rbin->len; ++idx) {
                     // one object
                     S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
@@ -2127,7 +2232,7 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
         PRINTF("DEBUG: NODATA Layer check -END-   ==============================================\n");
     }
 
-    return ch;
+    return c;
 }
 
 #ifdef S52_USE_OGR_FILECOLLECTOR
@@ -2329,8 +2434,9 @@ int               _loadRaster(const char *fname)
     // check if allready loaded
     for (guint i=0; i<_rasterList->len; ++i) {
         S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
-        if (0 == g_strcmp0(r->fnameMerc->str, fnameMerc))
+        if ((NULL!=r->fnameMerc) && (0==g_strcmp0(r->fnameMerc->str, fnameMerc))) {
             return FALSE;
+        }
     }
 
     // no, convert to GeoTiff Mercator
@@ -2397,7 +2503,6 @@ int               _loadRaster(const char *fname)
             g_assert(0);
         }
 
-
         double gt[6] = {0.0,1.0,0.0,0.0,0.0,1.0};
         if (CE_None != GDALGetGeoTransform(datasetDST, (double *) &gt)) {
             PRINTF("WARNING: GDALGetGeoTransform() failed\n");
@@ -2406,29 +2511,18 @@ int               _loadRaster(const char *fname)
         }
 
         // store data
-        S52_GL_ras *ras = g_new0(S52_GL_ras, 1);
-        ras->fnameMerc  = g_string_new(fnameMerc);
+        S52_GL_ras *ras = S52_GL_newRaster(fnameMerc);
+        ras->isRADAR    = FALSE;
         ras->w          = w;
         ras->h          = h;
-        ras->gdtSz      = gdtSz;
         ras->data       = data;
         ras->nodata     = (TRUE==nodata_set) ? nodata : -INFINITY;
-
-        // FIXME: fail reading bathy.tiff !!
-        int success = FALSE;
-        double _min = GDALGetRasterMinimum(bandA, &success);
-        if (TRUE == success)
-            ras->min = _min;
-        double _max = GDALGetRasterMaximum(bandA, &success);
-        if (TRUE == success)
-            ras->min = _max;
 
         // not canonize because it will flip some bathy
         ras->pext.S = gt[3] + 0 * gt[4] + 0 * gt[5];
         ras->pext.W = gt[0] + 0 * gt[1] + 0 * gt[2];
         ras->pext.N = gt[3] + w * gt[4] + h * gt[5];
         ras->pext.E = gt[0] + w * gt[1] + h * gt[2];
-        memcpy(ras->gt, gt, sizeof(double) * 6);
 
         //*
         {   // convert view extent to deg
@@ -2523,6 +2617,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         }
         fname = g_strdup(chartPath);
     } else {
+        // normal
         fname = g_strdup(encPath);
     }
 
@@ -2533,8 +2628,6 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         PRINTF("WARNING: file or DIR not found (%s)\n", fname);
         g_free(fname);
 
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //return FALSE;
         goto exit;
     }
 
@@ -2559,16 +2652,15 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 
             g_free(basename);
             g_free(fname);
-            //GMUTEXUNLOCK(&_mp_mutex);
-            //return TRUE;
+
             ret = TRUE;
             goto exit;
         }
     }
-#endif  // S52_USE_RASTER
 
+#ifdef S52_USE_RADAR
     /*
-    {   // experimental - load raw raster RADAR (RAW)
+    {   // debug - load raw raster RADAR (RAW)
         gchar *basename = g_path_get_basename(fname);
         int len = strlen(basename);
         if (0 == g_strcmp0(basename+(len-4), ".raw")) {
@@ -2580,13 +2672,11 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
                     ras->fnameMerc = g_string_new(fname);
                     ras->w     = 1280;
                     ras->h     = 2048;
-                    ras->gdtSz = 1;    // byte
                     ras->data  = data;
                     //ras->S     = gt[3] + 0 * gt[4] + 0 * gt[5];  // YgeoLL;
                     //ras->W     = gt[0] + 0 * gt[1] + 0 * gt[2];  // XgeoLL;
                     //ras->N     = gt[3] + w * gt[4] + h * gt[5];  // YgeoUR;
                     //ras->E     = gt[0] + w * gt[1] + h * gt[2];  // XgeoUR;
-                    //memcpy(ras->gt, gt, sizeof(double) * 6);
                     S52_GL_getPRJView(&ras->S, &ras->W, &ras->N, &ras->E);
 
 
@@ -2605,7 +2695,10 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
             return TRUE;
         }
     }
-    //*/
+    */
+#endif  // S52_USE_RADAR
+
+#endif  // S52_USE_RASTER
 
 #ifdef S52_USE_OGR_FILECOLLECTOR
     {
@@ -2623,12 +2716,6 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         if (NULL != encList) {
             for (guint i=0; NULL!=encList[i]; ++i) {
                 char *encName = encList[i];
-
-                // HACK: g_mem_profile() break the call to S57FileCollector()
-                // it return 0x1 instead of 0x0 at the end of encList
-                //if (1 == GPOINTER_TO_INT(encName))
-                //    break;
-
                 ch = _loadBaseCell(encName, loadLayer_cb, loadObject_cb);
                 g_free(encName);
             }
@@ -2638,34 +2725,34 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         }
     }
 
-#else    // S52_USE_OGR_FILECOLLECTOR
+#else   // S52_USE_OGR_FILECOLLECTOR
     ch = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
 #endif  // S52_USE_OGR_FILECOLLECTOR
 
     if (NULL == ch) {
         g_free(fname);
-        //GMUTEXUNLOCK(&_mp_mutex);
-        //return FALSE;
         goto exit;
     }
     ch->encPath = fname;
 
+#ifdef S52_USE_PROJ
     if (TRUE == _initPROJview()) {
         ret = _projectCells();
     } else {
         goto exit;
     }
+#endif  // S52_USE_PROJ
+
 
     // _app() specific to sector light
     _doCullLights = TRUE;
     // _app() - compute HO Data Limit
-    _doDATCVR     = TRUE;
+    _doAPP_DATCVR     = TRUE;
 
 exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
-    //return TRUE;
     return ret;
 }
 
@@ -2675,6 +2762,8 @@ DLL int    STD S52_doneCell(const char *encPath)
 // to fill the view (and unload cell outside the view)
 {
     return_if_null(encPath);
+
+    // FIXME: skip internal pseudo-cell MARINER_CELL (ie: "--6MARIN.000").
 
     int    ret      = FALSE;
     gchar *fname    = NULL;
@@ -2687,12 +2776,12 @@ DLL int    STD S52_doneCell(const char *encPath)
     fname = g_strdup(encPath);
     fname = g_strstrip(fname);
 
-    // Note: skip internal pseudo-cell MARINER_CELL (ie: "--6MARIN.000").
     if (TRUE != g_file_test(fname, (GFileTest) (G_FILE_TEST_EXISTS))) {
         PRINTF("WARNING: Cell not found on disk (%s)\n", fname);
         goto exit;
     }
 
+#ifdef S52_USE_RASTER
     // unload .TIF
     basename = g_path_get_basename(fname);
     int len = strlen(basename);
@@ -2702,27 +2791,31 @@ DLL int    STD S52_doneCell(const char *encPath)
         g_sprintf(fnameMerc, "%s%s", fname, ".merc");
         for (guint i=0; i<_rasterList->len; ++i) {
             S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
-            if (0 == g_strcmp0(r->fnameMerc->str, fnameMerc)) {
+            if ((NULL!=r->fnameMerc) && (0==g_strcmp0(r->fnameMerc->str, fnameMerc))) {
                 S52_GL_delRaster(r, FALSE);
-                g_free(r);
+                //g_free(r);
                 ret = TRUE;
                 goto exit;
             }
         }
     }
 
-    // unload .raw (radar)
+#ifdef S52_USE_RADAR
+    /* debug - unload .raw (radar)
     if (0 != g_strcmp0(basename+8, ".raw")) {
         for (guint i=0; i<_rasterList->len; ++i) {
             S52_GL_ras *r = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
             if (0 == g_strcmp0(r->fnameMerc->str, fname)) {
                 S52_GL_delRaster(r, FALSE);
-                g_free(r);
+                //g_free(r);
                 ret = TRUE;
                 goto exit;
             }
         }
     }
+    */
+#endif  // S52_USE_RADAR
+#endif  // S52_USE_RASTER
 
     // skip file not terminated by .000
     if (0 != g_strcmp0(basename+8, ".000")) {
@@ -2744,7 +2837,7 @@ DLL int    STD S52_doneCell(const char *encPath)
 
 exit:
     // _app() - compute HO Data Limit
-    _doDATCVR = TRUE;
+    _doAPP_DATCVR = TRUE;
 
     g_free(basename);
     g_free(fname);
@@ -3088,9 +3181,6 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
     //*/
 #endif
 
-    // optimisation: set LOD
-    //S52_PL_setLOD(obj, *c->dsid_intustr->str);
-
     // special prossesing for light sector
     if (FALSE == _insertLightSec(c, obj)) {
         // insert normal object (ie not a light with sector)
@@ -3098,7 +3188,7 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
 
         /* optimisation: recompute only CS that change due to new MarParam value
         // save reference for quickly find CS to re-compute after a MarinerParameter change
-        // will replace the ugly APP() code that handle _doCS
+        // will replace the ugly APP() code that handle _doAPP_CS
         const char *CSnm = S52_PL_hasCS(obj);
         if (NULL != CSnm) {
             if (0 == strncmp(CSnm, "DEPARE", 5)) g_ptr_array_add(c->DEPARElist, obj);
@@ -3130,7 +3220,7 @@ static S52_obj   *_insertS57geo(_cell *c, S57_geo *geo)
 }
 
 static S52_obj   *_insertS52obj(_cell *c, S52_obj *obj)
-// inster 'obj' in cell 'c'
+// inster 'obj' in cell 'c' - called by S52_loadPLib()
 {
     S52_disPrio   disPrioIdx = S52_PL_getDPRI(obj);
     S52ObjectType obj_t      = S52_PL_getFTYP(obj);
@@ -3139,6 +3229,25 @@ static S52_obj   *_insertS52obj(_cell *c, S52_obj *obj)
     if (FALSE == _insertLightSec(c, obj)) {
         // insert normal object (ie not a light with sector)
         g_ptr_array_add(c->renderBin[disPrioIdx][obj_t], obj);
+
+        /* optimisation: recompute only CS that change due to new MarParam value
+        // save reference for quickly find CS to re-compute after a MarinerParameter change
+        // will replace the ugly APP() code that handle _doAPP_CS
+        const char *CSnm = S52_PL_hasCS(obj);
+        if (NULL != CSnm) {
+            if (0 == strncmp(CSnm, "DEPARE", 5)) g_ptr_array_add(c->DEPARElist, obj);
+            if (0 == strncmp(CSnm, "DEPCNT", 5)) g_ptr_array_add(c->DEPCNTlist, obj);
+            if (0 == strncmp(CSnm, "OBSTRN", 5)) g_ptr_array_add(c->OBSTRNlist, obj);
+            if (0 == strncmp(CSnm, "RESARE", 5)) g_ptr_array_add(c->RESARElist, obj);
+            if (0 == strncmp(CSnm, "WRECKS", 5)) g_ptr_array_add(c->WRECKSlist, obj);
+
+            // GPtrArray *DEPARE01L;  MP
+            // GPtrArray *DEPCNT02L;  MP, OP()
+            // GPtrArray *OBSTRN04L;  OP()
+            // GPtrArray *RESARE02L;  OP()
+            // GPtrArray *WRECKS02L;  OP()
+        }
+        */
     }
 
     return obj;
@@ -3397,23 +3506,23 @@ static int        _intersectEXT(ObjExt_t A, ObjExt_t B)
     return TRUE;
 }
 
-static int        _intersectM_COVR(_cell *c, S57_geo *geoM_COVR)
+static int        _intersectM_COVR(_cell *cell, S57_geo *geoM_COVR)
 {
     ObjExt_t ext = S57_getExt(geoM_COVR);
 
     // skip Mariners Cell
-    for (guint j=1; j<_cellList->len; ++j) {
-        _cell *cj = (_cell*) g_ptr_array_index(_cellList, j);
+    for (guint i=1; i<_cellList->len; ++i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         // check that the new cell nav purp (INTU) is strictly bigger
-        if (*c->dsid_intustr->str <= *cj->dsid_intustr->str) {
+        if (*cell->dsid_intustr->str <= *c->dsid_intustr->str) {
             //PRINTF("DEBUG: check nav purp ci:%s cj:%s\n", c->filename->str, cj->filename->str);
             continue;
         }
         //PRINTF("DEBUG: check nav purp ci:%s cj:%s\n", c->dsid_intustr->str, cj->dsid_intustr->str);
 
         //  M_COVR intersect smaller scale extent
-        if (TRUE == _intersectEXT(cj->geoExt, ext)) {
+        if (TRUE == _intersectEXT(c->geoExt, ext)) {
             return TRUE;
         }
     }
@@ -3425,22 +3534,22 @@ static double    *_revArray(guint npt, double *ppt, double *outArr)
 // reverse winding
 {
     typedef struct pt3 { double x, y, z; } pt3;
-    //struct pt3 *ppt3 = (struct pt3 *)ppt;
     pt3 *ppt3 = (pt3 *)ppt;
-    //struct pt3 [npt];
-    //struct pt3 *rev = (struct pt3 *)outArr;
-    pt3 *rev = (pt3 *)outArr;
+    pt3 *rev  = (pt3 *)outArr;
+
+    // FIXME: optimisation: used p++ = --q
+    // OR swap first/last
     for (guint i=0; i<npt; ++i) {
         rev[(npt - 1) - i] = ppt3[i];
     }
-    //ppt = (double*)rev;
+
     return outArr;
 }
 
 // forward decl
 static S52ObjectHandle _newMarObj(const char *plibObjName, S52ObjectType objType, unsigned int xyznbr, double *xyz, const char *listAttVal);
 static S52_obj        *_updateGeo(S52_obj *obj, double *xyz);
-static int        _addSclBdy(GArray *sclbdyList, S57_geo *geoM_COVR, char intu)
+static int        _appSclbdy(GArray *sclbdyList, S57_geo *geoM_COVR, char intu)
 // SCALE BOUNDARIES: system generated CS DATCVR01-3
 // generate a sclbdy obj for a M_COVR:CATCOV=1 geo obj
 {
@@ -3489,7 +3598,7 @@ static int        _appHODATA(GArray *sclbdyList)
     // skip Mariners Cell
     //for (guint i=0; i<_cellList->len; ++i) {
     for (guint i=1; i<_cellList->len; ++i) {
-        _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         // M_COVR:CATCOV=1, link to PLib_AUX "m_covr" as ";OP(3OD11060);LC(HODATA01)"
         // (ie 3 - S52_PRIO_AREA_2, Over Radar, Display Base)
@@ -3499,7 +3608,7 @@ static int        _appHODATA(GArray *sclbdyList)
         // M_COVR:CATCOV=2, link to PLib
         // LUPT   40LU00102NILM_COVRA00001SPLAIN_BOUNDARIES
         // LUPT   45LU00357NILM_COVRA00001SSYMBOLIZED_BOUNDARIES
-        GPtrArray *rbin = ci->renderBin[S52_PRIO_GROUP1][S52_AREAS];
+        GPtrArray *rbin = c->renderBin[S52_PRIO_GROUP1][S52_AREAS];
 
         for (guint idx=0; idx<rbin->len; ++idx) {
             S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
@@ -3514,8 +3623,8 @@ static int        _appHODATA(GArray *sclbdyList)
                     // SCALE BOUNDARIES: system generated CS DATCVR01-3
                     // add this M_COVR to scale Boundary if
                     // intersect smaller nav purp cells
-                    if (TRUE == _intersectM_COVR(ci, geo)) {
-                        _addSclBdy(sclbdyList, geo, *ci->dsid_intustr->str);
+                    if (TRUE == _intersectM_COVR(c, geo)) {
+                        _appSclbdy(sclbdyList, geo, *c->dsid_intustr->str);
                     }
                 }
             }
@@ -3523,19 +3632,17 @@ static int        _appHODATA(GArray *sclbdyList)
     }
 
     // get union of HO data
-    // FIXME: what if more than 1 poly
+    // FIXME: can Union output more than 1 poly
+    // (ie: 2 non-overlap poly!)
     guint   npt = 0;
     double *ppt = NULL;
     S52_GLU_endUnion(&npt, &ppt);
-    // debug
-    //PRINTF("npt:%i\n", npt);
     if (0 == npt)
         return FALSE;
 
-    {   // reverse Union output - CCW -> CW (S57 winding)
-        double rev[npt*3];
-        ppt = _revArray(npt, ppt, rev);
-    }
+    // reverse Union output - CCW -> CW (S57 winding)
+    double rev[npt*3];
+    ppt = _revArray(npt, ppt, rev);
 
     // PLib AUX link to "m_covr" ;OP(3OD11060);LC(HODATA01)
     _HODATAUnion = _newMarObj("m_covr", S52_AREAS, npt, NULL, "CATCOV:1");
@@ -3562,7 +3669,7 @@ static int        _appHODATA(GArray *sclbdyList)
     return TRUE;
 }
 
-static int        _appSCLBDU(GArray *sclbdyList, GArray *sclbdUList)
+static int        _appSclbdU(GArray *sclbdyList, GArray *sclbdUList)
 // SCALE BOUNDARIES: system generated CS DATCVR01-3
 {
     //
@@ -3599,10 +3706,9 @@ static int        _appSCLBDU(GArray *sclbdyList, GArray *sclbdUList)
             PRINTF("DEBUG: 'sclbdU' union\n");
         }
 
-        {   // reverse Union output - CCW -> CW (S57 winding)
-            double rev[npt*3];
-            ppt = _revArray(npt, ppt, rev);
-        }
+        // reverse Union output - CCW -> CW (S57 winding)
+        double rev[npt*3];
+        ppt = _revArray(npt, ppt, rev);
 
         // PLib AUX link to "sclbdU"
         S52ObjectHandle sclbdyUnion = _newMarObj("sclbdU", S52_AREAS, npt, NULL, NULL);
@@ -3636,14 +3742,14 @@ static int        _appSCLBDU(GArray *sclbdyList, GArray *sclbdUList)
     return TRUE;
 }
 
-static int        _appMoveObj(_cell *ci, GPtrArray *tmpRenderBin)
+static int        _appMoveObj(_cell *c, GPtrArray *tmpRenderBin)
 {
     for (guint idx=0; idx<tmpRenderBin->len; ++idx) {
         S52_obj      *obj   = (S52_obj *)g_ptr_array_index(tmpRenderBin, idx);
         S52_disPrio   prio  = S52_PL_getDPRI(obj);
         S52ObjectType obj_t = S52_PL_getFTYP(obj);
 
-        g_ptr_array_add(ci->renderBin[prio][obj_t], obj);
+        g_ptr_array_add(c->renderBin[prio][obj_t], obj);
     }
     g_ptr_array_set_size(tmpRenderBin, 0);
 
@@ -3661,17 +3767,17 @@ static int        _app()
     // Test doesn't show that the logic for POIN_T in GL at render-time cost anything noticable.
     // So the idea to move back the CS logic into CS.c is an esthetic one!
     // 2 -
-    if (TRUE == _doCS) {
+    if (TRUE == _doAPP_CS) {
         // 2.1 - reparse CS
-        // FIXME: no need to check mariner cell if all mariner CS is in GL (S52_MP_get(S52_MAR_VECMRK))
-        for (guint i=0; i<_cellList->len; ++i) {
-            _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
+        /* FIXME: no need to check mariner cell if all mariner CS is in GL (S52_MP_get(S52_MAR_VECMRK))
+        for (guint k=0; k<_cellList->len; ++k) {
+            _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
             // one cell
-            for (S52_disPrio prio=S52_PRIO_NODATA; prio<S52_PRIO_NUM; ++prio) {
+            for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
                 // one layer
-                for (S52ObjectType obj_t=S52__META; obj_t<S52_N_OBJ; ++obj_t) {
+                for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
                     // one object type (render bin)
-                    GPtrArray *rbin = ci->renderBin[prio][obj_t];
+                    GPtrArray *rbin = c->renderBin[i][j];
                     for (guint idx=0; idx<rbin->len; ++idx) {
                         // one object
                         S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
@@ -3681,22 +3787,36 @@ static int        _app()
                 }
             }
         }
+        */
+        ALL_C_TRAV_RBIN_ij(g_ptr_array_foreach(c->renderBin[i][j], (GFunc)S52_PL_resloveSMB, NULL));
 
         // 2.2 - move obj
-        for (guint i=0; i<_cellList->len; ++i) {
-            _cell *ci = (_cell*) g_ptr_array_index(_cellList, i);
+        for (guint k=0; k<_cellList->len; ++k) {
+            _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
 
             // one cell
-            for (S52_disPrio prio=S52_PRIO_NODATA; prio<S52_PRIO_NUM; ++prio) {
+
+            //TRAV_RBIN_ij(printf("test\n"))
+
+            for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
                 // one layer
-                for (S52ObjectType obj_t=S52__META; obj_t<S52_N_OBJ; ++obj_t) {
+                for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
                     // one object type (render bin)
-                    GPtrArray *rbin = ci->renderBin[prio][obj_t];
+                    GPtrArray *rbin = c->renderBin[i][j];
                     guint idx = 0;
                     while (idx<rbin->len) {
                         S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
                         if (TRUE == S52_PL_isPrioO(obj)) {
-                            g_ptr_array_remove_index_fast(rbin, idx);
+                            //g_ptr_array_remove_index_fast(rbin, idx);
+
+                            //* remove_index_fast() - sans free_func() code
+                            if (idx != rbin->len - 1)
+                                rbin->pdata[idx] = rbin->pdata[rbin->len - 1];
+
+                            rbin->len             -= 1;
+                            rbin->pdata[rbin->len] = NULL;
+                            //*/
+
                             g_ptr_array_add(_tmpRenderBin, obj);
                         } else {
                             ++idx;
@@ -3704,24 +3824,30 @@ static int        _app()
                     }
                 }
             }
-            _appMoveObj(ci, _tmpRenderBin);
+            _appMoveObj(c, _tmpRenderBin);
         }
 
-        // 2.3 - flush all texApha, when raster is bathy, if S52_MAR_SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR has change
-        // FIXME: find if SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR has change
+        // done rebuilding CS
+        _doAPP_CS = FALSE;
+    }
+
+    // 2.3 - texApha, when raster is bathy,
+    // if S52_MAR_SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR / S52_MAR_DATUM_OFFSET has change
+    if (TRUE == _doAPP_RASTER) {
+        //gpointer texOnly = GINT_TO_POINTER(TRUE);
+        //g_ptr_array_foreach(_rasterList, S52_GL_delRaster, texOnly);
         for (guint i=0; i<_rasterList->len; ++i) {
             S52_GL_ras *ras = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
             S52_GL_delRaster(ras, TRUE);
         }
-        // done rebuilding CS
-        _doCS = FALSE;
+        _doAPP_RASTER = FALSE;
     }
 
     ////////////////////////////////////////////////////
     //
     // CS DATCVR01-2/3: compute HO Data Limit, scale boundary, ..
     //
-    if (TRUE == _doDATCVR) {
+    if (TRUE == _doAPP_DATCVR) {
         // del previous _HODATAUnion obj
         if (FALSE != _HODATAUnion) {
             _HODATAUnion = _delMarObj(_HODATAUnion);
@@ -3746,10 +3872,10 @@ static int        _app()
         // compute HO data limit union - system generated CS DATCVR01-2
         if (TRUE == _appHODATA(_sclbdyList)) {
             // compute scale boundaries union - system generated CS DATCVR01-3
-            _appSCLBDU(_sclbdyList, _sclbdUList);
+            _appSclbdU(_sclbdyList, _sclbdUList);
         }
 
-        _doDATCVR = FALSE;
+        _doAPP_DATCVR = FALSE;
     }
 
     // debug
@@ -3789,7 +3915,7 @@ static int        _cullLights(void)
             S57_geo *geo  = S52_PL_getGeo(obj);
             ObjExt_t oext = S57_getExt(geo);
 
-            S52_PL_resloveSMB(obj);
+            S52_PL_resloveSMB(obj, NULL);
 
             // traverse the cell 'above' to check if extent overlap this light
             for (guint k=i-1; k>0 ; --k) {
@@ -3908,8 +4034,9 @@ static int        _cullLayer(_cell *c)
     // layer 0-8
     for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_MARINR; ++i) {
         // for each object type
-        // Note: skip META
-        for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
+        // Note: skip S52__META
+        //for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
+        for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
 
             // FIXME: AA line & point, mark in journal to render to texture
             // then send texture to FB
@@ -3978,8 +4105,10 @@ static int        _cull(ObjExt_t ext)
 
     // all cells - larger region first (small scale)
     //for (guint i=_cellList->len; i>0; --i) {
-    for (guint i=_cellList->len; i>1; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+    //for (guint i=_cellList->len; i>1; --i) {
+    for (guint i=_cellList->len-1; i>0; --i) {
+        //_cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 #ifdef S52_USE_WORLD
         if ((0==g_strcmp0(WORLD_SHP, c->filename->str)) && (FALSE==S52_MP_get(S52_MAR_DISP_WORLD)))
             continue;
@@ -3999,48 +4128,30 @@ static int        _cull(ObjExt_t ext)
     return TRUE;
 }
 
-#if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
+#if defined(S52_USE_GL2)    || defined(S52_USE_GLES2)
 #if defined(S52_USE_RASTER) || defined(S52_USE_RADAR)
-static int        _drawRaster(ObjExt_t *cellExt)
+//static int        _drawRaster(ObjExt_t *cellExt)
+static int        _drawRaster(void)
 {
     for (guint i=0; i<_rasterList->len; ++i) {
         S52_GL_ras *raster = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
+        // FIXME: no _intersectEXT() .. but GL scissor is ON .. so this migth not really help
+        S52_GL_drawRaster(raster);
 
-#ifdef S52_USE_RASTER
+        /*
+        // bathy
         if (FALSE == raster->isRADAR) {
-
             if (TRUE == _intersectEXT(*cellExt, raster->gext)) {
-
-                // bathy
                 S52_GL_drawRaster(raster);
             }
             continue;
         }
-#endif  // S52_USE_RASTER
 
-#ifdef S52_USE_RADAR
+        // radar
         if (TRUE == raster->isRADAR) {
-            double cLat = 0.0;
-            double cLng = 0.0;
-            double rNM  = 0.0;
-
-            raster->texAlpha = raster->RADAR_cb(&cLat, &cLng, &rNM);
-
-            double xyz[3] = {cLng, cLat, 0.0};
-            if (FALSE == S57_geo2prj3dv(1, xyz)) {
-                PRINTF("WARNING: S57_geo2prj3dv() failed\n");
-                return FALSE;
-            }
-            raster->cLng = xyz[0];
-            raster->cLat = xyz[1];
-            raster->rNM  = rNM;
-
-            // DEBUG: set extent for filter in drawRaster()
-            //S52_GL_getPRJView(&raster->S, &raster->W, &raster->N, &raster->E);
-
             S52_GL_drawRaster(raster);
         }
-#endif  // S52_USE_RADAR
+        */
     }
 
     return TRUE;
@@ -4051,8 +4162,10 @@ static int        _drawRaster(ObjExt_t *cellExt)
 static int        _drawLayer(ObjExt_t ext, int layer)
 {
     // all cells --larger region first
-    for (guint i=_cellList->len; i>0 ; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+    //for (guint i=_cellList->len; i>0 ; --i) {
+    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+    for (guint i=_cellList->len-1; i>0 ; --i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
     //guint n = _cellList->len-1;
     //for (guint i=n; i>0 ; --i) {
@@ -4061,27 +4174,18 @@ static int        _drawLayer(ObjExt_t ext, int layer)
         if (TRUE == _intersectEXT(c->geoExt, ext)) {
 
             // one layer
-            for (S52ObjectType k=S52_AREAS; k<S52_N_OBJ; ++k) {
-                GPtrArray *rbin = c->renderBin[layer][k];
+            for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
+                GPtrArray *rbin = c->renderBin[layer][j];
 
                 // one object
                 for (guint idx=0; idx<rbin->len; ++idx) {
                     S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                    //S57_geo *geo = S52_PL_getGeo(obj);
-
-                    /* debug: can this happen!
-                    if (NULL == obj) {
-                        PRINTF("DEBUG: skip obj NULL\n");
-                        g_assert(0);
-                        continue;
-                    }
-                    */
 
                     // debug
+                    //S57_geo *geo = S52_PL_getGeo(obj);
                     //PRINTF("%s\n", S57_getName(geo));
 
                     // if display of object is not suppressed
-                    //if (TRUE != S57_getSupp(geo)) {
                     if (TRUE == S52_PL_getSupp(obj)) {
                         //PRINTF("%s\n", S57_getName(geo));
 
@@ -4118,8 +4222,10 @@ static int        _drawLights(void)
     // also light are drawn last (ie after all cells)
     // so a sector is not shoped by an other cell next to it
 
-    for (guint i=_cellList->len; i>0 ; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+    //for (guint i=_cellList->len; i>0 ; --i) {
+    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+    for (guint i=_cellList->len-1; i>0 ; --i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         // a cell can have no lights sector
         if (NULL == c->lights_sector)
@@ -4386,8 +4492,10 @@ static int        _draw()
     //               - app/cull must reset sort if color change by user
 
     // skip mariner
-    for (guint i=_cellList->len; i>1; --i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+    //for (guint i=_cellList->len; i>1; --i) {
+    //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+    for (guint i=_cellList->len-1; i>0; --i) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         g_atomic_int_get(&_atomicAbort);
         if (TRUE == _atomicAbort) {
@@ -4433,9 +4541,11 @@ static int        _draw()
 #if defined(S52_USE_GL2)    || defined(S52_USE_GLES2)
 #if defined(S52_USE_RASTER) || defined(S52_USE_RADAR)
         // draw radar / raster
-        // no raster in MARINER_CELL (i==1, cell idx 0)
+        // Note: no raster in MARINER_CELL (i==1, cell idx 0)
         if ((1.0==S52_MP_get(S52_MAR_DISP_RADAR_LAYER)) && (1!=i)) {
-            _drawRaster(&(c->geoExt));
+            // FIXME: foreach
+            //_drawRaster(&(c->geoExt));
+            _drawRaster();
         }
 #endif
 #endif
@@ -4615,7 +4725,8 @@ static void       _delOldVessel(gpointer data, gpointer user_data)
             // remove obj from 'cell'
             g_ptr_array_remove(rbin, obj);
 
-            _delObj(obj);
+            //_delObj(obj);
+            _delObj(obj, NULL);
         }
     }
 
@@ -4625,8 +4736,10 @@ static void       _delOldVessel(gpointer data, gpointer user_data)
 static int        _drawLast(void)
 // draw the Mariners' Object (layer 9)
 {
-    for (S52ObjectType i=S52_AREAS; i<S52_N_OBJ; ++i) {
-        GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][i];
+    //for (S52ObjectType i=S52_AREAS; i<S52_N_OBJ; ++i) {
+    // Note: mariner's obj allow for META
+    for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
+        GPtrArray *rbin = _marinerCell->renderBin[S52_PRIO_MARINR][j];
         // FIFO
         //for (guint idx=0; idx<rbin->len; ++idx) {
         // LIFO: so that 'cursor' is drawn last (on top)
@@ -4768,20 +4881,188 @@ exit:
     return ret;
 }
 
+DLL int    STD S52_loadPLib(const char *plibName)
+// (re)load a PLib - rebuild S52_obj wrapper around S57_geo
+// Note: allow to reload a PLib to overwrite rules
+{
+    int ret = FALSE;
+
+    S52_CHECK_MUTX_INIT;
+
+    // 1 - load / parse new PLib
+    if (NULL != plibName) {
+        // load user PLib
+        if (TRUE == S52_PL_load(plibName)) {
+            g_string_append_printf(_plibNameList, ",%s", plibName);
+        } else {
+            PRINTF("WARNING: PLIB not found (%s)\n", plibName);
+            goto exit;
+        }
+    } else {
+        // check in s52.cfg (debug)
+        valueBuf cfgPLib = {'\0'};
+        if (TRUE == S52_utils_getConfig(CFG_PLIB, cfgPLib)) {
+            if (TRUE == S52_PL_load(cfgPLib)) {
+                g_string_append_printf(_plibNameList, ",%s", cfgPLib);
+            } else {
+                PRINTF("WARNING: PLIB not found (%s)\n", cfgPLib);
+                goto exit;
+            }
+        } else {
+            PRINTF("DEBUG: PLIB not found in .cfg (%s)\n", CFG_PLIB);
+            goto exit;
+        }
+    }
+
+    // 2 - relink S57 objects to the new rendering rules of new PLib
+    for (guint k=0; k<_cellList->len; ++k) {
+        _cell *cell = (_cell*) g_ptr_array_index(_cellList, k);
+
+        // FIXME: skip shapefile
+        //if (0 == g_strcmp0(, WORLD_BASENM)){
+        //
+
+        _cell tmpCell;
+        memset(&tmpCell, 0, sizeof(_cell));
+
+        // FIXME: refactor _newRBin(), same code also in _newCell()
+        //* init new render bin
+        for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
+            for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j)
+                tmpCell.renderBin[i][j] = g_ptr_array_new();
+        }
+        //*/
+
+        // FIXME: this fail - remove_fast() in APP() call _delObj()
+        //PRINTF("DEBUG:XXXXXXXXXXXXXXXXX  tmpCell.renderBin[i][j] = g_ptr_array_new();\n", CFG_PLIB);
+        //TRAV_RBIN_ij(tmpCell.renderBin[i][j] = g_ptr_array_new_with_free_func((GDestroyNotify)_delObj))
+
+        // insert obj in new cell
+
+        //TRAV_RBIN_ij(printf("test\n"))
+
+        for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
+            for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
+
+                // FIXME: foreach(cell->renderBin[i][j], _linkObj2PLib, tmpCell) common to lights_sector
+
+                GPtrArray *rbin = cell->renderBin[i][j];
+
+                // debug - flag empty rbin (ex: GB4X0000.000:S52_PRIO_NODATA/S52_LINES)
+                if (0 == rbin->len) {
+                    PRINTF("DEBUG: empty rbin found (%s:%i %i)\n", cell->filename->str, i, j);
+                } else {
+                    // FIXME: DEBUG: dump META rbin to see what in there
+                }
+
+                for (guint idx=0; idx<rbin->len; ++idx) {
+                    S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+
+                    // 1 - relink to new rules
+                    S57_geo *geo    = S52_PL_getGeo(obj);
+                    S52_obj *tmpObj = S52_PL_newObj(geo);
+
+                    // debug - should be the same since we relink existing object
+                    // this happen when bug overflow in looping on newObj/delObj
+                    g_assert(obj == tmpObj);
+
+                    // 2 - flush old Display List / VBO
+                    S52_GL_delDL(obj);
+
+                    // 3 - put in new render bin
+                    _insertS52obj(&tmpCell, obj);
+                }
+
+                // if GDestroyNotify _delObj() NOT given
+                // obj transfert to new rbin (no delObj)
+                g_ptr_array_free(rbin, TRUE);
+
+                // free old rbin segment by hand if GDestroyNotify given
+                //gpointer *seg = g_ptr_array_free(rbin, FALSE);
+                //g_free(seg);
+            }
+        }
+
+        // transfert rbin
+
+        //TRAV_RBIN_ij(printf("test\n"))
+
+        for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
+            // transfert all rbin - empty META also (prevent mem leak because of lost rbin)
+            for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
+                cell->renderBin[i][j] = tmpCell.renderBin[i][j];
+            }
+        }
+
+        if (NULL != cell->lights_sector) {
+            for (guint i=0; i<cell->lights_sector->len; ++i) {
+                S52_obj *obj = (S52_obj *)g_ptr_array_index(cell->lights_sector, i);
+
+                // 1 - relink to new rules
+                S57_geo *geo    = S52_PL_getGeo(obj);
+                S52_obj *tmpObj = S52_PL_newObj(geo);
+
+                // debug - should be the same since we relink existing object
+                g_assert(obj == tmpObj);
+
+                // 2 - flush old Display List / VBO
+                S52_GL_delDL(obj);
+
+                // 3 - put in new render bin
+                _insertS52obj(&tmpCell, obj);
+            }
+            // FIXME: do the same as above - no delObj
+            g_ptr_array_free(cell->lights_sector, TRUE);
+        }
+        cell->lights_sector = tmpCell.lights_sector;
+
+        /* optimisation: recompute only CS that change due to new MarParam value
+        // save reference for quickly find CS to re-compute after a MarinerParameter change
+        // will replace the ugly APP() code that handle _doAPP_CS
+        const char *CSnm = S52_PL_hasCS(obj);
+        if (NULL != CSnm) {
+            if (0 == strncmp(CSnm, "DEPARE", 5)) g_ptr_array_add(c->DEPARElist, obj);
+            if (0 == strncmp(CSnm, "DEPCNT", 5)) g_ptr_array_add(c->DEPCNTlist, obj);
+            if (0 == strncmp(CSnm, "OBSTRN", 5)) g_ptr_array_add(c->OBSTRNlist, obj);
+            if (0 == strncmp(CSnm, "RESARE", 5)) g_ptr_array_add(c->RESARElist, obj);
+            if (0 == strncmp(CSnm, "WRECKS", 5)) g_ptr_array_add(c->WRECKSlist, obj);
+
+            // GPtrArray *DEPARE01L;  MP
+            // GPtrArray *DEPCNT02L;  MP, OP()
+            // GPtrArray *OBSTRN04L;  OP()
+            // GPtrArray *RESARE02L;  OP()
+            // GPtrArray *WRECKS02L;  OP()
+        }
+        */
+    }
+
+    // signal to rebuild all cmd
+    _doAPP_CS = TRUE;
+
+    ret = TRUE;
+
+exit:
+
+    GMUTEXUNLOCK(&_mp_mutex);
+
+    return ret;
+}
+
+
 #ifdef S52_USE_GV
-static int        _drawObj(const char *name)
+static int        _gv_drawObj(const char *name)
+// DEPRECATED
 {
     // all cells --larger region first
-    guint n = _cellList->len;
-    for (guint i=0; i<n; ++i) {
-        _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
+    for (guint k=0; k<_cellList->len; ++k) {
+        _cell *c = (_cell*) g_ptr_array_index(_cellList, k);
 
         // one cell
-        for (S52_disPrio j=S52_PRIO_NODATA; j<S52_PRIO_NUM; ++j) {
+        for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
 
             // one layer
-            for (S52ObjectType k=S52_AREAS; k<S52_N_OBJ; ++k) {
-                GPtrArray *rbin = c->renderBin[j][k];
+            for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
+                GPtrArray *rbin = c->renderBin[i][j];
 
                 // one object
                 for (guint idx=0; idx<rbin->len; ++idx) {
@@ -4800,13 +5081,12 @@ static int        _drawObj(const char *name)
 
     return TRUE;
 }
-#endif  // S52_USE_GV
 
-DLL int    STD S52_drawLayer(const char *name)
+// FIXME: gather all GV stuff
+DLL int    STD S52_gv_drawLayer(const char *name)
+// DEPRECATED
 {
     PRINTF("name: %s\n", name);
-
-#ifdef S52_USE_GV
 
     return_if_null(S57_getPrjStr());
     S52_CHECK_MUTX_INIT;
@@ -4853,7 +5133,7 @@ DLL int    STD S52_drawLayer(const char *name)
         //_drawText();
 
         // done rebuilding CS
-        _doCS = FALSE;
+        _doAPP_CS = FALSE;
 
         S52_GL_end(S52_GL_DRAW);
     }
@@ -4861,10 +5141,10 @@ DLL int    STD S52_drawLayer(const char *name)
 exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
-#endif
 
     return TRUE;
 }
+#endif  // S52_USE_GV
 
 DLL int    STD S52_drawStr(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
 {
@@ -5245,6 +5525,7 @@ static ObjExt_t   _getCellsExt(void)
 DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, double *N, double *E)
 {
     int ret = FALSE;
+
     if (NULL==S || NULL==W || NULL==N || NULL==E) {
         PRINTF("WARNING: NULL extent S,W,N,E\n");
         return FALSE;
@@ -5275,13 +5556,11 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
             g_free(fnm);
             g_free(name);
 
-            //GMUTEXUNLOCK(&_mp_mutex);
-            //return FALSE;
             goto exit;
         }
 
-        for (guint idx=0; idx<_cellList->len; ++idx) {
-            _cell *c = (_cell*)g_ptr_array_index(_cellList, idx);
+        for (guint i=0; i<_cellList->len; ++i) {
+            _cell *c = (_cell*)g_ptr_array_index(_cellList, i);
 
             if (0 == g_strcmp0(name, c->filename->str)) {
                 *S = c->geoExt.S;
@@ -5307,7 +5586,6 @@ exit:
     //return TRUE;
     return ret;
 }
-
 
 
 // -----------------------------------------------------
@@ -5373,130 +5651,15 @@ exit:
 
     return ret;
 }
-// -----------------------------------------------------
+// --- Selecte object --------------------------------------------------
 
 
-DLL int    STD S52_loadPLib(const char *plibName)
-// (re)load a PLib
-// Note: allow to reload a PLib to overwrite rules
-{
-    int ret = FALSE;
-
-    S52_CHECK_MUTX_INIT;
-
-    // 1 - load / parse new PLib
-    valueBuf PLibPath = {'\0'};
-    if (NULL == plibName) {
-        // check in s52.cfg
-        if (0 == S52_utils_getConfig(CFG_PLIB, PLibPath)) {
-            PRINTF("WARNING: default PLIB not found in .cfg (%s)\n", CFG_PLIB);
-            goto exit;
-        } else {
-            if (TRUE == S52_PL_load(PLibPath)) {
-                g_string_append_printf(_plibNameList, ",%s", PLibPath);
-            } else {
-                goto exit;
-            }
-        }
-    } else {
-        if (TRUE == S52_PL_load(plibName)) {
-            g_string_append_printf(_plibNameList, ",%s", plibName);
-        } else {
-            goto exit;
-        }
-    }
-
-    // 2 - relink S57 objects to the new rendering rules of new PLib
-    for (guint k=0; k<_cellList->len; ++k) {
-        _cell *cell = (_cell*) g_ptr_array_index(_cellList, k);
-
-        //if (0 == g_strcmp0(, WORLD_BASENM)){
-        //
-
-        _cell tmpCell;
-        memset(&tmpCell, 0, sizeof(_cell));
-
-        // init new render bin
-        for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
-            for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j)
-                tmpCell.renderBin[i][j] = g_ptr_array_new();
-        }
-
-        // insert obj in new cell
-        for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
-            // skip META (no META in PLib)
-            //FIXME: check all 'foreach' where META is used (ex: C_AGGR)
-            for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
-                GPtrArray *rbin = cell->renderBin[i][j];
-                for (guint idx=0; idx<rbin->len; ++idx) {
-                    S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-
-                    // 1 - relink to new rules
-                    S57_geo *geo    = S52_PL_getGeo(obj);
-                    S52_obj *tmpObj = S52_PL_newObj(geo);
-
-                    // debug - should be the same since we relink existing object
-                    g_assert(obj == tmpObj);
-
-                    // 2 - flush old Display List / VBO
-                    S52_GL_delDL(obj);
-
-                    // 3 - put in new render bin
-                    _insertS52obj(&tmpCell, obj);
-                }
-                // flush old rbin
-                g_ptr_array_free(rbin, TRUE);
-            }
-        }
-
-        // transfert rbin
-        for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
-            // transfert all rbin - empty META also (prevent mem leak because of lost rbin)
-            for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
-                cell->renderBin[i][j] = tmpCell.renderBin[i][j];
-            }
-        }
-
-        if (NULL != cell->lights_sector) {
-            for (guint i=0; i<cell->lights_sector->len; ++i) {
-                S52_obj *obj = (S52_obj *)g_ptr_array_index(cell->lights_sector, i);
-
-                // 1 - relink to new rules
-                S57_geo *geo    = S52_PL_getGeo(obj);
-                S52_obj *tmpObj = S52_PL_newObj(geo);
-
-                // debug - should be the same since we relink existing object
-                g_assert(obj == tmpObj);
-
-                // 2 - flush old Display List / VBO
-                S52_GL_delDL(obj);
-
-                // 3 - put in new render bin
-                _insertS52obj(&tmpCell, obj);
-            }
-            g_ptr_array_free(cell->lights_sector, TRUE);
-        }
-        cell->lights_sector = tmpCell.lights_sector;
-    }
-
-    // signal to rebuild all cmd
-    _doCS = TRUE;
-
-    ret = TRUE;
-
-exit:
-
-    GMUTEXUNLOCK(&_mp_mutex);
-
-    return ret;
-}
 
 
 //-------------------------------------------------------
 //
 // FEEDBACK TO HIGHER UP MODULE OF INTERNAL STATE
 //
-
 
 DLL cchar *STD S52_pickAt(double pixels_x, double pixels_y)
 {
@@ -5690,6 +5853,8 @@ static GString   *_getMARINClassList()
 {
     GString *classList = g_string_new(MARINER_CELL);
 
+    //TRAV_RBIN_ij(printf("test\n"))
+
     for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
         for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
             GPtrArray *rbin = _marinerCell->renderBin[i][j];
@@ -5715,8 +5880,8 @@ DLL cchar *STD S52_getS57ClassList(const char *cellName)
 
     g_string_set_size(_S57ClassList, 0);
 
-    for (guint idx=0; idx<_cellList->len; ++idx) {
-        _cell *c = (_cell*)g_ptr_array_index(_cellList, idx);
+    for (guint i=0; i<_cellList->len; ++i) {
+        _cell *c = (_cell*)g_ptr_array_index(_cellList, i);
 
         if (NULL == cellName) {
             if (0 == _S57ClassList->len)
@@ -5771,10 +5936,13 @@ DLL cchar *STD S52_getObjList(const char *cellName, const char *className)
     int header = TRUE;
     g_string_set_size(_S52ObjNmList, 0);
 
-    for (guint cidx=0; cidx<_cellList->len; ++cidx) {
-        _cell *c = (_cell*)g_ptr_array_index(_cellList, cidx);
+    for (guint k=0; k<_cellList->len; ++k) {
+        _cell *c = (_cell*)g_ptr_array_index(_cellList, k);
 
         if (0 == g_strcmp0(cellName, c->filename->str)) {
+
+            //TRAV_RBIN_ij(printf("test\n"))
+
             for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
                 for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
                     GPtrArray *rbin = c->renderBin[i][j];
@@ -5891,9 +6059,8 @@ exit:
 
     return str;
 }
-//
-//-------------------------------------------------------
-//
+//--- FEEDBACK ----------------------------------------------------
+
 
 DLL int    STD S52_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B)
 {
@@ -5938,6 +6105,8 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius)
     (void)cb;
     (void)texRadius;
 
+    int ret = TRUE;
+
 #ifdef S52_USE_RADAR
 
     return_if_null(cb);
@@ -5952,24 +6121,24 @@ DLL int    STD S52_setRADARCallBack(S52_RADAR_cb cb, unsigned int texRadius)
         if (cb == raster->RADAR_cb) {
             if (0 == texRadius) {
                 S52_GL_delRaster(raster, TRUE);
+
+                // will call free_func() if set
                 g_ptr_array_remove_index_fast(_rasterList, i);
-                g_free(raster);
-                GMUTEXUNLOCK(&_mp_mutex);
-                return TRUE;
+
+                goto exit;
             } else {
-                GMUTEXUNLOCK(&_mp_mutex);
-                return FALSE;
+                ret = FALSE;
+                goto exit;
             }
         }
     }
 
     // not found - create new
-    S52_GL_ras *raster = g_new0(S52_GL_ras, 1);
+    S52_GL_ras *raster = S52_GL_newRaster(NULL);
     raster->isRADAR    = TRUE;
     raster->RADAR_cb   = cb;
-    raster->npotX      = texRadius * 2;  // N/S
-    raster->npotY      = texRadius * 2;  // E/W
-    raster->gdtSz      = 1;    // 1 byte Alpha
+    raster->h          = texRadius * 2;  // N/S
+    raster->w          = texRadius * 2;  // E/W
     g_ptr_array_add(_rasterList, raster);
 
 exit:
@@ -5978,7 +6147,8 @@ exit:
 
 #endif
 
-    return TRUE;
+    //return TRUE;
+    return ret;
 }
 
 DLL int    STD S52_setEGLCallBack(S52_EGL_cb eglBeg, S52_EGL_cb eglEnd, void *EGLctx)
@@ -6020,6 +6190,18 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
         attvalL = g_strsplit_set(listAttVal, delim, 0);  // can't handle UTF-8, check g_strsplit() if needed
 
     gchar** freeL = attvalL;
+
+    /* FIXME: do not replace '\n' by ' ', for JSON
+     if (0 == g_strcmp0("_vessel_label", attName)) {
+     for (guint i=0; i<attList->len; ++i) {
+     if ('\n' == attList->str[i]) {
+     attList->str[i] = ' ';
+     //g_string_insert_c(attList, i, SLASH);
+     return;
+     }
+     }
+     }
+     */
 
     {   // check that strings comme in pair
         // the other case (ie '"","bla","bla",""') will be catched
@@ -6095,7 +6277,6 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
         }
     }
 
-    //FIXME: is this glib-1 compat!
     g_strfreev(freeL);
 
     return TRUE;
@@ -6238,23 +6419,17 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
     }
 
     switch (objType) {
-        case S52__META: geo = S57_set_META();                             break;
-        case S52_POINT: geo = S57_setPOINT(gxyz);                         break;
-        case S52_LINES: geo = S57_setLINES(xyznbr, gxyz);                 break;
-        case S52_AREAS: geo = S57_setAREAS(1, gxyznbr, ggxyz);            break;
-        //case S52_AREAS: geo = S57_setAREAS(1, gxyznbr, ggxyz, S57_AW_CW); break;
-    default:
-        // FIXME: say something!
-
-        break;  // quiet compiler
+        case S52__META: geo = S57_set_META();                  break;
+        case S52_POINT: geo = S57_setPOINT(gxyz);              break;
+        case S52_LINES: geo = S57_setLINES(xyznbr, gxyz);      break;
+        case S52_AREAS: geo = S57_setAREAS(1, gxyznbr, ggxyz); break;
+        default: PRINTF("WARNING: invalid obj type\n");        break;
     }
 
     if (NULL == geo) {
         PRINTF("WARNING: S57 geo object build failed\n");
         if (NULL != gxyznbr) g_free(gxyznbr);
         if (NULL != ggxyz)   g_free(ggxyz);
-
-        //g_assert(0);
 
         return FALSE;
     }
@@ -6284,7 +6459,7 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
     S52_PL_resetParseText(obj);
 
     // doCS now (intead of _app() - expensive)
-    S52_PL_resloveSMB(obj);
+    S52_PL_resloveSMB(obj, NULL);
 
     // set timer for afterglow
     if (0 == g_strcmp0("vessel", S57_getName(geo))) {
@@ -6298,7 +6473,8 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
     }
 #endif
 
-    return S57_getS57ID(geo);
+    //return S57_getS57ID(geo);
+    return S57GETS57ID(geo);
 }
 
 DLL S52ObjectHandle STD S52_newMarObj(const char *plibObjName, S52ObjectType objType,
@@ -6364,13 +6540,11 @@ exit:
     return ret;
 }
 
-static S52_obj            *_removeObj(_cell *c, S52_obj *obj)
+/* static S52_obj            *_removeObj(_cell *c, S52_obj *obj)
 // remove the S52 object from the cell (not the object itself)
 // return the oject removed, else return NULL if object not found
-{
-    // Note: cannot find the right renderBin from 'obj'
-    // because 'obj' could be dandling
-
+//{
+    //TRAV_RBIN_ij(printf("test\n"))
     for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) {
         for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
             GPtrArray *rbin = c->renderBin[i][j];
@@ -6378,42 +6552,102 @@ static S52_obj            *_removeObj(_cell *c, S52_obj *obj)
                 S52_obj *o = (S52_obj *)g_ptr_array_index(rbin, idx);
 
                 if (obj == o) {
+                    // will call free_func() if set
                     g_ptr_array_remove_index_fast(rbin, idx);
                     return o;
                 }
             }
         }
     }
-
-    PRINTF("WARNING: object handle not found\n");
-
-    return NULL;
 }
+*/
 
 static S52ObjectHandle     _delMarObj(S52ObjectHandle objH)
+// validate this obj and remove if found
 {
-    // validate this obj and remove if found
     S52_obj *obj = S52_PL_isObjValid(objH);
     if (NULL == obj) {
+        // will happen when AIS self-destruct on S52_MAR_DISP_VESSEL_DELAY
+        PRINTF("WARNING: couldn't delete .. objH not in Mariners' Object List\n");
         return objH;
     }
 
+    GPtrArray *array = NULL;
+    if (0 == g_strcmp0(S52_PL_getOBCL(obj), "LIGHTS")) {
+        array = _marinerCell->lights_sector;
+    } else {
+        // select rbin
+        S52_disPrio   disPrioIdx = S52_PL_getDPRI(obj);
+        S52ObjectType obj_t      = S52_PL_getFTYP(obj);
+
+        array = _marinerCell->renderBin[disPrioIdx][obj_t];
+    }
+
+    // will call _delObj() if free_func() set
+    if (TRUE == g_ptr_array_remove(array, obj)) {
+        _delObj(obj, NULL);
+
+        return FALSE;
+    }
+
+    PRINTF("WARNING: objH not found in Mariners' Object\n");
+    g_assert(0);
+
+    return objH;
+
+
+    /*
+    for (guint i=0; i<array->len; ++i) {
+        if (obj == array->pdata[i]) {
+            g_ptr_array_remove_index_fast(array, i);
+            _delObj(obj, NULL);
+
+            return FALSE;
+        }
+    }
+    */
+
+
+    /*
+    guint len = _tmpArrRef->len;
+    if (0 != len) {
+        g_ptr_array_foreach(_tmpArrRef, (GFunc)_cmpMarObj, obj);
+
+        // here len > 0
+        if (0 == _tmpArrRef->len) {
+            _tmpArrRef->len = len-1;
+            _delObj(obj, NULL);
+            return FALSE;
+        } else {
+            PRINTF("WARNING: couldn't delete objH .. obj not in Mariners' Object List\n");
+            g_assert(0);
+        }
+    } else {
+        PRINTF("WARNING: couldn't delete objH .. Mariners' Object List is empty\n");
+        g_assert(0);
+    }
+
+    return objH;
+    */
+    /*
     if (NULL == _removeObj(_marinerCell, obj)) {
         PRINTF("WARNING: couldn't delete .. objH not in Mariners' Object List\n");
         return objH;
     }
 
-    //obj  = _delObj(obj);  // clang return obj never read
-    _delObj(obj);
-    //objH = FALSE;
+    //_delObj(obj);
+    _delObj(obj, NULL);
 
-    //return objH;
     return FALSE;
+    */
+
 }
 
 DLL S52ObjectHandle STD S52_delMarObj(S52ObjectHandle objH)
 // contrairy to other call return objH when fail
 // so caller can further process it
+// Note: will happen when an AIS get older than S52_MAR_DISP_VESSEL_DELAY
+//       and self-destruct
 {
     S52_CHECK_MUTX_INIT;
 
@@ -6578,8 +6812,8 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
 
             // cull
             // all cells - larger region first (small scale)
-            for (guint i=_cellList->len; i>0 ; --i) {
-                _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
+            for (guint i=_cellList->len-1; i>0; --i) {
+                _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 #ifdef S52_USE_WORLD
                 if ((0==g_strcmp0(WORLD_SHP, c->filename->str)) && (FALSE==(int) S52_MP_get(S52_MAR_DISP_WORLD)))
                     continue;
@@ -6784,7 +7018,6 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
             // this test is not required since the obj has just been created
             if (NULL == obj) {
                 S57_geo *geo = S52_PL_getGeo(obj);
-                //S57_highlightON(geo);
                 S57_setHighlight(geo, TRUE);
             }
         }
@@ -7111,6 +7344,18 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
         if (NULL == label) {
             SNPRINTF(attval, 80, "vesrce:%i,_vessel_label: ", vesrce);
         } else {
+            // move code in _setAtt()
+            /* FIXME: do not replace '\n' by ' ', for JSON
+             if (0 == g_strcmp0("_vessel_label", attName)) {
+             for (guint i=0; i<attList->len; ++i) {
+             if ('\n' == attList->str[i]) {
+             attList->str[i] = ' ';
+             //g_string_insert_c(attList, i, SLASH);
+             return;
+             }
+             }
+             }
+             */
             SNPRINTF(attval, 80, "vesrce:%i,_vessel_label:%s", vesrce, label);
         }
 
@@ -7144,6 +7389,18 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
         char attval[80] = {'\0'};
         S57_geo *geo = S52_PL_getGeo(obj);
 
+        // move code in _setAtt()
+        /* FIXME: do not replace '\n' by ' ', for JSON
+         if (0 == g_strcmp0("_vessel_label", attName)) {
+         for (guint i=0; i<attList->len; ++i) {
+         if ('\n' == attList->str[i]) {
+         attList->str[i] = ' ';
+         //g_string_insert_c(attList, i, SLASH);
+         return;
+         }
+         }
+         }
+         */
         SNPRINTF(attval, 80, "[_vessel_label,%s]", newLabel);
         _setAtt(geo, attval);
 
@@ -7219,7 +7476,7 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
         int offset = strlen(attvaltmp);
         if (1==vestat || 2==vestat || 3==vestat ) {
             SNPRINTF(attvaltmp+offset, 80-offset, "vestat:%i,", vestat);
-            // FIXME: _doCS to get the new text (and prio)
+            // FIXME: _doAPP_CS to get the new text (and prio)
         }
 
         offset = strlen(attvaltmp);

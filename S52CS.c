@@ -31,7 +31,7 @@
 //#define _ISOC99_SOURCE
 #include <math.h>       // NAN, floor()
 
-#define version "3.2.0"
+#define version "3.2.0" // CS of Plib 3.2 S52 ed ?
 
 //#define UNKNOWN HUGE_VAL   // INFINITY/NAN
 //#define UNKNOWN  (1.0/0.0)   //HUGE_VAL   // INFINITY/NAN
@@ -46,7 +46,7 @@
 #define UWTROC  153   // Underwater rock / awash rock
 #define WRECKS  159   // Wreck
 
-// loadCell() - keep ref for further proccessing in CS
+// loadCell() - keep ref on S57_geo for further proccessing in CS
 typedef struct _localObj {
     GPtrArray *lights_list;  // list of: LIGHTS
     GPtrArray *topmar_list;  // list of: LITFLT, LITVES, BOY???; to find floating platform
@@ -213,8 +213,9 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
 // compute witch geo object of this cell "touch" this one (geo)
 // return TRUE
 {
-    return_if_null(local);
-    return_if_null(geo);
+    // useles - rbin
+    //return_if_null(local);
+    //return_if_null(geo);
 
     const char *name = S57_getName(geo);
 
@@ -3241,7 +3242,6 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
     if (UNKNOWN!=depth_value && depth_value<=safety_contour) {
         // that intersect this point/line/area for OBSTRN04
         // that intersect this point/area      for WRECKS02
-        //S57_geo *geoTmp = geo;
         S57_geo *geoTmp = S57_getTouchDEPARE(geo);
         if (NULL == geoTmp) {
             PRINTF("DEBUG: NULL geo _UDWHAZ03/getTouchDEPARE\n");
@@ -3250,42 +3250,45 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
             return udwhaz03str;  // NULL
         }
 
-        // collect area/line DEPARE & area DRGARE that touche this point/line/area
-        //S57_ogrTouche(geoTmp, N_OBJ_T);
-        //while (NULL != (geoTmp = S57_nextObj(geoTmp))) {
+        if (S57_LINES_T == S57_getObjtype(geoTmp)) {
+            GString *drval2str = S57_getAttVal(geoTmp, "DRVAL2");
+            if (NULL == drval2str)
+                return NULL;
 
-            if (S57_LINES_T == S57_getObjtype(geoTmp)) {
-                GString *drval2str = S57_getAttVal(geoTmp, "DRVAL2");
-                if (NULL == drval2str)
-                    return NULL;
+            double drval2 = S52_atof(drval2str->str);
+            double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
+            drval2 += datum;
 
-                double drval2 = S52_atof(drval2str->str);
-                double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                drval2 += datum;
-
-                if (drval2 > safety_contour) {
-                    danger = TRUE;
-                    //break;
-                }
-
-            } else {
-                // area DEPARE or DRGARE
-                GString *drval1str = S57_getAttVal(geoTmp, "DRVAL1");
-                if (NULL == drval1str)
-                    return NULL;
-
-                double drval1 = S52_atof(drval1str->str);
-                double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                drval1 += datum;
-
-                if (drval1 >= safety_contour) {
-                    danger = TRUE;
-                    //break;
-                }
+            if (drval2 > safety_contour) {
+                danger = TRUE;
             }
 
-        //}
-        //S57_unlinkObj(geo);
+        } else {
+            // area DEPARE or DRGARE
+            GString *drval1str = S57_getAttVal(geoTmp, "DRVAL1");
+            if (NULL == drval1str)
+                return NULL;
+
+            double drval1 = S52_atof(drval1str->str);
+            double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
+            drval1 += datum;
+
+            if (drval1 >= safety_contour) {
+                danger = TRUE;
+            }
+        }
+
+        /* original udwhaz03 code from specs in pslb03_2.pdf
+        if (TRUE == danger) {
+            GString *watlevstr = S57_getAttVal(geo, "WATLEV");
+            if (NULL != watlevstr && ('1' == *watlevstr->str || '2' == *watlevstr->str))
+                udwhaz03str = g_string_new(";OP(--D14050");
+            else {
+                udwhaz03str = g_string_new(";OP(8OD14010);SY(ISODGR01)");
+                S57_setAtt(geo, "SCAMIN", "INFINITY");
+            }
+        }
+        */
 
         if (TRUE == danger) {
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
@@ -3293,33 +3296,30 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
                 udwhaz03str = g_string_new(";OP(--D14050");
             else {
                 // Note: UDWHAZ04 --> stay on original (OTHER!) disp cat
-                //      FIXME: perapse add PLIB rule to link to UDWHAZ04
+                //      FIXME: perhapse add PLIB rule to link to UDWHAZ04
                 //             or add S52_MAR_SPECS_ED_NO:
                 //            - 3.1: C1 DAI file
                 //            - 3.2: this code
                 //            - 3.x: specs no public
                 //            - 4.0: set OP to OTHER in UDWHAZ04
-                //     DRVAL 1/2 not used in UDWHAZ04 so this hack migth not work
+                //     DRVAL 1/2 not used in UDWHAZ04 so this hack might not work
 
-                //* debug - try to find spurious ISODGR01
-                // FIX: logically an Isolated Danger Sym would be on a POINT_T !
-                //      BUT: UDWHAZ03 apply to point,area. While UDWHAZ04 apply to point,line,area!!
-                if (S57_POINT_T == S57_getObjtype(geo)) {
-                //if (S57_LINES_T == S57_getObjtype(geo)) {
-                //if (S57_AREAS_T == S57_getObjtype(geo)) {
-                    udwhaz03str = g_string_new(";OP(8OD14010);SY(ISODGR01)");  // udwhaz04 place ISODGR on original disp cat!
+                // debug - try to find spurious 
+                // FIX: logically an Isolated Danger Sym (ISODGR01) would be on a POINT_T !
+                // BUT: UDWHAZ03 apply to point,area. While UDWHAZ04 apply to point,line,area!!
+                if (S57_POINT_T == S57_getObjtype(geo)) {                      // fix: udwhaz03 - place ISODRG on point only
+                    udwhaz03str = g_string_new(";OP(8OD14010);SY(ISODGR01)");  // udwhaz04 - place ISODGR on original disp cat!
                 } else {
-                    //udwhaz03str = g_string_new(";OP(8OD14010)");
-                    udwhaz03str = g_string_new(";OP(8O-14010)");  // stay at original disp cat
+                    //udwhaz03str = g_string_new(";OP(8OD14010)");  // udwhaz04 - line, area
+                    udwhaz03str = g_string_new(";OP(8O-14010)");  // udwhaz04 - stay at original disp cat
                 }
-                //*/
 
-                //udwhaz03str = g_string_new(";OP(8OD14010);SY(ISODGR01)");
                 S57_setAtt(geo, "SCAMIN", "INFINITY");
             }
         }
     }
 
+    // Note: will return NULL if no danger
     return udwhaz03str;
 }
 

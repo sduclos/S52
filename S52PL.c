@@ -26,7 +26,7 @@
 #include "S52CS.h"          // S52_CS_condTable[]
 #include "S52MP.h"          // S52_MP_get/set()
 #include "S52utils.h"       // PRINTF(), S52_atoi(), S52_atof()
-#include "S57data.h"        // geocoord, S57_obj_t
+#include "S57data.h"        // geocoord, ObjExt_t
 
 #include <glib.h>
 #include <math.h>           // INFINITY
@@ -109,7 +109,7 @@ typedef struct _Shape {
     union { GString   *LVCT,   *PVCT,   *SVCT;  } vector;  //
 } _Shape;
 
-// symbology definition: LINE,    PATTERN, SYMBOL
+// symbology definition: LINE, PATTERN, SYMBOL
 typedef struct _S52_symDef {
     int      RCID;
     union    {char       LINM[S52_PL_SMB_NMLN+1],  // symbology name
@@ -126,7 +126,7 @@ typedef struct _S52_symDef {
 
     // ---- not a S52 fields ------------------------------------
     S52_SMBtblName symType;     // debug LINE,PATT,SYMB
-    S52_DList      DListData;   // GL Display List / VBO
+    S52_DListData  DListData;   // GL Display List / VBO
 
 #if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
     guint          mask_texID;  // texture ID of pattern after running VBO
@@ -198,7 +198,7 @@ typedef union _cmdDef {
     S52_CS_condSymb *CS;
 
     // because there is no cmdDef for light sector, so put VBO here (ie no need struct _S52_cmdDef)
-    S52_DList       *DList;  // for pattern in GLES2 this DL will create a texture
+    S52_DListData   *DListData;  // for pattern in GLES2 this DL will create a texture
 
 } _cmdDef;
 
@@ -299,6 +299,8 @@ typedef enum _table_t {
 } _table_t;
 
 typedef struct _S52_obj {
+    S57_geo     *geo;           // Note: must be the first member for S52PLGETGEO(S52OBJ)
+
     // 2 set of LUP: normal and alternate
     _LUP        *LUP;           // common data for the 2 set of LUP
 
@@ -319,12 +321,10 @@ typedef struct _S52_obj {
     int          prioOveride;   // CS overide display priority
     _prios       oPrios;
 
-    S57_geo     *geo;           // S-57
+    //S57_geo     *geo;           // S-57
 
     // --- Auxiliary Info --------------------------------
     // FIXME: make that a struct
-
-    //char       LOD;           // optimisation: chart purpose: cell->dsid_intustr->str
 
     // Note: this is a general holder for orient/speed depending on
     // the object type. So it could be for current, ship, AIS, ...
@@ -336,7 +336,8 @@ typedef struct _S52_obj {
     gboolean     supp;          // display suppression set by user
 
     // LEGLIN
-    struct _S52_obj *nextLeg;   // link to next leglin (need to draw arc)
+    //struct _
+        S52_obj *nextLeg;   // link to next leglin (need to draw arc)
     struct _S52_obj *prevLeg;   // link to previous leg so that we can clip the start of this leg
                                 // of the amout of wholin dist of the previous leg
     // WHeel-Over-LINe
@@ -1016,13 +1017,6 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
 // return TRUE if there is a CS in the INST file for this LUP (alt)
 // also fill the command Array
 {
-    // debug
-    //S57_geo *geo = S52_PL_getGeo(obj);
-    //GString *FIDNstr = S57_getAttVal(geo, "FIDN");
-    //if (NULL != FIDNstr && 0==strcmp("2135161787", FIDNstr->str)) {
-    //    PRINTF("%s\n",FIDNstr->str);
-    //}
-
     // clear old CS instruction
     if (NULL != obj->CSinst[alt])
         g_string_free(obj->CSinst[alt], TRUE);
@@ -1111,9 +1105,12 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
     return TRUE;
 }
 
-int         S52_PL_resloveSMB(_S52_obj *obj)
+void        S52_PL_resloveSMB(_S52_obj *obj, void *dummy)
 {
-    return_if_null(obj);
+    (void)dummy;
+
+    // useles - rbin and newMarObj
+    //return_if_null(obj);
 
     // First: delete all text attache to each command word
     // this will force to re-parse text
@@ -1123,7 +1120,8 @@ int         S52_PL_resloveSMB(_S52_obj *obj)
     _resolveSMB(obj, 0);
     _resolveSMB(obj, 1);
 
-    return TRUE;
+    //return TRUE;
+    return;
 }
 
 
@@ -1721,9 +1719,7 @@ static int        _parseLNST(_PL *fp)
 {
     return_if_null(fp);
 
-    //int  len = 0;
-    gboolean    inserted = FALSE;
-    //_S52_cmdDef *lnstmp   = NULL;
+    gboolean     inserted = FALSE;
     _S52_symDef *lnst     = g_new0(_S52_symDef, 1);
     //_S52_cmdDef *lnst     = g_try_new0(_S52_cmdDef, 1);
     if (NULL == lnst)
@@ -1759,10 +1755,11 @@ static int        _parseLNST(_PL *fp)
 
     // not sure if new PLib symb can be NOT inserted
     if (TRUE == inserted) {
-        lnst->DListData.create = TRUE;
-        lnst->DListData.nbr    = _filterVector(lnst->shape.line.vector.LVCT->str,
-                                               lnst->colRef.LCRF->str,
-                                               lnst->DListData.colors);
+        lnst->DListData.create     = TRUE;
+        lnst->DListData.crntPalIDX = -1;
+        lnst->DListData.nbr        = _filterVector(lnst->shape.line.vector.LVCT->str,
+                                                   lnst->colRef.LCRF->str,
+                                                   lnst->DListData.colors);
     }
 
     return TRUE;
@@ -1772,9 +1769,7 @@ static int        _parsePATT(_PL *fp)
 {
     return_if_null(fp);
 
-    //int  len = 0;
-    gboolean    inserted = FALSE;
-    //_S52_cmdDef *pattmp   = NULL;
+    gboolean     inserted = FALSE;
     _S52_symDef *patt     = g_new0(_S52_symDef, 1);
     //_S52_cmdDef *patt     = g_try_new0(_S52_cmdDef, 1);
     if (NULL == patt)
@@ -1814,10 +1809,11 @@ static int        _parsePATT(_PL *fp)
     } while (inserted == FALSE);
 
     if (TRUE == inserted) {
-        patt->DListData.create = TRUE;
-        patt->DListData.nbr    = _filterVector(patt->shape.patt.vector.PVCT->str,
-                                               patt->colRef.PCRF->str,
-                                               patt->DListData.colors);
+        patt->DListData.create     = TRUE;
+        patt->DListData.crntPalIDX = -1;
+        patt->DListData.nbr        = _filterVector(patt->shape.patt.vector.PVCT->str,
+                                                   patt->colRef.PCRF->str,
+                                                   patt->DListData.colors);
     }
 
     return TRUE;
@@ -1827,9 +1823,8 @@ static int        _parseSYMB(_PL *fp)
 {
     return_if_null(fp);
 
-    //int  len = 0;
-    gboolean    inserted = FALSE;
-    _S52_symDef *symb    = g_new0(_S52_symDef, 1);
+    gboolean     inserted = FALSE;
+    _S52_symDef *symb     = g_new0(_S52_symDef, 1);
     //_S52_cmdDef *symb     = g_try_new0(_S52_cmdDef, 1);
     if (NULL == symb)
         g_assert(0);
@@ -1865,15 +1860,11 @@ static int        _parseSYMB(_PL *fp)
     } while (inserted == FALSE );
 
     if (TRUE == inserted) {
-        // debug
-        //if (0==strcmp(symb->name.SYNM, "BOYLAT14")) {
-        //    PRINTF("FOUND SYMBOL: %s \n", symb->name.SYNM);
-        //}
-
-        symb->DListData.create = TRUE;
-        symb->DListData.nbr    = _filterVector(symb->shape.line.vector.SVCT->str,
-                                               symb->colRef.SCRF->str,
-                                               symb->DListData.colors);
+        symb->DListData.create     = TRUE;
+        symb->DListData.crntPalIDX = -1;
+        symb->DListData.nbr        = _filterVector(symb->shape.line.vector.SVCT->str,
+                                                   symb->colRef.SCRF->str,
+                                                   symb->DListData.colors);
     }
 
     return TRUE;
@@ -2840,15 +2831,14 @@ S52_obj    *S52_PL_newObj(S57_geo *geo)
     obj->textParsed[0] = FALSE;
     obj->textParsed[1] = FALSE;
 
-    // Note: this is a general holder for orient/speed depending on
-    // the object type. So it could be for current, ship, AIS, ...
+    obj->geo           = geo;     // S57_geo
+
+
+    // init Aux Info - other than the default (ie g_new0)
     obj->orient        = INFINITY;
     obj->speed         = INFINITY;
 
-    obj->geo           = geo;     // S57_geo
-
-    /*
-    // init Aux Info - this is the default anyway (ie g_new0)
+    /* init Aux Info - this is the default anyway (ie g_new0)
     obj->time    = 0;
     obj->supp    = 0;
 
@@ -2856,7 +2846,6 @@ S52_obj    *S52_PL_newObj(S57_geo *geo)
     obj->prevLeg = NULL;
     obj->wholin  = NULL;
     */
-
 
     // -- *TRICKY* -- *TRICKY* -- *TRICKY* --
     // check what S-101 do about this
@@ -2889,42 +2878,16 @@ S52_obj    *S52_PL_newObj(S57_geo *geo)
     return obj;
 }
 
-S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
+S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean nilAuxInfo)
 // free data in S52 obj
 // return S57 obj geo
 // WARNING: note that Aux Info is not touched - still in 'obj'
+// nilAuxInfo: TRUE nullify ref to obj (Aux Info), also in array at obj index
 // Note: when new PLib loaded, raz rules change hence S52_obj change definition.
 // But not S57 obj. So S57 id stay the same and so is the index. So no NULL because
 // the new obj was just put into the list.
-// FIXME: add S52_PL_nilObj() to reset dynamic field then call S52_PL_delObj() to destroy everything
 {
     return_if_null(obj);
-
-    /*
-    //---------------------------------------------
-    // debug
-    _cmdWL *top = obj->cmdLorig[0];
-    unsigned int ncmd = 0;
-    // count normal command
-    while (NULL != top) {
-        ++ncmd;
-        top = top->next;
-    }
-    // count CS command
-    top = obj->CScmdL[0];
-    while (NULL != top) {
-        ++ncmd;
-        top = top->next;
-    }
-    // total number of command must be the same in the command array
-    // but if there is no CS then there is nothing in the command array
-    if (ncmd != obj->cmdAfinal[0]->len) {
-        PRINTF("ERROR: number of command in 'comnand List' vs 'command Array' mismatch\n");
-        g_assert(0);
-    }
-    //---------------------------------------------
-    */
-
 
     _freeAllTXT(obj->cmdAfinal[0]);
     _freeAllTXT(obj->cmdAfinal[1]);
@@ -2963,31 +2926,27 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean updateObjL)
     }
 
     S57_geo *geo = obj->geo;
-    if (TRUE == updateObjL) {
+
+    // del aux info
+    //if (TRUE == updateObjL) {
+    if (TRUE == nilAuxInfo) {
+        obj->orient  = 0.0;
+        obj->speed   = 0.0;
+
+        //obj->time    = 0;
+
+        obj->supp    = 0;
+
+        obj->nextLeg = NULL;
+        obj->prevLeg = NULL;
+        obj->wholin  = NULL;
+
         // nullify obj in array at index
         g_ptr_array_index(_objList, S57_getS57ID(geo)) = NULL;
     }
 
     return geo;
 }
-
-S57_geo    *S52_PL_getGeo(_S52_obj *obj)
-{
-    // OPTIMISATION: seem this is called everywhere, so this test
-    // might slow down a bit (must mesure)
-    //return_if_null(obj);
-
-    return obj->geo;
-}
-
-#if 0
-S57_geo    *S52_PL_setGeo(_S52_obj *obj, S57_geo *geo)
-{
-    return_if_null(obj);
-
-    return obj->geo = geo;
-}
-#endif  // 0
 
 const char *S52_PL_getOBCL(_S52_obj *obj)
 // Note: geo.name is the same as LUP.OBCL
@@ -3047,7 +3006,8 @@ S52ObjectType S52_PL_getFTYP(_S52_obj *obj)
 int         S52_PL_isPrioO(_S52_obj *obj)
 // get override prio state
 {
-    return_if_null(obj);
+    // useless - rbin
+    //return_if_null(obj);
 
     return obj->prioOveride;
 }
@@ -3294,7 +3254,7 @@ const char *S52_PL_getCmdText(_S52_obj *obj)
     return cmd->cmd.def->exposition.LXPO->str;
 }
 
-S52_DList  *S52_PL_getDLData(_S52_symDef *def)
+S52_DListData *S52_PL_getDLData(_S52_symDef *def)
 {
     return_if_null(def);
 
@@ -3672,7 +3632,7 @@ gint        S52_PL_traverse(S52_SMBtblName tableNm, GTraverseFunc callBack)
     return FALSE;
 }
 
-S52_DList  *S52_PL_newDListData(_S52_obj *obj)
+S52_DListData *S52_PL_newDListData(_S52_obj *obj)
 // _renderAC_LIGHTS05() has no cmd->cmd.def / DList
 {
     return_if_null(obj);
@@ -3681,8 +3641,8 @@ S52_DList  *S52_PL_newDListData(_S52_obj *obj)
     if (NULL == cmd)
         return NULL;
 
-    if ((NULL==cmd->cmd.DList) && (S52_CMD_ARE_CO==cmd->cmdWord)) {
-        cmd->cmd.DList = g_new0(S52_DList, 1);
+    if ((NULL==cmd->cmd.DListData) && (S52_CMD_ARE_CO==cmd->cmdWord)) {
+        cmd->cmd.DListData = g_new0(S52_DListData, 1);
     } else {
         PRINTF("WARNING: internal inconsistency\n");
         g_assert(0);
@@ -3690,10 +3650,10 @@ S52_DList  *S52_PL_newDListData(_S52_obj *obj)
         return NULL;
     }
 
-    return cmd->cmd.DList;
+    return cmd->cmd.DListData;
 }
 
-S52_DList  *S52_PL_getDListData(_S52_obj *obj)
+S52_DListData *S52_PL_getDListData(_S52_obj *obj)
 {
     return_if_null(obj);
 
@@ -3707,22 +3667,36 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
         return NULL;
     }
 
-    // FIXME: check if palette as change
-    // -OR-
-    // FIXME: GL get RGB from cidx!
+    // check if palette as change
+    if (S52_CMD_ARE_CO == cmd->cmdWord) {
+        if ((NULL!=cmd->cmd.DListData) && (cmd->cmd.DListData->crntPalIDX==(int)S52_MP_get(S52_MAR_COLOR_PALETTE))) {
+            return  cmd->cmd.DListData;
+        }
+    } else {
+        if (cmd->cmd.def->DListData.crntPalIDX == (int)S52_MP_get(S52_MAR_COLOR_PALETTE))
+            return &cmd->cmd.def->DListData;
+    }
 
     guint      nbr = 0;
     S52_Color *c   = NULL;
     if (S52_CMD_ARE_CO == cmd->cmdWord) {
-        // need to init DList for light sector
-        if (NULL == cmd->cmd.DList)
+        // no need to init DList for light sector
+        if (NULL == cmd->cmd.DListData) {
+            //PRINTF("DEBUG: no DListData in cmd\n");
             return NULL;
+        }
 
-        nbr = cmd->cmd.DList->nbr;
-        c   = cmd->cmd.DList->colors;
+        nbr = cmd->cmd.DListData->nbr;
+        c   = cmd->cmd.DListData->colors;
+        cmd->cmd.DListData->crntPalIDX = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
     } else {
+        if (NULL == cmd->cmd.def) {
+            PRINTF("DEBUG: no DListData in cmd.def\n");
+            g_assert(0);
+        }
         nbr = cmd->cmd.def->DListData.nbr;
         c   = cmd->cmd.def->DListData.colors;
+        cmd->cmd.def->DListData.crntPalIDX = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
     }
 
     /* debug - trying to nail a curious bug
@@ -3734,7 +3708,6 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
     */
 
     for (guint i=0; i<nbr; ++i) {
-        //if (TRUE == S57_isHighlighted(obj->geo)) {
         if (TRUE == S57_getHighlight(obj->geo)) {
             S52_Color *colhigh = S52_PL_getColor("DNGHL");
             //c[i] = *colhigh;
@@ -3761,7 +3734,7 @@ S52_DList  *S52_PL_getDListData(_S52_obj *obj)
     }
 
     if (S52_CMD_ARE_CO == cmd->cmdWord)
-        return  cmd->cmd.DList;
+        return  cmd->cmd.DListData;
     else
         return &cmd->cmd.def->DListData;
 }
@@ -4225,13 +4198,7 @@ int         S52_PL_hasText(_S52_obj *obj)
 // Note: the text itself could be unvailable yet!
 {
     // called from foreach() so can it be NULL?
-    return_if_null(obj);
-
-    // debug
-    //S57_geo *geo = S52_PL_getGeo(obj);
-    //if (0 == strcmp("LIGHTS", S57_getName(geo))) {
-    //    PRINTF("%s\n", S57_getName(geo));
-    //}
+    //return_if_null(obj);
 
     S52_CmdWrd cmdWrd = S52_PL_iniCmd(obj);
 
@@ -4577,7 +4544,7 @@ const char* S52_PL_getPalTableNm(unsigned int idx)
         _colTable *ct  = NULL;
         if (idx > _colTables->len-1) {
             // failsafe --select active one
-            idx = (int) S52_MP_get(S52_MAR_COLOR_PALETTE);;
+            idx = (int) S52_MP_get(S52_MAR_COLOR_PALETTE);
             PRINTF("ERROR: unknown colors table\n");
             g_assert(0);
         }
@@ -4703,24 +4670,6 @@ guint       S52_PL_getFreetypeGL_VBO(_S52_obj *obj, guint *len, double *strWpx, 
     return cmd->cmd.text->vboID;
 }
 #endif  // S52_USE_FREETYPE_GL
-
-#if 0
-int         S52_PL_setLOD(_S52_obj *obj, char LOD)
-{
-    return_if_null(obj);
-
-    obj->LOD = LOD;
-
-    return TRUE;
-}
-
-char        S52_PL_getLOD(_S52_obj *obj)
-{
-    return_if_null(obj);
-
-    return obj->LOD;
-}
-#endif
 
 S52_obj    *S52_PL_isObjValid(unsigned int objH)
 {

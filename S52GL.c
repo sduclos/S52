@@ -238,6 +238,21 @@ static GLuint   _vboIDaftglwColrID = 0;
 // experimental
 static vertex_t _hazardZone[5*3];
 
+// GL raster stuff - private
+typedef struct _real_GL_ras {
+    S52_GL_ras ras;           // public raster interface
+
+    double  min;              // excluding nodata
+    double  max;              // excluding nodata
+
+    // dst texture size
+    guint npotX;
+    guint npotY;
+
+    unsigned int   texID;
+    unsigned char *texAlpha;  // size = potX * potY
+} _real_GL_ras;
+
 static
 inline void      _checkError(const char *msg)
 {
@@ -474,6 +489,33 @@ static int       _getCentroidClose(guint npt, double *ppt)
     return FALSE;
 }
 
+static int       _getLODidx(void)
+{
+    if (_SCAMIN <= 4000) {
+        PRINTF("DEBUG: Nav Purp: Berthing(<4,000),     _SCAMIN:%f\n", _SCAMIN);
+        return 6;
+    }
+    if (_SCAMIN <= 22000) {
+        PRINTF("DEBUG: Nav Purp: Harbour(4,000),       _SCAMIN:%f\n", _SCAMIN);
+        return 5;
+    }
+    if (_SCAMIN <= 90000) {
+        PRINTF("DEBUG: Nav Purp: Approach(22,000),     _SCAMIN:%f\n", _SCAMIN);
+        return 4;
+    }
+    if (_SCAMIN <= 350000) {
+        PRINTF("DEBUG: Nav Purp: Coastal(90,000),      _SCAMIN:%f\n", _SCAMIN);
+        return 3;
+    }
+    if (_SCAMIN <= 1500000) {
+        PRINTF("DEBUG: Nav Purp: General(350,000),     _SCAMIN:%f\n", _SCAMIN);
+        return 2;
+    } else {
+        PRINTF("DEBUG: Nav Purp: Overview(>1,500,000), _SCAMIN:%f\n", _SCAMIN);
+        return 1;
+    }
+}
+
 static int       _computeCentroid(S57_geo *geo)
 // return centroids
 // fill global array _centroid
@@ -494,12 +536,23 @@ static int       _computeCentroid(S57_geo *geo)
         return FALSE;
     }
 
-    /* paranoid - check allready done or will be later!
-    if ((ppt[0]!=ppt[3*(npt-1) + 0]) || (ppt[1]!=ppt[3*(npt-1) + 1]))  {
-        PRINTF("DEBUG: first pt != last pt\n");
-        g_assert(0);
-    }
-    */
+    //PRINTF("DEBUG: _SCAMIN:%f _scalex:%f\n", _SCAMIN, _scalex);
+    _getLODidx();
+
+
+/*  IHO suggestion - aligned to radar scale
+User bands Navigational
+   purpose Name   Scale Range             Available Compilation Scales       Matching Scale Range
+1  Overview   < 1:1 499 999               3 000 000 and smaller              200 NM
+                                          1 500 000                           96 NM
+2  General      1:350 000 - 1:1 499 999   700 000  350 000                    48 NM 24 NM
+3  Coastal      1: 90 000 - 1:  349 999   180 000   90 000                    12 NM  6 NM
+4  Approach     1: 22 000 - 1:   89 999    45 000   22 000                     3 NM  1,5 NM
+5  Harbour      1:  4 000 - 1:   21 999    12 000                              0,75 NM
+                                            8 000                              0,5  NM
+                                            4000                               0,25 NM
+6  Berthing   > 1:4 000                     3 999 and larger                 < 0,25 NM
+*/
 
     // debug
     //GString *FIDNstr = S57_getAttVal(geo, "FIDN");
@@ -513,7 +566,7 @@ static int       _computeCentroid(S57_geo *geo)
     //    PRINTF("PRDARE found\n");
     //}
 
-    /* optimisation: decimate then save in S57 LODx
+    /* FIXME: optimisation: decimate then save in S57 LODx
     guint  nptLOD1 = 1;
     double pptLOD1[npt*3];
 
@@ -1567,11 +1620,9 @@ static GLubyte   _setFragAttrib(S52_Color *c, gboolean highlight)
         // reset color if highlighting (pick / alarm / indication)
         S52_Color *dnghlcol = S52_PL_getColor("DNGHL");
         _glColor4ub(dnghlcol->R, dnghlcol->G, dnghlcol->B, c->fragAtt.trans);
-    } else
-    {
+    } else {
         // normal
         _glColor4ub(c->R, c->G, c->B, c->fragAtt.trans);
-
     }
 
     if (('0'!=c->fragAtt.trans) && (TRUE==(int) S52_MP_get(S52_MAR_ANTIALIAS))) {
@@ -1597,7 +1648,7 @@ static GLubyte   _setFragAttrib(S52_Color *c, gboolean highlight)
     return c->fragAtt.trans;
 }
 
-static int       _glCallList(S52_DList *DListData)
+static int       _glCallList(S52_DListData *DListData)
 // get color of each Display List then run it
 {
     if (NULL == DListData) {
@@ -1775,7 +1826,7 @@ static int       _getVesselVector(S52_obj *obj, double *course, double *speed)
 
 static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rotation)
 {
-    S52_DList *DListData = S52_PL_getDListData(obj);
+    S52_DListData *DListData = S52_PL_getDListData(obj);
 
     _glLoadIdentity(GL_MODELVIEW);
 
@@ -1805,7 +1856,7 @@ static int       _renderSY_silhoutte(S52_obj *obj)
     if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
-    S52_DList *DListData = S52_PL_getDListData(obj);
+    S52_DListData *DListData = S52_PL_getDListData(obj);
 
     // compute ship symbol size on screen
     // get offset
@@ -1864,7 +1915,7 @@ static int       _renderSY_silhoutte(S52_obj *obj)
 static int       _renderSY_CSYMB(S52_obj *obj)
 // FIXME: use dotpitch for XY placement
 {
-    S57_geo *geo = S52_PL_getGeo(obj);
+    S57_geo *geo     = S52_PL_getGeo(obj);
     char    *attname = "$SCODE";
 
     GString *attval  =  S57_getAttVal(geo, attname);
@@ -1873,7 +1924,8 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         return FALSE;
     }
 
-    S52_DList *DListData = S52_PL_getDListData(obj);
+    // called again in _renderSY_POINT_T() !!
+    S52_DListData *DListData = S52_PL_getDListData(obj);
 
     //_glLoadIdentity(GL_MODELVIEW);
 
@@ -2033,11 +2085,11 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
 static int       _renderSY_ownshp(S52_obj *obj)
 {
-    S57_geo  *geo     = S52_PL_getGeo(obj);
-    GLdouble  orient  = S52_PL_getSYorient(obj);
+    S57_geo  *geo    = S52_PL_getGeo(obj);
+    GLdouble  orient = S52_PL_getSYorient(obj);
 
-    guint     npt     = 0;
-    GLdouble *ppt     = NULL;
+    guint     npt    = 0;
+    GLdouble *ppt    = NULL;
     if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
@@ -2520,8 +2572,8 @@ static int       _renderSY(S52_obj *obj)
                     // assume that light have a single color in List
                     double deg = S52_MP_get(S52_MAR_ROT_BUOY_LIGHT);
 
-                    S52_DList *DListData = S52_PL_getDListData(obj);
-                    S52_Color *colors    = DListData->colors;
+                    S52_DListData *DListData = S52_PL_getDListData(obj);
+                    S52_Color     *colors    = DListData->colors;
                     if (0 == g_strcmp0(colors->colName, "LITRD"))
                         orient = deg + 90.0;
                     if (0 == g_strcmp0(colors->colName, "LITGN"))
@@ -2660,8 +2712,8 @@ static int       _renderSY(S52_obj *obj)
             // fill area, because other draw might not fill area
             // case of SY();LS(); (ie no AC() fill)
             {
-                S52_DList *DListData = S52_PL_getDListData(obj);
-                S52_Color *col = DListData->colors;
+                S52_DListData *DListData = S52_PL_getDListData(obj);
+                S52_Color     *col = DListData->colors;
                 _setFragAttrib(col, S57_getHighlight(geo));
 
                 _glUniformMatrix4fv_uModelview();
@@ -2897,9 +2949,8 @@ static int       _renderLS_ownshp(S52_obj *obj)
     GString *headngstr = S57_getAttVal(geo, "headng");
     double   vecper    = S52_MP_get(S52_MAR_VECPER);
 
-    GLdouble *ppt     = NULL;
-    guint     npt     = 0;
-
+    GLdouble *ppt = NULL;
+    guint     npt = 0;
     if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
@@ -3501,7 +3552,7 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
     if (FALSE == S57_getGeoData(geo, ringNo, &npt, &ppt))
         return FALSE;
 
-    S52_DList *DListData = S52_PL_getDListData(obj);
+    S52_DListData *DListData = S52_PL_getDListData(obj);
 
     double off_x = ppt[0];
     double off_y = ppt[1];
@@ -3624,6 +3675,11 @@ static int       _drawArc(S52_obj *objA, S52_obj *objB);  // forward decl
 static int       _renderLC(S52_obj *obj)
 // Line Complex (AREA, LINE)
 {
+#ifdef S52_USE_GV
+    return FALSE;
+#endif
+
+
     /*
         // FIXME: check invariant
         {   // invariant: just to be sure that things don't explode
@@ -3643,12 +3699,6 @@ static int       _renderLC(S52_obj *obj)
                 g_assert(0);
         }
     */
-
-
-#ifdef S52_USE_GV
-    return FALSE;
-#endif
-
 
     if (S52_CMD_WRD_FILTER_LC & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
@@ -3693,8 +3743,8 @@ static int       _renderLC(S52_obj *obj)
 
     // set pen color & size here because values might not
     // be set via call list --short line
-    S52_DList *DListData = S52_PL_getDListData(obj);
-    S52_Color *c = DListData->colors;
+    S52_DListData *DListData = S52_PL_getDListData(obj);
+    S52_Color     *c         = DListData->colors;
     _setFragAttrib(c, S57_getHighlight(geo));
 
     //GLdouble symlen_pixl = 0.0;
@@ -3766,9 +3816,9 @@ static int       _renderAC_NODATA_layer0(void)
 static int       _renderAC_LIGHTS05(S52_obj *obj)
 // this code is specific to CS LIGHTS05
 {
-    S57_geo   *geo       = S52_PL_getGeo(obj);
-    GString   *sectr1str = S57_getAttVal(geo, "SECTR1");
-    GString   *sectr2str = S57_getAttVal(geo, "SECTR2");
+    S57_geo *geo       = S52_PL_getGeo(obj);
+    GString *sectr1str = S57_getAttVal(geo, "SECTR1");
+    GString *sectr2str = S57_getAttVal(geo, "SECTR2");
 
     if ((NULL!=sectr1str) && (NULL!=sectr2str)) {
         S52_Color *c         = S52_PL_getACdata(obj);
@@ -3799,44 +3849,44 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
 #endif
 
         // first pass - create VBO
-        S52_DList *DList = S52_PL_getDListData(obj);
-        if (NULL == DList) {
-            DList = S52_PL_newDListData(obj);
-            DList->nbr = 2;
+        S52_DListData *DListData = S52_PL_getDListData(obj);
+        if (NULL == DListData) {
+            DListData = S52_PL_newDListData(obj);
+            DListData->nbr        =  2;
+            DListData->crntPalIDX = -1;
         }
 
         //if (FALSE == glIsBuffer(DList->vboIds[0])) {
-        // GL1 win32
-        if (0 == DList->vboIds[0]) {
-            DList->prim[0] = S57_initPrim(NULL);
-            DList->prim[1] = S57_initPrim(NULL);
+        if (0 == DListData->vboIds[0]) {
+            DListData->prim[0] = S57_initPrim(NULL);
+            DListData->prim[1] = S57_initPrim(NULL);
 
-            DList->colors[0] = *black;
-            DList->colors[1] = *c;
+            DListData->colors[0] = *black;
+            DListData->colors[1] = *c;
 
 #ifdef S52_USE_OPENGL_VBO
-            _diskPrimTmp = DList->prim[0];
+            _diskPrimTmp = DListData->prim[0];
             _gluPartialDisk(_qobj, radius, radius+4, sweep/2.0, loops, sectr1+180, sweep);
-            DList->vboIds[0] = _VBOCreate(_diskPrimTmp);
+            DListData->vboIds[0] = _VBOCreate(_diskPrimTmp);
 
-            _diskPrimTmp = DList->prim[1];
+            _diskPrimTmp = DListData->prim[1];
             _gluPartialDisk(_qobj, radius+1, radius+3, sweep/2.0, loops, sectr1+180, sweep);
-            DList->vboIds[1] = _VBOCreate(_diskPrimTmp);
+            DListData->vboIds[1] = _VBOCreate(_diskPrimTmp);
 #else
             // black sector
-            DList->vboIds[0] = glGenLists(1);
-            glNewList(DList->vboIds[0], GL_COMPILE);
+            DListData->vboIds[0] = glGenLists(1);
+            glNewList(DListData->vboIds[0], GL_COMPILE);
 
-            _diskPrimTmp = DList->prim[0];
+            _diskPrimTmp = DListData->prim[0];
             gluPartialDisk(_qobj, radius, radius+4, sweep/2.0, loops, sectr1+180, sweep);
             _DrawArrays(_diskPrimTmp);
             glEndList();
 
             // color sector
-            DList->vboIds[1] = glGenLists(1);
-            glNewList(DList->vboIds[1], GL_COMPILE);
+            DListData->vboIds[1] = glGenLists(1);
+            glNewList(DListData->vboIds[1], GL_COMPILE);
 
-            _diskPrimTmp = DList->prim[1];
+            _diskPrimTmp = DListData->prim[1];
             gluPartialDisk(_qobj, radius+1, radius+3, sweep/2.0, loops, sectr1+180, sweep);
             _DrawArrays(_diskPrimTmp);
             glEndList();
@@ -3853,7 +3903,7 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
         _pushScaletoPixel(FALSE);
 
         // use VBO
-        _glCallList(DList);
+        _glCallList(DListData);
 
         _popScaletoPixel();
 
@@ -3871,19 +3921,19 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
 // create room to add a cmdDef/DList variable use
 // for drawing a VRM
 {
+    S57_geo  *geo = S52_PL_getGeo(obj);
     GLdouble *ppt = NULL;
     guint     npt = 0;
-    S57_geo  *geo = S52_PL_getGeo(obj);
-
     if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
-    S52_DList *DListData = S52_PL_getDListData(obj);
+    S52_DListData *DListData = S52_PL_getDListData(obj);
     if (NULL == DListData) {
         DListData = S52_PL_newDListData(obj);
-        DListData->nbr       = 1;
-        DListData->prim[0]   = S57_initPrim(NULL);
-        DListData->colors[0] = *S52_PL_getColor("CURSR");
+        DListData->nbr        =  1;
+        DListData->prim[0]    = S57_initPrim(NULL);
+        DListData->colors[0]  = *S52_PL_getColor("CURSR");
+        DListData->crntPalIDX = -1;
     }
 
     S52_Color *c = DListData->colors;
@@ -4115,6 +4165,10 @@ static int       _renderAP(S52_obj *obj)
 // Area Pattern
 // Note: S52 define pattern rotation but doesn't use it in PLib, so not implemented.
 {
+#ifdef S52_USE_GV
+    return FALSE;
+#endif
+
     // debug - this filter also in _VBODrawArrays_AREA():glDraw()
     if (S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
@@ -4123,12 +4177,6 @@ static int       _renderAP(S52_obj *obj)
         if (TRUE != (int) S52_MP_get(S52_MAR_DISP_DRGARE_PATTERN))
             return TRUE;
     }
-
-
-#ifdef S52_USE_GV
-    return FALSE;
-#endif
-
 
     //--------------------------------------------------------
     // don't pick pattern for now
@@ -4455,9 +4503,9 @@ static int       _renderTXT(S52_obj *obj)
     if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
-    guint      npt = 0;
-    GLdouble  *ppt = NULL;
-    S57_geo *geo   = S52_PL_getGeo(obj);
+    S57_geo  *geo = S52_PL_getGeo(obj);
+    guint     npt = 0;
+    GLdouble *ppt = NULL;
     if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
@@ -4983,21 +5031,21 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
     // 'data' not used
     (void) data;
 
-    S52_symDef *symDef = (S52_symDef*)value;
-    S52_DList  *DL     = S52_PL_getDLData(symDef);
+    S52_symDef    *symDef    = (S52_symDef*)value;
+    S52_DListData *DListData = S52_PL_getDLData(symDef);
 
     //PRINTF("PATTERN: %s\n", (char*)key);
 
     // is this symbol need to be re-created (update PLib)
-    if (FALSE == DL->create)
+    if (FALSE == DListData->create)
         return FALSE;
 
 #ifdef S52_USE_OPENGL_VBO
 #if !defined(S52_USE_GLSC2)
-    if (TRUE == glIsBuffer(DL->vboIds[0])) {
+    if (TRUE == glIsBuffer(DListData->vboIds[0])) {
         // Note: DL->nbr is 1 - all pattern in PLib have only one color
         // but this is not in S52 specs (check this)
-        glDeleteBuffers(DL->nbr, &DL->vboIds[0]);
+        glDeleteBuffers(DListData->nbr, &DListData->vboIds[0]);
 
         PRINTF("FIXME: debug this code path\n");
         g_assert(0);
@@ -5005,7 +5053,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
     }
 
     // debug
-    if (MAX_SUBLIST < DL->nbr) {
+    if (MAX_SUBLIST < DListData->nbr) {
         PRINTF("ERROR: sublist overflow -1-\n");
         g_assert(0);
         return FALSE;
@@ -5018,20 +5066,20 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
     // first delete DL
     //if (TRUE == glIsBuffer(DL->vboIds[0])) {
     // GL1 win32
-    if (0 != DL->vboIds[0]) {
-        glDeleteLists(DL->vboIds[0], DL->nbr);
-        DL->vboIds[0] = 0;
+    if (0 != DListData->vboIds[0]) {
+        glDeleteLists(DListData->vboIds[0], DListData->nbr);
+        DListData->vboIds[0] = 0;
     }
 #endif
 
     // then create new one
-    DL->vboIds[0] = glGenLists(DL->nbr);
-    if (0 == DL->vboIds[0]) {
+    DListData->vboIds[0] = glGenLists(DListData->nbr);
+    if (0 == DListData->vboIds[0]) {
         PRINTF("ERROR: glGenLists() failed .. exiting\n");
         g_assert(0);
         return FALSE;
     }
-    glNewList(DL->vboIds[0], GL_COMPILE);
+    glNewList(DListData->vboIds[0], GL_COMPILE);
 
 #endif  // S52_USE_OPENGL_VBO
 
@@ -5040,8 +5088,8 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
     // set default
     //_glLineWidth(1.0);
 
-    if (NULL == DL->prim[0])
-        DL->prim[0]  = S57_initPrim(NULL);
+    if (NULL == DListData->prim[0])
+        DListData->prim[0]  = S57_initPrim(NULL);
     else {
         PRINTF("ERROR: DL->prim[0] not NULL\n");
         g_assert(0);
@@ -5050,15 +5098,15 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
 
 #ifdef S52_USE_OPENGL_VBO
     // using VBO we need to keep some info (mode, first, count)
-    DL->prim[0]   = _parseHPGL(vecObj, DL->prim[0]);
-    DL->vboIds[0] = _VBOCreate(DL->prim[0]);
+    DListData->prim[0]   = _parseHPGL(vecObj, DListData->prim[0]);
+    DListData->vboIds[0] = _VBOCreate(DListData->prim[0]);
 
     // set normal mode
     //glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 #else   // S52_USE_OPENGL_VBO
 
-    DL->prim[0] = _parseHPGL(vecObj, DL->prim[0]);
+    DListData->prim[0] = _parseHPGL(vecObj, DListData->prim[0]);
     glEndList();
 
 #endif  // S52_USE_OPENGL_VBO
@@ -5077,15 +5125,15 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
     // 'data' not used
     (void) data;
 
-    S52_symDef *symDef = (S52_symDef*)value;
-    S52_DList  *DL     = S52_PL_getDLData(symDef);
+    S52_symDef    *symDef    = (S52_symDef*)value;
+    S52_DListData *DListData = S52_PL_getDLData(symDef);
 
     // is this symbol need to be re-created (update PLib)
-    if (FALSE == DL->create)
+    if (FALSE == DListData->create)
         return FALSE;
 
     // debug
-    if (MAX_SUBLIST < DL->nbr) {
+    if (MAX_SUBLIST < DListData->nbr) {
         PRINTF("ERROR: sublist overflow -0-\n");
         g_assert(0);
         return FALSE;
@@ -5093,8 +5141,8 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
 
 #ifdef S52_USE_OPENGL_VBO
 #if !defined(S52_USE_GLSC2)
-    if (TRUE == glIsBuffer(DL->vboIds[0])) {
-        glDeleteBuffers(DL->nbr, &DL->vboIds[0]);
+    if (TRUE == glIsBuffer(DListData->vboIds[0])) {
+        glDeleteBuffers(DListData->nbr, &DListData->vboIds[0]);
 
         PRINTF("FIXME: debug this code path\n");
         g_assert(0);
@@ -5108,14 +5156,14 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
 
 #if !defined(S52_USE_GLSC1)
     // in ES SC: can't delete a display list --no garbage collector
-    if (0 != DL->vboIds[0]) {
-        glDeleteLists(DL->vboIds[0], DL->nbr);
+    if (0 != DListData->vboIds[0]) {
+        glDeleteLists(DListData->vboIds[0], DListData->nbr);
     }
 #endif
 
     // then create new one
-    DL->vboIds[0] = glGenLists(DL->nbr);
-    if (0 == DL->vboIds[0]) {
+    DListData->vboIds[0] = glGenLists(DListData->nbr);
+    if (0 == DListData->vboIds[0]) {
         PRINTF("ERROR: glGenLists() failed .. exiting\n");
         g_assert(0);
         return FALSE;
@@ -5128,9 +5176,9 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
 
     S52_vec *vecObj  = S52_PL_initVOCmd(symDef);
 
-    for (guint i=0; i<DL->nbr; ++i) {
-        if (NULL == DL->prim[i])
-            DL->prim[i]  = S57_initPrim(NULL);
+    for (guint i=0; i<DListData->nbr; ++i) {
+        if (NULL == DListData->prim[i])
+            DListData->prim[i]  = S57_initPrim(NULL);
         else {
             PRINTF("ERROR: DL->prim[i] not NULL\n");
             g_assert(0);
@@ -5139,20 +5187,20 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
     }
 
 #ifdef S52_USE_OPENGL_VBO
-    for (guint i=0; i<DL->nbr; ++i) {
+    for (guint i=0; i<DListData->nbr; ++i) {
         // using VBO we need to keep some info (mode, first, count)
-        DL->prim[i]   = _parseHPGL(vecObj, DL->prim[i]);
-        DL->vboIds[i] = _VBOCreate(DL->prim[i]);
+        DListData->prim[i]   = _parseHPGL(vecObj, DListData->prim[i]);
+        DListData->vboIds[i] = _VBOCreate(DListData->prim[i]);
     }
     // return to normal mode
     //glBindBuffer(GL_ARRAY_BUFFER, 0);
 #else
-    GLuint listIdx = DL->vboIds[0];
-    for (guint i=0; i<DL->nbr; ++i) {
+    GLuint listIdx = DListData->vboIds[0];
+    for (guint i=0; i<DListData->nbr; ++i) {
 
         glNewList(listIdx++, GL_COMPILE);
 
-        DL->prim[i] = _parseHPGL(vecObj, DL->prim[i]);
+        DListData->prim[i] = _parseHPGL(vecObj, DListData->prim[i]);
 
         glEndList();
     }
@@ -5290,84 +5338,76 @@ int        S52_GL_isOFFview(S52_obj *obj)
 }
 
 #ifdef S52_USE_GL2
-#if defined(S52_USE_RASTER) || defined(S52_USE_RADAR)
+#ifdef S52_USE_RASTER
 static int       _newTexture(S52_GL_ras *raster)
 // copy and blend raster 'data' to alpha texture
 // FIXME: test if the use of shader to blend rather than precomputing value here is faster
 {
     double min   =  INFINITY;
     double max   = -INFINITY;
-    guint npotX  = raster->w;
-    guint npotY  = raster->h;
+    guint  npotX = raster->w;
+    guint  npotY = raster->h;
     float *dataf = (float*) raster->data;
-    guint count  = raster->w * raster->h;
+    guint  count = raster->w * raster->h;
 
     // GLES2/XOOM ALPHA fail and if not POT
     struct rgba {unsigned char r,g,b,a;};
     guchar *texAlpha = g_new0(guchar, count * sizeof(struct rgba));
     struct rgba *texTmp   = (struct rgba*) texAlpha;
 
+    // FIXME: S52_MAR_DATUM_OFFSET
+    float offset= (float) S52_MP_get(S52_MAR_DATUM_OFFSET);
     float safe  = (float) S52_MP_get(S52_MAR_SAFETY_CONTOUR) * -1.0;  // change signe
     float deep  = (float) S52_MP_get(S52_MAR_DEEP_CONTOUR)   * -1.0;  // change signe
 
     // debug
     int nFTLMAX = 0;
     int nNoData = 0;
+
     for (guint i=0; i<count; ++i) {
 
-        // debug - fill .tiff area with color
-        //texTmp[i].a = 255;
-        //continue;
-
-
+        // Note: nodata can be -INFINITY
         if (raster->nodata == dataf[i]) {
             ++nNoData;
             texTmp[i].a = 0;
             continue;
         }
-        if (G_MAXFLOAT == dataf[i]) {
+
+        /*
+        //if (G_MAXFLOAT == (dataf[i] - offset)) {
+        if (G_MINFLOAT == (dataf[i] - offset)) {
             ++nFTLMAX;
 
             texTmp[i].a = 0;
             continue;
-
-            // debug
-            //texTmp[i].a = 255;
-            //continue;
         }
+        */
 
         min = MIN(dataf[i], min);
         max = MAX(dataf[i], max);
 
-        // debug
-        //texTmp[i].a = 255;
-        //continue;
-
-        if ((safe/2.0) <= dataf[i]) {
+        if ((safe/2.0) <= (dataf[i] - offset)) {
             texTmp[i].a = 0;
             continue;
         }
         // SAFETY CONTOUR
-        if (safe <= dataf[i]) {
+        if (safe <= (dataf[i] - offset)) {
             texTmp[i].a = 255;
             continue;
         }
         // DEEP CONTOUR
-        if (deep <= dataf[i]) {
+        if (deep <= (dataf[i] - offset)) {
             texTmp[i].a = 100;
             continue;
         }
-
-        // debug
-        //texTmp[i].a = 255;
-        //continue;
     }
 
-    raster->min      = min;
-    raster->max      = max;
-    raster->npotX    = npotX;
-    raster->npotY    = npotY;
-    raster->texAlpha = texAlpha;
+    _real_GL_ras *rr = (_real_GL_ras*)raster;
+    rr->min      = min;
+    rr->max      = max;
+    rr->npotX    = npotX;
+    rr->npotY    = npotY;
+    rr->texAlpha = texAlpha;
 
     PRINTF("DEBUG: nFTLMAX=%i nNoData=%i count=%i\n", nFTLMAX, nNoData, count);
 
@@ -5382,16 +5422,46 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
         return TRUE;
     }
 
-    if (0 == raster->texID) {
+#ifdef S52_USE_RADAR
+    // get user radar texture
+    if (TRUE == raster->isRADAR) {
+        double cLat = 0.0;
+        double cLng = 0.0;
+        double rNM  = 0.0;
+
+        raster->texAlpha = raster->RADAR_cb(&cLat, &cLng, &rNM);
+
+        double xyz[3] = {cLng, cLat, 0.0};
+        if (FALSE == S57_geo2prj3dv(1, xyz)) {
+            PRINTF("WARNING: S57_geo2prj3dv() failed\n");
+            return FALSE;
+        }
+        raster->cLng = xyz[0];
+        raster->cLat = xyz[1];
+        raster->rNM  = rNM;
+
+        // set radar extent
+        raster->pext.S = raster->cLat - raster->rNM * 1852.0;
+        raster->pext.W = raster->cLng - raster->rNM * 1852.0;
+        raster->pext.N = raster->cLat + raster->rNM * 1852.0;
+        raster->pext.E = raster->cLng + raster->rNM * 1852.0;
+    }
+#endif  // S52_USE_RADAR
+
+    _real_GL_ras *rr = (_real_GL_ras*)raster;
+    if (0 == rr->texID) {
+        // create GL texture
         if (TRUE == raster->isRADAR) {
 
             // no ALPHA in GLSC2
-#if !defined(S52_USE_GLSC2)
-            glGenTextures(1, &raster->texID);
-            glBindTexture(GL_TEXTURE_2D, raster->texID);
+#if !defined(S52_USE_GLSC2) && defined(S52_USE_RADAR)
+
+            glGenTextures(1, &rr->texID);
+            glBindTexture(GL_TEXTURE_2D, rr->texID);
 
             // GLES2/XOOM ALPHA fail and if not POT
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, raster->npotX, raster->npotY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
+            // FIXME: w h insted of npot
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, rr->npotX, rr->npotY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, rr->texAlpha);
             // modern way
             //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_ALPHA, raster->npotX, raster->npotY);
             //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_ALPHA, GL_UNSIGNED_BYTE, _fb_pixels);
@@ -5404,22 +5474,25 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
             glBindTexture(GL_TEXTURE_2D, 0);
 
             _checkError("S52_GL_drawRaster() -1.0-");
-#endif  //!S52_USE_GLSC2
+#endif  //!S52_USE_GLSC2 S52_USE_RADAR
 
         } else {
-            // raster / bathy
+            // create raster / bathy
             _newTexture(raster);
 
-            glGenTextures(1, &raster->texID);
-            glBindTexture(GL_TEXTURE_2D, raster->texID);
+            //glGenTextures(1, &raster->texID);
+            //glBindTexture(GL_TEXTURE_2D, raster->texID);
+            glGenTextures(1, &rr->texID);
+            glBindTexture(GL_TEXTURE_2D, rr->texID);
 
             // GLES2/XOOM ALPHA fail and if not POT
 #ifdef S52_USE_GLSC2
             // modern way
-            glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+            glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, rraster->npotX, rr->npotY);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, rr->npotX, rr->npotY, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
 #else
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, raster->texAlpha);
+            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, raster->texAlpha);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rr->npotX, rr->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, rr->texAlpha);
             // modern way
             //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY);
             //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
@@ -5441,30 +5514,29 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
             _checkError("S52_GL_drawRaster() -2.0-");
 
             // debug
-            PRINTF("DEBUG: MIN=%f MAX=%f\n", raster->min, raster->max);
+            //PRINTF("DEBUG: MIN=%f MAX=%f\n", raster->min, raster->max);
+            PRINTF("DEBUG: MIN=%f MAX=%f\n", rr->min, rr->max);
         }
     } else {
         // no ALPHA in GLSC2
 #if !defined(S52_USE_GLSC2)
         // update RADAR
         if (TRUE == raster->isRADAR) {
-            glBindTexture(GL_TEXTURE_2D, raster->texID);
+            //glBindTexture(GL_TEXTURE_2D, raster->texID);
+            glBindTexture(GL_TEXTURE_2D, rr->texID);
 
             // GLES2/XOOM ALPHA fail and if not POT
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
+            //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_ALPHA, GL_UNSIGNED_BYTE, raster->texAlpha);
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, rr->npotX, rr->npotY, GL_ALPHA, GL_UNSIGNED_BYTE, rr->texAlpha);
 
             _checkError("S52_GL_drawRaster() -3.0-");
         }
+        // FIXME: update texture if S52_MAR_SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR / S52_MAR_DATUM_OFFSET has change
+        //else {
+        //    _udtTexture();
+        //}
 #endif  // !S52_USE_GLSC2
 
-    }
-
-    // set radar extent
-    if (TRUE == raster->isRADAR) {
-        raster->pext.S = raster->cLat - raster->rNM * 1852.0;
-        raster->pext.W = raster->cLng - raster->rNM * 1852.0;
-        raster->pext.N = raster->cLat + raster->rNM * 1852.0;
-        raster->pext.E = raster->cLng + raster->rNM * 1852.0;
     }
 
     // set colour
@@ -5499,7 +5571,8 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
 
     glUniform1f(_uTextOn, 1.0);
-    glBindTexture(GL_TEXTURE_2D, raster->texID);
+    //glBindTexture(GL_TEXTURE_2D, raster->texID);
+    glBindTexture(GL_TEXTURE_2D, rr->texID);
 
     _glUniformMatrix4fv_uModelview();
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -5518,7 +5591,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
     return TRUE;
 }
-#endif  // S52_USE_RASTER S52_USE_RADAR
+#endif  // S52_USE_RASTER
 #endif  // S52_USE_GL2
 
 #if 0
@@ -5921,6 +5994,8 @@ static double    _set_SCAMIN(void)
 {
     _SCAMIN = (_scalex > _scaley) ? _scalex : _scaley;
     _SCAMIN *= 10000.0;
+
+    //PRINTF("DEBUG: XXXXXXXXXXXXXXXXXXXXX _SCAMIN:%f _scalex:%f\n", _SCAMIN, _scalex);
 
     return _SCAMIN;
 }
@@ -6422,31 +6497,55 @@ int        S52_GL_delDL(S52_obj *obj)
     return TRUE;
 }
 
+#ifdef S52_USE_RASTER
+S52_GL_ras *S52_GL_newRaster(char *fnameMerc)
+{
+    _real_GL_ras *rr = (_real_GL_ras*)g_new0(_real_GL_ras, 1);
+
+#if !defined(S52_USE_RADAR)
+    S52_GL_ras *r = (S52_GL_ras *)rr;
+    r->fnameMerc = g_string_new(fnameMerc);  // Mercator GeoTiff file name
+#endif
+
+    return (S52_GL_ras *)rr;
+}
+
 int        S52_GL_delRaster(S52_GL_ras *raster, int texOnly)
 {
-    // texture
-    if (FALSE == raster->isRADAR) {
-        g_free(raster->texAlpha);
-        raster->texAlpha = NULL;
-
-        // src data
-        if (TRUE != texOnly) {
-            g_string_free(raster->fnameMerc, TRUE);
-            raster->fnameMerc = NULL;
-            g_free(raster->data);
-            raster->data = NULL;
-        }
-    }
+    //GPOINTER_TO_INT
+    _real_GL_ras *rr = (_real_GL_ras*)raster;
 
 #if !defined(S52_USE_GLSC2)
-    glDeleteTextures(1, &raster->texID);
-#endif
-    raster->texID = 0;
-
+    glDeleteTextures(1, &rr->texID);
     _checkError("S52_GL_delRaster()");
+#endif
+
+    rr->texID = 0;
+
+    // g_clear() !
+
+    // bathy texture
+    if (FALSE == raster->isRADAR) {
+        g_free(rr->texAlpha);
+        rr->texAlpha = NULL;
+    }
+    // else -> isradar=true, texture mem handled by user
+
+    // src data
+    if (FALSE == texOnly) {
+#if !defined(S52_USE_RADAR)
+        g_string_free(raster->fnameMerc, TRUE);
+        raster->fnameMerc = NULL;
+        g_free(raster->data);
+        raster->data = NULL;
+#endif
+
+        g_free(rr);
+    }
 
     return TRUE;
 }
+#endif  // S52_USE_RASTER
 
 static int       _contextValid(void)
 // return TRUE if current GL context support S52 rendering
@@ -6548,6 +6647,13 @@ static int       _contextValid(void)
             PRINTF("DEBUG: GL_EXT/KHR/ARB_robustness %s\n", (NULL==str)? "FAILED": "OK");
             _GL_EXT_robustness = (NULL== str)? FALSE : TRUE;
         }
+
+        {   // GL_KHR_no_error - GL_CONTEXT_FLAG_NO_ERROR_BIT_KHR    0x00000008
+            const char *str = g_strrstr((const char *)extensions, "GL_KHR_no_error ");
+            PRINTF("DEBUG: GL_KHR_no_error %s\n", (NULL==str)? "FAILED": "OK");
+            _GL_KHR_no_error = (NULL== str)? FALSE : TRUE;
+        }
+
 #endif  // S52_USE_GL2
 
     }
@@ -6690,6 +6796,8 @@ int        S52_GL_done(void)
         return FALSE;
 
     _freeGLU();
+
+    // g_clear() !
 
     if (NULL != _fb_pixels) {
         g_free(_fb_pixels);
@@ -7086,7 +7194,7 @@ cchar     *S52_GL_getNameObjPick(void)
 
     S52_obj *objHighLight = (S52_obj *)g_ptr_array_index(_objPick, idx);
     S57_geo *geoHighLight = S52_PL_getGeo(objHighLight);
-    //S57_highlightON(geoHighLight);
+
     S57_setHighlight(geoHighLight, TRUE);
 
     name  = S57_getName (geoHighLight);
@@ -7117,7 +7225,7 @@ cchar     *S52_GL_getNameObjPick(void)
 
                 sscanf(*splitRefs, "%p", (void**)&geoRelAssoc);
                 //S57_highlightON(geoRelAssoc);
-                S57_setHighlightON(geoRelAssoc, TRUE);
+                S57_setHighlight(geoRelAssoc, TRUE);
 
                 guint idAssoc = S57_getS57ID(geoRelAssoc);
 
@@ -7496,8 +7604,8 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
     //
     //_setBlend(TRUE);
 
-    S52_DList *DListData = S52_PL_getDListData(objA);
-    S52_Color *color     = DListData->colors;
+    S52_DListData *DListData = S52_PL_getDListData(objA);
+    S52_Color     *color     = DListData->colors;
     _setFragAttrib(color, S57_getHighlight(S52_PL_getGeo(objA)));
 
 
