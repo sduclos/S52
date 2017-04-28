@@ -99,6 +99,7 @@ localObj *S52_CS_done(_localObj *local)
 {
     return_if_null(local);
 
+    // ref only - obj allready deleted
     g_ptr_array_free(local->lights_list, TRUE);
     g_ptr_array_free(local->topmar_list, TRUE);
     g_ptr_array_free(local->depare_list, TRUE);
