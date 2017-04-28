@@ -553,6 +553,7 @@ static GLint     _initGLU(void)
 static GLint     _freeGLU(void)
 {
     //tess
+    // this call free_func() if set
     if (NULL != _tmpV) g_ptr_array_free(_tmpV, TRUE);
     if (NULL != _tobj) gluDeleteTess(_tobj);
 
