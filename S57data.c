@@ -276,8 +276,7 @@ int        S57_donePROJ()
         g_string_free(_attList, TRUE);
     _attList = NULL;
 
-    if (NULL != _pjstr)
-        g_free(_pjstr);
+    g_free(_pjstr);
     _pjstr = NULL;
 
     return TRUE;
