@@ -5,11 +5,11 @@
 
 
 2017APR28
-    -mod refactor ptrArray to call free_func _delObj() on free array
-    -del unused scale member in cell
-    
+    - mod refactor ptrArray to call free_func _delObj() on free array
+    - del unused scale member in cell
+
 2017APR24
-    -mod refactor _delMarObj()
+    - mod refactor _delMarObj()
 
 2017APR19
     -mod check if palette has changed before re-loading RGB in S52_PL_getDListData()
