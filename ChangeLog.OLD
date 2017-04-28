@@ -4,6 +4,9 @@
 #
 
 
+2017APR28
+    -mod refactor ptrArray to call free_func _delObj() on free array
+
 2017APR24
     -mod refactor _delMarObj()
 
