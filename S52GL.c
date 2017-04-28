@@ -5339,7 +5339,7 @@ int        S52_GL_isOFFview(S52_obj *obj)
 
 #ifdef S52_USE_GL2
 #ifdef S52_USE_RASTER
-static int       _newTexture(S52_GL_ras *raster)
+static int       _udtTexture(S52_GL_ras *raster)
 // copy and blend raster 'data' to alpha texture
 // FIXME: test if the use of shader to blend rather than precomputing value here is faster
 {
@@ -5350,10 +5350,21 @@ static int       _newTexture(S52_GL_ras *raster)
     float *dataf = (float*) raster->data;
     guint  count = raster->w * raster->h;
 
-    // GLES2/XOOM ALPHA fail and if not POT
+    if (TRUE == raster->isRADAR) {
+        return FALSE;
+    }
+
     struct rgba {unsigned char r,g,b,a;};
-    guchar *texAlpha = g_new0(guchar, count * sizeof(struct rgba));
-    struct rgba *texTmp   = (struct rgba*) texAlpha;
+
+    // GLES2/XOOM ALPHA fail and if not POT
+    _real_GL_ras *rr = (_real_GL_ras*)raster;
+    if (NULL == rr->texAlpha) {
+        rr->texAlpha = g_new0(guchar, count * sizeof(struct rgba));
+        rr->npotX    = npotX;
+        rr->npotY    = npotY;
+    }
+
+    struct rgba *texTmp = (struct rgba*) rr->texAlpha;
 
     // FIXME: S52_MAR_DATUM_OFFSET
     float offset= (float) S52_MP_get(S52_MAR_DATUM_OFFSET);
@@ -5402,12 +5413,8 @@ static int       _newTexture(S52_GL_ras *raster)
         }
     }
 
-    _real_GL_ras *rr = (_real_GL_ras*)raster;
     rr->min      = min;
     rr->max      = max;
-    rr->npotX    = npotX;
-    rr->npotY    = npotY;
-    rr->texAlpha = texAlpha;
 
     PRINTF("DEBUG: nFTLMAX=%i nNoData=%i count=%i\n", nFTLMAX, nNoData, count);
 
@@ -5450,7 +5457,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
     _real_GL_ras *rr = (_real_GL_ras*)raster;
     if (0 == rr->texID) {
-        // create GL texture
+        /* create GL texture
         if (TRUE == raster->isRADAR) {
 
             // no ALPHA in GLSC2
@@ -5517,6 +5524,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
             //PRINTF("DEBUG: MIN=%f MAX=%f\n", raster->min, raster->max);
             PRINTF("DEBUG: MIN=%f MAX=%f\n", rr->min, rr->max);
         }
+        */
     } else {
         // no ALPHA in GLSC2
 #if !defined(S52_USE_GLSC2)
@@ -5531,10 +5539,6 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
             _checkError("S52_GL_drawRaster() -3.0-");
         }
-        // FIXME: update texture if S52_MAR_SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR / S52_MAR_DATUM_OFFSET has change
-        //else {
-        //    _udtTexture();
-        //}
 #endif  // !S52_USE_GLSC2
 
     }
@@ -5593,26 +5597,6 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 }
 #endif  // S52_USE_RASTER
 #endif  // S52_USE_GL2
-
-#if 0
-int        S52_GL_drawLIGHTS(S52_obj *obj)
-// draw lights
-{
-    S52_CmdWrd cmdWrd = S52_PL_iniCmd(obj);
-
-    while (S52_CMD_NONE != cmdWrd) {
-        switch (cmdWrd) {
-        	case S52_CMD_SIM_LN: _renderLS_LIGHTS05(obj); _ncmd++; break;   // LS
-        	case S52_CMD_ARE_CO: _renderAC_LIGHTS05(obj); _ncmd++; break;   // AC
-
-        	default: break;
-        }
-        cmdWrd = S52_PL_getCmdNext(obj);
-    }
-
-    return TRUE;
-}
-#endif  // 0
 
 int        S52_GL_drawText(S52_obj *obj, gpointer user_data)
 // TE&TX
@@ -6503,14 +6487,97 @@ S52_GL_ras *S52_GL_newRaster(char *fnameMerc)
     _real_GL_ras *rr = (_real_GL_ras*)g_new0(_real_GL_ras, 1);
 
 #if !defined(S52_USE_RADAR)
-    S52_GL_ras *r = (S52_GL_ras *)rr;
-    r->fnameMerc = g_string_new(fnameMerc);  // Mercator GeoTiff file name
+    S52_GL_ras *raster = (S52_GL_ras *)rr;
+    raster->fnameMerc  = g_string_new(fnameMerc);  // Mercator GeoTiff file name
 #endif
+    // create GL texture
+    if (TRUE == raster->isRADAR) {
+
+        // no ALPHA in GLSC2
+#if !defined(S52_USE_GLSC2) && defined(S52_USE_RADAR)
+
+        glGenTextures(1, &rr->texID);
+        glBindTexture(GL_TEXTURE_2D, rr->texID);
+
+        // GLES2/XOOM ALPHA fail and if not POT
+        // FIXME: w h insted of npot
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, rr->npotX, rr->npotY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, rr->texAlpha);
+        // modern way
+        //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_ALPHA, raster->npotX, raster->npotY);
+        //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_ALPHA, GL_UNSIGNED_BYTE, _fb_pixels);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        _checkError("S52_GL_drawRaster() -1.0-");
+#endif  //!S52_USE_GLSC2 S52_USE_RADAR
+
+    } else {
+        // create raster / bathy
+        //_newTexture(raster);
+
+        //glGenTextures(1, &raster->texID);
+        //glBindTexture(GL_TEXTURE_2D, raster->texID);
+        glGenTextures(1, &rr->texID);
+        glBindTexture(GL_TEXTURE_2D, rr->texID);
+
+        // GLES2/XOOM ALPHA fail and if not POT
+#ifdef S52_USE_GLSC2
+        // modern way
+        glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, rraster->npotX, rr->npotY);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, rr->npotX, rr->npotY, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+#else
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, raster->texAlpha);
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rr->npotX, rr->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, rr->texAlpha);
+        // set tex size (not tex bits
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rr->npotX, rr->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+        // modern way
+        //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY);
+        //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_FLOAT, raster->data);
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_FLOAT, raster->data);
+        //glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, raster->npotX, raster->npotY, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, raster->data);
+        //dword PackValues(byte x,byte y,byte z,byte w) {
+        //    return (x<<24)+(y<<16)+(z<<8)+(w);
+        //}
+#endif
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+
+        _checkError("S52_GL_drawRaster() -2.0-");
+
+        // debug
+        //PRINTF("DEBUG: MIN=%f MAX=%f\n", raster->min, raster->max);
+        PRINTF("DEBUG: MIN=%f MAX=%f\n", rr->min, rr->max);
+    }
 
     return (S52_GL_ras *)rr;
 }
 
-int        S52_GL_delRaster(S52_GL_ras *raster, int texOnly)
+int        S52_GL_udtRaster(S52_GL_ras *raster)
+{
+    _real_GL_ras *rr = (_real_GL_ras*)raster;
+
+    // FIXME: update texture if S52_MAR_SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR / S52_MAR_DATUM_OFFSET has change
+    if (FALSE == raster->isRADAR) {
+        _udtTexture(raster);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rr->npotX, rr->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, rr->texAlpha);
+    }
+
+    return TRUE;
+}
+
+//int        S52_GL_delRaster(S52_GL_ras *raster, int texOnly)
+int        S52_GL_delRaster(S52_GL_ras *raster)
 {
     //GPOINTER_TO_INT
     _real_GL_ras *rr = (_real_GL_ras*)raster;
@@ -6532,16 +6599,14 @@ int        S52_GL_delRaster(S52_GL_ras *raster, int texOnly)
     // else -> isradar=true, texture mem handled by user
 
     // src data
-    if (FALSE == texOnly) {
+    //if (FALSE == texOnly) {
 #if !defined(S52_USE_RADAR)
         g_string_free(raster->fnameMerc, TRUE);
-        raster->fnameMerc = NULL;
         g_free(raster->data);
-        raster->data = NULL;
 #endif
 
         g_free(rr);
-    }
+    //}
 
     return TRUE;
 }
@@ -6805,6 +6870,7 @@ int        S52_GL_done(void)
     }
 
     if (NULL != _objPick) {
+        // ref only
         g_ptr_array_free(_objPick, TRUE);
         _objPick = NULL;
     }
