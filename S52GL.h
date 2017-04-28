@@ -79,8 +79,6 @@ int   S52_GL_setDotPitch(int w, int h, int wmm, int hmm);
 int   S52_GL_begin(S52_GL_cycle cycle);
 // render an object to framebuffer
 int   S52_GL_draw(S52_obj *obj, gpointer user_data);
-// draw lights - not used
-//int   S52_GL_drawLIGHTS(S52_obj *obj);
 // draw text
 int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
 // draw RADAR,Bathy,...
@@ -106,9 +104,10 @@ int   S52_GL_delDL(S52_obj *obj);
 #ifdef S52_USE_RASTER
 S52_GL_ras *S52_GL_newRaster(char *fnameMerc);
 // FIXME: update raster
-//int   S52_GL_udtRaster(S52_GL_ras *raster);
+int   S52_GL_udtRaster(S52_GL_ras *raster);
 // delete raster
-int   S52_GL_delRaster(S52_GL_ras *raster, int texOnly);
+//int   S52_GL_delRaster(S52_GL_ras *raster, int texOnly);
+int   S52_GL_delRaster(S52_GL_ras *raster);
 #endif  // S52_USE_RASTER
 
 int   S52_GL_setView(double  centerLat, double  centerLon, double  rangeNM, double  north);
