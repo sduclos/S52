@@ -5,7 +5,7 @@
 
 
 2017APR28
-- mod refactor ptrArray to call free_func _delObj() on free array
+-mod refactor ptrArray to call free_func _delObj() on free array
 - del unused scale member in cell
 
 2017APR24
