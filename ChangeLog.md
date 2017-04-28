@@ -5,114 +5,114 @@
 
 
 2017APR28
--mod refactor ptrArray to call free_func _delObj() on free array
+- mod refactor ptrArray to call free_func _delObj() on free array
 - del unused scale member in cell
 
 2017APR24
-    - mod refactor _delMarObj()
+- mod refactor _delMarObj()
 
 2017APR19
-    -mod check if palette has changed before re-loading RGB in S52_PL_getDListData()
-    -mod refactor raster code path
-    -mod refactor renderBin traversal
-    -mod refactor S52_PL_getGeo() into S52PLGETGEO(), mod S52_obj
-    -add _doAPP_RASTER to flags that bathy texture need be reseted
+- mod check if palette has changed before re-loading RGB in S52_PL_getDListData()
+- mod refactor raster code path
+- mod refactor renderBin traversal
+- mod refactor S52_PL_getGeo() into S52PLGETGEO(), mod S52_obj
+- add _doAPP_RASTER to flags that bathy texture need be reseted
 
 2017APR14
-    -fix mem leak of META obj when relinking to new PLib on loadPLib()
+- fix mem leak of META obj when relinking to new PLib on loadPLib()
 
 2017APR08
-    -mod kludge udwhaz04 diff into CS udwhaz03 to get approx S64 NE.000 plot
-    -mod refractor _revArray() use to reverse array from CCW to CW (S57 winding)
+- mod kludge udwhaz04 diff into CS udwhaz03 to get approx S64 NE.000 plot
+- mod refractor _revArray() use to reverse array from CCW to CW (S57 winding)
 
 2017APR03
-    -fix light extend_arc_radius sector when not overlapping
-    -mod _setFragAttrib() to handle highlight
-    -add S57_setHighlight(ON/OFF) to replace HighlightON HighlightOFF
-    -mon replace atoi/atof by g_ascii_strtod() local agnostic
+- fix light extend_arc_radius sector when not overlapping
+- mod _setFragAttrib() to handle highlight
+- add S57_setHighlight(ON/OFF) to replace HighlightON HighlightOFF
+- mon replace atoi/atof by g_ascii_strtod() local agnostic
 
 2017APR02
-    -refactor APP/moveObj()
-    -mod set to TRUE prioOveride with default LUP prio
-    -refactor S57 to S52 obj type convertion
+- refactor APP/moveObj()
+- mod set to TRUE prioOveride with default LUP prio
+- refactor S57 to S52 obj type convertion
 
 2017MAR31
-    -mod refactor APP/overide prio
-    -add combine scale boundary
-    -add S52_PL_isPrioO()
-    -mod S52ObjectType S52_PL_getFTYP()
-    -del M_COVR test in S52_GL_isSupp()
+- mod refactor APP/overide prio
+- add combine scale boundary
+- add S52_PL_isPrioO()
+- mod S52ObjectType S52_PL_getFTYP()
+- del M_COVR test in S52_GL_isSupp()
 
 2017MAR23
-    -del S52_USE_GOBJECT not use anymore
-    -mod S52_MAR_DISP_HODATA to S52_MAR_DISP_HODATA_UNION
-    -add S52_MAR_DISP_SCLBDY_UNION
-    -mod *Begin() to *Beg()
+- del S52_USE_GOBJECT not use anymore
+- mod S52_MAR_DISP_HODATA to S52_MAR_DISP_HODATA_UNION
+- add S52_MAR_DISP_SCLBDY_UNION
+- mod *Begin() to *Beg()
 
 2017MAR22
-    -mod rename _moveObj() to _appMoveObj()
-    -mod refactor scale boundary generation
-    -add scale boundary union
+- mod rename _moveObj() to _appMoveObj()
+- mod refactor scale boundary generation
+- add scale boundary union
 
 2017MAR20
-    -fix use bsize param in _renderTXTAA()
-    -fix scale boundary to draw only M_COVR:CATCOV=1
+- fix use bsize param in _renderTXTAA()
+- fix scale boundary to draw only M_COVR:CATCOV=1
 
 2017MAR18
-    -mod rename S57_getGeoS57ID to S57_getS57ID
-    -mod comment format; NOTE to Note
-    -fix HO data limit on doneCell()
-    -mod leglin text bsize form 12 to 11
+- mod rename S57_getGeoS57ID to S57_getS57ID
+- mod comment format; NOTE to Note
+- fix HO data limit on doneCell()
+- mod leglin text bsize form 12 to 11
 
 2017MAR03
-    -mod refactor S52GL.h:extent to S57data.h:ObjExt_t
+- mod refactor S52GL.h:extent to S57data.h:ObjExt_t
 
 2017FEB27
-    -fix _intersecGEO() S-S comp
-    -mob rename all 'geoData' var to 'geo'
+- fix _intersecGEO() S-S comp
+- mob rename all 'geoData' var to 'geo'
 
 2017FEB20
-    -fix PRINTF str prefix
-    -fix draw handling when no cell loaded
-    -fix extent uniform handling
-    -mod _rename setFragColor() to _setFragAttrib()
-    -fix _TRANSLATE handling
+- fix PRINTF str prefix
+- fix draw handling when no cell loaded
+- fix extent uniform handling
+- mod _rename setFragColor() to _setFragAttrib()
+- fix _TRANSLATE handling
 
 2017FEB07
-    -fix clang -fsanitize=address in _renderTXT() and S52_PL_getNextVOCmd() read past buffer
+- fix clang -fsanitize=address in _renderTXT() and S52_PL_getNextVOCmd() read past buffer
 
 2017FEB03
-    -fix lcms2 code path
+- fix lcms2 code path
 
 2017FEB02
-    -add port to lcms2
-    -mod lcms1 code to use RGB instead of sRGB profile
-    -add def S52_USE_LCMS2
+- add port to lcms2
+- mod lcms1 code to use RGB instead of sRGB profile
+- add def S52_USE_LCMS2
 
 2017JAN28
-    -fix regression in s52eglx
-    -del S52_USE_MESA3D in test/
-    -mod move DislayList func to _GL1.i
+- fix regression in s52eglx
+- del S52_USE_MESA3D in test/
+- mod move DislayList func to _GL1.i
 
 2017JAN26
-    -fix regression of s52glx s52gtk2 in matrix handling
-    -fix ifdef for s52gtk2gl2
+- fix regression of s52glx s52gtk2 in matrix handling
+- fix ifdef for s52gtk2gl2
 
 2017JAN20
-    -modx end EGL before releasing mutex
-    -mod move _view_t struct to GL
-    -add S52_GL_getView() to GL
-    -fix behavior of test/s52gtkegl
+- modx end EGL before releasing mutex
+- mod move _view_t struct to GL
+- add S52_GL_getView() to GL
+- fix behavior of test/s52gtkegl
 
 2017JAN18
-    -fix shader regression
-    -fix lock mutex from AIS
-    -add NULL check in set/get freetypeGL
-    -add init done AIS in test/s52gtkrgl.c
+- fix shader regression
+- fix lock mutex from AIS
+- add NULL check in set/get freetypeGL
+- add init done AIS in test/s52gtkrgl.c
 
 2017JAN11
-    -add implementation of rotation in drawBlit()
-    -add basic test of drawBlit() (drag/zoom/rot) with gtk3 gesture in test/s52gtkegl.c
+- add implementation of rotation in drawBlit()
+- add basic test of drawBlit() (drag/zoom/rot) with gtk3 gesture in test/s52gtkegl.c
 
 2016DEC28
     -mod rename S52_USE_MESA3D TO S52_USE_DUAL_MON
