@@ -425,6 +425,9 @@ static const char *natsur[] = {
 #define N_NATSUR   19     // number of natsur
 
 // optimisation: indexed
+// FIXME: call GHashTable *g_hash_table_new (NULL, NULL);
+// hash func will default to  g_direct_hash() /  g_direct_equal()
+// OR BBTree!
 static GPtrArray    *_objList = NULL;
 
 //------------------------
@@ -647,9 +650,6 @@ static void       _delSMB(gpointer value)
 static gint       _loadCondSymb()
 // load Conditional Symbology in BBtree
 {
-    //if (NULL == S52_CS_condTable)
-    //    return FALSE;
-
     for (int i=0; NULL!=S52_CS_condTable[i].CScb; ++i) {
         g_tree_insert(_selSMB(S52_SMB_COND),
                       (gpointer)  S52_CS_condTable[i].name,
@@ -988,7 +988,6 @@ static gint       _freeTXT(_Text *text)
 {
     if (NULL != text->frmtd) {
         g_string_free(text->frmtd, TRUE);
-        text->frmtd = NULL;
     }
     g_free(text);
 
@@ -2682,6 +2681,7 @@ int         S52_PL_done()
 
     _cms_done();
 
+    // ref only
     g_ptr_array_free(_objList, TRUE);
     _objList = NULL;
 
@@ -4136,6 +4136,7 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
 
             if (NULL != cmd->cmd.text) {
                 _freeTXT(cmd->cmd.text);
+                cmd->cmd.text = NULL;
             }
 
             cmd->cmd.text = _parseTX(obj->geo, cmd);
@@ -4148,6 +4149,7 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
 
             if (NULL != cmd->cmd.text) {
                 _freeTXT(cmd->cmd.text);
+                cmd->cmd.text = NULL;
             }
 
             cmd->cmd.text = _parseTE(obj->geo, cmd);
