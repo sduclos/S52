@@ -1,12 +1,12 @@
-# ChangeLog.OLD: the old way to note mods
-#                The 'real' ChangeLog is generated with the Perl script cvs2cl.pl
-#                OR git log
+# ChangeLog.md: the old way to note mods
+#               The 'real' ChangeLog is generated with the Perl script cvs2cl.pl
+#               OR git log
 #
 
 
 2017APR28
-    - mod refactor ptrArray to call free_func _delObj() on free array
-    - del unused scale member in cell
+- mod refactor ptrArray to call free_func _delObj() on free array
+- del unused scale member in cell
 
 2017APR24
     - mod refactor _delMarObj()
