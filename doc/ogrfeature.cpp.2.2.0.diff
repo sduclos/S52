@@ -1,0 +1,100 @@
+diff --git a/gdal/ogr/ogrfeature.cpp b/gdal/ogr/ogrfeature.cpp
+index 91d019f..71c8238 100644
+--- a/gdal/ogr/ogrfeature.cpp
++++ b/gdal/ogr/ogrfeature.cpp
+@@ -2256,6 +2256,10 @@ const char *OGRFeature::GetFieldAsString( int iField )
+     }
+     else if( eType == OFTIntegerList )
+     {
++        // SD 2010OCT20 - grow buffer if needed
++        char   *szTempBuffer = (char*)CPLMalloc(TEMP_BUFFER_SIZE);
++        int     lenbuffer = TEMP_BUFFER_SIZE;
++
+         char szItem[32] = {};
+         const int nCount = pauFields[iField].IntegerList.nCount;
+ 
+@@ -2263,12 +2267,14 @@ const char *OGRFeature::GetFieldAsString( int iField )
+         int i = 0;  // Used after for.
+         for( ; i < nCount; i++ )
+         {
+-            snprintf( szItem, sizeof(szItem), "%d",
+-                      pauFields[iField].IntegerList.paList[i] );
+-            if( strlen(szTempBuffer) + strlen(szItem) + 6
+-                >= sizeof(szTempBuffer) )
++//            snprintf( szItem, sizeof(szItem), "%d", pauFields[iField].IntegerList.paList[i] );
++//            if( strlen(szTempBuffer) + strlen(szItem) + 6 >= sizeof(szTempBuffer) )
++            snprintf( szItem, sizeof(szItem), "%d", pauFields[iField].IntegerList.paList[i] );
++            if( strlen(szTempBuffer) + strlen(szItem) + 6 >= lenbuffer )
+             {
+-                break;
++//                break;
++                lenbuffer *= 2;
++                szTempBuffer = (char*)CPLRealloc(szTempBuffer, lenbuffer);
+             }
+ 
+             if( i > 0 )
+@@ -2282,9 +2288,13 @@ const char *OGRFeature::GetFieldAsString( int iField )
+         else
+             strcat( szTempBuffer, ")" );
+ 
+-        m_pszTmpFieldValue = VSI_STRDUP_VERBOSE( szTempBuffer );
+-        if( m_pszTmpFieldValue == NULL )
+-            return "";
++        //m_pszTmpFieldValue = VSI_STRDUP_VERBOSE( szTempBuffer );
++        //if( m_pszTmpFieldValue == NULL )
++        //    return "";
++        //return m_pszTmpFieldValue;
++        m_pszTmpFieldValue = CPLStrdup( szTempBuffer );
++        CPLFree(szTempBuffer);
++
+         return m_pszTmpFieldValue;
+     }
+     else if( eType == OFTInteger64List )
+@@ -2364,6 +2374,11 @@ const char *OGRFeature::GetFieldAsString( int iField )
+     }
+     else if( eType == OFTStringList )
+     {
++        // SD 2013APR03 - grow buffer if needed
++        char   *szTempBuffer = (char*)CPLMalloc(TEMP_BUFFER_SIZE);
++        int     lenbuffer = TEMP_BUFFER_SIZE;
++        char    szItem[32];
++
+         const int nCount = pauFields[iField].StringList.nCount;
+ 
+         snprintf( szTempBuffer, TEMP_BUFFER_SIZE, "(%d:", nCount );
+@@ -2372,10 +2387,15 @@ const char *OGRFeature::GetFieldAsString( int iField )
+         {
+             const char *pszItem = pauFields[iField].StringList.paList[i];
+ 
+-            if( strlen(szTempBuffer) + strlen(pszItem) + 6
+-                >= sizeof(szTempBuffer) )
++
++            snprintf( szItem, sizeof(szItem), "%s", pszItem );
++
++            if( strlen(szTempBuffer) + strlen(szItem) + 6 >= lenbuffer )
++            //if( strlen(szTempBuffer) + strlen(pszItem) + 6>= sizeof(szTempBuffer) )
+             {
+-                break;
++//                break;
++                lenbuffer *= 2;
++                szTempBuffer = (char*)CPLRealloc(szTempBuffer, lenbuffer);
+             }
+ 
+             if( i > 0 )
+@@ -2389,9 +2409,13 @@ const char *OGRFeature::GetFieldAsString( int iField )
+         else
+             strcat( szTempBuffer, ")" );
+ 
+-        m_pszTmpFieldValue = VSI_STRDUP_VERBOSE( szTempBuffer );
+-        if( m_pszTmpFieldValue == NULL )
+-            return "";
++        //m_pszTmpFieldValue = VSI_STRDUP_VERBOSE( szTempBuffer );
++        //if( m_pszTmpFieldValue == NULL )
++        //    return "";
++        //return m_pszTmpFieldValue;
++        m_pszTmpFieldValue = CPLStrdup( szTempBuffer );
++        CPLFree(szTempBuffer);
++
+         return m_pszTmpFieldValue;
+     }
+     else if( eType == OFTBinary )
