@@ -37,6 +37,9 @@ static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 // Note: ../../../FWTools/FWTools-2.0.6/bin/gdalwarp
 //       -t_srs "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs"
 //        46307260_LOD2.tif 46307260_LOD2.merc.tif
+// FIXME: test POLAR ENC omerc:
+//  "+proj=omerc +lat_0=4 +lonc=115 +alpha=53.31582047222222 +k=0.99984 +x_0=590476.8727431979 +y_0=442857.6545573985
+//   +ellps=evrstSS +towgs84=-533.4,669.2,-52.5,0,0,4.28,9.4 +to_meter=0.3047994715386762 +no_defs ";
 #endif
 
 // MAXINT-6 is how OGR tag an UNKNOWN value
@@ -315,9 +318,17 @@ PROJCS["WGS 84 / Pseudo-Mercator",
     AUTHORITY["EPSG","3857"]]
 */
 
-    const char *templ = "+proj=merc +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
+    // FIXME: POLAR ENC
+    // const char *templ = "+proj=omerc +lat_0=4 +lonc=115 +alpha=53.31582047222222 +k=0.99984
+    //                      +x_0=590476.8727431979 +y_0=442857.6545573985
+    //                      +ellps=evrstSS +towgs84=-533.4,669.2,-52.5,0,0,4.28,9.4
+    //                      +to_meter=0.3047994715386762 +no_defs ";
+    //
+    //FAIL: ENC skewed: const char *templ = "+proj=omerc +lat_0=%.6f +lonc=%.6f +x_0=0 +y_0=0 +alpha=45 +gamma=0 +k_0=1 +ellps=WGS84 +no_defs";
+
+    const char *templ = "+proj=merc +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
     // FIXME: utm tilt ENC .. why?
-    //const char *templ = "+proj=utm +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m";
+    //const char *templ = "+proj=utm +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
 
     if (NULL != _pjstr) {
         PRINTF("WARNING: Merc projection allready set\n");
