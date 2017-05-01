@@ -75,7 +75,7 @@ static char    *_strpbrk(const char *s, const char *list)
     return NULL;
 }
 
-cchar    *S52_CS_version(void)
+CCHAR    *S52_CS_version(void)
 {
     return version;
 }
@@ -593,7 +593,7 @@ static int      _parseList(const char *str, char *buf)
     return i;
 }
 
-static cchar   *_selSYcol(char *buf)
+static CCHAR   *_selSYcol(char *buf)
 // WARNING: string must be store be the caller right after the call
 {
     // FIXME: C1 3.1 use LIGHTS0x          and specs 3.2 use LIGHTS1x
