@@ -56,7 +56,7 @@ if (NULL==ptr) {                             \
 }
 
 
-#define cchar const char
+#define CCHAR const char
 
 
 // debug: valid label in .cfg file
@@ -69,14 +69,18 @@ if (NULL==ptr) {                             \
 #define MAXL 1024    // MAX lenght of buffer _including_ '\0'
 typedef char valueBuf[MAXL];
 
-int      S52_utils_getConfig(cchar *label, char *vbuf);
+int      S52_utils_getConfig(CCHAR *label, char *vbuf);
 
-cchar   *S52_utils_version(void);
+CCHAR   *S52_utils_version(void);
 int      S52_utils_initLog(S52_log_cb log_cb);
 int      S52_utils_doneLog(void);
 
-int      S52_atoi(cchar *str);
-double   S52_atof(cchar *str);
+int      S52_atoi(CCHAR *str);
+double   S52_atof(CCHAR *str);
+
+// debug
+char    *S52_utils_new0(size_t sz, int n);
+#define _g_new0(s,n)  (s*)S52_utils_new0(sizeof(s), n)
 
 
 
@@ -84,8 +88,6 @@ double   S52_atof(cchar *str);
 //
 // Other trick that could be usefull
 //
-
-
 
 // quiet compiler warning on unused param
 #define UNUSED(expr) do { (void)(expr); } while (0)
