@@ -424,11 +424,17 @@ static const char *natsur[] = {
 };
 #define N_NATSUR   19     // number of natsur
 
-// optimisation: indexed
+
+//--------------------------
 // FIXME: call GHashTable *g_hash_table_new (NULL, NULL);
 // hash func will default to  g_direct_hash() /  g_direct_equal()
-// OR BBTree!
+// - OR -
+// BBTree! (check cost of rebalancing overhead)
+//
+
 static GPtrArray    *_objList = NULL;
+
+
 
 //------------------------
 //
@@ -1104,7 +1110,7 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
     return TRUE;
 }
 
-void        S52_PL_resloveSMB(_S52_obj *obj, void *dummy)
+void        S52_PL_resloveSMB(_S52_obj *obj, gpointer dummy)
 {
     (void)dummy;
 

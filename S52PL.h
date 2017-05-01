@@ -312,7 +312,7 @@ S52_objSupp    S52_PL_getObjSuppState(S52_obj *obj);
 gboolean       S52_PL_setSupp(S52_obj *obj, gboolean supp);
 gboolean       S52_PL_getSupp(S52_obj *obj);
 
-void           S52_PL_resloveSMB(S52_obj *obj, void *);
+void           S52_PL_resloveSMB(S52_obj *obj, gpointer dummy);
 // dx/dy between center and pivot
 int            S52_PL_getPivotOffset(S52_obj *obj, double *offset_x, double *offset_y);
 
