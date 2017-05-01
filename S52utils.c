@@ -152,12 +152,12 @@ static const char _version[] = S52_VERSION
 #endif
 "\n";
 
-cchar   *S52_utils_version(void)
+CCHAR   *S52_utils_version(void)
 {
     return _version;
 }
 
-int      S52_utils_getConfig(cchar *label, char *vbuf)
+int      S52_utils_getConfig(CCHAR *label, char *vbuf)
 // return TRUE and string value in vbuf for label, FALSE if fail
 {
    FILE *fp;
@@ -327,7 +327,7 @@ int      S52_utils_doneLog()
 }
 #endif  // S52_DEBUG || S52_USE_LOGFILE
 
-int      S52_atoi(cchar *str)
+int      S52_atoi(CCHAR *str)
 // safe atoi()
 // use for parsing the PLib and S57 attribute
 {
@@ -350,7 +350,7 @@ int      S52_atoi(cchar *str)
     //return atoi(str);
 }
 
-double   S52_atof(cchar *str)
+double   S52_atof(CCHAR *str)
 // safe atof()
 {
     if (NULL == str) {
@@ -370,6 +370,15 @@ double   S52_atof(cchar *str)
     //return atof(str);
 }
 
+char *S52_utils_new0(size_t sz, int n)
+// debug
+{
+    char *ptr = g_malloc0(sz*n);
+
+    PRINTF("DEBUG: >>>>>>>>>>>>>>>>>>>>>>>>>> ptr:%p sz:%i\n", ptr, sz*n);
+
+    return ptr;
+}
 
 /*
 //////////////////////
