@@ -4,6 +4,10 @@
 #
 
 
+2017MAY01
+- mod refactor renderBin traversal
+- mod rename def cchar to CCHAR
+
 2017APR28
 - mod refactor ptrArray to call free_func _delObj() on free array
 - del unused scale member in cell
