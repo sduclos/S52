@@ -7163,7 +7163,7 @@ int        S52_GL_setScissor(int x, int y, int width, int height)
     return TRUE;
 }
 
-cchar     *S52_GL_getNameObjPick(void)
+CCHAR     *S52_GL_getNameObjPick(void)
 
 {
     if (S52_GL_NONE != _crnt_GL_cycle) {
