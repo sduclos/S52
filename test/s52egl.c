@@ -2038,6 +2038,9 @@ static int      _X11_handleXevent(gpointer user_data)
 
 int main(int argc, char *argv[])
 {
+//#include <mcheck.h>  // mtrace(), muntrace()
+//mtrace();  // export MALLOC_TRACE=mem.log
+
     g_print("main():starting: argc=%i, argv[0]=%s\n", argc, argv[0]);
 
     XSetErrorHandler(_X11_error);
