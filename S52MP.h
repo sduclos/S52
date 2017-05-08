@@ -25,10 +25,10 @@
 #ifndef _S52MP_H_
 #define _S52MP_H_
 
-#include "S52.h"   // S52MarinerParameter
+#include "S52.h"  // S52MarinerParameter
 
-double S52_MP_get(S52MarinerParameter param);
-int    S52_MP_set(S52MarinerParameter param, double val);
+double S52_MP_get(S52MarinerParameter paramID);
+int    S52_MP_set(S52MarinerParameter paramID, double val);
 
 int    S52_MP_setTextDisp(unsigned int prioIdx, unsigned int count, unsigned int state);
 int    S52_MP_getTextDisp(unsigned int prioIdx);
