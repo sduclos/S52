@@ -105,9 +105,6 @@ typedef enum _VP {
 
 ////////////////////////////////////////////////////////////////////
 
-typedef struct  pt3  { double   x,y,z; } pt3;
-typedef struct  pt3v { vertex_t x,y,z; } pt3v;
-
 // Note: S52 pixels for symb are 0.3 mm
 // this is the real (physical) dotpitch of the device as computed at init() time
 // virtual dotpitch is set by user with S52_MP_set(S52_MAR_DOTPITCH_MM_X/Y, ..);
@@ -347,13 +344,15 @@ static int       _findCentInside  (guint npt, pt3 *v)
     return FALSE;
 }
 
-static int       _getCentroidOpen (guint npt, pt3 *v)
+//static int       _getCentroidOpen (guint npt, pt3 *v)
+static int       _getCentroid(guint npt, pt3 *v)
 // Open Poly - return TRUE and centroid else FALSE
+// FIXME: code dup Close poly
 {
-    GLdouble ai   = 0.0;
-    GLdouble atmp = 0.0;
-    GLdouble xtmp = 0.0;
-    GLdouble ytmp = 0.0;
+    GLdouble atmp  = 0.0;
+    GLdouble xtmp  = 0.0;
+    GLdouble ytmp  = 0.0;
+    guint    nSkip =   0;
 
     // need 3 pts at least
     if (npt<3) {
@@ -371,12 +370,15 @@ static int       _getCentroidOpen (guint npt, pt3 *v)
         pt3 p1 = v[i];
         pt3 p2 = v[j];
 
-        // same vertex
-        if (p1.x==p2.x && p1.y==p2.y)
+        // decimation will create vertex of same coords - skip
+        // Note: also close poly have same vertex at both end
+        if (p1.x==p2.x && p1.y==p2.y) {
+            nSkip++;
             continue;
+        }
 
         //PRINTF("%i->%i: %f, %f -- %f, %f\n", i,j, p1.x, p1.y, p2.x, p2.y);
-        ai    =  p1.x * p2.y - p2.x * p1.y;
+        GLdouble ai =  p1.x * p2.y - p2.x * p1.y;
         atmp +=  ai;
         xtmp += (p2.x + p1.x) * ai;
         ytmp += (p2.y + p1.y) * ai;
@@ -407,28 +409,28 @@ static int       _getCentroidOpen (guint npt, pt3 *v)
 
         // use heuristique to find centroid
         if (1.0 == S52_MP_get(S52_MAR_DISP_CENTROIDS)) {
-            _findCentInside(npt, v);
-
-            return TRUE;
+            return _findCentInside(npt, v);
         }
+        //return TRUE;
 
-        return TRUE;
     } else {
         // FIXME: bizzard case of poly with no area!
-        PRINTF("WARNING: no area (0.0)\n");
+        // could be all vertex skipped
+        PRINTF("WARNING: no area (0.0) npt:%i vert skipped:%i\n", npt, nSkip);
     }
 
     return FALSE;
 }
 
-static int       _getCentroidClose(guint npt, double *ppt)
+#if 0
+/*
+//static int       _getCentroidClose(guint npt, double *ppt)
+static int       _getCentroidClose(guint npt, pt3 *v)
 // Close Poly - return TRUE and centroid else FALSE
 {
-    //GLdouble ai;
     GLdouble atmp = 0.0;
     GLdouble xtmp = 0.0;
     GLdouble ytmp = 0.0;
-    double  *p    = ppt;
 
     // need 3 pts at least,
     //S57: the last one is the first one (so min 4)
@@ -439,35 +441,57 @@ static int       _getCentroidClose(guint npt, double *ppt)
 
     // projected coordinate are just too big
     // to compute a tiny area
-    double offx = p[0];
-    double offy = p[1];
+    //double offx = p[0];
+    //double offy = p[1];
+    //double offx = v[0].x;
+    //double offy = v[0].y;
 
     // debug
-    if ((p[0] != p[(npt-1) * 3]) || (p[1] != p[((npt-1) * 3)+1])) {
+    //if ((p[0] != p[(npt-1) * 3]) || (p[1] != p[((npt-1) * 3)+1])) {
+    if ((v[0].x!=v[npt-1].x) || (v[0].y!=v[npt-1].y)) {
         PRINTF("WARNING: poly end points doesn't match\n");
         g_assert(0);
         return FALSE;
     }
 
     // compute area
-    for (guint i=0; i<npt-1; ++i) {
-        GLdouble ai = (p[0]-offx) * (p[4]-offy) - (p[3]-offx) * (p[1]-offy);
-        atmp += ai;
-        xtmp += ((p[3]-offx) + (p[0]-offx)) * ai;
-        ytmp += ((p[4]-offy) + (p[1]-offy)) * ai;
+    //for (guint i=1; i<npt-1; ++i) {
+    //    pt3 p1 = v[i-1];
+    //    pt3 p2 = v[i];
+    for (guint i=0, j=npt-1; i<npt; j=i++) {
+        pt3 p1 = v[i];
+        pt3 p2 = v[j];
 
-        p += 3;
+        // same vertex
+        if (p1.x==p2.x && p1.y==p2.y)
+            continue;
+
+        //GLdouble ai = (p[0]-offx) * (p[4]-offy) - (p[3]-offx) * (p[1]-offy);
+        //atmp += ai;
+        //xtmp += ((p[3]-offx) + (p[0]-offx)) * ai;
+        //ytmp += ((p[4]-offy) + (p[1]-offy)) * ai;
+
+        //p += 3;
+
+        GLdouble ai =  p1.x * p2.y - p2.x * p1.y;
+        atmp +=  ai;
+        xtmp += (p2.x + p1.x) * ai;
+        ytmp += (p2.y + p1.y) * ai;
     }
 
     // compute centroid
     if (atmp != 0.0) {
         pt3 pt = {0.0, 0.0, 0.0};
-        pt.x = (xtmp / (3.0 * atmp)) + offx;
-        pt.y = (ytmp / (3.0 * atmp)) + offy;
+        //pt.x = (xtmp / (3.0 * atmp)) + offx;
+        //pt.y = (ytmp / (3.0 * atmp)) + offy;
+
+        pt.x = (xtmp / (3.0 * atmp));
+        pt.y = (ytmp / (3.0 * atmp));
 
         //PRINTF("XY(%s): %f, %f, %i \n", (atmp>=0.0) ? "CCW " : "CW", pt->x, pt->y, npt);
 
-        if (TRUE == S57_isPtInside(npt, ppt, TRUE, pt.x, pt.y)) {
+        //if (TRUE == S57_isPtInside(npt, ppt, TRUE, pt.x, pt.y)) {
+        if (TRUE == S57_isPtInside(npt, (double*)v, TRUE, pt.x, pt.y)) {
             g_array_append_val(_centroids, pt);
             //PRINTF("point is inside polygone\n");
 
@@ -476,10 +500,10 @@ static int       _getCentroidClose(guint npt, double *ppt)
 
         // use heuristique to find centroid
         if (1.0 == S52_MP_get(S52_MAR_DISP_CENTROIDS)) {
-            _findCentInside(npt, (pt3*)ppt);
-
-            return TRUE;
+            //_findCentInside(npt, (pt3*)ppt);
+            return _findCentInside(npt, v);
         }
+        //return TRUE;
 
     } else {
         // FIXME: bizzard case of poly with no area!
@@ -488,30 +512,32 @@ static int       _getCentroidClose(guint npt, double *ppt)
 
     return FALSE;
 }
+*/
+#endif  // 0
 
-static int       _getLODidx(void)
+static int       _getLODidx(char **str)
 {
     if (_SCAMIN <= 4000) {
-        PRINTF("DEBUG: Nav Purp: Berthing(<4,000),     _SCAMIN:%f\n", _SCAMIN);
+        *str = "Berthing(<4,000)";
         return 6;
     }
     if (_SCAMIN <= 22000) {
-        PRINTF("DEBUG: Nav Purp: Harbour(4,000),       _SCAMIN:%f\n", _SCAMIN);
+        *str = "Harbour(4,000)";
         return 5;
     }
     if (_SCAMIN <= 90000) {
-        PRINTF("DEBUG: Nav Purp: Approach(22,000),     _SCAMIN:%f\n", _SCAMIN);
+        *str = "Approach(22,000)";
         return 4;
     }
     if (_SCAMIN <= 350000) {
-        PRINTF("DEBUG: Nav Purp: Coastal(90,000),      _SCAMIN:%f\n", _SCAMIN);
+        *str = "Coastal(90,000)";
         return 3;
     }
     if (_SCAMIN <= 1500000) {
-        PRINTF("DEBUG: Nav Purp: General(350,000),     _SCAMIN:%f\n", _SCAMIN);
+        *str = "General(350,000)";
         return 2;
     } else {
-        PRINTF("DEBUG: Nav Purp: Overview(>1,500,000), _SCAMIN:%f\n", _SCAMIN);
+        *str = "Overview(>1,500,000)";
         return 1;
     }
 }
@@ -519,6 +545,7 @@ static int       _getLODidx(void)
 static int       _computeCentroid(S57_geo *geo)
 // return centroids
 // fill global array _centroid
+// FIXME: this is very expensive for large poly (good test case:CA279037.000, IT zone)
 {
 #ifdef S52_USE_GV
     // FIXME: there is a bug, tesselator fail
@@ -527,7 +554,7 @@ static int       _computeCentroid(S57_geo *geo)
 
     guint   npt = 0;
     double *ppt = NULL;
-    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
     // Note: assume close poly - first == last
@@ -536,8 +563,11 @@ static int       _computeCentroid(S57_geo *geo)
         return FALSE;
     }
 
+
     //PRINTF("DEBUG: _SCAMIN:%f _scalex:%f\n", _SCAMIN, _scalex);
-    _getLODidx();
+    char *str;
+    int idx = _getLODidx(&str);
+    PRINTF("DEBUG:%s _SCAMIN:%f _scalex:%f %i:%s (npt:%i)\n", S57_getName(geo), _SCAMIN, _scalex, idx, str, npt);
 
 
 /*  IHO suggestion - aligned to radar scale
@@ -622,7 +652,8 @@ User bands Navigational
     if ((_pmin.u < x1) && (_pmin.v < y1) && (_pmax.u > x2) && (_pmax.v > y2)) {
         g_array_set_size(_centroids, 0);
 
-        _getCentroidClose(npt, ppt);
+        //_getCentroidClose(npt, (pt3*)ppt);
+        _getCentroid(npt, (pt3*)ppt);
         //_getCentroidClose(nptLOD1, pptLOD1);
         //PRINTF("no clip: %s\n", S57_getName(geo));
 
@@ -711,7 +742,8 @@ User bands Navigational
             for (guint i=0; i<_nvertex->len; ++i) {
                 int npt = g_array_index(_nvertex, int, i);
                 pt3 *p = &g_array_index(_vertexs, pt3, offset);
-                _getCentroidOpen(npt-offset, p);
+                //_getCentroidOpen(npt-offset, p);
+                _getCentroid(npt-offset, p);
                 offset = npt;
             }
         }
@@ -923,7 +955,6 @@ static GLint     _popScaletoPixel(void)
     return TRUE;
 }
 
-//#if 0
 static GLint     _glMatrixDump(int mode)
 // debug
 {
@@ -942,7 +973,6 @@ static GLint     _glMatrixDump(int mode)
 
     return TRUE;
 }
-//#endif  // 0
 
 static GLint     _glMatrixSet(VP vpcoord)
 // push & reset matrix GL_PROJECTION & GL_MODELVIEW
@@ -1562,7 +1592,7 @@ static cIdx _cIdx;
 static cIdx _pixelsRead[8 * 8];  // buffer to collect pixels when in S52_GL_PICK mode
 
 #if 0
-// MSAA experiment does the blending now
+/* MSAA experiment does the blending now
 static int       _setBlend(int blend)
 // TRUE turn on blending if AA
 {
@@ -1588,6 +1618,7 @@ static int       _setBlend(int blend)
 
     return TRUE;
 }
+*/
 #endif  // 0
 
 static int       _glColor4ub(GLubyte r, GLubyte g, GLubyte b, GLubyte a)
@@ -1853,7 +1884,7 @@ static int       _renderSY_silhoutte(S52_obj *obj)
 
     guint     npt = 0;
     GLdouble *ppt = NULL;
-    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
     S52_DListData *DListData = S52_PL_getDListData(obj);
@@ -2090,7 +2121,7 @@ static int       _renderSY_ownshp(S52_obj *obj)
 
     guint     npt    = 0;
     GLdouble *ppt    = NULL;
-    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
     if (0 == S52_PL_cmpCmdParam(obj, "OWNSHP05")) {
@@ -2221,7 +2252,7 @@ static int       _renderSY_vessel(S52_obj *obj)
     GString  *vecstbstr = S57_getAttVal(geo, "vecstb");  // vector stabilize
     GString  *headngstr = S57_getAttVal(geo, "headng");
 
-    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
 #ifdef S52_USE_SYM_AISSEL01
@@ -2410,7 +2441,7 @@ static int       _renderSY_pastrk(S52_obj *obj)
     guint     npt = 0;
     GLdouble *ppt = NULL;
 
-    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
     if (npt < 2)
@@ -2538,7 +2569,7 @@ static int       _renderSY(S52_obj *obj)
 
     guint     npt = 0;
     GLdouble *ppt = NULL;
-    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt)) {
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
         return FALSE;
     }
 
@@ -2614,7 +2645,7 @@ static int       _renderSY(S52_obj *obj)
 
         guint     npt = 0;
         GLdouble *ppt = NULL;
-        if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt)) {
+        if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
             return FALSE;
         }
 
@@ -2817,7 +2848,7 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
 
     GLdouble *ppt = NULL;
     guint     npt = 0;
-    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
     /* debug
@@ -3533,8 +3564,8 @@ static int       _clipToView(double *x1, double *y1, double *x2, double *y2)
     return accept;
 }
 
-int        S52_GL_movePoint(double *x, double *y, double angle, double dist_m)
-// find new point fron X,Y at distance and angle
+static int       _movePoint(double *x, double *y, double angle, double dist_m)
+// find new point from X,Y at distance and angle
 {
     *x -= cos(angle) * dist_m;
     *y -= sin(angle) * dist_m;
@@ -3592,7 +3623,7 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
                 GString *prev_wholin_diststr = S57_getAttVal(geoPrev, "_wholin_dist");
                 if (NULL != prev_wholin_diststr) {
                     double prev_wholin_dist = S52_atof(prev_wholin_diststr->str) * 1852;
-                    S52_GL_movePoint(&x1, &y1, segangRAD + (180.0 * DEG_TO_RAD), prev_wholin_dist);
+                    _movePoint(&x1, &y1, segangRAD + (180.0 * DEG_TO_RAD), prev_wholin_dist);
                 }
 
                 // shorten x2,y2 if there is a next curve
@@ -3601,7 +3632,7 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
                     GString *wholin_diststr = S57_getAttVal(geo, "_wholin_dist");
                     if (NULL != wholin_diststr) {
                         double wholin_dist = S52_atof(wholin_diststr->str) * 1852;
-                        S52_GL_movePoint(&x2, &y2, segangRAD, wholin_dist);
+                        _movePoint(&x2, &y2, segangRAD, wholin_dist);
                     }
 
                 }
@@ -3832,7 +3863,7 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
 
         GLdouble  *ppt       = NULL;
         guint      npt       = 0;
-        if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
+        if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
             return FALSE;
 
         if (NULL!=extradstr && 'Y'==*extradstr->str) {
@@ -3924,7 +3955,7 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
     S57_geo  *geo = S52_PL_getGeo(obj);
     GLdouble *ppt = NULL;
     guint     npt = 0;
-    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt))
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
     S52_DListData *DListData = S52_PL_getDListData(obj);
@@ -4049,7 +4080,6 @@ static int       _renderAP_NODATA_layer0(void)
     if (S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
-    typedef struct {vertex_t x,y;} pt2v;
     pt2v pt0, pt1, pt2, pt3;
 
     // double --> float if GLES2
@@ -6484,7 +6514,7 @@ int        S52_GL_delDL(S52_obj *obj)
 #ifdef S52_USE_RASTER
 S52_GL_ras *S52_GL_newRaster(char *fnameMerc)
 {
-    _real_GL_ras *rr = (_real_GL_ras*)g_new0(_real_GL_ras, 1);
+    _real_GL_ras *rr = g_new0(_real_GL_ras, 1);
 
 #if !defined(S52_USE_RADAR)
     S52_GL_ras *raster = (S52_GL_ras *)rr;
@@ -7050,38 +7080,21 @@ int        S52_GL_getGEOView(double *LLv, double *LLu, double *URv, double *URu)
 
 int        S52_GL_setView(double centerLat, double centerLon, double rangeNM, double north)
 {
-    /*
-    _centerLat = centerLat;
-    _centerLon = centerLon;
-    _rangeNM   = rangeNM;
-    _north     = north;
-    //*/
-
-    //* update local var _view
+    // update local var _view
     _view.cLat  = centerLat;
     _view.cLon  = centerLon;
     _view.rNM   = rangeNM;
     _view.north = north;
-    //*/
 
     return TRUE;
 }
 
 int        S52_GL_getView(double *centerLat, double *centerLon, double *rangeNM, double *north)
 {
-    /*
-    *centerLat = _centerLat;
-    *centerLon = _centerLon;
-    *rangeNM   = _rangeNM;
-    *north     = _north;
-    //*/
-
-    //*
     *centerLat = _view.cLat;
     *centerLon = _view.cLon;
     *rangeNM   = _view.rNM;
     *north     = _view.north;
-    //*/
 
     return TRUE;
 }
@@ -7109,8 +7122,8 @@ int        S52_GL_setViewPort(int x, int y, int width, int height)
 
 int        S52_GL_getViewPort(int *x, int *y, int *width, int *height)
 {
-    //glGetIntegerv(GL_VIEWPORT, _vp);
-    //_checkError("S52_GL_getViewPort()");
+    if (0 == _vp.w == _vp.h)
+        return FALSE;
 
     *x      = _vp.x;
     *y      = _vp.y;
@@ -7387,7 +7400,7 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         PRINTF("papszMetadata[%i] = %s\n", i, papszMetadata[i]);
         ++i;
     }
-    //if( CSLFetchBoolean( papszMetadata, GDAL_DCAP_CREATE, FALSE ) )
+    //if ( CSLFetchBoolean( papszMetadata, GDAL_DCAP_CREATE, FALSE ) )
     */
 
 #ifdef S52_USE_ANDROID
@@ -7468,8 +7481,8 @@ int        S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *s
     // scale offset
     //double uoffs  = ((PICA * *offset_x) / _dotpitch_mm_x) * _scalex;
     //double voffs  = ((PICA * *offset_y) / _dotpitch_mm_y) * _scaley;
-    double uoffs  = ((PICA * *offset_x) / S52_MP_get(S52_MAR_DOTPITCH_MM_X)) * _scalex;
-    double voffs  = ((PICA * *offset_y) / S52_MP_get(S52_MAR_DOTPITCH_MM_Y)) * _scaley;
+    double uoffs = ((PICA * *offset_x) / S52_MP_get(S52_MAR_DOTPITCH_MM_X)) * _scalex;
+    double voffs = ((PICA * *offset_y) / S52_MP_get(S52_MAR_DOTPITCH_MM_Y)) * _scaley;
 
     *offset_x = uoffs;
     *offset_y = voffs;
@@ -7581,9 +7594,9 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
     GLdouble *pptB = NULL;
     guint     nptB = 0;
 
-    if (FALSE==S57_getGeoData(geoA, 0, &nptA, &pptA))
+    if (FALSE == S57_getGeoData(geoA, 0, &nptA, &pptA))
         return FALSE;
-    if (FALSE==S57_getGeoData(geoB, 0, &nptB, &pptB))
+    if (FALSE == S57_getGeoData(geoB, 0, &nptB, &pptB))
         return FALSE;
     if (0.0 == wholinDist)
         return FALSE;
@@ -7709,6 +7722,7 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
 }
 
 #if 0
+/*
 int        S52_GL_drawArc(S52_obj *objA, S52_obj *objB)
 {
     return_if_null(objA);
@@ -7772,6 +7786,7 @@ int              _intersectLINES(double x1, double y1, double x2, double y2,
 
     return TRUE;
 }
+*/
 #endif  // 0
 
 int        S52_GL_isHazard(int nxyz, double *xyz)
