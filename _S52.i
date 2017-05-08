@@ -1382,6 +1382,7 @@ static DBusHandlerResult   _dbus_newMarObj          (DBusConnection *dbus, DBusM
 }
 
 #if 0
+/*
 static DBusHandlerResult   _dbus_signal_draw        (DBusConnection *dbus, DBusMessage *message, void *user_data)
 {
     DBusMessage*    reply;
@@ -1456,19 +1457,18 @@ static DBusHandlerResult   _dbus_signal_drawLast    (DBusConnection *dbus, DBusM
     }
     return DBUS_HANDLER_RESULT_HANDLED;
 
-    /*
     // -- reply --
 
     // create a reply from the message
-    reply = dbus_message_new_method_return(message);
+    //reply = dbus_message_new_method_return(message);
 
     // add the arguments to the reply
-    dbus_message_iter_init_append(reply, &args);
+    //dbus_message_iter_init_append(reply, &args);
 
-    return _sendDBusMessage(dbus, reply);
-    */
+    //return _sendDBusMessage(dbus, reply);
 }
-#endif
+*/
+#endif  // 0
 
 static DBusHandlerResult   _dbus_setVESSELstate     (DBusConnection *dbus, DBusMessage *message, void *user_data)
 {
