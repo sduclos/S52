@@ -257,15 +257,197 @@ static double _MARparamVal[] = {
     51.0      // number of parameter type
 };
 
-double S52_MP_get(S52MarinerParameter param)
+static double     _validate_bool(double val)
+{
+    val = (val==0.0)? 0.0 : 1.0;
+
+    PRINTF("NOTE: toggle to: %s\n", (val==0.0)? "OFF" : "ON");
+
+    return val;
+}
+
+static double     _validate_meter(double val)
+{
+    PRINTF("NOTE: Meter: %f\n", val);
+
+    return val;
+}
+
+static double     _validate_nm(double val)
+{
+    if (val < 0.0) val = -val;
+
+    PRINTF("NOTE: Nautical Mile: %f\n", val);
+
+    return val;
+}
+
+static double     _validate_min(double val)
+{
+
+    if (val < 0.0) {
+        PRINTF("WARNING: time negatif, reset to 0.0: %f\n", val);
+        val = 0.0;
+    }
+
+    PRINTF("NOTE: Minute: %f\n", val);
+
+    return val;
+}
+
+static double     _validate_int(double val)
+{
+    int val_int = (int) val;
+
+    return (double)val_int;
+}
+
+static double     _validate_disp(double val)
+{
+    int crntMask = (int) S52_MP_get(S52_MAR_DISP_CATEGORY);
+    int newMask  = (int) val;
+    int maxMask  =
+        S52_MAR_DISP_CATEGORY_BASE   +
+        S52_MAR_DISP_CATEGORY_STD    +
+        S52_MAR_DISP_CATEGORY_OTHER  +
+        S52_MAR_DISP_CATEGORY_SELECT;
+
+    if (newMask < S52_MAR_DISP_CATEGORY_BASE || newMask > maxMask) {
+        PRINTF("WARNING: ignoring category value (%i)\n", newMask);
+        return crntMask;
+    }
+
+    // check if the newMask has one of possible bit
+    if (!(0 == newMask)                           &&
+        !(S52_MAR_DISP_CATEGORY_BASE   & newMask) &&
+        !(S52_MAR_DISP_CATEGORY_STD    & newMask) &&
+        !(S52_MAR_DISP_CATEGORY_OTHER  & newMask) &&
+        !(S52_MAR_DISP_CATEGORY_SELECT & newMask) ) {
+
+        PRINTF("WARNING: ignoring category value (%i)\n", newMask);
+
+        return crntMask;
+    }
+
+    PRINTF("DEBUG: Display Priority before: crntMask:0x%x, newMask:0x%x)\n", crntMask, newMask);
+
+    if (crntMask  & newMask)
+        crntMask -= newMask;
+    else
+        crntMask += newMask;
+
+    PRINTF("DEBUG: Display Priority after : crntMask:0x%x, newMask:0x%x)\n", crntMask, newMask);
+
+    return (double)crntMask;
+}
+
+static double     _validate_mar(double val)
+// S52_MAR_DISP_LAYER_LAST  - MARINERS' CATEGORY (drawn on top - last)
+{
+    int crntMask = (int) S52_MP_get(S52_MAR_DISP_LAYER_LAST);
+    int newMask  = (int) val;
+    int maxMask  =
+        S52_MAR_DISP_LAYER_LAST_NONE  +
+        S52_MAR_DISP_LAYER_LAST_STD   +
+        S52_MAR_DISP_LAYER_LAST_OTHER +
+        S52_MAR_DISP_LAYER_LAST_SELECT;
+
+    if (newMask < S52_MAR_DISP_LAYER_LAST_NONE || newMask > maxMask) {
+        PRINTF("WARNING: ignoring mariners' value (%i)\n", newMask);
+        return crntMask;
+    }
+
+    if (!(S52_MAR_DISP_LAYER_LAST_NONE   & newMask) &&
+        !(S52_MAR_DISP_LAYER_LAST_STD    & newMask) &&
+        !(S52_MAR_DISP_LAYER_LAST_OTHER  & newMask) &&
+        !(S52_MAR_DISP_LAYER_LAST_SELECT & newMask) ) {
+
+        PRINTF("WARNING: ignoring mariners' value (%i)\n", newMask);
+
+        return crntMask;
+    }
+
+    if (newMask & crntMask) {
+        //crntMask &= ~newMask;
+        crntMask -= newMask;
+    } else
+        crntMask += newMask;
+
+    return (double)crntMask;
+}
+
+static double     _validate_deg(double val)
+{
+    // AIS a value of 360 mean heading course unknown
+    //if (val < 0.0 || 360.0 <= val) {
+    if (val < 0.0 || 360.0 <= val) {
+        PRINTF("WARNING: degree out of bound [0.0 .. 360.0[, reset to 0.0: %f\n", val);
+        val = 0.0;
+    }
+
+    return val;
+}
+
+static double     _validate_filter(double mask)
+{
+    int crntMask = (int) S52_MP_get(S52_CMD_WRD_FILTER);
+    int newMask  = (int) mask;
+    int maxMask  =
+        S52_CMD_WRD_FILTER_SY +
+        S52_CMD_WRD_FILTER_LS +
+        S52_CMD_WRD_FILTER_LC +
+        S52_CMD_WRD_FILTER_AC +
+        S52_CMD_WRD_FILTER_AP +
+        S52_CMD_WRD_FILTER_TX;
+
+    if (newMask < S52_CMD_WRD_FILTER_SY || newMask > maxMask) {
+        PRINTF("WARNING: ignoring filter mask (%i)\n", newMask);
+        return crntMask;
+    }
+
+    if (crntMask  & newMask)
+        crntMask -= newMask;
+    else
+        crntMask += newMask;
+
+#ifdef S52_DEBUG
+    PRINTF("DEBUG: Command Word Filter State:\n");
+    PRINTF("DEBUG: S52_CMD_WRD_FILTER_SY:%s\n",(S52_CMD_WRD_FILTER_SY & crntMask) ? "TRUE" : "FALSE");
+    PRINTF("DEBUG: S52_CMD_WRD_FILTER_LS:%s\n",(S52_CMD_WRD_FILTER_LS & crntMask) ? "TRUE" : "FALSE");
+    PRINTF("DEBUG: S52_CMD_WRD_FILTER_LC:%s\n",(S52_CMD_WRD_FILTER_LC & crntMask) ? "TRUE" : "FALSE");
+    PRINTF("DEBUG: S52_CMD_WRD_FILTER_AC:%s\n",(S52_CMD_WRD_FILTER_AC & crntMask) ? "TRUE" : "FALSE");
+    PRINTF("DEBUG: S52_CMD_WRD_FILTER_AP:%s\n",(S52_CMD_WRD_FILTER_AP & crntMask) ? "TRUE" : "FALSE");
+#endif
+
+    return (double)crntMask;
+}
+
+static double     _validate_positive(double val)
+{
+    if (val < 0.0) {
+        val = -val;
+        PRINTF("WARNING: sign change: %f\n", val);
+    }
+
+    return val;
+}
+
+static int        _fixme(S52MarinerParameter paramName)
+{
+    PRINTF("FIXME: S52MarinerParameter %i not implemented\n", paramName);
+
+    return TRUE;
+}
+
+double S52_MP_get(S52MarinerParameter paramID)
 // return Mariner parameter or S52_MAR_ERROR if fail
 // FIXME: check mariner param against groups selection
 {
     //if (param<S52_MAR_ERROR || S52_MAR_NUM<=param) {
-    if (S52_MAR_ERROR<=param && param<S52_MAR_NUM) {
-        return _MARparamVal[param];
+    if (S52_MAR_ERROR<=paramID && paramID<S52_MAR_NUM) {
+        return _MARparamVal[paramID];
     } else {
-        PRINTF("WARNING: param invalid(%f)\n", param);
+        PRINTF("WARNING: param invalid(%f)\n", paramID);
         g_assert(0);
 
         return _MARparamVal[S52_MAR_ERROR];
@@ -273,15 +455,92 @@ double S52_MP_get(S52MarinerParameter param)
 
 }
 
-int    S52_MP_set(S52MarinerParameter param, double val)
+int    S52_MP_set(S52MarinerParameter paramID, double val)
 {
-    //if (param<S52_MAR_ERROR || S52_MAR_NUM<=param) {
-    if (S52_MAR_ERROR<=param && param<S52_MAR_NUM) {
-        _MARparamVal[param] = val;
+    switch (paramID) {
+        case S52_MAR_ERROR               : break;
+        case S52_MAR_SHOW_TEXT           : val = _validate_bool(val);                   break;
+        // _SEABED01->DEPARE01;
+        case S52_MAR_TWO_SHADES          : val = _validate_bool(val);                   break;
+        // DEPCNT02; _SEABED01->DEPARE01; _UDWHAZ03->OBSTRN04, WRECKS02;
+        case S52_MAR_SAFETY_CONTOUR      : val  = _validate_meter(val);                 break;
+        // _SNDFRM02->OBSTRN04, WRECKS02;
+        case S52_MAR_SAFETY_DEPTH        : val = _validate_meter(val);                  break;
+        // _SEABED01->DEPARE01;
+        case S52_MAR_SHALLOW_CONTOUR     : val = _validate_meter(val);                  break;
+        // _SEABED01->DEPARE01;
+        case S52_MAR_DEEP_CONTOUR        : val = _validate_meter(val);                  break;
+        // _SEABED01->DEPARE01;
+        case S52_MAR_SHALLOW_PATTERN     : val = _validate_bool(val);                   break;
+        case S52_MAR_SHIPS_OUTLINE       : val = _validate_bool(val);                   break;
+        case S52_MAR_DISTANCE_TAGS       : val = _validate_nm(val);    _fixme(paramID); break;
+        case S52_MAR_TIME_TAGS           : val = _validate_min(val);   _fixme(paramID); break;
+        case S52_MAR_FULL_SECTORS        : val = _validate_bool(val);                   break;
+        // RESARE02;
+        case S52_MAR_SYMBOLIZED_BND      : val = _validate_bool(val);                   break;
+        case S52_MAR_SYMPLIFIED_PNT      : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_CATEGORY       : val = _validate_disp(val);                   break;
+
+        case S52_MAR_VECPER              : val = _validate_min(val);                    break;
+        case S52_MAR_VECMRK              : val = _validate_int(val);                    break;
+        case S52_MAR_VECSTB              : val = _validate_int(val);                    break;
+
+        case S52_MAR_HEADNG_LINE         : val = _validate_bool(val);                   break;
+        case S52_MAR_BEAM_BRG_NM         : val = _validate_nm(val);                     break;
+
+        case S52_MAR_DISP_GRATICULE      : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_WHOLIN         : val = _validate_int(val);                    break;
+        case S52_MAR_DISP_LEGEND         : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_CALIB          : val = _validate_bool(val);                   break;
+
+        //
+        //---- experimental variables / debug ----
+        //
+        case S52_MAR_FONT_SOUNDG         : val = _fixme(val);                           break;
+        // DEPARE01; DEPCNT02; _DEPVAL01; SLCONS03; _UDWHAZ03;
+        case S52_MAR_DATUM_OFFSET        : val = _validate_meter(val);                  break;
+        case S52_MAR_SCAMIN              : val = _validate_bool(val);                   break;
+        case S52_MAR_ANTIALIAS           : val = _validate_bool(val);                   break;
+        case S52_MAR_QUAPNT01            : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_OVERLAP        : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_LAYER_LAST     : val = _validate_mar (val);                   break;
+
+        case S52_MAR_ROT_BUOY_LIGHT      : val = _validate_deg(val);                    break;
+
+        case S52_MAR_DISP_CRSR_PICK      : val = _validate_int(val);                    break;
+
+        case S52_MAR_DOTPITCH_MM_X       : val = _validate_positive(val);               break;
+        case S52_MAR_DOTPITCH_MM_Y       : val = _validate_positive(val);               break;
+
+        case S52_MAR_DISP_DRGARE_PATTERN : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_NODATA_LAYER   : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_VESSEL_DELAY   : val = _validate_int(val);                    break;
+        case S52_MAR_DISP_AFTERGLOW      : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_CENTROIDS      : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_WORLD          : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_RND_LN_END     : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_VRMEBL_LABEL   : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_RADAR_LAYER    : val = _validate_bool(val);                   break;
+
+        case S52_CMD_WRD_FILTER          : val = _validate_filter(val);                 break;
+
+        case S52_MAR_GUARDZONE_BEAM      : val = _validate_positive(val);               break;
+        case S52_MAR_GUARDZONE_LENGTH    : val = _validate_positive(val);               break;
+        case S52_MAR_GUARDZONE_ALARM     : val = _validate_positive(val);               break;
+
+        case S52_MAR_DISP_HODATA_UNION   : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_SCLBDY_UNION   : val = _validate_bool(val);                   break;
+
+        // allready check
+        default: break;
+    }
+
+    if (S52_MAR_ERROR<=paramID && paramID<S52_MAR_NUM) {
+        _MARparamVal[paramID] = val;
 
         return TRUE;
     } else {
-        PRINTF("WARNING: param invalid(%f)\n", param);
+        PRINTF("WARNING: param invalid(%f)\n", paramID);
         g_assert(0);
 
         return FALSE;
@@ -310,6 +569,8 @@ static unsigned int _textDisp[TEXT_IDX_MAX] = {
 
 int    S52_MP_setTextDisp(unsigned int prioIdx, unsigned int count, unsigned int state)
 {
+    state = _validate_bool(state);
+
     if (TEXT_IDX_MAX <= prioIdx) {
         PRINTF("WARNING: prioIdx out of bound (%i)\n", prioIdx);
         return FALSE;
