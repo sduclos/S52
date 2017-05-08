@@ -24,7 +24,7 @@
 #include "S57ogr.h"     // --
 
 #include "S52utils.h"   // PRINTF()
-#include "ogr_api.h"    // OGR*
+#include "ogr_api.h"    // OGR*()
 
 #include <glib.h>       // GPtrArray
 
@@ -75,18 +75,6 @@ static int        _setAtt(S57_geo *geo, OGRFeatureH hFeature)
             const char *propValue = OGR_F_GetFieldAsString(hFeature, field_index);
 
             S57_setAtt(geo, propName, propValue);
-
-            /* debug
-            if (0 == g_strcmp0(S57_getName(geo), "M_NPUB")) {
-                PRINTF("DEBUG: M_NPUB-%i: %s --> %s\n", field_index, propName, propValue);
-            }
-            if (0 == g_strcmp0(S57_getName(geo), "C_AGGR")) {
-                PRINTF("DEBUG: C_AGGR-%i: %s --> %s\n", field_index, propName, propValue);
-            }
-            if (0 == g_strcmp0(S57_getName(geo), "C_ASSO")) {
-                PRINTF("DEBUG: C_ASSO-%i: %s --> %s\n", field_index, propName, propValue);
-            }
-            */
         }
     }
 
@@ -116,7 +104,7 @@ static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_
     }
 
     if (NULL == loadLayer_cb) {
-        PRINTF("ERROR: should be using default S52_loadLayer() callback\n");
+        PRINTF("ERROR: should be using default S52_loadLayer_cb() callback\n");
         g_assert(0);
         return FALSE;
     }
@@ -462,10 +450,7 @@ S57_geo       *S57_ogrLoadObject(const char *objname, void *feature)
     if (NULL == geo)
         return NULL;
 
-    // FIXME: world has no name!
-    //if (0 != g_strcmp0(WORLD_BASENM, objname)) {
-        S57_setName(geo, objname);
-    //}
+    S57_setName(geo, objname);
 
     _setAtt(geo, feature);
 
