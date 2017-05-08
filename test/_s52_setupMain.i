@@ -118,20 +118,22 @@ static int _s52_setupMain(void)
     // GDAL debug info ON
     //g_setenv("CPL_DEBUG", "ON", 1);
 
-    /* read cell location from s52.cfg
+    //* read cell location from s52.cfg
     if (FALSE == S52_loadCell(NULL, NULL)) {
         LOGI("_s52_setupMain(): loadCell fail\n");
         return FALSE;
     }
     //*/
 
-    //* S-64 ENC
+    // S-64 ENC
     //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/ENC_ROOT/GB4X0000.000", NULL);
-    S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/ENC_ROOT/GB5X01NE.000", NULL);
+    //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/ENC_ROOT/GB5X01NE.000", NULL);
     //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/ENC_ROOT/GB5X01NW.000", NULL);
     //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/ENC_ROOT/GB5X01SE.000", NULL);
     //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/ENC_ROOT/GB5X01SW.000", NULL);
-    //*/
+
+    // S-64 POLAR ENC
+    //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/S-64_e3.0.0/S-64_e3.0.0_ENC_Unencrypted_TDS_Dec_2014/POLAR_ENC_ROOT/AA1NPOL3.000", NULL);
 
     // debug anti-meridian
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US5HA06M/US5HA06M.000", NULL);
@@ -139,9 +141,6 @@ static int _s52_setupMain(void)
 
     // Rimouski
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA579041.000", NULL);
-
-    // load PLib in s52.cfg
-    //S52_loadPLib(NULL);
 
     // Estuaire du St-Laurent
     //S52_loadCell("/home/sduclos/dev/gis/S57/riki-ais/ENC_ROOT/CA279037.000", NULL);
