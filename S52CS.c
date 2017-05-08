@@ -1192,8 +1192,8 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
     return least_depth;
 }
 
-//*
 #if 0
+/*
 static double   _DEPVAL02(S57_geo *geo, double least_depth)
 // PLib-4.0 draft
 // Remarks: If the value of the attribute VALSOU for a wreck, rock or obstruction is
@@ -1217,8 +1217,8 @@ static double   _DEPVAL02(S57_geo *geo, double least_depth)
 
     return _DEPVAL01(geo, least_depth);
 }
+*/
 #endif  // 0
-//*/
 
 static GString *LEGLIN02 (S57_geo *geo)
 // Remarks: The course of a leg is given by its start and end point. Therefore this
@@ -2923,7 +2923,7 @@ static GString *SOUNDG02 (S57_geo *geo)
         return NULL;
     }
 
-    if (FALSE==S57_getGeoData(geo, 0, &npt, &ppt)) {
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
         PRINTF("WARNING: invalid object type (not POINT_T)\n");
         g_assert(0);
         return NULL;
@@ -3798,50 +3798,6 @@ static GString *QUESMRK1 (S57_geo *geo)
     return err;
 }
 
-//*
-#if 0
-
-Mariner Parameter           used in CS (via CS)
-
-S52_MAR_DEEP_CONTOUR        _SEABED01(via DEPARE01);
-S52_MAR_SAFETY_CONTOUR      DEPCNT02; _SEABED01(via DEPARE01); _UDWHAZ03(via OBSTRN04, WRECKS02);
-S52_MAR_SAFETY_DEPTH        _SNDFRM02(via OBSTRN04, WRECKS02);
-S52_MAR_SHALLOW_CONTOUR     _SEABED01(via DEPARE01);
-S52_MAR_SHALLOW_PATTERN     _SEABED01(via DEPARE01);
-S52_MAR_SYMBOLIZED_BND      RESARE02;
-S52_MAR_TWO_SHADES          _SEABED01(via DEPARE01);
-
-// not implemented
-S52_MAR_DISTANCE_TAGS       LEGLIN02;
-S52_MAR_TIME_TAGS           ?
-
-
-//CS          called by S57 objects
-DEPARE01  <-  DEPARE DRGARE
-DEPARE02  <-  ????
-DEPARE03  <-  DEPARE DRGARE
-
-DEPCNT02  <-  DEPARE DEPCNT
-DEPCNT03  <-  DEPARE DEPCNT
-
-LIGHTS05  <-  LIGHTS
-OBSTRN04  <-  OBSTRN UWTROC
-RESARE02  <-  RESARE
-WRECKS02  <-  WRECKS
-
-
-//-----------------------------------
-S57_getTouch() is called by:
-
-DEPCNT02
-_DEPVAL01 <-  OBSTRN04, WRECKS02
-LIGHTS05
-TOPMAR01
-_UDWHAZ03 <-  OBSTRN04, WRECKS02
-
-#endif  // 0
-
-
 //--------------------------------
 //
 // JUMP TABLE SECTION
@@ -3892,9 +3848,49 @@ S52_CS_condSymb S52_CS_condTable[] = {
    {"########", NULL}
 };
 
-//*
+
 #if 0
- PLib 4.0 draft CS   PLib 3.1
+/*
+Mariner Parameter           used in CS (via CS)
+
+S52_MAR_DEEP_CONTOUR        _SEABED01(via DEPARE01);
+S52_MAR_SAFETY_CONTOUR      DEPCNT02; _SEABED01(via DEPARE01); _UDWHAZ03(via OBSTRN04, WRECKS02);
+S52_MAR_SAFETY_DEPTH        _SNDFRM02(via OBSTRN04, WRECKS02);
+S52_MAR_SHALLOW_CONTOUR     _SEABED01(via DEPARE01);
+S52_MAR_SHALLOW_PATTERN     _SEABED01(via DEPARE01);
+S52_MAR_SYMBOLIZED_BND      RESARE02;
+S52_MAR_TWO_SHADES          _SEABED01(via DEPARE01);
+
+// not implemented
+S52_MAR_DISTANCE_TAGS       LEGLIN02;
+S52_MAR_TIME_TAGS           ?
+
+
+//CS          called by S57 objects
+DEPARE01  <-  DEPARE DRGARE
+DEPARE02  <-  ????
+DEPARE03  <-  DEPARE DRGARE
+
+DEPCNT02  <-  DEPARE DEPCNT
+DEPCNT03  <-  DEPARE DEPCNT
+
+LIGHTS05  <-  LIGHTS
+OBSTRN04  <-  OBSTRN UWTROC
+RESARE02  <-  RESARE
+WRECKS02  <-  WRECKS
+
+
+//-----------------------------------
+S57_getTouch() is called by:
+
+DEPCNT02
+_DEPVAL01 <-  OBSTRN04, WRECKS02
+LIGHTS05
+TOPMAR01
+_UDWHAZ03 <-  OBSTRN04, WRECKS02
+
+
+PLib 4.0 draft CS   PLib 3.1
 DEPVAL02               _DEPVAL01
 LITDSN02               _LITDSN01
 RESCSP02               _RESCSP01
@@ -3902,11 +3898,9 @@ SAFCON01               _SAFCON01
 SEABED01               _SEABED01
 SNDFRM04               _SNDFRM03
 UDWHAZ05               _UDWHAZ05
-//*/
 
 //   {"SYMINS02", SYMINS02},   // PLib 4.0 draft:
 
-//*
  PLib 4.0 draft: share Sub-Procedure
 
 S-57 Object(Geometry) CSP name    Sub-Procedure name
@@ -3951,6 +3945,5 @@ SOUNDG(p)            SOUNDGnn     SNDFRMnn
 
 WRECKS(pa)           WRECKSnn     DEPVALnn QUAPNTnn SNDFRMnn UDWHAZnn
 
-//*/
+*/
 #endif  // 0
-
