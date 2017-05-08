@@ -72,7 +72,7 @@ static int _s52_updFakeAIS(double cLat, double cLon)
         hdg = (hdg >= 359.0) ? 0.0 : hdg+1;  // fake rotating hdg
 
         g_get_current_time(&now);
-        g_sprintf(str, "%s %lis", VESSELLABEL, now.tv_sec);
+        g_sprintf(str, "%s %lis", VESSEL_LABEL, now.tv_sec);
         S52_setVESSELlabel(_vessel_ais, str);
         S52_pushPosition(_vessel_ais, cLat - 0.01, cLon + 0.01, hdg);
         S52_setVector(_vessel_ais, 1, hdg, 16.0);   // ground
