@@ -79,8 +79,8 @@ int      S52_atoi(CCHAR *str);
 double   S52_atof(CCHAR *str);
 
 // debug
+#define  _g_new0(s,n)  (s*)S52_utils_new0(sizeof(s), n)
 char    *S52_utils_new0(size_t sz, int n);
-#define _g_new0(s,n)  (s*)S52_utils_new0(sizeof(s), n)
 
 
 
