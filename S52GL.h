@@ -29,7 +29,7 @@
 #include "S52.h"     // S52_RADAR_cb
 #endif
 
-#include "S52PL.h"	 // S52_obj (will pull S57data.h:ObjExt_t a different extent struct)
+#include "S52PL.h"	 // S52_obj (will pull S57data.h:ObjExt_t extent struct def)
 #include "S57data.h" // ObjExt_t
 
 #include <glib.h>    // guchar, guint
@@ -133,9 +133,8 @@ char *S52_GL_getNameObjPick(void);
 int   S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str);
 
 int   S52_GL_drawGraticule(void);
-int   S52_GL_movePoint(double *x, double *y, double angle, double dist_m);
 
-int   S52_GL_isHazard(int nxyz, double *xyz);
+int   S52_GL_isHazard(int nxyz, geocoord *xyz);
 
 // -------- GLU ------------
 // helper for CS DATCVR01 -
