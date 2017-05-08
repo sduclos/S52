@@ -4,6 +4,25 @@
 #
 
 
+2017MAY07
+- mod aggregate all point struct in S57data.h
+
+2017MAY06
+- refactor to Hash S52_obj list
+- refactor S52_obj Aux Info to struct
+
+2017MAY04
+- refactor validation of user Mariners Parameter
+
+2017MAY03
+- mod refactor to _getCentroid() former ..Open/..Close
+
+2017MAY02
+- mod rename S52_GL_movePoint() to local func _movePoint()
+- fix typo reslove to resolve
+- mod lengend extract to struct
+- mod lineOverlap global
+
 2017MAY01
 - mod refactor renderBin traversal
 - mod rename def cchar to CCHAR
