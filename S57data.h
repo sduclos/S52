@@ -77,9 +77,23 @@ typedef struct ObjExt_t {
     double N;        // UR - y2
 } ObjExt_t;
 
-typedef double geocoord;
 typedef struct _S57_geo  S57_geo;
 typedef struct _S57_prim S57_prim;
+
+typedef double geocoord;
+
+// GLES2 need float vertex
+#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
+typedef float  vertex_t;  // vertex coord type
+#else
+typedef double vertex_t;
+#endif
+
+// move all vertex def here (rather than every where in the code)
+typedef struct _pt2  { double   x,y;   } pt2;  // used in all files
+typedef struct _pt2v { vertex_t x,y;   } pt2v; // used in _renderAP_NODATA_layer0(
+typedef struct _pt3  { double   x,y,z; } pt3;  // used in all files
+typedef struct _pt3v { vertex_t x,y,z; } pt3v; // used in all files
 
 int       S57_doneData(S57_geo *geo, gpointer user_data);
 
@@ -120,12 +134,6 @@ S57_geo  *S57_donePrimGeo(S57_geo  *geo);
 int       S57_begPrim    (S57_prim *prim, int mode);
 int       S57_endPrim    (S57_prim *prim);
 
-// GLES2 need float vertex
-#if (defined(S52_USE_GL2) || defined(S52_USE_GLES2))
-typedef float  vertex_t;  // vertex coord type
-#else
-typedef double vertex_t;
-#endif
 int       S57_addPrimVertex(S57_prim *prim, vertex_t *ptr);
 
 S57_prim *S57_getPrimGeo   (S57_geo  *geo);
@@ -170,9 +178,9 @@ S57_geo  *S57_getRelationship(S57_geo *geo);
 
 #if 0
 // count the number of 'real (6length)' attributes
-int       S57_getNumAtt(S57_geo *geo);
+//int       S57_getNumAtt(S57_geo *geo);
 // return the 'real' attributes of the geodata. name and val must be preallocated, and be sufficient large. (use S57_getNumAtt for counting)
-int       S57_getAttributes(S57_geo *geo, char **name, char **val);
+//int       S57_getAttributes(S57_geo *geo, char **name, char **val);
 // returns the window boundary with the current projection. After  the geo2prj and initproj have been public, this function may be moved to application layer.
 //void    S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax);
 #endif
@@ -189,11 +197,12 @@ int       S57_donePROJ();
 int       S57_setMercPrj(double lat, double lon);
 GCPTR     S57_getPrjStr(void);
 projXY    S57_prj2geo(projUV uv);
-int       S57_geo2prj3dv(guint npt, double *data);
+//int       S57_geo2prj3dv(guint npt, geocoord *data);
+int       S57_geo2prj3dv(guint npt, pt3 *data);
 int       S57_geo2prj(S57_geo *geo);
 #endif  // S52_USE_PROJ
 
-int       S57_isPtInside(int npt, double *xyz, gboolean close, double x, double y);
+int       S57_isPtInside(int npt, geocoord *xyz, gboolean close, double x, double y);
 int       S57_touch(S57_geo *geoA, S57_geo *geoB);
 
 guint     S57_getGeoSize(S57_geo *geo);
