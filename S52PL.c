@@ -209,12 +209,6 @@ typedef struct _cmdWL {
 
     _cmdDef        cmd;      // command word definition or conditional symb func call
 
-/*
-#ifdef S52_USE_FREETYPE_GL
-    guint          vboID;    // ID if the OpenGL VBO text
-    guint          len;      // VBO text length
-#endif
-//*/
     guchar         crntPal;  // optimisation: this 'cmd' is setup for 'palette N' colors
 
     struct _cmdWL *next;
@@ -298,6 +292,25 @@ typedef enum _table_t {
     TBL_NUM         // number of Tables
 } _table_t;
 
+// Obj Auxiliary Info
+typedef struct _AUX_Info {
+    // Note: this is a general holder for orient/speed depending on
+    // the object type. So it could be for current, ship, AIS, ...
+    gdouble      orient;        // LIGHT angle (after parsing), heading of 'ownshp'
+    gdouble      speed;         // 'ownshp' speed for drawing vertor lenght
+
+    GTimeVal     time;          // store time (use to find age of AIS)
+
+    gboolean     supp;          // display suppression set by user
+
+    // LEGLIN
+    S52_obj     *nextLeg;   // link to next leglin (need to draw arc)
+    S52_obj     *prevLeg;   // link to previous leg so that we can clip the start of this leg
+                                // of the amout of wholin dist of the previous leg
+    // WHeel-Over-LINe
+    //S52_obj     *wholin;    // link to wholin obj
+} _AUX_Info;
+
 typedef struct _S52_obj {
     S57_geo     *geo;           // Note: must be the first member for S52PLGETGEO(S52OBJ)
 
@@ -321,27 +334,7 @@ typedef struct _S52_obj {
     int          prioOveride;   // CS overide display priority
     _prios       oPrios;
 
-    //S57_geo     *geo;           // S-57
-
-    // --- Auxiliary Info --------------------------------
-    // FIXME: make that a struct
-
-    // Note: this is a general holder for orient/speed depending on
-    // the object type. So it could be for current, ship, AIS, ...
-    gdouble      orient;        // LIGHT angle (after parsing), heading of 'ownshp'
-    gdouble      speed;         // 'ownshp' speed for drawing vertor lenght
-
-    GTimeVal     time;          // store time (use to find age of AIS)
-
-    gboolean     supp;          // display suppression set by user
-
-    // LEGLIN
-    //struct _
-        S52_obj *nextLeg;   // link to next leglin (need to draw arc)
-    struct _S52_obj *prevLeg;   // link to previous leg so that we can clip the start of this leg
-                                // of the amout of wholin dist of the previous leg
-    // WHeel-Over-LINe
-    struct _S52_obj *wholin;    // link to wholin obj
+    _AUX_Info    auxInfo;
 } _S52_obj;
 
 // Tables (LUP+symbology) --BBTree holder
@@ -364,7 +357,7 @@ static GTree   *_table[TBL_NUM] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL}
 //#define LNFMT  "%1024[^\n]"   // line format
 #define LNFMT  "%[^\n]"   // line format
 
-#define FIELD(str)    if(0==strncmp(#str, _pBuf, 4))
+#define FIELD(str)    if (0==strncmp(#str, _pBuf, 4))
 
 typedef unsigned char u8;
 
@@ -379,7 +372,7 @@ typedef struct _PL {
 } _PL;
 
 
-#if 0
+/*
 char _S52AuxSymb[] =
 0001    0
 LUPT   34LU01056NIL$CSYMBP00009OSIMPLIFIED
@@ -395,7 +388,7 @@ INST   13SY(SCALEB11)
 DISC   12DISPLAYBASE
 LUCM    611030
 ****    0
-#endif  // 0
+*/
 
 // 1 col: S-52 pslb03_2.pdf 13.4.3
 // 2 col: S-57 name for 'nature of surface' attribute  --NATSUR (113)
@@ -432,7 +425,8 @@ static const char *natsur[] = {
 // BBTree! (check cost of rebalancing overhead)
 //
 
-static GPtrArray    *_objList = NULL;
+//static GPtrArray    *_objList = NULL;
+static GHashTable    *_objHash = NULL;
 
 
 
@@ -443,6 +437,7 @@ static GPtrArray    *_objList = NULL;
 //------------------------
 
 #if 0
+/*
 static int        _readS52Line(_PL *fp, char *buf)
 // copy a line from fp into buf return number of
 // char in buf or -1 on EOF. buf is null/null terminated.
@@ -479,6 +474,7 @@ static int        _readS52Line(_PL *fp, char *buf)
 
    return len;
 }
+*/
 #endif
 
 static int        _readS52Line(_PL *fp, char *buf)
@@ -1110,7 +1106,7 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
     return TRUE;
 }
 
-void        S52_PL_resloveSMB(_S52_obj *obj, gpointer dummy)
+void        S52_PL_resolveSMB(_S52_obj *obj, gpointer dummy)
 {
     (void)dummy;
 
@@ -1158,8 +1154,8 @@ static S52_Color *_parseCol(char c, char *colRef)
 
 {
 
-    while(*colRef != '\0'){
-        if( *colRef == c)
+    while (*colRef != '\0'){
+        if (*colRef == c)
             break;
         //else
         colRef+=6;
@@ -1379,6 +1375,7 @@ static _colTable *_findColTbl(const char *tblName)
 
 static int        _cms_xyL2rgb(S52_Color *c);  // forward decl
 #if 0
+/*
 static int        _readColor(_PL *fp)
 {
 
@@ -1436,7 +1433,8 @@ static int        _readColor(_PL *fp)
         _readS52Line(fp, _pBuf);
     }
 }
-#endif
+*/
+#endif  // 0
 
 static int        _readColor(_PL *fp, GArray *colors)
 {
@@ -2429,7 +2427,7 @@ static int        _cms_init()
 
     /*  experiment
     static int gam_sRGB(double v) {
-        if(v<=0.0031308)
+        if (v<=0.0031308)
             v *= 12.92;
         else
             v = 1.055*pow(v,1.0/2.4)-0.055;
@@ -2439,7 +2437,7 @@ static int        _cms_init()
 
     static double inv_gam_sRGB(int ic) {
         double c = ic/255.0;
-        if ( c <= 0.04045 )
+        if (c <= 0.04045)
             return c/12.92;
         else
             return pow(((c+0.055)/(1.055)),2.4);
@@ -2508,7 +2506,7 @@ static int        _cms_xyL2rgb(S52_Color *c)
 
     // sRGB "gamma" function (approx 2.2)
     int gam_sRGB(double v) {
-        if(v<=0.0031308)
+        if (v<=0.0031308)
             v *= 12.92;
         else
             v = 1.055*pow(v,1.0/2.4)-0.055;
@@ -2600,7 +2598,8 @@ int         S52_PL_init()
 
     _loadCondSymb();
 
-    _objList = g_ptr_array_new();
+    //_objList = g_ptr_array_new();
+    _objHash = g_hash_table_new(NULL, NULL);  // g_direct_hash() /  g_direct_equal()
 
     return TRUE;
 }
@@ -2688,8 +2687,10 @@ int         S52_PL_done()
     _cms_done();
 
     // ref only
-    g_ptr_array_free(_objList, TRUE);
-    _objList = NULL;
+    //g_ptr_array_free(_objList, TRUE);
+    //_objList = NULL;
+    g_hash_table_destroy(_objHash);
+    _objHash = NULL;
 
     _initPLib = TRUE;
 
@@ -2714,18 +2715,7 @@ static S52_Color *_getColorAt(guchar index)
         return NULL;
     }
 
-    unsigned int n = (unsigned int) S52_MP_get(S52_MAR_COLOR_PALETTE);
-
-    // this has allready taken care off
-    // but left for safety
-    // FIXME: delete this code
-    /*
-    if (n > _colTables->len-1) {
-        PRINTF("ERROR: S52_MAR_COLOR_PALETTE out of range\n");
-        g_assert(0);
-        return NULL;
-    }
-    */
+    int n = (int) S52_MP_get(S52_MAR_COLOR_PALETTE);
 
     _colTable *ct = &g_array_index(_colTables, _colTable, n);
     if (NULL == ct) {
@@ -2820,7 +2810,18 @@ S52_obj    *S52_PL_newObj(S57_geo *geo)
 
     S52_obj *obj = NULL;
     guint    idx = S57_getS57ID(geo);
+
+    /*
     if (idx<_objList->len && (NULL != (obj = g_ptr_array_index(_objList, idx)))) {
+        S52_PL_delObj(obj, FALSE);
+    } else {
+        obj = g_new0(S52_obj, 1);
+        //S52_obj *obj  = g_try_new0(S52_obj, 1);
+        if (NULL == obj)
+            g_assert(0);
+    }
+    */
+    if (NULL != (obj = g_hash_table_lookup(_objHash, GINT_TO_POINTER(idx)))) {
         S52_PL_delObj(obj, FALSE);
     } else {
         obj = g_new0(S52_obj, 1);
@@ -2841,8 +2842,8 @@ S52_obj    *S52_PL_newObj(S57_geo *geo)
 
 
     // init Aux Info - other than the default (ie g_new0)
-    obj->orient        = INFINITY;
-    obj->speed         = INFINITY;
+    obj->auxInfo.orient        = INFINITY;
+    obj->auxInfo.speed         = INFINITY;
 
     /* init Aux Info - this is the default anyway (ie g_new0)
     obj->time    = 0;
@@ -2865,7 +2866,7 @@ S52_obj    *S52_PL_newObj(S57_geo *geo)
     // FIX: parse alternate first so that normal LUP reference will be the default
     _linkLUP(obj, 0);
 
-
+    /*
     while (idx >= _objList->len) {
         PRINTF("DEBUG: extending _objList size to %u\n", _objList->len+1024);
         // GLib BUG: take gint for length instead of guint - an oversight say Philip Withnall
@@ -2880,6 +2881,9 @@ S52_obj    *S52_PL_newObj(S57_geo *geo)
 
     // write or overwrite
     g_ptr_array_index(_objList, idx) = obj;
+    */
+
+    g_hash_table_insert(_objHash, GINT_TO_POINTER(idx), obj);
 
     return obj;
 }
@@ -2925,7 +2929,8 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean nilAuxInfo)
     // WARNING: note that Aux Info is not touched - still in 'obj'
     //
 
-    S52_obj *objFree = (S52_obj *)g_ptr_array_index(_objList, S57_getS57ID(obj->geo));
+    //S52_obj *objFree = (S52_obj *)g_ptr_array_index(_objList, S57_getS57ID(obj->geo));
+    S52_obj *objFree = (S52_obj *)g_hash_table_lookup(_objHash, GINT_TO_POINTER(S57_getS57ID(obj->geo)));
     if (NULL == objFree) {
         PRINTF("DEBUG: should not be NULL (%u)\n", S57_getS57ID(obj->geo));
         g_assert(0);
@@ -2936,19 +2941,20 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean nilAuxInfo)
     // del aux info
     //if (TRUE == updateObjL) {
     if (TRUE == nilAuxInfo) {
-        obj->orient  = 0.0;
-        obj->speed   = 0.0;
+        obj->auxInfo.orient  = 0.0;
+        obj->auxInfo.speed   = 0.0;
 
         //obj->time    = 0;
 
-        obj->supp    = 0;
+        obj->auxInfo.supp    = 0;
 
-        obj->nextLeg = NULL;
-        obj->prevLeg = NULL;
-        obj->wholin  = NULL;
+        obj->auxInfo.nextLeg = NULL;
+        obj->auxInfo.prevLeg = NULL;
+        //obj->auxInfo.wholin  = NULL;
 
         // nullify obj in array at index
-        g_ptr_array_index(_objList, S57_getS57ID(geo)) = NULL;
+        //g_ptr_array_index(_objList, S57_getS57ID(geo)) = NULL;
+        g_hash_table_remove(_objHash, GINT_TO_POINTER(S57_getS57ID(geo)));
     }
 
     return geo;
@@ -2968,6 +2974,9 @@ const char *S52_PL_getOBCL(_S52_obj *obj)
     } else {
         return obj->LUP->OBCL;
     }
+
+    // ternary trick more cryptic
+    //return (NULL == obj->LUP) ? S57_getName(obj->geo) : obj->LUP->OBCL ;
 }
 
 S52ObjectType S52_PL_getFTYP(_S52_obj *obj)
@@ -3052,7 +3061,6 @@ S52_DisCat  S52_PL_getDISC(_S52_obj *obj)
         return obj->LUP->prios.DISC;
 }
 
-//#if 0
 int         S52_PL_getLUCM(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -3063,8 +3071,8 @@ int         S52_PL_getLUCM(_S52_obj *obj)
     else
         return obj->LUP->prios.LUCM;
 
+    // ternary trick
 }
-//#endif  // 0
 
 S52_RadPrio S52_PL_getRPRI(_S52_obj *obj)
 {
@@ -3073,11 +3081,15 @@ S52_RadPrio S52_PL_getRPRI(_S52_obj *obj)
     //    return S52_RAD_OVER;
     //}
 
-    // initialy oPrios = prios, but might change after CS are resolve
+    /* initialy oPrios = prios, but might change after CS are resolved
     if (TRUE == obj->prioOveride)
         return obj->oPrios.RPRI;
     else
         return obj->LUP->prios.RPRI;
+    */
+
+    // ternary trick
+    return obj->prioOveride ? obj->oPrios.RPRI : obj->LUP->prios.RPRI ;
 }
 
 const char *S52_PL_infoLUP(_S52_obj *obj)
@@ -3115,7 +3127,6 @@ static int        _getAlt(_S52_obj *obj)
         alt = 1;
 
     // use alternate area symbol
-    //if ((S57_AREAS_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
     if ((S57_AREAS_T==S57_getObjtype(obj->geo)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
         alt = 1;
 
@@ -3127,10 +3138,15 @@ const char *S52_PL_getCMDstr(_S52_obj *obj)
 {
     return_if_null(obj);
 
+    //*
     if ((NULL==obj->LUP) || (NULL==obj->LUP->INST))
         return NULL;
 
     return obj->LUP->INST->str;
+    //*/
+
+    // test ternary trick
+    //return obj->LUP ? obj->LUP->INST ? obj->LUP->INST->str : 0 : 0;
 }
 
 S52_CmdWrd  S52_PL_iniCmd(_S52_obj *obj)
@@ -3309,7 +3325,7 @@ int         S52_PL_setSYorient(_S52_obj *obj, double orient)
         orient += 360.0;
 
     if ((0.0<=orient) && (orient<360.0)) {
-        obj->orient = orient;
+        obj->auxInfo.orient = orient;
         return TRUE;
     } else
         return FALSE;
@@ -3324,7 +3340,7 @@ double      S52_PL_getSYorient(_S52_obj *obj)
     //double noOrient =  -1.0;
     //double noOrient = 360.0;
 
-    if (0 != isinf(obj->orient)) { // +inf
+    if (0 != isinf(obj->auxInfo.orient)) { // +inf
         if (NULL != obj->crntA) {
             _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
 
@@ -3339,7 +3355,7 @@ double      S52_PL_getSYorient(_S52_obj *obj)
                     //obj->orient = (NULL==str) ? noOrient : S52_atof(val);
 
                     if (NULL == str)
-                        obj->orient = noOrient;
+                        obj->auxInfo.orient = noOrient;
                     else
                         S52_PL_setSYorient(obj, S52_atof(val));
 
@@ -3347,26 +3363,26 @@ double      S52_PL_getSYorient(_S52_obj *obj)
                     // debug - search for alternative orient, heading, ...
                     GString *orientstr = S57_getAttVal(obj->geo, "ORIENT");
                     if (NULL != orientstr) {
-                        obj->orient = S52_atof(orientstr->str);
-                        PRINTF("DEBUG: %s:ORIENT found(%f)\n", S52_PL_getOBCL(obj), obj->orient);
+                        obj->auxInfo.orient = S52_atof(orientstr->str);
+                        PRINTF("DEBUG: %s:ORIENT found(%f)\n", S52_PL_getOBCL(obj), obj->auxInfo.orient);
                     } else {
                         GString *headngstr = S57_getAttVal(obj->geo, "headng");
                         if (NULL != headngstr) {
-                            obj->orient = S52_atof(headngstr->str);
-                            PRINTF("DEBUG: %s:headng found(%f)\n", S52_PL_getOBCL(obj), obj->orient);
+                            obj->auxInfo.orient = S52_atof(headngstr->str);
+                            PRINTF("DEBUG: %s:headng found(%f)\n", S52_PL_getOBCL(obj), obj->auxInfo.orient);
                         } else {
                             //PRINTF("DEBUG: %s:noOrient found(%f) .. search ???\n", S52_PL_getOBCL(obj), noOrient);
-                            obj->orient = noOrient;
+                            obj->auxInfo.orient = noOrient;
                         }
                     }
                 }
             } else {
                 PRINTF("DEBUG: %s:noOrient found(%f) .. cmd NULL\n", S52_PL_getOBCL(obj), noOrient);
-                obj->orient = noOrient;
+                obj->auxInfo.orient = noOrient;
             }
         } else {
             PRINTF("DEBUG: %s:noOrient found(%f) .. no cmd array\n", S52_PL_getOBCL(obj), noOrient);
-            obj->orient = noOrient;
+            obj->auxInfo.orient = noOrient;
         }
     }
 
@@ -3377,7 +3393,7 @@ double      S52_PL_getSYorient(_S52_obj *obj)
     }
     //*/
 
-    return obj->orient;
+    return obj->auxInfo.orient;
 }
 
 int         S52_PL_getSYbbox(_S52_obj *obj, int *width, int *height)
@@ -3401,6 +3417,7 @@ int         S52_PL_getSYbbox(_S52_obj *obj, int *width, int *height)
 }
 
 #if 0
+/*
 int         S52_PL_setSYspeed(_S52_obj *obj, double speed)
 {
     return_if_null(obj);
@@ -3427,6 +3444,7 @@ int         S52_PL_getSYspeed(_S52_obj *obj, double *speed)
 
     return TRUE;
 }
+*/
 #endif  // 0
 
 int         S52_PL_getLCdata(_S52_obj *obj, double *symlen, char *pen_w)
@@ -3515,7 +3533,6 @@ int         S52_PL_getAPTileDim(_S52_obj *obj, double *w, double *h, double *dx)
         g_assert(0);
         return FALSE;
     }
-
 
     int bbx     = cmd->cmd.def->pos.patt.bbox_x.LBXC;
     int bby     = cmd->cmd.def->pos.patt.bbox_y.LBXR;
@@ -3904,7 +3921,7 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
             }
 
             while (*vecObj->str != ';') {
-                struct {vertex_t x,y,z;} pt3 = {0.0, 0.0, 0.0};
+                pt3v pt3 = {0.0, 0.0, 0.0};
                 pt3.x = S52_atof(vecObj->str);
                 pt3.x -= off_x;
 
@@ -3983,11 +4000,13 @@ GArray     *S52_PL_getVOdata(_S52_vec *vecObj)
 }
 
 #if 0
+/*
 S57_prim   *S52_PL_getVOprim(_S52_vec *vecObj)
 {
     return_if_null(vecObj);
     return vecObj->prim;
 }
+*/
 #endif  // 0
 
 double      S52_PL_getVOradius(_S52_vec *vecObj)
@@ -4225,6 +4244,7 @@ int         S52_PL_hasText(_S52_obj *obj)
 }
 
 #if 0
+/*
 int         S52_PL_hasLC(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -4241,9 +4261,7 @@ int         S52_PL_hasLC(_S52_obj *obj)
     }
     return FALSE;
 }
-#endif  // 0
 
-#if 0
 const char *S52_PL_hasCS(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -4269,6 +4287,7 @@ const char *S52_PL_hasCS(_S52_obj *obj)
 
     return NULL;
 }
+*/
 #endif  // 0
 
 static
@@ -4470,9 +4489,9 @@ gboolean    S52_PL_setSupp(_S52_obj *obj, gboolean supp)
 {
     return_if_null(obj);
 
-    obj->supp = supp;
+    obj->auxInfo.supp = supp;
 
-    return obj->supp;
+    return obj->auxInfo.supp;
 }
 
 gboolean    S52_PL_getSupp(_S52_obj *obj)
@@ -4480,7 +4499,7 @@ gboolean    S52_PL_getSupp(_S52_obj *obj)
     // this test is in the CULL loop
     //return_if_null(obj);
 
-    return obj->supp;
+    return obj->auxInfo.supp;
 }
 
 int         S52_PL_getPivotOffset(_S52_obj *obj, double *offset_x, double *offset_y)
@@ -4535,7 +4554,7 @@ int         S52_PL_getRGB(const char *colorName, unsigned char *R, unsigned char
     return TRUE;
 }
 
-int         S52_PL_getPalTableSz()
+guint       S52_PL_getPalTableSz()
 {
     if (NULL == _colTables) {
         PRINTF("ERROR: unknown colors table\n");
@@ -4570,8 +4589,16 @@ int         S52_PL_setNextLeg(_S52_obj *obj, S52_obj *objNextLeg)
     return_if_null(obj);
     return_if_null(objNextLeg);
 
-    obj->nextLeg = objNextLeg;
-    objNextLeg->prevLeg = obj;
+    /*
+    if ((NULL==obj->auxInfo.nextLeg) || (NULL==objNextLeg->auxInfo.prevLeg)) {
+        PRINTF("DEBUG: logic (%s)\n", S52_PL_getOBCL(obj));
+
+        g_assert(0);
+    }
+    */
+
+    obj->auxInfo.nextLeg = objNextLeg;
+    objNextLeg->auxInfo.prevLeg = obj;
 
     return TRUE;
 }
@@ -4580,23 +4607,30 @@ S52_obj    *S52_PL_getNextLeg(_S52_obj *obj)
 {
     return_if_null(obj);
 
-    return obj->nextLeg;
+    return obj->auxInfo.nextLeg;
 }
 
 S52_obj    *S52_PL_getPrevLeg(_S52_obj *obj)
 {
     return_if_null(obj);
 
-    return obj->prevLeg;
+    return obj->auxInfo.prevLeg;
 }
 
 #if 0
+/*
 S52_obj    *S52_PL_setWholin(_S52_obj *obj)
 {
     return_if_null(obj);
 
     if (NULL != obj->wholin)
         obj->wholin = obj;
+    else {
+        PRINTF("DEBUG: logic bug, wholin in use\n");
+        g_assert(0);
+
+        return FALSE;
+    }
 
     return obj;
 }
@@ -4607,13 +4641,14 @@ S52_obj    *S52_PL_getWholin(_S52_obj *obj)
 
     return obj->wholin;
 }
+*/
 #endif  // 0
 
 int         S52_PL_setTimeNow(_S52_obj *obj)
 {
     return_if_null(obj);
 
-    g_get_current_time(&obj->time);
+    g_get_current_time(&obj->auxInfo.time);
 
     return TRUE;
 }
@@ -4622,7 +4657,7 @@ long        S52_PL_getTimeSec(_S52_obj *obj)
 {
     return_if_null(obj);
 
-    return obj->time.tv_sec;
+    return obj->auxInfo.time.tv_sec;
 }
 
 #ifdef S52_USE_FREETYPE_GL
@@ -4686,7 +4721,8 @@ S52_obj    *S52_PL_isObjValid(unsigned int objH)
         return NULL;
     }
 
-    S52_obj *obj = (S52_obj *)g_ptr_array_index(_objList, objH);
+    //S52_obj *obj = (S52_obj *)g_ptr_array_index(_objList, objH);
+    S52_obj *obj = (S52_obj *)g_hash_table_lookup(_objHash, GINT_TO_POINTER(objH));
     if (NULL == obj) {
         // FIXME: why is this still happenning! AIS!!
         PRINTF("WARNING: objH %i is NULL obj\n", objH);
