@@ -1347,8 +1347,6 @@ static S52ObjectHandle _marfea_point = NULL;
     // debug
     //g_timer_destroy(_timer);
 
-    //g_mem_profile();
-
 #ifdef S52_USE_MESA3D
     // Mesa3D env - remove from env (not stictly needed - env destroy at exit)
     g_unsetenv("vblank_mode");
