@@ -312,7 +312,7 @@ S52_objSupp    S52_PL_getObjSuppState(S52_obj *obj);
 gboolean       S52_PL_setSupp(S52_obj *obj, gboolean supp);
 gboolean       S52_PL_getSupp(S52_obj *obj);
 
-void           S52_PL_resloveSMB(S52_obj *obj, gpointer dummy);
+void           S52_PL_resolveSMB(S52_obj *obj, gpointer dummy);
 // dx/dy between center and pivot
 int            S52_PL_getPivotOffset(S52_obj *obj, double *offset_x, double *offset_y);
 
@@ -324,7 +324,7 @@ int            S52_PL_setNextCN(S52_obj *objA, S52_obj *objB);
 int            S52_PL_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B);
 int            S52_PL_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
 
-int            S52_PL_getPalTableSz();
+guint          S52_PL_getPalTableSz();
 const char    *S52_PL_getPalTableNm(unsigned int idx);
 
 int            S52_PL_setNextLeg(S52_obj *obj, S52_obj *objNextLeg);
