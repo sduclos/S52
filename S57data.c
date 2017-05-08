@@ -55,9 +55,6 @@ static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 // object's internal ID
 static unsigned int _S57ID = 1;  // start at 1, the number of object loaded
 
-typedef struct _pt3 { double x,y,z; } pt3;
-typedef struct _pt2 { double x,y;   } pt2;
-
 // data for glDrawArrays()
 typedef struct _prim {
     int mode;
@@ -379,8 +376,9 @@ projXY     S57_prj2geo(projUV uv)
     return uv;
 }
 
-int        S57_geo2prj3dv(guint npt, double *data)
-// convert to XY 'in-place'
+//int        S57_geo2prj3dv(guint npt, geocoord *data)
+int        S57_geo2prj3dv(guint npt, pt3 *data)
+// convert a vector of lon/lat/z (pt3) to XY(z) 'in-place'
 {
 #ifdef S52_USE_GV
     return TRUE;
@@ -388,7 +386,8 @@ int        S57_geo2prj3dv(guint npt, double *data)
 
     return_if_null(data);
 
-    pt3 *pt = (pt3*)data;
+    //pt3 *pt = (pt3*)data;
+    pt3 *pt = data;
 
     if (TRUE == _doInit) {
         S57_initPROJ();
@@ -531,6 +530,7 @@ S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
 }
 
 #if 0
+/*
 S57_geo   *S57_setMLINE(guint nLineCount, guint *linexyznbr, geocoord **linexyz)
 {
     _S57_geo *geo = g_new0(_S57_geo, 1);
@@ -550,6 +550,7 @@ S57_geo   *S57_setMLINE(guint nLineCount, guint *linexyznbr, geocoord **linexyz)
 
     return geo;
 }
+*/
 #endif  // 0
 
 //S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S57_AW_t origAW)
@@ -941,6 +942,7 @@ int        S57_setExt(_S57_geo *geo, double W, double S, double E, double N)
 }
 
 #if 0
+/*
 int        S57_getExt(_S57_geo *geo, double *W, double *S, double *E, double *N)
 // assume: extent canonical
 {
@@ -973,6 +975,7 @@ int        S57_getExt(_S57_geo *geo, double *W, double *S, double *E, double *N)
 
     return TRUE;
 }
+*/
 #endif  // 0
 
 ObjExt_t   S57_getExt(_S57_geo *geo)
@@ -998,7 +1001,7 @@ S57_Obj_t  S57_getObjtype(_S57_geo *geo)
 }
 
 #if 0
-// return the number of attributes.
+/* return the number of attributes.
 static void   _countItems(GQuark key_id, gpointer data, gpointer user_data)
 {
     const gchar *attName  = g_quark_to_string(key_id);
@@ -1057,6 +1060,7 @@ int        S57_getAttributes(_S57_geo *geo, char **name, char **val)
   //  strcpy(val[tmp.currentIdx], "y");
   return tmp.currentIdx;
 }
+*/
 #endif
 
 GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
@@ -1299,8 +1303,10 @@ int        S57_setRelationship(_S57_geo *geo, _S57_geo *geoRel)
         geo->relation = geoRel;
     } else {
         // FIXME: ENC_ROOT/US3NY21M/US3NY21M.000 has multiple relation for the same object
+        // alse CA379035.000
         PRINTF("WARNING: 'geo->relation' allready in use ..\n");
-        g_assert(0);
+        //g_assert(0);
+
         return FALSE;
     }
 
@@ -1426,6 +1432,7 @@ GCPTR      S57_getAtt(_S57_geo *geo)
 }
 
 #if 0
+/*
 void       S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax)
 {
 
@@ -1458,9 +1465,7 @@ void       S57_getGeoWindowBoundary(double lat, double lng, double scale, int wi
   //S57_donePROJ();
 
 }
-#endif
 
-#if 0
 int        S57_sameChainNode(_S57_geo *geoA, _S57_geo *geoB)
 {
 
@@ -1474,22 +1479,20 @@ int        S57_sameChainNode(_S57_geo *geoA, _S57_geo *geoB)
 
     // FIXME: what if a chain-node has the same point
     // at both end of the chain!!
-    /*
-    if ((pb->x == bend->x) && (pb->y == bend->y))
-        g_assert(0);
+    //if ((pb->x == bend->x) && (pb->y == bend->y))
+    //    g_assert(0);
 
     // first point match
-    if ((pa->x == pb->x) && (pa->y == pb->y))
-        reverse = FALSE;
-    else {
+    //if ((pa->x == pb->x) && (pa->y == pb->y))
+    //    reverse = FALSE;
+    //else {
         // last point match
-        if ((pa->x == bend->x) && (pa->y == bend->y))
-            reverse = TRUE;
-        else
+    //    if ((pa->x == bend->x) && (pa->y == bend->y))
+    //        reverse = TRUE;
+    //    else
             //no match
-            return FALSE;
-    }
-    */
+    //        return FALSE;
+    //}
 
     // can't be the same if not same lenght
     if (geoA->linexyznbr != geoB->linexyznbr)
@@ -1531,7 +1534,8 @@ int        S57_sameChainNode(_S57_geo *geoA, _S57_geo *geoB)
 
     return FALSE;
 }
-#endif
+*/
+#endif  // 0
 
 #ifdef S52_USE_WORLD
 S57_geo   *S57_setNextPoly(_S57_geo *geo, _S57_geo *nextPoly)
