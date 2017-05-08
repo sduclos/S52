@@ -371,7 +371,10 @@ double   S52_atof(CCHAR *str)
 }
 
 char *S52_utils_new0(size_t sz, int n)
-// debug
+// debug - tally heap mem
+//
+// idea: - draw pixels to represent each mem bloc (sz*n)
+//       - then hightlight pixels when blocs are accessed (read/write)
 {
     char *ptr = g_malloc0(sz*n);
 
