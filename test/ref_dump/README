@@ -27,18 +27,76 @@ Record OpenGL call
 GIMP:
 -----
 
-0 - S52_dumpS57IDPixels() or ALT-prtScr to dump window
+0 - S52_dumpS57IDPixels() or ALT-prtScr to dump window for two screenshot
 
-1 - open, in GIMP, as layers dump & ref dump
+1 - open, in GIMP, as layers
 
 2 - in layers mode selecte: Difference
 
-3 - optionally, use mask to endence remaining pixels
+3 - optionally, use mask to enhance remaining pixels
 
 
 S-64:
 -----
 
-1 - ENC_TDS_PLOTS: various screenshot of S64 ENC
+1 - ENC_TDS_PLOTS: screen capture of S64 ENC (TDS: Test Data Set)
 
-2 - ENC: S-64/2.1.1 Power Up/ENC_ROOT/
+    PLOTS SETUP (extracted from ENC_TDS_Plots NOV 2007)
+
+    - plots 1:
+        Displaybase
+        1:20 000
+        Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
+        Plain boundaries, Simplified symbols, Multicolour
+        ENC from "S57Edition 3.1\goodb1": GB4X0000, GB5X01NW, GB5X01NE, GB5X01SW, GB5X01SE, GB5X02SE
+
+    - plots 2:
+        Standard display & Additional information available
+        1:20 000
+        Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
+        Symbolised boundaries, Simplified symbols, Multicolour
+        ENC from "S57Edition 3.1\goodb1": GB4X0000, GB5X01NW, GB5X01NE, GB5X01SW, GB5X01SE, GB5X02SE
+
+    - plots 3:
+        Standard (no chart data coverage, no buoys and beacons) &
+        Other display (no text, no additional information available, no information about chart data)
+        1:20 000
+        Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
+        Plain boundaries, Simplified symbols, Multicolour
+        ENC from "S57Edition 3.1\goodb1": GB4X0000, GB5X01NW, GB5X01SW, GB5X01SE, GB5X02SE
+        Non ENC from "S57Edition 3.1\nonoffb1": 1B5X01NE
+
+    - plots 4:
+        Standard & Other display (no text, no additional information available)
+        1:50 000
+        Shallow 5 m, Safety contour 10 m, Deep contour 20 m, Safety depth 7 m
+        Plain boundaries, Simplified symbols, Multicolour
+        ENC from "S57Edition 3.1\goodb1": GB4X0000
+
+    - plots 5:
+        Standard & All text (no Nature of seabed) & Soundings & Services and Small craft facilities
+        Safety contour labels
+        1:20 000
+        Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
+        Plain boundaries, Paper Chart symbols, Multicolour
+        ENC from "S57Edition 3.1\goodb1": GB4X0000, GB5X01NW, GB5X01SW, GB5X01SE, GB5X02SE
+        ENC from "S57Edition 3.1\invbase": GB5X01NE
+        ENC updates from "S57Edition 3.1\goodu1": GB5X01SW.001, .002, .003, .004, .005
+        Date dependent: "system date" set as: 5. May 2005. Manual updates added
+
+    - plots 6:
+        Standard & All text (no Nature of seabed) & Soundings & Services and Small craft facilities
+        Safety contour labels
+        1:20 000
+        Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
+        Symbolized boundaries, Simplified symbols, Multicolour
+        ENC from "S57Edition 3.1\goodb1": GB4X0000, GB5X01NW, GB5X01SE, GB5X02SE
+        ENC from "S57Edition 3.1\invbase": GB5X01NE
+        ENC from "S57Edition 3.1.1": GB5X01SW
+        ENC updates from "S57Edition 3.1.1": GB5X01SW.001, .002
+        Manual updates added
+
+2 - ENC: "S-64/2.1.1 Power Up/ENC_ROOT/"
+
+  - POLAR_ENC_ROOT
+
