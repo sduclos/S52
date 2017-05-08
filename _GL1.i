@@ -391,7 +391,7 @@ static int       _callDList(S57_prim *prim)
 #endif  // !S52_USE_OPENGL_VBO
 
 #if 0
-// FIXME: same code as _renderAP_DRGARE_gl1
+/* FIXME: same code as _renderAP_DRGARE_gl1
 static int       _renderAP_NODATA_gl1(S52_obj *obj)
 {
     S57_geo       *geo       = S52_PL_getGeo(obj);
@@ -435,6 +435,7 @@ static int       _renderAP_DRGARE_gl1(S52_obj *obj)
 
     return FALSE;
 }
+*/
 #endif  // 0
 
 static int       _renderAP_mask_gl1(S52_obj *obj, const GLubyte *mask)
