@@ -134,7 +134,8 @@ int   S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *str);
 
 int   S52_GL_drawGraticule(void);
 
-int   S52_GL_isHazard(int nxyz, geocoord *xyz);
+//int   S52_GL_isHazard(int nxyz, geocoord *xyz);
+int   S52_GL_isHazard(int nxyz, pt3 *pt);
 
 // -------- GLU ------------
 // helper for CS DATCVR01 -
