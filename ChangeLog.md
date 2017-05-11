@@ -4,6 +4,12 @@
 #
 
 
+2017MAY11
+- rerfactor 'double xyz[]' to 'pt3 pt[]'
+
+2017MAY09
+- refactor _drawLegend()
+
 2017MAY07
 - mod aggregate all point struct in S57data.h
 
