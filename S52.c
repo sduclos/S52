@@ -59,7 +59,6 @@ typedef struct { double u, v; } projUV;
 #define DEG_TO_RAD     0.0174532925199432958
 #endif  // S52_USE_PROJ
 
-//#define ATAN2TODEG(xyz)   (90.0 - atan2(xyz[4]-xyz[1], xyz[3]-xyz[0])     * RAD_TO_DEG)
 #define ATAN2TODEG(pt)    (90.0 - atan2(pt[1].y-pt[0].y, pt[1].x-pt[0].x) * RAD_TO_DEG)
 
 static GTimer *_timer = NULL;
@@ -1396,7 +1395,7 @@ exit:
 }
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
-static int        _suppLineOverlap()
+static int        _suppLineOverlap(void)
 // no SUPP in case manual chart correction (LC(CHCRIDnn) and LC(CHCRDELn))
 // Note: for now, work for LC() only (LS() not processed)
 // FIXME: does NAME_RCNM, NAME_RCID and MASK value refer to original winding?
@@ -2844,12 +2843,10 @@ int            S52_loadObject(const char *objname, void *shape)
     // set cell extent from each area object
     // Note: should be the same as CATALOG.03x
     if (S57__META_T != S57_getObjtype(geo)) {
-        // Note: C1-ed3.1 has no M_COVR - will fail to display
-
-        // FIXME: coverage in catalog
+        // FIXME: C1-ed3.1 has no M_COVR - will fail to display
+        // use coverage in catalog
         // -OR-
         // use gdal to get M_COVR if existe
-
         //if ((S57_AREAS_T==S57_getObjtype(geo)) && (0==g_strcmp0(objname, "M_COVR"))) {
         if (S57_AREAS_T == S57_getObjtype(geo)) {
             ObjExt_t ext = S57_getExt(geo);
@@ -3111,7 +3108,8 @@ static double    *_revArray(guint npt, double *ppt, double *outArr)
 
 // forward decl
 static S52ObjectHandle _newMarObj(const char *plibObjName, S52ObjectType objType, unsigned int xyznbr, double *xyz, const char *listAttVal);
-static S52_obj        *_updateGeo(S52_obj *obj, double *xyz);
+//static S52_obj        *_updateGeo(S52_obj *obj, double *xyz);
+static S52_obj        *_updateGeo(S52_obj *obj, pt3 *pt);
 static int        _appSclbdy(GArray *sclbdyList, S57_geo *geoM_COVR, char intu)
 // SCALE BOUNDARIES: system generated CS DATCVR01-3
 // generate a sclbdy obj for a M_COVR:CATCOV=1 geo obj
@@ -3130,7 +3128,7 @@ static int        _appSclbdy(GArray *sclbdyList, S57_geo *geoM_COVR, char intu)
     S52ObjectHandle sclbdyH = _newMarObj("sclbdy", S52_AREAS, npt, NULL, NULL);
     if (FALSE != sclbdyH) {
         S52_obj *obj = S52_PL_isObjValid(sclbdyH);
-        _updateGeo(obj, ppt);
+        _updateGeo(obj, (pt3*)ppt);
 
         // optimisation
         ObjExt_t ext = S57_getExt(geoM_COVR);
@@ -3211,7 +3209,7 @@ static int        _appHODATA(GArray *sclbdyList)
     _HODATAUnion = _newMarObj("m_covr", S52_AREAS, npt, NULL, "CATCOV:1");
     if (FALSE != _HODATAUnion) {
         S52_obj *obj = S52_PL_isObjValid(_HODATAUnion);
-        _updateGeo(obj, ppt);
+        _updateGeo(obj, (pt3*)ppt);
 
         // FIXME: optimisation: unproject
         //S57_geo *geo = S52_PL_getGeo(obj);
@@ -3277,7 +3275,7 @@ static int        _appSclbdU(GArray *sclbdyList, GArray *sclbdUList)
         S52ObjectHandle sclbdyUnion = _newMarObj("sclbdU", S52_AREAS, npt, NULL, NULL);
         if (FALSE != sclbdyUnion) {
             S52_obj *obj = S52_PL_isObjValid(sclbdyUnion);
-            _updateGeo(obj, ppt);
+            _updateGeo(obj, (pt3*)ppt);
 
             // FIXME: optimisation: unproject
             S57_geo *geo = S52_PL_getGeo(obj);
@@ -3343,7 +3341,7 @@ static void       __findOPrioObj(GPtrArray *rbin)
 }
 
 static S52ObjectHandle _delMarObj(S52ObjectHandle objH);  // forward decl
-static int        _app()
+static int        _app(void)
 // FIXME: doCSMar Mariner Only - time the cost of APP
 // -OR-
 // try to move Mariner CS logique in GL
@@ -3784,7 +3782,28 @@ static void       _drawLights(S52_obj *obj, gpointer dummy)
     return;
 }
 
-static int        _drawLegend()
+static int        __drawStrWorld(pt3 *pt, char *frmt, char *str, int bsize)
+{
+#define BUF 80
+    char   outstr[BUF] = {'\0'};
+    double offset_x    = 16.0;
+    double offset_y    = 16.0;
+
+    // FIXME: compute offset_y for bsize of str
+    S52_GL_getStrOffset(&offset_x, &offset_y, str);
+    //PRINTF("DEBUG: offset_x:%f, offset_y:%f\n", offset_x, &offset_y);
+
+    pt->y -= offset_y;
+
+    SNPRINTF(outstr, BUF, frmt, str);
+    S52_GL_drawStrWorld(pt->x, pt->y, outstr, bsize);
+
+#undef BUF
+
+    return TRUE;
+}
+
+static int        _drawLegend(void)
 // draw legend of each cell
 // Starting at page I-50.
 {
@@ -3841,185 +3860,113 @@ static int        _drawLegend()
 
     // ---------
 
+    // skip mariner's cell
     for (guint i=1; i<_cellList->len; ++i) {
         _cell *c      = (_cell*) g_ptr_array_index(_cellList, i);
-        double xyz[3] = {c->geoExt.W, c->geoExt.N, 0.0};
-        //pt3 xyz[3] = {c->geoExt.W, c->geoExt.N, 0.0};
-        if (FALSE == S57_geo2prj3dv(1, (pt3*)xyz))
+        pt3 pt = {c->geoExt.W, c->geoExt.N, 0.0};
+        if (FALSE == S57_geo2prj3dv(1, &pt))
             return FALSE;
-
-        char   str[80]  = {'\0'};
-
-        //double offset_x = 1.0;
-        //double offset_y = 1.0;
-        //double offset_x = 8.0;  // in/out
-        //double offset_y = 8.0;  // in/out
-        double offset_x = 16.0;  // in/out
-        double offset_y = 16.0;  // in/out
-        S52_GL_getStrOffset(&offset_x, &offset_y, str);
-        PRINTF("DEBUG: offset_x:%f, offset_y:%f\n", offset_x, &offset_y);
 
         // ENC Name
         if (NULL == c->filename) {
-            SNPRINTF(str, 80, "ENC NAME: %s", "Unknown");
+            // FIXME: can this happen
+            __drawStrWorld(&pt, "ENC NAME: %s", "Unknown", 3);
+
+            g_assert(0);
         } else {
-            SNPRINTF(str, 80, "%.8s", c->filename->str);
+            __drawStrWorld(&pt, "%.8s", c->filename->str, 3);
         }
-        //S52_GL_drawStrWorld(xyz[0], xyz[1], str, 1, 3);
-        //S52_GL_drawStrWorld(xyz[0], xyz[1], str, 13);
-        S52_GL_drawStrWorld(xyz[0], xyz[1], str, 3);
 
         // DSID:DSPM_DUNI: units for depth
         if (NULL == c->legend.dsid_dunistr) {
-            SNPRINTF(str, 80, "dsid_dspm_duni: %s", "NULL");
+            __drawStrWorld(&pt, "dsid_dspm_duni: %s", "NULL", 11);
         } else {
             if ('1' == *c->legend.dsid_dunistr->str) {
-                SNPRINTF(str, 80, "DEPTH IN %s", "METER");
+                __drawStrWorld(&pt, "DEPTH IN: %s", "METER", 11);
             } else {
-                SNPRINTF(str, 80, "DEPTH IN :%s", (NULL==c->legend.dsid_dunistr) ? "NULL" : c->legend.dsid_dunistr->str);
+                __drawStrWorld(&pt, "DEPTH IN: %s", c->legend.dsid_dunistr->str, 11);
             }
         }
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
 
         // DSID:DSPM_HUNI: units for height
-        if (NULL==c->legend.dsid_hunistr) {
-            SNPRINTF(str, 80, "dsid_dpsm_huni: %s", "NULL");
+        if (NULL == c->legend.dsid_hunistr) {
+            __drawStrWorld(&pt, "dsid_dpsm_huni: %s", "NULL", 10);
         } else {
             if ('1' == *c->legend.dsid_hunistr->str) {
-                SNPRINTF(str, 80, "HEIGHT IN %s", "METER");
+                __drawStrWorld(&pt, "HEIGHT IN: %s", "METER", 10);
             } else {
-                SNPRINTF(str, 80, "HEIGHT IN :%s", c->legend.dsid_hunistr->str);
+                __drawStrWorld(&pt, "HEIGHT IN: %s", c->legend.dsid_hunistr->str, 10);
             }
         }
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 0);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 10);
 
-        //7. value of safety depth       Selected by user. Default is 30 metres.
-        SNPRINTF(str, 80, "Safety Depth: %.1f", S52_MP_get(S52_MAR_SAFETY_DEPTH));
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 0);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 10);
+        {
+            char   str[80]  = {'\0'};
 
-        //8. value of safety contour     Selected by user. Default is 30 metres.
-        SNPRINTF(str, 80, "Safety Contour: %.1f", S52_MP_get(S52_MAR_SAFETY_CONTOUR));
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 0);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 10);
+            //7. value of safety depth       Selected by user. Default is 30 metres.
+            __drawStrWorld(&pt, "Safety Depth: %s",   g_ascii_dtostr(str, 80, S52_MP_get(S52_MAR_SAFETY_DEPTH)),   10);
+
+            //8. value of safety contour     Selected by user. Default is 30 metres.
+            __drawStrWorld(&pt, "Safety Contour: %s", g_ascii_dtostr(str, 80, S52_MP_get(S52_MAR_SAFETY_CONTOUR)), 10);
+        }
 
         // scale of display
-        xyz[1] -= offset_y; // add some room
-        if (NULL==c->legend.dsid_csclstr) {
-            SNPRINTF(str, 80, "dsid_cscl:%s", (NULL==c->legend.dsid_csclstr) ? "NULL" : c->legend.dsid_csclstr->str);
-        } else {
-            SNPRINTF(str, 80, "Scale 1:%s", (NULL==c->legend.dsid_csclstr) ? "NULL" : c->legend.dsid_csclstr->str);
-        }
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 2);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 12);
-
+        __drawStrWorld(&pt, "Scale 1:%s", (NULL==c->legend.dsid_csclstr) ? "NULL" : c->legend.dsid_csclstr->str, 12);
 
         // ----------- DATUM ----------------------------------------------------------
 
         // DSID:DSPM_SDAT: sounding datum
-        SNPRINTF(str, 80, "dsid_sdat:%s", (NULL==c->legend.dsid_sdatstr) ? "NULL" : c->legend.dsid_sdatstr->str);
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
+        __drawStrWorld(&pt, "dsid_sdat:%s", (NULL==c->legend.dsid_sdatstr) ? "NULL" : c->legend.dsid_sdatstr->str, 11);
+        // DSID:DSPM_VDAT: vertical datum
+        __drawStrWorld(&pt, "dsid_vdat:%s", (NULL==c->legend.dsid_vdatstr) ? "NULL" : c->legend.dsid_vdatstr->str, 11);
 
-        // vertical datum
-        SNPRINTF(str, 80, "dsid_vdat:%s", (NULL==c->legend.dsid_vdatstr) ? "NULL" : c->legend.dsid_vdatstr->str);
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
-
-        // horizontal datum
-        SNPRINTF(str, 80, "dsid_hdat:%s", (NULL==c->legend.dsid_hdatstr) ? "NULL" : c->legend.dsid_hdatstr->str);
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
+        // -OR-
 
         // legend from M_SDAT
         // sounding datum
-        if (NULL != c->legend.sverdatstr) {
-            SNPRINTF(str, 80, "sverdat:%s", c->legend.sverdatstr->str);
-            //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
-        }
+        if (NULL != c->legend.sverdatstr) __drawStrWorld(&pt, "sverdat:%s", c->legend.sverdatstr->str, 11);
         // legend from M_VDAT
         // vertical datum
-        if (NULL != c->legend.vverdatstr) {
-            SNPRINTF(str, 80, "vverdat:%s", c->legend.vverdatstr->str);
-            //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
-        }
+        if (NULL != c->legend.vverdatstr) __drawStrWorld(&pt, "vverdat:%s", c->legend.vverdatstr->str, 11);
 
+        // DSID:DSPM_HDAT: horizontal datum
+        __drawStrWorld(&pt, "dsid_hdat:%s", (NULL==c->legend.dsid_hdatstr) ? "NULL" : c->legend.dsid_hdatstr->str, 11);
 
-        // ---------------------------------------------------------------------
+        // ------------ UPDATE -------------------------------------------------
 
         // date of latest update
-        SNPRINTF(str, 80, "dsid_isdt:%s", (NULL==c->legend.dsid_isdtstr) ? "NULL" : c->legend.dsid_isdtstr->str);
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
+        __drawStrWorld(&pt, "dsid_isdt:%s", (NULL==c->legend.dsid_isdtstr) ? "NULL" : c->legend.dsid_isdtstr->str, 11);
         // number of latest update
-        SNPRINTF(str, 80, "dsid_updn:%s", (NULL==c->legend.dsid_updnstr) ? "NULL" : c->legend.dsid_updnstr->str);
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
+        __drawStrWorld(&pt, "dsid_updn:%s", (NULL==c->legend.dsid_updnstr) ? "NULL" : c->legend.dsid_updnstr->str, 11);
         // edition number
-        SNPRINTF(str, 80, "dsid_edtn:%s", (NULL==c->legend.dsid_edtnstr) ? "NULL" : c->legend.dsid_edtnstr->str);
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
+        __drawStrWorld(&pt, "dsid_edtn:%s", (NULL==c->legend.dsid_edtnstr) ? "NULL" : c->legend.dsid_edtnstr->str, 11);
         // edition date
-        SNPRINTF(str, 80, "dsid_uadt:%s", (NULL==c->legend.dsid_uadtstr) ? "NULL" : c->legend.dsid_uadtstr->str);
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
+        __drawStrWorld(&pt, "dsid_uadt:%s", (NULL==c->legend.dsid_uadtstr) ? "NULL" : c->legend.dsid_uadtstr->str, 11);
         // intended usage (navigational purpose)
-        SNPRINTF(str, 80, "dsid_intu:%s", (NULL==c->legend.dsid_intustr) ? "NULL" : c->legend.dsid_intustr->str);
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
+        __drawStrWorld(&pt, "dsid_intu:%s", (NULL==c->legend.dsid_intustr) ? "NULL" : c->legend.dsid_intustr->str, 11);
 
         // legend from M_CSCL
         // scale
-        if (NULL != c->legend.cscalestr) {
-            SNPRINTF(str, 80, "cscale:%s", c->legend.cscalestr->str);
-            //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
-        }
-
+        if (NULL != c->legend.cscalestr) __drawStrWorld(&pt, "cscale:%s", c->legend.cscalestr->str, 11);
 
         // legend from M_QUAL CATZOC
         // data quality indicator
-        SNPRINTF(str, 80, "catzoc:%s", (NULL==c->legend.catzocstr) ? "NULL" : c->legend.catzocstr->str);
-        //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-        S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
+        __drawStrWorld(&pt, "catzoc:%s", (NULL==c->legend.catzocstr) ? "NULL" : c->legend.catzocstr->str, 11);
 
         // legend from M_ACCY POSACC
         // data quality indicator
-        if (NULL != c->legend.posaccstr) {
-            SNPRINTF(str, 80, "posacc:%s", c->legend.posaccstr->str);
-            //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
-        }
+        if (NULL != c->legend.posaccstr) __drawStrWorld(&pt, "posacc:%s", c->legend.posaccstr->str, 11);
 
         // legend from MAGVAR
         // magnetic
-        if (NULL != c->legend.valmagstr) {
-            SNPRINTF(str, 80, "valmag:%s", c->legend.valmagstr->str);
-            //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
-        }
-
-        if (NULL != c->legend.ryrmgvstr) {
-            SNPRINTF(str, 80, "ryrmgv:%s", c->legend.ryrmgvstr->str);
-            //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
-        }
-
-        if (NULL != c->legend.valacmstr) {
-            SNPRINTF(str, 80, "valacm:%s", c->legend.valacmstr->str);
-            //S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 1, 1);
-            S52_GL_drawStrWorld(xyz[0], xyz[1] -= offset_y, str, 11);
-        }
+        if (NULL != c->legend.valmagstr) __drawStrWorld(&pt, "valmag:%s", c->legend.valmagstr->str, 11);
+        if (NULL != c->legend.ryrmgvstr) __drawStrWorld(&pt, "ryrmgv:%s", c->legend.ryrmgvstr->str, 11);
+        if (NULL != c->legend.valacmstr) __drawStrWorld(&pt, "valacm:%s", c->legend.valacmstr->str, 11);
     }
 
     return TRUE;
 }
 
-static int        _draw()
+static int        _draw(void)
 // draw object inside view
 // then draw object's text
 {
@@ -4044,16 +3991,20 @@ static int        _draw()
 
         // ----------------------------------------------------------------------------
         // FIXME: extract to _LL2XY(guint npt, double *ppt);
-        double xyz[6] = {c->geoExt.W, c->geoExt.S, 0.0, c->geoExt.E, c->geoExt.N, 0.0};
+        //double xyz[6] = {c->geoExt.W, c->geoExt.S, 0.0, c->geoExt.E, c->geoExt.N, 0.0};
+        pt3 pt[2] = {{c->geoExt.W, c->geoExt.S, 0.0}, {c->geoExt.E, c->geoExt.N, 0.0}};
         //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
-        if (FALSE == S57_geo2prj3dv(2, (pt3*)xyz)) {
+        //if (FALSE == S57_geo2prj3dv(2, (pt3*)xyz)) {
+        if (FALSE == S57_geo2prj3dv(2, pt)) {
             PRINTF("WARNING: S57_geo2prj3dv() failed\n");
             g_assert(0);
         }
         //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
 
-        S52_GL_prj2win(&xyz[0], &xyz[1]);
-        S52_GL_prj2win(&xyz[3], &xyz[4]);
+        //S52_GL_prj2win(&xyz[0], &xyz[1]);
+        //S52_GL_prj2win(&xyz[3], &xyz[4]);
+        S52_GL_prj2win(&pt[0].x, &pt[0].y);
+        S52_GL_prj2win(&pt[1].x, &pt[1].y);
         // ----------------------------------------------------------------------------
 
         {   //* needed in combining HO DATA limit (check for corner overlap)
@@ -4061,10 +4012,14 @@ static int        _draw()
             // FIXME: this also clip calibration symbol if overlap cell & NODATA
             // need to augment the box size for chart rotation, but MIO will overlap!
             //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
-            int x = floor(xyz[0]);
-            int y = floor(xyz[1]);
-            int w = floor(xyz[3] - xyz[0]);
-            int h = floor(xyz[4] - xyz[1]);
+            //int x = floor(xyz[0]);
+            //int y = floor(xyz[1]);
+            //int w = floor(xyz[3] - xyz[0]);
+            //int h = floor(xyz[4] - xyz[1]);
+            int x = floor(pt[0].x);
+            int y = floor(pt[0].y);
+            int w = floor(pt[1].x - pt[0].x);
+            int h = floor(pt[1].y - pt[0].y);
             S52_GL_setScissor(x, y, w, h);
             //*/
         }
@@ -4800,16 +4755,20 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude)
 
     // ----------------------------------------------------------------------------
     // FIXME: extract to _LL2XY(guint npt, double *ppt);
-    double xyz[3] = {*longitude, *latitude, 0.0};
-    if (FALSE == S57_geo2prj3dv(1, (pt3*)xyz)) {
+    //double xyz[3] = {*longitude, *latitude, 0.0};
+    pt3 pt = {*longitude, *latitude, 0.0};
+    if (FALSE == S57_geo2prj3dv(1, &pt)) {
         PRINTF("WARNING: S57_geo2prj3dv() failed\n");
         goto exit;
     }
 
-    S52_GL_prj2win(&xyz[0], &xyz[1]);
+    //S52_GL_prj2win(&xyz[0], &xyz[1]);
+    S52_GL_prj2win(&pt.x, &pt.y);
 
-    *longitude = xyz[0];
-    *latitude  = xyz[1];
+    //*longitude = xyz[0];
+    //*latitude  = xyz[1];
+    *longitude = pt.x;
+    *latitude  = pt.y;
 
     ret = TRUE;
 exit:
@@ -5791,7 +5750,8 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
     return TRUE;
 }
 
-static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
+//static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
+static int        _setExt(S57_geo *geo, guint npt, pt3 *pt)
 {
     // FIXME: crossing of anti-meridian
     ObjExt_t ext = {
@@ -5801,6 +5761,7 @@ static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
         .E = -INFINITY
     };
 
+    /*
     for (guint i=0; i<xyznbr; ++i) {
         // X - longitude
         ext.W = (ext.W < *xyz) ? ext.W : *xyz;
@@ -5816,6 +5777,24 @@ static int        _setExt(S57_geo *geo, unsigned int xyznbr, double *xyz)
 
         // next X
         ++xyz;
+    }
+    */
+
+    for (guint i=0; i<npt; ++i) {
+        // X - longitude
+        ext.W = (ext.W < pt->x) ? ext.W : pt->x;
+        ext.E = (ext.E > pt->x) ? ext.E : pt->x;
+
+        // Y - latitude
+        ext.S = (ext.S < pt->y) ? ext.S : pt->y;
+        ext.N = (ext.N > pt->y) ? ext.N : pt->y;
+
+        // Z - skip
+        //++xyz;
+
+        // next X
+        //++xyz;
+        ++pt;
     }
 
     S57_setExt(geo, ext.W, ext.S, ext.E, ext.N);
@@ -5953,7 +5932,7 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
             g_assert(0);
         }
         S57_setGeoSize(geo, xyznbr);
-        _setExt(geo, xyznbr, xyz);
+        _setExt(geo, xyznbr, (pt3*)xyz);
     }
 
     if (NULL != listAttVal)
@@ -6232,17 +6211,20 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
                                                                        //   |   \\\       |
                                                                        //   |    \\\  LEG |
                                                                        //   |     \\\     |
-        double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};        //   |      \\\    |
-        S57_geo2prj3dv(2, (pt3*)xyz);                                  //   |       \\\   |
+        //double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};      //   |      \\\    |
+        //S57_geo2prj3dv(2, (pt3*)xyz);                                //   |       \\\   |
                                                                        //   |        \\\  |
                                                                        //   |        B o--|
                                                                        //   |          |  |
                                                                        //   |    beam2 |  |
                                                                        //   +-------------+
 
+        pt3 pt[2] = {{ext.W, ext.S, 0.0}, {ext.E, ext.N, 0.0}};
+        S57_geo2prj3dv(2, pt);
         S52_GL_setViewPort(w/2, h/2, 1, 1);             // if chart rotated --> x=w/2, y=h/2
         // FIXME: is -+beam2 the max
-        S52_GL_setPRJView(xyz[1]-beam2, xyz[0]-beam2, xyz[4]+beam2, xyz[3]+beam2);  // snap to viewPort
+        //S52_GL_setPRJView(xyz[1]-beam2, xyz[0]-beam2, xyz[4]+beam2, xyz[3]+beam2);  // snap to viewPort
+        S52_GL_setPRJView(pt[0].y-beam2, pt[0].x-beam2, pt[1].y+beam2, pt[1].x+beam2);  // snap to viewPort
         // FIXME: augment GEO for -+beam2
         S52_GL_setGEOView(ext.S, ext.W, ext.N, ext.E);  // to cull obj
 
@@ -6310,7 +6292,8 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
             S57_geo2prj3dv(2, pt);
             //double cog = ATAN2TODEG((*(pt3*)xyz));
             double cog = ATAN2TODEG(pt);
-            double xyz2[5*3];
+            //double xyz2[5*3];
+            pt3 p[5];  // first == last
 
             // experiment I - align guardzone on lat/lon
             //  LEG/
@@ -6389,31 +6372,42 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
 
             // CW
             // starboard
-            xyz2[ 0] = xyz[0] + dlon;  // lonBeg
-            xyz2[ 1] = xyz[1] - dlat;  // latBeg
-            xyz2[ 2] = 0.0;
+            //xyz2[ 0] = xyz[0] + dlon;  // lonBeg
+            //xyz2[ 1] = xyz[1] - dlat;  // latBeg
+            p[0].x = pt[0].x + dlon;  // lonBeg
+            p[0].y = pt[0].y - dlat;  // latBeg
+            p[0].z = 0.0;
 
             // port
-            xyz2[ 3] = xyz[0] - dlon;  // lonBeg
-            xyz2[ 4] = xyz[1] + dlat;  // latBeg
-            xyz2[ 5] = 0.0;
+            //xyz2[ 3] = xyz[0] - dlon;  // lonBeg
+            //xyz2[ 4] = xyz[1] + dlat;  // latBeg
+            p[1].x = pt[0].x - dlon;  // lonBeg
+            p[1].y = pt[0].y + dlat;  // latBeg
+            p[1].z = 0.0;
 
             // port
-            xyz2[ 6] = xyz[3] - dlon;  // lonEnd
-            xyz2[ 7] = xyz[4] + dlat;  // latEnd
-            xyz2[ 8] = 0.0;
+            //xyz2[ 6] = xyz[3] - dlon;  // lonEnd
+            //xyz2[ 7] = xyz[4] + dlat;  // latEnd
+            p[2].x = pt[1].x - dlon;  // lonEnd
+            p[2].y = pt[1].y + dlat;  // latEnd
+            p[2].z = 0.0;
 
             // sarboard
-            xyz2[ 9] = xyz[3] + dlon;  // lonEnd
-            xyz2[10] = xyz[4] - dlat;  // latEnd
-            xyz2[11] = 0.0;
+            //xyz2[ 9] = xyz[3] + dlon;  // lonEnd
+            //xyz2[10] = xyz[4] - dlat;  // latEnd
+            p[3].x = pt[1].x + dlon;  // lonEnd
+            p[3].y = pt[1].y - dlat;  // latEnd
+            p[3].z = 0.0;
 
             // loop line
-            xyz2[12] = xyz2[ 0];       //
-            xyz2[13] = xyz2[ 1];       //
-            xyz2[14] = 0.0;
+            //xyz2[12] = xyz2[ 0];       //
+            //xyz2[13] = xyz2[ 1];       //
+            p[4].x = pt[0].x;       //
+            p[4].y = pt[0].y;       //
+            p[4].z = 0.0;
 
-            if (TRUE == S52_GL_isHazard(5, xyz2)) {
+            //if (TRUE == S52_GL_isHazard(5, (pt3*)xyz2)) {
+            if (TRUE == S52_GL_isHazard(5, p)) {
                 //S52_MP_set(S52_MAR_ERROR, 2.0);  // indication
                 S52_MP_set(S52_MAR_GUARDZONE_ALARM, 2.0);  // indication
             }
@@ -6619,35 +6613,41 @@ exit:
     return pastrk;
 }
 
-static S52_obj            *_updateGeo(S52_obj *obj, double *xyz)
+//static S52_obj            *_updateGeo(S52_obj *obj, double *xyz)
+static S52_obj            *_updateGeo(S52_obj *obj, pt3 *pt)
 // update geo
 {
-    if (NULL != xyz) {
-        guint    npt = 0;
-        double  *ppt = NULL;
-        S57_geo *geo = S52_PL_getGeo(obj);
-        S57_getGeoData(geo, 0, &npt, &ppt);
+    guint    npt = 0;
+    double  *ppt = NULL;
+    S57_geo *geo = S52_PL_getGeo(obj);
+    S57_getGeoData(geo, 0, &npt, &ppt);
 
-        for (guint i=0; i<(npt*3); ++i)
-            *ppt++ = *xyz++;
-    }
+    //for (guint i=0; i<(npt*3); ++i)
+    //    *ppt++ = *xyz++;
+    pt3 *p = (pt3*)ppt;
+    for (guint i=0; i<npt; ++i)
+        *p++ = *pt++;
 
     return obj;
 }
 
 static S52_obj            *_setPointPosition(S52_obj *obj, double latitude, double longitude, double heading)
 {
-    double xyz[3] = {longitude, latitude, 0.0};
+    //double xyz[3] = {longitude, latitude, 0.0};
+    pt3 pt = {longitude, latitude, 0.0};
 
     // update extent
     S57_geo *geo = S52_PL_getGeo(obj);
-    _setExt(geo, 1, xyz);
+    //_setExt(geo, 1, xyz);
+    _setExt(geo, 1, &pt);
 
-    if (FALSE == S57_geo2prj3dv(1, (pt3*)xyz)) {
+    //if (FALSE == S57_geo2prj3dv(1, (pt3*)xyz)) {
+    if (FALSE == S57_geo2prj3dv(1, &pt)) {
         return FALSE;
     }
 
-    _updateGeo(obj, xyz);
+    //_updateGeo(obj, xyz);
+    _updateGeo(obj, &pt);
 
     // reset timer for AIS
     if (0 == g_strcmp0("vessel", S57_getName(geo))) {
@@ -6715,23 +6715,29 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
         double *ppt = NULL;
         S57_getGeoData(geo, 0, &npt, &ppt);
 
-        double xyz[3] = {longitude, latitude, 0.0};
-        if (FALSE == S57_geo2prj3dv(1, (pt3*)xyz)) {
+        //double xyz[3] = {longitude, latitude, 0.0};
+        pt3 p = {longitude, latitude, 0.0};
+        //if (FALSE == S57_geo2prj3dv(1, (pt3*)xyz)) {
+        if (FALSE == S57_geo2prj3dv(1, &p)) {
             PRINTF("WARNING: S57_geo2prj3dv() fail\n");
             objH = FALSE;
             goto exit;
         }
 
         if (sz < npt) {
-            ppt[sz*3 + 0] = xyz[0];
-            ppt[sz*3 + 1] = xyz[1];
+            //ppt[sz*3 + 0] = xyz[0];
+            //ppt[sz*3 + 1] = xyz[1];
+            ppt[sz*3 + 0] = p.x;
+            ppt[sz*3 + 1] = p.y;
             ppt[sz*3 + 2] = data;
             S57_setGeoSize(geo, sz+1);
         } else {
             // FIFO - if sz == npt, shift npt-1 coord
             memmove(ppt, ppt+3, (npt-1) * sizeof(double) * 3);
-            ppt[((npt-1) * 3) + 0] = xyz[0];
-            ppt[((npt-1) * 3) + 1] = xyz[1];
+            //ppt[((npt-1) * 3) + 0] = xyz[0];
+            //ppt[((npt-1) * 3) + 1] = xyz[1];
+            ppt[((npt-1) * 3) + 0] = p.x;
+            ppt[((npt-1) * 3) + 1] = p.y;
             ppt[((npt-1) * 3) + 2] = data;
         }
 
@@ -6743,9 +6749,11 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
             S57_setExt(geo, longitude, latitude, longitude, latitude);
         } else {
             ObjExt_t ext = S57_getExt(geo);
-            double xyz[3*3] = {longitude, latitude, 0.0, ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
+            //double xyz[3*3] = {longitude, latitude, 0.0, ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
+            pt3 pt[3] = {{longitude, latitude, 0.0}, {ext.W, ext.S, 0.0}, {ext.E, ext.N, 0.0}};
 
-            _setExt(geo, 3, xyz);
+            //_setExt(geo, 3, xyz);
+            _setExt(geo, 3, pt);
         }
         //*/
 
@@ -6992,11 +7000,13 @@ DLL S52ObjectHandle STD S52_newVRMEBL(int vrm, int ebl, int normalLineStyle, int
     }
 
     {   // set VRMEBL extent to INFINITY
-        double xyz[6] = {-INFINITY, -INFINITY, 0.0, INFINITY, INFINITY, 0.0};
+        //double xyz[6] = {-INFINITY, -INFINITY, 0.0, INFINITY, INFINITY, 0.0};
+        pt3 pt[2] = {{-INFINITY, -INFINITY, 0.0}, {INFINITY, INFINITY, 0.0}};
 
         S52_obj *obj = S52_PL_isObjValid(vrmebl);
         S57_geo *geo = S52_PL_getGeo(obj);
-        _setExt(geo, 2, xyz);
+        //_setExt(geo, 2, xyz);
+        _setExt(geo, 2, pt);
     }
 
 exit:
@@ -7080,15 +7090,17 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
     }
 
     {
-        double xyz[6] = {lonA, latA, 0.0, lonB, latB, 0.0};
-        double dist   = sqrt(pow(xyz[3]-xyz[0], 2) + pow(xyz[4]-xyz[1], 2));
-        //double deg    = ATAN2TODEG(xyz);
-        double deg    = (90.0 - atan2(xyz[4]-xyz[1], xyz[3]-xyz[0]) * RAD_TO_DEG);
+        //double xyz[6] = {lonA, latA, 0.0, lonB, latB, 0.0};
+        pt3 pt[2] = {{lonA, latA, 0.0}, {lonB, latB, 0.0}};
+        //double dist   = sqrt(pow(xyz[3]-xyz[0], 2) + pow(xyz[4]-xyz[1], 2));
+        double dist   = sqrt(pow(pt[1].x-pt[0].x, 2) + pow(pt[1].y-pt[0].y, 2));
+        double deg    = ATAN2TODEG(pt);
 
-        char   unit   = 'm';
+        char unit       = 'm';
         char attval[80] = {'\0'};
 
-        _updateGeo(obj, xyz);
+        //_updateGeo(obj, xyz);
+        _updateGeo(obj, pt);
 
         // in Nautical Mile if > 1852m (1NM)
         if (dist >  1852) {
