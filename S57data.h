@@ -102,7 +102,7 @@ S57_geo  *S57_setLINES(guint xyznbr, geocoord *xyz);
 //S57_geo  *S57_setMLINE(guint linenbr, guint *linexyznbr, geocoord **linexyz);
 S57_geo  *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz);
 //S57_geo  *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S57_AW_t origAW);
-S57_geo  *S57_set_META();
+S57_geo  *S57_set_META(void);
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
 S57_geo  *S57_setGeoLine(S57_geo *geo, guint xyznbr, geocoord *xyz);
@@ -193,7 +193,7 @@ int       S57_dumpData(S57_geo *geo, int dumpCoords);
 
 #ifdef S52_USE_PROJ
 #include <proj_api.h>   // projXY, projUV, projPJ
-int       S57_donePROJ();
+int       S57_donePROJ(void);
 int       S57_setMercPrj(double lat, double lon);
 GCPTR     S57_getPrjStr(void);
 projXY    S57_prj2geo(projUV uv);
@@ -202,7 +202,8 @@ int       S57_geo2prj3dv(guint npt, pt3 *data);
 int       S57_geo2prj(S57_geo *geo);
 #endif  // S52_USE_PROJ
 
-int       S57_isPtInside(int npt, geocoord *xyz, gboolean close, double x, double y);
+//int       S57_isPtInside(int npt, geocoord *xyz, gboolean close, double x, double y);
+int       S57_isPtInside(int npt, pt3 *pt, gboolean close, double x, double y);
 int       S57_touch(S57_geo *geoA, S57_geo *geoB);
 
 guint     S57_getGeoSize(S57_geo *geo);
