@@ -419,11 +419,6 @@ static const char *natsur[] = {
 
 
 //--------------------------
-// FIXME: call GHashTable *g_hash_table_new (NULL, NULL);
-// hash func will default to  g_direct_hash() /  g_direct_equal()
-// - OR -
-// BBTree! (check cost of rebalancing overhead)
-//
 
 //static GPtrArray    *_objList = NULL;
 static GHashTable    *_objHash = NULL;
@@ -2568,7 +2563,7 @@ extern int      S52razLen;
 //extern u8     _binary_S52raz_3_2_rle_start[];
 //extern int    _binary_S52raz_3_2_rle_end;
 
-int         S52_PL_init()
+int         S52_PL_init(void)
 {
     if (FALSE == _initPLib)
         return FALSE;
@@ -2645,7 +2640,7 @@ int         S52_PL_load(const char *PLib)
     return TRUE;
 }
 
-int         S52_PL_done()
+int         S52_PL_done(void)
 {
     _flushColors();
 
