@@ -176,11 +176,11 @@ typedef struct _S52_vec    S52_vec;
 typedef struct _S52_obj    S52_obj;
 
 // load/init presentation library
-int            S52_PL_init();
+int            S52_PL_init(void);
 // load supplemental PLib
 int            S52_PL_load(const char *PLib);
 // free presentation library
-int            S52_PL_done();
+int            S52_PL_done(void);
 
 // get RGB from color name, for the currently selected color table
 S52_Color     *S52_PL_getColor(const char *colorName);
@@ -324,7 +324,7 @@ int            S52_PL_setNextCN(S52_obj *objA, S52_obj *objB);
 int            S52_PL_setRGB(const char *colorName, unsigned char  R, unsigned char  G, unsigned char  B);
 int            S52_PL_getRGB(const char *colorName, unsigned char *R, unsigned char *G, unsigned char *B);
 
-guint          S52_PL_getPalTableSz();
+guint          S52_PL_getPalTableSz(void);
 const char    *S52_PL_getPalTableNm(unsigned int idx);
 
 int            S52_PL_setNextLeg(S52_obj *obj, S52_obj *objNextLeg);
