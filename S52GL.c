@@ -401,7 +401,7 @@ static int       _getCentroid(guint npt, pt3 *v)
         //PRINTF("XY(%s): %f, %f, %i \n", (atmp>=0.0) ? "CW " : "CCW", p.x, p.y, npt);
 
         //if (TRUE == S57_isPtInside(npt, (double*)v, pt.x, pt.y, FALSE)) {
-        if (TRUE == S57_isPtInside(npt, (double*)v, FALSE, pt.x, pt.y)) {
+        if (TRUE == S57_isPtInside(npt, v, FALSE, pt.x, pt.y)) {
             g_array_append_val(_centroids, pt);
 
             return TRUE;
@@ -635,21 +635,24 @@ User bands Navigational
     */
 
     ObjExt_t ext = S57_getExt(geo);
-    double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
-    if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
+    //double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
+    pt3 pt[2] = {{ext.W, ext.S, 0.0}, {ext.E, ext.N, 0.0}};
+    //if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
+    if (FALSE == S57_geo2prj3dv(2, pt))
         return FALSE;
 
-    // LL of region of area
+    /* LL of region of area
     double x1  = xyz[0];
     double y1  = xyz[1];
     // UR of region of area
     double x2  = xyz[3];
     double y2  = xyz[4];
-
+    */
     //PRINTF("%s VIEW EXT %f,%f -- %f,%f\n", S57_getName(geo), _pmin.u, _pmin.v, _pmax.u, _pmax.v);
 
     // extent inside view, compute normal centroid, no clip
-    if ((_pmin.u < x1) && (_pmin.v < y1) && (_pmax.u > x2) && (_pmax.v > y2)) {
+    //if ((_pmin.u < x1) && (_pmin.v < y1) && (_pmax.u > x2) && (_pmax.v > y2)) {
+    if ((_pmin.u < pt[0].x) && (_pmin.v < pt[0].y) && (_pmax.u > pt[1].x) && (_pmax.v > pt[1].y)) {
         g_array_set_size(_centroids, 0);
 
         //_getCentroidClose(npt, (pt3*)ppt);
@@ -1501,7 +1504,9 @@ static double    _getWorldGridRef(S52_obj *obj, double *LLx, double *LLy, double
     S57_geo *geo = S52_PL_getGeo(obj);
     ObjExt_t ext = S57_getExt(geo);
     double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
-    if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
+    //if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
+    //if (FALSE == S57_geo2prj3dv(2, (pt3*)&xyz))
+    if (FALSE == S57_geo2prj3dv(2, (pt3*)xyz))
         return FALSE;
 
     // LL of region of area
@@ -2882,14 +2887,16 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
             pt.x = ext.W;  // not used
             pt.y = ext.S;
             pt.z = 0.0;
-            if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
+            //if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
+            if (FALSE == S57_geo2prj3dv(1, &pt))
                 return FALSE;
 
             // position of end of sector nominal range
             ptlen.x = ext.W; // not used
             ptlen.y = ext.S + (valnmr / 60.0);
             ptlen.z = 0.0;
-            if (FALSE == S57_geo2prj3dv(1, (double*)&ptlen))
+            //if (FALSE == S57_geo2prj3dv(1, (double*)&ptlen))
+            if (FALSE == S57_geo2prj3dv(1, &ptlen))
                 return FALSE;
 
             _glLoadIdentity(GL_MODELVIEW);
@@ -5468,13 +5475,17 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
         raster->texAlpha = raster->RADAR_cb(&cLat, &cLng, &rNM);
 
-        double xyz[3] = {cLng, cLat, 0.0};
-        if (FALSE == S57_geo2prj3dv(1, xyz)) {
+        //double xyz[3] = {cLng, cLat, 0.0};
+        pt3 pt = {cLng, cLat, 0.0};
+        //if (FALSE == S57_geo2prj3dv(1, xyz)) {
+        if (FALSE == S57_geo2prj3dv(1, &pt)) {
             PRINTF("WARNING: S57_geo2prj3dv() failed\n");
             return FALSE;
         }
-        raster->cLng = xyz[0];
-        raster->cLat = xyz[1];
+        //raster->cLng = xyz[0];
+        //raster->cLat = xyz[1];
+        raster->cLng = pt.x;
+        raster->cLat = pt.y;
         raster->rNM  = rNM;
 
         // set radar extent
@@ -6023,9 +6034,11 @@ static int       _doProjection(vp_t vp, double centerLat, double centerLon, doub
     SW.y = centerLat - rangeDeg;
     NE.x = SW.x = centerLon;
 
-    if (FALSE == S57_geo2prj3dv(1, (double*)&NE))
+    //if (FALSE == S57_geo2prj3dv(1, (double*)&NE))
+    if (FALSE == S57_geo2prj3dv(1, &NE))
         return FALSE;
-    if (FALSE == S57_geo2prj3dv(1, (double*)&SW))
+    //if (FALSE == S57_geo2prj3dv(1, (double*)&SW))
+    if (FALSE == S57_geo2prj3dv(1, &SW))
         return FALSE;
 
     {
@@ -7373,7 +7386,8 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         pt.x = (ext.W+ext.E) / 2.0;  // lon center
         pt.y = (ext.S+ext.N) / 2.0;  // lat center
         pt.z = 0.0;
-        if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
+        //if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
+        if (FALSE == S57_geo2prj3dv(1, &pt))
             return FALSE;
 
         S52_GL_prj2win(&pt.x, &pt.y);
@@ -7789,7 +7803,8 @@ int              _intersectLINES(double x1, double y1, double x2, double y2,
 */
 #endif  // 0
 
-int        S52_GL_isHazard(int nxyz, double *xyz)
+//int        S52_GL_isHazard(int nxyz, double *xyz)
+int        S52_GL_isHazard(int npt, pt3 *pt)
 // TRUE if hazard found
 {
     // Port
@@ -7798,10 +7813,13 @@ int        S52_GL_isHazard(int nxyz, double *xyz)
     //_intersectLINES(x1, y1, x2, y2, x3, y3, x4, y4);
 
 #ifdef S52_USE_GL2
-    _d2f(_tessWorkBuf_f, nxyz, xyz);
-    memcpy(_hazardZone, _tessWorkBuf_f->data, sizeof(vertex_t) * nxyz * 3);
+    //_d2f(_tessWorkBuf_f, nxyz, xyz);
+    //memcpy(_hazardZone, _tessWorkBuf_f->data, sizeof(vertex_t) * nxyz * 3);
+    _d2f(_tessWorkBuf_f, npt, (double*)pt);
+    memcpy(_hazardZone, _tessWorkBuf_f->data, sizeof(pt3v) * npt);
 #else
-    memcpy(_hazardZone, xyz, sizeof(vertex_t) * nxyz * 3);
+    //memcpy(_hazardZone, xyz, sizeof(vertex_t) * nxyz * 3);
+    memcpy(_hazardZone, pt, sizeof(pt3) * npt);
 #endif
 
     // highlight Hazard
@@ -7810,13 +7828,14 @@ int        S52_GL_isHazard(int nxyz, double *xyz)
         S52_obj  *obj = (S52_obj *)g_ptr_array_index(_objPick, i);
         S57_geo  *geo = S52_PL_getGeo(obj);
 
-        GLdouble *ppt = NULL;
-        guint     npt = 0;
-        if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
+        GLdouble *pptB = NULL;
+        guint     nptB = 0;
+        if (FALSE == S57_getGeoData(geo, 0, &nptB, &pptB))
             continue;
 
-        for (guint j=0; j<npt; ++j) {
-            if (TRUE == S57_isPtInside(nxyz, xyz, TRUE, ppt[j*3 + 0], ppt[j*3 + 1])) {
+        for (guint j=0; j<nptB; ++j) {
+            //if (TRUE == S57_isPtInside(nxyz, xyz, TRUE, pptB[j*3 + 0], pptB[j*3 + 1])) {
+            if (TRUE == S57_isPtInside(npt, pt, TRUE, pptB[j*3 + 0], pptB[j*3 + 1])) {
                 //S57_highlightON(geo);
                 S57_setHighlight(geo, TRUE);
                 found = TRUE;
