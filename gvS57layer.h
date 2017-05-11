@@ -59,8 +59,8 @@ void        gv_S57_layer_init(GvShapesLayer *layer);
 // used in plug-in mode --put here for 'completess'
 // since it's part of the interface
 void          _layer_init(GvShapesLayer *layer);
-const gchar  *_ogr_driver_name();
+const gchar  *_ogr_driver_name(void);
 const gchar *g_module_check_init(GModule *module);
-void         g_module_unload();
+void         g_module_unload(void);
 
 #endif // __GVS57LAYER_H__
