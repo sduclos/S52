@@ -261,7 +261,7 @@ int        S57_initPROJ()
     return TRUE;
 }
 
-int        S57_donePROJ()
+int        S57_donePROJ(void)
 {
 #ifdef S52_USE_PROJ
     if (NULL != _pjsrc) pj_free(_pjsrc);
@@ -450,7 +450,7 @@ int        S57_geo2prj(_S57_geo *geo)
         guint   npt;
         double *ppt;
         if (TRUE == S57_getGeoData(geo, i, &npt, &ppt)) {
-            if (FALSE == S57_geo2prj3dv(npt, ppt))
+            if (FALSE == S57_geo2prj3dv(npt, (pt3*)ppt))
                 return FALSE;
         }
     }
@@ -590,7 +590,7 @@ S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
     return geo;
 }
 
-S57_geo   *S57_set_META()
+S57_geo   *S57_set_META(void)
 {
     _S57_geo *geo = g_new0(_S57_geo, 1);
     //_S57_geo *geo = g_try_new0(_S57_geo, 1);
@@ -1081,6 +1081,11 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
         //PRINTF("NOTE: mandatory attribute (%s) with ommited value\n", att_name);
         return NULL;
     }
+
+    // debug
+    //if (NULL != att) {
+    //    PRINTF("DEBUG: attribute (%s) val length: %i\n", att_name, att->len);
+    //}
 
     // display this NOTE once (because of to many warning)
     static int silent = FALSE;
@@ -1579,18 +1584,22 @@ S57_geo   *S57_delNextPoly(_S57_geo *geo)
 //    return  geo->S57ID;
 //}
 
-int        S57_isPtInside(int npt, double *xyz, gboolean close, double x, double y)
+//int        S57_isPtInside(int npt, double *xyz, gboolean close, double x, double y)
+int        S57_isPtInside(int npt, pt3 *pt, gboolean close, double x, double y)
 // return TRUE if (x,y) inside area (close/open) xyz else FALSE
 // FIXME: CW or CCW or work with either?
 {
-    return_if_null(xyz);
+    //return_if_null(xyz);
+    return_if_null(pt);
 
     int c = 0;
-    pt3 *v = (pt3 *)xyz;
+    //pt3 *v = (pt3 *)xyz;
+    pt3 *v = pt;
 
     if (0 == npt)
         return FALSE;
 
+    // FIXME: check _getCentroid() -
     if (TRUE == close) {
         for (int i=0; i<npt-1; ++i) {
             pt3 p1 = v[i];
@@ -1641,7 +1650,7 @@ int        S57_touch(_S57_geo *geoA, _S57_geo *geoB)
     }
 
     for (guint i=0; i<nptA; ++i, pptA+=3) {
-        if (TRUE == S57_isPtInside(nptB, pptB, TRUE, pptA[0], pptA[1]))
+        if (TRUE == S57_isPtInside(nptB, (pt3*)pptB, TRUE, pptA[0], pptA[1]))
             return TRUE;
     }
 
