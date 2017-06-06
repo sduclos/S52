@@ -133,7 +133,7 @@ static int _s52_setupMain(void)
     //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/ENC_ROOT/GB5X01SW.000", NULL);
 
     // S-64 POLAR ENC
-    //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/S-64_e3.0.0/S-64_e3.0.0_ENC_Unencrypted_TDS_Dec_2014/POLAR_ENC_ROOT/AA1NPOL3.000", NULL);
+    //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/S-64_e3.0.0/S-64_e3.0.0_ENC_Unencrypted_TDS_Dec_2014/POLAR.ENC_ROOT/AA1NPOL3.000", NULL);
 
     // debug anti-meridian
     //S52_loadCell("/home/sduclos/S52/test/ENC_ROOT/US5HA06M/US5HA06M.000", NULL);
