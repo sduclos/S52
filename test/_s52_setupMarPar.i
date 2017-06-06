@@ -54,11 +54,11 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);  // off (default ON)
 
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // BASE always ON
-    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // STABDARD default
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // STABDARD default
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_OTHER);   // OTHER
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE | S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
+    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
 
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE );  // none
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // Mariner Standard - default
@@ -78,8 +78,8 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_DATUM_OFFSET,    0.0);
     //S52_setMarinerParam(S52_MAR_DATUM_OFFSET,    5.0);
 
-    //S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
-    S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
+    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
+    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
 
     // remove clutter QUAPNT01 symbole (black diagonal and a '?')
     S52_setMarinerParam(S52_MAR_QUAPNT01,        0.0);   // off
@@ -87,8 +87,8 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_DISP_CALIB,      1.0);
 
     // cell's legend
-    //S52_setMarinerParam(S52_MAR_DISP_LEGEND,     1.0);   // show
-    S52_setMarinerParam(S52_MAR_DISP_LEGEND,     0.0);   // hide (default)
+    S52_setMarinerParam(S52_MAR_DISP_LEGEND,     1.0);   // show
+    //S52_setMarinerParam(S52_MAR_DISP_LEGEND,     0.0);   // hide (default)
 
     //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
     S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 1.0);  // ON (default)
@@ -130,10 +130,10 @@ static int      _s52_setupMarPar(void)
     // -------------------------------------------- -----------------------------
 
     // a delay of 0.0 to tell to not delete old AIS (default +600 sec old)
-    //S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 0.0);
+    S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 0.0);
     // older AIS - case where s52ais reconnect
     // FIXME: maybe check AIS mmsi, so that same ohjH is used!
-    S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 700.0);
+    //S52_setMarinerParam(S52_MAR_DISP_VESSEL_DELAY, 700.0);
 
     //S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 0.0); // debug: no NODATA layer
     S52_setMarinerParam(S52_MAR_DISP_NODATA_LAYER, 1.0);   // default
