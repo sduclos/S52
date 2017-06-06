@@ -361,10 +361,6 @@ static int       _getCentroid(guint npt, pt3 *v)
         return FALSE;
     }
 
-    // offset --coordinate are too big
-    //double x = v[0].x;
-    //double y = v[0].y;
-
     // compute area
     for (guint i=0, j=npt-1; i<npt; j=i++) {
         pt3 p1 = v[i];
@@ -372,6 +368,9 @@ static int       _getCentroid(guint npt, pt3 *v)
 
         // decimation will create vertex of same coords - skip
         // Note: also close poly have same vertex at both end
+        // x--x  x--x
+        // |  |  |  |
+        // x  x  x--x
         if (p1.x==p2.x && p1.y==p2.y) {
             nSkip++;
             continue;
@@ -383,6 +382,10 @@ static int       _getCentroid(guint npt, pt3 *v)
         xtmp += (p2.x + p1.x) * ai;
         ytmp += (p2.y + p1.y) * ai;
     }
+
+    // offset --coordinate are too big
+    //double x = v[0].x;
+    //double y = v[0].y;
 
     // compute centroid
     if (atmp != 0.0) {
@@ -3584,35 +3587,29 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
 {
     g_array_set_size(_tmpWorkBuffer, 0);
 
-    GLdouble *ppt = NULL;
+    pt3      *ppt = NULL;
     guint     npt = 0;
     S57_geo  *geo = S52_PL_getGeo(obj);
-    if (FALSE == S57_getGeoData(geo, ringNo, &npt, &ppt))
+    if (FALSE == S57_getGeoData(geo, ringNo, &npt, (double**)&ppt))
         return FALSE;
 
     S52_DListData *DListData = S52_PL_getDListData(obj);
 
-    double off_x = ppt[0];
-    double off_y = ppt[1];
-    GLdouble x1,y1;
-    GLdouble x2,y2;
+    //double off_x = 0.0;
+    //double off_y = 0.0;
+
+    pt3 p1, p2;
     for (guint i=1; i<npt; ++i) {
-        GLdouble z1,z2;
-        // set coordinate
-        x1 = ppt[0];
-        y1 = ppt[1];
-        z1 = ppt[2];
-        ppt += 3;
-        x2 = ppt[0];
-        y2 = ppt[1];
-        z2 = ppt[2];
+        p1 = *ppt++;
+        p2 = *ppt;
 
         //////////////////////////////////////////////////////
         //
         // overlapping Line Complex (LC) suppression
         //
         //if (z1<0.0 && z2<0.0) {
-        if (-S57_OVERLAP_GEO_Z==z1 && -S57_OVERLAP_GEO_Z==z2) {
+        //if (-S57_OVERLAP_GEO_Z==z1 && -S57_OVERLAP_GEO_Z==z2) {
+        if (-S57_OVERLAP_GEO_Z==p1.z && -S57_OVERLAP_GEO_Z==p2.z) {
             //PRINTF("NOTE: this line segment (%s) overlap a line segment with higher prioritity (Z=%f)\n", S57_getName(geo), z1);
             continue;
         }
@@ -3624,13 +3621,15 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
         if (0 == g_strcmp0("leglin", S57_getName(geo))) {
             if (2.0==S52_MP_get(S52_MAR_DISP_WHOLIN) || 3.0==S52_MP_get(S52_MAR_DISP_WHOLIN)) {
                 // shorten x1,y1 of wholin_dist of previous leglin
-                GLdouble segangRAD  = atan2(y2-y1, x2-x1);
+                //GLdouble segangRAD  = atan2(y2-y1, x2-x1);
+                GLdouble segangRAD  = atan2(p2.y-p1.y, p2.x-p1.x);
                 S52_obj *objPrevLeg = S52_PL_getPrevLeg(obj);
                 S57_geo *geoPrev    = S52_PL_getGeo(objPrevLeg);
                 GString *prev_wholin_diststr = S57_getAttVal(geoPrev, "_wholin_dist");
                 if (NULL != prev_wholin_diststr) {
                     double prev_wholin_dist = S52_atof(prev_wholin_diststr->str) * 1852;
-                    _movePoint(&x1, &y1, segangRAD + (180.0 * DEG_TO_RAD), prev_wholin_dist);
+                    //_movePoint(&x1, &y1, segangRAD + (180.0 * DEG_TO_RAD), prev_wholin_dist);
+                    _movePoint(&p1.x, &p1.y, segangRAD + (180.0 * DEG_TO_RAD), prev_wholin_dist);
                 }
 
                 // shorten x2,y2 if there is a next curve
@@ -3639,7 +3638,8 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
                     GString *wholin_diststr = S57_getAttVal(geo, "_wholin_dist");
                     if (NULL != wholin_diststr) {
                         double wholin_dist = S52_atof(wholin_diststr->str) * 1852;
-                        _movePoint(&x2, &y2, segangRAD, wholin_dist);
+                        //_movePoint(&x2, &y2, segangRAD, wholin_dist);
+                        _movePoint(&p2.x, &p2.y, segangRAD, wholin_dist);
                     }
 
                 }
@@ -3647,13 +3647,18 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
         }
         //*/
 
-        if (FALSE == _clipToView(&x1, &y1, &x2, &y2))
+        //if (FALSE == _clipToView(&x1, &y1, &x2, &y2))
+        if (FALSE == _clipToView(&p1.x, &p1.y, &p2.x, &p2.y))
             continue;
 
-        GLdouble seglen_wrld   = sqrt(pow((x1-off_x)-(x2-off_x), 2)  + pow((y1-off_y)-(y2-off_y), 2));
-        GLdouble segang        = atan2(y2-y1, x2-x1);
+        //GLdouble seglen_wrld   = sqrt(pow((x1-off_x)-(x2-off_x), 2)  + pow((y1-off_y)-(y2-off_y), 2));
+        //GLdouble segang        = atan2(y2-y1, x2-x1);
+        //GLdouble seglen_wrld   = sqrt(pow((p1.x-off_x)-(p2.x-off_x), 2)  + pow((p1.y-off_y)-(p2.y-off_y), 2));
+        GLdouble seglen_wrld   = sqrt(pow(p1.x-p2.x, 2) + pow(p1.y-p2.y, 2));
+        GLdouble segang        = atan2(p2.y-p1.y, p2.x-p1.x);
         GLdouble symlen_wrld_x = cos(segang) * symlen_wrld;
         GLdouble symlen_wrld_y = sin(segang) * symlen_wrld;
+        // FIXME: rounding
         int      nsym          = (int) (seglen_wrld / symlen_wrld);
 
         segang *= RAD_TO_DEG;
@@ -3669,7 +3674,8 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
         for (int j=0; j<nsym; ++j) {
             _glLoadIdentity(GL_MODELVIEW);
 
-            _glTranslated(x1+offset_wrld_x, y1+offset_wrld_y, 0.0);           // move coord sys. at symb pos.
+            //_glTranslated(x1+offset_wrld_x, y1+offset_wrld_y, 0.0);           // move coord sys. at symb pos.
+            _glTranslated(p1.x+offset_wrld_x, p1.y+offset_wrld_y, 0.0);           // move coord sys. at symb pos.
             _glRotated(segang, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
             _glScaled(1.0, -1.0, 1.0);
 
@@ -3692,7 +3698,8 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
         //}
 
         {   // complete the rest of the line
-            pt3v pt[2] = {{x1+offset_wrld_x, y1+offset_wrld_y, z1}, {x2, y2, z2}};
+            //pt3v pt[2] = {{x1+offset_wrld_x, y1+offset_wrld_y, z1}, {x2, y2, z2}};
+            pt3v pt[2] = {{p1.x+offset_wrld_x, p1.y+offset_wrld_y, p1.z}, {p2.x, p2.y, p2.z}};
             g_array_append_val(_tmpWorkBuffer, pt[0]);  // x1 y1 z1
             g_array_append_val(_tmpWorkBuffer, pt[1]);  // x2 y2 z2
         }
@@ -3766,27 +3773,11 @@ static int       _renderLC(S52_obj *obj)
         //*/
     }
 
-    //* debug
-    //if (0 == g_strcmp0("M_COVR", S57_getName(geo))) {
-    //    PRINTF("DEBUG: M_COVR found, nRing=%i\n", S57_getRingNbr(geo));
-    //}
-    //if (0 == g_strcmp0("M_NSYS", S57_getName(geo))) {
-    //    PRINTF("DEBUG: M_NSYS found, nRing=%i\n", S57_getRingNbr(geo));
-    //}
-    //if (0 == g_strcmp0("sclbdy", S57_getName(geo))) {
-    //    PRINTF("DEBUG: sclbdy found, nRing=%i\n", S57_getRingNbr(geo));
-    //    //g_assert(0);
-    //}
-    //*/
-
     // set pen color & size here because values might not
     // be set via call list --short line
     S52_DListData *DListData = S52_PL_getDListData(obj);
     S52_Color     *c         = DListData->colors;
     _setFragAttrib(c, S57_getHighlight(geo));
-
-    //GLdouble symlen_pixl = 0.0;
-    //GLdouble symlen_wrld = 0.0;
 
     GLdouble symlen = 0.0;
     char     pen_w  = 0;
@@ -4034,6 +4025,8 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
 static int       _renderAC(S52_obj *obj)
 // Area Color (also filter light sector)
 {
+    // FIXME: add shadow map
+
     // debug - this filter also in _VBODrawArrays_AREA():glDraw()
     if (S52_CMD_WRD_FILTER_AC & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
