@@ -56,11 +56,11 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 #
 #
 
-# -DUSE_FAKE_AIS      - debug - programmaticaly faked AIS data (no call to s52ais.c)
+# -DUSE_TEST_OBJ      - debug - load test Mariners' Object
+# -DUSE_FAKE_AIS      - debug - programmaticaly faked AIS data (no call to s52ais.c) (need USE_TEST_OBJ)
 # -DUSE_AIS           - call s52ais.c
 # -DSET_SCREEN_SIZE   - set screen size be hand (hard coded as dual-screen seem to confused the setup)
 # -DUSE_LOG_CB        - log every S52_* in tmp file
-# -DUSE_TEST_OBJ      - load test Mariners' Object
 
 # -DS52_USE_GLES2     - GLES2
 # -DS52_USE_GLES3     - GLES3.x / GLSL ES 3.0
@@ -87,6 +87,7 @@ s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 
 #                     -DSET_SCREEN_SIZE
 #                     -DUSE_TEST_OBJ
+#                     -DUSE_FAKE_AIS
 s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
