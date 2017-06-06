@@ -4,6 +4,12 @@
 #
 
 
+2017JUN06
+- fix palette validation
+
+2017JUN02
+- add _simplifyGEO() to delete redundant vertex
+
 2017MAY11
 - rerfactor 'double xyz[]' to 'pt3 pt[]'
 
