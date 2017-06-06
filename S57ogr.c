@@ -190,7 +190,6 @@ int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadO
     return TRUE;
 }
 
-
 static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometryH hGeomNext)
 // Note: OGR use 25D primitive
 {
@@ -267,7 +266,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
             ringxyznbr = g_new(guint,      nRingCount);
             ringxyz    = g_new(geocoord *, nRingCount);
 
-            // Note: to check winding on an open area
+            // Note: to check winding on an open poly area
             //for (i = n-1, j = 0; j < n; i = j, j++) {
             //     ai = x[i] * y[j] - x[j] * y[i];
             //}
@@ -289,7 +288,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                     continue;
                 }
 
-                ringxyz[iRing]    = g_new(geocoord, vert_count*3*sizeof(geocoord));
+                ringxyz[iRing] = g_new(geocoord, vert_count*3*sizeof(geocoord));
 
                 // check if last vertex is NOT the first vertex (ie ring not close)
                 if ((OGR_G_GetX(hRing, 0) != OGR_G_GetX(hRing, vert_count-1)) ||
@@ -311,7 +310,8 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                     //}
                 }
 
-                for (guint i=0; (i+1)<vert_count; i++) {
+                //for (guint i=0; (i+1)<vert_count; i++) {
+                for (guint i=0; i<(vert_count-1); ++i) {
                     double x1 = OGR_G_GetX(hRing, i  );
                     double y1 = OGR_G_GetY(hRing, i  );
                     double x2 = OGR_G_GetX(hRing, i+1);
@@ -367,8 +367,10 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
 
             //geo = S57_setAREAS(nRingCount, ringxyznbr, ringxyz, (area <= 0.0) ? S57_AW_CW : S57_AW_CCW);
             geo = S57_setAREAS(nRingCount, ringxyznbr, ringxyz);
+
             _setExtent(geo, hGeom);
 
+#ifdef S52_USE_WORLD
             if (0 == g_strcmp0(WORLD_BASENM, objname)) {
                 // Note: loading shapefile as a 'marfea' use a transparent fill so NODATA
                 // is still visible (seem better than 'mnufea' wich has no colour fill)
@@ -378,6 +380,7 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
                 //    Note that manufacturers' areas, whether non-chart or chart areas, should not use area colour fill.
                 //S57_setName(geo, "mnufea");
             }
+#endif  // S52_USE_WORLD
 
             break;
         }
@@ -389,11 +392,11 @@ static S57_geo   *_ogrLoadObject(const char *objname, void *feature, OGRGeometry
             for (guint iPoly=0; iPoly<nPolyCount; ++iPoly) {
                 OGRGeometryH hGeomNext = OGR_G_GetGeometryRef(hGeom, iPoly);
                 // recursion
-                S57_geo *geo = _ogrLoadObject(objname, NULL, hGeomNext);
-                if (NULL == geo)
-                    geo = geo;
+                S57_geo *georef = _ogrLoadObject(objname, NULL, hGeomNext);
+                if (NULL == georef)
+                    geo = georef;
                 else
-                    S57_setNextPoly(geo, geo);
+                    S57_setNextPoly(geo, georef);
 
             }
             break;
