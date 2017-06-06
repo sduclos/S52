@@ -87,21 +87,22 @@ static GTimer *_timer = NULL;
 
 #include "_s52_setupMarPar.i"  // _s52_setupMarPar()
 #include "_s52_setupMain.i"    // _s52_setupMain(), various common test setup, LOG*(), loadCell()
-#include "_egl.i"              // _egl_init(), _egl_beg(), _egl_end(), _egl_done()
+#include "_egl.i"              // _egl_init(), _egl_beg(), _egl_end(), _egl_done(), EGLState
 //----------------------------------------------
 
 
 // FIXME: mutex this share data
-typedef struct s52droid_state_t {
+typedef struct s52view_state_t {
     // initial view
     double     cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
 
     double     dx_pc, dy_pc, dz_pc, dw_pc; // Blit param, dw_pc = north;
 
-} s52droid_state_t;
+} s52view_state_t;
 
 //
 typedef struct s52engine {
+           s52view_state_t    state;
 
 #ifdef S52_USE_ANDROID
     struct android_app        *app;
@@ -118,20 +119,7 @@ typedef struct s52engine {
     struct ANativeActivityCallbacks* callbacks;
 
            GSocketConnection  *connection;
-
-//#else  // EGL/X11
-//           Display            *dpy;
 #endif
-
-           /* EGL - android or X11 window
-            EGLNativeWindowType eglWindow;
-            EGLDisplay          eglDisplay;
-            EGLSurface          eglSurface;
-            EGLContext          eglContext;
-            EGLConfig           eglConfig;
-            */
-           //EGLClientBuffer     eglClientBuf;
-           //EGLNativePixmapType eglPixmap;       // eglCopyBuffers()
            EGLState            eglState;
 
            // draw thread
@@ -151,7 +139,6 @@ typedef struct s52engine {
            int32_t             wmm;
            int32_t             hmm;
 
-           s52droid_state_t    state;
 } s52engine;
 
 static s52engine _engine;
@@ -178,7 +165,7 @@ GL_APICALL void GL_APIENTRY glFramebufferTexture2DMultisampleEXT (GLenum target,
 //-----------------------------
 
 
-static int      _s52_getView    (s52droid_state_t *state)
+static int      _s52_getView  (s52view_state_t *state)
 {
     double S,W,N,E;
 
@@ -204,14 +191,14 @@ static int      _s52_getView    (s52droid_state_t *state)
 }
 
 #ifdef USE_LOG_CB
-static int      _s52_log_cb     (const char *err)
+static int      _s52_log_cb   (const char *err)
 {
     LOGI("%s", err);
     return TRUE;
 }
 #endif
 
-static int      _s52_init       (s52engine *engine)
+static int      _s52_init     (s52engine *engine)
 {
     LOGI("s52egl:_s52_init(): beg ..\n");
 
@@ -316,9 +303,14 @@ static int      _s52_init       (s52engine *engine)
     S52_newCSYMB();
 
 #ifdef USE_TEST_OBJ
+    // setup mariner object (for debugging)
+    // test loading objH _before_ loadPLib
+
     // must be first mariners' object so that the
     // rendering engine place it on top of OWNSHP/VESSEL
     _s52_setupVRMEBL(engine->state.cLat, engine->state.cLon);
+
+    _s52_setupmarfea(engine->state.cLat, engine->state.cLon);
 
     // guard zone OFF (pick need GL projection)
     S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
@@ -327,6 +319,10 @@ static int      _s52_init       (s52engine *engine)
     S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
 
     _s52_setupPRDARE(engine->state.cLat, engine->state.cLon);
+
+    _s52_setupPASTRK(engine->state.cLat, engine->state.cLon);
+
+    _s52_setupCLRLIN(engine->state.cLat, engine->state.cLon);
 
 #ifdef USE_FAKE_AIS
     _s52_setupOWNSHP(engine->state.cLat, engine->state.cLon);
@@ -346,7 +342,7 @@ static int      _s52_init       (s52engine *engine)
     return TRUE;
 }
 
-static int      _s52_done       (s52engine *engine)
+static int      _s52_done     (s52engine *engine)
 
 {
     (void)engine;
@@ -360,7 +356,7 @@ static int      _s52_done       (s52engine *engine)
     return TRUE;
 }
 
-static int      _s52_draw_user  (s52engine *engine)
+static int      _s52_draw_user(s52engine *engine)
 {
     //(void) engine; // quiet compiler
 
@@ -391,7 +387,7 @@ static int      _s52_draw_user  (s52engine *engine)
     return TRUE;
 }
 
-static int      _s52_draw_cb    (gpointer user_data)
+static int      _s52_draw_cb  (gpointer user_data)
 {
     s52engine *engine = (s52engine*)user_data;
 
@@ -2036,10 +2032,126 @@ static int      _X11_handleXevent(gpointer user_data)
     return TRUE;
 }
 
+
+#if 0
+//#if 1
+#include <mcheck.h>  // mtrace(), muntrace()
+#include <malloc.h>
+
+static void *_malloc_hook_cb(size_t size, const void *caller);
+static void  _free_hook_cb(void *ptr, const void *caller);
+
+static void *_malloc_hook_orig;
+static void *_free_hook_orig;
+
+static size_t _mem_alloc = 0;
+
+static void *_malloc_hook_cb(size_t size, const void *caller)
+{
+    void *result;
+
+    // Restore all old hooks
+    __malloc_hook = _malloc_hook_orig;
+    __free_hook   = _free_hook_orig;
+
+    // Call recursively
+    result = malloc(size);
+    _mem_alloc += size;
+
+    /*
+    // Save underlying hooks
+    _malloc_hook_orig = __malloc_hook;
+    _free_hook_orig   = __free_hook;
+
+    // printf might call malloc, so protect it too.
+    printf("malloc (%u) returns %p\n", (unsigned int) size, result);
+    */
+
+    // Restore our own hooks
+    __malloc_hook = _malloc_hook_cb;
+    __free_hook   = _free_hook_cb;
+
+    return result;
+}
+
+static void _free_hook_cb(void *ptr, const void *caller)
+{
+    //Restore all old hooks
+    __malloc_hook = _malloc_hook_orig;
+    __free_hook   = _free_hook_orig;
+
+    // Call recursively
+    free(ptr);
+
+    /*
+    // Save underlying hooks
+    _malloc_hook_orig = __malloc_hook;
+    _free_hook_orig   = __free_hook;
+
+    // printf might call free, so protect it too.
+    printf("freed pointer %p\n", ptr);
+    */
+
+    // Restore our own hooks
+    __malloc_hook = _malloc_hook_cb;
+    __free_hook   = _free_hook_cb;
+}
+
+static void _init_hook(void)
+{
+    _malloc_hook_orig = __malloc_hook;
+    _free_hook_orig   = __free_hook;
+
+    __malloc_hook     = _malloc_hook_cb;
+    __free_hook       = _free_hook_cb;
+}
+#endif  // 0
+
 int main(int argc, char *argv[])
 {
-//#include <mcheck.h>  // mtrace(), muntrace()
-//mtrace();  // export MALLOC_TRACE=mem.log
+    //https://developer.gnome.org/glib/stable/glib-running.html#G_SLICE
+    //Memory statistics
+    //g_mem_profile() will output a summary g_malloc() memory usage, if memory profiling has been enabled by calling g_mem_set_vtable
+    //(glib_mem_profiler_table) upon startup.
+    //If GLib has been configured with --enable-debug=yes, then g_slice_debug_tree_statistics() can be called in a debugger to output
+    //details about the memory usage of the slice allocator.
+    //Generated by GTK-Doc V1.25.1
+
+    // BUT:https://developer.gnome.org/glib/stable/glib-Memory-Allocation.html
+    // say DEPRECATED
+
+    //https://www.gnu.org/software/libc/manual/html_node/Hooks-for-Malloc.html
+    // The hook variables are declared in /usr/include/malloc.h
+
+    /*
+    #include <malloc.h>
+    malloc_stats();
+    __malloc_check_init();  // deprecated
+
+    int *i = malloc(1);
+    free(i);
+    return 0;
+    */
+
+    /*
+    _init_hook();
+    int *i = malloc(sizeof(int));
+    //free(i);
+    return 0;
+    */
+
+    //#include <mcheck.h>  // mtrace(), muntrace()
+    //mtrace();  // export MALLOC_TRACE=mem.log
+
+    /*_init_hook();
+    //mtrace();  // export MALLOC_TRACE=mem.log
+    if (FALSE == _s52_init(&_engine)) {
+        LOGI("DEBUG: S52 allready up or fail to init\n");
+        return FALSE;
+    }
+    //g_print("TOTAL MEM: %i\n", _mem_alloc);
+    //return 0;
+    */
 
     g_print("main():starting: argc=%i, argv[0]=%s\n", argc, argv[0]);
 
@@ -2051,6 +2163,10 @@ int main(int argc, char *argv[])
         LOGI("DEBUG: S52 allready up or fail to init\n");
         return FALSE;
     }
+
+    // debug: load ENC and bailout (used for $time ./s52eglx)
+    //exit(0);
+
 
     _timer = g_timer_new();
 
