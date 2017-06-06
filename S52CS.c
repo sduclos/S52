@@ -2163,7 +2163,7 @@ static GString *OBSTRN04 (S57_geo *geo)
                         PRINTF("DEBUG: chenzunfeng found this bug LS(DASH,2,CHGRD)[not CHBLK], %s:%i\n", S57_getName(geo), S57_getS57ID(geo));
                         //S57_highlightON(geo);
                         S57_setHighlight(geo, TRUE);
-                        g_assert(0);
+                        g_assert(0);  // FIXME: name ENC that pass here
                     }
 #endif
                 }
