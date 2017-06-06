@@ -158,81 +158,8 @@ typedef struct _S57_geo {
 
 static GString *_attList = NULL;
 
-static int    _doneGeoData(_S57_geo *geo)
-// delete the geo data it self - data from OGR is a copy
-{
-#ifdef S52_USE_GV
-    // not GV geo data
-    return TRUE;
-#endif
 
-    // POINT
-    if (NULL != geo->pointxyz) {
-        g_free((geocoord*)geo->pointxyz);
-        geo->pointxyz = NULL;
-    }
-
-    // LINES
-    if (NULL != geo->linexyz) {
-        g_free((geocoord*)geo->linexyz);
-        geo->linexyz = NULL;
-    }
-
-    // AREAS
-    if (NULL != geo->ringxyz){
-        unsigned int i;
-        for(i = 0; i < geo->ringnbr; ++i) {
-            if (NULL != geo->ringxyz[i])
-                g_free((geocoord*)geo->ringxyz[i]);
-            geo->ringxyz[i] = NULL;
-        }
-        g_free((geocoord*)geo->ringxyz);
-        geo->ringxyz = NULL;
-    }
-
-    if (NULL != geo->ringxyznbr) {
-        g_free(geo->ringxyznbr);
-        geo->ringxyznbr = NULL;
-    }
-
-    geo->linexyznbr = 0;
-    geo->ringnbr    = 0;
-
-    return TRUE;
-}
-
-int        S57_doneData   (_S57_geo *geo, gpointer user_data)
-{
-    // quiet line overlap analysis that trigger a bunch of harmless warning
-    if (NULL!=user_data && NULL==geo)
-        return FALSE;
-
-#ifdef S52_USE_WORLD
-    {
-        S57_geo *geoNext = NULL;
-        if (NULL != (geoNext = S57_getNextPoly(geo))) {
-            S57_doneData(geoNext, user_data);
-        }
-    }
-#endif
-
-
-    _doneGeoData(geo);
-
-    S57_donePrimGeo(geo);
-
-    if (NULL != geo->attribs)
-        g_datalist_clear(&geo->attribs);
-
-    if (NULL != geo->centroid)
-        g_array_free(geo->centroid, TRUE);
-
-    g_free(geo);
-
-    return TRUE;
-}
-
-int        S57_initPROJ()
+int           _initPROJ()
 // Note: corrected for PROJ 4.6.0 ("datum=WGS84")
 {
     if (FALSE == _doInit)
@@ -390,7 +317,7 @@ int        S57_geo2prj3dv(guint npt, pt3 *data)
     pt3 *pt = data;
 
     if (TRUE == _doInit) {
-        S57_initPROJ();
+        _initPROJ();
     }
 
     if (NULL == _pjdst) {
@@ -436,13 +363,186 @@ int        S57_geo2prj3dv(guint npt, pt3 *data)
     return TRUE;
 }
 
+static int    _inLine(pt3 A, pt3 B, pt3 C)
+// is BC inline with AC or visa-versa (not AB)
+{
+    // test.1: A( 0, 0) B(2,2) C( 4, 4)
+    // test.2: A(-2,-2) B(0,0) C(+2,+2)
+    //A.x=+2;A.y=+2;B.x=0;B.y=0;C.x=-2;C.y=-2;
+    //A.x=-2;A.y=-2;B.x=0;B.y=0;C.x=+2;C.y=+2;
+    //A.x=-2;A.y=-2;B.x=-11;B.y=-11;C.x=+2;C.y=+2;
+
+//#define S57_GEO_TOLERANCE 0.0001     // *60*60 = .36'
+//#define S57_GEO_TOLERANCE 0.00001    // *60*60 = .036'   ; * 1852 =
+//#define S57_GEO_TOLERANCE 0.000001   // *60*60 = .0036'  ; * 1852 = 6.667 meter
+//#define S57_GEO_TOLERANCE 0.0000001  // *60*60 = .00036' ; * 1852 = 0.6667 meter
+#define S57_GEO_TOLERANCE 0.00000001   // *60*60 = .000036'; * 1852 = 0.06667 meter
+
+    // from: https://stackoverflow.com/questions/17692922/check-is-a-point-x-y-is-between-two-points-drawn-on-a-straight-line/17693189
+    // if AC is vertical
+    //if (A.x == C.x) return B.x == C.x;
+    if (ABS(A.x-C.x) < S57_GEO_TOLERANCE) return ABS(B.x-C.x) < S57_GEO_TOLERANCE;
+
+    // if AC is horizontal
+    //if (A.y == C.y) return B.y == C.y;
+    if (ABS(A.y-C.y) < S57_GEO_TOLERANCE) return ABS(B.y-C.y) < S57_GEO_TOLERANCE;
+
+    // match the gradients (BUG: maybe after edit of '/' to '*')
+    //return (A.x - C.x)*(A.y - C.y) == (C.x - B.x)*(C.y - B.y);
+    //ex: -4*-4 == 2*2 = 16 == 4 !?!
+
+    // slope: (y2-y1)/(x2-x1)
+    // so slope AC == slope BC
+    //return (A.y-C.y)/(A.x-C.x) == (B.y-C.y)/(B.x-C.x);  // div 0, need test above
+    //return (A.y-C.y)*(B.x-C.x) == (B.y-C.y)*(A.x-C.x);  // inf
+    return ABS(ABS((A.y-C.y)*(B.x-C.x)) - ABS((B.y-C.y)*(A.x-C.x))) < S57_GEO_TOLERANCE;  // inf
+
+    // determinant = (ax-cx)(by-cy) - (bx-cx)(ay-cy)
+    //return (A.x - C.x)*(B.y - C.y) == (B.x - C.x)*(A.y - C.y);
+    // >0 above, <0 bellow, =0 on line
+    // ex: (0-4)(2-4) - (2-4)(0-4) = 8-8 = 0
+}
+
+static guint  _delInLineSeg(guint npt, double *ppt)
+// remove point ON the line segment
+{
+    pt3 *p = (pt3*)ppt;
+
+    //* FIXME: optimisation: use pt3 newArr[npt];
+    // and only one memmove(ppt, newArr, sizeof(pt3) * j);  (see fail test bellow)
+    guint j = npt;
+    for (guint i=0; i<(npt-2); ++i) {
+        // don't lose Z
+        if (p[1].z != p[2].z) {
+            PRINTF("DEBUG: Z1 Z2 diff (%f -> %f)\n", p[1].z, p[2].z);
+
+            ++p;
+            continue;
+        }
+
+        if (TRUE == _inLine(p[0], p[1], p[2])) {
+            // A--B--C,       3-0-2=1
+            // 0--A--B--C,    4-1-2=1
+            // 0--A--B--C--0, 5-1-2=2
+            memmove(&p[1], &p[2], sizeof(pt3) * (npt - i - 2));
+            --j;
+        } else {
+            ++p;
+        }
+    }
+
+#ifdef S52_DEBUG
+    //* debug: check for duplicate vertex
+    p = (pt3*)ppt;
+    guint nDup = 0;
+    for (guint i=1; i<j; ++i) {
+        if ((p[i-1].x == p[i].x) && (p[i-1].y == p[i].y)) {
+            // FIXME: check (p[i-1].z == p[i].z)
+            ++nDup;
+        }
+    }
+    if (0 != nDup) {
+        PRINTF("DEBUG: dup %i\n", nDup);
+        g_assert(0);
+    }
+    //*/
+#endif  // S52_DEBUG
+
+    return j;
+
+
+    /* FIXME: this fail
+    pt3  newArr[npt];
+    guint i = 0, j = 0, k = 0;
+    while (i<(npt-2)) {
+        if (TRUE == _inLine(p[0], p[k+1], p[k+2])) {
+            ++k;
+        } else {
+            newArr[j++] = p[0];
+            if (0 < k) {
+                //newArr[j++] = p[k];
+                //newArr[j++] = p[k+1];  // p[k+2]
+                newArr[j++] = p[k-1];  // p[old_k]
+                k = 0;
+            }
+        }
+        ++p;
+        ++i;
+    }
+    */
+}
+
+static   int  _simplifyGEO(_S57_geo *geo)
+{
+    // LINE
+    if (S57_LINES_T == geo->obj_t) {
+        if (2 < geo->linexyznbr) {
+            guint npt = _delInLineSeg(geo->linexyznbr, geo->linexyz);
+
+            // debug: check for dup
+            //if (0 != npt) {
+            //    PRINTF("DEBUG: line dup reduction: %i \t(%i\t->\t%i)\n", geo->linexyznbr - npt, geo->linexyznbr, npt);
+            //}
+
+            if (npt != geo->linexyznbr) {
+                PRINTF("DEBUG: line reduction: %i \t(%i\t->\t%i)\n", geo->linexyznbr - npt, geo->linexyznbr, npt);
+                geo->linexyznbr = npt;
+
+                // degenerate !
+                if (npt < 2) {
+                    // FIXME: delete geo!
+                    PRINTF("DEBUG: degenerated line npt:%i\n", npt);
+                    g_assert(0);
+                }
+
+
+            }
+        } else {
+            PRINTF("DEBUG: short line: %i\n", geo->linexyznbr);
+        }
+    }
+
+    // AREA
+    if (S57_AREAS_T == geo->obj_t) {
+        for (guint i=0; i<geo->ringnbr; ++i) {
+            if (3 < geo->ringxyznbr[i]) {
+                guint npt = _delInLineSeg(geo->ringxyznbr[i], geo->ringxyz[i]);
+
+                // debug: check for dup
+                //if (0 != npt) {
+                //    PRINTF("DEBUG: poly dup reduction: %i \t(%i\t->\t%i)\n", geo->ringxyznbr - npt, geo->ringxyznbr, npt);
+                //}
+
+                if (npt != geo->ringxyznbr[i]) {
+                    PRINTF("DEBUG: poly reduction: %i \t(%i\t->\t%i)\n", geo->ringxyznbr[i] - npt, geo->ringxyznbr[i], npt);
+                    geo->ringxyznbr[i] = npt;
+
+                    // degenerate !
+                    if (npt < 3) {
+                        // FIXME: delete ring!
+                        PRINTF("DEBUG: degenerated poly npt:%i\n", npt);
+                        g_assert(0);
+                    }
+                }
+            } else {
+                PRINTF("DEBUG: ring with less than 3 vertex (%i)\n", geo->ringxyznbr[i]);
+                g_assert(0);
+            }
+        }
+    }
+
+    return TRUE;
+}
+
 int        S57_geo2prj(_S57_geo *geo)
 {
     // useless - rbin
     //return_if_null(geo);
 
+    _simplifyGEO(geo);
+
     if (TRUE == _doInit)
-        S57_initPROJ();
+        _initPROJ();
 
 #ifdef S52_USE_PROJ
     guint nr = S57_getRingNbr(geo);
@@ -455,6 +555,80 @@ int        S57_geo2prj(_S57_geo *geo)
         }
     }
 #endif  // S52_USE_PROJ
+
+    return TRUE;
+}
+
+static int    _doneGeoData(_S57_geo *geo)
+// delete the geo data it self - data from OGR is a copy
+{
+#ifdef S52_USE_GV
+    // not GV geo data
+    return TRUE;
+#endif
+
+    // POINT
+    if (NULL != geo->pointxyz) {
+        g_free((geocoord*)geo->pointxyz);
+        geo->pointxyz = NULL;
+    }
+
+    // LINES
+    if (NULL != geo->linexyz) {
+        g_free((geocoord*)geo->linexyz);
+        geo->linexyz = NULL;
+    }
+
+    // AREAS
+    if (NULL != geo->ringxyz){
+        unsigned int i;
+        for(i = 0; i < geo->ringnbr; ++i) {
+            if (NULL != geo->ringxyz[i])
+                g_free((geocoord*)geo->ringxyz[i]);
+            geo->ringxyz[i] = NULL;
+        }
+        g_free((geocoord*)geo->ringxyz);
+        geo->ringxyz = NULL;
+    }
+
+    if (NULL != geo->ringxyznbr) {
+        g_free(geo->ringxyznbr);
+        geo->ringxyznbr = NULL;
+    }
+
+    geo->linexyznbr = 0;
+    geo->ringnbr    = 0;
+
+    return TRUE;
+}
+
+int        S57_doneData   (_S57_geo *geo, gpointer user_data)
+{
+    // quiet line overlap analysis that trigger a bunch of harmless warning
+    if (NULL!=user_data && NULL==geo)
+        return FALSE;
+
+#ifdef S52_USE_WORLD
+    {
+        S57_geo *geoNext = NULL;
+        if (NULL != (geoNext = S57_getNextPoly(geo))) {
+            S57_doneData(geoNext, user_data);
+        }
+    }
+#endif
+
+
+    _doneGeoData(geo);
+
+    S57_donePrimGeo(geo);
+
+    if (NULL != geo->attribs)
+        g_datalist_clear(&geo->attribs);
+
+    if (NULL != geo->centroid)
+        g_array_free(geo->centroid, TRUE);
+
+    g_free(geo);
 
     return TRUE;
 }
@@ -472,10 +646,10 @@ S57_geo   *S57_setPOINT(geocoord *xyz)
     geo->obj_t    = S57_POINT_T;
     geo->pointxyz = xyz;
 
-    geo->ext.W  =  INFINITY;
-    geo->ext.S  =  INFINITY;
-    geo->ext.E  = -INFINITY;
-    geo->ext.N  = -INFINITY;
+    geo->ext.W    =  INFINITY;
+    geo->ext.S    =  INFINITY;
+    geo->ext.E    = -INFINITY;
+    geo->ext.N    = -INFINITY;
 
     geo->scamin   =  INFINITY;
 
@@ -502,22 +676,23 @@ S57_geo   *S57_setGeoLine(_S57_geo *geo, guint xyznbr, geocoord *xyz)
 
 S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
 {
+    // Edge might have 0 node
+    //return_if_null(xyz);
+
     _S57_geo *geo = g_new0(_S57_geo, 1);
     //_S57_geo *geo = g_try_new0(_S57_geo, 1);
     if (NULL == geo)
         g_assert(0);
-
-    return_if_null(geo);
 
     geo->S57ID      = _S57ID++;
     geo->obj_t      = S57_LINES_T;
     geo->linexyznbr = xyznbr;
     geo->linexyz    = xyz;
 
-    geo->ext.W    =  INFINITY;
-    geo->ext.S    =  INFINITY;
-    geo->ext.E    = -INFINITY;
-    geo->ext.N    = -INFINITY;
+    geo->ext.W      =  INFINITY;
+    geo->ext.S      =  INFINITY;
+    geo->ext.E      = -INFINITY;
+    geo->ext.N      = -INFINITY;
 
     geo->scamin     =  INFINITY;
 
@@ -570,10 +745,10 @@ S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
     geo->ringxyznbr = ringxyznbr;
     geo->ringxyz    = ringxyz;
 
-    geo->ext.W    =  INFINITY;
-    geo->ext.S    =  INFINITY;
-    geo->ext.E    = -INFINITY;
-    geo->ext.N    = -INFINITY;
+    geo->ext.W      =  INFINITY;
+    geo->ext.S      =  INFINITY;
+    geo->ext.E      = -INFINITY;
+    geo->ext.N      = -INFINITY;
 
     geo->scamin     =  INFINITY;
 
@@ -597,15 +772,15 @@ S57_geo   *S57_set_META(void)
     if (NULL == geo)
         g_assert(0);
 
-    geo->S57ID   = _S57ID++;
-    geo->obj_t   = S57__META_T;
+    geo->S57ID  = _S57ID++;
+    geo->obj_t  = S57__META_T;
 
-    geo->ext.W =  INFINITY;
-    geo->ext.S =  INFINITY;
-    geo->ext.E = -INFINITY;
-    geo->ext.N = -INFINITY;
+    geo->ext.W  =  INFINITY;
+    geo->ext.S  =  INFINITY;
+    geo->ext.E  = -INFINITY;
+    geo->ext.N  = -INFINITY;
 
-    geo->scamin  =  INFINITY;
+    geo->scamin =  INFINITY;
 
 #ifdef S52_USE_WORLD
     geo->nextPoly = NULL;
@@ -1334,10 +1509,10 @@ static void   _printAttVal(GQuark key_id, gpointer data, gpointer user_data)
     const gchar *attName  = g_quark_to_string(key_id);
 
     // print only S57 attrib - assuming that OGR att are not 6 char in lenght!!
-    if (S57_ATT_NM_LN == strlen(attName)) {
+    //if (S57_ATT_NM_LN == strlen(attName)) {
         GString *attValue = (GString*) data;
         PRINTF("%s: %s\n", attName, attValue->str);
-    }
+    //}
 }
 
 int        S57_dumpData(_S57_geo *geo, int dumpCoords)
@@ -1441,7 +1616,7 @@ GCPTR      S57_getAtt(_S57_geo *geo)
 void       S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax)
 {
 
-  S57_initPROJ();
+  _initPROJ();
 
   {
     projUV pc1, pc2;   // pixel center
@@ -1591,22 +1766,19 @@ int        S57_isPtInside(int npt, pt3 *pt, gboolean close, double x, double y)
 {
     //return_if_null(xyz);
     return_if_null(pt);
+    if (0 == npt)
+        return FALSE;
 
     int c = 0;
     //pt3 *v = (pt3 *)xyz;
     pt3 *v = pt;
 
-    if (0 == npt)
-        return FALSE;
-
-    // FIXME: check _getCentroid() -
     if (TRUE == close) {
         for (int i=0; i<npt-1; ++i) {
             pt3 p1 = v[i];
             pt3 p2 = v[i+1];
 
-            if ( ((p1.y>y) != (p2.y>y)) &&
-                (x < (p2.x-p1.x) * (y-p1.y) / (p2.y-p1.y) + p1.x) )
+            if ( ((p1.y>y) != (p2.y>y)) && (x < (p2.x-p1.x) * (y-p1.y) / (p2.y-p1.y) + p1.x) )
                 c = !c;
         }
     } else {
@@ -1614,8 +1786,7 @@ int        S57_isPtInside(int npt, pt3 *pt, gboolean close, double x, double y)
             pt3 p1 = v[i];
             pt3 p2 = v[j];
 
-            if ( ((p1.y>y) != (p2.y>y)) &&
-                (x < (p2.x-p1.x) * (y-p1.y) / (p2.y-p1.y) + p1.x) )
+            if ( ((p1.y>y) != (p2.y>y)) && (x < (p2.x-p1.x) * (y-p1.y) / (p2.y-p1.y) + p1.x) )
                 c = !c;
         }
     }
