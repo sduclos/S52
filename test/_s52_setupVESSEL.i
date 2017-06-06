@@ -80,7 +80,7 @@ static int _s52_updFakeAIS(double cLat, double cLon)
 #ifdef S52_USE_AFGLOW
         if (FALSE != _vessel_ais_afglow) {
             // stay at the same place but fill internal S52 buffer - in the search for possible leak
-            S52_pushPosition(_vessel_ais_afglow, cLat, cLon, 0.0);
+            S52_pushPosition(_vessel_ais_afglow, cLat - 0.01, cLon + 0.01, 0.0);
         }
 #endif
     }
