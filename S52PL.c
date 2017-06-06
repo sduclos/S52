@@ -296,8 +296,11 @@ typedef enum _table_t {
 typedef struct _AUX_Info {
     // Note: this is a general holder for orient/speed depending on
     // the object type. So it could be for current, ship, AIS, ...
+    // FIXME: doc this in a union
     gdouble      orient;        // LIGHT angle (after parsing), heading of 'ownshp'
     gdouble      speed;         // 'ownshp' speed for drawing vertor lenght
+    // ---
+
 
     GTimeVal     time;          // store time (use to find age of AIS)
 
@@ -306,9 +309,10 @@ typedef struct _AUX_Info {
     // LEGLIN
     S52_obj     *nextLeg;   // link to next leglin (need to draw arc)
     S52_obj     *prevLeg;   // link to previous leg so that we can clip the start of this leg
-                                // of the amout of wholin dist of the previous leg
+                            // of the amout of wholin dist of the previous leg
     // WHeel-Over-LINe
     //S52_obj     *wholin;    // link to wholin obj
+
 } _AUX_Info;
 
 typedef struct _S52_obj {
@@ -372,6 +376,7 @@ typedef struct _PL {
 } _PL;
 
 
+#if 0
 /*
 char _S52AuxSymb[] =
 0001    0
@@ -389,6 +394,7 @@ DISC   12DISPLAYBASE
 LUCM    611030
 ****    0
 */
+#endif  // 0 - confuse editor efte
 
 // 1 col: S-52 pslb03_2.pdf 13.4.3
 // 2 col: S-57 name for 'nature of surface' attribute  --NATSUR (113)
