@@ -46,15 +46,22 @@ static GThread *_gpsClientThread = NULL;
 #include <winsock2.h>
 #endif
 
+///////////////////////////////////////////////////////////////////////
+// Note: on systemd the gpsd -G option will not work
+// sudoedit /lib/systemd/system/gpsd.socket with gpsd host LAN IP
+// (detail at http://www.catb.org/gpsd/troubleshooting.html)
 #ifdef S52_USE_ANDROID
 //#define GPSD_HOST "192.168.1.66"  // connect to GPSD on local network
 //#define GPSD_HOST "192.168.1.68"  // connect to GPSD on local network
 //#define GPSD_HOST "192.168.1.70"  // connect to GPSD on local network
 #define GPSD_HOST "192.168.1.73"  // connect to GPSD on local network
-#else
-#define GPSD_HOST "localhost"     // connect to local GPSD
+#else  // S52_USE_ANDROID
+//#define GPSD_HOST "localhost"     // connect to local GPSD
+#define GPSD_HOST "192.168.1.69"  // connect to GPSD on local network
+//#define GPSD_HOST "192.168.1.72"  // connect to GPSD on local network
 //#define GPSD_HOST "192.168.1.73"  // connect to GPSD on local network
-#endif
+#endif  // S52_USE_ANDROID
+///////////////////////////////////////////////////////////////////////
 
 #define GPSD_PORT "2947"
 
@@ -66,11 +73,11 @@ static GThread *_gpsClientThread = NULL;
 #define AIS        PATH "/s52ais"
 #define PID        ".pid"
 
-#else
+#else  // S52_USE_ANDROID
 
 #define LOGI(...)   g_print(__VA_ARGS__)
 
-#endif
+#endif  // S52_USE_ANDROID
 
 /*
 //Code - Ship & Cargo Classification
@@ -192,7 +199,8 @@ static GMutex             _ais_list_mutex; // protect _ais_list
 #define GMUTEXUNLOCK g_mutex_unlock
 #endif
 
-#define AIS_SILENCE_MAX 600   // sec of silence from an AIS before deleting it
+//#define AIS_SILENCE_MAX 600   // sec of silence from an AIS before deleting it
+#define AIS_SILENCE_MAX   0   // 0 - never delete old AIS to leave trace on screen
 
 // debug - limit the total number of target
 //#define AIS_TARGET_MAX  10
@@ -937,18 +945,23 @@ static int           _setAISDel (_ais_t *ais)
 }
 
 static int           _removeOldAIS(void)
+// TRUE if a old AIS was removed, else FALSE
 {
     if (NULL == _ais_list) {
         g_print("s52ais:_getAIS() no AIS list\n");
         return FALSE;
     }
 
+    // special mode to keep all old AIS
+    if (AIS_SILENCE_MAX == 0)
+        return FALSE;
+
     GTimeVal now;
     g_get_current_time(&now);
 
     for (guint i=0; i<_ais_list->len; ++i) {
         _ais_t *ais = &g_array_index(_ais_list, _ais_t, i);
-        // AIS report older then 10 min
+        // AIS report older than 10 min
         if ((now.tv_sec > (ais->lastUpdate.tv_sec + AIS_SILENCE_MAX)) || (TRUE == ais->lost)) {
             _setAISDel(ais);
 
@@ -988,8 +1001,9 @@ static int           _updateTimeTag(void)
         return FALSE;
 
     // keep removing old AIS
-    while (TRUE == _removeOldAIS())
+    while (TRUE == _removeOldAIS()) {
         _dumpAIS();
+    }
 
     GTimeVal now;
     g_get_current_time(&now);
@@ -1256,7 +1270,7 @@ static int           _connectGPSD(void)
     memset(&_gpsdata, 0, sizeof(_gpsdata));
 
     while (0 != gps_open(GPSD_HOST, GPSD_PORT, &_gpsdata)) {   // android (gpsd 2.96)
-        g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec: %d, %s\n", errno, gps_errstr(errno));
+        g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec [err: %d: %s\n", errno, gps_errstr(errno));
 
         // try to connect to GPSD server, bailout after 10 failed attempt
         GMUTEXLOCK(&_ais_list_mutex);
@@ -1277,6 +1291,11 @@ static int           _connectGPSD(void)
         g_print("s52ais:_gpsdClientRead():gps_stream() failed .. exiting\n");
         return FALSE;
     }
+
+    // FIXME: say something ! (systemd config bug in 16.04LTS)
+    // connecting to ..
+    // gpsd found
+    // start listening to ..
 
     return TRUE;
 }
