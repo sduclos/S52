@@ -192,6 +192,8 @@ S57_geo       *S52_PL_delObj(S52_obj *obj, gboolean nilAuxInfo);
 // get the geo part (S57) of this S52 object
 #define        S52PLGETGEO(S52OBJ) (*(S57_geo **)S52OBJ)
 #define        S52_PL_getGeo(obj) S52PLGETGEO(obj)
+//S57_geo       *S52_PL_getGeo(obj);
+
 // get LUP name
 const char    *S52_PL_getOBCL(S52_obj *obj);
 // get addressed object S52 obj TYPe
