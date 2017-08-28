@@ -192,22 +192,39 @@ typedef struct _Text {
 // 1) PLib symbole definition or 2) C function (CS) or 3) text struct or 4) light sector
 typedef union _cmdDef {
     _S52_symDef     *def;
+    //S52_CMD_SYM_PT,     // SY --SHOWPOINT
+    //S52_CMD_SIM_LN,     // LS --SHOWLINE
+    //S52_CMD_COM_LN,     // LC --SHOWLINE COMPLEX
+    //S52_CMD_ARE_PA,     // AP --SHOWAREA PATTERN
 
     _Text           *text;   // after parsing this could de NULL
+    //S52_CMD_TXT_TX,     // TX --SHOWTEXT (formated)
+    //S52_CMD_TXT_TE,     // TE --SHOWTEXT
 
     S52_CS_condSymb *CS;
+    //S52_CMD_CND_SY,     // CS --CALLSYMPROC (Conditional Symbology)
 
     // because there is no cmdDef for light sector, so put VBO here (ie no need struct _S52_cmdDef)
     S52_DListData   *DListData;  // for pattern in GLES2 this DL will create a texture
+    //S52_CMD_ARE_CO,     // AC --SHOWAREA
 
 } _cmdDef;
 
 // command word list
 typedef struct _cmdWL {
     S52_CmdWrd     cmdWord;  // Command Word type
-    char          *param;    // start of parameter for this command
+    const char    *param;    // start of parameter for this command
 
     _cmdDef        cmd;      // command word definition or conditional symb func call
+    // FIXME: invariant for cmdWord --> cmd
+    //S52_CMD_TXT_TX,     // TX --SHOWTEXT (formated)
+    //S52_CMD_TXT_TE,     // TE --SHOWTEXT
+    //S52_CMD_SYM_PT,     // SY --SHOWPOINT
+    //S52_CMD_SIM_LN,     // LS --SHOWLINE
+    //S52_CMD_COM_LN,     // LC --SHOWLINE COMPLEX
+    //S52_CMD_ARE_CO,     // AC --SHOWAREA
+    //S52_CMD_ARE_PA,     // AP --SHOWAREA PATTERN
+    //S52_CMD_CND_SY,     // CS --CALLSYMPROC (Conditional Symbology)
 
     guchar         crntPal;  // optimisation: this 'cmd' is setup for 'palette N' colors
 
@@ -1058,7 +1075,8 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
             while (NULL != tmp) {
                 // change object Display Priority, if any, at this point
                 if (S52_CMD_OVR_PR == tmp->cmdWord) {
-                    char *c = tmp->param;
+                    //char *c = tmp->param;
+                    CCHAR *c = tmp->param;
 
                     //obj->prioOveride = TRUE;
 
@@ -1945,7 +1963,7 @@ static int        _loadPL(_PL *fp)
     return TRUE;
 }
 
-static char      *_getParamVal(S57_geo *geo, char *str, char *buf, int bsz)
+static CCHAR     *_getParamVal(S57_geo *geo, CCHAR *str, char *buf, int bsz)
 // Symbology Command Word Parameter Value Parser.
 // Put in 'buf' one of:
 //  1 - LUP constant value,
@@ -2099,7 +2117,7 @@ static char      *_getParamVal(S57_geo *geo, char *str, char *buf, int bsz)
 }
 
 
-static _Text     *_parseTEXT(S57_geo *geo, char *str)
+static _Text     *_parseTEXT(S57_geo *geo, CCHAR *str)
 {
     _Text *text = NULL;
     char buf[MAXL] = {'\0'};   // output string
@@ -3218,6 +3236,16 @@ _cmdWL           *_getCrntCmd(_S52_obj *obj)
         return NULL;
     }
 
+    // FIXME: invariant for cmdWord --> cmd
+    //S52_CMD_TXT_TX,     // TX --SHOWTEXT (formated)
+    //S52_CMD_TXT_TE,     // TE --SHOWTEXT
+    //S52_CMD_SYM_PT,     // SY --SHOWPOINT
+    //S52_CMD_SIM_LN,     // LS --SHOWLINE
+    //S52_CMD_COM_LN,     // LC --SHOWLINE COMPLEX
+    //S52_CMD_ARE_CO,     // AC --SHOWAREA
+    //S52_CMD_ARE_PA,     // AP --SHOWAREA PATTERN
+    //S52_CMD_CND_SY,     // CS --CALLSYMPROC (Conditional Symbology)
+
     return cmd;
 }
 
@@ -3346,7 +3374,7 @@ double      S52_PL_getSYorient(_S52_obj *obj)
             _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
 
             if (NULL != cmd) {
-                char *str = cmd->param;
+                CCHAR *str = cmd->param;
 
                 // check if ORIENT param in symb cmd (ex SY(AAAA01,ORIENT))
                 if (NULL!=str && ',' == *(str+8)) {
@@ -3677,6 +3705,16 @@ S52_DListData *S52_PL_newDListData(_S52_obj *obj)
     return cmd->cmd.DListData;
 }
 
+/*
+static int _getDListParam(_cmdWL *cmd, guint *nbr, S52_Color **cList)
+{
+    *nbr   = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->nbr   : cmd->cmd.def->DListData.nbr;
+    *cList = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->colors: cmd->cmd.def->DListData.colors;
+
+    return TRUE;
+}
+*/
+
 S52_DListData *S52_PL_getDListData(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -3691,35 +3729,79 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
         return NULL;
     }
 
-    // check if palette as change
+    // light sector have not been computed yet (SCAMIN)
+    if ((S52_CMD_ARE_CO==cmd->cmdWord) && (NULL==cmd->cmd.DListData)){
+        return NULL;
+    }
+
+    // check if palette as change, iff not highlight
+    if (TRUE == S57_getHighlight(obj->geo)) {
+        guint      nbr   = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->nbr   : cmd->cmd.def->DListData.nbr;
+        S52_Color *cList = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->colors: cmd->cmd.def->DListData.colors;
+
+        S52_Color *colhigh = S52_PL_getColor("DNGHL");
+        //guint      nbr     = 0;     // number of color in list
+        //S52_Color *cList   = NULL;  // list of color
+        //_getDListParam(cmd, &nbr, &cList);
+
+        if (S52_CMD_ARE_CO == cmd->cmdWord)
+            cmd->cmd.DListData->crntPalIDX = -1;      // init
+        else
+            cmd->cmd.def->DListData.crntPalIDX = -1;  // init
+
+        for (guint i=0; i<nbr; ++i) {
+            cList[i].R = colhigh->R;
+            cList[i].G = colhigh->G;
+            cList[i].B = colhigh->B;
+        }
+        return (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData : &cmd->cmd.def->DListData;
+
+    }
+    //else {
+
+    /* same palette
     if (S52_CMD_ARE_CO == cmd->cmdWord) {
-        if ((NULL!=cmd->cmd.DListData) && (cmd->cmd.DListData->crntPalIDX==(int)S52_MP_get(S52_MAR_COLOR_PALETTE))) {
-            return  cmd->cmd.DListData;
+        //if ((NULL!=cmd->cmd.DListData) && (cmd->cmd.DListData->crntPalIDX==(int)S52_MP_get(S52_MAR_COLOR_PALETTE))) {
+        if (cmd->cmd.DListData->crntPalIDX == (int)S52_MP_get(S52_MAR_COLOR_PALETTE)) {
+            return cmd->cmd.DListData;
         }
     } else {
         if (cmd->cmd.def->DListData.crntPalIDX == (int)S52_MP_get(S52_MAR_COLOR_PALETTE))
             return &cmd->cmd.def->DListData;
     }
+    */
 
-    guint      nbr = 0;
-    S52_Color *c   = NULL;
+    // same palette
+    int crntPalIDX = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->crntPalIDX : cmd->cmd.def->DListData.crntPalIDX;
+    if (crntPalIDX == (int)S52_MP_get(S52_MAR_COLOR_PALETTE)) {
+        return (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData : &cmd->cmd.def->DListData;
+    }
+
+    // palette change - update new RGB
+    //guint      nbr   = 0;
+    //S52_Color *cList = NULL;
+    //_getDListParam(cmd, &nbr, &cList);
+    guint      nbr   = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->nbr   : cmd->cmd.def->DListData.nbr;
+    S52_Color *cList = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->colors: cmd->cmd.def->DListData.colors;
+
     if (S52_CMD_ARE_CO == cmd->cmdWord) {
         // no need to init DList for light sector
-        if (NULL == cmd->cmd.DListData) {
+        //if (NULL == cmd->cmd.DListData) {
             //PRINTF("DEBUG: no DListData in cmd\n");
-            return NULL;
-        }
+        //    return NULL;
+        //}
 
-        nbr = cmd->cmd.DListData->nbr;
-        c   = cmd->cmd.DListData->colors;
+        //nbr = cmd->cmd.DListData->nbr;
+        //c   = cmd->cmd.DListData->colors;
         cmd->cmd.DListData->crntPalIDX = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
     } else {
-        if (NULL == cmd->cmd.def) {
-            PRINTF("DEBUG: no DListData in cmd.def\n");
-            g_assert(0);
-        }
-        nbr = cmd->cmd.def->DListData.nbr;
-        c   = cmd->cmd.def->DListData.colors;
+        // debug
+        //if (NULL == cmd->cmd.def) {
+        //    PRINTF("DEBUG: no DListData in cmd.def\n");
+        //    g_assert(0);
+        //}
+        //nbr = cmd->cmd.def->DListData.nbr;
+        //c   = cmd->cmd.def->DListData.colors;
         cmd->cmd.def->DListData.crntPalIDX = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
     }
 
@@ -3732,20 +3814,24 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
     */
 
     for (guint i=0; i<nbr; ++i) {
+        /*
         if (TRUE == S57_getHighlight(obj->geo)) {
             S52_Color *colhigh = S52_PL_getColor("DNGHL");
             //c[i] = *colhigh;
             c[i].R = colhigh->R;
             c[i].G = colhigh->G;
             c[i].B = colhigh->B;
-        } else {
+        }
+        else
+        */
+        {
             // this will also copy the 'cidx/trans/pen_w' from the color table
             //c[i] = *col;
 
-            S52_Color *col = _getColorAt(c[i].fragAtt.cidx);
-            c[i].R = col->R;
-            c[i].G = col->G;
-            c[i].B = col->B;
+            S52_Color *col = _getColorAt(cList[i].fragAtt.cidx);
+            cList[i].R = col->R;
+            cList[i].G = col->G;
+            cList[i].B = col->B;
 
             /* debug - should be the same
             if (c[i].cidx != cidx) {
@@ -3757,10 +3843,13 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
         }
     }
 
-    if (S52_CMD_ARE_CO == cmd->cmdWord)
-        return  cmd->cmd.DListData;
-    else
-        return &cmd->cmd.def->DListData;
+    //if (S52_CMD_ARE_CO == cmd->cmdWord)
+    //    return  cmd->cmd.DListData;
+    //else
+    //    return &cmd->cmd.def->DListData;
+
+    return (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData : &cmd->cmd.def->DListData;
+
 }
 
 S52_vec    *S52_PL_initVOCmd(_S52_symDef *def)
@@ -4034,7 +4123,7 @@ static _Text     *_parseTX(S57_geo *geo, _cmdWL *cmd)
     return_if_null(cmd);
 
     char buf[MAXL] = {'\0'};   // output string
-    char *str = _getParamVal(geo, cmd->param, buf, MAXL);   // STRING
+    CCHAR *str = _getParamVal(geo, cmd->param, buf, MAXL);   // STRING
     if (NULL == str) {
         return NULL;
     }
@@ -4063,11 +4152,11 @@ static _Text     *_parseTE(S57_geo *geo, _cmdWL *cmd)
     char arg[MAXL] = {'\0'};   // ATTRIB list
     char fmt[MAXL] = {'\0'};   // FORMAT
     char buf[MAXL] = {'\0'};   // output string
-    char *b        = buf;
-    char *parg     = arg;
-    char *pf       = fmt;
+    char  *b       = buf;
+    CCHAR *parg    = arg;
+    char  *pf      = fmt;
     _Text *text    = NULL;
-    char *str      = NULL;
+    CCHAR *str     = NULL;
 
     if (NULL == cmd)
         return NULL;
@@ -4130,6 +4219,7 @@ static _Text     *_parseTE(S57_geo *geo, _cmdWL *cmd)
     if (NULL != text)
         text->frmtd = g_string_new(buf);
 #else
+    // PL ASCII --> UTF-8
     if (NULL != text) {
         gchar *gstr = g_convert(buf, -1, "UTF-8", "ISO-8859-1", NULL, NULL, NULL);
         text->frmtd = g_string_new(gstr);
@@ -4497,7 +4587,7 @@ gboolean    S52_PL_setSupp(_S52_obj *obj, gboolean supp)
 
 gboolean    S52_PL_getSupp(_S52_obj *obj)
 {
-    // this test is in the CULL loop
+    // this test is in the CULL loop only
     //return_if_null(obj);
 
     return obj->auxInfo.supp;
