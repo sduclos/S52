@@ -111,6 +111,7 @@ typedef struct _S57_geo {
 
 #ifdef S52_USE_C_AGGR_C_ASSO
     // point to the S57 relationship object C_AGGR / C_ASSO this S57_geo belong
+    // FIXME: handle multiple relation for the same object (ex US3NY21M/US3NY21M.000, CA379035.000)
     S57_geo     *relation;
 #endif
 
@@ -303,7 +304,6 @@ projXY     S57_prj2geo(projUV uv)
     return uv;
 }
 
-//int        S57_geo2prj3dv(guint npt, geocoord *data)
 int        S57_geo2prj3dv(guint npt, pt3 *data)
 // convert a vector of lon/lat/z (pt3) to XY(z) 'in-place'
 {
@@ -408,18 +408,20 @@ static guint  _delInLineSeg(guint npt, double *ppt)
 {
     pt3 *p = (pt3*)ppt;
 
-    //* FIXME: optimisation: use pt3 newArr[npt];
+    //* FIXME NOT: optimisation: use pt3 newArr[npt];
     // and only one memmove(ppt, newArr, sizeof(pt3) * j);  (see fail test bellow)
+    //pt3 newArr[npt]; guint ii = 0, k = 0;
+    //
+
     guint j = npt;
     for (guint i=0; i<(npt-2); ++i) {
         // don't lose Z
         if (p[1].z != p[2].z) {
-            PRINTF("DEBUG: Z1 Z2 diff (%f -> %f)\n", p[1].z, p[2].z);
-
             ++p;
             continue;
         }
 
+        //*
         if (TRUE == _inLine(p[0], p[1], p[2])) {
             // A--B--C,       3-0-2=1
             // 0--A--B--C,    4-1-2=1
@@ -429,7 +431,19 @@ static guint  _delInLineSeg(guint npt, double *ppt)
         } else {
             ++p;
         }
+        //*/
+
+        /*
+        if (TRUE == _inLine(p[0], p[k+1], p[k+2])) {
+            --j;
+            ++k;
+        } else {
+            newArr[ii++] = *p++;
+            p += k;
+        }
+        */
     }
+    //memmove(ppt, newArr, sizeof(pt3) * j);
 
 #ifdef S52_DEBUG
     //* debug: check for duplicate vertex
@@ -443,7 +457,7 @@ static guint  _delInLineSeg(guint npt, double *ppt)
     }
     if (0 != nDup) {
         PRINTF("DEBUG: dup %i\n", nDup);
-        g_assert(0);
+        //g_assert(0);
     }
     //*/
 #endif  // S52_DEBUG
@@ -476,29 +490,21 @@ static   int  _simplifyGEO(_S57_geo *geo)
 {
     // LINE
     if (S57_LINES_T == geo->obj_t) {
+
+        // need at least 3 pt
         if (2 < geo->linexyznbr) {
             guint npt = _delInLineSeg(geo->linexyznbr, geo->linexyz);
-
-            // debug: check for dup
-            //if (0 != npt) {
-            //    PRINTF("DEBUG: line dup reduction: %i \t(%i\t->\t%i)\n", geo->linexyznbr - npt, geo->linexyznbr, npt);
-            //}
-
             if (npt != geo->linexyznbr) {
-                PRINTF("DEBUG: line reduction: %i \t(%i\t->\t%i)\n", geo->linexyznbr - npt, geo->linexyznbr, npt);
+                //PRINTF("DEBUG: line reduction: %i \t(%i\t->\t%i)\n", geo->linexyznbr - npt, geo->linexyznbr, npt);
                 geo->linexyznbr = npt;
-
-                // degenerate !
-                if (npt < 2) {
-                    // FIXME: delete geo!
-                    PRINTF("DEBUG: degenerated line npt:%i\n", npt);
-                    g_assert(0);
-                }
-
-
             }
-        } else {
-            PRINTF("DEBUG: short line: %i\n", geo->linexyznbr);
+        }
+
+        // degenerate !
+        if (2 > geo->linexyznbr) {
+            // FIXME: delete geo!
+            PRINTF("WARNING: degenerated line: %i\n", geo->linexyznbr);
+            g_assert(0);
         }
     }
 
@@ -507,25 +513,16 @@ static   int  _simplifyGEO(_S57_geo *geo)
         for (guint i=0; i<geo->ringnbr; ++i) {
             if (3 < geo->ringxyznbr[i]) {
                 guint npt = _delInLineSeg(geo->ringxyznbr[i], geo->ringxyz[i]);
-
-                // debug: check for dup
-                //if (0 != npt) {
-                //    PRINTF("DEBUG: poly dup reduction: %i \t(%i\t->\t%i)\n", geo->ringxyznbr - npt, geo->ringxyznbr, npt);
-                //}
-
                 if (npt != geo->ringxyznbr[i]) {
-                    PRINTF("DEBUG: poly reduction: %i \t(%i\t->\t%i)\n", geo->ringxyznbr[i] - npt, geo->ringxyznbr[i], npt);
+                    //PRINTF("DEBUG: poly reduction: %i \t(%i\t->\t%i)\n", geo->ringxyznbr[i] - npt, geo->ringxyznbr[i], npt);
                     geo->ringxyznbr[i] = npt;
-
-                    // degenerate !
-                    if (npt < 3) {
-                        // FIXME: delete ring!
-                        PRINTF("DEBUG: degenerated poly npt:%i\n", npt);
-                        g_assert(0);
-                    }
                 }
-            } else {
-                PRINTF("DEBUG: ring with less than 3 vertex (%i)\n", geo->ringxyznbr[i]);
+            }
+
+            // degenerate !
+            if (3 > geo->ringxyznbr[i]) {
+                // FIXME: delete ring!
+                PRINTF("WARNING: ring with less than 3 vertex (%i)\n", geo->ringxyznbr[i]);
                 g_assert(0);
             }
         }
@@ -1257,12 +1254,7 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
         return NULL;
     }
 
-    // debug
-    //if (NULL != att) {
-    //    PRINTF("DEBUG: attribute (%s) val length: %i\n", att_name, att->len);
-    //}
-
-    // display this NOTE once (because of to many warning)
+    // display this NOTE once (because of too many warning)
     static int silent = FALSE;
     if (!silent && NULL!=att && 0==att->len) {
         //PRINTF("NOTE: attribute (%s) has no value [obj:%s]\n", att_name, geo->name->str);
@@ -1271,6 +1263,15 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
         silent = TRUE;
         return NULL;
     }
+
+    /* FIXME: handle NULL in caller
+    if (NULL == att) {
+        // clutter
+        PRINTF("DEBUG: attribute name (%s) has NULL attribute value\n", att_name);
+        //S57_dumpData(geo, FALSE);
+        //g_assert(0);
+    }
+    */
 
     return att;
 }
@@ -1470,11 +1471,11 @@ double     S57_resetScamin(_S57_geo *geo)
     geo->scamin = val;
 
     return geo->scamin;
-    //return geo->scamin = (NULL==S57_getAttVal(geo, "SCAMIN")) ? UNKNOWN : S52_atof(valstr->str);
 }
 
 #ifdef S52_USE_C_AGGR_C_ASSO
 int        S57_setRelationship(_S57_geo *geo, _S57_geo *geoRel)
+// this geo has in a C_AGGR or C_ASSO (geoRel) relationship
 {
     return_if_null(geo);
     return_if_null(geoRel);
@@ -1482,10 +1483,10 @@ int        S57_setRelationship(_S57_geo *geo, _S57_geo *geoRel)
     if (NULL == geo->relation) {
         geo->relation = geoRel;
     } else {
-        // FIXME: ENC_ROOT/US3NY21M/US3NY21M.000 has multiple relation for the same object
-        // alse CA379035.000
-        PRINTF("WARNING: 'geo->relation' allready in use ..\n");
-        //g_assert(0);
+        // FIXME: US3NY21M/US3NY21M.000 has multiple relation for the same object
+        // also CA379035.000
+        PRINTF("DEBUG: 'geo->relation' allready in use ..\n");
+        g_assert(0);
 
         return FALSE;
     }
