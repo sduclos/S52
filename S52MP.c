@@ -204,8 +204,10 @@ static double _MARparamVal[] = {
 
     0.0,      // 28 - S52_MAR_ROT_BUOY_LIGHT (deg)
 
-    1.0,      // 29 - S52_MAR_DISP_CRSR_PICK, 0 - off, 1 - pick/highlight top object, 2 - pick stack/highlight top,
-              //                              3 - pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
+    1.0,      // 29 - S52_MAR_DISP_CRSR_PICK, 0 - off,
+              //                              1 - dump pick/highlight top object (default),
+              //                              2 - dump pick stack/highlight top object,
+              //                              3 - dump pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
 
     0.0,      // 30 - S52_MAR_DISP_GRATICULE  (default off)
 
@@ -261,7 +263,7 @@ static double     _validate_bool(double val)
 {
     val = (val==0.0)? 0.0 : 1.0;
 
-    PRINTF("NOTE: toggle to: %s\n", (val==0.0)? "OFF" : "ON");
+    //PRINTF("NOTE: toggle to: %s\n", (val==0.0)? "OFF" : "ON");
 
     return val;
 }
@@ -329,7 +331,7 @@ static double     _validate_disp(double val)
         return crntMask;
     }
 
-    PRINTF("DEBUG: Display Priority before: crntMask:0x%x, newMask:0x%x)\n", crntMask, newMask);
+    //PRINTF("DEBUG: Display Priority before: crntMask:0x%x, newMask:0x%x)\n", crntMask, newMask);
 
     if (crntMask  & newMask)
         crntMask -= newMask;
@@ -526,7 +528,7 @@ int    S52_MP_set(S52MarinerParameter paramID, double val)
 
         case S52_MAR_GUARDZONE_BEAM      : val = _validate_positive(val);               break;
         case S52_MAR_GUARDZONE_LENGTH    : val = _validate_positive(val);               break;
-        case S52_MAR_GUARDZONE_ALARM     : val = _validate_positive(val);               break;
+        case S52_MAR_GUARDZONE_ALARM     : val = _validate_int(val);                    break;
 
         case S52_MAR_DISP_HODATA_UNION   : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_SCLBDY_UNION   : val = _validate_bool(val);                   break;
