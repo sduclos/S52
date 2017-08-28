@@ -13,6 +13,20 @@
 # SD 2013AUG31 - add s52gtk3egl
 # SD 2014FEB11 - add s52eglw32, s52gtk2egl
 
+.POSIX:
+
+.PHONY: test/* clean distclean
+
+#------------------------------------------------------------------------------
+#  Makefile optimization tricks
+
+# Disable all built-in rules for performance
+.SUFFIXES:
+
+# Build with a single shell for all commands
+.ONESHELL:
+#------------------------------------------------------------------------------
+
 
 ##### TARGETS #########
 #all: s52glx         # OGR & GLX & GL 1.1 & GLU
@@ -40,9 +54,11 @@ all: s52gtk2egl     # GTK2 & GL2 & EGL
 # debug GDAL
 #export CPL_DEBUG=on
 
-SHELL = /bin/sh
+# GL error path
+#MESA_NO_ERROR=1
 
-.PHONY: test/* clean distclean
+
+SHELL = /bin/sh
 
 DBG0   = -O0 -g
 DBG1   = -O0 -g1 -Wall -Wpedantic -Wextra
