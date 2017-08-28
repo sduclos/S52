@@ -26,7 +26,7 @@
 
 #include "S52CS.h"
 #include "S52MP.h"      // S52_MP_get/set()
-#include "S52utils.h"   // PRINTF(), S52_atof(), S52_atoi(), cchar
+#include "S52utils.h"   // PRINTF(), S52_atof(), S52_atoi(), CCHAR
 
 //#define _ISOC99_SOURCE
 #include <math.h>       // NAN, floor()
@@ -341,9 +341,9 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
     }
 
     ///////////////////////////////////////////////
+    // CS(DEPCNT02)
     // object: line DEPCNT and line DEPARE
     // link to the shallower object that intersec this object
-    //
     if ((0==g_strcmp0(name, "DEPCNT")) ||
         (0==g_strcmp0(name, "DEPARE") &&
          S57_LINES_T==S57_getObjtype(geo))
@@ -355,12 +355,21 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         double    drvalmin = -UNKNOWN;
 
         if (NULL == drvalstr) {
-            drvalstr = S57_getAttVal(geo, "VALDCO");
+            drvalstr = S57_getAttVal(geo, "DRVAL2");
+            if (NULL != drvalstr) {
+                drval = S52_atof(drvalstr->str);
+            } else {
+                drvalstr = S57_getAttVal(geo, "VALDCO");
+            }
         }
 
         if (NULL != drvalstr) {
             drval = S52_atof(drvalstr->str);
         } else {
+            PRINTF("DEBUG: line %s:%u has no depth (DRVAL1, DRVAL2, VALDCO)\n", name, S57_getS57ID(geo));
+            //S57_dumpData(geo, FALSE);
+
+            //g_assert(0);
             return TRUE;
         }
 
@@ -374,8 +383,8 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             if (TRUE == g_string_equal(lnam, olnam))
                 continue;
 
-            /*
-            {// skip UNSARE
+            /* skip UNSARE
+            {
                 char *name = S57_getName(geo);
                 if (0 == strncmp(name, "UNSARE", 6)) {
                     PRINTF("WARNING: skipping adjacent UNSARE\n");
@@ -386,8 +395,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             */
 
             // link to the area next to this one with a depth just above (shallower) this one,
-            // FIXME: make list of objet that share Edge, now its only object list base
-            // on extent overlap
+            // FIXME: make list of objet that share Edge, now its only object list base on extent overlap
             if (TRUE == _intersectGEO(geo, other)) {
                 // DRVAL2
                 GString *drval2str = S57_getAttVal(other, "DRVAL2");
@@ -416,8 +424,24 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
                             S57_setTouchDEPARE(geo, other);
                         }
                     }
+                    //continue;
                 }
 
+                /* VALDCO
+                GString *valdcostr = S57_getAttVal(other, "VALDCO");
+                if (NULL != valdcostr) {
+                    double valdco = S52_atof(valdcostr->str);
+
+                    // is this area just above (shallower) then this one
+                    if (valdco <= drval) {
+                        if (valdco > drvalmin) {
+                            drvalmin = valdco;
+                            S57_setTouchDEPARE(geo, other);
+                        }
+                    }
+                    continue;
+                }
+                //*/
             }
         } // for
 
@@ -878,15 +902,6 @@ static GString *DEPCNT02 (S57_geo *geo)
         return depcnt02;
     }
 
-
-    // debug
-    //if (483 == S57_getS57ID(geo)) {
-    //    PRINTF("483 found\n");
-    //}
-    //if (140 == S57_getS57ID(geo)) {
-    //    PRINTF("140 found\n");
-    //}
-
     // first reset original scamin
     S57_resetScamin(geo);
 
@@ -927,8 +942,10 @@ static GString *DEPCNT02 (S57_geo *geo)
                     GString *drval1touchstr = NULL;
                     S57_geo *geoTouch       = S57_getTouchDEPARE(geo);
                     if (NULL == geoTouch) {
-                        PRINTF("DEBUG: NULL geoTouch depcnt02-1/getTouchDEPARE\n");
-                        //return depcnt02;
+                        // this object doesn't touch shallower DEPARE
+                        //PRINTF("DEBUG: NULL geoTouch depcnt02-1/getTouchDEPARE\n");
+                        depcnt02 = g_string_new(";LS(SOLD,1,DEPCN)");
+                        return depcnt02;
                     } else {
                         drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
                     }
@@ -991,11 +1008,6 @@ static GString *DEPCNT02 (S57_geo *geo)
 
         //depth_value = valdco;
 
-        // debug
-        //if (127 == S57_getS57ID(geo)) {
-        //    PRINTF("127 found\n");
-        //}
-
         if (valdco == S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
             safe = TRUE;
             //PRINTF("*** DEPCNT: SET SAFETY CONTOUR VALCO: %f\n", valdco);
@@ -1005,8 +1017,11 @@ static GString *DEPCNT02 (S57_geo *geo)
                 GString *drval1str = NULL;
                 S57_geo *geoTmp    = S57_getTouchDEPARE(geo);
                 if (NULL == geoTmp) {
-                    PRINTF("DEBUG: NULL geoTmp depcnt02-2/getTouchDEPARE\n");
-                    //return depcnt02;
+                    // CA27904A.000 DEPCNT:7573 pass here
+                    // this object doesn't touch shallower DEPARE
+                    //PRINTF("DEBUG: NULL geoTmp depcnt02-2/getTouchDEPARE\n");
+                    depcnt02 = g_string_new(";LS(SOLD,1,DEPCN)");
+                    return depcnt02;
                 } else {
                     drval1str = S57_getAttVal(geoTmp, "DRVAL1");
                 }
@@ -2161,7 +2176,6 @@ static GString *OBSTRN04 (S57_geo *geo)
 #ifdef S52_DEBUG
                     {   // debug - check impact of this bug
                         PRINTF("DEBUG: chenzunfeng found this bug LS(DASH,2,CHGRD)[not CHBLK], %s:%i\n", S57_getName(geo), S57_getS57ID(geo));
-                        //S57_highlightON(geo);
                         S57_setHighlight(geo, TRUE);
                         g_assert(0);  // FIXME: name ENC that pass here
                     }
@@ -3305,7 +3319,7 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
                 //            - 4.0: set OP to OTHER in UDWHAZ04
                 //     DRVAL 1/2 not used in UDWHAZ04 so this hack might not work
 
-                // debug - try to find spurious 
+                // debug - try to find spurious
                 // FIX: logically an Isolated Danger Sym (ISODGR01) would be on a POINT_T !
                 // BUT: UDWHAZ03 apply to point,area. While UDWHAZ04 apply to point,line,area!!
                 if (S57_POINT_T == S57_getObjtype(geo)) {                      // fix: udwhaz03 - place ISODRG on point only
