@@ -4,6 +4,19 @@
 #
 
 
+2017AUG28
+- refactor GL begin
+- refactor pick cycle
+- add test AIS msg type 18
+- fix NULL touchDEPARE() in CS/DEPCNT02
+
+2017JUL22
+- fix defective refactoring in S52_GL_getViewPort()
+
+2017JUL15
+- fix symb highlight on pick
+- refactor S52_PL_getDListData()
+
 2017JUN06
 - fix palette validation
 
@@ -11,7 +24,7 @@
 - add _simplifyGEO() to delete redundant vertex
 
 2017MAY11
-- rerfactor 'double xyz[]' to 'pt3 pt[]'
+- refactor 'double xyz[]' to 'pt3 pt[]'
 
 2017MAY09
 - refactor _drawLegend()
