@@ -53,12 +53,12 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);  // on - 1NM (default OFF - 0.0)
     S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);  // off (default ON)
 
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // BASE always ON
+    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // BASE always ON
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // STABDARD default
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_OTHER);   // OTHER
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE | S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
-    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
 
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE );  // none
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // Mariner Standard - default
@@ -86,8 +86,12 @@ static int      _s52_setupMarPar(void)
 
     S52_setMarinerParam(S52_MAR_DISP_CALIB,      1.0);
 
+    S52_setMarinerParam(S52_MAR_DISP_GRATICULE,  1.0);  // ON (default OFF)
+
+    S52_setMarinerParam(S52_MAR_DISP_WHOLIN,     1.0);  // wholin auto placement: 0 - off, 1 - wholin, 2 - arc, 3 - wholin + arc  (default off)
+
     // cell's legend
-    S52_setMarinerParam(S52_MAR_DISP_LEGEND,     1.0);   // show
+    //S52_setMarinerParam(S52_MAR_DISP_LEGEND,     1.0);  // show
     //S52_setMarinerParam(S52_MAR_DISP_LEGEND,     0.0);   // hide (default)
 
     //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
@@ -97,9 +101,9 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_ANTIALIAS,       0.0);     // off
 
     //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 0.0);  // none
-    S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK,  1.0);  // pick/highlight top object
-    //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 2.0);  // pick stack/highlight top
-    //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 3.0);  // pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
+    //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK,  1.0);  // dump pick/highlight top object (default)
+    //S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 2.0);  // dump pick stack/highlight top object
+    S52_setMarinerParam(S52_MAR_DISP_CRSR_PICK, 3.0);  // dump pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
 
 
     // ---------------- trick to force symbole size -----------------------------
@@ -161,8 +165,9 @@ static int      _s52_setupMarPar(void)
     //S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters) [0.0 - off]
     //S52_MAR_GUARDZONE_LENGTH    = 47,   // Danger/Indication Highlight used by Position (meters, user computed from speed/time or distance)
     //S52_MAR_GUARDZONE_ALARM     = 48,   // FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
-                                          // -1 - display highlight
-    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, -1.0);  // debug - alarm
+                                          // -1 - debug, display highlight (alarm)
+    //S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // no  alarm
+    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, -1.0);  // debug - show highlight (alarm)
 
     //S52_MAR_DISP_HODATA_UNION   = 49,   // 0 - union HO data limit "m_covr"(default), 1 - all HO data limit (M_COVR+m_covr)
     // CS DATCVY01:M_COVR:CATCOV=2, "M_COVR" OTHER
