@@ -120,16 +120,19 @@ static int       _gluDeleteQuadric(_GLUquadricObj* qobj)
 
 static int       _gluPartialDisk(_GLUquadricObj* qobj,
                                  GLfloat innerRadius, GLfloat outerRadius,
-                                 GLint slices, GLint loops, GLfloat startAngle, GLfloat sweepAngle)
+                                 GLint slices, GLint loops,
+                                 GLfloat startAngle, GLfloat sweepAngle)
 {
     GLdouble sinCache[CACHE_SIZE];
     GLdouble cosCache[CACHE_SIZE];
+
     //GLdouble angle;
     GLdouble vertex[3];
 
     if (slices < 2) slices = 2;
 
-    if ((slices<2) || (loops<1) || (outerRadius<=0.0) || (innerRadius<0.0) || (innerRadius>outerRadius)) {
+    //if ((slices<2) || (loops<1) || (outerRadius<=0.0) || (innerRadius<0.0) || (innerRadius>outerRadius)) {
+    if ((loops<1) || (outerRadius<=0.0) || (innerRadius<0.0) || (innerRadius>outerRadius)) {
         //gluQuadricError(qobj, GLU_INVALID_VALUE);
         if ((NULL!=qobj) && (NULL!=qobj->cb_error)) {
             qobj->cb_error(GLU_INVALID_VALUE);
@@ -138,7 +141,8 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
         return FALSE;
     }
 
-    if (slices >= CACHE_SIZE) slices = CACHE_SIZE - 1;
+    if (slices >= CACHE_SIZE)
+        slices = CACHE_SIZE - 1;
 
     if (sweepAngle < -360.0) sweepAngle = -360.0;
     if (sweepAngle >  360.0) sweepAngle =  360.0;
@@ -152,6 +156,7 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
     //if (sweepAngle == 360.0) slices2 = slices;
     //slices2 = slices + 1;
 
+    // FIXME: static/init -
     GLdouble angleOffset = startAngle/180.0f*PI;
     for (int i=0; i<=slices; i++) {
         GLdouble angle = angleOffset+((PI*sweepAngle)/180.0f)*i/slices;
@@ -197,6 +202,11 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
 static int       _gluDisk(_GLUquadricObj* qobj, GLfloat innerRadius,
                           GLfloat outerRadius, GLint slices, GLint loops)
 {
+    //
+    // FIXME: GL2 optimisation: draw a point instead of a filled disk
+    // use fillMode & radius * dotpitch = pixel
+    //
+
     _gluPartialDisk(qobj, innerRadius, outerRadius, slices, loops, 0.0, 360.0);
 
     return TRUE;
