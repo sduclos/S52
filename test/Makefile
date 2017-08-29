@@ -85,13 +85,19 @@ s52gtk2gps: CFLAGS += `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-gl
 
 s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 
-#                     -DSET_SCREEN_SIZE
-#                     -DUSE_TEST_OBJ
-#                     -DUSE_FAKE_AIS
 s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
                      -DUSE_AIS               \
+                     -DS52_USE_AFGLOW
+
+# debug - test object
+#                     -DSET_SCREEN_SIZE
+#                     -DUSE_FAKE_AIS
+s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
+                     -DS52_USE_EGL           \
+                     -DS52_USE_GLES2         \
+                     -DUSE_TEST_OBJ          \
                      -DS52_USE_AFGLOW
 
 #                     -DUSE_TEST_OBJ
