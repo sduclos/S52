@@ -61,8 +61,8 @@ static int _s52_setupVESSEL(double cLat, double cLon)
     return TRUE;
 }
 
-static int _s52_updFakeAIS(double cLat, double cLon)
-// fake one AIS
+static int _s52_updFakeAISdata(double cLat, double cLon)
+// update fake AIS - drawLast() will render new
 {
     if (FALSE != _vessel_ais) {
         gchar         str[80];
@@ -73,6 +73,7 @@ static int _s52_updFakeAIS(double cLat, double cLon)
 
         g_get_current_time(&now);
         g_sprintf(str, "%s %lis", VESSEL_LABEL, now.tv_sec);
+
         S52_setVESSELlabel(_vessel_ais, str);
         S52_pushPosition(_vessel_ais, cLat - 0.01, cLon + 0.01, hdg);
         S52_setVector(_vessel_ais, 1, hdg, 16.0);   // ground
