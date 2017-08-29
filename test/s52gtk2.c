@@ -727,7 +727,9 @@ static int      _s52_init()
 
     _s52_setupIceRte();
     _s52_setupLEGLIN(_view.cLat, _view.cLon);
-    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
+    // debug - display highlight
+    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, -1.0);
+    //S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
 
     _s52_setupCLRLIN(_view.cLat, _view.cLon);
 
@@ -1061,8 +1063,7 @@ static gboolean button_release_event(GtkWidget      *widget,
                     if (NULL != name) {
                         g_print("s52gtk.c:button_release_event(): OBJ PICKED(%.f, %.f): %s\n", event->x, event->y, name);
 
-                        // display highlight
-                        //S52_setMarinerParam(S52_MAR_ERROR, -1.0);
+                        // debug - display highlight
                         S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, -1.0);
                     }
                 }
@@ -1070,9 +1071,9 @@ static gboolean button_release_event(GtkWidget      *widget,
                 S52_draw();
                 S52_drawLast();
 
-                // clear alarm
-                //S52_setMarinerParam(S52_MAR_ERROR, 0.0);
-                S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);
+                // debug - display highlight
+                S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, -1.0);
+                //S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
 
                 if (gdk_gl_drawable_is_double_buffered(gldrawable))
                     gdk_gl_drawable_swap_buffers(gldrawable);
