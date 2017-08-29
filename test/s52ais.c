@@ -49,7 +49,7 @@ static GThread *_gpsClientThread = NULL;
 ///////////////////////////////////////////////////////////////////////
 // Note: on systemd the gpsd -G option will not work
 // sudoedit /lib/systemd/system/gpsd.socket with gpsd host LAN IP
-// (detail at http://www.catb.org/gpsd/troubleshooting.html)
+// (detail at http://www.catb.org/gpsd/troubleshooting.html, (systemd config bug in 16.04LTS))
 #ifdef S52_USE_ANDROID
 //#define GPSD_HOST "192.168.1.66"  // connect to GPSD on local network
 //#define GPSD_HOST "192.168.1.68"  // connect to GPSD on local network
@@ -57,9 +57,13 @@ static GThread *_gpsClientThread = NULL;
 #define GPSD_HOST "192.168.1.73"  // connect to GPSD on local network
 #else  // S52_USE_ANDROID
 //#define GPSD_HOST "localhost"     // connect to local GPSD
-#define GPSD_HOST "192.168.1.69"  // connect to GPSD on local network
+//#define GPSD_HOST "127.0.0.1"     // connect to local GPSD
+//#define GPSD_HOST "192.168.1.67"  // connect to GPSD on local network
+//#define GPSD_HOST "192.168.1.68"  // connect to GPSD on local network
+//#define GPSD_HOST "192.168.1.69"  // connect to GPSD on local network
 //#define GPSD_HOST "192.168.1.72"  // connect to GPSD on local network
 //#define GPSD_HOST "192.168.1.73"  // connect to GPSD on local network
+#define GPSD_HOST "sduclos-ZBOX-CA320NANO.local" // connect to GPSD on local network (avahi - zeroconf)
 #endif  // S52_USE_ANDROID
 ///////////////////////////////////////////////////////////////////////
 
@@ -168,14 +172,15 @@ static char *_shipCargoClassName[] = {
 
 typedef struct _ais_t {
     unsigned int    mmsi;
+    char            name[AIS_SHIPNAME_MAXLEN + 1];
     int             status;
     int             turn;     // Rate of turn
-    char            name[AIS_SHIPNAME_MAXLEN + 1];
     double          course;
     double          speed;
 
-
+    // -------------------------
     GTimeVal        lastUpdate;
+    // optimisation: don't call update() when target lost after X sec, show iso date
     int             lost;     // TRUE if target lost
     S52ObjectHandle vesselH;
 
@@ -337,7 +342,7 @@ static int           _signal_setVESSELlabel(DBusConnection *bus, S52ObjectHandle
 }
 
 static int           _signal_setVESSELstate(DBusConnection *bus, S52ObjectHandle objH,
-                                              int vesselSelect, int status, int vesselTurn)
+                                            int vesselSelect, int status, int vesselTurn)
 {
     g_return_val_if_fail(_dbus, FALSE);
 
@@ -617,16 +622,22 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
     // NEW AIS (not found hence new)
     {
         _ais_t newais;
-        //__builtin_bzero(&newais, sizeof(_ais_t));
         memset(&newais, 0, sizeof(_ais_t));
         newais.mmsi     = mmsi;
-        newais.status   = -1;     // 0 indicate that status form report is needed
-        g_get_current_time(&newais.lastUpdate);
-        newais.course   = -1.0;
-        newais.speed    =  0.0;
-
         // create an active symbol, put mmsi since status is not known yet
         g_sprintf(newais.name, "%i", mmsi);
+        newais.status   = -1;     // 0 indicate that status form report is needed
+
+        newais.course   = -1.0;
+        //newais.speed    =  0.0;
+
+
+        g_get_current_time(&newais.lastUpdate);
+
+        //GTimeVal now;
+        //g_get_current_time(&now);
+        //now.tv_usec = 0;  // will print time without frac of sec
+        //snprintf(str, MAXL-1, "%s %s", g_time_val_to_iso8601(&now), string);
 
 #ifdef S52_USE_SOCK
         // debug: make ferry acte as ownshp
@@ -952,6 +963,7 @@ static int           _removeOldAIS(void)
         return FALSE;
     }
 
+    // FIXME: add keepAlive
     // special mode to keep all old AIS
     if (AIS_SILENCE_MAX == 0)
         return FALSE;
@@ -1027,7 +1039,7 @@ static int           _updateTimeTag(void)
 #ifdef S52_USE_SOCK
         _encodeNsend("S52_setVESSELlabel", "%lu,\"%s\"", ais->vesselH, str);
 #else
-        //Note: can't use _setAISLab() as it update timetag - long str
+        // Note: can't use _setAISLab() as it update timetag - long str
         if (FALSE == S52_setVESSELlabel(ais->vesselH, str)) {
             ais->lost = TRUE;
         }
@@ -1123,29 +1135,26 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
     if (4 == gpsdata->ais.type) {
 
 /*
-        unsigned int year;			// UTC year
+ unsigned int year;			// UTC year
 #define AIS_YEAR_NOT_AVAILABLE	0
-	    unsigned int month;			// UTC month
+unsigned int month;			// UTC month
 #define AIS_MONTH_NOT_AVAILABLE	0
-	    unsigned int day;			// UTC day
+unsigned int day;			// UTC day
 #define AIS_DAY_NOT_AVAILABLE	0
-	    unsigned int hour;			// UTC hour
+unsigned int hour;			// UTC hour
 #define AIS_HOUR_NOT_AVAILABLE	24
-	    unsigned int minute;		// UTC minute
+unsigned int minute;		// UTC minute
 #define AIS_MINUTE_NOT_AVAILABLE	60
-	    unsigned int second;		// UTC second
+unsigned int second;		// UTC second
 #define AIS_SECOND_NOT_AVAILABLE	60
-	    bool accuracy;		        // fix quality
-	    int lon;			        // longitude
-	    int lat;			        // latitude
-	    unsigned int epfd;		    // type of position fix device
-	    //unsigned int spare;	    // spare bits
-	    bool raim;			        // RAIM flag
-	    unsigned int radio;		    // radio status bits
+bool accuracy;		        // fix quality
+int lon;			        // longitude
+int lat;			        // latitude
+unsigned int epfd;		    // type of position fix device
+//unsigned int spare;	    // spare bits
+bool raim;			        // RAIM flag
+unsigned int radio;		    // radio status bits
 */
-
-        double lat = gpsdata->ais.type4.lat / 600000.0;
-        double lon = gpsdata->ais.type4.lon / 600000.0;
 
         char label[AIS_SHIPNAME_MAXLEN+1];
         g_snprintf(label, AIS_SHIPNAME_MAXLEN, "%4i-%02i-%02iT%02i:%02i:%02iZ",
@@ -1153,6 +1162,9 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
                 gpsdata->ais.type4.hour, gpsdata->ais.type4.minute, gpsdata->ais.type4.second);
 
         _setAISLab(gpsdata->ais.mmsi, label);
+
+        double lat = gpsdata->ais.type4.lat / 600000.0;
+        double lon = gpsdata->ais.type4.lon / 600000.0;
         _setAISPos(gpsdata->ais.mmsi, lat, lon, 0.0);
 
         return;
@@ -1218,9 +1230,9 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
 
 /*
         unsigned int dac;       	// Designated Area Code
-	    unsigned int fid;       	// Functional ID
-#define AIS_TYPE8_BINARY_MAX	952	// 952 bits
-	    size_t bitcount;		    // bit count of the data
+        unsigned int fid;       	// Functional ID
+        #define AIS_TYPE8_BINARY_MAX	952	// 952 bits
+        size_t bitcount;		    // bit count of the data
 */
         // followed by:
         //union {
@@ -1235,13 +1247,64 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
 
 
         // add a dummy entry to signal that GPSD is on-line
-        //_setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 8 - Broadcast Binary Message");
+        _setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 8 - Broadcast Binary Message");
         //_setAISLab(gpsdata->ais.mmsi,   "Broadcast Bin Msg");
 
         return;
     }
 
-	// Type 20 - Data Link Management Message
+    // Type 18 - Standard Class B CS Position Report
+    if (18 == gpsdata->ais.type) {
+        /*
+        struct {
+            unsigned int reserved; // altitude in meters
+            unsigned int speed;    // speed over ground in deciknots
+            bool         accuracy; // position accuracy
+            int          lon;      // longitude
+#define AIS_GNS_LON_NOT_AVAILABLE  0x1a838
+            int          lat;      // latitude
+#define AIS_GNS_LAT_NOT_AVAILABLE  0xd548
+            unsigned int course;   // course over ground
+            unsigned int heading;  // true heading
+            unsigned int second;   // seconds of UTC timestamp
+            unsigned int regional; // regional reserved
+            bool         cs;       // carrier sense unit flag
+            bool         display;  // unit has attached display?
+            bool         dsc;      // unit attached to radio with DSC?
+            bool         band;     // unit can switch frequency bands?
+            bool         msg22;    // can accept Message 22 management?
+            bool         assigned; // assigned-mode flag
+            bool         raim;     // RAIM flag
+            unsigned int radio;    // radio status bits
+        }
+        */
+
+        if (0x1a838 == gpsdata->ais.type18.lon || 0xd548==gpsdata->ais.type18.lat) {
+            // debug
+            g_print("s52ais:_updateAISdata(): Standard Class B CS Position Report: Position not available\n");
+        } else {
+            double lat     = gpsdata->ais.type18.lat / 600000.0;
+            double lon     = gpsdata->ais.type18.lon / 600000.0;
+            double course  = gpsdata->ais.type18.course / 10.0;
+            double speed   = gpsdata->ais.type18.speed  / 10.0;
+            double heading = gpsdata->ais.type18.heading;
+            int status     = 1;  // normal
+            int turn       = 0;  // not turning
+
+            // heading not available
+            if (511.0 == heading) heading = course;
+            // speed not available
+            if (102.3 == speed)   speed = 0.0;
+
+            _setAISPos(gpsdata->ais.mmsi, lat, lon, heading);
+            _setAISVec(gpsdata->ais.mmsi, course, speed);
+            _setAISSta(gpsdata->ais.mmsi, status, turn);
+        }
+
+        return;
+    }
+
+    // Type 20 - Data Link Management Message
     if (20 == gpsdata->ais.type) {
         // add a dummy entry to signal that GPSD is on-line
         //_setAISLab(gpsdata->ais.mmsi, "AIS MSG TYPE 20 - Data Link Management Message");
@@ -1255,7 +1318,6 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
             gpsdata->ais.type, gpsdata->set & AIS_SET, gpsdata->error);
 
     // FIXME:
-    //   Type 18
     //   Type 24
 
     return;
@@ -1270,11 +1332,13 @@ static int           _connectGPSD(void)
     memset(&_gpsdata, 0, sizeof(_gpsdata));
 
     while (0 != gps_open(GPSD_HOST, GPSD_PORT, &_gpsdata)) {   // android (gpsd 2.96)
-        g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec [err: %d: %s\n", errno, gps_errstr(errno));
+        g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec [err(%i): %s](%s:%s)\n",
+                errno, gps_errstr(errno), GPSD_HOST, GPSD_PORT);
 
         // try to connect to GPSD server, bailout after 10 failed attempt
         GMUTEXLOCK(&_ais_list_mutex);
 
+        // FIXME: say "NO AIS SRC"
         if ((NULL==_ais_list) || (10 <= ++nWait)) {
             g_print("s52ais:_gpsdClientRead() no AIS list (main exited) or no GPSD server.. terminate _gpsClientRead thread\n");
 
@@ -1292,7 +1356,7 @@ static int           _connectGPSD(void)
         return FALSE;
     }
 
-    // FIXME: say something ! (systemd config bug in 16.04LTS)
+    // FIXME: say something !
     // connecting to ..
     // gpsd found
     // start listening to ..
@@ -1316,6 +1380,8 @@ static int           _gpsdClientReadLoop(void)
         if (NULL == _ais_list) {
             g_print("s52ais:_gpsdClientRead() no AIS list .. main exited .. terminate gpsRead thread\n");
             ret = TRUE;
+
+            GMUTEXUNLOCK(&_ais_list_mutex);
             goto exit;
         }
         GMUTEXUNLOCK(&_ais_list_mutex);
@@ -1356,7 +1422,7 @@ static int           _gpsdClientReadLoop(void)
 
 exit:
     // exit thread
-    GMUTEXUNLOCK(&_ais_list_mutex);
+    //GMUTEXUNLOCK(&_ais_list_mutex);
 
     return ret;
 }
@@ -1370,9 +1436,11 @@ static gpointer      _gpsdClientStart(gpointer dummy)
 
             ret = _gpsdClientReadLoop();
 
-            // disconnect GPSD
-            gps_stream(&_gpsdata, WATCH_DISABLE, NULL);
-            gps_close(&_gpsdata);
+            // disconnect GPSD if alive
+            if (0 < ret) {
+                gps_stream(&_gpsdata, WATCH_DISABLE, NULL);
+                gps_close(&_gpsdata);
+            }
         }
     }
 
@@ -1449,7 +1517,9 @@ int            s52ais_initAIS(void)
     GMUTEXLOCK(&_ais_list_mutex);
     if (NULL == _ais_list) {
         _ais_list = g_array_new(FALSE, TRUE, sizeof(_ais_t));
-    } else {
+    }
+    // FIXME: what the point
+    else {
         g_print("s52ais:s52ais_initAIS(): bizzard case where we are restarting a running process!!\n");
 
         GMUTEXUNLOCK(&_ais_list_mutex);
