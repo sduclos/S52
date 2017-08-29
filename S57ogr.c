@@ -184,6 +184,15 @@ int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadO
         loadObject_cb(layername, (void*)feature);
 #endif
 
+        /* debug - CA ENC not UTF-8!
+        if (TRUE == OGR_L_TestCapability((OGRLayerH)ogrlayer, OLCStringsAsUTF8)) {
+            PRINTF("DEBUG: %s StringsAsUTF8\n",  layername);
+            //g_assert(0);
+        } else {
+            PRINTF("DEBUG: %s Strings Not UTF8\n",  layername);
+        }
+        //*/
+
         OGR_F_Destroy(feature);
     }
 
