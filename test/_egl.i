@@ -6,6 +6,11 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>  // robustness
 
+//#define WIDTH  1280
+//#define HEIGHT 1024
+#define WIDTH  600
+#define HEIGHT 400
+
 typedef struct EGLState {
     EGLNativeWindowType eglWindow;         // GdkDrawable in GTK2 and GdkWindow in GTK3
     EGLDisplay          eglDisplay;
@@ -153,9 +158,22 @@ static int      _egl_end        (EGLState *eglState, const char *tag)
     (void)eglState;
     (void)tag;
 
-    // debug - context reset
+    // debug - test trigger a context reset
     //if (NULL!=tag && 'D'==tag[0]) {
     //    LOGE("_egl_end(): FIXME: RESET CONTEXT [0x%x]\n", eglGetError());
+    //}
+
+    // DRAW
+    //if (NULL!=tag && 'D'==tag[0]) {
+    //    LOGE("_egl_end(): end of draw() [0x%x]\n", eglGetError());
+    //}
+    // LAST
+    //if (NULL!=tag && 'L'==tag[0]) {
+    //    LOGE("_egl_end(): FIXME: RESET CONTEXT [0x%x]\n", eglGetError());
+    //}
+    // STR
+    //if (NULL!=tag && 'S'==tag[0]) {
+    //    LOGE("_egl_end(): end of drawStr() [0x%x]\n", eglGetError());
     //}
 
     if (EGL_FALSE == eglWaitGL()) {
@@ -337,8 +355,13 @@ static int      _egl_init       (EGLState *eglState)
         // MSAA - fail on MESA with "export MESA_GLES_VERSION_OVERRIDE=2.0"
         // black frame flicker
         EGL_SAMPLE_BUFFERS,      1,
-        EGL_SAMPLES,             4,
+        EGL_SAMPLES,             1,
+        //EGL_SAMPLES,             4,
         //EGL_SAMPLES,             8,
+
+        // debug - MSAA off
+        //EGL_SAMPLE_BUFFERS,      0,  // The default value is zero.
+        //EGL_SAMPLES,             0,
 
         EGL_NONE
     };
@@ -442,13 +465,14 @@ static int      _egl_init       (EGLState *eglState)
             g_assert(0);
         }
         screen = DefaultScreen(display);
+
         wa.colormap         = XCreateColormap(display, RootWindow(display, screen), visual->visual, AllocNone);
         //wa.colormap         = XCreateColormap(display, RootWindow(display, screen), NULL, AllocNone);
         wa.background_pixel = 0xFFFFFFFF;
         wa.border_pixel     = 0;
         wa.event_mask       = ExposureMask | StructureNotifyMask | KeyPressMask | ButtonPressMask | ButtonReleaseMask | PointerMotionMask;
 
-        window = XCreateWindow(display, RootWindow(display, screen), 0, 0, 1280, 1024,
+        window = XCreateWindow(display, RootWindow(display, screen), 0, 0, WIDTH, HEIGHT, //1280, 1024,
                                0, visual->depth, InputOutput, visual->visual, mask, &wa);
                                //0, 0, InputOutput, NULL, mask, &wa);
 
@@ -485,12 +509,16 @@ static int      _egl_init       (EGLState *eglState)
         g_assert(0);
     }
 
+
+    // Note: eglSurfaceAttrib() EGL_SWAP_BEHAVIOR default is implementation specific
 #if defined(S52_USE_ANDROID) || defined(GTK_MAJOR_VERSION)
     // FIXME: check that android and GTK work
-    // s52eglx fail if BUFFER_PRESERVED
     // when swapping Adreno clear old buffer
     // http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html
     eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
+#else
+    // s52eglx/S52_drawStr() fail if BUFFER_PRESERVED
+    eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_DESTROYED);
 #endif
 
     // --- get eglContext ------------------------------------------------
