@@ -61,6 +61,7 @@
 //#include <glib-android/glib-android.h>  // g_android_init()
 #endif  // S52_USE_ANDROID
 
+#include "_s52_setupmarfea.i"  // _s52_setupmarfea()
 
 //----------------------------------------------
 //
@@ -75,7 +76,7 @@ static GTimer *_timer = NULL;
 #include "_s52_setupPASTRK.i"  // _s52_setupPASTRK()
 #include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
 #include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
-#include "_s52_setupmarfea.i"  // _s52_setupmarfea()
+//#include "_s52_setupmarfea.i"  // _s52_setupmarfea()
 #include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
 #include "_radar.i"            // _radar_init(), _radar_readLog(), _radar_done()
 #endif  // USE_TEST_OBJ
@@ -302,6 +303,8 @@ static int      _s52_init     (s52engine *engine)
     // init decoration (scale bar, North arrow, unit, calib.)
     S52_newCSYMB();
 
+    _s52_setupmarfea(engine->state.cLat, engine->state.cLon);
+
 #ifdef USE_TEST_OBJ
     // setup mariner object (for debugging)
     // test loading objH _before_ loadPLib
@@ -312,11 +315,19 @@ static int      _s52_init     (s52engine *engine)
 
     _s52_setupmarfea(engine->state.cLat, engine->state.cLon);
 
-    // guard zone OFF (pick need GL projection)
+    // need to turn OFF guard zone because GL projection not set yet (set via the first call to S52_draw())
+    double gz = S52_getMarinerParam(S52_MAR_GUARDZONE_BEAM);
+    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);  // trun off
+
     S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
     _s52_setupIceRte();
     _s52_setupLEGLIN(engine->state.cLat, engine->state.cLon);
-    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
+
+    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, gz);  // trun on
+
+    // debug - display highlight
+    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, -1.0);
+    //S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
 
     _s52_setupPRDARE(engine->state.cLat, engine->state.cLon);
 
@@ -373,11 +384,6 @@ static int      _s52_draw_user(s52engine *engine)
     }
     */
 
-    // debug
-    //S52_drawStr(100, engine->height - 100, "CURSR", 1, "Test S52_drawStr()");
-
-    // FIXME: str seem to flicker
-    // - maybe swapping and egl beg end - nop EGL handled here (and called after str) -> same flicker
     static GTimeVal now;
     g_get_current_time(&now);
     now.tv_usec = 0;  // will print time without frac of sec
@@ -461,21 +467,37 @@ static int      _s52_draw_cb  (gpointer user_data)
         S52_draw();
 
         // test that user can add stuff on top of draw()
-        // FIXME: flicker
+        // all stuff DEFORE drawLast() are saved in tmp framebuffer
         //_s52_draw_user(engine);
     }
 
-    // draw AIS on last layer (IHO layer 9)
+    //* draw AIS on last layer (IHO layer 9)
     if (TRUE == engine->do_S52drawLast) {
 
 #ifdef USE_FAKE_AIS
-        _s52_updFakeAIS(engine->state.cLat, engine->state.cLon);
+        // update fake AIS - no draw call
+        _s52_updFakeAISdata(engine->state.cLat, engine->state.cLon);
 #endif
+
+        // Note: need to handle EGL beg/end by hand to avoid flicker when calling _s52_draw_user()
+        S52_setEGLCallBack((S52_EGL_cb)NULL, (S52_EGL_cb)NULL, NULL);
+
+        _egl_beg(&engine->eglState, "LASTtest");
+
+        // all stuff DEFORE the first drawLast() after draw()
+        // are saved in tmp framebuffer of DRAW cycle
+        //_s52_draw_user(engine);
+
         S52_drawLast();
 
-        // test that user can add stuff on top of drawLast()
+        // test that user can add stuff AFTER drawLast() (ie on top)
         _s52_draw_user(engine);
+
+        _egl_end(&engine->eglState, "LASTtest");
+
+        S52_setEGLCallBack((S52_EGL_cb)_egl_beg, (S52_EGL_cb)_egl_end, &engine->eglState);
     }
+    //*/
 
 #if !defined(S52_USE_EGL)
     _egl_end(&engine->eglState, "test");
@@ -1686,6 +1708,10 @@ static int      _X11_handleXevent(gpointer user_data)
 {
     s52engine *engine = (s52engine *) user_data;
 
+#ifdef USE_TEST_OBJ
+    static int ticks = 0;  // mouse motion count
+#endif  // USE_TEST_OBJ
+
     while (XPending(engine->eglState.dpy)) {
         XEvent event;
         XNextEvent(engine->eglState.dpy, &event);
@@ -1694,8 +1720,8 @@ static int      _X11_handleXevent(gpointer user_data)
         case ConfigureNotify:
             engine->width  = event.xconfigure.width;
             engine->height = event.xconfigure.height;
+            g_print("DEBUG: X11 ConfigureNotify Event: w:%i h:%i\n", event.xconfigure.width, event.xconfigure.height);
             S52_setViewPort(0, 0, event.xconfigure.width, event.xconfigure.height);
-            g_print("DEBUG: ConfigureNotify Event\n");
 
             break;
 
@@ -1703,15 +1729,93 @@ static int      _X11_handleXevent(gpointer user_data)
             // event fired when the window is first expose - draw() finish
             engine->do_S52draw     = TRUE;
             engine->do_S52drawLast = TRUE;
-            //g_signal_emit(G_OBJECT(engine->state.gobject), engine->state.s52_draw_sigID, 0);
             //_s52_draw_cb((gpointer) engine);
-            g_print("DEBUG: Expose Event\n");
+            g_print("DEBUG: X11 Expose Event\n");
 
             break;
+
+        case ButtonRelease:
+            {
+                //*  test pick if VRMEBL is OFF
+                if (FALSE == _drawVRMEBL) {
+                    XButtonReleasedEvent *pickEvent = (XButtonReleasedEvent *)&event;
+                    const char *name = S52_pickAt(pickEvent->x, engine->height - pickEvent->y);
+                    if (NULL != name) {
+                        unsigned int S57ID = atoi(name+7);
+                        g_print("OBJ(%i, %i): %s\n", pickEvent->x, engine->height - pickEvent->y, name);
+                        g_print("AttList=%s\n", S52_getAttList(S57ID));
+
+                        if (0 == g_strcmp0("vessel", name)) {
+                            g_print("vessel found\n");
+                            unsigned int S57ID = atoi(name+7);
+
+                            S52ObjectHandle vessel = S52_getMarObj(S57ID);
+                            if (0 != vessel) {
+                                int vesselSelect =   1;  // ON
+                                int vestat       =   0;  // AIS state undifined
+                                int vesselTurn   = 129;  // Note: VESSEL_TURN_UNDEFINED=129 defined in VESSEL.i
+                                //S52_setVESSELstate(vessel, vesselSelect, vestat, VESSEL_TURN_UNDEFINED);
+                                S52_setVESSELstate(vessel, vesselSelect, vestat, vesselTurn);
+                            }
+                        }
+                        engine->do_S52draw     = TRUE;
+                        engine->do_S52drawLast = TRUE;
+
+                        _s52_draw_cb((gpointer) engine);  // should signal draw thread!!
+                    }
+                }
+                //*/
+
+#ifdef USE_TEST_OBJ
+                //*
+                XButtonReleasedEvent *mouseEvent = (XButtonReleasedEvent *)&event;
+                if (FALSE == _drawVRMEBL)
+                    break;
+
+                double Xlon = mouseEvent->x;
+                double Ylat = engine->height - mouseEvent->y;
+
+                S52_setVRMEBL(_vrmeblA, Xlon, Ylat, NULL, NULL);
+
+                //* test LEGLIN on obstruction
+                if (TRUE == S52_xy2LL(&Xlon, &Ylat)) {
+                    S52_pushPosition(_cursor2, Ylat, Xlon, 0.0);
+
+                    //
+                    _leglin4LL[3] = Ylat;
+                    _leglin4LL[2] = Xlon;
+                    //_s52_setupLEGLIN(engine->state.cLat, engine->state.cLon);
+                    _s52_setupLEGLIN_alarm(0.0, 0.0);
+
+                    // call to draw needed as LEGLIN is on layer 5
+                    engine->do_S52draw     = TRUE;
+                    engine->do_S52drawLast = TRUE;
+                    _s52_draw_cb((gpointer) engine);
+                }
+                //*/
+
+                /* debug:  S52_xy2LL() --> S52_LL2xy() should be the same
+                {
+                    // NOTE:  LL (0,0) is the OpenGL origine (not X11 origine)
+                    double Xlon = 0.0;
+                    double Ylat = 0.0;
+                    S52_xy2LL(&Xlon, &Ylat);
+                    S52_LL2xy(&Xlon, &Ylat);
+                    g_print("DEBUG: xy2LL(0,0) --> LL2xy ==> Xlon: %f, Ylat: %f\n", Xlon, Ylat);
+                }
+                //*/
+#endif  // USE_TEST_OBJ
+            break;
+            }
 
 #ifdef USE_TEST_OBJ
         case MotionNotify:
             {
+                // skip some motion event
+                if (0 != ++ticks % 3)
+                    break;
+
+
                 if (FALSE == _drawVRMEBL)
                     break;
 
@@ -1723,11 +1827,11 @@ static int      _X11_handleXevent(gpointer user_data)
 
                 if (TRUE == S52_xy2LL(&Xlon, &Ylat)) {
                     S52_pushPosition(_cursor2, Ylat, Xlon, 0.0);
-
-                    engine->do_S52draw     = FALSE;
-                    engine->do_S52drawLast = TRUE;
-                    _s52_draw_cb((gpointer) engine);
                 }
+
+                engine->do_S52draw     = FALSE;
+                engine->do_S52drawLast = TRUE;
+                _s52_draw_cb((gpointer) engine);  // should signal draw thread!!
             }
             break;
 
@@ -1745,76 +1849,12 @@ static int      _X11_handleXevent(gpointer user_data)
 
                 if (TRUE == S52_xy2LL(&Xlon, &Ylat)) {
                     S52_pushPosition(_cursor2, Ylat, Xlon, 0.0);
-                    //_leglin4LL[1] = Ylat;
-                    //_leglin4LL[0] = Xlon;
+                    _leglin4LL[1] = Ylat;
+                    _leglin4LL[0] = Xlon;
                 }
             }
             break;
 
-        case ButtonRelease:
-            {
-                //XButtonReleasedEvent *mouseEvent = (XButtonReleasedEvent *)&event;
-
-                // test pick
-                /*
-                const char *name = S52_pickAt(mouseEvent->x, engine->height - mouseEvent->y);
-                if (NULL != name) {
-                    unsigned int S57ID = atoi(name+7);
-                    g_print("OBJ(%i, %i): %s\n", mouseEvent->x, engine->height - mouseEvent->y, name);
-                    g_print("AttList=%s\n", S52_getAttList(S57ID));
-
-                    {   // debug:  S52_xy2LL() --> S52_LL2xy() should be the same
-                        // NOTE:  LL (0,0) is the OpenGL origine (not X11 origine)
-                        double Xlon = 0.0;
-                        double Ylat = 0.0;
-                        S52_xy2LL(&Xlon, &Ylat);
-                        S52_LL2xy(&Xlon, &Ylat);
-                        g_print("DEBUG: xy2LL(0,0) --> LL2xy ==> Xlon: %f, Ylat: %f\n", Xlon, Ylat);
-                    }
-
-                    if (0 == g_strcmp0("vessel", name)) {
-                        g_print("vessel found\n");
-                        unsigned int S57ID = atoi(name+7);
-
-                        S52ObjectHandle vessel = S52_getMarObj(S57ID);
-                        if (0 != vessel) {
-                            int vesselSelect = 1;  // ON
-                            int vestat       = 0;  // AIS state undifined
-                            // Note: VESSEL_TURN_UNDEFINED defined in VESSEL.i
-                            //S52_setVESSELstate(vessel, vesselSelect, vestat, VESSEL_TURN_UNDEFINED);
-                            S52_setVESSELstate(vessel, vesselSelect, vestat, 129);
-                            //g_print("AttList: %s\n", S52_getAttList(S57ID));
-                        }
-                    }
-                }
-                //*/
-
-                // test LEGLIN on obstruction
-                /*
-                if (FALSE == _drawVRMEBL)
-                    break;
-
-                double Xlon = mouseEvent->x;
-                double Ylat = engine->height - mouseEvent->y;
-
-                S52_setVRMEBL(_vrmeblA, mouseEvent->x, engine->height - mouseEvent->y, NULL, NULL);
-
-                if (TRUE == S52_xy2LL(&Xlon, &Ylat)) {
-                    S52_pushPosition(_cursor2, Ylat, Xlon, 0.0);
-
-                    //
-                    _leglin4xy[3] = Ylat;
-                    _leglin4xy[2] = Xlon;
-                    _s52_setupLEGLIN(&engine->state);
-
-                    // call to draw needed as LEGLIN is on layer 5
-                    engine->do_S52draw     = TRUE;
-                    engine->do_S52drawLast = TRUE;
-                    _s52_draw_cb((gpointer) engine);
-                }
-                */
-            }
-            break;
 #endif  // USE_TEST_OBJ
 
         case KeyPress:
@@ -1935,6 +1975,18 @@ static int      _X11_handleXevent(gpointer user_data)
                 //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);     // for triggering symb ISODGR01 (ODD winding) at Rimouski
                 S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // for white chanel in Rimouski
                 //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
+
+                engine->do_S52draw = TRUE;
+
+                return TRUE;
+            }
+
+            // debug - ACK alarm
+            if (XK_F12 == keysym) {
+                if (0.0 == S52_getMarinerParam(S52_MAR_GUARDZONE_ALARM))
+                    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, -1.0);  // debug
+                else
+                    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM,  0.0);  // acknowledge alarm
 
                 engine->do_S52draw = TRUE;
 
@@ -2170,7 +2222,8 @@ int main(int argc, char *argv[])
 
     _timer = g_timer_new();
 
-    g_timeout_add(500, _X11_handleXevent, (void*)&_engine);  // 0.5 sec
+    //g_timeout_add(500, _X11_handleXevent, (void*)&_engine);  // 0.5 sec
+    g_timeout_add(100, _X11_handleXevent, (void*)&_engine);  // 0.1 sec
 
 #ifdef S52_USE_RADAR
     //g_timeout_add(1000/60, _s52_draw_cb,      (void*)&_engine);  // 16 msec
