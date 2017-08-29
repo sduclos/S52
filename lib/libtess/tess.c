@@ -564,11 +564,13 @@ gluTessEndPolygon( GLUtesselator *tess )
 
     __gl_meshCheckMesh( mesh );
 
-    if( tess->callBegin != &noBegin || tess->callEnd != &noEnd
-       || tess->callVertex != &noVertex || tess->callEdgeFlag != &noEdgeFlag
-       || tess->callBeginData != &__gl_noBeginData
-       || tess->callEndData != &__gl_noEndData
-       || tess->callVertexData != &__gl_noVertexData
+    if(   tess->callBegin        != &noBegin
+       || tess->callEnd          != &noEnd
+       || tess->callVertex       != &noVertex
+       || tess->callEdgeFlag     != &noEdgeFlag
+       || tess->callBeginData    != &__gl_noBeginData
+       || tess->callEndData      != &__gl_noEndData
+       || tess->callVertexData   != &__gl_noVertexData
        || tess->callEdgeFlagData != &__gl_noEdgeFlagData )
     {
       if( tess->boundaryOnly ) {
