@@ -198,6 +198,8 @@ static GLuint         _fboID = 0;
 #define   GLU_TRUE                           1
 #define   GLU_FALSE                          0
 
+// FIXME: current matrix dependency in GL2 code path need encapsulation - GL2ctx.crntMat
+// capture GL2 ctx state in struct
 //static    GLenum   _mode = GL_MODELVIEW;  // GL_MODELVIEW (initial) or GL_PROJECTION
 //static    GLenum   _mode = GL_PROJECTION;  // GL_MODELVIEW (initial) or GL_PROJECTION
 static    GLfloat  _mvm[MATRIX_STACK_MAX][16];       // modelview matrix
@@ -1052,7 +1054,7 @@ static int       _initTexture(void)
     glBindTexture  (GL_TEXTURE_2D, _fb_pixels_id);
 
 #ifdef S52_USE_TEGRA2
-    // Note: _fb_pixels must be in sync with _fb_format
+    // Note: _fb_pixels must be in sync with _fb_pixels_format
     glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
     // modern way
     //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
@@ -1089,18 +1091,20 @@ static int       _initTexture(void)
 static int       _saveShaderBin(GLuint programObject)
 // Save a GLSL shader bin into a file
 {
-    //_checkError("_saveShaderBin() -0-");
+    //FIXME: no OES
 
     // get the blob
     GLint nFormats = 0;
     glGetIntegerv(GL_NUM_PROGRAM_BINARY_FORMATS_OES, &nFormats);
-    PRINTF("DEBUG: GL_NUM_PROGRAM_BINARY_FORMATS_OES nFormats=%i\n", nFormats);
-    //GLint formats[nFormats];
-    GLenum formats[nFormats];
-    glGetIntegerv(GL_PROGRAM_BINARY_FORMATS_OES, (GLint*)formats);
+    if (0 != nFormats) {
+        //GLint formats[nFormats];
+        GLenum formats[nFormats];
+        glGetIntegerv(GL_PROGRAM_BINARY_FORMATS_OES, (GLint*)formats);
+    } else {
+        PRINTF("DEBUG: GL_NUM_PROGRAM_BINARY_FORMATS_OES failed nFormats=%i\n", nFormats);
+    }
 
     GLsizei bufsize = 0;
-    //FIXME: no OES
     glGetProgramiv(programObject, GL_PROGRAM_BINARY_LENGTH_OES, &bufsize);
     _checkError("_saveShaderBin() -1-");
     if (0 == bufsize) {
@@ -1110,15 +1114,13 @@ static int       _saveShaderBin(GLuint programObject)
     }
 
     GLsizei lenOut        = 0;
-    //GLenum  binaryFormats = 0;
     u8      binary[bufsize];
-
     if (NULL != _glGetProgramBinaryOES) {
         // FIXME: compare bufsize / lenOut
         //_glGetProgramBinaryOES(programObject, bufsize, &lenOut, formats, binary);
         _glGetProgramBinaryOES(programObject, bufsize, &lenOut, 0, binary);
         //glGetProgramBinaryOES(programObject, bufsize, &lenOut, formats, binary);
-    _checkError("_saveShaderBin():_glGetProgramBinaryOES() -2-");
+        _checkError("_saveShaderBin():_glGetProgramBinaryOES() -2-");
     } else {
         g_assert(0);
         return FALSE;
@@ -1185,6 +1187,8 @@ static GLuint    _loadShaderBin(void)
     }
 #endif
     _checkError("_loadShaderBin() -2-");
+
+    PRINTF("DEBUG: after loading 'shader.bin': binFormat:%i, binary:%s\n", binaryFormat, binary);
 
     GLint success = 0;
     glGetProgramiv(progId, GL_LINK_STATUS, &success);
