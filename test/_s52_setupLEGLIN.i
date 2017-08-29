@@ -5,7 +5,7 @@
 static S52ObjectHandle _leglin1 = FALSE;
 static S52ObjectHandle _leglin2 = FALSE;
 static S52ObjectHandle _leglin3 = FALSE;
-//static S52ObjectHandle _leglin4 = FALSE;
+static S52ObjectHandle _leglin4 = FALSE;
 //static S52ObjectHandle _leglin5 = FALSE;
 
 static S52ObjectHandle _waypnt0 = FALSE;
@@ -16,7 +16,7 @@ static S52ObjectHandle _waypnt4 = FALSE;
 
 static S52ObjectHandle _wholin  = FALSE;  // wheel-over-line
 
-//static double _leglin4LL[2*2];
+static double _leglin4LL[2*2]; // will be filled mouse press/release
 
 static int _s52_setupLEGLIN(double cLat, double cLon)
 {
@@ -24,10 +24,6 @@ static int _s52_setupLEGLIN(double cLat, double cLon)
     typedef struct pt2 {
         double lat, lon;
     } pt2;
-
-    // need to turn OFF guard zone because GL projection (used by pick)
-    //not set yet (set via the first call to S52_draw())
-    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
 
     /*
     _leglin1  = S52_newLEGLIN(1, 12.0, 0.1, cLat - 0.01, cLon - 0.01, cLat - 0.010, cLon + 0.010);
@@ -147,14 +143,17 @@ static int _s52_setupLEGLIN(double cLat, double cLon)
     return TRUE;
 }
 
-/*
-static int      _s52_setupLEGLIN_alarm()
-// will trigger alarm / indication
+//*
+static int      _s52_setupLEGLIN_alarm(double cLat, double cLon)
+// will trigger alarm / indication at Rimouski
 {
+    (void)cLat;
+    (void)cLon;
+
     if (FALSE != _leglin4) {
         _leglin4 = S52_delMarObj(_leglin4);
         if (FALSE != _leglin4) {
-            LOGI("s52egl:_s52_setupLEGLIN(): delMarObj _leglin4 failed\n");
+            g_print("s52egl:_s52_setupLEGLIN(): delMarObj _leglin4 failed\n");
             g_assert(0);
         }
         // clear alarm
@@ -182,17 +181,18 @@ static int      _s52_setupLEGLIN_alarm()
 
     // test LEGLIN setup via cursor
     _leglin4 = S52_newLEGLIN(1, 0.0, 0.0, _leglin4LL[1], _leglin4LL[0], _leglin4LL[3], _leglin4LL[2], FALSE);
+
     //if (FALSE == _leglin4) {
     //    LOGI("s52egl:_s52_setupLEGLIN(): failed\n");
         if (1.0 == S52_getMarinerParam(S52_MAR_GUARDZONE_ALARM))
-            LOGI("s52egl:_s52_setupLEGLIN(): ALARM ON\n");
+            g_print("s52egl:_s52_setupLEGLIN(): ALARM ON\n");
         if (2.0 == S52_getMarinerParam(S52_MAR_GUARDZONE_ALARM))
-            LOGI("s52egl:_s52_setupLEGLIN(): INDICATION ON\n");
+            g_print("s52egl:_s52_setupLEGLIN(): INDICATION ON\n");
     //}
 
     return TRUE;
 }
-*/
+//*/
 
 static int      _s52_setupIceRte(void)
 {
@@ -250,15 +250,11 @@ route normale de navigation.
     _waypnt3 = S52_newMarObj("waypnt", S52_POINT, 1, (double*)&WPxyz[2], attVal3);
     _waypnt4 = S52_newMarObj("waypnt", S52_POINT, 1, (double*)&WPxyz[3], attVal4);
 
-    // need to turn OFF guard zone because GL projection not set yet (set via the first call to S52_draw())
-    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);  // trun off
 #define ALT_RTE 2
     // select: alternate (2) legline for Ice Route 2012-02-12T21:00:00Z
     _leglin1 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[0].y, WPxyz[0].x, WPxyz[1].y, WPxyz[1].x, FALSE);
     _leglin2 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[1].y, WPxyz[1].x, WPxyz[2].y, WPxyz[2].x, _leglin1);
     _leglin3 = S52_newLEGLIN(ALT_RTE, 0.0, 0.0, WPxyz[2].y, WPxyz[2].x, WPxyz[3].y, WPxyz[3].x, _leglin2);
-
-    //S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, gz);  // trun on
 
     /*
     {// test wholin
