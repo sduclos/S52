@@ -201,11 +201,18 @@ static int      _s52_init   (s52engine *engine)
     // rendering engine place it on top of OWNSHP/VESSEL
     _s52_setupVRMEBL(engine->state.cLat, engine->state.cLon);
 
-    // guard zone OFF (pick need GL projection)
-    //S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);
+    // need to turn OFF guard zone because GL projection not set yet (set via the first call to S52_draw())
+    double gz = S52_getMarinerParam(S52_MAR_GUARDZONE_BEAM);
+    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, 0.0);  // trun off
+
     _s52_setupIceRte();
     _s52_setupLEGLIN(engine->state.cLat, engine->state.cLon);
-    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
+
+    S52_setMarinerParam(S52_MAR_GUARDZONE_BEAM, gz);  // trun on
+
+    // debug - display highlight
+    S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, -1.0);
+    //S52_setMarinerParam(S52_MAR_GUARDZONE_ALARM, 0.0);  // clear alarm
 
     _s52_setupPRDARE(engine->state.cLat, engine->state.cLon);
     _s52_setupmarfea(engine->state.cLat, engine->state.cLon);
