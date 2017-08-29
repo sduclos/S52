@@ -106,8 +106,8 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_ROT_BUOY_LIGHT      = 28,   // rotate buoy light (deg from north)
 
-    S52_MAR_DISP_CRSR_PICK      = 29,   // 0 - off, 1 - pick/highlight top object, 2 - pick stack/highlight top,
-                                        // 3 - pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
+    S52_MAR_DISP_CRSR_PICK      = 29,   // 0 - off, 1 - dump pick/highlight top object (default), 2 - dump pick stack/highlight top object,
+                                        // 3 - dump pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
     // those 3 are in S52 specs
     S52_MAR_DISP_GRATICULE      = 30,   // display graticule (on/off)
     S52_MAR_DISP_WHOLIN         = 31,   // wholin auto placement: 0 - off, 1 - wholin, 2 - arc, 3 - wholin + arc  (default off)
@@ -142,9 +142,9 @@ typedef enum S52MarinerParameter {
     // FIXME: DISP TEXT SHADOW - 0-7 bit: N NE E SE S SW W NW, 0 - off, [default to SE for now]
 
     S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters) [0.0 - off]
-    S52_MAR_GUARDZONE_LENGTH    = 47,   // Danger/Indication Highlight used by Position (meters, user computed from speed/time or distance)
-    S52_MAR_GUARDZONE_ALARM     = 48,   // FIXME: 1&2 ON at the same time. 0 - no error, 1 - alarm, 2 - indication
-                                        // -1 - display highlight
+    S52_MAR_GUARDZONE_LENGTH    = 47,   // NOT IMPLEMENTED: Danger/Indication Highlight used by Position (meters, user computed from speed/time or distance)
+    S52_MAR_GUARDZONE_ALARM     = 48,   // 0 - no error/ACK, 1 - alarm, 2 - indication
+                                        // -1 - debug display highlight
 
     S52_MAR_DISP_HODATA_UNION   = 49,   // When CATEGORY_SELECT: 0 - union HO data limit "m_covr" (default), 1 - all HO data limit "M_COVR+m_covr" (debug)
                                         // Note: m_covr:BASE, M_COVR:OTHER
@@ -198,7 +198,7 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
  *
  * Return: (transfer none): String with the version of libS52 and the '#define' used to build it
  */
-#define S52_VERSION "libS52-2017JUN06-1.209"
+#define S52_VERSION "libS52-2017AUG29-1.210"
 DLL const char * STD S52_version(void);
 
 /**
@@ -872,6 +872,7 @@ DLL S52ObjectHandle STD S52_newCLRLIN(int catclr, double latBegin, double lonBeg
  *
  * new S52_obj "Leg Line" segment
  * 'leglin': CS(LEGLIN--)
+ * Note: use S52_MAR_GUARDZONE_BEAM if != 0.0 to check guard zone
  *
  *
  * Return: @S52ObjectHandle of the new S52_obj or FALSE if call fail
