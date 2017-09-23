@@ -61,7 +61,7 @@ static int _s52_setupVESSEL(double cLat, double cLon)
     return TRUE;
 }
 
-static int _s52_updFakeAISdata(double cLat, double cLon)
+static int _s52_updtFakeAISdata(double cLat, double cLon)
 // update fake AIS - drawLast() will render new
 {
     if (FALSE != _vessel_ais) {
