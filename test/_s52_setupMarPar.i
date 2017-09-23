@@ -40,12 +40,13 @@ static int      _s52_setupMarPar(void)
     //-- DEPTH COLOR ------------------------------------
     */
 
-    S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
+    //S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades
     //S52_setMarinerParam(S52_MAR_TWO_SHADES,      1.0);   // 1.0 --> 2 shades
 
-    S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND,  1.0);  // on (default) [Note: this tax the CPU/GPU]
+    //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND,  1.0);  // on (default) [Note: this tax the CPU/GPU]
     //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 0.0);  // off
-    S52_setMarinerParam(S52_MAR_SYMPLIFIED_PNT,  1.0);
+    //S52_setMarinerParam(S52_MAR_SYMPLIFIED_PNT,  1.0);
+    //S52_setMarinerParam(S52_MAR_SYMPLIFIED_PNT,  0.0);
 
     S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);    // on  (default OFF)
     //S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   1.0);  // on  (default OFF)
@@ -53,12 +54,12 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);  // on - 1NM (default OFF - 0.0)
     S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);  // off (default ON)
 
-    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // BASE always ON
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // BASE always ON
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // STABDARD default
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_OTHER);   // OTHER
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE | S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
+    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
 
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE );  // none
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // Mariner Standard - default
@@ -78,7 +79,9 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_DATUM_OFFSET,    0.0);
     //S52_setMarinerParam(S52_MAR_DATUM_OFFSET,    5.0);
 
-    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default)
+    S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default 1:1)
+    //S52_setMarinerParam(S52_MAR_SCAMIN,          0.5);   // ON (1:2 raise SCAMIN threshold by a factor of 2)
+    //S52_setMarinerParam(S52_MAR_SCAMIN,          1.5);   // ON (1:0.5 lower SCAMIN threshold by a factor of 1/2)
     //S52_setMarinerParam(S52_MAR_SCAMIN,          0.0);   // debug OFF - show all
 
     // remove clutter QUAPNT01 symbole (black diagonal and a '?')
@@ -86,7 +89,10 @@ static int      _s52_setupMarPar(void)
 
     S52_setMarinerParam(S52_MAR_DISP_CALIB,      1.0);
 
-    S52_setMarinerParam(S52_MAR_DISP_GRATICULE,  1.0);  // ON (default OFF)
+    //S52_setMarinerParam(S52_MAR_DISP_GRATICULE,  0.0);  // OFF (default)
+    //S52_setMarinerParam(S52_MAR_DISP_GRATICULE,  1.0);  // Minor ON, Major OFF
+    S52_setMarinerParam(S52_MAR_DISP_GRATICULE,  2.0);  // Minor OFF, Major ON
+    //S52_setMarinerParam(S52_MAR_DISP_GRATICULE,  3.0);  // Minor&Major ON
 
     S52_setMarinerParam(S52_MAR_DISP_WHOLIN,     1.0);  // wholin auto placement: 0 - off, 1 - wholin, 2 - arc, 3 - wholin + arc  (default off)
 
