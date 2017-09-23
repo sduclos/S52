@@ -29,6 +29,7 @@ extern "C" {
 #endif
 
 int s52ais_initAIS(void);
+int s52ais_updtAISLabel(int keepTarget);
 int s52ais_doneAIS(void);
 
 #ifdef __cplusplus
