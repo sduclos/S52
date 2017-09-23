@@ -175,8 +175,9 @@ typedef struct _ais_t {
     char            name[AIS_SHIPNAME_MAXLEN + 1];
     int             status;
     int             turn;     // Rate of turn
-    double          course;
-    double          speed;
+
+    double          course;   // _setAISVec()
+    double          speed;    // _setAISVec()
 
     // -------------------------
     GTimeVal        lastUpdate;
@@ -191,24 +192,19 @@ typedef struct _ais_t {
 
 static struct gps_data_t  _gpsdata;
 
-static GArray            *_ais_list       = NULL;
-
+static GArray       *_ais_list = NULL;
 #ifdef S52_USE_ANDROID
-static GStaticMutex       _ais_list_mutex = G_STATIC_MUTEX_INIT;  // protect _ais_list
+static GStaticMutex  _ais_list_mutex = G_STATIC_MUTEX_INIT;  // protect _ais_list
 //#define g_mutex_lock g_static_mutex_lock
 #define GMUTEXLOCK   g_static_mutex_lock
 #define GMUTEXUNLOCK g_static_mutex_unlock
 #else
-static GMutex             _ais_list_mutex; // protect _ais_list
+static GMutex        _ais_list_mutex; // protect _ais_list
 #define GMUTEXLOCK   g_mutex_lock
 #define GMUTEXUNLOCK g_mutex_unlock
 #endif
 
-//#define AIS_SILENCE_MAX 600   // sec of silence from an AIS before deleting it
-#define AIS_SILENCE_MAX   0   // 0 - never delete old AIS to leave trace on screen
-
-// debug - limit the total number of target
-//#define AIS_TARGET_MAX  10
+#define AIS_SILENCE_MAX 600         // (10 min) sec of silence from an AIS before lost
 
 //#define MAX_AFGLOW_PT (15 * 60)   // 15 min trail @ 1 pos per sec - trail too long
 #define MAX_AFGLOW_PT (12 * 20)     // 12 min @ 1 pos per 5 sec
@@ -253,11 +249,11 @@ static GTimeVal _timeTick;
 // Note: When S52_USE_SOCK, setVESSELlabel() in s52ais STANDALONE,
 // string need to escaped '\n' ('\\n')
 // fixme try "\\\\"
-#ifdef S52_USE_SOCK
-#define NL "\\n"  // New Line
-#else
-#define NL '\n'
-#endif
+//#ifdef S52_USE_SOCK
+//#define NL "\\n"  // New Line
+//#else
+//#define NL '\n'
+//#endif
 
 
 /////////////////////////////////////////////////////////
@@ -597,6 +593,67 @@ static char         *_encodeNsend(const char *command, const char *frmt, ...)
 #endif  // S52_USE_SOCK
 /////////////////////////////////////////////////////////////////////
 
+static int           _writeName(guint mmsi, const char *name)
+{
+    return TRUE;
+}
+
+static int           _readName(guint mmsi, char *name)
+{
+
+/*
+int      S52_utils_getConfig(CCHAR *label, char *vbuf)
+// return TRUE and string value in vbuf for label, FALSE if fail
+{
+   FILE *fp;
+   //int  ret;
+   int  nline = 1;
+   //char lbuf[PATH_MAX];
+   //char frmt[PATH_MAX];
+   char lbuf[MAXL];
+   char frmt[MAXL];
+   char str [MAXL];
+   char *pstr = NULL;
+
+   fp = g_fopen(CFG_NAME, "r");
+   if (NULL == fp) {
+       PRINTF("WARNING: .cfg not found: %s\n", CFG_NAME);
+       return FALSE;
+   }
+
+   // prevent buffer overflow
+   SNPRINTF(frmt, MAXL, "%s%i%s", " %s %", MAXL-1, "[^\n]s");
+   //printf("frmt:%s\n", frmt);
+
+   pstr = fgets(str, MAXL, fp);
+   while (NULL != pstr) {
+       // debug
+       //printf("%i - label:%s value:%s\n", nline, lbuf, vbuf);
+
+       if ('#' != str[0]) {
+           //ret = sscanf(str, frmt, lbuf, vbuf);
+           sscanf(str, frmt, lbuf, vbuf);
+           if (0 == g_strcmp0(lbuf, label)) {
+               PRINTF("--->>> label:%s value:%s \n", lbuf, vbuf);
+               fclose(fp);
+               return TRUE;
+           }
+       }
+
+       ++nline;
+       pstr = fgets(str, MAXL, fp);
+   }
+
+   fclose(fp);
+
+   vbuf[0] = '\0';
+
+   return FALSE;
+}
+*/
+
+    return TRUE;
+}
 
 static _ais_t       *_getAIS    (unsigned int mmsi)
 {
@@ -616,33 +673,32 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         }
     }
 
-    // debug - max target
-    //if (AIS_TARGET_MAX > _ais_list->len)
-
     // NEW AIS (not found hence new)
     {
         _ais_t newais;
         memset(&newais, 0, sizeof(_ais_t));
         newais.mmsi     = mmsi;
+
+        // FIXME: check file for name for mmsi
+        _readName(newais.mmsi, newais.name);
+
         // create an active symbol, put mmsi since status is not known yet
-        g_sprintf(newais.name, "%i", mmsi);
-        newais.status   = -1;     // 0 indicate that status form report is needed
+        //g_sprintf(newais.name, "%i", mmsi);
+
+        newais.status   = -1;     // -1 indicate that status form report is needed
 
         newais.course   = -1.0;
-        //newais.speed    =  0.0;
+        newais.speed    =  0.0;
 
 
         g_get_current_time(&newais.lastUpdate);
 
-        //GTimeVal now;
-        //g_get_current_time(&now);
-        //now.tv_usec = 0;  // will print time without frac of sec
-        //snprintf(str, MAXL-1, "%s %s", g_time_val_to_iso8601(&now), string);
 
 #ifdef S52_USE_SOCK
         // debug: make ferry acte as ownshp
         if (OWNSHIP == mmsi) {
-            gchar *resp = _encodeNsend("S52_newOWNSHP", "\"%s\"", newais.name);
+            //gchar *resp = _encodeNsend("S52_newOWNSHP", "\"%s\"", newais.name);
+            gchar *resp = _encodeNsend("S52_newOWNSHP", "\"%i\"", newais.mmsi);
             if (NULL != resp) {
                 //sscanf(resp, "[ %lu", (long unsigned int *) &newais.vesselH);
                 sscanf(resp, "[ %u", newais.vesselH);
@@ -651,7 +707,8 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
             g_print("s52ais:_getAIS(): new ownshpH:%u\n", newais.vesselH);
 
         } else {
-            gchar *resp = _encodeNsend("S52_newVESSEL", "%i,\"%s\"", 2, newais.name);
+            //gchar *resp = _encodeNsend("S52_newVESSEL", "%i,\"%s\"", 2, newais.name);
+            gchar *resp = _encodeNsend("S52_newVESSEL", "%i,\"%i\"", 2, newais.mmsi);
             if (NULL != resp) {
                 //sscanf(resp, "[ %lu", (long unsigned int *) &newais.vesselH);
                 sscanf(resp, "[ %u", newais.vesselH);
@@ -663,13 +720,18 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
 #else   // S52_USE_SOCK
 
         // debug: make ferry acte as ownshp
+        char label[AIS_SHIPNAME_MAXLEN + 1];
+        g_sprintf(label, "%i", mmsi);
+
         if (OWNSHIP == mmsi) {
-            newais.vesselH = S52_newOWNSHP(newais.name);
+            //newais.vesselH = S52_newOWNSHP(newais.name);
+            newais.vesselH = S52_newOWNSHP(label);
         } else {
             //int vesrce = 1;  // ARPA
             int vesrce = 2;  // AIS
             //int vesrce = 3;  // VTS
-            newais.vesselH = S52_newVESSEL(vesrce, newais.name);
+            //newais.vesselH = S52_newVESSEL(vesrce, newais.name);
+            newais.vesselH = S52_newVESSEL(vesrce, label);
         }
 
 #endif  // S52_USE_SOCK
@@ -726,7 +788,8 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
 
 
 #ifdef S52_USE_DBUS
-        _signal_newVESSEL(_dbus, newais.vesselH, newais.name);
+        //_signal_newVESSEL(_dbus, newais.vesselH, newais.name);
+        _signal_newVESSEL(_dbus, newais.vesselH, label);
 #endif
 
         return ais;
@@ -790,21 +853,24 @@ static int           _setAISVec (unsigned int mmsi, double course, double speed)
     if (NULL == ais)
         return FALSE;
 
-    int vecstb = 1; // overground
     // ground vector (since AIS transmit the GPS)
-    ais->course = course;
-    ais->speed  = speed;
+    int vecstb = 1; // overground
+
+    if ((ais->course!=course) || (ais->speed!=speed)) {
+        ais->course = course;
+        ais->speed  = speed;
 
 #ifdef S52_USE_SOCK
-    _encodeNsend("S52_setVector", "%lu,%i,%lf,%lf", ais->vesselH, vecstb, course, speed);
+        _encodeNsend("S52_setVector", "%lu,%i,%lf,%lf", ais->vesselH, vecstb, course, speed);
 #else
-    // FIXME: test ship's head up setView()
-    S52_setVector(ais->vesselH, vecstb, course, speed);
+        // FIXME: test ship's head up setView()
+        S52_setVector(ais->vesselH, vecstb, course, speed);
 #endif
 
 #ifdef S52_USE_DBUS
-    _signal_setVector(_dbus, ais->vesselH,  1, course, speed);
+        _signal_setVector(_dbus, ais->vesselH,  1, course, speed);
 #endif
+    }
 
     g_get_current_time(&ais->lastUpdate);
 
@@ -822,21 +888,31 @@ static int           _setAISLab (unsigned int mmsi, const char *name)
     if (NULL == ais)
         return FALSE;
 
+    g_get_current_time(&ais->lastUpdate);
+
     if (NULL != name) {
+        g_print("DEBUG: _setAISLab(): mmsi:%i as no name!\n", mmsi);
+        g_assert(0);
+    }
+
+    // update label
+    if ('\0' == ais->name[0]) {
+        // FIXME: append name to file aisnamedb.txt for this mmsi
+        _writeName(ais->mmsi, name);
+
         g_snprintf(ais->name, AIS_SHIPNAME_MAXLEN+1, "%s", name);
 
 #ifdef S52_USE_SOCK
-        _encodeNsend("S52_setVESSELlabel", "%lu,\"%s\"", ais->vesselH, name);
+        _encodeNsend("S52_setVESSELlabel", "%lu,\"%s\"", ais->vesselH, ais->name);
 #else
-        S52_setVESSELlabel(ais->vesselH, name);
+        S52_setVESSELlabel(ais->vesselH, ais->name);
 #endif
 
 #ifdef S52_USE_DBUS
         _signal_setVESSELlabel(_dbus, ais->vesselH, ais->name);
 #endif
-    }
 
-    g_get_current_time(&ais->lastUpdate);
+    }
 
     return TRUE;
 }
@@ -890,16 +966,18 @@ static int           _setAISSta (unsigned int mmsi, int status, int turn)
             _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, vestat, turn);
 #else
             S52_setVESSELstate(ais->vesselH, 0, vestat, turn);   // AIS sleeping
+            S52_setVESSELstate(ais->afglowH, 0, vestat, turn);   // afterglow
 #endif
         } else {
             // AIS active
-            int vestat       = 1;  // normal
-            //int vestat       = 3;  // red, close quarters
+            //int vestat       = 1;  // normal
+            int vestat       = 3;  // red, close quarters
 #ifdef S52_USE_SOCK
             _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, vestat, turn);
 #else
 
             S52_setVESSELstate(ais->vesselH, 0, vestat, turn);   // AIS active
+            S52_setVESSELstate(ais->afglowH, 0, vestat, turn);   // afterglow
 #endif
         }
 
@@ -955,6 +1033,7 @@ static int           _setAISDel (_ais_t *ais)
     return TRUE;
 }
 
+#if 0
 static int           _removeOldAIS(void)
 // TRUE if a old AIS was removed, else FALSE
 {
@@ -965,8 +1044,8 @@ static int           _removeOldAIS(void)
 
     // FIXME: add keepAlive
     // special mode to keep all old AIS
-    if (AIS_SILENCE_MAX == 0)
-        return FALSE;
+    //if (AIS_SILENCE_MAX == 0)
+    //    return FALSE;
 
     GTimeVal now;
     g_get_current_time(&now);
@@ -977,7 +1056,7 @@ static int           _removeOldAIS(void)
         if ((now.tv_sec > (ais->lastUpdate.tv_sec + AIS_SILENCE_MAX)) || (TRUE == ais->lost)) {
             _setAISDel(ais);
 
-             g_array_remove_index_fast(_ais_list, i);
+            g_array_remove_index_fast(_ais_list, i);
 
             return TRUE;
         }
@@ -985,8 +1064,10 @@ static int           _removeOldAIS(void)
 
     return FALSE;
 }
+#endif  // 0
 
 static int           _dumpAIS(void)
+// FIXME: dump to ais mmsi:name file - load.
 // debug
 {
     g_print("s52ais:_dumpAIS():-------------\n");
@@ -1006,15 +1087,17 @@ static int           _dumpAIS(void)
     return TRUE;
 }
 
-static int           _updateTimeTag(void)
+//#if 0
+// experiment: update all targets age
+//static int           _updateTimeTag(void)
+int            s52ais_updtAISLabel(int keepTargetAlive)
 // then update time tag of AIS
 {
-    if (NULL == _ais_list)
-        return FALSE;
+    GMUTEXLOCK(&_ais_list_mutex);
 
-    // keep removing old AIS
-    while (TRUE == _removeOldAIS()) {
-        _dumpAIS();
+    if (NULL == _ais_list) {
+        //return FALSE;
+        goto exit;
     }
 
     GTimeVal now;
@@ -1023,32 +1106,55 @@ static int           _updateTimeTag(void)
     for (guint i=0; i<_ais_list->len; ++i) {
         gchar    str[128] = {'\0'};
         _ais_t  *ais = &g_array_index(_ais_list, _ais_t, i);
+        if (now.tv_sec > (ais->lastUpdate.tv_sec + AIS_SILENCE_MAX)) {
+            if (TRUE == keepTargetAlive) {
+                if (FALSE == ais->lost) {
+                    ais->lastUpdate.tv_usec = 0;  // will print time without frac of sec
 
-        if (-1.0 != ais->course) {
-#ifdef S52_USE_SOCK
-            g_snprintf(str, 128, "%s %lis%s%03.f deg / %3.1f kt",
-                       ais->name, (now.tv_sec - ais->lastUpdate.tv_sec),      NL, ais->course, ais->speed);
-#else
-            g_snprintf(str, 128, "%s %lis%c%03.f deg / %3.1f kt",
-                       ais->name, (now.tv_sec - ais->lastUpdate.tv_sec), (int)NL, ais->course, ais->speed);
-#endif
+                    if ('\0' == ais->name[0])
+                        g_snprintf(str, 128, "%i %s", ais->mmsi, g_time_val_to_iso8601(&ais->lastUpdate));
+                    else
+                        g_snprintf(str, 128, "%s %s", ais->name, g_time_val_to_iso8601(&ais->lastUpdate));
+
+                    S52_setVESSELlabel(ais->vesselH, str);
+
+                    int vestat = 2;  // AIS sleeping
+                    _setAISSta(ais->mmsi, vestat, 129 /* vesselTurn undefined */);
+                    ais->lost = TRUE;
+                }
+            } else {
+                _setAISDel(ais);  // instead of removeOld()
+                _dumpAIS();
+            }
         } else {
-            g_snprintf(str, 128, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
-        }
+            if ('\0' == ais->name[0])
+                g_snprintf(str, 128, "%i %lis", ais->mmsi, now.tv_sec - ais->lastUpdate.tv_sec);
+            else
+                g_snprintf(str, 128, "%s %lis", ais->name, now.tv_sec - ais->lastUpdate.tv_sec);
 
 #ifdef S52_USE_SOCK
-        _encodeNsend("S52_setVESSELlabel", "%lu,\"%s\"", ais->vesselH, str);
+            _encodeNsend("S52_setVESSELlabel", "%lu,\"%s\"", ais->vesselH, str);
 #else
-        // Note: can't use _setAISLab() as it update timetag - long str
-        if (FALSE == S52_setVESSELlabel(ais->vesselH, str)) {
-            ais->lost = TRUE;
-        }
-#endif
+            // Note: can't use _setAISLab() as it update timetag - long str
+            if (FALSE == S52_setVESSELlabel(ais->vesselH, str)) {
+                ais->lost = TRUE;
+            } else {
+                ais->lost = FALSE;  // target reacquired
+            }
 
+            int vestat = 3;  // red - conspic / debug
+            _setAISSta(ais->mmsi, vestat, 129 /* vesselTurn undefined */);
+#endif
+        }
     }
+
+exit:
+
+    GMUTEXUNLOCK(&_ais_list_mutex);
 
     return TRUE;
 }
+//#endif  // 0
 
 static void          _updateAISdata(struct gps_data_t *gpsdata)
 {
@@ -1124,9 +1230,10 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
         //  127     - turning right at more than 5deg/30s (No TI available)
         // -127     - turning left at more than 5deg/30s (No TI available)
         //  128     - (80 hex) indicates no turn information available (default)
-        _setAISSta(gpsdata->ais.mmsi, status, turn);
         _setAISPos(gpsdata->ais.mmsi, lat, lon, heading);
         _setAISVec(gpsdata->ais.mmsi, course, speed);
+        //_setAISSta(gpsdata->ais.mmsi, status, turn);
+        _setAISSta(gpsdata->ais.mmsi, 3 , turn);  // debug close quarter, red
 
         return;
     }
@@ -1298,7 +1405,8 @@ unsigned int radio;		    // radio status bits
 
             _setAISPos(gpsdata->ais.mmsi, lat, lon, heading);
             _setAISVec(gpsdata->ais.mmsi, course, speed);
-            _setAISSta(gpsdata->ais.mmsi, status, turn);
+            //_setAISSta(gpsdata->ais.mmsi, status, turn);
+            _setAISSta(gpsdata->ais.mmsi, 3 , turn);  // debug close quarter, red
         }
 
         return;
@@ -1384,16 +1492,22 @@ static int           _gpsdClientReadLoop(void)
             GMUTEXUNLOCK(&_ais_list_mutex);
             goto exit;
         }
+
+        //while (TRUE == _removeOldAIS()) {
+        //    _dumpAIS();
+        //}
+
         GMUTEXUNLOCK(&_ais_list_mutex);
 
-        if (FALSE == gps_waiting(&_gpsdata,  500*1000)) {    // wait 0.5 sec     (500*1000 uSec)
+        //if (FALSE == gps_waiting(&_gpsdata,  500*1000)) {    // wait 0.5 sec     (500*1000 uSec)
+        if (TRUE == gps_waiting(&_gpsdata,  500*1000)) {    // wait 0.5 sec     (500*1000 uSec)
             //g_print("s52ais:_gpsdClientRead():gps_waiting() timed out\n");
 
-            GMUTEXLOCK(&_ais_list_mutex);
-            _updateTimeTag();
-            GMUTEXUNLOCK(&_ais_list_mutex);
+            //GMUTEXLOCK(&_ais_list_mutex);
+            //_updateTimeTag();
+            //GMUTEXUNLOCK(&_ais_list_mutex);
 
-        } else {
+        //} else {
             errno = 0;
 
             ret = gps_read(&_gpsdata);
@@ -1739,6 +1853,8 @@ int main(int argc, char *argv[])
         return FALSE;
 
     _gpsdClientRead(NULL);
+
+    g_timeout_add(500, s52ais_updtAISLabel, NULL);  // 0.5 sec
 
 #ifdef S52_USE_ANDROID
     // clean up PID
