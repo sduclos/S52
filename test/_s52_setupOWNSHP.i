@@ -3,7 +3,8 @@
 // SD 2016APR26
 
 
-#define OWNSHPLABEL "OWNSHP\n220 deg / 6.0 kt"
+//#define OWNSHPLABEL "OWNSHP\n220 deg / 6.0 kt"
+#define OWNSHPLABEL "OWNSHP"
 static S52ObjectHandle _ownshp = FALSE;
 
 static int _s52_setupOWNSHP(double cLat, double cLon)
@@ -18,7 +19,7 @@ static int _s52_setupOWNSHP(double cLat, double cLon)
 
     S52_pushPosition(_ownshp, cLat + 0.01, cLon - 0.01, 300.0);
 
-    S52_setVector(_ownshp, 0, 290.0, 6.0);  // ownship use S52_MAR_VECSTB
+    S52_setVector(_ownshp, 0, 290.0, 16.0);  // ownship use S52_MAR_VECSTB
 
     // test - supp ON
     // all obj of a class
