@@ -84,7 +84,7 @@ typedef enum S52_DisCat {
 
 // Command Word
 typedef enum S52_CmdWrd {
-    S52_CMD_NONE,       // no rule type (init)
+    S52_CMD_NONE = 0,   // no rule type (init)
     S52_CMD_TXT_TX,     // TX --SHOWTEXT (formated)
     S52_CMD_TXT_TE,     // TE --SHOWTEXT
     S52_CMD_SYM_PT,     // SY --SHOWPOINT
@@ -286,8 +286,9 @@ S52_DListData *S52_PL_newDListData(S52_obj *obj);
 S52_DListData *S52_PL_getDListData(S52_obj *obj);
 
 // text parser
-const char    *S52_PL_getEX(S52_obj *obj, S52_Color **col,
-                               int *xoffs, int *yoffs, unsigned int *bsize, unsigned int *weight, int *dis);
+//const char    *S52_PL_getEX(S52_obj *obj, S52_Color **col,
+const char    *S52_PL_getText(S52_obj *obj, S52_Color **col,
+                              int *xoffs, int *yoffs, unsigned int *bsize, unsigned int *weight, int *dis);
 
 // TRUE: flag to run the text parser again
 int            S52_PL_resetParseText(S52_obj *obj);
