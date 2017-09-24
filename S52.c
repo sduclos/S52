@@ -2988,7 +2988,7 @@ int            S52_loadObject(const char *objname, void *shape)
             _crntCell->legend.dsid_intustr = S57_getAttVal(geo, "DSID_INTU");  // intended usage (navigational purpose)
             if (_crntCell->filename->str[2] != *_crntCell->legend.dsid_intustr->str) {
                 PRINTF("DEBUG: DSID_INTU mismatch filename nav purp\n");
-                g_assert(0);
+                //g_assert(0);
             }
 
             // debug
@@ -4060,7 +4060,6 @@ static int        _draw(void)
         S52_GL_setScissor(0, 0, -1, -1);
 
         // draw text
-        // FIXME: implicit call to S52_PL_hasText() again
         g_ptr_array_foreach(c->textList,     (GFunc)S52_GL_drawText, NULL);
     }
 
@@ -4181,8 +4180,8 @@ DLL int    STD S52_draw(void)
 
         //PRINTF("S52_draw() .. -1.4-\n");
 
-        // draw graticule
-        if (FALSE != (int) S52_MP_get(S52_MAR_DISP_GRATICULE))
+        // draw graticule and scale
+        //if (FALSE != (int) S52_MP_get(S52_MAR_DISP_GRATICULE))
             S52_GL_drawGraticule();
 
         // draw legend
@@ -4311,6 +4310,13 @@ static int        _drawLast(GPtrArray *rbin)
                 //PRINTF("DEBUG:%i: OFF view - %s\n", _nTotal, S57_getName(geo));
 
                 continue;
+            }
+
+            {   // switch OFF highlight if user acknowledge Alarm / Indication by
+                // resetting S52_MAR_GUARDZONE_ALARM to 0 (OFF - no alarm)
+                S57_geo *geo = S52_PL_getGeo(obj);
+                if (0.0==S52_MP_get(S52_MAR_GUARDZONE_ALARM) && TRUE==S57_getHighlight(geo))
+                    S57_setHighlight(geo, FALSE);
             }
 
             // SCAMIN & PLib (disp cat)
@@ -5671,16 +5677,16 @@ static int        _setAtt(S57_geo *geo, const char *listAttVal)
     gchar** freeL = attvalL;
 
     /* FIXME: do not replace '\n' by ' ', for JSON
-     if (0 == g_strcmp0("_vessel_label", attName)) {
-     for (guint i=0; i<attList->len; ++i) {
-     if ('\n' == attList->str[i]) {
-     attList->str[i] = ' ';
-     //g_string_insert_c(attList, i, SLASH);
-     return;
-     }
-     }
-     }
-     */
+    if (0 == g_strcmp0("_vessel_label", attName)) {
+        for (guint i=0; i<attList->len; ++i) {
+            if ('\n' == attList->str[i]) {
+                attList->str[i] = ' ';
+                //g_string_insert_c(attList, i, SLASH);
+                return;
+            }
+        }
+    }
+    //*/
 
     {   // check that strings comme in pair
         // the other case (ie '"","bla","bla",""') will be catched
@@ -5967,7 +5973,10 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
     }
 #ifdef S52_USE_AFGLOW
     else {
-        if (0 == g_strcmp0("afgves", S57_getName(geo))) {
+        //if (0 == g_strcmp0("afgves", S57_getName(geo))) {
+        if ((0 == g_strcmp0("afgves", S57_getName(geo))) ||
+            (0 == g_strcmp0("afgshp", S57_getName(geo)))
+           ) {
             S52_PL_setTimeNow(obj);
         }
     }
@@ -6263,28 +6272,34 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
 #endif
                 // is this chart visible
                 if (TRUE == _intersectEXT(c->geoExt, ext)) {
-                    // layer 8, over radar, BASE, LINE
-                    // FIXME: later check AREA & POINT (OBSTRN04/Area,Line,Point, WRECKS02/Area,Point)
-                    // or any object on S52_PRIO_HAZRDS layer
-                    GPtrArray *rbin = c->renderBin[S52_PRIO_HAZRDS][S52_LINES];
+                    for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
+                        // FIXME: all object on S52_PRIO_HAZRDS layer of Mariners
 
-                    // for each object
-                    for (guint idx=0; idx<rbin->len; ++idx) {
-                        S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
-                        S57_geo *geo = S52_PL_getGeo(obj);
+                        // layer 8, over radar, BASE, LINE
+                        //GPtrArray *rbin = c->renderBin[S52_PRIO_HAZRDS][S52_LINES];
+                        GPtrArray *rbin = c->renderBin[S52_PRIO_HAZRDS][j];
 
-                        if (FALSE == S57_isHazard(geo))
-                            continue;
+                        // for each object
+                        for (guint idx=0; idx<rbin->len; ++idx) {
+                            S52_obj *obj = (S52_obj *)g_ptr_array_index(rbin, idx);
+                            S57_geo *geo = S52_PL_getGeo(obj);
 
-                        // outside view
-                        // Note: object can be inside 'ext' but outside the 'view' (cursor pick)
-                        if (TRUE == S52_GL_isOFFview(obj)) {
-                            ++_nCull;
-                            continue;
+                            // FIXME: process everything M/P/L/A on PRIO_HAZRDS layer
+                            //if (FALSE == S57_isHazard(geo))
+                            //    continue;
+
+                            PRINTF("DEBUG: PRIO_HAZRDS: %c:%s\n", S57_getObjtype(geo), S57_getName(geo));
+
+                            // outside view
+                            // Note: object can be inside 'ext' but outside the 'view' (cursor pick)
+                            if (TRUE == S52_GL_isOFFview(obj)) {
+                                ++_nCull;
+                                continue;
+                            }
+
+                            // over radar
+                            g_ptr_array_add(c->objList_over, obj);
                         }
-
-                        // over radar
-                        g_ptr_array_add(c->objList_over, obj);
                     }
                 }
             }
@@ -6802,7 +6817,10 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
 
 #ifdef S52_USE_AFGLOW
         // update time for afterglow LINE
-        if (0 == g_strcmp0("afgves", S57_getName(geo))) {
+        //if (0 == g_strcmp0("afgves", S57_getName(geo))) {
+        if ((0 == g_strcmp0("afgves", S57_getName(geo))) ||
+            (0 == g_strcmp0("afgshp", S57_getName(geo)))
+           ) {
             S52_PL_setTimeNow(obj);
         }
 #endif
@@ -6852,18 +6870,6 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label)
         if (NULL == label) {
             SNPRINTF(attval, 80, "vesrce:%i,_vessel_label: ", vesrce);
         } else {
-            // move code in _setAtt()
-            /* FIXME: do not replace '\n' by ' ', for JSON
-             if (0 == g_strcmp0("_vessel_label", attName)) {
-             for (guint i=0; i<attList->len; ++i) {
-             if ('\n' == attList->str[i]) {
-             attList->str[i] = ' ';
-             //g_string_insert_c(attList, i, SLASH);
-             return;
-             }
-             }
-             }
-             */
             SNPRINTF(attval, 80, "vesrce:%i,_vessel_label:%s", vesrce, label);
         }
 
@@ -6900,22 +6906,11 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
 
     if (TRUE==_isObjNameValid(obj, "ownshp") || TRUE==_isObjNameValid(obj, "vessel")) {
         char attval[80] = {'\0'};
-        S57_geo *geo = S52_PL_getGeo(obj);
-
-        // move code in _setAtt()
-        /* FIXME: do not replace '\n' by ' ', for JSON
-         if (0 == g_strcmp0("_vessel_label", attName)) {
-         for (guint i=0; i<attList->len; ++i) {
-         if ('\n' == attList->str[i]) {
-         attList->str[i] = ' ';
-         //g_string_insert_c(attList, i, SLASH);
-         return;
-         }
-         }
-         }
-         */
         SNPRINTF(attval, 80, "[_vessel_label,%s]", newLabel);
-        _setAtt(geo, attval);
+
+        //S57_geo *geo = S52_PL_getGeo(obj);
+        //_setAtt(geo, attval);
+        _setAtt(S52_PL_getGeo(obj), attval);
 
         S52_PL_resetParseText(obj);
     } else {
@@ -6948,7 +6943,9 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
         goto exit;
     }
 
-    if (TRUE==_isObjNameValid(obj, "ownshp") || TRUE==_isObjNameValid(obj, "vessel")) {
+    if (TRUE==_isObjNameValid(obj, "ownshp") || TRUE==_isObjNameValid(obj, "vessel") ||
+        TRUE==_isObjNameValid(obj, "afgves") || TRUE==_isObjNameValid(obj, "afgshp")
+       ) {
         char  attval[80] = {'\0'};
         char *attvaltmp  = attval;
         S57_geo *geo = S52_PL_getGeo(obj);
@@ -6984,16 +6981,24 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
         }
 
 
-        // validate vestat (Vessel Status): 1 AIS active, 2 AIS sleeping, 3 AIS close quarter (red)
+        // validate vestat (Vessel Status): 0 undefined, 1 AIS active, 2 AIS sleeping, 3 AIS close quarter (red)
         if (0!=vestat && 1!=vestat && 2!=vestat && 3!=vestat) {
             PRINTF("WARNING: 'vestat' must be 0, 1, 2 or 3.. reset to 1\n");
             vestat = 1;
         }
 
         int offset = strlen(attvaltmp);
-        if (1==vestat || 2==vestat || 3==vestat ) {
+        // Note: skip vestat if 0
+        if (1==vestat || 2==vestat || 3==vestat) {
             SNPRINTF(attvaltmp+offset, 80-offset, "vestat:%i,", vestat);
-            // FIXME: _doAPP_CS to get the new text (and prio)
+
+            // red
+            if (3 == vestat) {
+                S57_setHighlight(geo, TRUE);
+            } else {
+                // FIXME: no user ack!
+                S57_setHighlight(geo, FALSE);
+            }
         }
 
         offset = strlen(attvaltmp);
@@ -7147,9 +7152,8 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
     }
 
     {
-        //double xyz[6] = {lonA, latA, 0.0, lonB, latB, 0.0};
+        // FIXME: approximative (not WGS84) use S57_prj2geo()
         pt3 pt[2] = {{lonA, latA, 0.0}, {lonB, latB, 0.0}};
-        //double dist   = sqrt(pow(xyz[3]-xyz[0], 2) + pow(xyz[4]-xyz[1], 2));
         double dist   = sqrt(pow(pt[1].x-pt[0].x, 2) + pow(pt[1].y-pt[0].y, 2));
         double deg    = ATAN2TODEG(pt);
 
