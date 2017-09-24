@@ -4,6 +4,23 @@
 #
 
 
+2017SEP22
+- add major minor graticule
+
+2017SEP20
+- refactor VESSEL red/close quarter into warning/indication logic
+- deprecate S52_USE_SYM_VESSEL_DNGHL
+- refactor SCAMIN logic and add scaling factor
+
+2017SEP16
+- fix GPU/VBO leak at exit in delDL() text
+
+2017SEP10
+- refactor Text code path
+
+2017SEP06
+- refactor OWNSHIP/VESSEL text handling and test handling of AIS text
+
 2017AUG28
 - refactor GL begin
 - refactor pick cycle
