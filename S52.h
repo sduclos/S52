@@ -94,7 +94,7 @@ typedef enum S52MarinerParameter {
 
     S52_MAR_DATUM_OFFSET        = 22,   // value of chart datum offset. FIXME: 2 datum: sounding / vertical (ex bridge clearance)
 
-    S52_MAR_SCAMIN              = 23,   // flag for using SCAMIN filter (on/off) (default ON)
+    S52_MAR_SCAMIN              = 23,   // flag for using SCAMIN filter (on/off) (default ON 1:1)
 
     S52_MAR_ANTIALIAS           = 24,   // flag for color blending (anti-aliasing) (on/off)
 
@@ -109,7 +109,7 @@ typedef enum S52MarinerParameter {
     S52_MAR_DISP_CRSR_PICK      = 29,   // 0 - off, 1 - dump pick/highlight top object (default), 2 - dump pick stack/highlight top object,
                                         // 3 - dump pick stack+ASSOC/highlight ASSOC (compiled with -DS52_USE_C_AGGR_C_ASSO)
     // those 3 are in S52 specs
-    S52_MAR_DISP_GRATICULE      = 30,   // display graticule (on/off)
+    S52_MAR_DISP_GRATICULE      = 30,   // 0 - off, 1 - Minor ON / Major OFF, 2 - Minor OFF / Major ON, 3 - Minor / Major ON
     S52_MAR_DISP_WHOLIN         = 31,   // wholin auto placement: 0 - off, 1 - wholin, 2 - arc, 3 - wholin + arc  (default off)
     S52_MAR_DISP_LEGEND         = 32,   // display legend (on/off) (default off)
 
@@ -198,7 +198,7 @@ typedef enum S52_MAR_DISP_CATEGORY_t {
  *
  * Return: (transfer none): String with the version of libS52 and the '#define' used to build it
  */
-#define S52_VERSION "libS52-2017AUG29-1.210"
+#define S52_VERSION "libS52-2017SEP24-1.211"
 DLL const char * STD S52_version(void);
 
 /**
@@ -238,6 +238,8 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val);
  *
  * 75 - OWNSHP label
  * 76 - VESSEL label
+ * 77 - course label
+ * 78 - speed  label
  *
  * Return: TRUE on success, else FALSE
  */
@@ -988,7 +990,7 @@ DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
 DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *newLabel);
 
 /**
- * S52_setVESSELstate:
+ * S52_setVESSELstate: "ownshp", "vessel", "afgves", "afgshp"
  * @objH:         (in) (transfer none): addressed S52ObjectHandle
  * @vesselSelect: (in): 0 - undefined, 1 - selected (ON) and follow, 2 - de-seltected (OFF), (ie bracket symbol on vessel),
  * @vestat:       (in): 0 - undefined, 1 - AIS active, 2 - AIS sleeping, 3 - AIS active, close quarter (red)
@@ -1003,7 +1005,7 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
  *
  * "undefined" mean that the current value of the variable of this objH is unafected
  *
- * Note: experimental @vestat = 3, compile with S52_USE_SYM_VESSEL_DNGHL, symb in PLAUX_00
+ * Note: experimental @vestat = 3 - AIS active, close quarter (red)
  *
  *
  * Return: @S52ObjectHandle of the adressed S52_obj or FALSE if call fail
