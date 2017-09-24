@@ -223,7 +223,7 @@ typedef struct { double u, v; } projUV;
 // symbol twice as big (see _pushScaletoPixel())
 #define STRETCH_SYM_FAC 2.0
 
-#define NM_METER 1852.0
+#define NM_METER 1852.0   // (not WGS84)
 
 #ifdef S52_USE_AFGLOW
 // experimental: synthetic after glow
@@ -546,27 +546,28 @@ static int       _getLODidx(char **str)
     }
 }
 
-#if 0
+//#if 0
 // code lifted from OpenCPN
 // https://github.com/OpenCPN/OpenCPN/blob/a6588bd7231191aa3d7ec1ecb6f57b064e44ab73/src/chcanv.cpp
 /* @ChartCanvas::CalcGridSpacing
  **
  ** Calculate the major and minor spacing between the lat/lon grid
  **
- ** @param [r] WindowDegrees [float] displayed number of lat or lan in the window
- ** @param [w] MajorSpacing [float &] Major distance between grid lines
- ** @param [w] MinorSpacing [float &] Minor distance between grid lines
+ ** @param [r] WindowDegrees displayed number of lat or lan in the window
+ ** @param [w] MajorSpacing  Major distance between grid lines
+ ** @param [w] MinorSpacing  Minor distance between grid lines
  ** @return [void]
  */
 //void CalcGridSpacing( float view_scale_ppm, float& MajorSpacing, float&MinorSpacing )
-static int _getGratScale(double view_scale_ppm, double *MajorSpacing, double *MinorSpacing )
+static int       _getGratScale(double view_scale_ppm, double *majorSpacing, double *minorSpacing)
 {
+    // 1' = 1/60 = 0.1666... for SCAMIN = ?
     // table for calculating the distance between the grids
-    // [0] view_scale ppm
+    // [0] view_scale ppm [SD: pixel per meter?]
     // [1] spacing between major grid lines in degrees
     // [2] spacing between minor grid lines in degrees
     //static const float lltab[][3] =
-    static const double lltab[][3] = {
+    static double lltab[][3] = {
         // ppm     major         minor
         {0.0,      90.0,         30.0     },
         {0.000001, 45.0,         15.0     },
@@ -592,12 +593,12 @@ static int _getGratScale(double view_scale_ppm, double *MajorSpacing, double *Mi
             break;
     }
 
-    MajorSpacing = lltab[tabi][1]; // major latitude distance
-    MinorSpacing = lltab[tabi][2]; // minor latitude distance
+    *majorSpacing = lltab[tabi][1]; // major latitude distance
+    *minorSpacing = lltab[tabi][2]; // minor latitude distance
 
     return TRUE;
 }
-#endif  // 0
+//#endif  // 0
 
 static int       _computeCentroid(S57_geo *geo)
 // return centroids
@@ -2060,8 +2061,8 @@ static int       _renderSY_CSYMB(S52_obj *obj)
 
         // 2 - compute symbol length in pixel
         // 3 - scale screen size
-        double scale1NMWinWPixel =     4.0 / _scalex; // not important since pen width will override
-        double scale1NMWinHPixel =  1852.0 / _scaley;
+        double scale1NMWinWPixel =      4.0 / _scalex; // not important since pen width will override
+        double scale1NMWinHPixel = NM_METER / _scaley;
 
         // 4 - compute stretch of symbol (ratio)
         double HRatio = scale1NMWinHPixel / scaleSymHPixel;
@@ -2346,11 +2347,18 @@ static int       _renderSY_vessel(S52_obj *obj)
 
 #ifdef S52_USE_SYM_AISSEL01
     // AIS selected: experimental, put selected symbol on target
-    if ((0 == S52_PL_cmpCmdParam(obj, "AISSEL01")) &&
-        // FIXME: why test vestat here?
+    /*if ((0 == S52_PL_cmpCmdParam(obj, "AISSEL01")) &&
+        // skip 0 - vestatstr is null
         (NULL!=vestatstr                           &&
         ('1'==*vestatstr->str || '2'==*vestatstr->str || '3'==*vestatstr->str))
        ) {
+        GString *_vessel_selectstr = S57_getAttVal(geo, "_vessel_select");
+        if ((NULL!=_vessel_selectstr) && ('Y'== *_vessel_selectstr->str)) {
+            _renderSY_POINT_T(obj, ppt[0], ppt[1], 0.0);
+        }
+    }
+    */
+    if (0 == S52_PL_cmpCmdParam(obj, "AISSEL01")) {
         GString *_vessel_selectstr = S57_getAttVal(geo, "_vessel_select");
         if ((NULL!=_vessel_selectstr) && ('Y'== *_vessel_selectstr->str)) {
             _renderSY_POINT_T(obj, ppt[0], ppt[1], 0.0);
@@ -2363,13 +2371,19 @@ static int       _renderSY_vessel(S52_obj *obj)
         return TRUE;
     }
 
-#ifdef S52_USE_SYM_VESSEL_DNGHL
-    // experimental: VESSEL close quarters situation; target red, skip the reste
+//#ifdef S52_USE_SYM_VESSEL_DNGHL
+    //* experimental: VESSEL close quarters situation; target red
     if (NULL!=vestatstr && '3'==*vestatstr->str) {
         GString *vesrcestr = S57_getAttVal(geo, "vesrce");
         GString *headngstr = S57_getAttVal(geo, "headng");
         double   headng    = (NULL==headngstr) ? 0.0 : S52_atof(headngstr->str);
 
+        // Note: no LUP for vesrce=3 (VTS)
+        if (NULL!=vesrcestr && ('1'==*vesrcestr->str || '2'==*vesrcestr->str)) {
+            _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
+        }
+
+        /*
         if (NULL!=vesrcestr && '2'==*vesrcestr->str) {
             if (0 == S52_PL_cmpCmdParam(obj, "aisves01")) {
                 _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
@@ -2380,9 +2394,13 @@ static int       _renderSY_vessel(S52_obj *obj)
                 _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
             }
         }
-        return TRUE;
+        */
+
+        // skip the reste
+        //return TRUE;
     }
-#endif
+    //*/
+//#endif
 
     // draw vector stabilization
     // FIXME: NO VECT STAB if target sleeping - (NULL!=vestatstr && '2'==*vestatstr->str)
@@ -3234,13 +3252,14 @@ static int       _renderLS_vessel(S52_obj *obj)
 
 #ifdef S52_USE_GL2
 #ifdef S52_USE_SYM_VESSEL_DNGHL
-                // 0 - undefined, 1 - AIS active, 2 - AIS sleeping, 3 - AIS active, close quarter (red)
+                /* 0 - undefined, 1 - AIS active, 2 - AIS sleeping, 3 - AIS active, close quarter (red)
                 GString *vestatstr = S57_getAttVal(geo, "vestat");
                 if (NULL!=vestatstr && '3'==*vestatstr->str) {
                     double ppt[6] = {ppt[0], ppt[1], 0.0, ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0};
                     _glLineWidth(3);
                     _renderLS_gl2('S', 2, ppt);
-                 }
+                }
+                */
 #endif  // S52_USE_SYM_VESSEL_DNGHL
 
                 _glUniformMatrix4fv_uModelview();
@@ -3448,7 +3467,8 @@ static int       _renderLS(S52_obj *obj)
             _glPointSize(pen_w - '0');
             break;
 
-        default:
+    default:
+        // FIXME: DEBUG
             PRINTF("ERROR: invalid line style\n");
             g_assert(0);
             return FALSE;
@@ -3466,7 +3486,7 @@ static int       _renderLS(S52_obj *obj)
                 else {
                     if (0 == g_strcmp0("vessel", S57_getName(geo))) {
 #ifdef S52_USE_SYM_VESSEL_DNGHL
-                        // AIS close quarters
+                        /* AIS close quarters
                         GString *vestatstr = S57_getAttVal(geo, "vestat");
                         if (NULL!=vestatstr && '3'==*vestatstr->str) {
                             if (0 == g_strcmp0("DNGHL", col->colName))
@@ -3476,6 +3496,7 @@ static int       _renderLS(S52_obj *obj)
                                 return TRUE;
                         }
                         else
+                        */
 #endif  // S52_USE_SYM_VESSEL_DNGHL
                         {
                             // normal line
@@ -3708,7 +3729,7 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
                 S57_geo *geoPrev    = S52_PL_getGeo(objPrevLeg);
                 GString *prev_wholin_diststr = S57_getAttVal(geoPrev, "_wholin_dist");
                 if (NULL != prev_wholin_diststr) {
-                    double prev_wholin_dist = S52_atof(prev_wholin_diststr->str) * 1852;
+                    double prev_wholin_dist = S52_atof(prev_wholin_diststr->str) * NM_METER;
                     //_movePoint(&x1, &y1, segangRAD + (180.0 * DEG_TO_RAD), prev_wholin_dist);
                     _movePoint(&p1.x, &p1.y, segangRAD + (180.0 * DEG_TO_RAD), prev_wholin_dist);
                 }
@@ -3718,7 +3739,7 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
                 if (NULL != objNextLeg) {
                     GString *wholin_diststr = S57_getAttVal(geo, "_wholin_dist");
                     if (NULL != wholin_diststr) {
-                        double wholin_dist = S52_atof(wholin_diststr->str) * 1852;
+                        double wholin_dist = S52_atof(wholin_diststr->str) * NM_METER;
                         //_movePoint(&x2, &y2, segangRAD, wholin_dist);
                         _movePoint(&p2.x, &p2.y, segangRAD, wholin_dist);
                     }
@@ -3936,7 +3957,7 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
         GLdouble   sectr1    = S52_atof(sectr1str->str);
         GLdouble   sectr2    = S52_atof(sectr2str->str);
         double     sweep     = (sectr1 > sectr2) ? sectr2-sectr1+360 : sectr2-sectr1;
-        GString   *extradstr = S57_getAttVal(geo, "extend_arc_radius");
+        GString   *extradstr = S57_getAttVal(geo, "_extend_arc_radius");
         GLdouble   radius    = 0.0;
 
         GLdouble  *ppt       = NULL;
@@ -4370,6 +4391,12 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     if (S52_CMD_WRD_FILTER_TX & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
+    if (NULL == color) {
+        PRINTF("DEBUG: no color!\n");
+        g_assert(0);
+        return FALSE;
+    }
+
     /*
     if (weight >= S52_MAX_FONT) {
         PRINTF("WARNING: weight(%i) >= S52_MAX_FONT(%i)\n", weight, S52_MAX_FONT);
@@ -4448,6 +4475,7 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
                          GL_STATIC_DRAW);
         }
     }
+
     // graticule
     if ((NULL==obj) && (S52_GL_DRAW==_crnt_GL_cycle)) {
         _freetype_gl_buffer = _fill_freetype_gl_buffer(_freetype_gl_buffer, str, bsize, &strWpx, &strHpx);
@@ -4483,7 +4511,8 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
     //PRINTF("DEBUG: pos XY: %f/%f H/V: %c %c (%s)\n", x, y, hjust, vjust, str);
 
 #ifdef S52_USE_TXT_SHADOW
-    if (NULL != color) {
+    //if (NULL != color)
+    {
         S52_Color *c = S52_PL_getColor("UIBCK");  // opposite of CHBLK
         _setFragAttrib(c, FALSE);
 
@@ -4492,13 +4521,21 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
             // some MIO change age of target - need to resend the string
             _renderTXTAA_gl2(x+_scalex, y-_scaley, (GLfloat*)_freetype_gl_buffer->data, _freetype_gl_buffer->len);
         } else {
-            _renderTXTAA_gl2(x+_scalex, y-_scaley, NULL, len);
+            // graticule
+            if ((NULL==obj) && (S52_GL_DRAW==_crnt_GL_cycle)) {
+                _renderTXTAA_gl2(x+_scalex, y-_scaley, (GLfloat*)_freetype_gl_buffer->data, _freetype_gl_buffer->len);
+            } else {
+                _renderTXTAA_gl2(x+_scalex, y-_scaley, NULL, len);
+            }
         }
     }
 #endif  // S52_USE_TXT_SHADOW
 
-    if (NULL != color)
+    //if (NULL != color) {
+    if (NULL == obj)
         _setFragAttrib(color, FALSE);
+    else
+        _setFragAttrib(color, S57_getHighlight(S52_PL_getGeo(obj)));
 
     if ((S52_GL_LAST==_crnt_GL_cycle) || (S52_GL_NONE==_crnt_GL_cycle)) {
         // some MIO change age of target - need to resend the string
@@ -4637,7 +4674,8 @@ static int       _renderTXT(S52_obj *obj)
     unsigned int bsize  = 0;
     unsigned int weight = 0;
     int          disIdx = 0;  // text view group
-    const char  *str    = S52_PL_getEX(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx);
+    //const char  *str    = S52_PL_getEX(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx);
+    const char  *str    = S52_PL_getText(obj, &color, &xoffs, &yoffs, &bsize, &weight, &disIdx);
     //PRINTF("DEBUG: xoffs/yoffs/bsize/weight: %i/%i/%i/%i:%s\n", xoffs, yoffs, bsize, weight, str);
 
     // supress display of text
@@ -4669,9 +4707,9 @@ static int       _renderTXT(S52_obj *obj)
     // debug
     //double uoffs = 0.0;
     //double voffs = 0.0;
+    //PRINTF("DEBUG: uoffs/voffs/str: %f/%f/%f/%f:%s\n", uoffs, voffs, ppt[0], ppt[1], str);
 
     if (S57_POINT_T == S57_getObjtype(geo)) {
-        //_renderTXTAA(obj, color, ppt[0]+uoffs, ppt[1]-voffs, bsize, weight, str);
         _renderTXTAA(obj, color, ppt[0]+uoffs, ppt[1]-voffs, bsize, str);
 
         return TRUE;
@@ -5393,7 +5431,8 @@ int        S52_GL_isSupp(S52_obj *obj)
     }
 
     // SCAMIN
-    if (TRUE == (int) S52_MP_get(S52_MAR_SCAMIN)) {
+    //if (TRUE == (int) S52_MP_get(S52_MAR_SCAMIN)) {
+    if (FALSE != (int) S52_MP_get(S52_MAR_SCAMIN)) {
         S57_geo *geo  = S52_PL_getGeo(obj);
         double scamin = S57_getScamin(geo);
 
@@ -5575,10 +5614,10 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
         raster->rNM  = rNM;
 
         // set radar extent
-        raster->pext.S = raster->cLat - raster->rNM * 1852.0;
-        raster->pext.W = raster->cLng - raster->rNM * 1852.0;
-        raster->pext.N = raster->cLat + raster->rNM * 1852.0;
-        raster->pext.E = raster->cLng + raster->rNM * 1852.0;
+        raster->pext.S = raster->cLat - raster->rNM * NM_METER;
+        raster->pext.W = raster->cLng - raster->rNM * NM_METER;
+        raster->pext.N = raster->cLat + raster->rNM * NM_METER;
+        raster->pext.E = raster->cLng + raster->rNM * NM_METER;
     }
 #endif  // S52_USE_RADAR
 
@@ -5799,7 +5838,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
         // debug - HL off
         //if (TRUE == S57_getHighlight(geo))
         //    S57_setHighlight(geo, FALSE);
- 
+
         PRINTF("DEBUG: %i - pick: %s:%c:%i\n", _cIdx.color.r, S52_PL_getOBCL(obj), S57_getObjtype(geo), S57_getS57ID(geo));
     }
 
@@ -5919,6 +5958,152 @@ int        S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize
 
     return TRUE;
 }
+
+static char     *_ddmmss(double graticule)
+{
+    static char str[80];
+
+    int deg = (int)graticule + 0.0001;
+    int mm  = (int)((graticule - deg + 0.0001) * 60);
+    int ss  = (int)((graticule - deg - mm/60.0 + 0.0001) * 3600);
+
+    if (0 == ss) {
+        SNPRINTF(str, 80, "%i° %0.2i'", deg, mm);
+    } else {
+        SNPRINTF(str, 80, "%i° %0.2i' %0.2i\"", deg, mm, ss);
+    }
+
+    return str;
+}
+
+int        S52_GL_drawGraticule(void)
+{
+    //
+    // FIXME: small optimisation: collecte all segment to tmpWorkBuffer THEN call a draw
+    //
+
+    S52_Color *black = S52_PL_getColor("CHBLK");
+    black->fragAtt.pen_w = '1';
+    _setFragAttrib(black, FALSE);
+
+    //_setBlend(TRUE);
+
+    _glUniformMatrix4fv_uModelview();
+
+
+    char str[80];
+    double scale = (_scalex > _scaley) ? _scalex/_dotpitch_mm_x : _scaley/_dotpitch_mm_y;
+
+    // ----  graticule
+    if (FALSE != (int) S52_MP_get(S52_MAR_DISP_GRATICULE))
+    {
+        double MajorSpacing;
+        double MinorSpacing;
+
+        // FIXME: user should set that
+        //float TO_PPM = 5.0; // or set table for scale (also get str INTU)
+        // then add to MarPar SCALEFACTOR 1.0
+        // print table scale rather than computed scale
+
+        //_getGratScale(10.0/scale, &MajorSpacing, &MinorSpacing);
+        _getGratScale(5.0/scale, &MajorSpacing, &MinorSpacing);
+
+        PRINTF("DEBUG: scale: %f, major: %f, minor: %f\n", 10.0/scale, MajorSpacing, MinorSpacing);
+
+        // draw minor
+        if (1.0 == S52_MP_get(S52_MAR_DISP_GRATICULE) || 3.0 == S52_MP_get(S52_MAR_DISP_GRATICULE)) {
+            // latitude
+            for (double lat=floor(_gmin.v); lat<_gmax.v; lat+=MinorSpacing) {
+                if (lat<_gmin.v)
+                    continue;
+
+                pt3 pt[2] = {{_gmin.u, lat, 0.0}, {_gmax.u, lat, 0.0}};
+                S57_geo2prj3dv(2, pt);
+
+
+                //SNPRINTF(str, 80, "%07.4f%c", fabs(lat), (0.0<lat)?'N':'S');
+                SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lat)), (0.0<lat)?'N':'S');
+                _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
+
+                //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
+                _renderLS_gl2('T', 2, (double*)pt);
+                //_renderLS_gl2('T', 1, (double*)pt);
+            }
+
+            // longitude
+            for (double lon=floor(_gmin.u); lon<_gmax.u; lon+=MinorSpacing) {
+                if (lon<_gmin.u)
+                    continue;
+
+                pt3 pt[2] = {{lon, _gmin.v, 0.0}, {lon, _gmax.v, 0.0}};
+                S57_geo2prj3dv(2, pt);
+
+                //SNPRINTF(str, 80, "%07.4f%c", fabs(lon), (0.0<lon)?'E':'W');
+                SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lon)), (0.0<lon)?'E':'W');
+                _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
+
+                //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
+                _renderLS_gl2('T', 2, (double*)pt);
+                //_renderLS_gl2('T', 1, (double*)pt);
+            }
+        }
+
+        // draw major
+        if (2.0 == S52_MP_get(S52_MAR_DISP_GRATICULE) || 3.0 == S52_MP_get(S52_MAR_DISP_GRATICULE)) {
+             // latitude
+            for (double lat=floor(_gmin.v); lat<_gmax.v; lat+=MajorSpacing) {
+                if (lat<_gmin.v)
+                    continue;
+
+                 pt3 pt[2] = {{_gmin.u, lat, 0.0}, {_gmax.u, lat, 0.0}};
+                S57_geo2prj3dv(2, pt);
+
+                //SNPRINTF(str, 80, "%07.4f%c", fabs(lat), (0.0<lat)?'N':'S');
+                SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lat)), (0.0<lat)?'N':'S');
+                _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
+
+                //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
+                _renderLS_gl2('S', 2, (double*)pt);
+            }
+
+            // longitude
+            for (double lon=floor(_gmin.u); lon<_gmax.u; lon+=MajorSpacing) {
+                if (lon<_gmin.u)
+                    continue;
+
+                pt3 pt[2] = {{lon, _gmin.v, 0.0}, {lon, _gmax.v, 0.0}};
+                S57_geo2prj3dv(2, pt);
+
+                //SNPRINTF(str, 80, "%07.4f%c", fabs(lon), (0.0<lon)?'E':'W');
+                SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lon)), (0.0<lon)?'E':'W');
+                _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
+
+                //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
+                _renderLS_gl2('S', 2, (double*)pt);
+                //_renderLS_gl2('S', 1, (double*)pt);
+            }
+       }
+     }
+
+    // ---- draw SCALE / _SCAMIN at bottom
+    {
+        S52_Color *ninfo = S52_PL_getColor("NINFO");
+
+        // scale
+        SNPRINTF(str, 80, "SCALE: %.0f", scale * 1000.0);
+        _renderTXTAA(NULL, ninfo, _pmin.u+((_pmax.u - _pmin.u)/2.0), _pmin.v+(20*_scaley), 2, str);
+
+        // scamin
+        SNPRINTF(str, 80, "SCAMIN (1:%.1f): %.0f", S52_MP_get(S52_MAR_SCAMIN), _SCAMIN);
+        _renderTXTAA(NULL, ninfo, _pmin.u+((_pmax.u - _pmin.u)/2.0), _pmin.v+(5*_scaley), 1, str);
+    }
+
+    //printf("lat: %f, long: %f\n", lat, lon);
+    //_setBlend(FALSE);
+
+    return TRUE;
+}
+
 
 int        S52_GL_drawStrWin(double pixels_x, double pixels_y, const char *colorName, unsigned int bsize, const char *str)
 // draw a string in window coords
@@ -6187,13 +6372,19 @@ static int       _doProjection(vp_t vp, double centerLat, double centerLon, doub
     // MPP - Meter Per Pixel
     _scalex = (_pmax.u - _pmin.u) / (double)vp.w;
     _scaley = (_pmax.v - _pmin.v) / (double)vp.h;
-
     //PRINTF("DEBUG: SCALE: X:%f Y:%f\n", _scalex, _scaley);
 
     // used by S52_GL_isSupp() and to set SCALEB10 or SCALEB11 (scale bar)
-    _SCAMIN = (_scalex > _scaley) ? _scalex : _scaley;
-    _SCAMIN *= 10000.0;
+    // MPP --> mm
+    _SCAMIN = (_scalex > _scaley) ? _scalex/_dotpitch_mm_x : _scaley/_dotpitch_mm_y;
     //PRINTF("DEBUG: XXXXXXXXXXXXXXXXXXXXX _SCAMIN:%f _scalex:%f\n", _SCAMIN, _scalex);
+    // mm --> meter
+    _SCAMIN *= 1000.0;
+    //PRINTF("DEBUG: XXXXXXXXXXXXXXXXXXXXX _SCAMIN:%f _scalex:%f\n", _SCAMIN, _scalex);
+
+    if (FALSE != (int) S52_MP_get(S52_MAR_SCAMIN)) {
+        _SCAMIN *= S52_MP_get(S52_MAR_SCAMIN);
+    }
 
     //_glMatrixSet(VP_PRJ);
 
@@ -6601,8 +6792,33 @@ int        S52_GL_delDL(S52_obj *obj)
         }
 
 #ifdef S52_USE_FREETYPE_GL
-        // delete text if any
+        // delete all text if any
         if (TRUE == S52_PL_hasText(obj)) {
+
+            S52_CmdWrd cmdWrd = S52_PL_iniCmd(obj);
+            while (S52_CMD_NONE != cmdWrd) {
+                switch (cmdWrd) {
+                    case S52_CMD_TXT_TX:
+                    case S52_CMD_TXT_TE: {
+                        guint  len;
+                        double dummy;  // str W/H
+                        char   dum;    // just. H/V
+                        guint vboID = S52_PL_getFreetypeGL_VBO(obj, &len, &dummy, &dummy, &dum, &dum);
+                        if (GL_TRUE == glIsBuffer(vboID)) {
+                            glDeleteBuffers(1, &vboID);
+
+                            S52_PL_setFreetypeGL_VBO(obj, 0, 0, 0.0, 0.0);
+                        }
+                        break;
+                    }
+
+                    default: break;
+                }
+
+                cmdWrd = S52_PL_getCmdNext(obj);
+            }
+
+            /*
             guint  len;
             double dummy;  // str W/H
             char   dum;    // just. H/V
@@ -6615,6 +6831,8 @@ int        S52_GL_delDL(S52_obj *obj)
                 //S52_PL_setFreetypeGL_VBO(obj, vboID, len);
                 S52_PL_setFreetypeGL_VBO(obj, 0, 0, 0.0, 0.0);
             }
+            */
+
             /* debug
             else
             {
@@ -7419,6 +7637,7 @@ CCHAR     *S52_GL_getNameObjPick(void)
     // Note: compile with S52_USE_C_AGGR_C_ASSO
     if (3.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
         // debug
+        // FIXME: highlight - doc this
         //GString *S57_geo_refs_str = S57_getAttVal(geoHighLight, "_LNAM_REFS_GEO");
         //if (NULL != S57_geo_refs_str)
         //    PRINTF("DEBUG: S57_geo_refs_str:_LNAM_REFS_GEO = %s\n", S57_geo_refs_str->str);
@@ -7631,115 +7850,12 @@ int        S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *s
     return TRUE;
 }
 
-int        S52_GL_drawGraticule(void)
-// FIXME: use S52_MAR_DISP_GRATICULE to get the user choice
-{
-    // at mid lat:
-    // delta lat  / 1852 = height in NM
-    // delta long / 1852 = witdh  in NM
-    double dlat = _pmax.v - _pmin.v;
-    double dlon = _pmax.u - _pmin.u;
-
-    dlat /=  3.0;
-    dlon /=  3.0;
-
-    //int remlat =  (int) _pmin.v % (int) dlat;
-    //int remlon =  (int) _pmin.u % (int) dlon;
-
-    S52_Color *black = S52_PL_getColor("CHBLK");
-    black->fragAtt.pen_w = '1';
-    _setFragAttrib(black, FALSE);
-    // FIXME: set black->fragAtt.pen_w
-    //_glLineWidth(1.0);
-
-    //_setBlend(TRUE);
-
-    _glUniformMatrix4fv_uModelview();
-
-    //
-    // FIXME: small optimisation: collecte all segment to tmpWorkBuffer THEN call a draw
-    //
-
-    //
-    // FIXME: in mercator lat varie - so mid-lat is the reference
-    //
-
-    char str[80];
-
-    // ----  graticule S lat
-    {
-        double lat  = _pmin.v + dlat;
-        double lon  = _pmin.u + dlon;
-        //double lon  = _pmin.u - dlon;
-
-        //*
-        projXY uv = {_pmin.u, lat};
-        uv = S57_prj2geo(uv);
-        SNPRINTF(str, 80, "%07.4f%c", fabs(uv.v), (0.0<uv.v)?'N':'S');
-        _renderTXTAA(NULL, black, lon, lat, 1, str);
-        //_renderTXTAA(NULL, black, 10, 10, 1, str);
-        //*/
-
-        //pt3v ppt[2] = {{lon, lat, 0.0}, {_pmax.u, lat, 0.0}};
-        double ppt[6] = {_pmin.u, lat, 0.0, _pmax.u, lat, 0.0};
-        _renderLS_gl2('S', 2, ppt);
-        //_DrawArrays_LINE_STRIP(2, (vertex_t *)ppt);
-    }
-
-    /*
-    // ---- graticule N lat
-    {
-        double lat  = _pmin.v + dlat + dlat;
-        double lon  = _pmin.u;
-        pt3v ppt[2] = {{lon, lat, 0.0}, {_pmax.u, lat, 0.0}};
-        projXY uv   = {lon, lat};
-        uv = S57_prj2geo(uv);
-        SNPRINTF(str, 80, "%07.4f deg %c", fabs(uv.v), (0.0<lat)?'N':'S');
-
-        _DrawArrays_LINE_STRIP(2, (vertex_t *)ppt);
-        _renderTXTAA(NULL, black, lon, lat, 1, str);
-    }
-
-
-    // ---- graticule W long
-    {
-        double lat  = _pmin.v;
-        double lon  = _pmin.u + dlon;
-        pt3v ppt[2] = {{lon, lat, 0.0}, {lon, _pmax.v, 0.0}};
-        projXY uv   = {lon, lat};
-        uv = S57_prj2geo(uv);
-        SNPRINTF(str, 80, "%07.4f deg %c", fabs(uv.u), (0.0<lon)?'E':'W');
-
-        _DrawArrays_LINE_STRIP(2, (vertex_t *)ppt);
-        _renderTXTAA(NULL, black, lon, lat, 1, str);
-    }
-
-    // ---- graticule E long
-    {
-        double lat  = _pmin.v;
-        double lon  = _pmin.u + dlon + dlon;
-        pt3v ppt[2] = {{lon, lat, 0.0}, {lon, _pmax.v, 0.0}};
-        projXY uv   = {lon, lat};
-        uv = S57_prj2geo(uv);
-        SNPRINTF(str, 80, "%07.4f deg %c", fabs(uv.u), (0.0<lon)?'E':'W');
-
-        _DrawArrays_LINE_STRIP(2, (vertex_t *)ppt);
-        _renderTXTAA(NULL, black, lon, lat, 1, str);
-    }
-    */
-
-    //printf("lat: %f, long: %f\n", lat, lon);
-    //_setBlend(FALSE);
-
-    return TRUE;
-}
-
 int              _drawArc(S52_obj *objA, S52_obj *objB)
 {
     S57_geo  *geoA          = S52_PL_getGeo(objA);
     S57_geo  *geoB          = S52_PL_getGeo(objB);
     GString  *wholinDiststr = S57_getAttVal(geoA, "_wholin_dist");
-    double    wholinDist    = (NULL == wholinDiststr) ? 0.0 : S52_atof(wholinDiststr->str) * 1852.0;
+    double    wholinDist    = (NULL == wholinDiststr) ? 0.0 : S52_atof(wholinDiststr->str) * NM_METER;
     //int       CW            = TRUE;
     //int       revsweep      = FALSE;
 
