@@ -177,7 +177,8 @@ typedef struct _Text {
     int        xoffs;       // pivot point, pica (1 = 0.351mm) (see above)
     int        yoffs;       // pivot point, pica (1 = 0.351mm) (see above)
     S52_Color *col;         // colour
-    int        dis;         // display (view group)
+    int        dis;         // display (text view group)
+    //int        vgroup;         // display (text view group)
 
 #ifdef S52_USE_FREETYPE_GL
     guint      vboID;       // ID if the OpenGL VBO text
@@ -335,8 +336,8 @@ typedef struct _AUX_Info {
 typedef struct _S52_obj {
     S57_geo     *geo;           // Note: must be the first member for S52PLGETGEO(S52OBJ)
 
-    // 2 set of LUP: normal and alternate
-    _LUP        *LUP;           // common data for the 2 set of LUP
+    _LUP        *LUP;           // common data for the 2 set of LUP (except INST)
+    //_LUP        *LUP[2];
 
     _cmdWL      *cmdLorig[2];   // instruction list command (parsed LUP.INST)
 
@@ -349,10 +350,19 @@ typedef struct _S52_obj {
     GArray      *crntA;         // point to the current (active) command array (normal or alternate)
     guint        crntAidx;      // index in command array
 
+
+    gint         hasText[2];    // TRUE if INST has TE/TX commend word
     gint         textParsed[2]; // TRUE if parsed, need two flag because there is text for
                                 // two type of point and area
+
+    // same idea as hasText - instead of looping on cmd word (INST), flag it once in _parseINST
+    //gint         hasLC[2];
+    //gint         hasCS[2];
+
+
     // CS override
-    int          prioOveride;   // CS overide display priority
+    // FIXME: this assume that the same CS is in the 'alternate' LUP - need proof
+    gboolean     prioOveride;   // TRUE if CS overide PLib display priority / same meaning as hasCS()!!
     _prios       oPrios;
 
     _AUX_Info    auxInfo;
@@ -889,12 +899,14 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
 // scan foward stop on ; or end-of-line
 #define SCANFWRD    while ( !(*str == ';' || *str == '\0')) str++; }
 
-static _cmdWL    *_parseINST(GString *inst)
+static _cmdWL    *_parseINST(GString *inst, gint *hasText)
 // Parse "Symbology Instruction"  (LUP) and link them to rendering rules
 {
-    char      *str  = inst->str;
+    char   *str  = inst->str;
     _cmdWL *top  = NULL;
     _cmdWL *last = NULL;
+
+    *hasText = FALSE;
 
     // assume that the previous object that used this CS lookup
     // will have saved the instruction command word.
@@ -915,16 +927,14 @@ static _cmdWL    *_parseINST(GString *inst)
             g_assert(0);
 
         ////////////////////////////////
-        // parse Symbology Command Word
-        //
         // Note: command might repeat except:
         //  -S52_CMD_COM_LN: complex line,
         //  -S52_CMD_ARE_CO: area color,
         //  -S52_CMD_CND_SY: conditional symbology
 
         // SHOWTEXT
-             CMDWRD(TX, S52_CMD_TXT_TX) SCANFWRD
-        else CMDWRD(TE, S52_CMD_TXT_TE) SCANFWRD
+             CMDWRD(TX, S52_CMD_TXT_TX) *hasText = TRUE; SCANFWRD
+        else CMDWRD(TE, S52_CMD_TXT_TE) *hasText = TRUE; SCANFWRD
 
         // SHOWPOINT
         else CMDWRD(SY, S52_CMD_SYM_PT) LOOKUP(S52_SMB_SYMB) SCANFWRD
@@ -945,9 +955,9 @@ static _cmdWL    *_parseINST(GString *inst)
 
         // failsafe
         else {
-            PRINTF("ERROR: parsing Command Word:%s\n", str);
+            PRINTF("ERROR: parsing Command Word: %s\n", str);
             g_assert(0);
-            return FALSE;
+            return NULL;
         }
 
         // append command
@@ -983,7 +993,6 @@ static _cmdWL    *_initCmdA(_S52_obj *obj, int alt)
         // there can only be one CS (CND_SY) per LUP
         if (S52_CMD_CND_SY == cmd->cmdWord) {
             return cmd;
-            //break;
         }
         g_array_append_val(obj->cmdAfinal[alt], *cmd);
         cmd = cmd->next;
@@ -1004,7 +1013,7 @@ static int        _freeCmdList(_cmdWL *top)
    return TRUE;
 }
 
-static gint       _freeTXT(_Text *text)
+static gint       _freeText(_Text *text)
 {
     if (NULL != text->frmtd) {
         g_string_free(text->frmtd, TRUE);
@@ -1014,7 +1023,7 @@ static gint       _freeTXT(_Text *text)
     return TRUE;
 }
 
-static gint       _freeAllTXT(GArray *cmdArray)
+static gint       _freeAllText(GArray *cmdArray)
 // free all text
 {
     for (guint i=0; i<cmdArray->len; ++i) {
@@ -1022,7 +1031,7 @@ static gint       _freeAllTXT(GArray *cmdArray)
 
         if ((S52_CMD_TXT_TX==cmd->cmdWord) || (S52_CMD_TXT_TE==cmd->cmdWord)) {
             if (NULL != cmd->cmd.text) {
-                _freeTXT(cmd->cmd.text);
+                _freeText(cmd->cmd.text);
                 cmd->cmd.text = NULL;
             }
         }
@@ -1034,8 +1043,13 @@ static gint       _freeAllTXT(GArray *cmdArray)
 
 static int        _resolveSMB(_S52_obj *obj, int alt)
 // return TRUE if there is a CS in the INST file for this LUP (alt)
-// also fill the command Array
+// also start to fill the command Array
 {
+    // Note: no need to reparse line - obj of type LINE_T have no alternate symbology
+    if (S57_LINES_T==S57_getObjtype(obj->geo) && 1==alt ) {
+        return FALSE;
+    }
+
     // clear old CS instruction
     if (NULL != obj->CSinst[alt])
         g_string_free(obj->CSinst[alt], TRUE);
@@ -1049,6 +1063,19 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
     _cmdWL *cmd = _initCmdA(obj, alt);
     if (NULL == cmd)
         return FALSE;
+
+    /* DEBUG: check that prio of alt 0/1 are the same - assume 0 then 1
+    if (1==alt && FALSE==obj->prioOveride) {  // make sure thi obj new (non initialize)
+        if (obj->oPrios.DPRI != obj->LUP->prios.DPRI ||
+            obj->oPrios.RPRI != obj->LUP->prios.RPRI ||
+            obj->oPrios.DISC != obj->LUP->prios.DISC ||
+            obj->oPrios.LUCM != obj->LUP->prios.LUCM)
+        {
+            PRINTF("DEBUG: prio mismatch(%s)\n", S57_getName(obj->geo));
+            g_assert(0);
+        }
+   }
+   */
 
 
     // CS found, merge cmd list in command array (normal + CS)
@@ -1069,9 +1096,11 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
     S52_CS_cb CScb = cmd->cmd.CS->CScb;
     if (NULL != CScb) {
         obj->CSinst[alt] = CScb(obj->geo);
-        if (NULL != obj->CSinst[alt]) {
-            obj->CScmdL[alt] = _parseINST(obj->CSinst[alt]);
+        if (NULL!=obj->CSinst[alt] && 0!=obj->CSinst[alt]->len) {
+            //obj->CScmdL[alt] = _parseINST(obj->CSinst[alt]);
+            obj->CScmdL[alt] = _parseINST(obj->CSinst[alt], &obj->hasText[alt]);
             _cmdWL *tmp      = obj->CScmdL[alt];
+
             while (NULL != tmp) {
                 // change object Display Priority, if any, at this point
                 if (S52_CMD_OVR_PR == tmp->cmdWord) {
@@ -1103,8 +1132,9 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
             }
         } else {
             // FIXME: ENC_ROOT/US3NY21M/US3NY21M.000 land here
-            PRINTF("NOTE: CS %s for object %s expand to NULL\n", cmd->cmd.CS->name, S57_getName(obj->geo));
-            g_assert(0);
+            // also S64 test ENC at CS(SLCONS03)
+            PRINTF("DEBUG: CS %s for object %s expand to NULL\n", cmd->cmd.CS->name, S57_getName(obj->geo));
+            //g_assert(0);
 
             return FALSE;
         }
@@ -2160,7 +2190,7 @@ YOFFS "y-offset" parameter:
     text->col   = S52_PL_getColor(buf);      // COLOUR
     //str         = _getParamVal(geo, str, buf, MAXL);
                   _getParamVal(geo, str, buf, MAXL);  // clang - str never used
-    text->dis   = S52_atoi(buf);             // DISPLAY
+    text->dis   = S52_atoi(buf);             // DISPLAY (view group)
 
     return text;
 }
@@ -2184,9 +2214,9 @@ static cmsHTRANSFORM _XYZ2RGB   = NULL;
 static int           _lcmsError = FALSE;   // TRUE an error occur in lcms
 
 #ifdef S52_USE_LCMS2
-static void        _cms_error_cb(cmsContext ContextID, cmsUInt32Number errCode, const char *errText)
+static void       _cms_error_cb(cmsContext ContextID, cmsUInt32Number errCode, const char *errText)
 #else
-static int         _cms_error_cb(int errCode, const char *errText)
+static int        _cms_error_cb(int errCode, const char *errText)
 #endif
 {
 #ifdef S52_USE_LCMS2
@@ -2676,16 +2706,16 @@ int         S52_PL_done(void)
 
 
     // destroy look-up tables
-    g_tree_destroy (_selLUP(_LUP_LINES));
-    g_tree_destroy (_selLUP(_LUP_PLAIN));
-    g_tree_destroy (_selLUP(_LUP_SYMBO));
-    g_tree_destroy (_selLUP(_LUP_SIMPL));
-    g_tree_destroy (_selLUP(_LUP_PAPER));
+    g_tree_destroy(_selLUP(_LUP_LINES));
+    g_tree_destroy(_selLUP(_LUP_PLAIN));
+    g_tree_destroy(_selLUP(_LUP_SYMBO));
+    g_tree_destroy(_selLUP(_LUP_SIMPL));
+    g_tree_destroy(_selLUP(_LUP_PAPER));
 
     // destroy symbology tables
-    g_tree_destroy (_selSMB(S52_SMB_LINE));
-    g_tree_destroy (_selSMB(S52_SMB_PATT));
-    g_tree_destroy (_selSMB(S52_SMB_SYMB));
+    g_tree_destroy(_selSMB(S52_SMB_LINE));
+    g_tree_destroy(_selSMB(S52_SMB_PATT));
+    g_tree_destroy(_selSMB(S52_SMB_SYMB));
 
     // CS doesn't have node to free
     g_tree_destroy(_selSMB(S52_SMB_COND));
@@ -2745,6 +2775,8 @@ static S52_Color *_getColorAt(guchar index)
 
     S52_Color *c = &g_array_index(ct->colors, S52_Color, index);
 
+    // FIXME: S52_Color.S52_fragAtt set good default or trap use uninialize
+
     return c;
 }
 
@@ -2772,17 +2804,27 @@ static int        _linkLUP(_S52_obj *obj, int alt)
 // get the LUP that is approproate for this S57 object
 // if alt is 1 compute alternate rasterization rules
 {
-    _LUP       *LUPlist = NULL;
-    GTree      *tbl     = NULL;
-    _LUPtnm     tblNm   = _LUP_NUM;
-    const char *objName = S57_getName(obj->geo);
+    _LUP    *LUPlist = NULL;
+    GTree   *tbl     = NULL;
+    _LUPtnm  tblNm   = _LUP_NUM;
+    CCHAR   *objName = S57_getName(obj->geo);
+
+    // optimisation: no reparse of lines INST
+    //if (S57_LINES_T==S57_getObjtype(obj->geo) && 1==alt) {
+    //    return TRUE;
+    //}
 
     // find proper LUP table for this type of S57 object
     switch (S57_getObjtype(obj->geo)) {
         case S57_POINT_T: tblNm = (0==alt) ? _LUP_SIMPL : _LUP_PAPER; break;
-        case S57_LINES_T: tblNm = _LUP_LINES;                         break;
+
+        // Note: no alt line table
+        case S57_LINES_T: tblNm = (0==alt) ? _LUP_LINES : _LUP_NONAM; break;
+
         case S57_AREAS_T: tblNm = (0==alt) ? _LUP_SYMBO : _LUP_PLAIN; break;
-        case S57__META_T: tblNm = _LUP_NONAM;                         break;
+
+        case S57__META_T: tblNm = (0==alt) ? _LUP_NONAM : _LUP_NONAM; break;
+
         default     : PRINTF("WARNING: unkown geometry!\n");
                       g_assert(0);
                       return FALSE;
@@ -2791,20 +2833,64 @@ static int        _linkLUP(_S52_obj *obj, int alt)
     // get BBtree for this table
     tbl = _selLUP(tblNm);
     if (NULL == tbl) {
-        //PRINTF("NOTE: no LUP for object %s (nothing to display)\n", objName);
         return FALSE;
     }
-
-    // scan LUP for objectName
-    //PRINTF("-----SEARCHING: %s-----\n", objectName);
 
     // get list of LUP for S57 object of this class
     LUPlist = (_LUP*)g_tree_lookup(tbl, (gpointer*)objName);
     if (NULL != LUPlist) {
         obj->LUP = _lookUpLUP(LUPlist, obj->geo);
     } else {
-        PRINTF("WARNING: defaulting to QUESMRK1, no LUP found for object name: %s\n", objName);
+        if (0 == g_strcmp0(objName, "NEWOBJ")) {
+            GString *syminsstr = S57_getAttVal(obj->geo, "SYMINS");
+            PRINTF("FIXME: object name: %s SYMINS:%s\n", objName, syminsstr->str);
 
+/* FIXME: add rule attval SYMINS to PL
+0001    503017
+LUPT   34LU03017NILcursorP00009OSIMPLIFIED
+ATTC    1
+INST   58SY(CURSRA01);TX(_cursor_label,3,3,3,'15110',1,1,CURSR,78)
+DISC   12DISPLAYBASE
+LUCM    611010
+****    0
+0001    503444
+LUPT   35LU03444NILcursorP00009OPAPER_CHART
+ATTC    1
+INST   58SY(CURSRA01);TX(_cursor_label,3,3,3,'15110',1,1,CURSR,78)
+DISC   12DISPLAYBASE
+LUCM    611010
+****    0
+
+S57data.c:1525 in S57_dumpData(): NAME  : NEWOBJ
+S57data.c:1526 in S57_dumpData(): S57ID : 59
+S57data.c:1530 in S57_dumpData(): obj_t : POINT_T
+S57data.c:1515 in _printAttVal(): RCID: 265
+S57data.c:1515 in _printAttVal(): PRIM: 1
+S57data.c:1515 in _printAttVal(): GRUP: 2
+S57data.c:1515 in _printAttVal(): OBJL: 163
+S57data.c:1515 in _printAttVal(): RVER: 1
+S57data.c:1515 in _printAttVal(): AGEN: 1810
+S57data.c:1515 in _printAttVal(): FIDN: 86133589
+S57data.c:1515 in _printAttVal(): FIDS: 816
+S57data.c:1515 in _printAttVal(): LNAM: 071205224B550330
+S57data.c:1515 in _printAttVal(): NAME_RCNM: (1:110)
+S57data.c:1515 in _printAttVal(): NAME_RCID: (1:5)
+S57data.c:1515 in _printAttVal(): ORNT: (1:255)
+S57data.c:1515 in _printAttVal(): USAG: (1:255)
+S57data.c:1515 in _printAttVal(): MASK: (1:255)
+S57data.c:1515 in _printAttVal(): CLSDEF: Alarms test waypoint
+S57data.c:1515 in _printAttVal(): CLSNAM: Waypoint
+S57data.c:1515 in _printAttVal(): OBJNAM: WP3
+S57data.c:1515 in _printAttVal(): INFORM: Waypoint 3 to set test route
+S57data.c:1515 in _printAttVal(): SYMINS: SY(BRTHNO01);TE('%s','OBJNAM',2,1,2,'15110',4,-1,CHMGD,29)
+*/
+        } else {
+            // debug
+            S57_dumpData(obj->geo, FALSE);
+        }
+
+        //
+        PRINTF("WARNING: defaulting to QUESMRK1, no LUP found for object name: %s\n", objName);
         obj->LUP = (_LUP*)g_tree_lookup(tbl, (gpointer*)DEFOBJ);
         if (NULL == obj->LUP) {
             PRINTF("ERROR: no PLIB! [%s]\n", objName);
@@ -2815,8 +2901,14 @@ static int        _linkLUP(_S52_obj *obj, int alt)
         obj->LUP->prios.DPRI = S52_PRIO_HAZRDS;
     }
 
-    // get tokenized instruction list
-    obj->cmdLorig[alt] = _parseINST(obj->LUP->INST);
+    if (0 != obj->LUP->INST->len) {
+        // get tokenized instruction list
+        //obj->cmdLorig[alt] = _parseINST(obj->LUP->INST);
+        obj->cmdLorig[alt] = _parseINST(obj->LUP->INST, &obj->hasText[alt]);
+    } else {
+        // parano: test empty INST
+        PRINTF("BEDUG: empty LUP/INST for %s:%c\n", objName, S57_getObjtype(obj->geo));
+    }
 
     return TRUE;
 }
@@ -2854,6 +2946,9 @@ S52_obj    *S52_PL_newObj(S57_geo *geo)
     obj->crntA         = NULL; //obj->cmdAlt[0];  // for safety, point to something
     obj->crntAidx      = 0;
 
+    // emphasize zeroed
+    obj->hasText[0]    = FALSE;
+    obj->hasText[1]    = FALSE;
     obj->textParsed[0] = FALSE;
     obj->textParsed[1] = FALSE;
 
@@ -2861,8 +2956,8 @@ S52_obj    *S52_PL_newObj(S57_geo *geo)
 
 
     // init Aux Info - other than the default (ie g_new0)
-    obj->auxInfo.orient        = INFINITY;
-    obj->auxInfo.speed         = INFINITY;
+    obj->auxInfo.orient= INFINITY;
+    obj->auxInfo.speed = INFINITY;
 
     /* init Aux Info - this is the default anyway (ie g_new0)
     obj->time    = 0;
@@ -2885,31 +2980,14 @@ S52_obj    *S52_PL_newObj(S57_geo *geo)
     // FIX: parse alternate first so that normal LUP reference will be the default
     _linkLUP(obj, 0);
 
-    /*
-    while (idx >= _objList->len) {
-        PRINTF("DEBUG: extending _objList size to %u\n", _objList->len+1024);
-        // GLib BUG: take gint for length instead of guint - an oversight say Philip Withnall
-        // https://mail.gnome.org/archives/gtk-devel-list/2014-December/thread.html
-        // use g_array if in need of > 2^31 objects
-        // tested with -1 (GUINTMAX) and glib barf saying can't alloc 2^35 something bytes
-
-        // FIX: g_uint_checked_add()
-
-        g_ptr_array_set_size(_objList, _objList->len+1024);
-    }
-
-    // write or overwrite
-    g_ptr_array_index(_objList, idx) = obj;
-    */
-
     g_hash_table_insert(_objHash, GINT_TO_POINTER(idx), obj);
 
     return obj;
 }
 
 S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean nilAuxInfo)
-// free data in S52 obj
-// return S57 obj geo
+// free S52_obj wrapper
+// return S57_geo
 // WARNING: note that Aux Info is not touched - still in 'obj'
 // nilAuxInfo: TRUE nullify ref to obj (Aux Info), also in array at obj index
 // Note: when new PLib loaded, raz rules change hence S52_obj change definition.
@@ -2918,8 +2996,25 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean nilAuxInfo)
 {
     return_if_null(obj);
 
-    _freeAllTXT(obj->cmdAfinal[0]);
-    _freeAllTXT(obj->cmdAfinal[1]);
+    /*
+     _LUP        *LUP;
+
+     _cmdWL      *cmdLorig[2];
+
+     GString     *CSinst[2];
+     _cmdWL      *CScmdL[2];
+
+     GArray      *cmdAfinal[2];
+     GArray      *crntA;
+     guint        crntAidx;
+     gint         hasText[2];
+     gint         textParsed[2];
+     gboolean     prioOveride;
+     _prios       oPrios;
+    */
+
+    _freeAllText(obj->cmdAfinal[0]);
+    _freeAllText(obj->cmdAfinal[1]);
 
     _freeCmdList(obj->cmdLorig[0]);
     _freeCmdList(obj->cmdLorig[1]);
@@ -2944,21 +3039,24 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean nilAuxInfo)
     obj->crntA        = NULL;
     obj->crntAidx     = 0;
 
+    obj->hasText[0]    = FALSE;
+    obj->hasText[1]    = FALSE;
+    obj->textParsed[0] = FALSE;
+    obj->textParsed[1] = FALSE;
+
     //
-    // WARNING: note that Aux Info is not touched - still in 'obj'
+    // Note: that Aux Info is not touched - still in 'obj'
     //
 
-    //S52_obj *objFree = (S52_obj *)g_ptr_array_index(_objList, S57_getS57ID(obj->geo));
     S52_obj *objFree = (S52_obj *)g_hash_table_lookup(_objHash, GINT_TO_POINTER(S57_getS57ID(obj->geo)));
     if (NULL == objFree) {
         PRINTF("DEBUG: should not be NULL (%u)\n", S57_getS57ID(obj->geo));
         g_assert(0);
     }
 
-    S57_geo *geo = obj->geo;
+    //S57_geo *geo = obj->geo;
 
     // del aux info
-    //if (TRUE == updateObjL) {
     if (TRUE == nilAuxInfo) {
         obj->auxInfo.orient  = 0.0;
         obj->auxInfo.speed   = 0.0;
@@ -2971,12 +3069,11 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean nilAuxInfo)
         obj->auxInfo.prevLeg = NULL;
         //obj->auxInfo.wholin  = NULL;
 
-        // nullify obj in array at index
-        //g_ptr_array_index(_objList, S57_getS57ID(geo)) = NULL;
-        g_hash_table_remove(_objHash, GINT_TO_POINTER(S57_getS57ID(geo)));
+        g_hash_table_remove(_objHash, GINT_TO_POINTER(S57_getS57ID(obj->geo)));
     }
 
-    return geo;
+    //return geo;
+    return obj->geo;
 }
 
 const char *S52_PL_getOBCL(_S52_obj *obj)
@@ -3141,7 +3238,6 @@ static int        _getAlt(_S52_obj *obj)
     int alt = 0;
 
     // use alternate point symbol
-    //if ((S57_POINT_T==S52_PL_getFTYP(obj)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
     if ((S57_POINT_T==S57_getObjtype(obj->geo)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
         alt = 1;
 
@@ -3705,16 +3801,6 @@ S52_DListData *S52_PL_newDListData(_S52_obj *obj)
     return cmd->cmd.DListData;
 }
 
-/*
-static int _getDListParam(_cmdWL *cmd, guint *nbr, S52_Color **cList)
-{
-    *nbr   = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->nbr   : cmd->cmd.def->DListData.nbr;
-    *cList = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->colors: cmd->cmd.def->DListData.colors;
-
-    return TRUE;
-}
-*/
-
 S52_DListData *S52_PL_getDListData(_S52_obj *obj)
 {
     return_if_null(obj);
@@ -4230,7 +4316,7 @@ static _Text     *_parseTE(S57_geo *geo, _cmdWL *cmd)
     return text;
 }
 
-const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
+const char *S52_PL_getText(_S52_obj *obj, S52_Color **col,
                          int *xoffs, int *yoffs, unsigned int *bsize,
                          unsigned int *weight, int *dis)
 {
@@ -4246,12 +4332,16 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
         return NULL;
     }
 
+    if (FALSE == obj->hasText[_getAlt(obj)]) {
+        return NULL;
+    }
+
     if (FALSE == obj->textParsed[_getAlt(obj)]) {
 
         if (S52_CMD_TXT_TX == cmd->cmdWord) {
 
             if (NULL != cmd->cmd.text) {
-                _freeTXT(cmd->cmd.text);
+                _freeText(cmd->cmd.text);
                 cmd->cmd.text = NULL;
             }
 
@@ -4264,7 +4354,7 @@ const char *S52_PL_getEX(_S52_obj *obj, S52_Color **col,
         if (S52_CMD_TXT_TE == cmd->cmdWord) {
 
             if (NULL != cmd->cmd.text) {
-                _freeTXT(cmd->cmd.text);
+                _freeText(cmd->cmd.text);
                 cmd->cmd.text = NULL;
             }
 
@@ -4292,8 +4382,8 @@ int         S52_PL_resetParseText(_S52_obj *obj)
 {
     return_if_null(obj);
 
-    _freeAllTXT(obj->cmdAfinal[0]);
-    _freeAllTXT(obj->cmdAfinal[1]);
+    _freeAllText(obj->cmdAfinal[0]);
+    _freeAllText(obj->cmdAfinal[1]);
 
     obj->textParsed[0] = FALSE;
     obj->textParsed[1] = FALSE;
@@ -4302,10 +4392,10 @@ int         S52_PL_resetParseText(_S52_obj *obj)
 }
 
 int         S52_PL_setTextParsed(_S52_obj *obj)
+// flag text as parsed
 {
     return_if_null(obj);
 
-    // flag text as parsed
     obj->textParsed[_getAlt(obj)] = TRUE;
 
     return TRUE;
@@ -4318,9 +4408,9 @@ int         S52_PL_hasText(_S52_obj *obj)
     // called from foreach() so can it be NULL?
     //return_if_null(obj);
 
+    /*
     S52_CmdWrd cmdWrd = S52_PL_iniCmd(obj);
 
-    // FIXME: flags this inside _draw() instead of searching every list
     while (S52_CMD_NONE != cmdWrd) {
         switch (cmdWrd) {
             case S52_CMD_TXT_TX:
@@ -4330,8 +4420,10 @@ int         S52_PL_hasText(_S52_obj *obj)
         }
         cmdWrd = S52_PL_getCmdNext(obj);
     }
-
     return FALSE;
+    //*/
+
+    return obj->hasText[_getAlt(obj)];
 }
 
 #if 0
