@@ -890,7 +890,7 @@ static int           _setAISLab (unsigned int mmsi, const char *name)
 
     g_get_current_time(&ais->lastUpdate);
 
-    if (NULL != name) {
+    if (NULL == name) {
         g_print("DEBUG: _setAISLab(): mmsi:%i as no name!\n", mmsi);
         g_assert(0);
     }
