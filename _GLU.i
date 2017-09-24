@@ -54,7 +54,9 @@ static pt3    _pcin;
 #ifdef S52_USE_OPENGL_VBO
 
 // Make it not a power of two to avoid cache thrashing on the chip
-#define CACHE_SIZE    240
+//#define CACHE_SIZE    240
+//#define CACHE_SIZE    360
+#define CACHE_SIZE    32
 
 #undef  PI
 #define PI            3.14159265358979323846f
@@ -144,6 +146,10 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
     if (slices >= CACHE_SIZE)
         slices = CACHE_SIZE - 1;
 
+    // debug
+    //slices = CACHE_SIZE;
+    //slices = 33;
+
     if (sweepAngle < -360.0) sweepAngle = -360.0;
     if (sweepAngle >  360.0) sweepAngle =  360.0;
 
@@ -159,6 +165,7 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
     // FIXME: static/init -
     GLdouble angleOffset = startAngle/180.0f*PI;
     for (int i=0; i<=slices; i++) {
+    //for (int i=0; i<slices; i++) {
         GLdouble angle = angleOffset+((PI*sweepAngle)/180.0f)*i/slices;
 
         sinCache[i] = sin(angle);
@@ -176,6 +183,7 @@ static int       _gluPartialDisk(_GLUquadricObj* qobj,
         float radiusHigh  = outerRadius - deltaRadius * ((GLfloat)(j+1)/loops);
 
         for (int i=0; i<=slices; i++) {
+        //for (int i=0; i<slices; i++) {
             if (GLU_FILL == qobj->style) {
                 vertex[0] = radiusLow * sinCache[i];
                 vertex[1] = radiusLow * cosCache[i];
