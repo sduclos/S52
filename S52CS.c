@@ -60,6 +60,14 @@ typedef struct _localObj {
 // size of attributes value list buffer
 #define LISTSIZE   16   // list size
 
+#ifdef S52_DEBUG
+// the command word parser will choke on XXX
+#define _g_string_new(var,str) (NULL==var) ? g_string_new(str) : g_string_new("XXX: mem leak in " #var "\n");
+#else
+#define _g_string_new(var,str) g_string_new(str);
+#endif  // S52_DEBUG
+
+
 static char    *_strpbrk(const char *s, const char *list)
 {
     const char *p;
@@ -653,18 +661,23 @@ static GString *CLRLIN01 (S57_geo *geo)
 // of arrow symbols had to be used which does not comply with the required
 // symbolization.
 {
-    GString *clrlin01  = g_string_new(";SY(CLRLIN01);LS(SOLD,1,NINFO)");
+    //GString *clrlin01  = g_string_new(";SY(CLRLIN01);LS(SOLD,1,NINFO)");
+    GString *clrlin01  = _g_string_new(NULL, ";SY(CLRLIN01);LS(SOLD,1,NINFO)");
     GString *catclrstr = S57_getAttVal(geo, "catclr");
 
-
     if (NULL != catclrstr) {
-        if ('1' == *catclrstr->str)
-            // NMT
-            g_string_append(clrlin01, ";TX('NMT',2,1,2,'15110',-1,-1,CHBLK,51)");
-        else
-            // NLT
-            g_string_append(clrlin01, ";TX('NLT',2,1,2,'15110',-1,-1,CHBLK,51)");
 
+        //if '0' : txt undefined
+
+        // NMT
+        if ('1' == *catclrstr->str) {
+            g_string_append(clrlin01, ";TX('NMT',2,1,2,'15110',-1,-1,CHBLK,51)");
+        }
+
+        // NLT
+        if ('2' == *catclrstr->str) {
+            g_string_append(clrlin01, ";TX('NLT',2,1,2,'15110',-1,-1,CHBLK,51)");
+        }
     }
 
     return clrlin01;
@@ -686,7 +699,11 @@ static GString *DATCVR01 (S57_geo *geo)
     // Note: this CS apply to object M_COVR and M_CSCL
 
     //GString *datcvr01 = NULL;
-    GString *datcvr01 = g_string_new("");
+    //GString *datcvr01 = g_string_new("");
+    //GString *datcvr01 = NULL;
+    //GString *datcvr01;
+    //datcvr01 = _g_string_new(datcvr01, NULL);
+    GString *datcvr01 = _g_string_new(NULL, NULL);
 
     ///////////////////////
     // 1 - REQUIREMENT
@@ -739,8 +756,8 @@ static GString *DATCVR01 (S57_geo *geo)
         g_assert(0);
     }
     // 3.2 - Graphical index of navigational purpose
-    // FIXME: draw extent of available SENC in DB
-    // client job! libS52.so only render cell, it's not DB!!
+    // FIXME: draw extent of available SENC in DB (CATALOG)
+    // -OR- client job! do libS52.so only render cell?
 
     //////////////////////
     // 4 - OVERSCALE
@@ -795,7 +812,8 @@ static GString *DATCVR02 (S57_geo *geo)
 }
 
 static GString *_SEABED01(double drval1, double drval2);
-static GString *_RESCSP01(S57_geo *geo);
+//static GString *_RESCSP01(S57_geo *geo);
+static GString *_RESCSP01(GString *restrn01str);
 static GString *DEPARE01 (S57_geo *geo)
 // Remarks: An object of the class "depth area" is coloured and covered with fill patterns
 // according to the mariners selections of shallow contour, safety contour and
@@ -828,8 +846,12 @@ static GString *DEPARE01 (S57_geo *geo)
         g_string_append(depare01, ";AP(DRGARE01)");
         g_string_append(depare01, ";LS(DASH,1,CHGRF)");
 
-        if (NULL != S57_getAttVal(geo, "RESTRN")) {
-            GString *rescsp01 = _RESCSP01(geo);
+        //if (NULL != S57_getAttVal(geo, "RESTRN")) {
+        //    GString *rescsp01 = _RESCSP01(geo);
+
+        GString *restrn01str = S57_getAttVal(geo, "RESTRN");
+        if (NULL != restrn01str) {
+            GString *rescsp01 = _RESCSP01(restrn01str);
             if (NULL != rescsp01) {
                 g_string_append(depare01, rescsp01->str);
                 g_string_free(rescsp01, TRUE);
@@ -944,7 +966,8 @@ static GString *DEPCNT02 (S57_geo *geo)
                     if (NULL == geoTouch) {
                         // this object doesn't touch shallower DEPARE
                         //PRINTF("DEBUG: NULL geoTouch depcnt02-1/getTouchDEPARE\n");
-                        depcnt02 = g_string_new(";LS(SOLD,1,DEPCN)");
+                        //depcnt02 = g_string_new(";LS(SOLD,1,DEPCN)");
+                        depcnt02 = _g_string_new(depcnt02, ";LS(SOLD,1,DEPCN)");
                         return depcnt02;
                     } else {
                         drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
@@ -1020,7 +1043,8 @@ static GString *DEPCNT02 (S57_geo *geo)
                     // CA27904A.000 DEPCNT:7573 pass here
                     // this object doesn't touch shallower DEPARE
                     //PRINTF("DEBUG: NULL geoTmp depcnt02-2/getTouchDEPARE\n");
-                    depcnt02 = g_string_new(";LS(SOLD,1,DEPCN)");
+                    //depcnt02 = g_string_new(";LS(SOLD,1,DEPCN)");
+                    depcnt02 = _g_string_new(depcnt02, ";LS(SOLD,1,DEPCN)");
                     return depcnt02;
                 } else {
                     drval1str = S57_getAttVal(geoTmp, "DRVAL1");
@@ -1060,24 +1084,30 @@ static GString *DEPCNT02 (S57_geo *geo)
     if (NULL != quaposstr) {
         int quapos = S52_atoi(quaposstr->str);
         if ( 2 <= quapos && quapos < 10) {
-            if (TRUE == safe)
-                depcnt02 = g_string_new(";LS(DASH,2,DEPSC)");
-            else
-                depcnt02 = g_string_new(";LS(DASH,1,DEPCN)");
+            if (TRUE == safe) {
+                //depcnt02 = g_string_new(";LS(DASH,2,DEPSC)");
+                depcnt02 = _g_string_new(depcnt02, ";LS(DASH,2,DEPSC)");
+            } else {
+                //depcnt02 = g_string_new(";LS(DASH,1,DEPCN)");
+                depcnt02 = _g_string_new(depcnt02, ";LS(DASH,1,DEPCN)");
+            }
         }
     } else {
-        if (TRUE == safe)
-            depcnt02 = g_string_new(";LS(SOLD,2,DEPSC)");
-        else
-            depcnt02 = g_string_new(";LS(SOLD,1,DEPCN)");
+        if (TRUE == safe) {
+            //depcnt02 = g_string_new(";LS(SOLD,2,DEPSC)");
+            depcnt02 = _g_string_new(depcnt02, ";LS(SOLD,2,DEPSC)");
+        } else {
+            //depcnt02 = g_string_new(";LS(SOLD,1,DEPCN)");
+            depcnt02 = _g_string_new(depcnt02, ";LS(SOLD,1,DEPCN)");
+        }
     }
 
     if (TRUE == safe) {
-        S57_setHazard(geo, TRUE);
+        //S57_setHazard(geo, TRUE);
         S57_setScamin(geo, INFINITY);
         depcnt02 = g_string_prepend(depcnt02, ";OP(8OD13010)");
     } else {
-        S57_setHazard(geo, FALSE);
+        //S57_setHazard(geo, FALSE);
         depcnt02 = g_string_prepend(depcnt02, ";OP(---33020)");
     }
 
@@ -1241,7 +1271,8 @@ static GString *LEGLIN02 (S57_geo *geo)
 // alongside the leg. It also places the "distance to run" labels and cares for the
 // different presentation of planned & alternate legs.
 {
-    GString *leglin02  = g_string_new("");
+    //GString *leglin02  = g_string_new("");
+    GString *leglin02  = _g_string_new(NULL, NULL);
     GString *selectstr = S57_getAttVal(geo, "select");
     GString *plnspdstr = S57_getAttVal(geo, "plnspd");
 
@@ -1324,7 +1355,8 @@ static GString *LIGHTS05 (S57_geo *geo)
 // Note: why is this relationship not already encoded in S57 (ei. C_AGGR or C_STAC) ?
 
 {
-    GString *lights05          = g_string_new("");
+    //GString *lights05          = g_string_new("");
+    GString *lights05          = _g_string_new(NULL, NULL);
     //GString *valnmrstr         = S57_getAttVal(geo, "VALNMR");
     //double   valnmr            = 0.0;
     GString *catlitstr         = S57_getAttVal(geo, "CATLIT");
@@ -1405,7 +1437,6 @@ static GString *LIGHTS05 (S57_geo *geo)
             if (NULL != orientstr){
                 g_string_append(lights05, _selSYcol(colist));
                 g_string_sprintfa(lights05, ",%s)", orientstr->str);
-                //g_string_append(lights05, ";TE('%03.0lf deg','ORIENT',3,3,3,'15110',3,1,CHBLK,23)" );
                 g_string_append(lights05, ";TE('%03.0lf deg','ORIENT',3,3,3,'15110',3,1,CHBLK,23)" );
             } else
                 g_string_append(lights05, ";SY(QUESMRK1)");
@@ -1477,15 +1508,15 @@ static GString *LIGHTS05 (S57_geo *geo)
 
         // passe value via attribs to _renderAC()
         if (TRUE == extend_arc_radius) {
-            GString *extradstr = S57_getAttVal(geoTmp, "extend_arc_radius");
+            GString *extradstr = S57_getAttVal(geoTmp, "_extend_arc_radius");
 
             if (NULL!=extradstr && 'Y'==*extradstr->str)
-                S57_setAtt(geo, "extend_arc_radius", "N");
+                S57_setAtt(geo, "_extend_arc_radius", "N");
             else
-                S57_setAtt(geo, "extend_arc_radius", "Y");
+                S57_setAtt(geo, "_extend_arc_radius", "Y");
 
         } else
-            S57_setAtt(geo, "extend_arc_radius", "N");
+            S57_setAtt(geo, "_extend_arc_radius", "N");
 
     }
 
@@ -1564,7 +1595,8 @@ static GString *_LITDSN01(S57_geo *geo)
 // This procedure is provided as a C function which has as input, the above
 // listed attribute values and as output, the light description.
 {
-    GString *litdsn01         = g_string_new("");
+    //GString *litdsn01         = g_string_new("");
+    GString *litdsn01         = _g_string_new(NULL, NULL);
     GString *gstr             = NULL;  // tmp
     GString *catlitstr        = S57_getAttVal(geo, "CATLIT");
     //char     catlit[LISTSIZE] = {'\0'};
@@ -1895,9 +1927,10 @@ static GString *OBSTRN04 (S57_geo *geo)
 // Note: updated to Cs1_md.pdf (ie was OBSTRN03)
 
 {
-    GString *obstrn04str = g_string_new("");
-    GString *sndfrm02str = NULL;
-    GString *udwhaz03str = NULL;
+    //GString *obstrn04str = g_string_new("");
+    GString *obstrn04 = _g_string_new(NULL, NULL);
+    GString *sndfrm02 = NULL;
+    GString *udwhaz03 = NULL;
     GString *valsoustr   = S57_getAttVal(geo, "VALSOU");
     double   valsou      = UNKNOWN;
     //double   depth_value = UNKNOWN;  // clang - init val never read
@@ -1907,7 +1940,7 @@ static GString *OBSTRN04 (S57_geo *geo)
     if (NULL != valsoustr) {
         valsou      = S52_atof(valsoustr->str);
         depth_value = valsou;
-        sndfrm02str = _SNDFRM02(geo, depth_value);
+        sndfrm02    = _SNDFRM02(geo, depth_value);
     } else {
         if (S57_AREAS_T == S57_getObjtype(geo))
             least_depth = _DEPVAL01(geo, least_depth);
@@ -1952,24 +1985,24 @@ static GString *OBSTRN04 (S57_geo *geo)
             depth_value = least_depth;
     }
 
-    udwhaz03str = _UDWHAZ03(geo, depth_value);
+    udwhaz03 = _UDWHAZ03(geo, depth_value);
 
     if (S57_POINT_T == S57_getObjtype(geo)) {
         // Continuation A
-        int      sounding    = FALSE;
-        GString *quapnt01str = _QUAPNT01(geo);
+        int      sounding = FALSE;
+        GString *quapnt01 = _QUAPNT01(geo);
 
-        if (NULL != udwhaz03str){
-            g_string_append(obstrn04str, udwhaz03str->str);
-            if (NULL != quapnt01str) {
-                g_string_append(obstrn04str, quapnt01str->str);
-                g_string_free(quapnt01str, TRUE);
+        if (NULL != udwhaz03){
+            g_string_append(obstrn04, udwhaz03->str);
+            if (NULL != quapnt01) {
+                g_string_append(obstrn04, quapnt01->str);
+                g_string_free(quapnt01, TRUE);
             }
-            g_string_free(udwhaz03str, TRUE);
+            g_string_free(udwhaz03, TRUE);
 
-            if (NULL != sndfrm02str) g_string_free(sndfrm02str, TRUE);
+            if (NULL != sndfrm02) g_string_free(sndfrm02, TRUE);
 
-            return obstrn04str;
+            return obstrn04;
         }
 
         if (UNKNOWN != valsou) {
@@ -1980,39 +2013,39 @@ static GString *OBSTRN04 (S57_geo *geo)
                 if (NULL == objlstr) {
                     PRINTF("ERROR: OBJL Attribute name missing\n");
                     g_assert(0);
-                    return obstrn04str;
+                    return obstrn04;
                 }
 
                 int objl = S52_atoi(objlstr->str);
                 if (UWTROC == objl) {
                     if (NULL == watlevstr) {  // default
-                        g_string_append(obstrn04str, ";SY(DANGER01)");
+                        g_string_append(obstrn04, ";SY(DANGER01)");
                         sounding = TRUE;
                     } else {
                         switch (*watlevstr->str){
-                            case '3': g_string_append(obstrn04str, ";SY(DANGER01)"); sounding = TRUE ; break;
+                            case '3': g_string_append(obstrn04, ";SY(DANGER01)"); sounding = TRUE ; break;
                             case '4':
-                            case '5': g_string_append(obstrn04str, ";SY(UWTROC04)"); sounding = FALSE; break;
-                            default : g_string_append(obstrn04str, ";SY(DANGER01)"); sounding = TRUE ; break;
+                            case '5': g_string_append(obstrn04, ";SY(UWTROC04)"); sounding = FALSE; break;
+                            default : g_string_append(obstrn04, ";SY(DANGER01)"); sounding = TRUE ; break;
                         }
                     }
                 } else { // OBSTRN
                     if (NULL == watlevstr) { // default
-                        g_string_append(obstrn04str, ";SY(DANGER01)");
+                        g_string_append(obstrn04, ";SY(DANGER01)");
                         sounding = TRUE;
                     } else {
                         switch (*watlevstr->str) {
                             case '1':
-                            case '2': g_string_append(obstrn04str, ";SY(OBSTRN11)"); sounding = FALSE; break;
-                            case '3': g_string_append(obstrn04str, ";SY(DANGER01)"); sounding = TRUE;  break;
+                            case '2': g_string_append(obstrn04, ";SY(OBSTRN11)"); sounding = FALSE; break;
+                            case '3': g_string_append(obstrn04, ";SY(DANGER01)"); sounding = TRUE;  break;
                             case '4':
-                            case '5': g_string_append(obstrn04str, ";SY(DANGER03)"); sounding = TRUE; break;
-                            default : g_string_append(obstrn04str, ";SY(DANGER01)"); sounding = TRUE; break;
+                            case '5': g_string_append(obstrn04, ";SY(DANGER03)"); sounding = TRUE; break;
+                            default : g_string_append(obstrn04, ";SY(DANGER01)"); sounding = TRUE; break;
                         }
                     }
                 }
             } else {  // valsou > 20.0
-                g_string_append(obstrn04str, ";SY(DANGER02)");
+                g_string_append(obstrn04, ";SY(DANGER02)");
                 sounding = FALSE;
             }
 
@@ -2024,32 +2057,32 @@ static GString *OBSTRN04 (S57_geo *geo)
                 if (NULL == objlstr) {
                     PRINTF("ERROR: no OBJL\n");
                     g_assert(0);
-                    return obstrn04str;
+                    return obstrn04;
                 }
                 //*/
 
                 int objl = S52_atoi(objlstr->str);
                 if (UWTROC == objl) {
                     if (NULL == watlevstr)  // default
-                       g_string_append(obstrn04str, ";SY(UWTROC04)");
+                       g_string_append(obstrn04, ";SY(UWTROC04)");
                     else {
                         if ('3' == *watlevstr->str)
-                            g_string_append(obstrn04str, ";SY(UWTROC03)");
+                            g_string_append(obstrn04, ";SY(UWTROC03)");
                         else
-                            g_string_append(obstrn04str, ";SY(UWTROC04)");
+                            g_string_append(obstrn04, ";SY(UWTROC04)");
                     }
 
                 } else { // OBSTRN
                     if (NULL == watlevstr) // default
-                        g_string_append(obstrn04str, ";SY(OBSTRN01)");
+                        g_string_append(obstrn04, ";SY(OBSTRN01)");
                     else {
                         switch (*watlevstr->str) {
                             case '1':
-                            case '2': g_string_append(obstrn04str, ";SY(OBSTRN11)"); break;
-                            case '3': g_string_append(obstrn04str, ";SY(OBSTRN01)"); break;
+                            case '2': g_string_append(obstrn04, ";SY(OBSTRN11)"); break;
+                            case '3': g_string_append(obstrn04, ";SY(OBSTRN01)"); break;
                             case '4':
-                            //case '5': g_string_append(obstrn04str, ";SY(OBSTRN01)");
-                            case '5': g_string_append(obstrn04str, ";SY(OBSTRN03)");
+                            //case '5': g_string_append(obstrn04, ";SY(OBSTRN01)");
+                            case '5': g_string_append(obstrn04, ";SY(OBSTRN03)");
 #ifdef S52_DEBUG
                             {   // debug - check impact of this bug
                                 // this change the color from blue to green
@@ -2059,24 +2092,24 @@ static GString *OBSTRN04 (S57_geo *geo)
                             }
 #endif
                                 break;
-                            default : g_string_append(obstrn04str, ";SY(OBSTRN01)"); break;
+                            default : g_string_append(obstrn04, ";SY(OBSTRN01)"); break;
                         }
                     }
                 }
 
         }
 
-        if (TRUE==sounding && NULL!=sndfrm02str)
-            g_string_append(obstrn04str, sndfrm02str->str);
+        if (TRUE==sounding && NULL!=sndfrm02)
+            g_string_append(obstrn04, sndfrm02->str);
 
-        if (NULL != quapnt01str)
-            g_string_append(obstrn04str, quapnt01str->str);
+        if (NULL != quapnt01)
+            g_string_append(obstrn04, quapnt01->str);
 
-        if (NULL != udwhaz03str) g_string_free(udwhaz03str, TRUE);
-        if (NULL != sndfrm02str) g_string_free(sndfrm02str, TRUE);
-        if (NULL != quapnt01str) g_string_free(quapnt01str, TRUE);
+        if (NULL != udwhaz03) g_string_free(udwhaz03, TRUE);
+        if (NULL != sndfrm02) g_string_free(sndfrm02, TRUE);
+        if (NULL != quapnt01) g_string_free(quapnt01, TRUE);
 
-        return obstrn04str;
+        return obstrn04;
 
     } else {
         if (S57_LINES_T == S57_getObjtype(geo)) {
@@ -2090,10 +2123,10 @@ static GString *OBSTRN04 (S57_geo *geo)
             if (NULL != quaposstr) {
                 int quapos = S52_atoi(quaposstr->str);
                 if (2 <= quapos && quapos < 10) {
-                    if (NULL != udwhaz03str)
-                        g_string_append(obstrn04str, ";LC(LOWACC41)");
+                    if (NULL != udwhaz03)
+                        g_string_append(obstrn04, ";LC(LOWACC41)");
                     else
-                        g_string_append(obstrn04str, ";LC(LOWACC31)");
+                        g_string_append(obstrn04, ";LC(LOWACC31)");
                 }
 #ifdef S52_DEBUG
                 {   // debug - check impact of this bug
@@ -2102,8 +2135,8 @@ static GString *OBSTRN04 (S57_geo *geo)
                 }
 #endif
             } else {
-                if (NULL != udwhaz03str) {
-                    g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
+                if (NULL != udwhaz03) {
+                    g_string_append(obstrn04, ";LS(DOTT,2,CHBLK)");
 
 #ifdef S52_DEBUG
                     {   // debug - check impact of this bug
@@ -2114,47 +2147,47 @@ static GString *OBSTRN04 (S57_geo *geo)
                } else {
                     if (UNKNOWN != valsou) {
                         if (valsou <= 20.0)
-                            g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
+                            g_string_append(obstrn04, ";LS(DOTT,2,CHBLK)");
                         else
-                            g_string_append(obstrn04str, ";LS(DASH,2,CHBLK)");
+                            g_string_append(obstrn04, ";LS(DASH,2,CHBLK)");
                     } else
-                        g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
+                        g_string_append(obstrn04, ";LS(DOTT,2,CHBLK)");
                 }
             }
             // ------------------------------------------------------------
 
 
-            if (NULL != udwhaz03str)
-                g_string_append(obstrn04str, udwhaz03str->str);
+            if (NULL != udwhaz03)
+                g_string_append(obstrn04, udwhaz03->str);
             else {
                 if (UNKNOWN != valsou) {
-                    if (valsou<=20.0 && NULL!=sndfrm02str)
-                        g_string_append(obstrn04str, sndfrm02str->str);
+                    if (valsou<=20.0 && NULL!=sndfrm02)
+                        g_string_append(obstrn04, sndfrm02->str);
                 }
             }
 
-            if (NULL != udwhaz03str) g_string_free(udwhaz03str, TRUE);
-            if (NULL != sndfrm02str) g_string_free(sndfrm02str, TRUE);
+            if (NULL != udwhaz03) g_string_free(udwhaz03, TRUE);
+            if (NULL != sndfrm02) g_string_free(sndfrm02, TRUE);
 
-            return obstrn04str;
+            return obstrn04;
 
         } else {
             // Continuation C (AREAS_T)
-            GString *quapnt01str = _QUAPNT01(geo);
-            if (NULL != udwhaz03str) {
-                g_string_append(obstrn04str, ";AC(DEPVS);AP(FOULAR01)");
-                g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
-                g_string_append(obstrn04str, udwhaz03str->str);
-                if (NULL != quapnt01str) {
-                    g_string_append(obstrn04str, quapnt01str->str);
-                    g_string_free(quapnt01str, TRUE);
+            GString *quapnt01 = _QUAPNT01(geo);
+            if (NULL != udwhaz03) {
+                g_string_append(obstrn04, ";AC(DEPVS);AP(FOULAR01)");
+                g_string_append(obstrn04, ";LS(DOTT,2,CHBLK)");
+                g_string_append(obstrn04, udwhaz03->str);
+                if (NULL != quapnt01) {
+                    g_string_append(obstrn04, quapnt01->str);
+                    g_string_free(quapnt01, TRUE);
                 }
-                g_string_free(udwhaz03str, TRUE);
+                g_string_free(udwhaz03, TRUE);
 
-                if (NULL != sndfrm02str)
-                    g_string_free(sndfrm02str, TRUE);
+                if (NULL != sndfrm02)
+                    g_string_free(sndfrm02, TRUE);
 
-                return obstrn04str;
+                return obstrn04;
             }
 
             if (UNKNOWN != valsou) {
@@ -2168,10 +2201,10 @@ static GString *OBSTRN04 (S57_geo *geo)
 
 
                 if (valsou <= 20.0)
-                    g_string_append(obstrn04str, ";LS(DOTT,2,CHBLK)");
+                    g_string_append(obstrn04, ";LS(DOTT,2,CHBLK)");
                 else {
-                    //g_string_append(obstrn04str, ";LS(DASH,2,CHBLK)");
-                    g_string_append(obstrn04str, ";LS(DASH,2,CHGRD)");
+                    //g_string_append(obstrn04, ";LS(DASH,2,CHBLK)");
+                    g_string_append(obstrn04, ";LS(DASH,2,CHGRD)");
 
 #ifdef S52_DEBUG
                     {   // debug - check impact of this bug
@@ -2182,8 +2215,8 @@ static GString *OBSTRN04 (S57_geo *geo)
 #endif
                 }
 
-                if (NULL != sndfrm02str)
-                    g_string_append(obstrn04str, sndfrm02str->str);
+                if (NULL != sndfrm02)
+                    g_string_append(obstrn04, sndfrm02->str);
 
             } else {
                 // NO valsou
@@ -2218,32 +2251,32 @@ static GString *OBSTRN04 (S57_geo *geo)
                     GString *catobsstr = S57_getAttVal(geo, "CATOBS");
                     if ('3'==*watlevstr->str && NULL!=catobsstr && '6'==*catobsstr->str) {
                         PRINTF("DEBUG: S64 GB5X01NE.000 pass here (%s:%i)\n", S57_getName(geo), S57_getS57ID(geo));
-                        g_string_append(obstrn04str, ";AC(DEPVS);AP(FOULAR01);LS(DOTT,2,CHBLK)");
+                        g_string_append(obstrn04, ";AC(DEPVS);AP(FOULAR01);LS(DOTT,2,CHBLK)");
                     } else {
                         switch (*watlevstr->str) {
                             case '1':
-                            case '2': g_string_append(obstrn04str, ";AC(CHBRN);LS(SOLD,2,CSTLN)"); break;
-                            case '4': g_string_append(obstrn04str, ";AC(DEPIT);LS(DASH,2,CSTLN)"); break;
+                            case '2': g_string_append(obstrn04, ";AC(CHBRN);LS(SOLD,2,CSTLN)"); break;
+                            case '4': g_string_append(obstrn04, ";AC(DEPIT);LS(DASH,2,CSTLN)"); break;
                             case '5':
                             case '3':
-                            default : g_string_append(obstrn04str, ";AC(DEPVS);LS(DOTT,2,CHBLK)");  break;
+                            default : g_string_append(obstrn04, ";AC(DEPVS);LS(DOTT,2,CHBLK)");  break;
                         }
                     }
                 } else {
                     // default
-                    g_string_append(obstrn04str, ";AC(DEPVS);LS(DOTT,2,CHBLK)");
+                    g_string_append(obstrn04, ";AC(DEPVS);LS(DOTT,2,CHBLK)");
                 }
             }
 
 
-            if (NULL != quapnt01str)
-                g_string_append(obstrn04str, quapnt01str->str);
+            if (NULL != quapnt01)
+                g_string_append(obstrn04, quapnt01->str);
 
-            if (NULL != udwhaz03str) g_string_free(udwhaz03str, TRUE);
-            if (NULL != sndfrm02str) g_string_free(sndfrm02str, TRUE);
-            if (NULL != quapnt01str) g_string_free(quapnt01str, TRUE);
+            if (NULL != udwhaz03) g_string_free(udwhaz03, TRUE);
+            if (NULL != sndfrm02) g_string_free(sndfrm02, TRUE);
+            if (NULL != quapnt01) g_string_free(quapnt01, TRUE);
 
-            return obstrn04str;
+            return obstrn04;
         }
     }
 
@@ -2317,7 +2350,8 @@ static GString *OWNSHP02 (S57_geo *geo)
 
 // FIXME: get conning position (where/how to get those values?)
 {
-    GString *ownshp02  = g_string_new("");
+    //GString *ownshp02  = g_string_new("");
+    GString *ownshp02  = _g_string_new(NULL, NULL);
     //GString *headngstr = S57_getAttVal(geo, "headng");
     GString *vlabelstr = S57_getAttVal(geo, "_vessel_label");
 
@@ -2325,6 +2359,8 @@ static GString *OWNSHP02 (S57_geo *geo)
     // experimental: text label
     if (NULL != vlabelstr) {
         g_string_append(ownshp02, ";TX(_vessel_label,3,3,3,'15110',1,1,SHIPS,75)" );
+        g_string_append(ownshp02, ";TE('%03.0lf deg','cogcrs',3,3,3,'15109',1,2,SHIPS,77)" );
+        g_string_append(ownshp02, ";TE('%3.1lf kts','sogspd',3,3,3,'15109',5,2,SHIPS,78)" );
     }
 
     // FIXME: 2 type of line for 3 line symbol - overdraw of 1px pen_w type
@@ -2404,11 +2440,13 @@ static GString *PASTRK01 (S57_geo *geo)
         // Note: text grouping 51
         if ('1' == *catpststr->str) {
             //pastrk01 = g_string_new(";LS(SOLD,2,PSTRK);SY(PASTRK01);TX(pastrk,2,1,2,'15110',-1,-1,CHBLK,51)");
-            pastrk01 = g_string_new(";LS(SOLD,2,PSTRK);SY(PASTRK01)");
+            //pastrk01 = g_string_new(";LS(SOLD,2,PSTRK);SY(PASTRK01)");
+            pastrk01 = _g_string_new(pastrk01, ";LS(SOLD,2,PSTRK);SY(PASTRK01)");
         }
         if ('2' == *catpststr->str) {
             //pastrk01 = g_string_new(";LS(SOLD,1,SYTRK);SY(PASTRK02);TX(pastrk,2,1,2,'15110',-1,-1,CHBLK,51)");
-            pastrk01 = g_string_new(";LS(SOLD,1,SYTRK);SY(PASTRK02)");
+            //pastrk01 = g_string_new(";LS(SOLD,1,SYTRK);SY(PASTRK02)");
+            pastrk01 = _g_string_new(pastrk01, ";LS(SOLD,1,SYTRK);SY(PASTRK02)");
         }
 
         // FIXME: if time-tags
@@ -2449,7 +2487,7 @@ static GString *_QUALIN01(S57_geo *geo)
 // This procedure looks at each of the spatial
 // objects, and symbolizes the line according to the positional accuracy.
 {
-    GString *qualino1  = NULL;
+    GString *qualin01  = NULL;
     GString *quaposstr = S57_getAttVal(geo, "QUAPOS");
     //int      quapos    = 0;
     const char *line   = NULL;
@@ -2467,7 +2505,7 @@ static GString *_QUALIN01(S57_geo *geo)
         if (0 == objl) {
             PRINTF("ERROR: no OBJL\n");
             g_assert(0);
-            return qualino1;
+            return qualin01;
         }
 
 
@@ -2486,10 +2524,12 @@ static GString *_QUALIN01(S57_geo *geo)
             line = ";LS(SOLD,1,CSTLN)";
     }
 
-    if (NULL != line)
-        qualino1 = g_string_new(line);
+    if (NULL != line) {
+        //qualino1 = g_string_new(line);
+        qualin01 = _g_string_new(qualin01, line);
+    }
 
-    return qualino1;
+    return qualin01;
 }
 
 static GString *_QUAPNT01(S57_geo *geo)
@@ -2509,8 +2549,10 @@ static GString *_QUAPNT01(S57_geo *geo)
             accurate = FALSE;
     }
 
-    if (accurate)
-        quapnt01 = g_string_new(";SY(LOWACC01)");
+    if (accurate) {
+        //quapnt01 = g_string_new(";SY(LOWACC01)");
+        quapnt01 = _g_string_new(quapnt01, ";SY(LOWACC01)");
+    }
 
     return quapnt01;
 }
@@ -2522,8 +2564,9 @@ static GString *SLCONS03 (S57_geo *geo)
 // Otherwise this procedure applies the normal symbolization.
 {
     GString *slcons03  = NULL;
+    //GString *slcons03  = g_string_new("");
     GString *valstr    = NULL;
-    const char *cmdw   = NULL;   // command word
+    CCHAR   *cmdw      = NULL;   // command word
     GString *quaposstr = S57_getAttVal(geo, "QUAPOS");
     int      quapos    = (NULL == quaposstr)? 0 : S52_atoi(quaposstr->str);
 
@@ -2587,17 +2630,21 @@ static GString *SLCONS03 (S57_geo *geo)
 
         seabed01 = _SEABED01(drval1, drval2);
         if (NULL != seabed01) {
-            slcons03 = g_string_new(seabed01->str);
+            //slcons03 = g_string_new(seabed01->str);
+            slcons03 = _g_string_new(slcons03, seabed01->str);
+            //g_string_append(slcons03, seabed01->str);
             g_string_free(seabed01, TRUE);
         }
 
     }
 
     if (NULL != cmdw) {
-        if (NULL == slcons03)
-            slcons03 = g_string_new(cmdw);
-        else
+        if (NULL == slcons03) {
+            //slcons03 = g_string_new(cmdw);
+            slcons03 = _g_string_new(slcons03, cmdw);
+        } else {
             g_string_append(slcons03, cmdw);
+        }
     }
 
     return slcons03;
@@ -2619,7 +2666,8 @@ static GString *RESARE02 (S57_geo *geo)
 // Other object classes affected by attribute RESTRN are handled by
 // conditional symbology procedure RESTRN01.
 {
-    GString *resare02         = g_string_new("");
+    //GString *resare02         = g_string_new("");
+    GString *resare02         = _g_string_new(NULL, NULL);
     GString *restrnstr        = S57_getAttVal(geo, "RESTRN");
     //char     restrn[LISTSIZE] = {'\0'};
     GString *catreastr        = S57_getAttVal(geo, "CATREA");
@@ -2793,26 +2841,30 @@ static GString *RESTRN01 (S57_geo *geo)
 //     RESTRN 11,12: diving prohibited or restricted,
 //     RESTRN 13   : no wake area.
 {
-    GString *restrn01str = S57_getAttVal(geo, "RESTRN");
-    GString *restrn01    = NULL;
 
-    if (NULL != restrn01str)
-        restrn01 = _RESCSP01(geo);
-    else
-        restrn01 = g_string_new(";OP(----)");  // return NOOP to silence error msg
+    GString *restrn01    = NULL;
+    GString *restrn01str = S57_getAttVal(geo, "RESTRN");
+
+    if (NULL != restrn01str) {
+        //restrn01 = _RESCSP01(geo);
+        restrn01 = _RESCSP01(restrn01str);
+    } //else
+      //  restrn01 = g_string_new(";OP(----)");  // return NOOP to silence DEBUG msg
 
     return restrn01;
 }
 
-static GString *_RESCSP01(S57_geo *geo)
+//static GString *_RESCSP01(S57_geo *geo)
+static GString *_RESCSP01(GString *restrnstr)
+// FIXME: pass GString *restrnstr
 // Remarks: See procedure RESTRN01
 {
     GString *rescsp01         = NULL;
-    GString *restrnstr        = S57_getAttVal(geo, "RESTRN");
+    //GString *restrnstr        = S57_getAttVal(geo, "RESTRN");
     //char     restrn[LISTSIZE] = {'\0'};   // restriction list
     //const char *symb          = NULL;
 
-    if ( NULL != restrnstr) {
+    //if ( NULL != restrnstr) {
         char        restrn[LISTSIZE] = {'\0'};   // restriction list
         const char *symb             = NULL;
         _parseList(restrnstr->str, restrn);
@@ -2860,8 +2912,9 @@ static GString *_RESCSP01(S57_geo *geo)
             }
         }
 
-        rescsp01 = g_string_new(symb);
-    }
+        //rescsp01 = g_string_new(symb);
+        rescsp01 = _g_string_new(rescsp01, symb);
+    //}
 
     return rescsp01;
 }
@@ -2913,7 +2966,8 @@ static GString *_SEABED01(double drval1, double drval2)
 
     }
 
-    seabed01 = g_string_new(arecol);
+    //seabed01 = g_string_new(arecol);
+    seabed01 = _g_string_new(seabed01, arecol);
 
     if (TRUE==(int) S52_MP_get(S52_MAR_SHALLOW_PATTERN) && TRUE==shallow)
         g_string_append(seabed01, ";AP(DIAMOND1)");
@@ -2960,7 +3014,8 @@ static GString *_SNDFRM02(S57_geo *geo, double depth_value)
 // sounding labels. It symbolizes swept depth and it also symbolizes for low
 // reliability as indicated by attributes QUASOU and QUAPOS.
 {
-    GString *sndfrm02         = g_string_new("");
+    //GString *sndfrm02         = g_string_new("");
+    GString *sndfrm02         = _g_string_new(NULL, NULL);
     const char *symbol_prefix = NULL;
     GString *tecsoustr        = S57_getAttVal(geo, "TECSOU");
     //char     tecsou[LISTSIZE] = {'\0'};
@@ -3233,7 +3288,8 @@ static GString *TOPMAR01 (S57_geo *geo)
 
     }
 
-    topmar = g_string_new(sy);
+    //topmar = g_string_new(sy);
+    topmar = _g_string_new(topmar, sy);
 
     return topmar;
 }
@@ -3247,7 +3303,7 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
 {
     // Note: will return NULL if no danger
 
-    GString *udwhaz03str    = NULL;
+    GString *udwhaz03       = NULL;
     int      danger         = FALSE;
     double   safety_contour = S52_MP_get(S52_MAR_SAFETY_CONTOUR);
 
@@ -3262,7 +3318,7 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
             PRINTF("DEBUG: NULL geo _UDWHAZ03/getTouchDEPARE\n");
 
             // no need to process further - bailout
-            return udwhaz03str;  // NULL
+            return udwhaz03;  // NULL
         }
 
         if (S57_LINES_T == S57_getObjtype(geoTmp)) {
@@ -3307,9 +3363,10 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
 
         if (TRUE == danger) {
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
-            if (NULL != watlevstr && ('1' == *watlevstr->str || '2' == *watlevstr->str))
-                udwhaz03str = g_string_new(";OP(--D14050");
-            else {
+            if (NULL != watlevstr && ('1' == *watlevstr->str || '2' == *watlevstr->str)) {
+                //udwhaz03str = g_string_new(";OP(--D14050");
+                udwhaz03 = _g_string_new(udwhaz03, ";OP(--D14050");
+            } else {
                 // Note: UDWHAZ04 --> stay on original (OTHER!) disp cat
                 //      FIXME: perhapse add PLIB rule to link to UDWHAZ04
                 //             or add S52_MAR_SPECS_ED_NO:
@@ -3323,10 +3380,10 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
                 // FIX: logically an Isolated Danger Sym (ISODGR01) would be on a POINT_T !
                 // BUT: UDWHAZ03 apply to point,area. While UDWHAZ04 apply to point,line,area!!
                 if (S57_POINT_T == S57_getObjtype(geo)) {                      // fix: udwhaz03 - place ISODRG on point only
-                    udwhaz03str = g_string_new(";OP(8OD14010);SY(ISODGR01)");  // udwhaz04 - place ISODGR on original disp cat!
+                    udwhaz03 = g_string_new(";OP(8OD14010);SY(ISODGR01)");  // udwhaz04 - place ISODGR on original disp cat!
                 } else {
                     //udwhaz03str = g_string_new(";OP(8OD14010)");  // udwhaz04 - line, area
-                    udwhaz03str = g_string_new(";OP(8O-14010)");  // udwhaz04 - stay at original disp cat
+                    udwhaz03 = g_string_new(";OP(8O-14010)");  // udwhaz04 - stay at original disp cat
                 }
 
                 S57_setAtt(geo, "SCAMIN", "INFINITY");
@@ -3335,7 +3392,7 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
     }
 
     // Note: will return NULL if no danger
-    return udwhaz03str;
+    return udwhaz03;
 }
 
 static GString *VESSEL01 (S57_geo *geo)
@@ -3349,13 +3406,31 @@ static GString *VESSEL01 (S57_geo *geo)
 // * Note that the same vector parameters should be used for own-ship and all vessel
 // vectors.
 {
-    GString *vessel01  = g_string_new("");
+    //GString *vessel01  = g_string_new("");
+    GString *vessel01  = _g_string_new(NULL, NULL);
     GString *vesrcestr = S57_getAttVal(geo, "vesrce");  // vessel report source
     GString *vlabelstr = S57_getAttVal(geo, "_vessel_label");
 
-    // text label (experimental)
+    // experimental: text label
     if (NULL != vlabelstr) {
-        g_string_append(vessel01, ";TX(_vessel_label,3,3,3,'15110',1,1,ARPAT,76)" );
+#ifdef S52_USE_SYM_VESSEL_DNGHL
+        /* experimental: close quarter - red
+        GString *vestatstr = S57_getAttVal(geo, "vestat");
+        if (NULL!=vestatstr && '3'==*vestatstr->str) {
+            S57_setHighlight(geo, TRUE);
+            //g_string_append(vessel01, ";TX(_vessel_label,3,3,3,'15110',1,1,DNGHL,76)"          );
+            //g_string_append(vessel01, ";TE('%03.0lf deg','cogcrs',3,3,3,'15109',1,2,DNGHL,77)" );
+            //g_string_append(vessel01, ";TE('%3.1lf kts','sogspd',3,3,3,'15109',5,2,DNGHL,78)"  );
+        } else {
+            S57_setHighlight(geo, FALSE);
+        }
+        */
+#endif
+        {
+            g_string_append(vessel01, ";TX(_vessel_label,3,3,3,'15110',1,1,ARPAT,76)"          );
+            g_string_append(vessel01, ";TE('%03.0lf deg','cogcrs',3,3,3,'15109',1,2,ARPAT,77)" );
+            g_string_append(vessel01, ";TE('%3.1lf kts','sogspd',3,3,3,'15109',5,2,ARPAT,78)"  );
+        }
     }
 
 #ifdef S52_USE_SYM_AISSEL01
@@ -3380,7 +3455,7 @@ static GString *VESSEL01 (S57_geo *geo)
         // experimental: ARPA target & close quarters
         // Note: the LS() command word for ARPA trigger vector
         // but not heading line will be drawn
-        g_string_append(vessel01, ";SY(arpatg01);LS(SOLD,1,DNGHL)");
+        //g_string_append(vessel01, ";SY(arpatg01);LS(SOLD,1,DNGHL)");
 #endif
 
         // FIXME: move this to GL
@@ -3422,7 +3497,7 @@ static GString *VESSEL01 (S57_geo *geo)
 #ifdef S52_USE_SYM_VESSEL_DNGHL
         // experimental: active AIS target & close quarters - aisves01 symb in PLAUX_00.DAI
         //if (NULL!=vestatstr && '3'==*vestatstr->str) {
-            g_string_append(vessel01, ";SY(aisves01);LS(SOLD,1,DNGHL)");
+        //    g_string_append(vessel01, ";SY(aisves01);LS(SOLD,1,DNGHL)");
         //}
 #endif
 
@@ -3475,31 +3550,32 @@ static GString *VRMEBL01 (S57_geo *geo)
 // circle, bearing line and range/bearing line. VRM's and EBL's can be ship-centred
 // or freely movable, and two line-styles are available
 {
-    GString *vrmebl01str = g_string_new("");
+    //GString *vrmebl01str = g_string_new("");
+    GString *vrmebl01 = _g_string_new(NULL, NULL);
 
     // freely movable origine symb (a dot)
     GString *ownshpcenteredstr = S57_getAttVal(geo, "_setOrigin");
     if (NULL!=ownshpcenteredstr && ('Y'==*ownshpcenteredstr->str || 'I'==*ownshpcenteredstr->str))
-        g_string_append(vrmebl01str, ";SY(EBLVRM11)");
+        g_string_append(vrmebl01, ";SY(EBLVRM11)");
 
     // line style
     GString *normallinestylestr = S57_getAttVal(geo, "_normallinestyle");
     if (NULL!=normallinestylestr && 'Y'==*normallinestylestr->str)
-        g_string_append(vrmebl01str, ";LC(ERBLNA01)");
+        g_string_append(vrmebl01, ";LC(ERBLNA01)");
     else
-        g_string_append(vrmebl01str, ";LC(ERBLNB01)");
+        g_string_append(vrmebl01, ";LC(ERBLNB01)");
 
     // symb range marker
     GString *symbrngmrkstr = S57_getAttVal(geo, "_symbrngmrk");
     if (NULL!=symbrngmrkstr && 'Y'==*symbrngmrkstr->str)
-        g_string_append(vrmebl01str, ";SY(ERBLTIK1)");
+        g_string_append(vrmebl01, ";SY(ERBLTIK1)");
     else
-        g_string_append(vrmebl01str, ";AC(CURSR)");
+        g_string_append(vrmebl01, ";AC(CURSR)");
 
     // EXPERIMENTAL: add text, bearing & range
-    g_string_append(vrmebl01str, ";TX(_vrmebl_label,3,3,3,'15110',1,1,CURSR,77)");
+    g_string_append(vrmebl01, ";TX(_vrmebl_label,3,3,3,'15110',1,1,CURSR,77)");
 
-    return vrmebl01str;
+    return vrmebl01;
 }
 
 static GString *VRMEBL02 (S57_geo *geo)
@@ -3522,10 +3598,11 @@ static GString *WRECKS02 (S57_geo *geo)
 // 1.3). This task is performed by the sub-procedure "UDWHAZ03" which is
 // called by this symbology procedure.
 {
-    GString *wrecks02str = NULL;
-    GString *sndfrm02str = NULL;
-    GString *udwhaz03str = NULL;
-    GString *quapnt01str = NULL;
+    GString *wrecks02 = NULL;
+    GString *sndfrm02 = NULL;
+    GString *udwhaz03 = NULL;
+    GString *quapnt01 = NULL;
+
     double   least_depth = UNKNOWN;
     double   depth_value = UNKNOWN;
     GString *valsoustr   = S57_getAttVal(geo, "VALSOU");
@@ -3545,7 +3622,7 @@ static GString *WRECKS02 (S57_geo *geo)
     if (NULL != valsoustr) {
         valsou      = S52_atof(valsoustr->str);
         depth_value = valsou;
-        sndfrm02str = _SNDFRM02(geo, depth_value);
+        sndfrm02    = _SNDFRM02(geo, depth_value);
     } else {
         if (S57_AREAS_T == S57_getObjtype(geo))
             least_depth = _DEPVAL01(geo, least_depth);
@@ -3597,33 +3674,36 @@ static GString *WRECKS02 (S57_geo *geo)
             depth_value = least_depth;
     }
 
-    udwhaz03str = _UDWHAZ03(geo, depth_value);
-    quapnt01str = _QUAPNT01(geo);
+    udwhaz03 = _UDWHAZ03(geo, depth_value);
+    quapnt01 = _QUAPNT01(geo);
 
     if (S57_POINT_T == S57_getObjtype(geo)) {
-        if (NULL != udwhaz03str) {
-            wrecks02str = g_string_new(udwhaz03str->str);
+        if (NULL != udwhaz03) {
+            //wrecks02 = g_string_new(udwhaz03str->str);
+            wrecks02 = _g_string_new(wrecks02, udwhaz03->str);
 
-            if (NULL != quapnt01str)
-                g_string_append(wrecks02str, quapnt01str->str);
+            if (NULL != quapnt01)
+                g_string_append(wrecks02, quapnt01->str);
 
         } else {
             // Continuation A (POINT_T)
             if (UNKNOWN != valsou) {
 
                 if (valsou <= 20.0) {
-                    wrecks02str = g_string_new(";SY(DANGER01)");
-                    if (NULL != sndfrm02str)
-                        g_string_append(wrecks02str, sndfrm02str->str);
+                    //wrecks02 = g_string_new(";SY(DANGER01)");
+                    wrecks02 = _g_string_new(wrecks02, ";SY(DANGER01)");
+                    if (NULL != sndfrm02)
+                        g_string_append(wrecks02, sndfrm02->str);
 
                 } else
-                    wrecks02str = g_string_new(";SY(DANGER02)");
+                    //wrecks02 = g_string_new(";SY(DANGER02)");
+                    wrecks02 = _g_string_new(wrecks02, ";SY(DANGER02)");
 
                 // !!! - check this - doesn't make sens
-                if (NULL != udwhaz03str)
-                    g_string_append(wrecks02str, udwhaz03str->str);
-                if (NULL != quapnt01str)
-                    g_string_append(wrecks02str, quapnt01str->str);
+                if (NULL != udwhaz03)
+                    g_string_append(wrecks02, udwhaz03->str);
+                if (NULL != quapnt01)
+                    g_string_append(wrecks02, quapnt01->str);
 
             } else {
                 //const char *sym    = NULL;
@@ -3656,9 +3736,10 @@ static GString *WRECKS02 (S57_geo *geo)
                     //}
                 //}
 
-                wrecks02str = g_string_new(sym);
-                if (NULL != quapnt01str)
-                    g_string_append(wrecks02str, quapnt01str->str);
+                //wrecks02 = g_string_new(sym);
+                wrecks02 = _g_string_new(wrecks02, sym);
+                if (NULL != quapnt01)
+                    g_string_append(wrecks02, quapnt01->str);
 
             }
 
@@ -3674,7 +3755,7 @@ static GString *WRECKS02 (S57_geo *geo)
         if (2 <= quapos && quapos < 10)
             line = ";LC(LOWACC41)";
         else {
-            if ( NULL != udwhaz03str)
+            if ( NULL != udwhaz03)
                 line = ";LS(DOTT,2,CHBLK)";
             else {
                  if (UNKNOWN != valsou){
@@ -3702,26 +3783,27 @@ static GString *WRECKS02 (S57_geo *geo)
                  }
             }
         }
-        wrecks02str = g_string_new(line);
+        //wrecks02 = g_string_new(line);
+        wrecks02 = _g_string_new(wrecks02, line);
 
         if (UNKNOWN != valsou) {
             if (valsou <= 20) {
-                if (NULL != udwhaz03str)
-                    g_string_append(wrecks02str, udwhaz03str->str);
+                if (NULL != udwhaz03)
+                    g_string_append(wrecks02, udwhaz03->str);
 
-                if (NULL != quapnt01str)
-                    g_string_append(wrecks02str, quapnt01str->str);
+                if (NULL != quapnt01)
+                    g_string_append(wrecks02, quapnt01->str);
 
-                if (NULL != sndfrm02str)
-                    g_string_append(wrecks02str, sndfrm02str->str);
+                if (NULL != sndfrm02)
+                    g_string_append(wrecks02, sndfrm02->str);
 
             } else {
                 // Note: ??? same as above ???
-                if (NULL != udwhaz03str)
-                    g_string_append(wrecks02str, udwhaz03str->str);
+                if (NULL != udwhaz03)
+                    g_string_append(wrecks02, udwhaz03->str);
 
-                if (NULL != quapnt01str)
-                    g_string_append(wrecks02str, quapnt01str->str);
+                if (NULL != quapnt01)
+                    g_string_append(wrecks02, quapnt01->str);
             }
         } else {
             const char *ac     = NULL;
@@ -3739,21 +3821,21 @@ static GString *WRECKS02 (S57_geo *geo)
                     default : ac = ";AC(DEPVS)"; break;
                 }
             }
-            g_string_append(wrecks02str, ac);
+            g_string_append(wrecks02, ac);
 
-            if (NULL != udwhaz03str)
-                g_string_append(wrecks02str, udwhaz03str->str);
+            if (NULL != udwhaz03)
+                g_string_append(wrecks02, udwhaz03->str);
 
-            if (NULL != quapnt01str)
-                g_string_append(wrecks02str, quapnt01str->str);
+            if (NULL != quapnt01)
+                g_string_append(wrecks02, quapnt01->str);
         }
     }
 
-    if (NULL != sndfrm02str) g_string_free(sndfrm02str, TRUE);
-    if (NULL != udwhaz03str) g_string_free(udwhaz03str, TRUE);
-    if (NULL != quapnt01str) g_string_free(quapnt01str, TRUE);
+    if (NULL != sndfrm02) g_string_free(sndfrm02, TRUE);
+    if (NULL != udwhaz03) g_string_free(udwhaz03, TRUE);
+    if (NULL != quapnt01) g_string_free(quapnt01, TRUE);
 
-    return wrecks02str;
+    return wrecks02;
 }
 
 static GString *WRECKS03 (S57_geo *geo)
@@ -3802,9 +3884,9 @@ static GString *QUESMRK1 (S57_geo *geo)
     S57_Obj_t  ot  = S57_getObjtype(geo);
 
     switch (ot) {
-        case S57_POINT_T: err = g_string_new(";SY(QUESMRK1)"); break;
-        case S57_LINES_T: err = g_string_new(";LC(QUESMRK1)"); break;
-        case S57_AREAS_T: err = g_string_new(";AP(QUESMRK1)"); break;
+        case S57_POINT_T: err = _g_string_new(err, ";SY(QUESMRK1)"); break;
+        case S57_LINES_T: err = _g_string_new(err, ";LC(QUESMRK1)"); break;
+        case S57_AREAS_T: err = _g_string_new(err, ";AP(QUESMRK1)"); break;
         default:
             PRINTF("WARNING: unknown S57 object type for CS(QUESMRK1)\n");
     }
@@ -3958,6 +4040,60 @@ TSSRON(a)
 SOUNDG(p)            SOUNDGnn     SNDFRMnn
 
 WRECKS(pa)           WRECKSnn     DEPVALnn QUAPNTnn SNDFRMnn UDWHAZnn
+
+
+----------------------------------------------------------------------
+Attribute name used by S57_getAttVal(geo, ..);
+$ grep S57_getAttVal S52CS.c| sed -e 's/.*\"\(.*\)\");/\1/' > CS_att.txt
+$ edit CS_att.txt  (clean up)
+$ sort CS_att.txt | uniq > CS_att2.txt
+
+catclr
+CATCOV
+CATLIT
+CATOBS
+catpst
+CATREA
+CATSLC
+CATWRK
+COLOUR
+CONDTN
+CONRAD
+DRVAL1
+DRVAL2
+_extend_arc_radius
+FIDN
+headng
+HEIGHT
+INTU
+LITCHR
+LITVIS
+LNAM
+_normallinestyle
+OBJL
+ORIENT
+plnspd
+QUAPOS
+QUASOU
+RESTRN
+SECTR1
+SECTR2
+select
+_setOrigin
+SIGGRP
+SIGPER
+STATUS
+_symbrngmrk
+TECSOU
+TOPSHP
+VALDCO
+VALNMR
+VALSOU
+vesrce
+_vessel_label
+vestat
+WATLEV
+
 
 */
 #endif  // 0
