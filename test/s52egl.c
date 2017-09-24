@@ -476,8 +476,9 @@ static int      _s52_draw_cb  (gpointer user_data)
 
 #ifdef USE_FAKE_AIS
         // update fake AIS - no draw call
-        _s52_updFakeAISdata(engine->state.cLat, engine->state.cLon);
+        _s52_updtFakeAISdata(engine->state.cLat, engine->state.cLon);
 #endif
+        s52ais_updtAISLabel(TRUE);
 
         // Note: need to handle EGL beg/end by hand to avoid flicker when calling _s52_draw_user()
         S52_setEGLCallBack((S52_EGL_cb)NULL, (S52_EGL_cb)NULL, NULL);
@@ -1736,8 +1737,11 @@ static int      _X11_handleXevent(gpointer user_data)
 
         case ButtonRelease:
             {
-                //*  test pick if VRMEBL is OFF
+#ifdef USE_TEST_OBJ
+                // when test object, pick if not testing VRMEBL
                 if (FALSE == _drawVRMEBL) {
+#endif
+
                     XButtonReleasedEvent *pickEvent = (XButtonReleasedEvent *)&event;
                     const char *name = S52_pickAt(pickEvent->x, engine->height - pickEvent->y);
                     if (NULL != name) {
@@ -1763,50 +1767,49 @@ static int      _X11_handleXevent(gpointer user_data)
 
                         _s52_draw_cb((gpointer) engine);  // should signal draw thread!!
                     }
+#ifdef USE_TEST_OBJ
                 }
-                //*/
+#endif
+
 
 #ifdef USE_TEST_OBJ
-                //*
-                XButtonReleasedEvent *mouseEvent = (XButtonReleasedEvent *)&event;
-                if (FALSE == _drawVRMEBL)
-                    break;
+                if (TRUE == _drawVRMEBL) {
 
-                double Xlon = mouseEvent->x;
-                double Ylat = engine->height - mouseEvent->y;
+                    XButtonReleasedEvent *mouseEvent = (XButtonReleasedEvent *)&event;
+                    double Xlon = mouseEvent->x;
+                    double Ylat = engine->height - mouseEvent->y;
 
-                S52_setVRMEBL(_vrmeblA, Xlon, Ylat, NULL, NULL);
+                    S52_setVRMEBL(_vrmeblA, Xlon, Ylat, NULL, NULL);
 
-                //* test LEGLIN on obstruction
-                if (TRUE == S52_xy2LL(&Xlon, &Ylat)) {
-                    S52_pushPosition(_cursor2, Ylat, Xlon, 0.0);
+                    //* test LEGLIN on obstruction
+                    if (TRUE == S52_xy2LL(&Xlon, &Ylat)) {
+                        S52_pushPosition(_cursor2, Ylat, Xlon, 0.0);
 
-                    //
-                    _leglin4LL[3] = Ylat;
-                    _leglin4LL[2] = Xlon;
-                    //_s52_setupLEGLIN(engine->state.cLat, engine->state.cLon);
-                    _s52_setupLEGLIN_alarm(0.0, 0.0);
+                        _leglin4LL[3] = Ylat;
+                        _leglin4LL[2] = Xlon;
+                        _s52_setupLEGLIN_alarm(0.0, 0.0);
 
-                    // call to draw needed as LEGLIN is on layer 5
-                    engine->do_S52draw     = TRUE;
-                    engine->do_S52drawLast = TRUE;
-                    _s52_draw_cb((gpointer) engine);
+                        // call to draw needed as LEGLIN is on layer 5
+                        engine->do_S52draw     = TRUE;
+                        engine->do_S52drawLast = TRUE;
+                        _s52_draw_cb((gpointer) engine);
+                    }
+                    //*/
+
+                    /* debug:  S52_xy2LL() --> S52_LL2xy() should be the same
+                     {
+                     // NOTE:  LL (0,0) is the OpenGL origine (not X11 origine)
+                     double Xlon = 0.0;
+                     double Ylat = 0.0;
+                     S52_xy2LL(&Xlon, &Ylat);
+                     S52_LL2xy(&Xlon, &Ylat);
+                     g_print("DEBUG: xy2LL(0,0) --> LL2xy ==> Xlon: %f, Ylat: %f\n", Xlon, Ylat);
+                     }
+                     //*/
                 }
-                //*/
-
-                /* debug:  S52_xy2LL() --> S52_LL2xy() should be the same
-                {
-                    // NOTE:  LL (0,0) is the OpenGL origine (not X11 origine)
-                    double Xlon = 0.0;
-                    double Ylat = 0.0;
-                    S52_xy2LL(&Xlon, &Ylat);
-                    S52_LL2xy(&Xlon, &Ylat);
-                    g_print("DEBUG: xy2LL(0,0) --> LL2xy ==> Xlon: %f, Ylat: %f\n", Xlon, Ylat);
-                }
-                //*/
 #endif  // USE_TEST_OBJ
-            break;
             }
+            break;
 
 #ifdef USE_TEST_OBJ
         case MotionNotify:
@@ -2204,6 +2207,7 @@ int main(int argc, char *argv[])
     //g_print("TOTAL MEM: %i\n", _mem_alloc);
     //return 0;
     */
+
 
     g_print("main():starting: argc=%i, argv[0]=%s\n", argc, argv[0]);
 
