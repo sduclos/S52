@@ -229,8 +229,8 @@ gchar    *S57_getRCIDstr(S57_geo *geo);
 int       S57_setHighlight(S57_geo *geo, gboolean highlight);
 gboolean  S57_getHighlight(S57_geo *geo);
 
-int       S57_setHazard(S57_geo *geo, gboolean hazard);
-gboolean  S57_isHazard (S57_geo *geo);
+//int       S57_setHazard(S57_geo *geo, gboolean hazard);
+//gboolean  S57_isHazard (S57_geo *geo);
 
 
 //int       S57_setLOD(S52_obj *obj, char LOD);

@@ -149,7 +149,7 @@ typedef struct _S57_geo {
 
     gboolean     highlight;  // highlight this geo object (cursor pick / hazard - experimental)
 
-    gboolean     hazard;     // TRUE if a Safety Contour / hazard - use by leglin and GUARDZONE
+    //gboolean     hazard;     // TRUE if a Safety Contour / hazard - use by leglin and GUARDZONE
 
     // optimisation: set LOD
     //S57_setLOD(obj, *c->dsid_intustr->str);
@@ -536,7 +536,8 @@ int        S57_geo2prj(_S57_geo *geo)
     // useless - rbin
     //return_if_null(geo);
 
-    _simplifyGEO(geo);
+    // FIXME: this break line/poly missmatch
+    //_simplifyGEO(geo);
 
     if (TRUE == _doInit)
         _initPROJ();
@@ -1580,18 +1581,6 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     g_string_append_c(attList, ':');
     g_string_append(attList, attValue->str);
 
-    /* FIXME: do not replace '\n' by ' ', for JSON
-    if (0 == g_strcmp0("_vessel_label", attName)) {
-        for (guint i=0; i<attList->len; ++i) {
-            if ('\n' == attList->str[i]) {
-                attList->str[i] = ' ';
-                //g_string_insert_c(attList, i, SLASH);
-                return;
-            }
-        }
-    }
-    */
-
     //PRINTF("\t%s : %s\n", attName, (char*)attValue->str);
 
     return;
@@ -2111,6 +2100,7 @@ gboolean   S57_getHighlight(_S57_geo *geo)
     return geo->highlight;
 }
 
+#if 0
 int        S57_setHazard(_S57_geo *geo, gboolean hazard)
 {
     return_if_null(geo);
@@ -2126,6 +2116,7 @@ int        S57_isHazard(_S57_geo *geo)
 
     return geo->hazard;
 }
+#endif  // 0
 
 #if 0
 int        S57_setLOD(_S52_obj *obj, char LOD)
@@ -2143,7 +2134,7 @@ char       S57_getLOD(_S52_obj *obj)
 
     return obj->LOD;
 }
-#endif
+#endif  // 0
 
 
 #if 0
@@ -2152,4 +2143,4 @@ int main(int argc, char** argv)
 
    return 1;
 }
-#endif
+#endif  // 0
