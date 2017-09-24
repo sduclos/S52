@@ -187,7 +187,7 @@ static double _MARparamVal[] = {
     0.0,      // 21 - S52_MAR_FONT_SOUNDG   --NOT IMPLEMENTED: use font for souding (on/off)
     0.0,      // 22 - S52_MAR_DATUM_OFFSET  --value of chart datum offset (raster_sound must be ON)
 
-    1.0,      // 23 - S52_MAR_SCAMIN        --flag for using SCAMIN filter (on/off)  (default ON)
+    1.0,      // 23 - S52_MAR_SCAMIN        --flag for using SCAMIN filter (on/off)  (default ON 1:1)
     //0.0,      // 23 - S52_MAR_SCAMIN        --flag for using SCAMIN filter (on/off)
 
     0.0,      // 24 - S52_MAR_ANTIALIAS  (on/off)
@@ -490,7 +490,8 @@ int    S52_MP_set(S52MarinerParameter paramID, double val)
         case S52_MAR_HEADNG_LINE         : val = _validate_bool(val);                   break;
         case S52_MAR_BEAM_BRG_NM         : val = _validate_nm(val);                     break;
 
-        case S52_MAR_DISP_GRATICULE      : val = _validate_bool(val);                   break;
+        //case S52_MAR_DISP_GRATICULE      : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_GRATICULE      : val = _validate_positive(val);               break;
         case S52_MAR_DISP_WHOLIN         : val = _validate_int(val);                    break;
         case S52_MAR_DISP_LEGEND         : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_CALIB          : val = _validate_bool(val);                   break;
@@ -501,7 +502,8 @@ int    S52_MP_set(S52MarinerParameter paramID, double val)
         case S52_MAR_FONT_SOUNDG         : val = _fixme(val);                           break;
         // DEPARE01; DEPCNT02; _DEPVAL01; SLCONS03; _UDWHAZ03;
         case S52_MAR_DATUM_OFFSET        : val = _validate_meter(val);                  break;
-        case S52_MAR_SCAMIN              : val = _validate_bool(val);                   break;
+        //case S52_MAR_SCAMIN              : val = _validate_bool(val);                   break;
+        case S52_MAR_SCAMIN              : val = _validate_positive(val);               break;
         case S52_MAR_ANTIALIAS           : val = _validate_bool(val);                   break;
         case S52_MAR_QUAPNT01            : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_OVERLAP        : val = _validate_bool(val);                   break;
