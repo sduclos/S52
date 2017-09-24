@@ -202,7 +202,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_RASTER       - GL2 - bathy raster (GeoTIFF) - set S52_MAR_DISP_RADAR_LAYER
 # -DS52_USE_AFGLOW       - experimental synthetic after glow
 # -DS52_USE_SYM_VESSEL_DNGHL
-#                        - GL2 - vestat = 3, close quarter, show AIS in red (DNGHL)
+#                        - DEPRECATED GL2 - vestat = 3, close quarter, show AIS in red (DNGHL)
 #
 # Debug:
 # -DS52_DEBUG            - add more info for debugging libS52 (ex _checkError() in S52GL.c)
@@ -313,7 +313,6 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_SOCK                 \
                   -DS52_USE_TXT_SHADOW           \
                   -DS52_USE_AFGLOW               \
-                  -DS52_USE_SYM_VESSEL_DNGHL     \
                   -DS52_USE_RASTER               \
                   -DS52_USE_SUPP_LINE_OVERLAP    \
                   -DS52_USE_C_AGGR_C_ASSO        \
@@ -428,7 +427,6 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
                       -DS52_USE_GLES2                \
                       -DS52_USE_FREETYPE_GL          \
                       -DS52_USE_OGR_FILECOLLECTOR    \
-                      -DS52_USE_SYM_VESSEL_DNGHL     \
                       -DS52_USE_LOGFILE              \
                       -DG_DISABLE_ASSERT             \
                       -D_MINGW                       \
@@ -685,6 +683,12 @@ doc: S52-$(LIBS52VERS).typelib
 ############### Notes ##############################
 #
 #
+# Run command every time a file is modified:
+#while inotifywait -e close_write document.tex
+#do
+#    make
+#done
+
 
 # git:
 #   git init (one time)
