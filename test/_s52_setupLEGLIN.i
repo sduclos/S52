@@ -153,7 +153,7 @@ static int      _s52_setupLEGLIN_alarm(double cLat, double cLon)
     if (FALSE != _leglin4) {
         _leglin4 = S52_delMarObj(_leglin4);
         if (FALSE != _leglin4) {
-            g_print("s52egl:_s52_setupLEGLIN(): delMarObj _leglin4 failed\n");
+            g_print("s52egl:_s52_setupLEGLIN_alarm(): delMarObj _leglin4 failed\n");
             g_assert(0);
         }
         // clear alarm
@@ -182,13 +182,15 @@ static int      _s52_setupLEGLIN_alarm(double cLat, double cLon)
     // test LEGLIN setup via cursor
     _leglin4 = S52_newLEGLIN(1, 0.0, 0.0, _leglin4LL[1], _leglin4LL[0], _leglin4LL[3], _leglin4LL[2], FALSE);
 
-    //if (FALSE == _leglin4) {
-    //    LOGI("s52egl:_s52_setupLEGLIN(): failed\n");
-        if (1.0 == S52_getMarinerParam(S52_MAR_GUARDZONE_ALARM))
+    if (FALSE == _leglin4) {
+        g_print("s52egl:_s52_setupLEGLIN_alarm(): failed\n");
+    } else {
+        double gz = S52_getMarinerParam(S52_MAR_GUARDZONE_ALARM);
+        if (1.0 == gz)
             g_print("s52egl:_s52_setupLEGLIN(): ALARM ON\n");
-        if (2.0 == S52_getMarinerParam(S52_MAR_GUARDZONE_ALARM))
+        if (2.0 == gz)
             g_print("s52egl:_s52_setupLEGLIN(): INDICATION ON\n");
-    //}
+    }
 
     return TRUE;
 }
