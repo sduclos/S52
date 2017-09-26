@@ -2338,9 +2338,9 @@ static int       _renderSY_vessel(S52_obj *obj)
     S57_geo  *geo       = S52_PL_getGeo(obj);
     guint     npt       = 0;
     GLdouble *ppt       = NULL;
-    GString  *vestatstr = S57_getAttVal(geo, "vestat");  // vessel state
-    GString  *vecstbstr = S57_getAttVal(geo, "vecstb");  // vector stabilize
-    GString  *headngstr = S57_getAttVal(geo, "headng");
+    //GString  *vestatstr = S57_getAttVal(geo, "vestat");  // vessel state
+    //GString  *vecstbstr = S57_getAttVal(geo, "vecstb");  // vector stabilize
+    //GString  *headngstr = S57_getAttVal(geo, "headng");
 
     if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
@@ -2371,19 +2371,18 @@ static int       _renderSY_vessel(S52_obj *obj)
         return TRUE;
     }
 
-//#ifdef S52_USE_SYM_VESSEL_DNGHL
-    //* experimental: VESSEL close quarters situation; target red
+#ifdef S52_USE_SYM_VESSEL_DNGHL
+    /* experimental: VESSEL close quarters situation; target red
     if (NULL!=vestatstr && '3'==*vestatstr->str) {
         GString *vesrcestr = S57_getAttVal(geo, "vesrce");
         GString *headngstr = S57_getAttVal(geo, "headng");
         double   headng    = (NULL==headngstr) ? 0.0 : S52_atof(headngstr->str);
 
         // Note: no LUP for vesrce=3 (VTS)
-        if (NULL!=vesrcestr && ('1'==*vesrcestr->str || '2'==*vesrcestr->str)) {
-            _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
-        }
+        //if (NULL!=vesrcestr && ('1'==*vesrcestr->str || '2'==*vesrcestr->str)) {
+        //    _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
+        //}
 
-        /*
         if (NULL!=vesrcestr && '2'==*vesrcestr->str) {
             if (0 == S52_PL_cmpCmdParam(obj, "aisves01")) {
                 _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
@@ -2394,20 +2393,20 @@ static int       _renderSY_vessel(S52_obj *obj)
                 _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
             }
         }
-        */
 
         // skip the reste
-        //return TRUE;
+        return TRUE;
     }
     //*/
-//#endif
+#endif
 
     // draw vector stabilization
     // FIXME: NO VECT STAB if target sleeping - (NULL!=vestatstr && '2'==*vestatstr->str)
     if (0 == S52_PL_cmpCmdParam(obj, "VECGND21") ||
         0 == S52_PL_cmpCmdParam(obj, "VECWTR21") ) {
         // 1 or 2
-        if (NULL!=vecstbstr && ('1'==*vecstbstr->str||'2'==*vecstbstr->str)) {
+        GString  *vecstbstr = S57_getAttVal(geo, "vecstb");  // vector stabilize
+        if (NULL!=vecstbstr && ('1'==*vecstbstr->str || '2'==*vecstbstr->str)) {
             // compute symbol offset due to course and speed
             double course, speed;
             if (TRUE == _getVesselVector(obj, &course, &speed)) {
@@ -2417,7 +2416,7 @@ static int       _renderSY_vessel(S52_obj *obj)
                 double veclenMX  = veclenM  * cos(courseRAD);
                 double veclenMY  = veclenM  * sin(courseRAD);
 
-                // FIXME: why make this check again!!
+                // when vecstb draw the coresponding sym
                 if ((0==S52_PL_cmpCmdParam(obj, "VECGND21")) && ('1'==*vecstbstr->str) ) {
                     _renderSY_POINT_T(obj, ppt[0]+veclenMX, ppt[1]+veclenMY, course);
                 } else {
@@ -2514,27 +2513,32 @@ static int       _renderSY_vessel(S52_obj *obj)
         // 2 - OR no silhouette at all
         if ( ((shpLenPixel*_dotpitch_mm_y) < SHIPS_OUTLINE_MM) || (FALSE==(int) S52_MP_get(S52_MAR_SHIPS_OUTLINE)) ) {
             // 3 - AND active (ie not sleeping)
-            if (NULL!=vestatstr && '1'==*vestatstr->str)
+            GString  *vestatstr = S57_getAttVal(geo, "vestat");  // vessel state
+            //if (NULL!=vestatstr && '1'==*vestatstr->str)
+            if (NULL!=vestatstr && ('1'==*vestatstr->str || '3'==*vestatstr->str))
                 _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
         }
 
         return TRUE;
     }
 
-    // AIS sleeping, no heading: this symbol put a '?' beside the target
-    if ((0 == S52_PL_cmpCmdParam(obj, "AISDEF01")) && (NULL == headngstr) ) {
-        // drawn upright
-        _renderSY_POINT_T(obj, ppt[0], ppt[1], 0.0);
-
-        return TRUE;
-    }
-
     // AIS sleeping
+    GString  *vestatstr = S57_getAttVal(geo, "vestat");  // vessel state
     if ((0 == S52_PL_cmpCmdParam(obj, "AISSLP01")) && (NULL!=vestatstr && '2'==*vestatstr->str) ) {
         GString *headngstr = S57_getAttVal(geo, "headng");
         double   headng    = (NULL==headngstr) ? 0.0 : S52_atof(headngstr->str);
 
         _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
+
+        return TRUE;
+    }
+
+    // FIXME: move to last don't check heading
+    // AIS sleeping, no heading: this symbol put a '?' beside the target
+    if ((0==S52_PL_cmpCmdParam(obj, "AISDEF01")) && (NULL==S57_getAttVal(geo, "headng")) ) {
+    //if (0 == S52_PL_cmpCmdParam(obj, "AISDEF01")) {
+        // drawn upright
+        _renderSY_POINT_T(obj, ppt[0], ppt[1], 0.0);
 
         return TRUE;
     }
@@ -6006,7 +6010,8 @@ int        S52_GL_drawGraticule(void)
         // print table scale rather than computed scale
 
         //_getGratScale(10.0/scale, &MajorSpacing, &MinorSpacing);
-        _getGratScale(5.0/scale, &MajorSpacing, &MinorSpacing);
+        //_getGratScale(5.0/scale, &MajorSpacing, &MinorSpacing);
+        _getGratScale(1.0/scale, &MajorSpacing, &MinorSpacing);
 
         PRINTF("DEBUG: scale: %f, major: %f, minor: %f\n", 10.0/scale, MajorSpacing, MinorSpacing);
 
@@ -6089,13 +6094,14 @@ int        S52_GL_drawGraticule(void)
     {
         S52_Color *ninfo = S52_PL_getColor("NINFO");
 
-        // scale
+        // scale at top
         SNPRINTF(str, 80, "SCALE: %.0f", scale * 1000.0);
-        _renderTXTAA(NULL, ninfo, _pmin.u+((_pmax.u - _pmin.u)/2.0), _pmin.v+(20*_scaley), 2, str);
+        //_renderTXTAA(NULL, ninfo, _pmin.u+((_pmax.u - _pmin.u)/2.0), _pmin.v+(20*_scaley), 2, str);
+        _renderTXTAA(NULL, ninfo, _pmin.u+((_pmax.u - _pmin.u)/2.0), _pmax.v-(20*_scaley), 2, str);
 
-        // scamin
-        SNPRINTF(str, 80, "SCAMIN (1:%.1f): %.0f", S52_MP_get(S52_MAR_SCAMIN), _SCAMIN);
-        _renderTXTAA(NULL, ninfo, _pmin.u+((_pmax.u - _pmin.u)/2.0), _pmin.v+(5*_scaley), 1, str);
+        // debug scamin
+        //SNPRINTF(str, 80, "SCAMIN (1:%.1f): %.0f", S52_MP_get(S52_MAR_SCAMIN), _SCAMIN);
+        //_renderTXTAA(NULL, ninfo, _pmin.u+((_pmax.u - _pmin.u)/2.0), _pmin.v+(5*_scaley), 1, str);
     }
 
     //printf("lat: %f, long: %f\n", lat, lon);
