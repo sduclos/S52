@@ -593,6 +593,7 @@ static char         *_encodeNsend(const char *command, const char *frmt, ...)
 #endif  // S52_USE_SOCK
 /////////////////////////////////////////////////////////////////////
 
+#if 0
 static int           _writeName(guint mmsi, const char *name)
 {
     return TRUE;
@@ -654,6 +655,7 @@ int      S52_utils_getConfig(CCHAR *label, char *vbuf)
 
     return TRUE;
 }
+#endif  // 0
 
 static _ais_t       *_getAIS    (unsigned int mmsi)
 {
@@ -680,7 +682,7 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         newais.mmsi     = mmsi;
 
         // FIXME: check file for name for mmsi
-        _readName(newais.mmsi, newais.name);
+        //_readName(newais.mmsi, newais.name);
 
         // create an active symbol, put mmsi since status is not known yet
         //g_sprintf(newais.name, "%i", mmsi);
@@ -896,9 +898,9 @@ static int           _setAISLab (unsigned int mmsi, const char *name)
     }
 
     // update label
-    if ('\0' == ais->name[0]) {
+    if ('\0' != ais->name[0]) {
         // FIXME: append name to file aisnamedb.txt for this mmsi
-        _writeName(ais->mmsi, name);
+        //_writeName(ais->mmsi, name);
 
         g_snprintf(ais->name, AIS_SHIPNAME_MAXLEN+1, "%s", name);
 
@@ -959,9 +961,14 @@ static int           _setAISSta (unsigned int mmsi, int status, int turn)
     if (NULL == ais)
         return FALSE;
 
+    // undefined
+    if (129 == turn)
+        turn = ais->turn;
+
     if ((status!=ais->status) || (turn!=ais->turn)) {
         if (1==status || 5==status || 6==status) {
-            int vestat = 2;  // AIS sleeping
+            // AIS sleeping
+            int vestat = 2;
 #ifdef S52_USE_SOCK
             _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, vestat, turn);
 #else
@@ -969,9 +976,9 @@ static int           _setAISSta (unsigned int mmsi, int status, int turn)
             S52_setVESSELstate(ais->afglowH, 0, vestat, turn);   // afterglow
 #endif
         } else {
-            // AIS active
+            // AIS active / under way
             //int vestat       = 1;  // normal
-            int vestat       = 3;  // red, close quarters
+            int vestat       = 3;  // debug: red, close quarters
 #ifdef S52_USE_SOCK
             _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, vestat, turn);
 #else
@@ -1118,8 +1125,8 @@ int            s52ais_updtAISLabel(int keepTargetAlive)
 
                     S52_setVESSELlabel(ais->vesselH, str);
 
-                    int vestat = 2;  // AIS sleeping
-                    _setAISSta(ais->mmsi, vestat, 129 /* vesselTurn undefined */);
+                    int status = 1;  // will trigger vestat 2 - AIS sleeping
+                    _setAISSta(ais->mmsi, status, 129 /* vesselTurn undefined */);
                     ais->lost = TRUE;
                 }
             } else {
@@ -1142,8 +1149,8 @@ int            s52ais_updtAISLabel(int keepTargetAlive)
                 ais->lost = FALSE;  // target reacquired
             }
 
-            int vestat = 3;  // red - conspic / debug
-            _setAISSta(ais->mmsi, vestat, 129 /* vesselTurn undefined */);
+            int status = 0;  // normal sym under way, will trigger red - conspic / debug
+            _setAISSta(ais->mmsi, status, 129 /* vesselTurn undefined */);
 #endif
         }
     }
@@ -1232,8 +1239,7 @@ static void          _updateAISdata(struct gps_data_t *gpsdata)
         //  128     - (80 hex) indicates no turn information available (default)
         _setAISPos(gpsdata->ais.mmsi, lat, lon, heading);
         _setAISVec(gpsdata->ais.mmsi, course, speed);
-        //_setAISSta(gpsdata->ais.mmsi, status, turn);
-        _setAISSta(gpsdata->ais.mmsi, 3 , turn);  // debug close quarter, red
+        _setAISSta(gpsdata->ais.mmsi, status, turn);
 
         return;
     }
@@ -1395,8 +1401,6 @@ unsigned int radio;		    // radio status bits
             double course  = gpsdata->ais.type18.course / 10.0;
             double speed   = gpsdata->ais.type18.speed  / 10.0;
             double heading = gpsdata->ais.type18.heading;
-            int status     = 1;  // normal
-            int turn       = 0;  // not turning
 
             // heading not available
             if (511.0 == heading) heading = course;
@@ -1405,8 +1409,11 @@ unsigned int radio;		    // radio status bits
 
             _setAISPos(gpsdata->ais.mmsi, lat, lon, heading);
             _setAISVec(gpsdata->ais.mmsi, course, speed);
-            //_setAISSta(gpsdata->ais.mmsi, status, turn);
-            _setAISSta(gpsdata->ais.mmsi, 3 , turn);  // debug close quarter, red
+
+            int turn   = 0;  // not turning
+            // debug close quarter, red
+            int status = 0;  // under way
+            _setAISSta(gpsdata->ais.mmsi, status, turn);
         }
 
         return;
@@ -1525,6 +1532,7 @@ static int           _gpsdClientReadLoop(void)
 
             if (0 == ret) {
                 g_print("s52ais:_gpsdClientRead():gps_read(): NO DATA .. [ret=0, errno=%i]\n", errno);
+                g_usleep(1000 * 1000); // 1.0 sec
                 continue;
             } else {
                 g_print("s52ais:_gpsdClientRead():gps_read(): socket error 4 .. GPSD died [ret=%i, errno=%i]\n", ret, errno);
