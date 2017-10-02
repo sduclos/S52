@@ -432,7 +432,7 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude);
  * xrandr can be used if framework doesn't do it (ie Clutter)
  *
  * Note: the ratio screen mmw/w and screen mm_h/h is used to compute initial DOTPITCH,
- *       overide with S52_MAR_DOTPITCH_MM_X/Y after init().
+ *       override with S52_MAR_DOTPITCH_MM_X/Y after init().
  *
  * Note: screen_pixels_w, int screen_pixels_h are used to setViewPort to full-screen
  *
