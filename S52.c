@@ -248,7 +248,7 @@ static S52ObjectHandle _BLKADJ01 = FALSE;
 
 static GPtrArray      *_rasterList  = NULL;  // list of Raster
 
-static GPtrArray      *_tmpRenderBin= NULL;  // list of obj that overide prio
+static GPtrArray      *_tmpRenderBin= NULL;  // list of obj that override prio
 
 // callback to eglMakeCurrent() / eglSwapBuffers()
 #ifdef S52_USE_EGL
@@ -329,7 +329,6 @@ static guint       _mutexOwnerS57ID = 0;
 static double     _validate_lat(double lat)
 {
     // FIXME: 85.051125°
-    //if (lat < -90.0 || 90.0 < lat || isnan(lat)) {
     if (ABS(lat) > 90.0) {
         PRINTF("WARNING: latitude out of bound [-90.0 .. +90.0], reset to 0.0: %f\n", lat);
         lat = 0.0;
@@ -340,7 +339,6 @@ static double     _validate_lat(double lat)
 
 static double     _validate_lon(double lon)
 {
-    //if (lon < -180.0 || 180.0 < lon || isnan(lon)) {
     if (ABS(lon) > 180.0) {
         PRINTF("WARNING: longitude out of bound [-180.0 .. +180.0], reset to 0.0: %f\n", lon);
         lon = 0.0;
@@ -4219,6 +4217,7 @@ exit:
     {
         gdouble sec = g_timer_elapsed(_timer, NULL);
         PRINTF("    DRAW: %.0f msec --------------------------------------\n", sec * 1000);
+        //S57_dumpData(NULL, FALSE);
     }
 #endif
 
@@ -6685,20 +6684,16 @@ static S52_obj            *_updateGeo(S52_obj *obj, pt3 *pt)
 
 static S52_obj            *_setPointPosition(S52_obj *obj, double latitude, double longitude, double heading)
 {
-    //double xyz[3] = {longitude, latitude, 0.0};
     pt3 pt = {longitude, latitude, 0.0};
 
     // update extent
     S57_geo *geo = S52_PL_getGeo(obj);
-    //_setExt(geo, 1, xyz);
     _setExt(geo, 1, &pt);
 
-    //if (FALSE == S57_geo2prj3dv(1, (pt3*)xyz)) {
     if (FALSE == S57_geo2prj3dv(1, &pt)) {
         return FALSE;
     }
 
-    //_updateGeo(obj, xyz);
     _updateGeo(obj, &pt);
 
     // reset timer for AIS
@@ -7001,8 +6996,10 @@ DLL S52ObjectHandle STD S52_setVESSELstate(S52ObjectHandle objH, int vesselSelec
             }
         }
 
-        offset = strlen(attvaltmp);
-        SNPRINTF(attvaltmp+offset, 80-offset, "_vessel_turn:%i", vesselTurn);
+        if (129 != vesselTurn) {
+            offset = strlen(attvaltmp);
+            SNPRINTF(attvaltmp+offset, 80-offset, "_vessel_turn:%i", vesselTurn);
+        }
 
         _setAtt(geo, attval);
 
