@@ -362,7 +362,7 @@ typedef struct _S52_obj {
 
     // CS override
     // FIXME: this assume that the same CS is in the 'alternate' LUP - need proof
-    gboolean     prioOveride;   // TRUE if CS overide PLib display priority / same meaning as hasCS()!!
+    gboolean     prioOverride;   // TRUE if CS overide PLib display priority / same meaning as hasCS()!!
     _prios       oPrios;
 
     _AUX_Info    auxInfo;
@@ -1080,11 +1080,21 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
 
     // CS found, merge cmd list in command array (normal + CS)
 
-    // overide with original LUP prio so that
+    // init scamin override (ISODGR01)
+    // FIXME: aply only to those that reset SCAMIN: DEPCNT02, OBSTRN04/_UDWHAZ03, WRECKS02/_UDWHAZ03
+    //if (TRUE==S52_PL_cmpCmdParam(obj, "DEPCNT02") ||
+    //    TRUE==S52_PL_cmpCmdParam(obj, "OBSTRN04") ||
+    //    TRUE==S52_PL_cmpCmdParam(obj, "WRECKS02"))
+    {
+        S57_setScamin(obj->geo, 0.0);
+    }
+
+
+    // override with original LUP prio so that
     // if CS expdand to no OP in this code path
     // obj will be move to there default renderBin
     //obj->prioOveride = FALSE;
-    obj->prioOveride = TRUE;
+    obj->prioOverride = TRUE;
 
     // reset original priority from LUP
     obj->oPrios.DPRI = obj->LUP->prios.DPRI;
@@ -3140,7 +3150,7 @@ int         S52_PL_isPrioO(_S52_obj *obj)
     // useless - rbin
     //return_if_null(obj);
 
-    return obj->prioOveride;
+    return obj->prioOverride;
 }
 
 S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
@@ -3151,7 +3161,7 @@ S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
     if (NULL == obj->LUP)
         return S52_PRIO_NODATA;
 
-    S52_disPrio dpri = (TRUE == obj->prioOveride) ? obj->oPrios.DPRI : obj->LUP->prios.DPRI;
+    S52_disPrio dpri = (TRUE == obj->prioOverride) ? obj->oPrios.DPRI : obj->LUP->prios.DPRI;
 
 #ifdef S52_DEBUG
     if ((0==dpri) && (0!=obj->LUP->INST->len)) {
@@ -3168,7 +3178,7 @@ S52_DisCat  S52_PL_getDISC(_S52_obj *obj)
     // test useless since the only caller allready did that
     //return_if_null(obj);
 
-    if (TRUE == obj->prioOveride)
+    if (TRUE == obj->prioOverride)
         return obj->oPrios.DISC;
 
     if (NULL == obj->LUP)
@@ -3182,7 +3192,7 @@ int         S52_PL_getLUCM(_S52_obj *obj)
     return_if_null(obj);
 
     // initialy oPrios = prios, but might change after CS are resolve
-    if (TRUE == obj->prioOveride)
+    if (TRUE == obj->prioOverride)
         return obj->oPrios.LUCM;
     else
         return obj->LUP->prios.LUCM;
@@ -3205,7 +3215,7 @@ S52_RadPrio S52_PL_getRPRI(_S52_obj *obj)
     */
 
     // ternary trick
-    return obj->prioOveride ? obj->oPrios.RPRI : obj->LUP->prios.RPRI ;
+    return obj->prioOverride ? obj->oPrios.RPRI : obj->LUP->prios.RPRI ;
 }
 
 const char *S52_PL_infoLUP(_S52_obj *obj)
@@ -4204,6 +4214,41 @@ const char *S52_PL_getVOname(_S52_vec *vecObj)
 //
 //-----------------------------
 
+static _Text     *_convertTEXT(S57_geo *geo, _Text *text, char *buf)
+// FIXME: find test case where g_convert() is needed here,
+// freetype_gl/GL2 use g_utf8_get_char so this convert migth not be needed anymore (in GL2)
+{
+    (void)geo;
+
+#ifdef S52_USE_ANDROID
+    // no g_convert() on android
+    if (NULL != text)
+        text->frmtd = g_string_new(buf);
+#else
+    if (NULL != text) {
+        // FIXME: this break CA ENC french text
+        //gchar *gstr = g_convert(buf, -1, "UTF-8", "ISO-8859-1", NULL, NULL, NULL);
+        //text->frmtd = g_string_new(gstr);
+        //g_free(gstr);
+
+        /* work around
+        GString *isUTF8 = S57_getAttVal(geo, "_isUTF8");
+        if (NULL != isUTF8) {
+            gchar *gstr = g_convert(buf, -1, "UTF-8", "ISO-8859-1", NULL, NULL, NULL);
+            text->frmtd = g_string_new(gstr);
+            g_free(gstr);
+        } else {
+            text->frmtd = g_string_new(buf);
+        }
+        */
+
+        text->frmtd = g_string_new(buf);
+    }
+#endif
+
+    return text;
+}
+
 static _Text     *_parseTX(S57_geo *geo, _cmdWL *cmd)
 {
     return_if_null(cmd);
@@ -4216,17 +4261,8 @@ static _Text     *_parseTX(S57_geo *geo, _cmdWL *cmd)
 
     _Text *text = _parseTEXT(geo, str);
 
-#ifdef S52_USE_ANDROID
-    // no g_convert() on android
-    if (NULL != text)
-        text->frmtd = g_string_new(buf);
-#else
-    if (NULL != text) {
-        gchar *gstr = g_convert(buf, -1, "UTF-8", "ISO-8859-1", NULL, NULL, NULL);
-        text->frmtd = g_string_new(gstr);
-        g_free(gstr);
-    }
-#endif
+    // FIXME: move this dup code in _parseTE/_parseTX to
+    text = _convertTEXT(geo, text, buf);
 
     return text;
 }
@@ -4300,18 +4336,8 @@ static _Text     *_parseTE(S57_geo *geo, _cmdWL *cmd)
 
     text = _parseTEXT(geo, str);
 
-#ifdef S52_USE_ANDROID
-    // no g_convert() on android
-    if (NULL != text)
-        text->frmtd = g_string_new(buf);
-#else
-    // PL ASCII --> UTF-8
-    if (NULL != text) {
-        gchar *gstr = g_convert(buf, -1, "UTF-8", "ISO-8859-1", NULL, NULL, NULL);
-        text->frmtd = g_string_new(gstr);
-        g_free(gstr);
-    }
-#endif
+    // FIXME: move this dup code in _parseTE/_parseTX to _convertTEXT(geo, text, buf);
+    text = _convertTEXT(geo, text, buf);
 
     return text;
 }
