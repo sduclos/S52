@@ -297,6 +297,7 @@ static int      _s52_init     (s52engine *engine)
 
     // then (re)position the 'camera'
     S52_setView(engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
+    //S52_setView(69.0, 34.0, engine->state.rNM, engine->state.north);
 
     _s52_setupMarPar();
 
@@ -1672,7 +1673,9 @@ static int      _s52_setVwNDraw (s52engine *engine, double new_y, double new_x, 
     }
     //*/
 
+
     if (TRUE == S52_setView(new_y, new_x, new_z, new_r)) {
+    //if (TRUE == S52_setView(69.0, 34.0, new_z, new_r)) {
         engine->state.cLat  = new_y;
         engine->state.cLon  = new_x;
         engine->state.rNM   = new_z;
@@ -1879,6 +1882,14 @@ static int      _X11_handleXevent(gpointer user_data)
                 S52_setMarinerParam(S52_MAR_COLOR_PALETTE, val);
                 engine->do_S52draw = TRUE;
                 return TRUE;
+            }
+
+            // toggle SCAMIN
+            if (XK_S == keysym) {
+                if (0.0 == S52_getMarinerParam(S52_MAR_SCAMIN))
+                    S52_setMarinerParam(S52_MAR_SCAMIN, 1.0);   // ON
+                else
+                    S52_setMarinerParam(S52_MAR_SCAMIN, 0.0);   // OFF
             }
 
             // Load Cell
