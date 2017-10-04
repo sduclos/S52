@@ -32,6 +32,8 @@
 // WARNING: must be in sync with S52.c:WORLD_SHP
 #define WORLD_BASENM   "--0WORLD"
 
+//gboolean _isUTF8 = FALSE;
+
 static int        _setExtent(S57_geo *geo, OGRGeometryH geometry)
 {
     return_if_null(geo);
@@ -78,12 +80,9 @@ static int        _setAtt(S57_geo *geo, OGRFeatureH hFeature)
         }
     }
 
-    // optimisation: direct link to the value of Att (GString)
-    // save the search in attList
-    GString  *scamin = S57_getAttVal(geo, "SCAMIN");
-    if ((NULL!=scamin) && (NULL!=scamin->str)){
-        S57_setScamin(geo, S52_atof(scamin->str));
-    }
+    //if (TRUE == _isUTF8) {
+    //    S57_setAtt(geo, "_isUTF8", "1");
+    //}
 
     return TRUE;
 }
@@ -172,6 +171,17 @@ int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadO
         loadObject_cb = S52_loadObject;
     }
 
+    /* debug - CA ENC not UTF-8!
+    _isUTF8 = FALSE;
+    if (TRUE == OGR_L_TestCapability((OGRLayerH)ogrlayer, OLCStringsAsUTF8)) {
+        PRINTF("DEBUG: %s StringsAsUTF8\n",  layername);
+        _isUTF8 = TRUE;
+        //g_assert(0);
+    } else {
+        PRINTF("DEBUG: %s Strings Not UTF8\n",  layername);
+    }
+    //*/
+
     OGRFeatureH feature = NULL;
     while ( NULL != (feature = OGR_L_GetNextFeature((OGRLayerH)ogrlayer))) {
         // debug
@@ -184,17 +194,9 @@ int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadO
         loadObject_cb(layername, (void*)feature);
 #endif
 
-        /* debug - CA ENC not UTF-8!
-        if (TRUE == OGR_L_TestCapability((OGRLayerH)ogrlayer, OLCStringsAsUTF8)) {
-            PRINTF("DEBUG: %s StringsAsUTF8\n",  layername);
-            //g_assert(0);
-        } else {
-            PRINTF("DEBUG: %s Strings Not UTF8\n",  layername);
-        }
-        //*/
-
         OGR_F_Destroy(feature);
     }
+
 
     return TRUE;
 }
