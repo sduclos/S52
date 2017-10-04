@@ -378,3 +378,7 @@ distclean: clean
 	rm -f android/dist/sdcard/s52droid/bin/s52ais
 	make -C s52ui   distclean
 	make -C android distclean
+
+
+################ test AIS ###################################
+# gpsfake -c1 test/nmea.ais-1.SEDNA-DESGAGNES.log
