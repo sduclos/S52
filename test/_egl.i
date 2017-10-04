@@ -359,7 +359,8 @@ static int      _egl_init       (EGLState *eglState)
         //EGL_SAMPLES,             4,
         //EGL_SAMPLES,             8,
 
-        // debug - MSAA off
+        // test - MSAA off for testing cursor pick - no noticable diff
+        // and set eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
         //EGL_SAMPLE_BUFFERS,      0,  // The default value is zero.
         //EGL_SAMPLES,             0,
 
@@ -517,7 +518,8 @@ static int      _egl_init       (EGLState *eglState)
     // http://www.khronos.org/registry/egl/specs/EGLTechNote0001.html
     eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
 #else
-    // s52eglx/S52_drawStr() fail if BUFFER_PRESERVED
+    // s52eglx/S52_drawStr() fail if EGL_BUFFER_PRESERVED
+    //eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_PRESERVED);
     eglSurfaceAttrib(eglDisplay, eglSurface, EGL_SWAP_BEHAVIOR, EGL_BUFFER_DESTROYED);
 #endif
 
