@@ -427,7 +427,7 @@ static int       _getCentroid(guint npt, pt3 *v)
 }
 
 #if 0
-/*
+//*
 //static int       _getCentroidClose(guint npt, double *ppt)
 static int       _getCentroidClose(guint npt, pt3 *v)
 // Close Poly - return TRUE and centroid else FALSE
@@ -516,7 +516,7 @@ static int       _getCentroidClose(guint npt, pt3 *v)
 
     return FALSE;
 }
-*/
+//*/
 #endif  // 0
 
 static int       _getLODidx(char **str)
@@ -903,7 +903,7 @@ static void      _glLoadIdentity(int mode)
 #ifdef S52_USE_GL2
     // debug
     if (TRUE == isnan(_pjm[_pjmTop][0])) {
-        PRINTF("FIXME: nan in prog matrix, why?\n");
+        PRINTF("DEBUG: nan in prog matrix, 1/0 somewhere\n");
         g_assert(0);
     }
 
@@ -1679,7 +1679,7 @@ static cIdx _cIdx;
 
 
 #if 0
-/* MSAA experiment does the blending now
+//* MSAA experiment does the blending now
 static int       _setBlend(int blend)
 // TRUE turn on blending if AA
 {
@@ -1705,7 +1705,7 @@ static int       _setBlend(int blend)
 
     return TRUE;
 }
-*/
+//*/
 #endif  // 0
 
 static int       _glColor4ub(GLubyte r, GLubyte g, GLubyte b, GLubyte a)
@@ -5972,9 +5972,9 @@ static char     *_ddmmss(double graticule)
     int ss  = (int)((graticule - deg - mm/60.0 + 0.0001) * 3600);
 
     if (0 == ss) {
-        SNPRINTF(str, 80, "%i° %0.2i'", deg, mm);
+        SNPRINTF(str, 80, "%i° %.2i'", deg, mm);
     } else {
-        SNPRINTF(str, 80, "%i° %0.2i' %0.2i\"", deg, mm, ss);
+        SNPRINTF(str, 80, "%i° %.2i' %.2i\"", deg, mm, ss);
     }
 
     return str;
@@ -5982,10 +5982,6 @@ static char     *_ddmmss(double graticule)
 
 int        S52_GL_drawGraticule(void)
 {
-    //
-    // FIXME: small optimisation: collecte all segment to tmpWorkBuffer THEN call a draw
-    //
-
     S52_Color *black = S52_PL_getColor("CHBLK");
     black->fragAtt.pen_w = '1';
     _setFragAttrib(black, FALSE);
@@ -6095,6 +6091,7 @@ int        S52_GL_drawGraticule(void)
         S52_Color *ninfo = S52_PL_getColor("NINFO");
 
         // scale at top
+        // fixme: draw rounded scale from table
         SNPRINTF(str, 80, "SCALE: %.0f", scale * 1000.0);
         //_renderTXTAA(NULL, ninfo, _pmin.u+((_pmax.u - _pmin.u)/2.0), _pmin.v+(20*_scaley), 2, str);
         _renderTXTAA(NULL, ninfo, _pmin.u+((_pmax.u - _pmin.u)/2.0), _pmax.v-(20*_scaley), 2, str);
@@ -7481,7 +7478,7 @@ int        S52_GL_setViewPort(int x, int y, int width, int height)
 
 int        S52_GL_getViewPort(int *x, int *y, int *width, int *height)
 {
-    if (0 == _vp.w == _vp.h)
+    if ((0==_vp.w) || (0==_vp.h))
         return FALSE;
 
     *x      = _vp.x;
@@ -7591,7 +7588,7 @@ CCHAR     *S52_GL_getNameObjPick(void)
                         default: break;
                     }
 
-                    // optimisation:
+                    // Note: save PLib plain text in obj Att to be _dumpData'd later
                     if (NULL != cmdType) {
                         //char  name[80];
                         const char *value = S52_PL_getCmdText(obj);
@@ -7998,7 +7995,7 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
 }
 
 #if 0
-/*
+//*
 int        S52_GL_drawArc(S52_obj *objA, S52_obj *objB)
 {
     return_if_null(objA);
@@ -8062,7 +8059,7 @@ int              _intersectLINES(double x1, double y1, double x2, double y2,
 
     return TRUE;
 }
-*/
+//*/
 #endif  // 0
 
 //int        S52_GL_isHazard(int nxyz, double *xyz)
