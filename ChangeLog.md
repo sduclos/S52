@@ -4,6 +4,16 @@
 #
 
 
+2017OCT02
+- mod handle uniformly CS UNKNOWN depth usage
+- add safe gstring_new in CS
+- add stat for S57_goe attribs
+- add debug code for UFT8
+- clean up scamin logic
+
+2017SEP26
+- refactor SY_vessel() in GL
+
 2017SEP22
 - add major minor graticule
 
