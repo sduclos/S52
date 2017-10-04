@@ -28,16 +28,11 @@
 #include "S52MP.h"      // S52_MP_get/set()
 #include "S52utils.h"   // PRINTF(), S52_atof(), S52_atoi(), CCHAR
 
-//#define _ISOC99_SOURCE
-#include <math.h>       // NAN, floor()
+#include <math.h>       // floor()
 
 #define version "3.2.0" // CS of Plib 3.2 S52 ed ?
 
-//#define UNKNOWN HUGE_VAL   // INFINITY/NAN
-//#define UNKNOWN  (1.0/0.0)   //HUGE_VAL   // INFINITY/NAN
-// FIXME: this fail - why? man say work (but fail) when _ISOC99_SOURCE define!
-//#define UNKNOWN  NAN
-#define UNKNOWN  FP_NAN  // OK
+#define UNKNOWN -999.0  // depth of 1km above sea level
 
 #define COALNE   30   // Coastline
 #define DEPARE   42   // Depth area
@@ -61,8 +56,8 @@ typedef struct _localObj {
 #define LISTSIZE   16   // list size
 
 #ifdef S52_DEBUG
-// the command word parser will choke on XXX
-#define _g_string_new(var,str) (NULL==var) ? g_string_new(str) : g_string_new("XXX: mem leak in " #var "\n");
+#include <assert.h>
+#define _g_string_new(var,str) (NULL==var) ? g_string_new(str) : (assert(0),(GString*)0);
 #else
 #define _g_string_new(var,str) g_string_new(str);
 #endif  // S52_DEBUG
@@ -360,7 +355,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         GString  *lnam     = S57_getAttVal(geo, "LNAM");
         GString  *drvalstr = S57_getAttVal(geo, "DRVAL1");
         double    drval    = 0.0;
-        double    drvalmin = -UNKNOWN;
+        double    drvalmin = UNKNOWN;
 
         if (NULL == drvalstr) {
             drvalstr = S57_getAttVal(geo, "DRVAL2");
@@ -482,10 +477,10 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             if (TRUE == S57_touch(geo, candidate)) {
                 S57_geo *crntmin = S57_getTouchDEPARE(geo);
 
-                // case of more than one geo 'touch' this geo
-                // link to the swallower
+                // case of more than one geo 'touch' this geo link to the swallower
                 if (NULL != crntmin) {
-                    double drvalmin = INFINITY;
+                    //double drvalmin = INFINITY;
+
                     // BUG: S57_touch() work only for point in poly not point in line
                     //if (LINES_T == S57_getObjtype(candidate)) {
                         //GString *drval2str = S57_getAttVal(candidate, "DRVAL2");
@@ -496,8 +491,12 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
                         //}
                     //} else { // AREA DEPARE and AREA DRGARE
                         GString *drval1str = S57_getAttVal(candidate, "DRVAL1");
-                        double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
-                        if (drval1 < drvalmin) {
+                        //double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
+
+                        // FIXME: allway true!
+                        //if (drval1 < drvalmin) {
+                        //if (NULL!=drval1str && drval1<drvalmin) {
+                        if (NULL != drval1str) {
                             //drvalmin = drval1;  // clang - never read
                             S57_setTouchDEPARE(geo, candidate);
                         }
@@ -531,11 +530,14 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
 
                 // case of more than one geo 'touch' this geo - link to the swallower
                 if (NULL != crntmin) {
-                    double   drvalmin  = INFINITY;
+                    //double   drvalmin  = INFINITY;
                     GString *drval1str = S57_getAttVal(candidate, "DRVAL1");
-                    double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
+                    //double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
 
-                    if (drval1 < drvalmin) {
+                    // FIXME: allway true!
+                    //if (drval1 < drvalmin) {
+                    //if (NULL!=drval1str && drval1<drvalmin) {
+                    if (NULL != drval1str) {
                         //drvalmin = drval1;  // clang - never read
                         S57_setTouchDEPVAL(geo, candidate);
                     }
@@ -661,7 +663,6 @@ static GString *CLRLIN01 (S57_geo *geo)
 // of arrow symbols had to be used which does not comply with the required
 // symbolization.
 {
-    //GString *clrlin01  = g_string_new(";SY(CLRLIN01);LS(SOLD,1,NINFO)");
     GString *clrlin01  = _g_string_new(NULL, ";SY(CLRLIN01);LS(SOLD,1,NINFO)");
     GString *catclrstr = S57_getAttVal(geo, "catclr");
 
@@ -698,11 +699,6 @@ static GString *DATCVR01 (S57_geo *geo)
 {
     // Note: this CS apply to object M_COVR and M_CSCL
 
-    //GString *datcvr01 = NULL;
-    //GString *datcvr01 = g_string_new("");
-    //GString *datcvr01 = NULL;
-    //GString *datcvr01;
-    //datcvr01 = _g_string_new(datcvr01, NULL);
     GString *datcvr01 = _g_string_new(NULL, NULL);
 
     ///////////////////////
@@ -827,11 +823,9 @@ static GString *DEPARE01 (S57_geo *geo)
     int      objl      = 0;
     GString *objlstr   = NULL;
     GString *drval1str = S57_getAttVal(geo, "DRVAL1");
-    //double   drval1    = UNKNOWN;  // clang - init val never read
-    double drval1 = (NULL == drval1str) ? -1.0        : S52_atof(drval1str->str);
+    double   drval1    = (NULL == drval1str) ? -1.0        : S52_atof(drval1str->str);
     GString *drval2str = S57_getAttVal(geo, "DRVAL2");
-    //double   drval2    = UNKNOWN;  // clang - init val never read
-    double drval2 = (NULL == drval2str) ? drval1+0.01 : S52_atof(drval2str->str);
+    double   drval2    = (NULL == drval2str) ? drval1+0.01 : S52_atof(drval2str->str);
 
     double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
     drval1 += datum;
@@ -913,6 +907,8 @@ static GString *DEPCNT02 (S57_geo *geo)
     //int      quapos    = 0;
     //double   depth_value;          // for depth label (facultative in S-52)
 
+    // first reset original scamin
+    S57_setScamin(geo, 1.0);
 
     objlstr = S57_getAttVal(geo, "OBJL");
     objl    = (NULL == objlstr) ? 0 : S52_atoi(objlstr->str);
@@ -923,9 +919,6 @@ static GString *DEPCNT02 (S57_geo *geo)
         g_assert(0);
         return depcnt02;
     }
-
-    // first reset original scamin
-    S57_resetScamin(geo);
 
     // DEPARE (line)
     if (DEPARE==objl && S57_LINES_T==S57_getObjtype(geo)) {
@@ -947,80 +940,67 @@ static GString *DEPCNT02 (S57_geo *geo)
         drval1 += datum;
         drval2 += datum;
 
-        // FIXME: in some case this skip line that is the only one available
-        //if ((drval1<=S52_MP_get(S52_MAR_SAFETY_CONTOUR)) && (drval2>=S52_MP_get(S52_MAR_SAFETY_CONTOUR))) {
+        if (drval1 <= S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
+            if (drval2 >= S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
+                safe = TRUE;
 
-            if (drval1 <= S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
-                if (drval2 >= S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
+                //char *name = S57_getName(geo);
+                //PRINTF("### DEPARE: SET SAFETY CONTOUR --> touch %s:%f\n", name, drval1);
+            }
+        } else {
+            // collect area DEPARE & DRGARE that touch this line
+
+            GString *drval1touchstr = NULL;
+            S57_geo *geoTouch       = S57_getTouchDEPARE(geo);
+            if (NULL == geoTouch) {
+                // this object doesn't touch shallower DEPARE
+                //PRINTF("DEBUG: NULL geoTouch depcnt02-1/getTouchDEPARE\n");
+                depcnt02 = _g_string_new(depcnt02, ";LS(SOLD,1,DEPCN)");
+                return depcnt02;
+            } else {
+                drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
+            }
+
+            //GString *drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
+            double   drval1touch    = (NULL == drval1touchstr) ? 0.0 : S52_atof(drval1touchstr->str);
+
+            // debug - adjuste datum, clang - val never read
+            //double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
+            //drval1 += datum;
+
+            if (NULL == drval1touchstr) {
+                safe = TRUE;
+                //PRINTF("=== DEPARE: SET SAFETY CONTOUR --> touch NULL: %f\n", drval1);
+            } else {
+                // debug
+                //GString *drval2touchstr = S57_getAttVal(geoTouch, "DRVAL2");
+                //double   drval2touch    = (NULL == drval2touchstr) ? drval1touch : S52_atof(drval2touchstr->str);
+
+                if (drval1touch < S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
+                    //if (drval2touch < S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
+                    //if (drval2 > S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
                     safe = TRUE;
 
-                    //char *name = S57_getName(geo);
-                    //PRINTF("### DEPARE: SET SAFETY CONTOUR --> touch %s:%f\n", name, drval1);
+                    //char *name = S57_getName(geoTmp);
+                    //PRINTF("--- DEPARE: SET SAFETY CONTOUR --> touch %s:%f\n", name, drval1);
                 }
-            } else {
-            //    else {
-                // collect area DEPARE & DRGARE that touch this line
-
-                    GString *drval1touchstr = NULL;
-                    S57_geo *geoTouch       = S57_getTouchDEPARE(geo);
-                    if (NULL == geoTouch) {
-                        // this object doesn't touch shallower DEPARE
-                        //PRINTF("DEBUG: NULL geoTouch depcnt02-1/getTouchDEPARE\n");
-                        //depcnt02 = g_string_new(";LS(SOLD,1,DEPCN)");
-                        depcnt02 = _g_string_new(depcnt02, ";LS(SOLD,1,DEPCN)");
-                        return depcnt02;
-                    } else {
-                        drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
-                    }
-
-                    //GString *drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
-                    double   drval1touch    = (NULL == drval1touchstr) ? 0.0 : S52_atof(drval1touchstr->str);
-
-                    // debug - adjuste datum, clang - val never read
-                    //double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                    //drval1 += datum;
-
-                    // debug
-                    //if (483 == S57_getS57ID(geo)) {
-                    //    PRINTF("XXX 483 found\n");
-                    //}
-                    //if (491 == S57_getS57ID(geo)) {
-                    //    PRINTF("XXX 491 found\n");
-                    //}
-
-                    if (NULL == drval1touchstr) {
+                /*
+                else {
+                    if (drval2 > S52_MP_get(S52_MAR_SAFETY_CONTOUR) && drval1 < S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
                         safe = TRUE;
-                        //PRINTF("=== DEPARE: SET SAFETY CONTOUR --> touch NULL: %f\n", drval1);
-                    } else {
-                        // debug
-                        //GString *drval2touchstr = S57_getAttVal(geoTouch, "DRVAL2");
-                        //double   drval2touch    = (NULL == drval2touchstr) ? drval1touch : S52_atof(drval2touchstr->str);
-
-                        if (drval1touch < S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
-                        //if (drval2touch < S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
-                        //if (drval2 > S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
-                            safe = TRUE;
-
-                            //char *name = S57_getName(geoTmp);
-                            //PRINTF("--- DEPARE: SET SAFETY CONTOUR --> touch %s:%f\n", name, drval1);
-                        }
-                        /*
-                        else {
-                            if (drval2 > S52_MP_get(S52_MAR_SAFETY_CONTOUR) && drval1 < S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
-                                safe = TRUE;
-                            }
-
-                            //else {
-                            //    if (drval2touch > S52_MP_get(S52_MAR_SAFETY_CONTOUR) && drval1touch < S52_MP_get(S52_MAR_SAFETY_CONTOUR))
-                            //        safe = TRUE;
-                            //}
-                        }
-                        */
                     }
+
+                    //else {
+                    //    if (drval2touch > S52_MP_get(S52_MAR_SAFETY_CONTOUR) && drval1touch < S52_MP_get(S52_MAR_SAFETY_CONTOUR))
+                    //        safe = TRUE;
+                    //}
                 }
-            //}
-            //depth_value = drval1;
-        //}
+                */
+            }
+        }
+
+        //depth_value = drval1;
+
     } else {
         // continuation A (DEPCNT (line))
         GString *valdcostr = S57_getAttVal(geo, "VALDCO");
@@ -1043,7 +1023,6 @@ static GString *DEPCNT02 (S57_geo *geo)
                     // CA27904A.000 DEPCNT:7573 pass here
                     // this object doesn't touch shallower DEPARE
                     //PRINTF("DEBUG: NULL geoTmp depcnt02-2/getTouchDEPARE\n");
-                    //depcnt02 = g_string_new(";LS(SOLD,1,DEPCN)");
                     depcnt02 = _g_string_new(depcnt02, ";LS(SOLD,1,DEPCN)");
                     return depcnt02;
                 } else {
@@ -1085,29 +1064,23 @@ static GString *DEPCNT02 (S57_geo *geo)
         int quapos = S52_atoi(quaposstr->str);
         if ( 2 <= quapos && quapos < 10) {
             if (TRUE == safe) {
-                //depcnt02 = g_string_new(";LS(DASH,2,DEPSC)");
                 depcnt02 = _g_string_new(depcnt02, ";LS(DASH,2,DEPSC)");
             } else {
-                //depcnt02 = g_string_new(";LS(DASH,1,DEPCN)");
                 depcnt02 = _g_string_new(depcnt02, ";LS(DASH,1,DEPCN)");
             }
         }
     } else {
         if (TRUE == safe) {
-            //depcnt02 = g_string_new(";LS(SOLD,2,DEPSC)");
             depcnt02 = _g_string_new(depcnt02, ";LS(SOLD,2,DEPSC)");
         } else {
-            //depcnt02 = g_string_new(";LS(SOLD,1,DEPCN)");
             depcnt02 = _g_string_new(depcnt02, ";LS(SOLD,1,DEPCN)");
         }
     }
 
     if (TRUE == safe) {
-        //S57_setHazard(geo, TRUE);
         S57_setScamin(geo, INFINITY);
         depcnt02 = g_string_prepend(depcnt02, ";OP(8OD13010)");
     } else {
-        //S57_setHazard(geo, FALSE);
         depcnt02 = g_string_prepend(depcnt02, ";OP(---33020)");
     }
 
@@ -1198,7 +1171,7 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
         //least_depth += S52_MP_get(S52_MAR_DATUM_OFFSET);  // !?! clang - val in least_depth never read
         //}
 
-#ifdef S52_DEBUG
+//#ifdef S52_DEBUG
         //* debug - check impact of this bug:
         // - NO  impact in St-Laurent since drval1str is allway NULL
         // - YES impact in GB4X0000.000 (S64 test ENC)
@@ -1211,7 +1184,7 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
             //g_assert(0);
         }
         //*/
-#endif
+//#endif
 
         /* litteraly psbl03_2.pdf say:
         if (UNKNOWN == least_depth) {
@@ -1271,7 +1244,6 @@ static GString *LEGLIN02 (S57_geo *geo)
 // alongside the leg. It also places the "distance to run" labels and cares for the
 // different presentation of planned & alternate legs.
 {
-    //GString *leglin02  = g_string_new("");
     GString *leglin02  = _g_string_new(NULL, NULL);
     GString *selectstr = S57_getAttVal(geo, "select");
     GString *plnspdstr = S57_getAttVal(geo, "plnspd");
@@ -1355,7 +1327,6 @@ static GString *LIGHTS05 (S57_geo *geo)
 // Note: why is this relationship not already encoded in S57 (ei. C_AGGR or C_STAC) ?
 
 {
-    //GString *lights05          = g_string_new("");
     GString *lights05          = _g_string_new(NULL, NULL);
     //GString *valnmrstr         = S57_getAttVal(geo, "VALNMR");
     //double   valnmr            = 0.0;
@@ -1595,7 +1566,6 @@ static GString *_LITDSN01(S57_geo *geo)
 // This procedure is provided as a C function which has as input, the above
 // listed attribute values and as output, the light description.
 {
-    //GString *litdsn01         = g_string_new("");
     GString *litdsn01         = _g_string_new(NULL, NULL);
     GString *gstr             = NULL;  // tmp
     GString *catlitstr        = S57_getAttVal(geo, "CATLIT");
@@ -1913,7 +1883,6 @@ static GString *_LITDSN01(S57_geo *geo)
 // forward decl.
 static GString *_UDWHAZ03(S57_geo *geo, double depth_value);
 static GString *_QUAPNT01(S57_geo *geo);
-
 static GString *OBSTRN04 (S57_geo *geo)
 // Remarks: Obstructions or isolated underwater dangers of depths less than the safety
 // contour which lie within the safe waters defined by the safety contour are
@@ -1927,14 +1896,13 @@ static GString *OBSTRN04 (S57_geo *geo)
 // Note: updated to Cs1_md.pdf (ie was OBSTRN03)
 
 {
-    //GString *obstrn04str = g_string_new("");
     GString *obstrn04 = _g_string_new(NULL, NULL);
     GString *sndfrm02 = NULL;
     GString *udwhaz03 = NULL;
+
     GString *valsoustr   = S57_getAttVal(geo, "VALSOU");
     double   valsou      = UNKNOWN;
-    //double   depth_value = UNKNOWN;  // clang - init val never read
-    double   depth_value = 0.0;  // clang - init val never read
+    double   depth_value = UNKNOWN;  // clang - init val never read
     double   least_depth = UNKNOWN;
 
     if (NULL != valsoustr) {
@@ -1945,11 +1913,14 @@ static GString *OBSTRN04 (S57_geo *geo)
         if (S57_AREAS_T == S57_getObjtype(geo))
             least_depth = _DEPVAL01(geo, least_depth);
 
-        //if (UNKNOWN != least_depth) {  // <<< SDUC BUG
+        //if (UNKNOWN != least_depth) {  // <<< SDUC intentional BUG to skip symbol ISODGR01 in shallow water
+        // BUT "IHO_S-64/ENC_TDS_Plots/ENC_TDS_Plots-2007NOV00/Isolated Dangers PLOT 1.pdf" show ISODGR01 in shallow water !!
+        // and fail to show ISODGR01 on IHO_S-64/ENC_ROOT/GB5X01NE.000 test chart
+
         if (UNKNOWN == least_depth) {    // chenzunfeng fix
-            /*
 #ifdef S52_DEBUG
-            {   // this bug skip symbol ISODGR01 in shallow water
+            /*
+            {   
                 static int silent = FALSE;
                 if (FALSE == silent) {
                     PRINTF("DEBUG: chenzunfeng found this should be (UNKNOWN == least_depth)[not !=], %s:%i\n", S57_getName(geo), S57_getS57ID(geo));
@@ -1959,8 +1930,8 @@ static GString *OBSTRN04 (S57_geo *geo)
                 }
                 S57_setHighlight(geo, TRUE);  // Bic island CA279037.000
             }
-#endif
             //*/
+#endif
 
             GString *catobsstr = S57_getAttVal(geo, "CATOBS");
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
@@ -2009,6 +1980,7 @@ static GString *OBSTRN04 (S57_geo *geo)
             if (valsou <= 20.0) {
                 GString *watlevstr = S57_getAttVal(geo, "WATLEV");
                 GString *objlstr   = S57_getAttVal(geo, "OBJL");
+
                 // debug
                 if (NULL == objlstr) {
                     PRINTF("ERROR: OBJL Attribute name missing\n");
@@ -2350,7 +2322,6 @@ static GString *OWNSHP02 (S57_geo *geo)
 
 // FIXME: get conning position (where/how to get those values?)
 {
-    //GString *ownshp02  = g_string_new("");
     GString *ownshp02  = _g_string_new(NULL, NULL);
     //GString *headngstr = S57_getAttVal(geo, "headng");
     GString *vlabelstr = S57_getAttVal(geo, "_vessel_label");
@@ -2440,12 +2411,10 @@ static GString *PASTRK01 (S57_geo *geo)
         // Note: text grouping 51
         if ('1' == *catpststr->str) {
             //pastrk01 = g_string_new(";LS(SOLD,2,PSTRK);SY(PASTRK01);TX(pastrk,2,1,2,'15110',-1,-1,CHBLK,51)");
-            //pastrk01 = g_string_new(";LS(SOLD,2,PSTRK);SY(PASTRK01)");
             pastrk01 = _g_string_new(pastrk01, ";LS(SOLD,2,PSTRK);SY(PASTRK01)");
         }
         if ('2' == *catpststr->str) {
             //pastrk01 = g_string_new(";LS(SOLD,1,SYTRK);SY(PASTRK02);TX(pastrk,2,1,2,'15110',-1,-1,CHBLK,51)");
-            //pastrk01 = g_string_new(";LS(SOLD,1,SYTRK);SY(PASTRK02)");
             pastrk01 = _g_string_new(pastrk01, ";LS(SOLD,1,SYTRK);SY(PASTRK02)");
         }
 
@@ -2525,7 +2494,6 @@ static GString *_QUALIN01(S57_geo *geo)
     }
 
     if (NULL != line) {
-        //qualino1 = g_string_new(line);
         qualin01 = _g_string_new(qualin01, line);
     }
 
@@ -2550,7 +2518,6 @@ static GString *_QUAPNT01(S57_geo *geo)
     }
 
     if (accurate) {
-        //quapnt01 = g_string_new(";SY(LOWACC01)");
         quapnt01 = _g_string_new(quapnt01, ";SY(LOWACC01)");
     }
 
@@ -2614,15 +2581,18 @@ static GString *SLCONS03 (S57_geo *geo)
     if (S57_AREAS_T == S57_getObjtype(geo)) {
         GString    *seabed01  = NULL;
         GString    *drval1str = S57_getAttVal(geo, "DRVAL1");
-        double      drval1    = (NULL == drval1str)? -UNKNOWN : S52_atof(drval1str->str);
+        double      drval1    = (NULL == drval1str)? UNKNOWN : S52_atof(drval1str->str);
         GString    *drval2str = S57_getAttVal(geo, "DRVAL2");
-        double      drval2    = (NULL == drval2str)? -UNKNOWN : S52_atof(drval2str->str);
-        // Note: change sign of infinity (minus) to get out of bound in seabed01
+        double      drval2    = (NULL == drval2str)? UNKNOWN : S52_atof(drval2str->str);
 
         double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-        if ( -UNKNOWN != drval1)
+        //if ( -UNKNOWN != drval1)
+        //    drval1 += datum;
+        //if ( -UNKNOWN != drval2)
+        //    drval2 += datum;
+        if (UNKNOWN != drval1)
             drval1 += datum;
-        if ( -UNKNOWN != drval2)
+        if (UNKNOWN != drval2)
             drval2 += datum;
 
         // debug
@@ -2630,7 +2600,6 @@ static GString *SLCONS03 (S57_geo *geo)
 
         seabed01 = _SEABED01(drval1, drval2);
         if (NULL != seabed01) {
-            //slcons03 = g_string_new(seabed01->str);
             slcons03 = _g_string_new(slcons03, seabed01->str);
             //g_string_append(slcons03, seabed01->str);
             g_string_free(seabed01, TRUE);
@@ -2640,7 +2609,6 @@ static GString *SLCONS03 (S57_geo *geo)
 
     if (NULL != cmdw) {
         if (NULL == slcons03) {
-            //slcons03 = g_string_new(cmdw);
             slcons03 = _g_string_new(slcons03, cmdw);
         } else {
             g_string_append(slcons03, cmdw);
@@ -2666,7 +2634,6 @@ static GString *RESARE02 (S57_geo *geo)
 // Other object classes affected by attribute RESTRN are handled by
 // conditional symbology procedure RESTRN01.
 {
-    //GString *resare02         = g_string_new("");
     GString *resare02         = _g_string_new(NULL, NULL);
     GString *restrnstr        = S57_getAttVal(geo, "RESTRN");
     //char     restrn[LISTSIZE] = {'\0'};
@@ -2912,7 +2879,6 @@ static GString *_RESCSP01(GString *restrnstr)
             }
         }
 
-        //rescsp01 = g_string_new(symb);
         rescsp01 = _g_string_new(rescsp01, symb);
     //}
 
@@ -2966,7 +2932,6 @@ static GString *_SEABED01(double drval1, double drval2)
 
     }
 
-    //seabed01 = g_string_new(arecol);
     seabed01 = _g_string_new(seabed01, arecol);
 
     if (TRUE==(int) S52_MP_get(S52_MAR_SHALLOW_PATTERN) && TRUE==shallow)
@@ -3014,7 +2979,6 @@ static GString *_SNDFRM02(S57_geo *geo, double depth_value)
 // sounding labels. It symbolizes swept depth and it also symbolizes for low
 // reliability as indicated by attributes QUASOU and QUAPOS.
 {
-    //GString *sndfrm02         = g_string_new("");
     GString *sndfrm02         = _g_string_new(NULL, NULL);
     const char *symbol_prefix = NULL;
     GString *tecsoustr        = S57_getAttVal(geo, "TECSOU");
@@ -3288,7 +3252,6 @@ static GString *TOPMAR01 (S57_geo *geo)
 
     }
 
-    //topmar = g_string_new(sy);
     topmar = _g_string_new(topmar, sy);
 
     return topmar;
@@ -3308,7 +3271,7 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
     double   safety_contour = S52_MP_get(S52_MAR_SAFETY_CONTOUR);
 
     // first reset original scamin
-    S57_resetScamin(geo);
+    S57_setScamin(geo, 1.0);
 
     if (UNKNOWN!=depth_value && depth_value<=safety_contour) {
         // that intersect this point/line/area for OBSTRN04
@@ -3364,8 +3327,7 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
         if (TRUE == danger) {
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
             if (NULL != watlevstr && ('1' == *watlevstr->str || '2' == *watlevstr->str)) {
-                //udwhaz03str = g_string_new(";OP(--D14050");
-                udwhaz03 = _g_string_new(udwhaz03, ";OP(--D14050");
+                udwhaz03 = _g_string_new(udwhaz03, ";OP(--D14050)");
             } else {
                 // Note: UDWHAZ04 --> stay on original (OTHER!) disp cat
                 //      FIXME: perhapse add PLIB rule to link to UDWHAZ04
@@ -3380,13 +3342,13 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
                 // FIX: logically an Isolated Danger Sym (ISODGR01) would be on a POINT_T !
                 // BUT: UDWHAZ03 apply to point,area. While UDWHAZ04 apply to point,line,area!!
                 if (S57_POINT_T == S57_getObjtype(geo)) {                      // fix: udwhaz03 - place ISODRG on point only
-                    udwhaz03 = g_string_new(";OP(8OD14010);SY(ISODGR01)");  // udwhaz04 - place ISODGR on original disp cat!
+                    udwhaz03 = _g_string_new(udwhaz03, ";OP(8OD14010);SY(ISODGR01)");  // udwhaz04 - place ISODGR on original disp cat!
                 } else {
-                    //udwhaz03str = g_string_new(";OP(8OD14010)");  // udwhaz04 - line, area
-                    udwhaz03 = g_string_new(";OP(8O-14010)");  // udwhaz04 - stay at original disp cat
+                    udwhaz03 = _g_string_new(udwhaz03, ";OP(8O-14010)");  // udwhaz04 - stay at original disp cat
                 }
 
-                S57_setAtt(geo, "SCAMIN", "INFINITY");
+                //S57_setAtt(geo, "SCAMIN", "INFINITY");
+                S57_setScamin(geo, INFINITY);
             }
         }
     }
@@ -3406,7 +3368,6 @@ static GString *VESSEL01 (S57_geo *geo)
 // * Note that the same vector parameters should be used for own-ship and all vessel
 // vectors.
 {
-    //GString *vessel01  = g_string_new("");
     GString *vessel01  = _g_string_new(NULL, NULL);
     GString *vesrcestr = S57_getAttVal(geo, "vesrce");  // vessel report source
     GString *vlabelstr = S57_getAttVal(geo, "_vessel_label");
@@ -3550,7 +3511,6 @@ static GString *VRMEBL01 (S57_geo *geo)
 // circle, bearing line and range/bearing line. VRM's and EBL's can be ship-centred
 // or freely movable, and two line-styles are available
 {
-    //GString *vrmebl01str = g_string_new("");
     GString *vrmebl01 = _g_string_new(NULL, NULL);
 
     // freely movable origine symb (a dot)
@@ -3617,6 +3577,12 @@ static GString *WRECKS02 (S57_geo *geo)
     //if (6246 == S57_getS57ID(geo)) {
     //    PRINTF("WRECKS found\n");
     //}
+    //CA479020.000
+    //if (5620 == S57_getS57ID(geo)) {
+    //    PRINTF("DEBUG: 5620 Q40 wreck \n");
+    //    //g_assert(0);
+    //}
+
 
 
     if (NULL != valsoustr) {
@@ -3627,7 +3593,7 @@ static GString *WRECKS02 (S57_geo *geo)
         if (S57_AREAS_T == S57_getObjtype(geo))
             least_depth = _DEPVAL01(geo, least_depth);
 
-        if (least_depth == UNKNOWN) {
+        if (UNKNOWN == least_depth) {
             // WARNING: ambiguity removed in WRECKS03 (see update in C&S_MD2.PDF)
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
             GString *catwrkstr = S57_getAttVal(geo, "CATWRK");
@@ -3679,7 +3645,6 @@ static GString *WRECKS02 (S57_geo *geo)
 
     if (S57_POINT_T == S57_getObjtype(geo)) {
         if (NULL != udwhaz03) {
-            //wrecks02 = g_string_new(udwhaz03str->str);
             wrecks02 = _g_string_new(wrecks02, udwhaz03->str);
 
             if (NULL != quapnt01)
@@ -3690,14 +3655,13 @@ static GString *WRECKS02 (S57_geo *geo)
             if (UNKNOWN != valsou) {
 
                 if (valsou <= 20.0) {
-                    //wrecks02 = g_string_new(";SY(DANGER01)");
                     wrecks02 = _g_string_new(wrecks02, ";SY(DANGER01)");
                     if (NULL != sndfrm02)
                         g_string_append(wrecks02, sndfrm02->str);
 
-                } else
-                    //wrecks02 = g_string_new(";SY(DANGER02)");
+                } else {
                     wrecks02 = _g_string_new(wrecks02, ";SY(DANGER02)");
+                }
 
                 // !!! - check this - doesn't make sens
                 if (NULL != udwhaz03)
@@ -3736,7 +3700,6 @@ static GString *WRECKS02 (S57_geo *geo)
                     //}
                 //}
 
-                //wrecks02 = g_string_new(sym);
                 wrecks02 = _g_string_new(wrecks02, sym);
                 if (NULL != quapnt01)
                     g_string_append(wrecks02, quapnt01->str);
@@ -3783,7 +3746,6 @@ static GString *WRECKS02 (S57_geo *geo)
                  }
             }
         }
-        //wrecks02 = g_string_new(line);
         wrecks02 = _g_string_new(wrecks02, line);
 
         if (UNKNOWN != valsou) {
