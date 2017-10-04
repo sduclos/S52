@@ -171,22 +171,20 @@ S57_geo  *S57_getTouchDEPVAL(S57_geo *geo);
 
 double    S57_setScamin(S57_geo *geo, double scamin);
 double    S57_getScamin(S57_geo *geo);
-double    S57_resetScamin(S57_geo *geo);
 
 int       S57_setRelationship(S57_geo *geo, S57_geo *geoRel);
 S57_geo  *S57_getRelationship(S57_geo *geo);
 
-#if 0
 // count the number of 'real (6length)' attributes
 //int       S57_getNumAtt(S57_geo *geo);
 // return the 'real' attributes of the geodata. name and val must be preallocated, and be sufficient large. (use S57_getNumAtt for counting)
 //int       S57_getAttributes(S57_geo *geo, char **name, char **val);
 // returns the window boundary with the current projection. After  the geo2prj and initproj have been public, this function may be moved to application layer.
 //void    S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax);
-#endif
 
 // debug
 int       S57_dumpData(S57_geo *geo, int dumpCoords);
+
 #define   S57GETS57ID(GEO)    (*(guint *)GEO)
 #define   S57_getS57ID(geo) S57GETS57ID(geo)
 //guint     S57_getS57ID(S57_geo *geo);
@@ -197,12 +195,10 @@ int       S57_donePROJ(void);
 int       S57_setMercPrj(double lat, double lon);
 GCPTR     S57_getPrjStr(void);
 projXY    S57_prj2geo(projUV uv);
-//int       S57_geo2prj3dv(guint npt, geocoord *data);
 int       S57_geo2prj3dv(guint npt, pt3 *data);
 int       S57_geo2prj(S57_geo *geo);
 #endif  // S52_USE_PROJ
 
-//int       S57_isPtInside(int npt, geocoord *xyz, gboolean close, double x, double y);
 int       S57_isPtInside(int npt, pt3 *pt, gboolean close, double x, double y);
 int       S57_touch(S57_geo *geoA, S57_geo *geoB);
 
