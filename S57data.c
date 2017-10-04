@@ -24,8 +24,7 @@
 #include "S57data.h"    // S57_geo
 #include "S52utils.h"   // PRINTF()
 
-#define _ISOC99_SOURCE
-#include <math.h>       // INFINITY, NAN, nearbyint()
+#include <math.h>       // INFINITY, nearbyint()
 
 #ifdef S52_USE_PROJ
 static projPJ      _pjsrc   = NULL;   // projection source
@@ -46,11 +45,6 @@ static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 // see gdal/ogr/ogrsf_frmts/s57/s57.h:126
 // it is then turn into a string in gv_properties
 //#define EMPTY_NUMBER_MARKER "2147483641"  /* MAXINT-6 */
-
-//#define UNKNOWN  (1.0/0.0)   //HUGE_VAL   // INFINITY/NAN
-// FIXME: this fail in CS - why?
-//#define UNKNOWN  NAN
-#define UNKNOWN  FP_NAN  // OK
 
 // object's internal ID
 static unsigned int _S57ID = 1;  // start at 1, the number of object loaded
@@ -107,6 +101,24 @@ typedef struct _S57_geo {
     // in a format suitable for OpenGL
     S57_prim    *prim;
 
+    // scamin overide attribs val
+    double       scamin;      // 0.0 - init needed
+                              // 1.0 - val resetted by CS DEPCNT02, _UDWHAZ03 (via OBSTRN04, WRECKS02)
+                              // XX  - normal value from CS
+
+    // FIXME: SCAMAX
+    // FIXME:
+    // double drval1 init UNKOWN
+    // double drval2 init unknown
+    // ...
+
+//12377 valName:DRVAL1
+//15262 valName:SCAMIN
+//17010 valName:CATLMK
+//43629 valName:DRVAL2
+//2350410 valName:LNAM
+
+    //gooblean     isUTF8;  // text in attribs
     GData       *attribs;
 
 #ifdef S52_USE_C_AGGR_C_ASSO
@@ -115,7 +127,7 @@ typedef struct _S57_geo {
     S57_geo     *relation;
 #endif
 
-    // for CS - object "touched" by this object - ref to object local to tihs object
+    // for CS - object "touched" by this object - ref to object local to this object
     // FIXME: union assume use is exclusif - check this!
     union {
     //struct {
@@ -124,10 +136,6 @@ typedef struct _S57_geo {
         S57_geo *DEPARE; // break out objet class "touched"
         S57_geo *DEPVAL; // break out objet class "touched"
     } touch;
-
-    double       scamin;
-
-    // FIXME: SCAMAX
 
 #ifdef S52_USE_SUPP_LINE_OVERLAP
     // only for object "Edge"
@@ -363,6 +371,8 @@ int        S57_geo2prj3dv(guint npt, pt3 *data)
     return TRUE;
 }
 
+#if 0
+// FIXME: this break line/poly match
 static int    _inLine(pt3 A, pt3 B, pt3 C)
 // is BC inline with AC or visa-versa (not AB)
 {
@@ -530,13 +540,14 @@ static   int  _simplifyGEO(_S57_geo *geo)
 
     return TRUE;
 }
+#endif  // 0
 
 int        S57_geo2prj(_S57_geo *geo)
 {
     // useless - rbin
     //return_if_null(geo);
 
-    // FIXME: this break line/poly missmatch
+    // FIXME: this break line/poly match
     //_simplifyGEO(geo);
 
     if (TRUE == _doInit)
@@ -649,7 +660,8 @@ S57_geo   *S57_setPOINT(geocoord *xyz)
     geo->ext.E    = -INFINITY;
     geo->ext.N    = -INFINITY;
 
-    geo->scamin   =  INFINITY;
+    //geo->scamin   =  INFINITY;
+    geo->scamin   =  0.0;
 
 #ifdef S52_USE_WORLD
     geo->nextPoly = NULL;
@@ -692,7 +704,8 @@ S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
     geo->ext.E      = -INFINITY;
     geo->ext.N      = -INFINITY;
 
-    geo->scamin     =  INFINITY;
+    //geo->scamin     =  INFINITY;
+    geo->scamin     =  0.0;
 
 
 #ifdef S52_USE_WORLD
@@ -748,7 +761,8 @@ S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
     geo->ext.E      = -INFINITY;
     geo->ext.N      = -INFINITY;
 
-    geo->scamin     =  INFINITY;
+    //geo->scamin     =  INFINITY;
+    geo->scamin     =  0.0;
 
 #ifdef S52_USE_WORLD
     geo->nextPoly   = NULL;
@@ -778,7 +792,8 @@ S57_geo   *S57_set_META(void)
     geo->ext.E  = -INFINITY;
     geo->ext.N  = -INFINITY;
 
-    geo->scamin =  INFINITY;
+    //geo->scamin =  INFINITY;
+    geo->scamin =  0.0;
 
 #ifdef S52_USE_WORLD
     geo->nextPoly = NULL;
@@ -1114,45 +1129,7 @@ int        S57_setExt(_S57_geo *geo, double W, double S, double E, double N)
     return TRUE;
 }
 
-#if 0
-/*
-int        S57_getExt(_S57_geo *geo, double *W, double *S, double *E, double *N)
-// assume: extent canonical
-{
-    // called from inside cull loop this check is useless
-    // but other call are not
-    return_if_null(geo);
-
-    // no extent: "$CSYMB", afgves, vessel, ..
-    //if (0 != isinf(geo->ext.W)) {  // inf
-    if (INFINITY == geo->ext.W) {  // inf
-        geo->ext.W = -INFINITY;  // W
-        geo->ext.S = -INFINITY;  // S
-        geo->ext.E =  INFINITY;  // E
-        geo->ext.N =  INFINITY;  // N
-
-        // filter out system generated symb (scale, unit, ..) have no extent
-        if (0 != g_strcmp0(geo->name, "$CSYMB")) {
-            //PRINTF("DEBUG: no extent for %s:%i\n", geo->name, geo->S57ID);
-            S57_dumpData(geo, TRUE);
-        }
-
-        return FALSE;
-        //return TRUE;
-    }
-
-    *W = geo->ext.W;  // W
-    *S = geo->ext.S;  // S
-    *E = geo->ext.E;  // E
-    *N = geo->ext.N;  // N
-
-    return TRUE;
-}
-*/
-#endif  // 0
-
 ObjExt_t   S57_getExt(_S57_geo *geo)
-// test returning ObjExt_t extent intead of four double in param
 {
     // no extent: "$CSYMB", afgves, vessel, ..
     if (0 != isinf(geo->ext.W)) {  // inf
@@ -1236,6 +1213,10 @@ int        S57_getAttributes(_S57_geo *geo, char **name, char **val)
 */
 #endif
 
+
+static guint   _qMax = 0;
+//static GArray *_qList    = NULL;
+static guint _qcnt[500] = {0};
 GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
 // return attribute string value or NULL if:
 //      1 - attribute name abscent
@@ -1244,11 +1225,86 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
     return_if_null(geo);
     return_if_null(att_name);
 
-    //GString *att = (GString*) g_datalist_get_data(&geo->attribs, att_name);
-    //GString *att = (GString*) g_dataset_id_get_data(&geo->attribs, g_quark_try_string(att_name));
+    // FIXME: check and time for direct value in geo (heading / course)
+/*
+110 1 valName:DSID_INTU
+112 1 valName:DSID_EDTN
+113 1 valName:DSID_UPDN
+114 1 valName:DSID_UADT
+115 1 valName:DSID_ISDT
+134 1 valName:DSPM_HDAT
+135 1 valName:DSPM_VDAT
+136 1 valName:DSPM_SDAT
+137 1 valName:DSPM_CSCL
+138 1 valName:DSPM_DUNI
+139 1 valName:DSPM_HUNI
+145 15262 valName:SCAMIN
+146 1 valName:DSID_SDAT
+147 1 valName:DSID_VDAT
+148 2350410 valName:LNAM
+150 7538 valName:RCID
+154 2754 valName:NAME_RCID_0
+160 2754 valName:NAME_RCID_1
+167 4975 valName:OBJL
+171 4106 valName:NAME_RCNM
+172 4106 valName:NAME_RCID
+176 522 valName:CATBRG
+177 26 valName:VERCLR
+180 7376 valName:LNAM_REFS
+182 153 valName:BOYSHP
+183 236 valName:COLOUR
+185 61 valName:OBJNAM
+186 63 valName:CATSPM
+187 3 valName:CATCBL
+188 273 valName:CONRAD
+189 9 valName:VERCSA
+190 6 valName:INFORM
+192 2628 valName:CATCOA
+193 12377 valName:DRVAL1
+194 43629 valName:DRVAL2
+195 3204 valName:VALDCO
+197 17010 valName:CATLMK
+198 1800 valName:CONVIS
+199 1905 valName:FUNCTN
+200 118 valName:HEIGHT
+201 118 valName:LITCHR
+202 118 valName:SIGGRP
+203 118 valName:SIGPER
+204 118 valName:VALNMR
+205 295 valName:SECTR1
+206 295 valName:SECTR2
+207 236 valName:CATLIT
+208 348 valName:CATOBS
+209 384 valName:VALSOU
+210 3981 valName:WATLEV
+212 304 valName:ORIENT
+213 216 valName:TRAFIC
+216 6 valName:CATSLC
+217 7 valName:CONDTN
+218 3 valName:BURDEP
+219 20 valName:CATWRK
+220 1 valName:POSACC
+221 1 valName:CSCALE
+222 2 valName:CATCOV
+223 12 valName:MARSYS
+224 37 valName:CATZOC
+226 1236 valName:$SCODE
+*/
+
     GQuark   q   = g_quark_from_string(att_name);
-    //GQuark   q   = g_quark_from_static_string(att_name);
     GString *att = (GString*) g_datalist_id_get_data(&geo->attribs, q);
+
+    { // stat
+        if (500 < q)
+            g_assert(0);
+        _qcnt[q]++;
+
+        // CATLMK = 197
+        //if (197 == q) {
+        //    PRINTF("DEBUG: XXX attribute (%s) quark:%i\n", att_name, q);
+        //    //g_assert(0);
+        //}
+    }
 
     if (NULL!=att && (0==g_strcmp0(att->str, EMPTY_NUMBER_MARKER))) {
         //PRINTF("NOTE: mandatory attribute (%s) with ommited value\n", att_name);
@@ -1265,15 +1321,6 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
         return NULL;
     }
 
-    /* FIXME: handle NULL in caller
-    if (NULL == att) {
-        // clutter
-        PRINTF("DEBUG: attribute name (%s) has NULL attribute value\n", att_name);
-        //S57_dumpData(geo, FALSE);
-        //g_assert(0);
-    }
-    */
-
     return att;
 }
 
@@ -1282,8 +1329,8 @@ static void   _string_free(gpointer data)
     g_string_free((GString*)data, TRUE);
 }
 
-// FIXME: returning GData is useless
 GData     *S57_setAtt(_S57_geo *geo, const char *name, const char *val)
+// FIXME: returning GData is useless
 {
     return_if_null(geo);
     return_if_null(name);
@@ -1291,6 +1338,22 @@ GData     *S57_setAtt(_S57_geo *geo, const char *name, const char *val)
 
     GQuark   qname = g_quark_from_string(name);
     GString *value = g_string_new(val);
+
+    /* debug
+    GString *valstr = S57_getAttVal(geo, name);
+    if (NULL != valstr) {
+        // only SCAMIN set to INFINITY pass here
+        PRINTF("DEBUG: XXXXXXXXXXXXXXXXXXXX overwrite att_name: %s att_val: %s old_val: %s\n", name, val, valstr->str);
+        //g_assert(0);
+    }
+    */
+
+    // FIXME: _qMin
+    // stat
+    if (_qMax < qname) {
+        _qMax = qname;
+        //PRINTF("DEBUG: maxQuark:%i att_name: %s\n", maxQuark, name);
+    }
 
     if (NULL == geo->attribs)
         g_datalist_init(&geo->attribs);
@@ -1452,27 +1515,39 @@ double     S57_getScamin(_S57_geo *geo)
     // test useless since the only caller allready did that
     //return_if_null(geo);
 
+    // 0 - init, 1 - reset
+    if (0.0==geo->scamin || 1.0==geo->scamin) {
+        GString *valstr = S57_getAttVal(geo, "SCAMIN");
+        if (NULL == valstr) {
+            // allway visible, except if scamin=1 set by DEPCNT02 and _UDWHAZ03 (via OBSTRN04, WRECKS02)
+            if (1.0 != geo->scamin)
+                geo->scamin = INFINITY;
+        } else {
+            geo->scamin = S52_atof(valstr->str);
+        }
+    }
+
     return geo->scamin;
 }
 
+#if 0
 double     S57_resetScamin(_S57_geo *geo)
 // reset scamin from att val
 {
     // test useless since the only caller allready did that
     //return_if_null(geo);
 
-    if (NULL == geo->attribs)
-        g_datalist_init(&geo->attribs);
-
     GString *valstr = S57_getAttVal(geo, "SCAMIN");
 
     //double val = (NULL==valstr) ? INFINITY : S52_atof(valstr->str);
-    double val = (NULL==valstr) ? UNKNOWN : S52_atof(valstr->str);
+    //double val = (NULL==valstr) ? UNKNOWN : S52_atof(valstr->str);
+    double val = (NULL==valstr) ? 0.0 : S52_atof(valstr->str);
 
     geo->scamin = val;
 
     return geo->scamin;
 }
+#endif  // 0
 
 #ifdef S52_USE_C_AGGR_C_ASSO
 int        S57_setRelationship(_S57_geo *geo, _S57_geo *geoRel)
@@ -1485,9 +1560,9 @@ int        S57_setRelationship(_S57_geo *geo, _S57_geo *geoRel)
         geo->relation = geoRel;
     } else {
         // FIXME: US3NY21M/US3NY21M.000 has multiple relation for the same object
-        // also CA379035.000
+        // also CA379035.000, CA479020.000
         PRINTF("DEBUG: 'geo->relation' allready in use ..\n");
-        g_assert(0);
+        //g_assert(0);
 
         return FALSE;
     }
@@ -1520,8 +1595,22 @@ static void   _printAttVal(GQuark key_id, gpointer data, gpointer user_data)
 int        S57_dumpData(_S57_geo *geo, int dumpCoords)
 // debug - if dumpCoords is TRUE dump all coordinates
 {
-    return_if_null(geo);
+    //return_if_null(geo);
 
+    // dump stat mode
+    if (NULL == geo) {
+        PRINTF("STAT START:\n");
+        // FIXME: _qMin
+        for (guint i=0; i<_qMax; ++i) {
+            // FIXME: show att with 0 call
+            if (0 != _qcnt[i])
+                PRINTF("STAT: i:%i nCall:%i valName:%s\n", i, _qcnt[i], g_quark_to_string(i));
+        }
+
+        return TRUE;
+    }
+
+    // noraml mode
     PRINTF("----------------\n");
     PRINTF("NAME  : %s\n", geo->name);
     PRINTF("S57ID : %i\n", geo->S57ID);
@@ -1804,9 +1893,12 @@ int        S57_touch(_S57_geo *geoA, _S57_geo *geoB)
     if (FALSE == S57_getGeoData(geoB, 0, &nptB, &pptB))
         return FALSE;
 
+    // FIXME: handle A type
+
     // FIXME: work only for point in poly not point in line
     if (S57_LINES_T == S57_getObjtype(geoB)) {
         PRINTF("FIXME: geoB is a S57_LINES_T .. this algo break on that type\n");
+        g_assert(0);
         return FALSE;
     }
 
