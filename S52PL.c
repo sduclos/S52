@@ -1082,6 +1082,7 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
 
     // init scamin override (ISODGR01)
     // FIXME: aply only to those that reset SCAMIN: DEPCNT02, OBSTRN04/_UDWHAZ03, WRECKS02/_UDWHAZ03
+    // this break internal consitency
     //if (TRUE==S52_PL_cmpCmdParam(obj, "DEPCNT02") ||
     //    TRUE==S52_PL_cmpCmdParam(obj, "OBSTRN04") ||
     //    TRUE==S52_PL_cmpCmdParam(obj, "WRECKS02"))
@@ -2115,7 +2116,7 @@ static CCHAR     *_getParamVal(S57_geo *geo, CCHAR *str, char *buf, int bsz)
             if (0 == strncmp(buf, "DRVAL1", S57_OBJ_ATT_LEN)) {
                 double height = S52_atof(valstr->str);
 
-                // ajust datum if required
+                // ajust datum
                 double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
                 height += datum;
                 g_snprintf(buf, 4, "%4.1f", height);
@@ -2130,7 +2131,7 @@ static CCHAR     *_getParamVal(S57_geo *geo, CCHAR *str, char *buf, int bsz)
             {
                 double height = S52_atof(valstr->str);
 
-                // ajust datum if required
+                // ajust datum
                 double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
                 height -= datum;
                 g_snprintf(buf, 4, "%4.1fm ", height);
@@ -2913,12 +2914,12 @@ S57data.c:1515 in _printAttVal(): SYMINS: SY(BRTHNO01);TE('%s','OBJNAM',2,1,2,'1
 
     if (0 != obj->LUP->INST->len) {
         // get tokenized instruction list
-        //obj->cmdLorig[alt] = _parseINST(obj->LUP->INST);
         obj->cmdLorig[alt] = _parseINST(obj->LUP->INST, &obj->hasText[alt]);
-    } else {
-        // parano: test empty INST
-        PRINTF("BEDUG: empty LUP/INST for %s:%c\n", objName, S57_getObjtype(obj->geo));
     }
+    //else {
+        // parano: check empty INST
+        //PRINTF("BEDUG: empty LUP/INST for %s:%c\n", objName, S57_getObjtype(obj->geo));
+    //}
 
     return TRUE;
 }
