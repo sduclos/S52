@@ -2407,12 +2407,12 @@ static int        __builS57Edge(S57_geo *geo, double *ppt_0, double *ppt_1)
 
     /* debug
     if (0 == npt) {
-        PRINTF("DEBUG: geo empty\n");
+        PRINTF("DEBUG: no S57 edge primitive\n");
         //g_assert(0);
     }
     */
 
-    // new S57 Edge = ENs + CNs
+    // new S57 Edge = CN - EN - .. - EN - CN
     guint   npt_new     = npt + 2;  // the new edge will have 2 more point - one at each end
     double *ppt_new     = g_new(double, npt_new*3);
 
@@ -2424,9 +2424,10 @@ static int        __builS57Edge(S57_geo *geo, double *ppt_0, double *ppt_1)
 
     // transfert ENs coords
     if (0 != npt) {
-        // +3 step over first pos.
+        // +3 (XYZ) step over first pos.
         memcpy(ppt_new+3, ppt, sizeof(double) * 3 * npt);
     }
+
     g_free(ppt);
 
     // update S57 Edge
@@ -2444,9 +2445,9 @@ static int        __builS57Edge(S57_geo *geo, double *ppt_0, double *ppt_1)
     return TRUE;
 }
 
-static int        _loadS57Edge(const char *name, void *Edge)
-// 2nd - collecte OGR "Edge" shape
-// ConnectedNode (CN), EdgeNode (EN): resulting S57 edge ==> CN - EN - .. -EN - CN
+static int        _loadS57EdgeNode(const char *name, void *Edge)
+// 2nd - collecte S57 primitive "EdgeNode" shape
+// ConnectedNode (CN), EdgeNode (EN): resulting S57 edge ==> CN - EN - .. - EN - CN
 {
     if ((NULL==name) || (NULL==Edge)) {
         PRINTF("DEBUG: objname / shape  --> NULL\n");
@@ -2645,7 +2646,7 @@ int            S52_loadLayer(const char *layername, void *layer, S52_loadObject_
     }
     // 4th layer - Edge is use to resolve overlapping line
     if (0 == g_strcmp0(layername, "Edge")) {
-        S57_ogrLoadLayer(layername, layer, _loadS57Edge);
+        S57_ogrLoadLayer(layername, layer, _loadS57EdgeNode);
         return TRUE;
     }
     // --------------------------------------------
