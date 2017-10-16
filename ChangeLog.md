@@ -4,10 +4,15 @@
 #
 
 
+2017OCT16
+- fix DEPCNT02 algo adding test pt in set
+- refactor DEPCNT02 add debug code
+- split geo ref to depare_list to depcnt_list and udwhaz_list
+
 2017OCT02
 - mod handle uniformly CS UNKNOWN depth usage
 - add safe gstring_new in CS
-- add stat for S57_goe attribs
+- add stat for S57_geo attribs
 - add debug code for UFT8
 - clean up scamin logic
 
