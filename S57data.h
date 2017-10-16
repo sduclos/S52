@@ -146,6 +146,7 @@ int       S57_setPrimDList (S57_prim *prim, guint DList);
 // get/set extend
 int       S57_setExt(S57_geo *geo, double  W, double  S, double  E, double  N);
 ObjExt_t  S57_getExt(S57_geo *geo);
+gboolean  S57_cmpExt(ObjExt_t A, ObjExt_t B);
 
 // get geo type (P,L,A) of this object
 // Note: return the same thing as a call to S52_PL_getFTYP()
@@ -164,8 +165,10 @@ int       S57_setTouchTOPMAR(S57_geo *geo, S57_geo *touch);
 S57_geo  *S57_getTouchTOPMAR(S57_geo *geo);
 int       S57_setTouchLIGHTS(S57_geo *geo, S57_geo *touch);
 S57_geo  *S57_getTouchLIGHTS(S57_geo *geo);
-int       S57_setTouchDEPARE(S57_geo *geo, S57_geo *touch);
-S57_geo  *S57_getTouchDEPARE(S57_geo *geo);
+int       S57_setTouchDEPCNT(S57_geo *geo, S57_geo *touch);
+S57_geo  *S57_getTouchDEPCNT(S57_geo *geo);
+int       S57_setTouchUDWHAZ(S57_geo *geo, S57_geo *touch);
+S57_geo  *S57_getTouchUDWHAZ(S57_geo *geo);
 int       S57_setTouchDEPVAL(S57_geo *geo, S57_geo *touch);
 S57_geo  *S57_getTouchDEPVAL(S57_geo *geo);
 
@@ -199,8 +202,9 @@ int       S57_geo2prj3dv(guint npt, pt3 *data);
 int       S57_geo2prj(S57_geo *geo);
 #endif  // S52_USE_PROJ
 
-int       S57_isPtInside(int npt, pt3 *pt, gboolean close, double x, double y);
-int       S57_touch(S57_geo *geoA, S57_geo *geoB);
+gboolean  S57_isPtInArea(guint npt, pt3 *pt, gboolean close, double x, double y);
+gboolean  S57_isPtInSet(S57_geo *geo, double x, double y);
+gboolean  S57_touchArea(S57_geo *geoArea, S57_geo *geo);
 
 guint     S57_getGeoSize(S57_geo *geo);
 guint     S57_setGeoSize(S57_geo *geo, guint size);
@@ -227,7 +231,6 @@ gboolean  S57_getHighlight(S57_geo *geo);
 
 //int       S57_setHazard(S57_geo *geo, gboolean hazard);
 //gboolean  S57_isHazard (S57_geo *geo);
-
 
 //int       S57_setLOD(S52_obj *obj, char LOD);
 //char      S57_getLOD(S52_obj *obj);
