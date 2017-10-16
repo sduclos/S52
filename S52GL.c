@@ -404,8 +404,8 @@ static int       _getCentroid(guint npt, pt3 *v)
 
         //PRINTF("XY(%s): %f, %f, %i \n", (atmp>=0.0) ? "CW " : "CCW", p.x, p.y, npt);
 
-        //if (TRUE == S57_isPtInside(npt, (double*)v, pt.x, pt.y, FALSE)) {
-        if (TRUE == S57_isPtInside(npt, v, FALSE, pt.x, pt.y)) {
+        //if (TRUE == S57_isPtInArea(npt, (double*)v, pt.x, pt.y, FALSE)) {
+        if (TRUE == S57_isPtInArea(npt, v, FALSE, pt.x, pt.y)) {
             g_array_append_val(_centroids, pt);
 
             return TRUE;
@@ -494,8 +494,8 @@ static int       _getCentroidClose(guint npt, pt3 *v)
 
         //PRINTF("XY(%s): %f, %f, %i \n", (atmp>=0.0) ? "CCW " : "CW", pt->x, pt->y, npt);
 
-        //if (TRUE == S57_isPtInside(npt, ppt, TRUE, pt.x, pt.y)) {
-        if (TRUE == S57_isPtInside(npt, (double*)v, TRUE, pt.x, pt.y)) {
+        //if (TRUE == S57_isPtInArea(npt, ppt, TRUE, pt.x, pt.y)) {
+        if (TRUE == S57_isPtInArea(npt, (double*)v, TRUE, pt.x, pt.y)) {
             g_array_append_val(_centroids, pt);
             //PRINTF("point is inside polygone\n");
 
@@ -8062,7 +8062,6 @@ int              _intersectLINES(double x1, double y1, double x2, double y2,
 //*/
 #endif  // 0
 
-//int        S52_GL_isHazard(int nxyz, double *xyz)
 int        S52_GL_isHazard(int npt, pt3 *pt)
 // TRUE if hazard found
 {
@@ -8078,7 +8077,6 @@ int        S52_GL_isHazard(int npt, pt3 *pt)
     memcpy(_hazardZone, pt, sizeof(pt3) * npt);
 #endif
 
-    // highlight Hazard
     int found = FALSE;
     for (guint i=0; i<_objPick->len; ++i) {
         S52_obj  *obj = (S52_obj *)g_ptr_array_index(_objPick, i);
@@ -8090,7 +8088,7 @@ int        S52_GL_isHazard(int npt, pt3 *pt)
             continue;
 
         for (guint j=0; j<nptB; ++j) {
-            if (TRUE == S57_isPtInside(npt, pt, TRUE, pptB[j*3 + 0], pptB[j*3 + 1])) {
+            if (TRUE == S57_isPtInArea(npt, pt, TRUE, pptB[j*3 + 0], pptB[j*3 + 1])) {
                 S57_setHighlight(geo, TRUE);
                 found = TRUE;
                 break;
