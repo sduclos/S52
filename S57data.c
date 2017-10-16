@@ -129,11 +129,12 @@ typedef struct _S57_geo {
 
     // for CS - object "touched" by this object - ref to object local to this object
     // FIXME: union assume use is exclusif - check this!
-    union {
-    //struct {
+    //union {
+    struct {
         S57_geo *TOPMAR; // break out objet class "touched"
         S57_geo *LIGHTS; // break out objet class "touched"
-        S57_geo *DEPARE; // break out objet class "touched"
+        S57_geo *DEPCNT; // break out objet class "touched"
+        S57_geo *UDWHAZ; // break out objet class "touched"
         S57_geo *DEPVAL; // break out objet class "touched"
     } touch;
 
@@ -167,6 +168,11 @@ typedef struct _S57_geo {
 
 static GString *_attList = NULL;
 
+//#define S57_GEO_TOLERANCE 0.0001     // *60*60 = .36'
+//#define S57_GEO_TOLERANCE 0.00001    // *60*60 = .036'   ; * 1852 =
+//#define S57_GEO_TOLERANCE 0.000001   // *60*60 = .0036'  ; * 1852 = 6.667 meter
+//#define S57_GEO_TOLERANCE 0.0000001  // *60*60 = .00036' ; * 1852 = 0.6667 meter
+#define S57_GEO_TOLERANCE 0.00000001   // *60*60 = .000036'; * 1852 = 0.06667 meter
 
 int           _initPROJ()
 // Note: corrected for PROJ 4.6.0 ("datum=WGS84")
@@ -381,12 +387,6 @@ static int    _inLine(pt3 A, pt3 B, pt3 C)
     //A.x=+2;A.y=+2;B.x=0;B.y=0;C.x=-2;C.y=-2;
     //A.x=-2;A.y=-2;B.x=0;B.y=0;C.x=+2;C.y=+2;
     //A.x=-2;A.y=-2;B.x=-11;B.y=-11;C.x=+2;C.y=+2;
-
-//#define S57_GEO_TOLERANCE 0.0001     // *60*60 = .36'
-//#define S57_GEO_TOLERANCE 0.00001    // *60*60 = .036'   ; * 1852 =
-//#define S57_GEO_TOLERANCE 0.000001   // *60*60 = .0036'  ; * 1852 = 6.667 meter
-//#define S57_GEO_TOLERANCE 0.0000001  // *60*60 = .00036' ; * 1852 = 0.6667 meter
-#define S57_GEO_TOLERANCE 0.00000001   // *60*60 = .000036'; * 1852 = 0.06667 meter
 
     // from: https://stackoverflow.com/questions/17692922/check-is-a-point-x-y-is-between-two-points-drawn-on-a-straight-line/17693189
     // if AC is vertical
@@ -1142,6 +1142,30 @@ ObjExt_t   S57_getExt(_S57_geo *geo)
     return geo->ext;
 }
 
+gboolean   S57_cmpExt(ObjExt_t A, ObjExt_t B)
+// TRUE if intersect else FALSE
+{
+    // N-S
+    if (B.N < A.S) return FALSE;
+    if (B.S > A.N) return FALSE;
+
+    // E-W
+    if (B.W > B.E) {
+        // anti-meridian
+        if (((A.W < B.W) || (A.W > B.E)) && ((A.E < B.W) || (A.E > B.E))) {
+        //if ((B.E > A.W) && (B.W > A.E)) {
+        //if ((A.W < B.E) && (B.W > A.E))
+            return TRUE;
+        } else
+            return FALSE;
+    } else {
+        if (B.E < A.W) return FALSE;
+        if (B.W > A.E) return FALSE;
+    }
+
+    return TRUE;
+}
+
 S57_Obj_t  S57_getObjtype(_S57_geo *geo)
 {
     if (NULL == geo)
@@ -1307,7 +1331,12 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
     }
 
     if (NULL!=att && (0==g_strcmp0(att->str, EMPTY_NUMBER_MARKER))) {
-        //PRINTF("NOTE: mandatory attribute (%s) with ommited value\n", att_name);
+        // clutter
+        //PRINTF("DEBUG: mandatory attribute (%s) with ommited value\n", att_name);
+
+        //#include <signal.h>
+        //raise(SIGINT);
+
         return NULL;
     }
 
@@ -1431,16 +1460,48 @@ S57_geo   *S57_getTouchLIGHTS(_S57_geo *geo)
     return geo->touch.LIGHTS;
 }
 
-int        S57_setTouchDEPARE(_S57_geo *geo, S57_geo *touch)
+int        S57_setTouchDEPCNT(_S57_geo *geo, S57_geo *touch)
 {
     return_if_null(geo);
 
     /* debug
-    if ((0==g_strcmp0(touch->name, "DEPARE")) ||
-        (0==g_strcmp0(touch->name, "DRGARE")) ||
-        (0==g_strcmp0(touch->name, "OBSTRN")) ||
-        (0==g_strcmp0(touch->name, "UWTROC")) ||
-        (0==g_strcmp0(touch->name, "WRECKS"))
+    if ((0==g_strcmp0(geo->name, "DEPCNT")) ||
+        (0==g_strcmp0(geo->name, "DEPARE"))
+       )
+    {
+        if (NULL != geo->touch.DEPCNT) {
+            PRINTF("DEBUG: touch.DEPARE allready in use by %s\n", geo->touch.DEPCNT->name);
+            //if (0 != g_strcmp0(geo->name, geo->touch.DEPCNT->name)) {
+            //    PRINTF("DEBUG: %s:%i touch.DEPCNT allready  in use by %s:%i will be replace by %s:%i\n",
+            //           geo->name, geo->S57ID, geo->touch.DEPCNT->name, geo->touch.DEPCNT->S57ID, touch->name, touch->S57ID);
+            //}
+        }
+    } else {
+        PRINTF("DEBUG: geo not for DEPCNT: %s\n", geo->name);
+        g_assert(0);
+    }
+    //*/
+
+    geo->touch.DEPCNT = touch;
+
+    return TRUE;
+}
+
+S57_geo   *S57_getTouchDEPCNT(_S57_geo *geo)
+{
+    return_if_null(geo);
+
+    return geo->touch.DEPCNT;
+}
+
+int        S57_setTouchUDWHAZ(_S57_geo *geo, S57_geo *touch)
+{
+    return_if_null(geo);
+
+    /* debug
+    if ((0==g_strcmp0(geo->name, "OBSTRN")) ||
+        (0==g_strcmp0(geo->name, "UWTROC")) ||
+        (0==g_strcmp0(geo->name, "WRECKS"))
        )
     {
         if (NULL != geo->touch.DEPARE) {
@@ -1451,21 +1512,21 @@ int        S57_setTouchDEPARE(_S57_geo *geo, S57_geo *touch)
             //}
         }
     } else {
-        PRINTF("DEBUG: not DEPARE: %s\n", touch->name);
+        PRINTF("DEBUG: geo not for DEPARE: %s\n", geo->name);
         g_assert(0);
     }
     //*/
 
-    geo->touch.DEPARE = touch;
+    geo->touch.UDWHAZ = touch;
 
     return TRUE;
 }
 
-S57_geo   *S57_getTouchDEPARE(_S57_geo *geo)
+S57_geo   *S57_getTouchUDWHAZ(_S57_geo *geo)
 {
     return_if_null(geo);
 
-    return geo->touch.DEPARE;
+    return geo->touch.UDWHAZ;
 }
 
 int        S57_setTouchDEPVAL(_S57_geo *geo, S57_geo *touch)
@@ -1473,9 +1534,9 @@ int        S57_setTouchDEPVAL(_S57_geo *geo, S57_geo *touch)
     return_if_null(geo);
 
     /* debug
-    if ((0==g_strcmp0(touch->name, "DEPARE")) ||
-        (0==g_strcmp0(touch->name, "DRGARE")) ||    // not in S52!
-        (0==g_strcmp0(touch->name, "UNSARE"))       // this does nothing!
+    if ((0==g_strcmp0(geo->name, "OBSTRN")) ||
+        (0==g_strcmp0(geo->name, "UWTROC")) ||
+        (0==g_strcmp0(geo->name, "WRECKS"))
        )
     {
         if (NULL != geo->touch.DEPVAL) {
@@ -1483,7 +1544,7 @@ int        S57_setTouchDEPVAL(_S57_geo *geo, S57_geo *touch)
                    geo->name, geo->S57ID, geo->touch.DEPVAL->name, geo->touch.DEPVAL->S57ID);
         }
     } else {
-        PRINTF("DEBUG: not DEPVAL: %s\n", touch->name);
+        PRINTF("DEBUG: geo not for DEPVAL: %s\n", geo->name);
         g_assert(0);
     }
     //*/
@@ -1838,22 +1899,20 @@ S57_geo   *S57_delNextPoly(_S57_geo *geo)
 //    return  geo->S57ID;
 //}
 
-//int        S57_isPtInside(int npt, double *xyz, gboolean close, double x, double y)
-int        S57_isPtInside(int npt, pt3 *pt, gboolean close, double x, double y)
-// return TRUE if (x,y) inside area (close/open) xyz else FALSE
+gboolean   S57_isPtInArea(guint npt, pt3 *pt, gboolean close, double x, double y)
+// return TRUE if (x,y) inside area (close/open) else FALSE
 // FIXME: CW or CCW or work with either?
 {
-    //return_if_null(xyz);
     return_if_null(pt);
-    if (0 == npt)
-        return FALSE;
 
-    int c = 0;
-    //pt3 *v = (pt3 *)xyz;
-    pt3 *v = pt;
+    //if (0 == npt)
+    //    return FALSE;
+
+    gboolean c = 0;
+    pt3     *v = pt;
 
     if (TRUE == close) {
-        for (int i=0; i<npt-1; ++i) {
+        for (guint i=0; i<npt-1; ++i) {
             pt3 p1 = v[i];
             pt3 p2 = v[i+1];
 
@@ -1861,7 +1920,7 @@ int        S57_isPtInside(int npt, pt3 *pt, gboolean close, double x, double y)
                 c = !c;
         }
     } else {
-        for (int i=0, j=npt-1; i<npt; j=i++) {
+        for (guint i=0, j=npt-1; i<npt; j=i++) {
             pt3 p1 = v[i];
             pt3 p2 = v[j];
 
@@ -1876,34 +1935,63 @@ int        S57_isPtInside(int npt, pt3 *pt, gboolean close, double x, double y)
     return c;
 }
 
-int        S57_touch(_S57_geo *geoA, _S57_geo *geoB)
+gboolean   S57_isPtInSet(_S57_geo *geo, double x, double y)
+// TRUE if XY is the same as one in geo
+{
+    return_if_null(geo);
+
+    guint   npt;
+    double *ppt;
+
+    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
+        return FALSE;
+
+    for (guint i=0; i<npt; ++i, ppt+=3) {
+        if (ABS(ppt[0]-x)<S57_GEO_TOLERANCE && ABS(ppt[1]-y)<S57_GEO_TOLERANCE)
+            return TRUE;
+    }
+
+    return FALSE;
+}
+
+gboolean   S57_touchArea(_S57_geo *geoArea, _S57_geo *geo)
 // TRUE if A touch B else FALSE
+// A:P/L/A, B:A
 {
     guint   nptA;
     double *pptA;
     guint   nptB;
     double *pptB;
 
-    return_if_null(geoA);
-    return_if_null(geoB);
+    return_if_null(geoArea);
+    return_if_null(geo);
 
-    if (FALSE == S57_getGeoData(geoA, 0, &nptA, &pptA))
+    if (FALSE == S57_getGeoData(geoArea, 0, &nptA, &pptA))
         return FALSE;
 
-    if (FALSE == S57_getGeoData(geoB, 0, &nptB, &pptB))
+    if (FALSE == S57_getGeoData(geo, 0, &nptB, &pptB))
         return FALSE;
 
-    // FIXME: handle A type
-
-    // FIXME: work only for point in poly not point in line
-    if (S57_LINES_T == S57_getObjtype(geoB)) {
-        PRINTF("FIXME: geoB is a S57_LINES_T .. this algo break on that type\n");
+    // FIXME: work only for point in poly
+    //if (S57_LINES_T == S57_getObjtype(geoB)) {
+    //if (S57_AREAS_T != S57_getObjtype(geoB)) {
+    if (S57_AREAS_T != S57_getObjtype(geoArea)) {
+        PRINTF("FIXME: geoB is a S57_POINT_T or S57_LINES_T .. this algo break on that type (%c)\n", S57_getObjtype(geoArea));
         g_assert(0);
         return FALSE;
     }
 
+    /*
     for (guint i=0; i<nptA; ++i, pptA+=3) {
-        if (TRUE == S57_isPtInside(nptB, (pt3*)pptB, TRUE, pptA[0], pptA[1]))
+        // FIXME: optimisation check if ptA inside B extent
+        if (TRUE == S57_isPtInArea(nptB, (pt3*)pptB, TRUE, pptA[0], pptA[1]))
+            return TRUE;
+    }
+    */
+
+    for (guint i=0; i<nptB; ++i, pptB+=3) {
+        // FIXME: optimisation check if ptA inside B extent
+        if (TRUE == S57_isPtInArea(nptA, (pt3*)pptA, TRUE, pptB[0], pptB[1]))
             return TRUE;
     }
 
