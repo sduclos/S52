@@ -366,8 +366,8 @@ double   S52_atof(CCHAR *str)
     }
 
     //return g_strtod(str, NULL);
-    return g_ascii_strtod(str, NULL);
     //return atof(str);
+    return g_ascii_strtod(str, NULL);
 }
 
 char *S52_utils_new0(size_t sz, int n)
