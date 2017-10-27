@@ -404,8 +404,7 @@ static int       _getCentroid(guint npt, pt3 *v)
 
         //PRINTF("XY(%s): %f, %f, %i \n", (atmp>=0.0) ? "CW " : "CCW", p.x, p.y, npt);
 
-        //if (TRUE == S57_isPtInArea(npt, (double*)v, pt.x, pt.y, FALSE)) {
-        if (TRUE == S57_isPtInArea(npt, v, FALSE, pt.x, pt.y)) {
+        if (TRUE == S57_isPtInRing(npt, v, FALSE, pt.x, pt.y)) {
             g_array_append_val(_centroids, pt);
 
             return TRUE;
@@ -447,7 +446,7 @@ static int       _getCentroidClose(guint npt, pt3 *v)
     // to compute a tiny area
     //double offx = p[0];
     //double offy = p[1];
-    //double offx = v[0].x;
+   //double offx = v[0].x;
     //double offy = v[0].y;
 
     // debug
@@ -494,7 +493,6 @@ static int       _getCentroidClose(guint npt, pt3 *v)
 
         //PRINTF("XY(%s): %f, %f, %i \n", (atmp>=0.0) ? "CCW " : "CW", pt->x, pt->y, npt);
 
-        //if (TRUE == S57_isPtInArea(npt, ppt, TRUE, pt.x, pt.y)) {
         if (TRUE == S57_isPtInArea(npt, (double*)v, TRUE, pt.x, pt.y)) {
             g_array_append_val(_centroids, pt);
             //PRINTF("point is inside polygone\n");
@@ -5428,20 +5426,23 @@ int        S52_GL_isSupp(S52_obj *obj)
         return FALSE;
     }
 
-    //if (S52_SUPP_ON == S52_PL_getObjToggleState(obj)) {
     if (S52_SUPP_ON == S52_PL_getObjSuppState(obj)) {
         ++_oclip;
         return TRUE;
     }
 
     // SCAMIN
-    //if (TRUE == (int) S52_MP_get(S52_MAR_SCAMIN)) {
     if (FALSE != (int) S52_MP_get(S52_MAR_SCAMIN)) {
         S57_geo *geo  = S52_PL_getGeo(obj);
         double scamin = S57_getScamin(geo);
 
         if (scamin < _SCAMIN) {
             ++_oclip;
+            return TRUE;
+        }
+    } else {
+        // debug - when debug (S52_MAR_SCAMIN is OFF) CS AP(FOULAR01) doesn't show because S57_RESET_SCAMIN
+        if (0.0 > S57_getScamin(S52_PL_getGeo(obj))) {
             return TRUE;
         }
     }
@@ -8088,7 +8089,7 @@ int        S52_GL_isHazard(int npt, pt3 *pt)
             continue;
 
         for (guint j=0; j<nptB; ++j) {
-            if (TRUE == S57_isPtInArea(npt, pt, TRUE, pptB[j*3 + 0], pptB[j*3 + 1])) {
+            if (TRUE == S57_isPtInRing(npt, pt, TRUE, pptB[j*3 + 0], pptB[j*3 + 1])) {
                 S57_setHighlight(geo, TRUE);
                 found = TRUE;
                 break;
