@@ -36,6 +36,8 @@
 #define S57_CELL_NAME_MAX_LEN 8  // cell name maximum lenght
 #define S57_OBJ_ATT_LEN       6  // attribute name lenght
 
+#define S57_RESET_SCAMIN     -1.0
+
 // push Z in geo - use as a clip plane for LS() and LC()
 #define S57_OVERLAP_GEO_Z 10.0
 
@@ -155,7 +157,9 @@ gboolean  S57_cmpExt(ObjExt_t A, ObjExt_t B);
 S57_Obj_t S57_getObjtype(S57_geo *geo);
 
 // return S57 attribute value of the attribute name
-GString  *S57_getAttVal(S57_geo *geo, const char *name);
+GString  *S57_getAttVal(S57_geo *geo, const char *attName);
+GString  *S57_getAttValALL(S57_geo *geo, const char *attName);
+
 // set attribute name and value
 GData    *S57_setAtt(S57_geo *geo, const char *name, const char *val);
 // get str of the form ",KEY1:VAL1,KEY2:VAL2, ..." of S57 attribute only (not OGR)
@@ -202,8 +206,10 @@ int       S57_geo2prj3dv(guint npt, pt3 *data);
 int       S57_geo2prj(S57_geo *geo);
 #endif  // S52_USE_PROJ
 
-gboolean  S57_isPtInArea(guint npt, pt3 *pt, gboolean close, double x, double y);
+gboolean  S57_isPtInArea(S57_geo *geo, double x, double y);
+gboolean  S57_isPtInRing(guint npt, pt3 *pt, gboolean close, double x, double y);
 gboolean  S57_isPtInSet(S57_geo *geo, double x, double y);
+gboolean  S57_isPtOnLine(S57_geo *geoLine, double x, double y);
 gboolean  S57_touchArea(S57_geo *geoArea, S57_geo *geo);
 
 guint     S57_getGeoSize(S57_geo *geo);
