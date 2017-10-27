@@ -32,7 +32,7 @@
 
 #define version "3.2.0" // CS of Plib 3.2 S52 ed ?
 
-#define UNKNOWN -999.0  // depth of 1km above sea level
+#define UNKNOWN_DEPTH -1000.0  // depth of 1km above sea level
 
 #define COALNE   30   // Coastline
 #define DEPARE   42   // Depth area
@@ -45,13 +45,10 @@
 typedef struct _localObj {
     GPtrArray *lights_list;  // list of: LIGHTS
     GPtrArray *topmar_list;  // list of: LITFLT, LITVES, BOY???; to find floating platform
-    GPtrArray *depcnt_list;  // list of: DEPARE:A, DRGARE:A
-    GPtrArray *udwhaz_list;  // list of geo used by CS(_UDWHAZ03)
+    GPtrArray *depcnt_list;  // list of: DEPARE:A, DRGARE:A used by CS(DEPCNT02)
+    GPtrArray *udwhaz_list;  // list of: DEPARE:A/L and DRGARE:A used by CS(_UDWHAZ03)
     GPtrArray *depval_list;  // list of geo used by CS(_DEPVAL01) (via OBSTRN04, WRECKS02)
 } _localObj;
-
-// debug - keep ref to local
-//static _localObj *_LObj;
 
 // Note: seem useless S52 specs -- no effect !?
 //GPtrArray *rigid_list; // rigid platform
@@ -158,37 +155,34 @@ int       S52_CS_add (_localObj *local, S57_geo *geo)
 
 
     ///////////////////////////////////////////////
-    // for DEPCNT02: build ref to group 1 DEPARE:L/A and DRGARE:A (depcnt_list)
+    // for DEPCNT02: build ref to group 1 DEPARE:A and DRGARE:A (depcnt_list)
     // Note: the Nassi graph say to loop AREA of DEPARE and DRGARE
     //
     // for _UDWHAZ03 (via OBSTRN04, WRECKS02)
-    // build ref to group 1 DEPARE:A and DRGARE:A   (udwhaz_list)
+    // build ref to group 1 DEPARE:A/L and DRGARE:A   (udwhaz_list)
     if ((0==g_strcmp0(name, "DEPARE")) ||    // LINE/AREA:
         (0==g_strcmp0(name, "DRGARE"))       // AREA:
        )
     {
-        //g_ptr_array_add(local->depcnt_list, (gpointer) geo);
+        // DEPARE:A/L and DRGARE:A
+        g_ptr_array_add(local->udwhaz_list, (gpointer) geo);
 
+        // DEPARE:A and DRGARE:A
         if (S57_AREAS_T == S57_getObjtype(geo)) {
             g_ptr_array_add(local->depcnt_list, (gpointer) geo);
-            g_ptr_array_add(local->udwhaz_list, (gpointer) geo);
         }
     }
 
     ///////////////////////////////////////////////
     // for _DEPVAL01 (via OBSTRN04, WRECKS02)
     if ((0==g_strcmp0(name, "DEPARE")) ||    // LINE/AREA:
-        (0==g_strcmp0(name, "DRGARE")) ||    // AREA: Nassi & Shneiderman Diagrams of under water hazard
         (0==g_strcmp0(name, "UNSARE"))       // AREA:
        )
     {
-        if (S57_AREAS_T == S57_getObjtype(geo)) {
-            g_ptr_array_add(local->depval_list, (gpointer) geo);
-        }
+        // DEPARE:A/L and UNSARE:A
+        g_ptr_array_add(local->depval_list, (gpointer) geo);
     }
 
-
-    //return FALSE;
     return TRUE;
 }
 
@@ -199,6 +193,12 @@ static int      _intersectGEO(S57_geo *A, S57_geo *B)
 {
     ObjExt_t extA = S57_getExt(A);
     ObjExt_t extB = S57_getExt(B);
+
+    // debug
+    if (S57_LINES_T==S57_getObjtype(A) && S57_LINES_T==S57_getObjtype(B)) {
+        PRINTF("FIXME: if vert/horiz, lines will not intersect\n");
+        g_assert(0);
+    }
 
     // FIXME: call S57_cmpExt(ObjExt_t A, ObjExt_t B); handle anti-meridian
     if (extB.N < extA.S) return FALSE;
@@ -230,94 +230,15 @@ static int      _intersectGEO(S57_geo *A, S57_geo *B)
     return TRUE;
 }
 
-#if 0
-static int      _touchDEPCNT(GPtrArray *depcnt_list, S57_geo *geo)
-{
-    GString  *drvalstr = NULL;
-    double    drval    = 0.0;
-
-    CCHAR *name = S57_getName(geo);
-
-    // DEPCNT
-    if (0 == g_strcmp0(name, "DEPCNT")) {
-        drvalstr = S57_getAttVal(geo, "VALDCO");  // mandatory!
-    } else {
-        // DEPARE
-        drvalstr = S57_getAttVal(geo, "DRVAL1");  // mandatory!
-        //if (NULL != drvalstr) {
-        //    drvalstr = S57_getAttVal(geo, "DRVAL2");  // mandatory!
-        //}
-    }
-
-    if (NULL != drvalstr) {
-        drval = S52_atof(drvalstr->str);
-    } else {
-        //PRINTF("DEBUG: line DEPCNT/DEPARE:%u has no mandatory depth (VALDCO/DRVAL1)\n", S57_getS57ID(geo));
-        //g_assert(0);
-        return TRUE;
-    }
-
-    double drvalmin = drval;
-
-    guint   npt;
-    double *ppt;
-    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
-        return FALSE;
-
-    for (guint i=0; i<depcnt_list->len; ++i) {
-        S57_geo *candidate = (S57_geo *) g_ptr_array_index(depcnt_list, i);
-
-        // skip if it's same S57 object (DEPARE)
-        if (S57_getS57ID(geo) == S57_getS57ID(candidate))
-            continue;
-
-        if (FALSE == _intersectGEO(geo, candidate))
-            continue;
-
-        // Note: a line segment is made of edge primtive  (CN - EN - .. - EN - CN)
-        if (2 < npt) {
-            // take the first EN
-            if (FALSE == S57_isPtInSet(candidate, ppt[3], ppt[4]))
-                continue;
-        } else {
-            // take CN
-            if (FALSE == S57_isPtInSet(candidate, ppt[0], ppt[1]))
-                continue;
-        }
-
-        //
-        // link to the line above this geo (DEPARE/DRGARE)
-        //
-
-        //* DRVAL1 mandatory DEPARE and DRGARE
-        GString *can_drval1str = S57_getAttVal(candidate, "DRVAL1");
-        if (NULL != can_drval1str) {
-            double can_drval1 = S52_atof(can_drval1str->str);
-
-            // is this area just above (shallower) then this geo
-            if (can_drval1 < drvalmin) {
-                drvalmin = can_drval1;
-                S57_setTouchDEPCNT(geo, candidate);
-            }
-        }
-    } // for
-
-    return TRUE;
-}
-#endif  // 0
-
 int       S52_CS_touch(localObj *local, S57_geo *geo)
 // compute witch geo object of this cell "touch" this one (geo)
 // return TRUE
 {
-    // useles - rbin
+    // useless - rbin
     //return_if_null(local);
     //return_if_null(geo);
 
     const char *name = S57_getName(geo);
-
-    // debug
-    //_LObj = local;
 
     ////////////////////////////////////////////
     // floating object
@@ -386,24 +307,20 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
     ////////////////////////////////////////////
     // chaine light at same position
     if (0 == g_strcmp0(name, "LIGHTS")) {
-        GString *lnam = S57_getAttVal(geo, "LNAM");
         for (guint i=0; i<local->lights_list->len; ++i) {
-            S57_geo *other = (S57_geo *) g_ptr_array_index(local->lights_list, i);
+            S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->lights_list, i);
 
             // skip if not at same position
-            if (FALSE == _intersectGEO(geo, other))
+            if (FALSE == _intersectGEO(geo, candidate))
                 continue;
 
-            {   // skip if it's same S57 object
-                // FIXME: use S57ID
-                GString *olnam = S57_getAttVal(other, "LNAM");
-                if (TRUE == g_string_equal(lnam, olnam))
-                    continue;
-            }
+            // skip if it's same S57 object (LIGHTS)
+            if (S57_getS57ID(geo) == S57_getS57ID(candidate))
+                continue;
 
             // chaine lights
             //if (NULL == S57_getTouchLIGHTS(geo)) {
-            if (NULL == S57_getTouchLIGHTS(other)) {
+            if (NULL == S57_getTouchLIGHTS(candidate)) {
                 // HACK: link in reverse - this depend on the ordrering
                 // of object in the cell. All light at this position are
                 // linked to the fist one .. this is dumb. But some light
@@ -412,7 +329,7 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
                 //S57_setTouchLIGHTS(other, geo);
 
                 // the hack above doesn't work for text
-                S57_setTouchLIGHTS(geo, other);
+                S57_setTouchLIGHTS(geo, candidate);
 
                 // bailout as soon as we got one
                 break;
@@ -430,7 +347,8 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         return  TRUE;
     }
 
-    ///////////////////////////////////////////////
+    //////////////////////////////////////////////
+    // DEPCNT02
     // DEPCNT:L, DEPARE:L call CS(DEPCNT02)
     // depcnt_list: a set of DEPARE:A and DRGARE:A
     // link to the shallower deper object that intersec this object
@@ -438,8 +356,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         (0==g_strcmp0(name, "DEPARE") && S57_LINES_T==S57_getObjtype(geo)) // LINE, AREA (www.s57.com 2017 say AREA only)
        )
     {
-        // geo: is one of DEPCNT:L or DEPARE:L that call CS(DEPCNT02)
-
         GString  *drvalstr = NULL;
         double    drval    = 0.0;
 
@@ -451,9 +367,6 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         } else {
             // DEPARE
             drvalstr = S57_getAttVal(geo, "DRVAL1");  // mandatory!
-            //if (NULL != drvalstr) {
-            //    drvalstr = S57_getAttVal(geo, "DRVAL2");  // mandatory!
-            //}
         }
 
         if (NULL != drvalstr) {
@@ -471,87 +384,10 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
         if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
             return FALSE;
 
-        for (guint i=0; i<local->depcnt_list->len; ++i) {
-            S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->depcnt_list, i);
-
-            // skip if it's same S57 object (DEPARE)
-            if (S57_getS57ID(geo) == S57_getS57ID(candidate))
-                continue;
-
-            if (FALSE == _intersectGEO(geo, candidate))
-                continue;
-
-            // Note: a line segment is made of edge primtive  (CN - EN - .. - EN - CN)
-            if (2 < npt) {
-                // take the first EN
-                if (FALSE == S57_isPtInSet(candidate, ppt[3], ppt[4]))
-                    continue;
-            } else {
-                // take CN
-                if (FALSE == S57_isPtInSet(candidate, ppt[0], ppt[1]))
-                    continue;
-            }
-
-            //
-            // link to the line above this geo (DEPARE/DRGARE)
-            //
-
-            //* DRVAL1 mandatory DEPARE and DRGARE
-            GString *can_drval1str = S57_getAttVal(candidate, "DRVAL1");
-            if (NULL != can_drval1str) {
-                double can_drval1 = S52_atof(can_drval1str->str);
-
-                // is this area just above (shallower) then this geo
-                if (can_drval1 < drvalmin) {
-                    drvalmin = can_drval1;
-                    S57_setTouchDEPCNT(geo, candidate);
-                }
-            }
-        } // for
-
-        return TRUE;
-
-        // debug/experiment SAFETY_CONTOUR
-        //_touchDEPCNT(local->depcnt_list, geo);
-        //return TRUE;
-        //------------------------------------
-
-
-        /*
-        GString  *drvalstr = NULL;
-        double    drval    = 0.0;
-        double    drvalmin = UNKNOWN;
-
-        // DEPCNT
-        if (0 == g_strcmp0(name, "DEPCNT")) {
-            drvalstr = S57_getAttVal(geo, "VALDCO");  // mandatory!
-        } else {
-            // DEPARE
-            drvalstr = S57_getAttVal(geo, "DRVAL1");  // mandatory!
-            if (NULL != drvalstr) {
-                drvalstr = S57_getAttVal(geo, "DRVAL2");  // mandatory!
-            }
-        }
-
-        if (NULL != drvalstr) {
-            drval = S52_atof(drvalstr->str);
-        } else {
-            if (0 == g_strcmp0(name, "DEPCNT")) {                                  // LINE
-                PRINTF("DEBUG: line DEPCNT:%u has no mandatory depth (VALDCO)\n", S57_getS57ID(geo));
-            } else {
-                //PRINTF("DEBUG: line DEPARE:%u has no mandatory depth (DRVAL1/DRVAL2)\n", S57_getS57ID(geo));
-                //S57_setHighlight(geo, TRUE);
-            }
-            //S57_dumpData(geo, FALSE);
-
-            //g_assert(0);
-            return TRUE;
-        }
-
-        guint   npt;
-        double *ppt;
-        if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
-            return FALSE;
+        // Note: a line segment is made of edge primtive  (CN - EN - .. - EN - CN)
+        // FIXME: find if that make a diff CN/EN
+        if (2 < npt)
+            ppt += 3;  // take the first EN
 
         for (guint i=0; i<local->depcnt_list->len; ++i) {
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->depcnt_list, i);
@@ -566,131 +402,129 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             if (FALSE == S57_isPtInSet(candidate, ppt[0], ppt[1]))
                 continue;
 
-            // debug - DEPCNT 5m Rimouski
-            //if (546 == S57_getS57ID(geo)) {
-            if (547 == S57_getS57ID(geo)) {
-                PRINTF("DEPCNT:%i 5m Rimouski .. search shallower depth\n", S57_getS57ID(geo));
-                //g_assert(0);
-            }
-
             //
-            // link to the area next to this one with a depth shallower just bellow this one,
+            // link to the line above this geo (DEPARE/DRGARE)
             //
 
             // DRVAL1 mandatory DEPARE and DRGARE
-            GString *odrval1str = S57_getAttVal(other, "DRVAL1");
-            if (NULL != odrval1str) {
-                double odrval1 = S52_atof(odrval1str->str);
+            GString *can_drval1str = S57_getAttVal(candidate, "DRVAL1");
+            if (NULL != can_drval1str) {
+                double can_drval1 = S52_atof(can_drval1str->str);
 
                 // is this area just above (shallower) then this geo
-                if (odrval1 <= drval) {
-                    if (odrval1 > drvalmin) {
-                        drvalmin = odrval1;
-                        S57_setTouchDEPCNT(geo, other);
-                    }
+                if (can_drval1 < drvalmin) {
+                    drvalmin = can_drval1;
+                    S57_setTouchDEPCNT(geo, candidate);
                 }
-                continue;
-            } else {
-                //PRINTF("DEBUG: mandatory DRVAL1 missing (%s:%c)\n", S57_getName(other), S57_getObjtype(other));
-                //g_assert(0);
             }
-
         } // for
 
-        // finish
         return TRUE;
-        */
     }
 
     // _UDWHAZ03 (via OBSTRN04, WRECKS02)
     // OBSTRN:A/L/P call OBSTRN04
     // UWTROC:P     call OBSTRN04
     // WRECKS:A/P   call WRECKS02
-    // in turn, _UDWHAZ03 need to know what is the depth of the shallower object 'beneath' it
+    // and in turn, call _UDWHAZ03 to find out if a DEPARE:A/L and DGRARE:A is deeper than the safety contour
     if ((0==g_strcmp0(name, "OBSTRN")) ||
         (0==g_strcmp0(name, "UWTROC")) ||
         (0==g_strcmp0(name, "WRECKS"))
        )
     {
-        double drvalmin = INFINITY;
+        guint   npt;
+        double *ppt;
+        if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
+            return FALSE;
+
+        // Note: a line segment is made of edge primtive  (CN - EN - .. - EN - CN)
+        // FIXME: find if that make a diff CN/EN
+        if (2 < npt)
+            ppt += 3;  // take the first EN
+
+        // find the deepest group 1 under this geo
+        double depth_max = 0.0;
         for (guint i=0; i<local->udwhaz_list->len; ++i) {
+            // list of DEPARE:L/A and DRGARE:A
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->udwhaz_list, i);
 
             // skip if not overlapping
             if (FALSE == _intersectGEO(geo, candidate))
                 continue;
 
-            //if (S57_LINES_T == S57_getObjtype(candidate)) {
-            //if (S57_AREAS_T != S57_getObjtype(candidate)) {
-            //    continue;
-            //}
+            //
+            // is geo touching this candidate
+            //
 
-            // find if geo 'touch' this DEPARE geo (other)
-            //if (TRUE == S57_touch(geo, candidate)) {
-            //if (TRUE == S57_touchArea(candidate, geo)) {
-            if (FALSE == S57_touchArea(candidate, geo))
-                continue;
-
-            S57_geo *crntmin = S57_getTouchUDWHAZ(geo);
-
-            // case of more than one geo 'touch' this geo link to the swallower
-            if (NULL != crntmin) {
-
-                // BUG: S57_touch() work only for point in poly not point in line
-                //if (LINES_T == S57_getObjtype(candidate)) {
-                //GString *drval2str = S57_getAttVal(candidate, "DRVAL2");
-                //double   drval2    = (NULL == drval2str) ? UNKNOWN : S52_atof(drval2str->str);
-                //if (NULL!=drval2str && drval2<drvalmin) {
-                //    drvalmin = drval2;
-                //    S57_setTouch(geo, candidate);
-                //}
-                //} else { // AREA DEPARE and AREA DRGARE
-
-                // DRVAL1
-                GString *drval1str = S57_getAttVal(candidate, "DRVAL1");
-                if (NULL != drval1str) {
-
-                    double drval1 = S52_atof(drval1str->str);
-                    if (drval1 < drvalmin) {
-                        drvalmin = drval1;
-                        S57_setTouchUDWHAZ(geo, candidate);
-
-                        // no need to try deeper DRVAL2
+            // geo point (IsolatedNode)
+            if (S57_POINT_T == S57_getObjtype(geo)) {
+                // candidate line
+                if (S57_LINES_T == S57_getObjtype(candidate)) {
+                    if (FALSE == S57_isPtOnLine(candidate, ppt[0], ppt[1]))
+                        continue;
+                } else {
+                    // candidate area
+                    if (FALSE == S57_isPtInArea(candidate, ppt[0], ppt[1])) {
                         continue;
                     }
                 }
+            } else {
+                // geo:A/L, candidate:A/L
+                if (FALSE == S57_isPtInSet(candidate, ppt[0], ppt[1]))
+                    continue;
+            }
 
-                // DRVAL2
+            //
+            // geo touch this candidate
+            //
+
+            //get depth_max
+            if (S57_LINES_T == S57_getObjtype(candidate)) {
+                // DEPARE:L use DRVAL2
                 GString *drval2str = S57_getAttVal(candidate, "DRVAL2");
                 if (NULL != drval2str) {
                     double drval2 = S52_atof(drval2str->str);
-                    if (drval2 < drvalmin) {
-                        drvalmin = drval2;
+                    if (drval2 > depth_max) {
+                        depth_max = drval2;
                         S57_setTouchUDWHAZ(geo, candidate);
                     }
                 }
-
             } else {
-                S57_setTouchUDWHAZ(geo, candidate);
+                // DEPARE:A and DRGARE:A use DRVAL1
+                GString *drval1str = S57_getAttVal(candidate, "DRVAL1");
+                if (NULL != drval1str) {
+                    double drval1 = S52_atof(drval1str->str);
+                    if (drval1 > depth_max) {
+                        depth_max = drval1;
+                        S57_setTouchUDWHAZ(geo, candidate);
+                    }
+                }
             }
-        //}
-        }
-
-        // finish
-        //return TRUE;
+        }  // for loop
     }
 
+    // _DEPVAL01
     // OBSTRN:A/L/P call OBSTRN04
     // UWTROC:P     call OBSTRN04
     // WRECKS:A/P   call WRECKS02
-    // _DEPVAL01 (called via OBSTRN04, WRECKS02)
-    // set reference to oject of 'least_depht'
+    // in turn call _DEPVAL01 to find the geo oject of 'least_depht'
     if ((0==g_strcmp0(name, "OBSTRN")) ||
         (0==g_strcmp0(name, "UWTROC")) ||
         (0==g_strcmp0(name, "WRECKS"))
        )
     {
-        double drvalmin = INFINITY;
+        guint   npt;
+        double *ppt;
+        if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
+            return FALSE;
+
+        // Note: a line segment is made of edge primtive  (CN - EN - .. - EN - CN)
+        // FIXME: find if that make a diff CN/EN
+        if (2 < npt)
+            ppt += 3;  // take the first EN
+
+        double least_depth = INFINITY;
+
         for (guint i=0; i<local->depval_list->len; ++i) {
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->depval_list, i);
 
@@ -698,37 +532,49 @@ int       S52_CS_touch(localObj *local, S57_geo *geo)
             if (FALSE == _intersectGEO(geo, candidate))
                 continue;
 
-            // Note: depval_list is a list of AREAS_T
-            //if (TRUE == S57_touch(geo, candidate)) {
-            //if (TRUE == S57_touchArea(candidate, geo)) {
-            if (FALSE == S57_touchArea(candidate, geo))
-                continue;
+            // geo:P (IsolatedNode)
+            if (S57_POINT_T == S57_getObjtype(geo)) {
+                // candidate:L
+                if (S57_LINES_T == S57_getObjtype(candidate)) {
+                    S57_isPtOnLine(candidate, ppt[0], ppt[1]);
+                }
+
+                // candidate:A
+                if (FALSE ==S57_isPtInArea(candidate, ppt[0], ppt[1])) {
+                    continue;
+                }
+
+            } else {
+                // geo:A/L, candidate:A/L
+                if (FALSE == S57_isPtInSet(candidate, ppt[0], ppt[1]))
+                    continue;
+            }
 
             S57_geo *crntmin = S57_getTouchDEPVAL(geo);
-
-            // case of more than one geo 'touch' this geo - link to the swallower
-            if (NULL != crntmin) {
+            if (NULL == crntmin) {
+                S57_setTouchDEPVAL(geo, candidate);
+            } else {
                 GString *drval1str = S57_getAttVal(candidate, "DRVAL1");
                 if (NULL == drval1str)
                     continue;
 
                 double drval1 = S52_atof(drval1str->str);
-                if (drval1 < drvalmin) {
-                    drvalmin = drval1;
+                if (isinf(least_depth)) {
+                    least_depth = drval1;
                     S57_setTouchDEPVAL(geo, candidate);
                 }
-            } else {
-                S57_setTouchDEPVAL(geo, candidate);
-            }
-        //}
-        }
 
-        // finish
-        return TRUE;
+                if (drval1 < least_depth) {
+                //if (least_depth < drval1 ) {
+                    continue;
+                } else {
+                    least_depth = drval1;
+                    S57_setTouchDEPVAL(geo, candidate);
+                }
+            }
+        }
     }
 
-    // all other object
-    //return FALSE;
     return TRUE;
 }
 
@@ -1017,9 +863,6 @@ static GString *DEPARE01 (S57_geo *geo)
         g_string_append(depare01, ";AP(DRGARE01)");
         g_string_append(depare01, ";LS(DASH,1,CHGRF)");
 
-        //if (NULL != S57_getAttVal(geo, "RESTRN")) {
-        //    GString *rescsp01 = _RESCSP01(geo);
-
         GString *restrn01str = S57_getAttVal(geo, "RESTRN");
         if (NULL != restrn01str) {
             GString *rescsp01 = _RESCSP01(restrn01str);
@@ -1059,54 +902,11 @@ static GString *DEPARE03 (S57_geo *geo)
     return DEPARE01(geo);
 }
 
-#if 0
-static gboolean _loopDEPCNT(S57_geo *geo)
-// debug - loop on depcnt_list
+static gboolean _DEPCNTisSafetyCnt(S57_geo *geo)
+// true if safety contour else false
 {
-    guint   npt;
-    double *ppt;
-    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
-        // halt! an area with no coord!!
-        g_assert(0);
-        return FALSE;
-    }
 
-    for (guint i=0; i<_LObj->depcnt_list->len; ++i) {
-        S57_geo *candidate = (S57_geo *) g_ptr_array_index(_LObj->depcnt_list, i);
-
-        // skip if it's same DEPARE object
-        if (S57_getS57ID(geo) == S57_getS57ID(candidate))
-            continue;
-
-        if (FALSE == _intersectGEO(geo, candidate))
-            continue;
-
-        // Note: a line segment is made of edge primtive  (CN - EN - .. - EN - CN)
-        if (2 < npt) {
-            // take the first EN
-            if (FALSE == S57_isPtInSet(candidate, ppt[3], ppt[4]))
-                continue;
-        } else {
-            // take the first CN (case of CN - CN)
-            if (FALSE == S57_isPtInSet(candidate, ppt[0], ppt[1]))
-                continue;
-        }
-
-        GString *drval1str = S57_getAttVal(candidate, "DRVAL1");
-        double   drval1    = (NULL==drval1str) ? 0.0 : S52_atof(drval1str->str);
-
-        if (drval1 < S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
-            return TRUE;  // exit loop
-        }
-    }
-
-    return FALSE;
-}
-#endif  //0
-
-static gboolean _DEPCNTisSafe(S57_geo *geo)
-{
-    gboolean safety_contour = FALSE;
+    /*
     GString *drval1touchstr = NULL;
     S57_geo *geoTouch       = S57_getTouchDEPCNT(geo);
     if (NULL != geoTouch) {
@@ -1115,19 +915,33 @@ static gboolean _DEPCNTisSafe(S57_geo *geo)
 
     double drval1touch = (NULL == drval1touchstr) ? 0.0 : S52_atof(drval1touchstr->str);
 
-    // adjuste datum
-    double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-    drval1touch += datum;
+    if (NULL != drval1touchstr) {
+        // adjuste datum
+        drval1touch += S52_MP_get(S52_MAR_DATUM_OFFSET);
 
-    //if (NULL == drval1touchstr) {
-    //    safety_contour = TRUE;
-    //} else {
-
-        // Note: this assume that drval2 > SAFETY_CONTOUR
         if (drval1touch < S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
             safety_contour = TRUE;
         }
-    //}
+    }
+    */
+
+    gboolean safety_contour = FALSE;
+
+    S57_geo *geoTouch = S57_getTouchDEPCNT(geo);
+    if (NULL != geoTouch) {
+        GString *drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
+        if (NULL != drval1touchstr) {
+            double drval1touch = S52_atof(drval1touchstr->str);
+
+            // adjuste datum
+            drval1touch += S52_MP_get(S52_MAR_DATUM_OFFSET);
+
+            if (drval1touch < S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
+                safety_contour = TRUE;
+            }
+        }
+        // FIXME: document skip logic branch DRVAL1  not present
+    }
 
     return safety_contour;
 }
@@ -1155,7 +969,7 @@ static GString *DEPCNT02 (S57_geo *geo)
     //double   depth_value;           // for depth label (facultative in S-52)
 
     // first reset original scamin
-    S57_setScamin(geo, 1.0);
+    S57_setScamin(geo, S57_RESET_SCAMIN);
 
     // DEPARE (line)
     if (0 == g_strcmp0(S57_getName(geo), "DEPARE")) {  // only DEPARE:L call CS(DEPCNT02)
@@ -1174,21 +988,14 @@ static GString *DEPCNT02 (S57_geo *geo)
         if (drval1 <= S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
             if (drval2 >= S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
                 safety_contour = TRUE;
-
-                //PRINTF("DEBUG: ### DEPARE: SET SAFETY CONTOUR --> touch %s:%f\n", S57_getName(geo), drval1);
             }
         } else {
             // collect area DEPARE & DRGARE that touch this line
-
-            // debug - bypass the touch() logic
-            //safety_contour = _loopDEPCNT(geo);
-
-            safety_contour = _DEPCNTisSafe(geo);
+            safety_contour = _DEPCNTisSafetyCnt(geo);
         }
-        //depth_value = drval1;
 
     } else {
-        // continuation A (DEPCNT (line))
+        // continuation A (DEPCNT (line)) - only DEPCNT:L call CS(DEPCNT02)
         GString *valdcostr = S57_getAttVal(geo, "VALDCO");
         double   valdco    = (NULL == valdcostr) ? 0.0 : S52_atof(valdcostr->str);
 
@@ -1196,52 +1003,16 @@ static GString *DEPCNT02 (S57_geo *geo)
         double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
         valdco += datum;
 
-        //depth_value = valdco;
-
         if (valdco == S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
             safety_contour = TRUE;
         } else {
             // collect area DEPARE & DRGARE that touche this line
             if (valdco > S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
-
-                // debug - bypass the touch() logic
-                //safety_contour = _loopDEPCNT(geo);
-
-                safety_contour = _DEPCNTisSafe(geo);
-
-                /*------------------------------------------------------
-                GString *drval1str = NULL;
-                S57_geo *other     = S57_getTouchDEPCNT(geo);
-                if (NULL == other) {
-                    // CA27904A.000 DEPCNT:7573 pass here
-                    // this object doesn't touch shallower DEPARE
-                    //PRINTF("DEBUG: NULL geoTmp depcnt02-2/getTouchDEPARE\n");
-                    // S52 CS(DEPCNT) say: if drval1 abscent then safety_contour = TRUE --> ls(s,2,)
-                    //depcnt02 = _g_string_new(depcnt02, ";LS(SOLD,1,DEPCN)");
-                    //return depcnt02;
-                } else {
-                    drval1str = S57_getAttVal(other, "DRVAL1");
-                }
-
-                double drval1 = (NULL == drval1str) ? 0.0 : S52_atof(drval1str->str);
-
-                // adjuste datum
-                double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                drval1 += datum;
-
-                if (NULL == drval1str) {
-                    safety_contour = TRUE;
-                } else {
-                    if (drval1 < S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
-                        safety_contour = TRUE;
-                    }
-                }
-                */
+                safety_contour = _DEPCNTisSafetyCnt(geo);
             }
         }
     }
 
-//QUAPOS:
     // Continuation B
     // ASSUME: HO split lines to preserv different QUAPOS for a given line
     // FIXME: check that the assumtion above is valid!
@@ -1307,82 +1078,39 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
 {
     // Note: collect group 1 area DEPARE & DRGARE that touch this point/line/area is done at load-time
     GString *drval1str = NULL;
-    S57_geo *geoTmp    = S57_getTouchDEPVAL(geo);
-    if (NULL == geoTmp) {
+    S57_geo *geoTouch  = S57_getTouchDEPVAL(geo);
+    if (NULL == geoTouch) {
         PRINTF("DEBUG: NULL geo _DEPVAL01/getTouchDEPVAL\n");
         //return UNKNOWN;
     } else {
-        drval1str = S57_getAttVal(geoTmp, "DRVAL1");
+        // Note: if an UNSARE is found then all other underlying objects can be ignore
+        if (0 == g_strcmp0(S57_getName(geoTouch), "UNSARE")) {
+            // debug
+            PRINTF("DEBUG: %s:%c\n", S57_getName(geoTouch), S57_getObjtype(geoTouch));
+            //g_assert(0);
+            return UNKNOWN_DEPTH;
+        }
+
+        drval1str = S57_getAttVal(geoTouch, "DRVAL1");
     }
-    //GString *drval1str = S57_getAttVal(geoTmp, "DRVAL1");
-    double   drval1    = (NULL == drval1str) ? UNKNOWN : S52_atof(drval1str->str);
+    double drval1 = (NULL==drval1str) ? UNKNOWN_DEPTH : S52_atof(drval1str->str);
 
-    // Note: if an UNSARE is found then all other underlying objects can be ignore
-    //if (0 == g_strcmp0(S57_getName(geo), "UNSARE")) {
-    if (0 == g_strcmp0(S57_getName(geoTmp), "UNSARE")) {
-        // debug
-        //PRINTF("DEBUG: %s:%c\n", S57_getName(geo), S57_getObjtype(geo));
-        PRINTF("DEBUG: %s:%c\n", S57_getName(geoTmp), S57_getObjtype(geoTmp));
-        g_assert(0);
-        return UNKNOWN;
-    }
 
-    //least_depth = UNKNOWN;
-    least_depth = drval1; // !?! clang - val in least_depth never read
+    //least_depth = drval1; // !?! clang - val in least_depth never read
 
-    // debug
-    //PRINTF("DEBUG: %s:%c\n", S57_getName(geo), S57_getObjtype(geo));
-    //S57_dumpData(geo, FALSE);
-
-    /* clang complain - move bellow
-    if (UNKNOWN != least_depth) {
-        least_depth += S52_MP_get(S52_MAR_DATUM_OFFSET);  // !?! clang - val in least_depth never read
-    }
-    //*/
-
-    //if (NULL != drval1str) {
-    if (UNKNOWN != drval1) {
-
-        // clang still complain
-        //if (UNKNOWN != drval1) {
-        //double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
-        //drval1 += datum;  // !?! clang - val never read
-        //least_depth += S52_MP_get(S52_MAR_DATUM_OFFSET);  // !?! clang - val in least_depth never read
-        //}
-
-//#ifdef S52_DEBUG
-        //* debug - check impact of this bug:
-        // - NO  impact in St-Laurent since drval1str is allway NULL
-        // - YES impact in GB4X0000.000 (S64 test ENC)
+    if (UNKNOWN_DEPTH != drval1) {
         //if (least_depth < drval1) {  // SDUC BUG
-        //if (least_depth >= drval1) {   // chenzunfeng fix
+        // FIXME: this branch never used because depth=drval1 above
         if (least_depth > drval1) {   // chenzunfeng fix
             least_depth = drval1;
-            //PRINTF("DEBUG: chenzunfeng found this bug: 'least_depth<drval1' (should be '>='), %s:%i\n", S57_getName(geo), S57_getS57ID(geo));
+            PRINTF("DEBUG: chenzunfeng found this bug: 'least_depth<drval1' (should be '>='), %s:%i\n", S57_getName(geo), S57_getS57ID(geo));
             //S57_highlightON(geo);
-            //g_assert(0);
+            g_assert(0);
         }
-        //*/
-//#endif
-
-        /* litteraly psbl03_2.pdf say:
-        if (UNKNOWN == least_depth) {
-            least_depth = drval1;
-        } else {
-            // FIXME: this branch never reach
-            if (least_depth >= drval1)
-                least_depth = drval1;
-        }
-        //*/
-
-        // it's logicaly the same but more elegant this way
-        //if (UNKNOWN==least_depth || least_depth<drval1)
-        //if (UNKNOWN==least_depth || least_depth>=drval1)
-        //    least_depth = drval1;
 
     }
 
-    if (UNKNOWN != least_depth) {
+    if (UNKNOWN_DEPTH != least_depth) {
         // adjuste datum
         least_depth += S52_MP_get(S52_MAR_DATUM_OFFSET);
     }
@@ -1652,14 +1380,14 @@ static GString *LIGHTS05 (S57_geo *geo)
     }
 
     //extend_arc_radius = _setPtPos(geo, SECTRLIST);
-    S57_geo *geoTmp = NULL;
-    for (geoTmp=S57_getTouchLIGHTS(geo); geoTmp!=NULL; geoTmp=S57_getTouchLIGHTS(geoTmp)) {
-        int extend_arc_radius = _sectOverlap(geo, geoTmp);
+    //S57_geo *geoTouch = NULL;
+    for (S57_geo *geoTouch=S57_getTouchLIGHTS(geo); geoTouch!=NULL; geoTouch=S57_getTouchLIGHTS(geoTouch)) {
+        int extend_arc_radius = _sectOverlap(geo, geoTouch);
 
 
         // passe value via attribs to _renderAC()
         if (TRUE == extend_arc_radius) {
-            GString *extradstr = S57_getAttVal(geoTmp, "_extend_arc_radius");
+            GString *extradstr = S57_getAttVal(geoTouch, "_extend_arc_radius");
 
             if (NULL!=extradstr && 'Y'==*extradstr->str)
                 S57_setAtt(geo, "_extend_arc_radius", "N");
@@ -2084,9 +1812,9 @@ static GString *OBSTRN04 (S57_geo *geo)
     GString *udwhaz03 = NULL;
 
     GString *valsoustr   = S57_getAttVal(geo, "VALSOU");
-    double   valsou      = UNKNOWN;
-    double   depth_value = UNKNOWN;  // clang - init val never read
-    double   least_depth = UNKNOWN;
+    double   valsou      = UNKNOWN_DEPTH;
+    double   depth_value = UNKNOWN_DEPTH;  // clang - init val never read
+    double   least_depth = UNKNOWN_DEPTH;
 
     if (NULL != valsoustr) {
         valsou      = S52_atof(valsoustr->str);
@@ -2094,13 +1822,10 @@ static GString *OBSTRN04 (S57_geo *geo)
         sndfrm02    = _SNDFRM02(geo, depth_value);
     } else {
         if (S57_AREAS_T == S57_getObjtype(geo))
-            least_depth = _DEPVAL01(geo, least_depth);
+            least_depth = _DEPVAL01(geo, UNKNOWN_DEPTH);
 
         //if (UNKNOWN != least_depth) {  // <<< SDUC DEBUG to skip symbol ISODGR01 in shallow water
-        // BUT "IHO_S-64/ENC_TDS_Plots/ENC_TDS_Plots-2007NOV00/Isolated Dangers PLOT 1.pdf" show ISODGR01 in shallow water FOULAR01!!
-        // BUT *fail* to show ISODGR01 on IHO_S-64/ENC_ROOT/GB5X01NE.000 test chart
-
-        if (UNKNOWN == least_depth) {    // chenzunfeng fix
+        if (UNKNOWN_DEPTH == least_depth) {    // chenzunfeng fix
 #ifdef S52_DEBUG
             /*
             {
@@ -2135,8 +1860,9 @@ static GString *OBSTRN04 (S57_geo *geo)
                     }
                 }
             }
-        } else
+        } else {
             depth_value = least_depth;
+        }
     }
 
     udwhaz03 = _UDWHAZ03(geo, depth_value);
@@ -2159,7 +1885,7 @@ static GString *OBSTRN04 (S57_geo *geo)
             return obstrn04;
         }
 
-        if (UNKNOWN != valsou) {
+        if (UNKNOWN_DEPTH != valsou) {
             if (valsou <= 20.0) {
                 GString *watlevstr = S57_getAttVal(geo, "WATLEV");
                 GString *objlstr   = S57_getAttVal(geo, "OBJL");
@@ -2300,7 +2026,7 @@ static GString *OBSTRN04 (S57_geo *geo)
                     }
 #endif
                } else {
-                    if (UNKNOWN != valsou) {
+                    if (UNKNOWN_DEPTH != valsou) {
                         if (valsou <= 20.0)
                             g_string_append(obstrn04, ";LS(DOTT,2,CHBLK)");
                         else
@@ -2315,7 +2041,7 @@ static GString *OBSTRN04 (S57_geo *geo)
             if (NULL != udwhaz03)
                 g_string_append(obstrn04, udwhaz03->str);
             else {
-                if (UNKNOWN != valsou) {
+                if (UNKNOWN_DEPTH != valsou) {
                     if (valsou<=20.0 && NULL!=sndfrm02)
                         g_string_append(obstrn04, sndfrm02->str);
                 }
@@ -2345,7 +2071,7 @@ static GString *OBSTRN04 (S57_geo *geo)
                 return obstrn04;
             }
 
-            if (UNKNOWN != valsou) {
+            if (UNKNOWN_DEPTH != valsou) {
                 // S52 BUG (see CA49995B.000:305859) we get here because
                 // there is no color beside NODATA (ie there is a hole in group 1 area!)
                 // and this mean there is still not AC() command at this point.
@@ -2358,7 +2084,7 @@ static GString *OBSTRN04 (S57_geo *geo)
                 if (valsou <= 20.0)
                     g_string_append(obstrn04, ";LS(DOTT,2,CHBLK)");
                 else {
-                    //g_string_append(obstrn04, ";LS(DASH,2,CHBLK)");
+                    //g_string_append(obstrn04, ";LS(DASH,2,CHBLK)");  // SD BUG
                     g_string_append(obstrn04, ";LS(DASH,2,CHGRD)");
 
 #ifdef S52_DEBUG
@@ -2375,14 +2101,17 @@ static GString *OBSTRN04 (S57_geo *geo)
 
             } else {
                 // NO valsou
-
-                // FIXME: S64 GB4X0000.000/GB5X01NE.000 wrongly show AP(FOULAR01);
                 GString *watlevstr = S57_getAttVal(geo, "WATLEV");
                 if (NULL != watlevstr) {
                     GString *catobsstr = S57_getAttVal(geo, "CATOBS");
                     if ('3'==*watlevstr->str && NULL!=catobsstr && '6'==*catobsstr->str) {
-                        PRINTF("DEBUG: S64 GB5X01NE.000 pass here (%s:%i)\n", S57_getName(geo), S57_getS57ID(geo));
-                        g_string_append(obstrn04, ";AC(DEPVS);AP(FOULAR01);LS(DOTT,2,CHBLK)");
+
+                        PRINTF("DEBUG: S64 GB4X0000.000/GB5X01NE.000 pass here (%s:%i)\n", S57_getName(geo), S57_getS57ID(geo));
+                        //g_assert(0);
+
+                        // Note: LUP for OBSTRN:CATOBS6 --> CS(OBSTRN04);AP(FOULAR01);LS(DOTT,2,CHBLK)
+                        //g_string_append(obstrn04, ";AC(DEPVS);AP(FOULAR01);LS(DOTT,2,CHBLK)");
+                        g_string_append(obstrn04, ";AC(DEPVS)");
                     } else {
                         switch (*watlevstr->str) {
                             case '1':
@@ -2739,9 +2468,9 @@ static GString *SLCONS03 (S57_geo *geo)
     if (S57_AREAS_T == S57_getObjtype(geo)) {
         GString    *seabed01  = NULL;
         GString    *drval1str = S57_getAttVal(geo, "DRVAL1");
-        double      drval1    = (NULL == drval1str)? UNKNOWN : S52_atof(drval1str->str);
+        double      drval1    = (NULL == drval1str)? UNKNOWN_DEPTH : S52_atof(drval1str->str);
         GString    *drval2str = S57_getAttVal(geo, "DRVAL2");
-        double      drval2    = (NULL == drval2str)? UNKNOWN : S52_atof(drval2str->str);
+        double      drval2    = (NULL == drval2str)? UNKNOWN_DEPTH : S52_atof(drval2str->str);
 
         // adjuste datum
         double datum = S52_MP_get(S52_MAR_DATUM_OFFSET);
@@ -2749,9 +2478,9 @@ static GString *SLCONS03 (S57_geo *geo)
         //    drval1 += datum;
         //if ( -UNKNOWN != drval2)
         //    drval2 += datum;
-        if (UNKNOWN != drval1)
+        if (UNKNOWN_DEPTH != drval1)
             drval1 += datum;
-        if (UNKNOWN != drval2)
+        if (UNKNOWN_DEPTH != drval2)
             drval2 += datum;
 
         // debug
@@ -3425,52 +3154,49 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
 {
     // Note: will return NULL if no danger
 
-    GString *udwhaz03       = NULL;
-    int      danger         = FALSE;
-    double   safety_contour = S52_MP_get(S52_MAR_SAFETY_CONTOUR);
+    GString *udwhaz03 = NULL;
+    int      danger   = FALSE;
 
-    // first reset original scamin
-    S57_setScamin(geo, 1.0);
+    // first reset trigger scamin
+    S57_setScamin(geo, S57_RESET_SCAMIN);
 
-    if (UNKNOWN!=depth_value && depth_value<=safety_contour) {
-        // that intersect this point/line/area for OBSTRN04
-        // that intersect this point/area      for WRECKS02
-        S57_geo *geoTmp = S57_getTouchUDWHAZ(geo);
-        if (NULL == geoTmp) {
+    /* debug - logic error
+    if (UNKNOWN_DEPTH == depth_value) {
+        PRINTF("DEBUG: _UDWHAZ03() UNKNOWN == depth_value logic bug\n");
+        g_assert(0);
+    }
+    */
+
+    if (depth_value <= S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
+        S57_geo *geoTouch = S57_getTouchUDWHAZ(geo);
+        if (NULL == geoTouch) {
             PRINTF("DEBUG: NULL geo _UDWHAZ03/getTouchDEPARE\n");
 
             // debug
             S57_setHighlight(geo, TRUE);
 
             // no need to process further - bailout
-            return udwhaz03;  // NULL
+            return NULL;  // no danger
         }
-        // FIXME: geoTmp should be
-        //S57data.c:1620 in S57_dumpData(): NAME  : DEPARE
-        //S57data.c:1621 in S57_dumpData(): S57ID : 5299
-        //S57data.c:1627 in S57_dumpData(): obj_t : AREAS_T
-        //S57data.c:1596 in _printAttVal(): DRVAL1: 0
-        //S57data.c:1596 in _printAttVal(): DRVAL2: 1.8
 
-        // FIXME:
-        if (S57_LINES_T == S57_getObjtype(geoTmp)) {
-            GString *drval2str = S57_getAttVal(geoTmp, "DRVAL2");
+        // DEPARE:L
+        if (S57_LINES_T == S57_getObjtype(geoTouch)) {
+            GString *drval2str = S57_getAttVal(geoTouch, "DRVAL2");
             if (NULL == drval2str)
                 return NULL;
 
             double drval2 = S52_atof(drval2str->str);
 
             // adjuste datum
-            double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
-            drval2 += datum;
+            drval2 += S52_MP_get(S52_MAR_DATUM_OFFSET);
 
-            if (drval2 > safety_contour) {
+            if (drval2 > S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
                 danger = TRUE;
             }
 
         } else {
-            // area DEPARE or DRGARE
-            GString *drval1str = S57_getAttVal(geoTmp, "DRVAL1");
+            // area DEPARE:A or DRGARE:A
+            GString *drval1str = S57_getAttVal(geoTouch, "DRVAL1");
             if (NULL == drval1str)
                 return NULL;
 
@@ -3480,10 +3206,12 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
             double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
             drval1 += datum;
 
-            if (drval1 >= safety_contour) {
+            if (drval1 >= S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
                 danger = TRUE;
             }
         }
+    } else {
+        return NULL;  // no danger
     }
 
     /* original udwhaz03 code from specs in pslb03_2.pdf
@@ -3523,9 +3251,10 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
 
             S57_setScamin(geo, INFINITY);
         }
+    } else {
+        return NULL;  // no danger
     }
 
-    // Note: will return NULL if no danger
     return udwhaz03;
 }
 
@@ -3735,37 +3464,32 @@ static GString *WRECKS02 (S57_geo *geo)
     GString *udwhaz03 = NULL;
     GString *quapnt01 = NULL;
 
-    double   least_depth = UNKNOWN;
-    double   depth_value = UNKNOWN;
     GString *valsoustr   = S57_getAttVal(geo, "VALSOU");
-    double   valsou      = UNKNOWN;
+    double   valsou      = UNKNOWN_DEPTH;
+    double   least_depth = UNKNOWN_DEPTH;
+    double   depth_value = UNKNOWN_DEPTH;
 
     // debug
-    //GString *FIDNstr = S57_getAttVal(geo, "FIDN");
-    //if (0==strcmp("2135161787", FIDNstr->str)) {
-    //    PRINTF("%s\n",FIDNstr->str);
-    //}
     // CA279037.000
     //if (6246 == S57_getS57ID(geo)) {
     //    PRINTF("WRECKS found\n");
     //}
-    //CA479020.000
+    // CA479020.000
     //if (5620 == S57_getS57ID(geo)) {
     //    PRINTF("DEBUG: 5620 Q40 wreck \n");
     //    //g_assert(0);
     //}
-
-
 
     if (NULL != valsoustr) {
         valsou      = S52_atof(valsoustr->str);
         depth_value = valsou;
         sndfrm02    = _SNDFRM02(geo, depth_value);
     } else {
-        if (S57_AREAS_T == S57_getObjtype(geo))
-            least_depth = _DEPVAL01(geo, least_depth);
+        if (S57_AREAS_T == S57_getObjtype(geo)) {
+            least_depth = _DEPVAL01(geo, UNKNOWN_DEPTH);
+        }
 
-        if (UNKNOWN == least_depth) {
+        if (UNKNOWN_DEPTH == least_depth) {
             // WARNING: ambiguity removed in WRECKS03 (see update in C&S_MD2.PDF)
             GString *watlevstr = S57_getAttVal(geo, "WATLEV");
             GString *catwrkstr = S57_getAttVal(geo, "CATWRK");
@@ -3773,13 +3497,6 @@ static GString *WRECKS02 (S57_geo *geo)
             if (NULL == watlevstr) // default (missing)
                 depth_value = -15.0;
             else {
-                // incidentaly EMPTY_NUMBER_MARKER str start with a '2' and
-                // have the same value as the case '2'
-                //if (0==strcmp(watlevstr->str, EMPTY_NUMBER_MARKER)) {
-                //    PRINTF("FIXME: WATLEV att with no value\n");
-                //    depth_value = 15.0;
-                //}
-
                 switch (*watlevstr->str) { // ambiguous
                     case '1':
                     case '2': depth_value = -15.0 ; break;
@@ -3808,8 +3525,9 @@ static GString *WRECKS02 (S57_geo *geo)
                     }
                 }
             }
-        } else
+        } else {
             depth_value = least_depth;
+        }
     }
 
     udwhaz03 = _UDWHAZ03(geo, depth_value);
@@ -3824,7 +3542,7 @@ static GString *WRECKS02 (S57_geo *geo)
 
         } else {
             // Continuation A (POINT_T)
-            if (UNKNOWN != valsou) {
+            if (UNKNOWN_DEPTH != valsou) {
 
                 if (valsou <= 20.0) {
                     wrecks02 = _g_string_new(wrecks02, ";SY(DANGER01)");
@@ -3893,7 +3611,7 @@ static GString *WRECKS02 (S57_geo *geo)
             if ( NULL != udwhaz03)
                 line = ";LS(DOTT,2,CHBLK)";
             else {
-                 if (UNKNOWN != valsou){
+                 if (UNKNOWN_DEPTH != valsou){
                      if (valsou <= 20)
                          line = ";LS(DOTT,2,CHBLK)";
                      else
@@ -3920,7 +3638,7 @@ static GString *WRECKS02 (S57_geo *geo)
         }
         wrecks02 = _g_string_new(wrecks02, line);
 
-        if (UNKNOWN != valsou) {
+        if (UNKNOWN_DEPTH != valsou) {
             if (valsou <= 20) {
                 if (NULL != udwhaz03)
                     g_string_append(wrecks02, udwhaz03->str);
