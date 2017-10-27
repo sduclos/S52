@@ -74,6 +74,7 @@ DBG    = $(DBG3)
 #    no -rdynamic
 #    -fsanitize=safestack
 
+# stack protection: GCC -fstack-check, CLang -fsanitize=cfi
 # from JPL Coding Standard in C
 # -Wall -pedantic -std=iso9899:1999
 # -Wtraditional -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wstrict-prototypes -Wmissing-prototypes -Wconversion
@@ -101,13 +102,13 @@ DBG    = $(DBG3)
 # gcov: -fprofile-arcs -ftest-coverage
 #CC   = gcc -std=c99 -fPIC -pipe -D_POSIX_C_SOURCE=199309L # to get siginfo_t
 #CC  += -fsanitize=address -fno-omit-frame-pointer
-#CC   = gcc -std=c99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
+#CC   = gcc -std=c99 -fstack-check -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
 #CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI and sigtrap()
 #CC   = g++ -fPIC -O0 -g -Wall  # test - compile C code as C++
 #CXX  = g++ -fPIC
 
-# CLANG
-CC    = clang -std=c99 -pipe  -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
+# CLANG -fsanitize=cfi
+CC    = clang -std=c99 -pipe -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
 #CC   += --analyze
 #CC   += -fsanitize=address
 CXX   = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
