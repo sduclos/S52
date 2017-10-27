@@ -103,7 +103,7 @@ typedef struct _S57_geo {
 
     // scamin overide attribs val
     double       scamin;      // 0.0 - init needed
-                              // 1.0 - val resetted by CS DEPCNT02, _UDWHAZ03 (via OBSTRN04, WRECKS02)
+                              // -1.0 - RESET_SCAMIN val resetted by CS DEPCNT02, _UDWHAZ03 (via OBSTRN04, WRECKS02)
                               // XX  - normal value from CS
 
     // FIXME: SCAMAX
@@ -377,10 +377,10 @@ int        S57_geo2prj3dv(guint npt, pt3 *data)
     return TRUE;
 }
 
-#if 0
+//#if 0
 // FIXME: this break line/poly match
 static int    _inLine(pt3 A, pt3 B, pt3 C)
-// is BC inline with AC or visa-versa (not AB)
+// TRUE if BC is inline with AC or visa-versa (not AB)
 {
     // test.1: A( 0, 0) B(2,2) C( 4, 4)
     // test.2: A(-2,-2) B(0,0) C(+2,+2)
@@ -413,6 +413,8 @@ static int    _inLine(pt3 A, pt3 B, pt3 C)
     // ex: (0-4)(2-4) - (2-4)(0-4) = 8-8 = 0
 }
 
+#if 0
+// FIXME: this break line/poly match
 static guint  _delInLineSeg(guint npt, double *ppt)
 // remove point ON the line segment
 {
@@ -496,7 +498,7 @@ static guint  _delInLineSeg(guint npt, double *ppt)
     */
 }
 
-static   int  _simplifyGEO(_S57_geo *geo)
+static int    _simplifyGEO(_S57_geo *geo)
 {
     // LINE
     if (S57_LINES_T == geo->obj_t) {
@@ -1241,13 +1243,13 @@ int        S57_getAttributes(_S57_geo *geo, char **name, char **val)
 static guint   _qMax = 0;
 //static GArray *_qList    = NULL;
 static guint _qcnt[500] = {0};
-GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
+GString   *S57_getAttVal(_S57_geo *geo, const char *attName)
 // return attribute string value or NULL if:
 //      1 - attribute name abscent
 //      2 - its a mandatory attribute but its value is not define (EMPTY_NUMBER_MARKER)
 {
     return_if_null(geo);
-    return_if_null(att_name);
+    return_if_null(attName);
 
     // FIXME: check and time for direct value in geo (heading / course)
 /*
@@ -1315,8 +1317,8 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
 226 1236 valName:$SCODE
 */
 
-    GQuark   q   = g_quark_from_string(att_name);
-    GString *att = (GString*) g_datalist_id_get_data(&geo->attribs, q);
+    GQuark   q      = g_quark_from_string(attName);
+    GString *attVal = (GString*) g_datalist_id_get_data(&geo->attribs, q);
 
     { // stat
         if (500 < q)
@@ -1330,7 +1332,9 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
         //}
     }
 
-    if (NULL!=att && (0==g_strcmp0(att->str, EMPTY_NUMBER_MARKER))) {
+    // FIXME: optimisation: check for EMPTY_NUMBER_MARKER in S57_setAtt() but then valName will
+    // be removed from attribs and dumpData() will fail to show a mandatory att with no value!!
+    if (NULL!=attVal && (0==g_strcmp0(attVal->str, EMPTY_NUMBER_MARKER))) {
         // clutter
         //PRINTF("DEBUG: mandatory attribute (%s) with ommited value\n", att_name);
 
@@ -1342,15 +1346,28 @@ GString   *S57_getAttVal(_S57_geo *geo, const char *att_name)
 
     // display this NOTE once (because of too many warning)
     static int silent = FALSE;
-    if (!silent && NULL!=att && 0==att->len) {
+    if (!silent && NULL!=attVal && 0==attVal->len) {
         //PRINTF("NOTE: attribute (%s) has no value [obj:%s]\n", att_name, geo->name->str);
-        PRINTF("NOTE: attribute (%s) has no value [obj:%s]\n", att_name, geo->name);
+        PRINTF("NOTE: attribute (%s) has no value [obj:%s]\n", attName, geo->name);
         PRINTF("NOTE: (this msg will not repeat)\n");
         silent = TRUE;
         return NULL;
     }
 
-    return att;
+    return attVal;
+}
+
+GString   *S57_getAttValALL(_S57_geo *geo, const char *attName)
+// return attribute string value or NULL if attribute value abscent
+{
+    return_if_null(geo);
+    return_if_null(attName);
+
+
+    GQuark   q      = g_quark_from_string(attName);
+    GString *attVal = (GString*) g_datalist_id_get_data(&geo->attribs, q);
+
+    return attVal;
 }
 
 static void   _string_free(gpointer data)
@@ -1367,15 +1384,6 @@ GData     *S57_setAtt(_S57_geo *geo, const char *name, const char *val)
 
     GQuark   qname = g_quark_from_string(name);
     GString *value = g_string_new(val);
-
-    /* debug
-    GString *valstr = S57_getAttVal(geo, name);
-    if (NULL != valstr) {
-        // only SCAMIN set to INFINITY pass here
-        PRINTF("DEBUG: XXXXXXXXXXXXXXXXXXXX overwrite att_name: %s att_val: %s old_val: %s\n", name, val, valstr->str);
-        //g_assert(0);
-    }
-    */
 
     // FIXME: _qMin
     // stat
@@ -1396,6 +1404,7 @@ GData     *S57_setAtt(_S57_geo *geo, const char *name, const char *val)
      }
 #endif
 
+    // Note: if value NULL then _string_free must be NULL and qname is remove from attribs
     g_datalist_id_set_data_full(&geo->attribs, qname, value, _string_free);
 
     return geo->attribs;
@@ -1576,12 +1585,12 @@ double     S57_getScamin(_S57_geo *geo)
     // test useless since the only caller allready did that
     //return_if_null(geo);
 
-    // 0 - init, 1 - reset
-    if (0.0==geo->scamin || 1.0==geo->scamin) {
+    // 0 - init, -1 - S57_RESET_SCAMIN: when debug (S52_MAR_SCAMIN is OFF) AP(FOULAR01) doesn't show
+    if (0.0==geo->scamin || S57_RESET_SCAMIN==geo->scamin) {
         GString *valstr = S57_getAttVal(geo, "SCAMIN");
         if (NULL == valstr) {
             // allway visible, except if scamin=1 set by DEPCNT02 and _UDWHAZ03 (via OBSTRN04, WRECKS02)
-            if (1.0 != geo->scamin)
+            if (S57_RESET_SCAMIN != geo->scamin)
                 geo->scamin = INFINITY;
         } else {
             geo->scamin = S52_atof(valstr->str);
@@ -1899,17 +1908,48 @@ S57_geo   *S57_delNextPoly(_S57_geo *geo)
 //    return  geo->S57ID;
 //}
 
-gboolean   S57_isPtInArea(guint npt, pt3 *pt, gboolean close, double x, double y)
-// return TRUE if (x,y) inside area (close/open) else FALSE
-// FIXME: CW or CCW or work with either?
+gboolean   S57_isPtInArea(_S57_geo *geo, double x, double y)
+// return TRUE if (x,y) inside geo area (close/open) else FALSE
 {
-    return_if_null(pt);
+    return_if_null(geo);
 
-    //if (0 == npt)
-    //    return FALSE;
+    gboolean inArea = FALSE;
+
+    guint nr = S57_getRingNbr(geo);
+    for (guint i=0; i<nr; ++i) {
+        guint   npt;
+        double *ppt;
+        if (TRUE == S57_getGeoData(geo, i, &npt, &ppt)) {
+            if (TRUE == S57_isPtInRing(npt, (pt3*)ppt, TRUE, x, y)) {
+                // exterior ring
+                if (0 == i) {
+                    inArea = TRUE;
+                } else {
+                    // interior ring
+                    // FIXME: assume S57 rings not concentric - check this
+                    inArea = FALSE;
+                }
+            }
+        }
+    }
+
+    return inArea;
+}
+
+gboolean   S57_isPtInRing(guint npt, pt3 *ppt, gboolean close, double x, double y)
+// return TRUE if (x,y) inside ring (close/open) else FALSE
+// Note: CW or CCW, work with either
+{
+    return_if_null(ppt);
+
+    if (npt < 3) {
+        PRINTF("FIXME: logic bug - area with less than 3 pt\n");
+        g_assert(0);
+        return FALSE;
+    }
 
     gboolean c = 0;
-    pt3     *v = pt;
+    pt3     *v = ppt;
 
     if (TRUE == close) {
         for (guint i=0; i<npt-1; ++i) {
@@ -1954,6 +1994,53 @@ gboolean   S57_isPtInSet(_S57_geo *geo, double x, double y)
     return FALSE;
 }
 
+gboolean   S57_isPtOnLine(_S57_geo *geoLine, double x, double y)
+// TRUE if XY is on the line else FALSE
+{
+    return_if_null(geoLine);
+
+    // debug / paranoid
+    if (S57_LINES_T != S57_getObjtype(geoLine)) {
+        PRINTF("FIXME: geoLine not a line .. logic bug\n");
+        g_assert(0);
+        return FALSE;
+    }
+
+    guint   npt;
+    double *ppt;
+
+    if (FALSE == S57_getGeoData(geoLine, 0, &npt, &ppt))
+        return FALSE;
+
+    for (guint i=0; i<npt-1; ++i, ppt+=3) {
+        // check if outside segment extent
+        // X
+        if (ppt[0] < ppt[3]) {
+            if (x<ppt[0] || ppt[3]<x)
+                continue;
+        } else {
+            if (x<ppt[3] || ppt[0]<x)
+                continue;
+        }
+        // Y
+        if (ppt[1] < ppt[4]) {
+            if (y<ppt[1] || ppt[4]<y)
+                continue;
+        } else {
+            if (y<ppt[4] || ppt[1]<y)
+                continue;
+        }
+
+        // compare slope A-B, B-C
+        // FIXME: find that this is not overkill
+        //pt3 B = {x, y, 0.0};
+        //if (TRUE == _inLine(*(pt3*)ppt/* A */, B, *(pt3*)(ppt+3)/* C */))
+        //    return TRUE;
+    }
+
+    return FALSE;
+}
+
 gboolean   S57_touchArea(_S57_geo *geoArea, _S57_geo *geo)
 // TRUE if A touch B else FALSE
 // A:P/L/A, B:A
@@ -1972,26 +2059,15 @@ gboolean   S57_touchArea(_S57_geo *geoArea, _S57_geo *geo)
     if (FALSE == S57_getGeoData(geo, 0, &nptB, &pptB))
         return FALSE;
 
-    // FIXME: work only for point in poly
-    //if (S57_LINES_T == S57_getObjtype(geoB)) {
-    //if (S57_AREAS_T != S57_getObjtype(geoB)) {
     if (S57_AREAS_T != S57_getObjtype(geoArea)) {
         PRINTF("FIXME: geoB is a S57_POINT_T or S57_LINES_T .. this algo break on that type (%c)\n", S57_getObjtype(geoArea));
         g_assert(0);
         return FALSE;
     }
 
-    /*
-    for (guint i=0; i<nptA; ++i, pptA+=3) {
-        // FIXME: optimisation check if ptA inside B extent
-        if (TRUE == S57_isPtInArea(nptB, (pt3*)pptB, TRUE, pptA[0], pptA[1]))
-            return TRUE;
-    }
-    */
-
     for (guint i=0; i<nptB; ++i, pptB+=3) {
         // FIXME: optimisation check if ptA inside B extent
-        if (TRUE == S57_isPtInArea(nptA, (pt3*)pptA, TRUE, pptB[0], pptB[1]))
+        if (TRUE == S57_isPtInRing(nptA, (pt3*)pptA, TRUE, pptB[0], pptB[1]))
             return TRUE;
     }
 
