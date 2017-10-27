@@ -373,7 +373,8 @@ static gboolean _initPLib       = TRUE;  // will init PLib
 static GTree   *_table[TBL_NUM] = {NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL};
 
 #define CR     '\r'      // carriage return
-#define EOL    '\037'    // 31/037/0x1F/CTRL-_: ASCII Unit Separator
+//#define EOL    '\037'    // 31/037/0x1F/CTRL-_: ASCII Unit Separator
+#define US    '\037'    // 31/037/0x1F/CTRL-_: ASCII Unit Separator
                          // used in S52 as an EOL (also ATTC field separator)
 #define APOS   '\047'
 
@@ -542,7 +543,8 @@ static int        _readS52Line(_PL *fp, char *buf)
    for (int i=reclen+9; i<=linelen; ++i)
        buf[i] = '\0';
 
-   if (EOL == buf[reclen+8])
+   //if (EOL == buf[reclen+8])
+   if (US == buf[reclen+8])
        buf[reclen+8] = '\0';
 
    // EOF
@@ -552,8 +554,9 @@ static int        _readS52Line(_PL *fp, char *buf)
    return linelen;
 }
 
-static int        _chopAtEOL(char *pBuffer, char c)
-// replace S52 EOL (field separator) with char 'c'
+//static int        _chopAtEOL(char *pBuffer, char c)
+static int        _chopAtUS(char *pBuffer, char c)
+// replace S52 US (field separator) with char 'c'
 {
    /*
    int i;
@@ -564,7 +567,7 @@ static int        _chopAtEOL(char *pBuffer, char c)
    */
 
    while (*pBuffer != '\0') {
-      if (*pBuffer == EOL )
+      if (*pBuffer == US )
           *pBuffer = c;
       ++pBuffer;
    }
@@ -723,11 +726,12 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
     // setup default LUP to the first LUP
     _LUP *LUP = LUPlist;
 
-    // debug
-    //if (0 == strncmp(LUPlist->OBCL, "SBDARE", 6)) {
-    //    trace = 1;
-    //    S57_dumpData(geo, FALSE);
-    //}
+    /* debug
+    if (0 == g_strcmp0(LUPlist->OBCL, "SBDARE")) {
+        trace = 1;
+        S57_dumpData(geo, FALSE);
+    }
+    */
     //GString *FIDNstr = S57_getAttVal(geo, "FIDN");
     //if (0==strcmp("2135158878", FIDNstr->str)) {
     //    trace = 1;
@@ -756,7 +760,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
         }
     }
 
-    // Get next LUP --the first one is alway empty.
+    // Get next LUP - the first one is alway empty.
     LUPlist = LUPlist->OBCLnext;
 
 
@@ -766,6 +770,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
     while (LUPlist) {
         int      skipLUP   = 0;   //
         int      nATTmatch = 0;   // nbr of att value match for this LUP
+        // Note: ATTC was previously chopped at US (0x1F) replace by '\0' (abc\0def\0\0)
         char    *attlv     = (NULL == LUPlist->ATTC) ? NULL : LUPlist->ATTC->str; // ATTL+ATTV
 
         if (NULL == attlv) {
@@ -780,11 +785,19 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
             char     attl[7] = {'\0'}; // attribute name
             GString *attv    = NULL;   // attribute value
 
-            // scan object attribute name (ie propertie name in OGR)
-            // for a name match
+            // scan object attribute name (ie propertie name in OGR) for a name match
             strncat(attl, attlv, 6);
-            attv = S57_getAttVal(geo, attl);
+            //attv = S57_getAttVal(geo, attl);
+            attv = S57_getAttValALL(geo, attl);  // will return EMPTY_NUMBER_MARKER if there
+
+            //debug
+            //if (NULL == attv) {
+            //    PRINTF("DEBUG: NULL attVal for attName: %s\n", attlv);
+            //}
+
             if (NULL != attv) {
+                // attl name match
+
                 //PRINTF("attv: %s\n", attv->str);
 
                 // Check for a attribute value match.
@@ -796,20 +809,27 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
 
                 // special case [S52-A-2:8.3.3.4(i)]
                 // ie. use any attribute value (except value unknown)
-                if ( (attlv[6] == ' ') && (0!=g_strcmp0(attv->str, EMPTY_NUMBER_MARKER)) ) {
+                // FIXME: getAttVal now return NULL on EMPTY_NUMBER_MARKER so this test is allway TRUE
+                // FIX: call getAttValALL()
+                // Note: ATTC str has )x1F (US) reeplace by '\0'  not ' '
+                //if ((attlv[6] == ' ') && (0!=g_strcmp0(attv->str, EMPTY_NUMBER_MARKER)) ) {
+                if ((attlv[6] == '\0') && (0!=g_strcmp0(attv->str, EMPTY_NUMBER_MARKER))){
                     ++nATTmatch;
+                    //PRINTF("DEBUG: ATTC: %s INST: %s\n", LUPlist->ATTC->str, LUPlist->INST->str);
+                    //S57_dumpData(geo, FALSE);
+                    //g_assert(0);
 
                 } else {
                     // special case [S52-A-2:8.3.3.4(ii)]
                     // ie. match if value is unknown
-                    if ( (attlv[6] == '?') && (0==g_strcmp0(attv->str, EMPTY_NUMBER_MARKER)) ) {
-                    //if ( (attlv[6] == '?') ) {
+                    // FIXME: getAttVal now return NULL on EMPTY_NUMBER_MARKER so this test is allway FALSE
+                    // FIX: call getAttValALL() FAIL
+                    //if ((attlv[6] == '?') && (0==g_strcmp0(attv->str, EMPTY_NUMBER_MARKER)) ) {
+                    if ((attlv[6] == '?') && FALSE) {
                         ++nATTmatch;
-                        // give DRVAL1 = 0.0
-                        // but should be unknown
-                        // see CA49995A FIDN:327146 FIDS:9
-                        // FIX: export PRESERVE_EMPTY_NUMBERS:ON
 
+                        //PRINTF("DEBUG: ATTC: %s INST: %s\n", LUPlist->ATTC->str, LUPlist->INST->str);
+                        //S57_dumpData(geo, FALSE);
 
                     // value check
                     } else {
@@ -845,6 +865,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
                 }
 
                 // get next attribute name/value for this LUP
+                // Note: str chopped to \0 at US (Unit Separator - 0x1F)
                 while (*attlv != '\0')
                     attlv++;  // find end of attribue name/value pair
 
@@ -1077,7 +1098,6 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
    }
    */
 
-
     // CS found, merge cmd list in command array (normal + CS)
 
     // init scamin override (ISODGR01)
@@ -1103,20 +1123,23 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
     obj->oPrios.DISC = obj->LUP->prios.DISC;
     obj->oPrios.LUCM = obj->LUP->prios.LUCM;
 
+    //
+    // FIXME: optimisation: do not parse INSTRUCTION (_parseINST()) to relsove the same CS
+    // but CS call S52_MAR_SYMBOLIZED_BND in RESARE02 - so obj->CScmdL[0] must be the same as obj->CScmdL[1]
+    // and when Mariner Param change then CS must be re-resolve again
+
     // expand CS
     S52_CS_cb CScb = cmd->cmd.CS->CScb;
     if (NULL != CScb) {
         obj->CSinst[alt] = CScb(obj->geo);
         if (NULL!=obj->CSinst[alt] && 0!=obj->CSinst[alt]->len) {
-            //obj->CScmdL[alt] = _parseINST(obj->CSinst[alt]);
             obj->CScmdL[alt] = _parseINST(obj->CSinst[alt], &obj->hasText[alt]);
-            _cmdWL *tmp      = obj->CScmdL[alt];
+            _cmdWL *CScmdL   = obj->CScmdL[alt];
 
-            while (NULL != tmp) {
+            while (NULL != CScmdL) {
                 // change object Display Priority, if any, at this point
-                if (S52_CMD_OVR_PR == tmp->cmdWord) {
-                    //char *c = tmp->param;
-                    CCHAR *c = tmp->param;
+                if (S52_CMD_OVR_PR == CScmdL->cmdWord) {
+                    CCHAR *c = CScmdL->param;
 
                     //obj->prioOveride = TRUE;
 
@@ -1138,8 +1161,8 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
                 }
 
                 // continue to fill array with expanded CS
-                g_array_append_val(obj->cmdAfinal[alt], *tmp);
-                tmp = tmp->next;
+                g_array_append_val(obj->cmdAfinal[alt], *CScmdL);
+                CScmdL = CScmdL->next;
             }
         } else {
             // FIXME: ENC_ROOT/US3NY21M/US3NY21M.000 land here
@@ -1503,7 +1526,8 @@ static int        _readColor(_PL *fp, GArray *colors)
         S52_Color c;
 
         memset(&c, 0, sizeof(S52_Color));
-        _chopAtEOL(_pBuf, ' ');
+        //_chopAtEOL(_pBuf, ' ');
+        _chopAtUS(_pBuf, ' ');
         strncpy(c.colName, _pBuf+9, 5);
 
         c.x     = S52_atof(_pBuf+14);
@@ -1643,17 +1667,20 @@ static int        _parseLUPT(_PL *fp)
     len = _readS52Line(fp, _pBuf);
 
     do {
+        // FIXME: check for US\n at line end before chopping to "xyz\0zxy\0yzx\0\0"
         FIELD(ATTC) {                     // field do repeat
             if (_pBuf[9] != '\0') {            // could be empty!
                 if (NULL != LUP->ATTC) {
                     PRINTF("ERROR: repeating field ATTC not implemented!\n");
                     g_assert(0);
                 } else {
-                    _pBuf[len-1] = EOL;  // change "\0\0" to "EOL\0" for _chopS52Line()
+                    //_pBuf[len-1] = EOL;  // change "\0\0" to "EOL\0" for _chopS52Line()
+                    _pBuf[len-1] = US;  // change "\0\0" to "US\0" for _chopAtUS()
                     // FIXME: use g_string_new_len () in glib-2.0
                     //LUP->ATTC = g_string_new_len(_pBuf+9, len-9);
                     LUP->ATTC = g_string_new(_pBuf+9);
-                    _chopAtEOL(LUP->ATTC->str, '\0');   // rechop the line (ie "xyz\0zxy\0yzx\0\0")
+                    //_chopAtEOL(LUP->ATTC->str, '\0');   // rechop the line (ie "xyz\0zxy\0yzx\0\0")
+                    _chopAtUS(LUP->ATTC->str, '\0');   // rechop the line (ie "xyz\0zxy\0yzx\0\0")
                 }
             }
         }
@@ -2065,14 +2092,8 @@ static CCHAR     *_getParamVal(S57_geo *geo, CCHAR *str, char *buf, int bsz)
         defval = 1;
     }
 
-    // debug
-    //if (0 == g_strncasecmp(buf, "DRVAL1", 6))
-    //    PRINTF("DRVAL1 found\n");
-
     valstr = S57_getAttVal(geo, buf);
     if (NULL == valstr) {
-        // debug
-        //S57_dumpData(geo);
         if (defval)
             _getParamVal(geo, buf+7, buf, bsz-7);    // default value --recursion
         else {
