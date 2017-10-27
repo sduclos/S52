@@ -4,6 +4,21 @@
 #
 
 
+2017OCT27
+- add S57_RESET_SCAMIN to doc magic nbr -1.0 to signal CS to reset S57 obj SCAMIN
+- fix touch() logic 
+- fix AP(FOULAR) SY(ISODGR) in shallow
+- rename S57_isPtInArea() to S57_isPtInRing()
+- add S57_isPtInArea() to fix touch() logic around island
+- fix PL lookUp() for AP(FOULAR), add S57_getAttValALL() for EMPTY_NUMBER_MARKER
+
+2017OCT24
+- fix CS(OBSTRN04) remove command AP(FOULAR01);LS(DOTT,2,CHBLK) in NO valsou branch - allready in PLib
+- fix PL _lookUpLUP() special case (i) separator ' ' to '\0'
+- renamme PL:_chopAtEOL to _chopAtUS()
+- rename #def EOL by US (0x1F - Unit Separator)
+- add S57_getAttValALL() to return also unknown value for _lookUpLUP()
+
 2017OCT16
 - fix DEPCNT02 algo adding test pt in set
 - refactor DEPCNT02 add debug code
