@@ -771,29 +771,33 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
         int      skipLUP   = 0;   //
         int      nATTmatch = 0;   // nbr of att value match for this LUP
         // Note: ATTC was previously chopped at US (0x1F) replace by '\0' (abc\0def\0\0)
-        char    *attlv     = (NULL == LUPlist->ATTC) ? NULL : LUPlist->ATTC->str; // ATTL+ATTV
+        char    *attLV     = (NULL == LUPlist->ATTC) ? NULL : LUPlist->ATTC->str; // ATTL+ATTV
 
-        if (NULL == attlv) {
+        if (NULL == attLV) {
             LUPlist = LUPlist->OBCLnext;
             continue;
         }
 
         if (trace)
-            _dumpATT(attlv);
+            _dumpATT(attLV);
 
-        while (*attlv != '\0' && !skipLUP) {
+        while ((*attLV != '\0') && !skipLUP) {
             char     attl[7] = {'\0'}; // attribute name
             GString *attv    = NULL;   // attribute value
 
+            //
             // scan object attribute name (ie propertie name in OGR) for a name match
-            strncat(attl, attlv, 6);
-            //attv = S57_getAttVal(geo, attl);
-            attv = S57_getAttValALL(geo, attl);  // will return EMPTY_NUMBER_MARKER if there
+            //
 
-            //debug
-            //if (NULL == attv) {
-            //    PRINTF("DEBUG: NULL attVal for attName: %s\n", attlv);
-            //}
+            //strncat(attl, attlv, 6);  // src \0 never reach!
+            memcpy(attl, attLV, 6);
+
+#ifdef S52_USE_CA_ENC
+            attv = S57_getAttVal(geo, attl);     // will NOT return EMPTY_NUMBER_MARKER
+#else
+            attv = S57_getAttValALL(geo, attl);  // will return EMPTY_NUMBER_MARKER if there
+#endif  // S52_USE_CA_ENC
+
 
             if (NULL != attv) {
                 // attl name match
@@ -809,11 +813,8 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
 
                 // special case [S52-A-2:8.3.3.4(i)]
                 // ie. use any attribute value (except value unknown)
-                // FIXME: getAttVal now return NULL on EMPTY_NUMBER_MARKER so this test is allway TRUE
-                // FIX: call getAttValALL()
-                // Note: ATTC str has )x1F (US) reeplace by '\0'  not ' '
-                //if ((attlv[6] == ' ') && (0!=g_strcmp0(attv->str, EMPTY_NUMBER_MARKER)) ) {
-                if ((attlv[6] == '\0') && (0!=g_strcmp0(attv->str, EMPTY_NUMBER_MARKER))){
+                // Note: ATTC str has x1F (US) replace by '\0'
+                if ((attLV[6] == '\0') && (0!=g_strcmp0(attv->str, EMPTY_NUMBER_MARKER))){
                     ++nATTmatch;
                     //PRINTF("DEBUG: ATTC: %s INST: %s\n", LUPlist->ATTC->str, LUPlist->INST->str);
                     //S57_dumpData(geo, FALSE);
@@ -822,22 +823,23 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
                 } else {
                     // special case [S52-A-2:8.3.3.4(ii)]
                     // ie. match if value is unknown
-                    // FIXME: getAttVal now return NULL on EMPTY_NUMBER_MARKER so this test is allway FALSE
-                    // FIX: call getAttValALL() FAIL
-                    //if ((attlv[6] == '?') && (0==g_strcmp0(attv->str, EMPTY_NUMBER_MARKER)) ) {
-                    if ((attlv[6] == '?') && FALSE) {
+                    // debug - CA ENC
+                    //if ((attlv[6] == '?') && FALSE ) {  // OK for CA & S64 ENC
+
+                    if ((attLV[6] == '?') && (0==g_strcmp0(attv->str, EMPTY_NUMBER_MARKER)) ) {
                         ++nATTmatch;
 
                         //PRINTF("DEBUG: ATTC: %s INST: %s\n", LUPlist->ATTC->str, LUPlist->INST->str);
                         //S57_dumpData(geo, FALSE);
+                        //g_assert(0);
 
                     // value check
                     } else {
                         // no attribut value in LUP (ex ORIENT in TSSLPT)
-                        if (attlv[6] == '\0')
+                        if (attLV[6] == '\0')
                             ++nATTmatch;
                         else {
-                            char *tmpVal = strstr(attv->str, attlv+6);
+                            char *tmpVal = strstr(attv->str, attLV+6);
                             // must match *exacly*
                             // so '4,3,4' match '4,3,4,7' but not 3,4,3 (4,3 match)
                             // the trick is to use the lenght of of the value of
@@ -853,7 +855,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
                                 //    ++nATTmatch;
                                 //}
                                 int valS57 = atoi(attv->str);
-                                int valLUP = atoi(attlv+6);
+                                int valLUP = atoi(attLV+6);
                                 if (valS57 == valLUP)
                                     ++nATTmatch;
                             }
@@ -866,10 +868,11 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
 
                 // get next attribute name/value for this LUP
                 // Note: str chopped to \0 at US (Unit Separator - 0x1F)
-                while (*attlv != '\0')
-                    attlv++;  // find end of attribue name/value pair
+                while (*attLV != '\0') {
+                    attLV++;  // find end of attribue name/value pair
+                }
 
-                attlv++;  // skip end of field --witch is now a '\0'
+                attLV++;  // skip end of field --witch is now a '\0'
 
 
             } else {
@@ -877,6 +880,10 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
                 nATTmatch = 0;
                 //nATTmatch = 1;
                 //PRINTF("SKIP\n");
+                //debug
+                PRINTF("DEBUG: NULL attVal for attName: %s\n", attLV);
+
+
             }
 
         } // while
@@ -1100,21 +1107,9 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
 
     // CS found, merge cmd list in command array (normal + CS)
 
-    // init scamin override (ISODGR01)
-    // FIXME: aply only to those that reset SCAMIN: DEPCNT02, OBSTRN04/_UDWHAZ03, WRECKS02/_UDWHAZ03
-    // this break internal consitency
-    //if (TRUE==S52_PL_cmpCmdParam(obj, "DEPCNT02") ||
-    //    TRUE==S52_PL_cmpCmdParam(obj, "OBSTRN04") ||
-    //    TRUE==S52_PL_cmpCmdParam(obj, "WRECKS02"))
-    {
-        S57_setScamin(obj->geo, 0.0);
-    }
-
-
     // override with original LUP prio so that
     // if CS expdand to no OP in this code path
     // obj will be move to there default renderBin
-    //obj->prioOveride = FALSE;
     obj->prioOverride = TRUE;
 
     // reset original priority from LUP
@@ -1140,8 +1135,6 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
                 // change object Display Priority, if any, at this point
                 if (S52_CMD_OVR_PR == CScmdL->cmdWord) {
                     CCHAR *c = CScmdL->param;
-
-                    //obj->prioOveride = TRUE;
 
                     // Display Priority
                     if (S52_PRIO_NOPRIO != c[0])
