@@ -394,6 +394,9 @@ static int      _s52_draw_user(s52engine *engine)
     return TRUE;
 }
 
+//#include <mcheck.h>  // mtrace(), muntrace()
+//static void _init_hook(void);  // forward decl
+
 static int      _s52_draw_cb  (gpointer user_data)
 {
     s52engine *engine = (s52engine*)user_data;
@@ -505,8 +508,15 @@ static int      _s52_draw_cb  (gpointer user_data)
     _egl_end(&engine->eglState, "test");
 #endif
 
-exit:
+    static int _setMallocHook = TRUE;
+    if (TRUE == _setMallocHook) {
+        //_init_hook();
+        _setMallocHook = FALSE;
+        //mtrace();
+    }
 
+
+exit:
     // debug
     //LOGI("s52egl:_s52_draw_cb(): end .. \n");
 
@@ -2101,7 +2111,9 @@ static int      _X11_handleXevent(gpointer user_data)
 
 #if 0
 //#if 1
-#include <mcheck.h>  // mtrace(), muntrace()
+//#include <mcheck.h>  // mtrace(), muntrace()
+
+#define _LIBC
 #include <malloc.h>
 
 static void *_malloc_hook_cb(size_t size, const void *caller);
@@ -2115,6 +2127,7 @@ static size_t _mem_alloc = 0;
 static void *_malloc_hook_cb(size_t size, const void *caller)
 {
     void *result;
+    //const char buf[80] = "DEBUG: malloc\n";
 
     // Restore all old hooks
     __malloc_hook = _malloc_hook_orig;
@@ -2123,6 +2136,12 @@ static void *_malloc_hook_cb(size_t size, const void *caller)
     // Call recursively
     result = malloc(size);
     _mem_alloc += size;
+
+    malloc_stats();
+
+//#include <unistd.h>
+    //ssize_t write(int fd, const void *buf, size_t count);
+    //write(STDOUT, buf, strlen(buf));
 
     /*
     // Save underlying hooks
@@ -2173,6 +2192,8 @@ static void _init_hook(void)
 }
 #endif  // 0
 
+//#include <malloc.h>
+
 int main(int argc, char *argv[])
 {
     //https://developer.gnome.org/glib/stable/glib-running.html#G_SLICE
@@ -2204,7 +2225,7 @@ int main(int argc, char *argv[])
     int *i = malloc(sizeof(int));
     //free(i);
     return 0;
-    */
+    //*/
 
     //#include <mcheck.h>  // mtrace(), muntrace()
     //mtrace();  // export MALLOC_TRACE=mem.log
@@ -2218,7 +2239,6 @@ int main(int argc, char *argv[])
     //g_print("TOTAL MEM: %i\n", _mem_alloc);
     //return 0;
     */
-
 
     g_print("main():starting: argc=%i, argv[0]=%s\n", argc, argv[0]);
 
@@ -2250,8 +2270,13 @@ int main(int argc, char *argv[])
 #ifdef USE_AIS
     s52ais_initAIS();
 #endif
+    //malloc_stats();
+    //malloc_info(0, stdout);
 
     _engine.main_loop = g_main_loop_new(NULL, FALSE);
+
+    //_init_hook();
+
     g_main_loop_run(_engine.main_loop);
 
 #ifdef USE_AIS
