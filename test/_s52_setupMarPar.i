@@ -5,7 +5,7 @@
 
 static int      _s52_setupMarPar(void)
 {
-    /* S-64
+    //* S-64
     //Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
     S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);
@@ -19,13 +19,13 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);
     //*/
 
-    //* -- DEPTH COLOR ------------------------------------
+    /* -- DEPTH COLOR ------------------------------------
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
 
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);      // should trigger symb ISODGR01 at Q40 at Qc
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // should trigger symb ISODGR01 at Rimouski
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);      // should trigger symb ISODGR01 at Q40 at Qc
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // should trigger symb ISODGR01 at Rimouski
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  4.0);
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // white chanel in Rimouski
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  2.0);
@@ -43,16 +43,16 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
     //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GL1/GPU expentive)
 
-    //--------------------------------------
-    //*/
 
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades (default)
     //S52_setMarinerParam(S52_MAR_TWO_SHADES,      1.0);   // 1.0 --> 2 shades
 
     //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND,  1.0);  // on (default) [Note: this tax the CPU/GPU]
-    //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND, 0.0);  // off
+    //S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND,  0.0);  // off
     //S52_setMarinerParam(S52_MAR_SYMPLIFIED_PNT,  1.0);
     //S52_setMarinerParam(S52_MAR_SYMPLIFIED_PNT,  0.0);
+    //--------------------------------------
+    //*/
 
     S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);    // on  (default OFF)
     //S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   1.0);  // on  (default OFF)
@@ -82,7 +82,7 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_VECMRK,          2.0);  // vecmrk: Vector time-mark interval (0 - none, 1 - 1&6 min, 2 - 6 min)
     //S52_setMarinerParam(S52_MAR_VECSTB,          0.0);  // vecstb: Vector Stabilization (0 - none, 1 - ground, 2 - water)
 
-    S52_setMarinerParam(S52_MAR_DATUM_OFFSET,    0.0);
+    S52_setMarinerParam(S52_MAR_DATUM_OFFSET,    0.0);   // default
     //S52_setMarinerParam(S52_MAR_DATUM_OFFSET,    5.0);
 
     S52_setMarinerParam(S52_MAR_SCAMIN,          1.0);   // ON (default 1:1)
@@ -97,8 +97,8 @@ static int      _s52_setupMarPar(void)
 
     //S52_setMarinerParam(S52_MAR_DISP_GRATICULE,  0.0);  // OFF (default)
     //S52_setMarinerParam(S52_MAR_DISP_GRATICULE,  1.0);  // Minor ON, Major OFF
-    S52_setMarinerParam(S52_MAR_DISP_GRATICULE,  2.0);  // Minor OFF, Major ON
-    //S52_setMarinerParam(S52_MAR_DISP_GRATICULE,  3.0);  // Minor&Major ON
+    //S52_setMarinerParam(S52_MAR_DISP_GRATICULE,  2.0);  // Minor OFF, Major ON
+    S52_setMarinerParam(S52_MAR_DISP_GRATICULE,  3.0);  // Minor&Major ON
 
     S52_setMarinerParam(S52_MAR_DISP_WHOLIN,     1.0);  // wholin auto placement: 0 - off, 1 - wholin, 2 - arc, 3 - wholin + arc  (default off)
 
