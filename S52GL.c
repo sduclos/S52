@@ -72,6 +72,37 @@ typedef struct _view_t{
 static _view_t _view = {0.0, 0.0, 0.0, 0.0};
 //*/
 
+// FIXME: optimisation in _computeCentroid() / _getLODidx()
+/* From S-57 App. B1 Ann. A, clause 2.2.6 - Compilation Scale
+ It is recommended that the compilation scales for ENCs are based upon standard radar ranges:
+ Selectable Range Standard scale (rounded)
+ 200  NM          1:3000000
+ 96   NM          1:1500000
+ 48   NM          1:700000
+ 24   NM          1:350000
+ 12   NM          1:180000
+ 6    NM          1:90000
+ 3    NM          1:45000
+ 1.5  NM          1:22000
+ 0.75 NM          1:12000
+ 0.5  NM          1:8000
+ 0.25 NM          1:4000
+ table 2.1
+*/
+/*  IHO suggestion - aligned to radar scale
+User bands Navigational
+   purpose Name   Scale Range             Available Compilation Scales       Matching Scale Range
+1  Overview   < 1:1 499 999               3 000 000 and smaller              200 NM
+                                          1 500 000                           96 NM
+2  General      1:350 000 - 1:1 499 999   700 000  350 000                    48 NM 24 NM
+3  Coastal      1: 90 000 - 1:  349 999   180 000   90 000                    12 NM  6 NM
+4  Approach     1: 22 000 - 1:   89 999    45 000   22 000                     3 NM  1,5 NM
+5  Harbour      1:  4 000 - 1:   21 999    12 000                              0,75 NM
+                                            8 000                              0,5  NM
+                                            4000                               0,25 NM
+6  Berthing   > 1:4 000                     3 999 and larger                 < 0,25 NM
+*/
+
 static double       _SCAMIN    = 1.0;  // screen scale (SCAle MINimum in S57)
 static double       _scalex    = 1.0;  // meter per pixel in X
 static double       _scaley    = 1.0;  // meter per pixel in Y
@@ -80,6 +111,7 @@ static double       _scaley    = 1.0;  // meter per pixel in Y
 static projUV _pmin = { INFINITY,  INFINITY};
 static projUV _pmax = {-INFINITY, -INFINITY};
 // _pmin, _pmax convert to GEO for culling object with their extent (in deg)
+// in _drawRaster(), _isOFFview(), _renderSY()/centroid
 static projUV _gmin = { INFINITY,  INFINITY};
 static projUV _gmax = {-INFINITY, -INFINITY};
 
@@ -691,28 +723,18 @@ User bands Navigational
     */
 
     ObjExt_t ext = S57_getExt(geo);
-    //double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
     pt3 pt[2] = {{ext.W, ext.S, 0.0}, {ext.E, ext.N, 0.0}};
-    //if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
     if (FALSE == S57_geo2prj3dv(2, pt))
         return FALSE;
 
-    /* LL of region of area
-    double x1  = xyz[0];
-    double y1  = xyz[1];
-    // UR of region of area
-    double x2  = xyz[3];
-    double y2  = xyz[4];
-    */
     //PRINTF("%s VIEW EXT %f,%f -- %f,%f\n", S57_getName(geo), _pmin.u, _pmin.v, _pmax.u, _pmax.v);
 
     // extent inside view, compute normal centroid, no clip
-    //if ((_pmin.u < x1) && (_pmin.v < y1) && (_pmax.u > x2) && (_pmax.v > y2)) {
     if ((_pmin.u < pt[0].x) && (_pmin.v < pt[0].y) && (_pmax.u > pt[1].x) && (_pmax.v > pt[1].y)) {
         g_array_set_size(_centroids, 0);
 
-        //_getCentroidClose(npt, (pt3*)ppt);
         _getCentroid(npt, (pt3*)ppt);
+
         //_getCentroidClose(nptLOD1, pptLOD1);
         //PRINTF("no clip: %s\n", S57_getName(geo));
 
@@ -1578,8 +1600,6 @@ static double    _getWorldGridRef(S52_obj *obj, double *LLx, double *LLy, double
     S57_geo *geo = S52_PL_getGeo(obj);
     ObjExt_t ext = S57_getExt(geo);
     double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
-    //if (FALSE == S57_geo2prj3dv(2, (double*)&xyz))
-    //if (FALSE == S57_geo2prj3dv(2, (pt3*)&xyz))
     if (FALSE == S57_geo2prj3dv(2, (pt3*)xyz))
         return FALSE;
 
@@ -2880,6 +2900,7 @@ static int       _renderSY(S52_obj *obj)
 
             // corner case where scrolling set area is clipped by view
             ObjExt_t ext = S57_getExt(geo);
+            // FIXME: handle anti-meridian OR use projected coordinate
             if ((ext.S < _gmin.v) || (ext.N > _gmax.v) || (ext.W < _gmin.u) || (ext.E > _gmax.u)) {
                 // reset centroid
                 S57_newCentroid(geo);
@@ -2991,7 +3012,6 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
             pt.x = ext.W;  // not used
             pt.y = ext.S;
             pt.z = 0.0;
-            //if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
             if (FALSE == S57_geo2prj3dv(1, &pt))
                 return FALSE;
 
@@ -2999,7 +3019,6 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
             ptlen.x = ext.W; // not used
             ptlen.y = ext.S + (valnmr / 60.0);
             ptlen.z = 0.0;
-            //if (FALSE == S57_geo2prj3dv(1, (double*)&ptlen))
             if (FALSE == S57_geo2prj3dv(1, &ptlen))
                 return FALSE;
 
@@ -5431,18 +5450,25 @@ int        S52_GL_isSupp(S52_obj *obj)
         return TRUE;
     }
 
-    // SCAMIN
+    // SCAMIN ON > 0
     if (FALSE != (int) S52_MP_get(S52_MAR_SCAMIN)) {
         S57_geo *geo  = S52_PL_getGeo(obj);
         double scamin = S57_getScamin(geo);
+
+        /* debug
+        if (909 == S57_getS57ID(geo)) {
+            PRINTF("DEBUG: FOULAR FOUND\n");
+            //g_assert(0);
+        }
+        */
 
         if (scamin < _SCAMIN) {
             ++_oclip;
             return TRUE;
         }
     } else {
-        // debug - when debug (S52_MAR_SCAMIN is OFF) CS AP(FOULAR01) doesn't show because S57_RESET_SCAMIN
-        if (0.0 > S57_getScamin(S52_PL_getGeo(obj))) {
+        // debug - when debug (S52_MAR_SCAMIN is OFF) suppress display where scamin is in reset state
+        if (S57_RESET_SCAMIN == S57_getScamin(S52_PL_getGeo(obj))) {
             return TRUE;
         }
     }
@@ -5486,6 +5512,8 @@ int        S52_GL_isOFFview(S52_obj *obj)
         ++_oclip;
         return TRUE;
     }
+
+    // FIXME: if projected coord is use (instead of geographic) then no need to handle anti-meridian
 
     // E-W limits
     if (_gmax.u < _gmin.u) {
@@ -5591,7 +5619,7 @@ static int       _udtTexture(S52_GL_ras *raster)
 int        S52_GL_drawRaster(S52_GL_ras *raster)
 {
     // bailout if not in view
-    // FIXME: crossing of anti-meridian
+    // FIXME: crossing of anti-meridian - use proj coord.
     if ((raster->gext.E < _gmin.u) || (raster->gext.N < _gmin.v) || (raster->gext.W > _gmax.u) || (raster->gext.S > _gmax.v)) {
         return TRUE;
     }
@@ -5605,15 +5633,11 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
         raster->texAlpha = raster->RADAR_cb(&cLat, &cLng, &rNM);
 
-        //double xyz[3] = {cLng, cLat, 0.0};
         pt3 pt = {cLng, cLat, 0.0};
-        //if (FALSE == S57_geo2prj3dv(1, xyz)) {
         if (FALSE == S57_geo2prj3dv(1, &pt)) {
             PRINTF("WARNING: S57_geo2prj3dv() failed\n");
             return FALSE;
         }
-        //raster->cLng = xyz[0];
-        //raster->cLat = xyz[1];
         raster->cLng = pt.x;
         raster->cLat = pt.y;
         raster->rNM  = rNM;
@@ -5968,9 +5992,11 @@ static char     *_ddmmss(double graticule)
 {
     static char str[80];
 
-    int deg = (int)graticule + 0.0001;
-    int mm  = (int)((graticule - deg + 0.0001) * 60);
-    int ss  = (int)((graticule - deg - mm/60.0 + 0.0001) * 3600);
+    double rounding = 0.0001;
+
+    int deg = (int)(graticule + rounding);
+    int mm  = (int)((graticule - deg + rounding) * 60);
+    int ss  = (int)((graticule - deg - mm/60.0 + rounding) * 3600);
 
     if (0 == ss) {
         SNPRINTF(str, 80, "%i° %.2i'", deg, mm);
@@ -6022,8 +6048,6 @@ int        S52_GL_drawGraticule(void)
                 pt3 pt[2] = {{_gmin.u, lat, 0.0}, {_gmax.u, lat, 0.0}};
                 S57_geo2prj3dv(2, pt);
 
-
-                //SNPRINTF(str, 80, "%07.4f%c", fabs(lat), (0.0<lat)?'N':'S');
                 SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lat)), (0.0<lat)?'N':'S');
                 _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
 
@@ -6040,7 +6064,6 @@ int        S52_GL_drawGraticule(void)
                 pt3 pt[2] = {{lon, _gmin.v, 0.0}, {lon, _gmax.v, 0.0}};
                 S57_geo2prj3dv(2, pt);
 
-                //SNPRINTF(str, 80, "%07.4f%c", fabs(lon), (0.0<lon)?'E':'W');
                 SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lon)), (0.0<lon)?'E':'W');
                 _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
 
@@ -6060,7 +6083,6 @@ int        S52_GL_drawGraticule(void)
                  pt3 pt[2] = {{_gmin.u, lat, 0.0}, {_gmax.u, lat, 0.0}};
                 S57_geo2prj3dv(2, pt);
 
-                //SNPRINTF(str, 80, "%07.4f%c", fabs(lat), (0.0<lat)?'N':'S');
                 SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lat)), (0.0<lat)?'N':'S');
                 _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
 
@@ -6076,7 +6098,6 @@ int        S52_GL_drawGraticule(void)
                 pt3 pt[2] = {{lon, _gmin.v, 0.0}, {lon, _gmax.v, 0.0}};
                 S57_geo2prj3dv(2, pt);
 
-                //SNPRINTF(str, 80, "%07.4f%c", fabs(lon), (0.0<lon)?'E':'W');
                 SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lon)), (0.0<lon)?'E':'W');
                 _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
 
@@ -7736,7 +7757,6 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
         pt.x = (ext.W+ext.E) / 2.0;  // lon center
         pt.y = (ext.S+ext.N) / 2.0;  // lat center
         pt.z = 0.0;
-        //if (FALSE == S57_geo2prj3dv(1, (double*)&pt))
         if (FALSE == S57_geo2prj3dv(1, &pt))
             return FALSE;
 
