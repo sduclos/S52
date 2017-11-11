@@ -112,6 +112,7 @@ CC    = clang -std=c99 -pipe -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOU
 #CC   += --analyze
 #CC   += -fsanitize=address
 CXX   = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
+#CC    = $(CXX)
 
 # FIXME: check this
 # LLVM-AddressSanitizer: http://clang.llvm.org/docs/AddressSanitizer.html
@@ -210,6 +211,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_LOGFILE      - log every S52_* in tmp file
 # -DS52_USE_BACKTRACE    - debug
 # -DG_DISABLE_ASSERT     - glib - disable g_assert()
+# -DS52_USE_CA_ENC       - debug CA ENC lookUp in PL
 #
 # Network:
 # -DS52_USE_DBUS         - mimic S52.h
@@ -299,6 +301,7 @@ s52clutter s52clutter.js : CFLAGS =                         \
 #                  -DS52_USE_GLSC2
 #                  -DS52_USE_LCMS2
 #                  -DS52_USE_DUAL_MON
+#                  -DS52_USE_CA_ENC
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2` \
                   `gdal-config --cflags`         \
