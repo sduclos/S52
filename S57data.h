@@ -26,7 +26,7 @@
 #define _S57DATA_H_
 
 #include <glib.h>       // guint, GArray, GData, GString, gconstpointer, gboolean
-#define GCPTR gconstpointer
+#define CCHAR const char
 
 // MAXINT-6 is how OGR tag an UNKNOWN value
 // see gdal/ogr/ogrsf_frmts/s57/s57.h:126
@@ -117,7 +117,8 @@ S57_geo  *S57_delNextPoly(S57_geo *geo);
 #endif
 
 int       S57_setName(S57_geo *geo, const char *name);
-GCPTR     S57_getName(S57_geo *geo);
+//GCPTR     S57_getName(S57_geo *geo);
+CCHAR    *S57_getName(S57_geo *geo);
 
 // debug:
 //int       S57_setOGRGeo(S57_geo *geo, void *hGeom);
@@ -148,7 +149,8 @@ int       S57_setPrimDList (S57_prim *prim, guint DList);
 // get/set extend
 int       S57_setExt(S57_geo *geo, double  W, double  S, double  E, double  N);
 ObjExt_t  S57_getExt(S57_geo *geo);
-gboolean  S57_cmpExt(ObjExt_t A, ObjExt_t B);
+//gboolean  S57_cmpExt(ObjExt_t A, ObjExt_t B);
+gboolean  S57_cmpExt(S57_geo *geoA, S57_geo *geoB);
 
 // get geo type (P,L,A) of this object
 // Note: return the same thing as a call to S52_PL_getFTYP()
@@ -163,7 +165,8 @@ GString  *S57_getAttValALL(S57_geo *geo, const char *attName);
 // set attribute name and value
 GData    *S57_setAtt(S57_geo *geo, const char *name, const char *val);
 // get str of the form ",KEY1:VAL1,KEY2:VAL2, ..." of S57 attribute only (not OGR)
-GCPTR     S57_getAtt(S57_geo *geo);
+//GCPTR     S57_getAtt(S57_geo *geo);
+CCHAR    *S57_getAtt(S57_geo *geo);
 
 int       S57_setTouchTOPMAR(S57_geo *geo, S57_geo *touch);
 S57_geo  *S57_getTouchTOPMAR(S57_geo *geo);
@@ -200,7 +203,8 @@ int       S57_dumpData(S57_geo *geo, int dumpCoords);
 #include <proj_api.h>   // projXY, projUV, projPJ
 int       S57_donePROJ(void);
 int       S57_setMercPrj(double lat, double lon);
-GCPTR     S57_getPrjStr(void);
+//GCPTR     S57_getPrjStr(void);
+CCHAR    *S57_getPrjStr(void);
 projXY    S57_prj2geo(projUV uv);
 int       S57_geo2prj3dv(guint npt, pt3 *data);
 int       S57_geo2prj(S57_geo *geo);
@@ -210,7 +214,7 @@ gboolean  S57_isPtInArea(S57_geo *geo, double x, double y);
 gboolean  S57_isPtInRing(guint npt, pt3 *pt, gboolean close, double x, double y);
 gboolean  S57_isPtInSet(S57_geo *geo, double x, double y);
 gboolean  S57_isPtOnLine(S57_geo *geoLine, double x, double y);
-gboolean  S57_touchArea(S57_geo *geoArea, S57_geo *geo);
+//gboolean  S57_touchArea(S57_geo *geoArea, S57_geo *geo);
 
 guint     S57_getGeoSize(S57_geo *geo);
 guint     S57_setGeoSize(S57_geo *geo, guint size);

@@ -29,7 +29,8 @@
 #ifdef S52_USE_PROJ
 static projPJ      _pjsrc   = NULL;   // projection source
 static projPJ      _pjdst   = NULL;   // projection destination
-static char       *_pjstr   = NULL;
+//static char       *_pjstr   = NULL;
+static CCHAR       *_pjstr   = NULL;
 static int         _doInit  = TRUE;   // will set new src projection
 static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 //static const char *_argsdst = "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
@@ -80,7 +81,9 @@ typedef struct _S57_geo {
 
     S57_Obj_t    obj_t;       // PL & S57 - P/L/A
 
-    ObjExt_t     ext;
+    ObjExt_t     ext;         // geographic coordinate
+    //ObjExt_t     extGEO;         // geographic coordinate
+    //ObjExt_t     extPRJ;         // projected coordinate
 
     // length of geo data (POINT, LINE, AREA) currently in buffer
     guint        geoSize;        // max is 1 point / linexyznbr / ringxyznbr[0]
@@ -218,7 +221,7 @@ int        S57_donePROJ(void)
         g_string_free(_attList, TRUE);
     _attList = NULL;
 
-    g_free(_pjstr);
+    g_free((gpointer)_pjstr);
     _pjstr = NULL;
 
     return TRUE;
@@ -292,7 +295,8 @@ PROJCS["WGS 84 / Pseudo-Mercator",
     return TRUE;
 }
 
-GCPTR      S57_getPrjStr(void)
+//GCPTR      S57_getPrjStr(void)
+CCHAR     *S57_getPrjStr(void)
 {
     return _pjstr;
 }
@@ -413,7 +417,7 @@ static int    _inLine(pt3 A, pt3 B, pt3 C)
     // ex: (0-4)(2-4) - (2-4)(0-4) = 8-8 = 0
 }
 
-#if 0
+//#if 0
 // FIXME: this break line/poly match
 static guint  _delInLineSeg(guint npt, double *ppt)
 // remove point ON the line segment
@@ -458,7 +462,7 @@ static guint  _delInLineSeg(guint npt, double *ppt)
     //memmove(ppt, newArr, sizeof(pt3) * j);
 
 #ifdef S52_DEBUG
-    //* debug: check for duplicate vertex
+    /* debug: check for duplicate vertex
     p = (pt3*)ppt;
     guint nDup = 0;
     for (guint i=1; i<j; ++i) {
@@ -526,7 +530,7 @@ static int    _simplifyGEO(_S57_geo *geo)
             if (3 < geo->ringxyznbr[i]) {
                 guint npt = _delInLineSeg(geo->ringxyznbr[i], geo->ringxyz[i]);
                 if (npt != geo->ringxyznbr[i]) {
-                    //PRINTF("DEBUG: poly reduction: %i \t(%i\t->\t%i)\n", geo->ringxyznbr[i] - npt, geo->ringxyznbr[i], npt);
+                    PRINTF("DEBUG: poly reduction: %i \t(%i\t->\t%i)\n", geo->ringxyznbr[i] - npt, geo->ringxyznbr[i], npt);
                     geo->ringxyznbr[i] = npt;
                 }
             }
@@ -542,7 +546,7 @@ static int    _simplifyGEO(_S57_geo *geo)
 
     return TRUE;
 }
-#endif  // 0
+//#endif  // 0
 
 int        S57_geo2prj(_S57_geo *geo)
 {
@@ -550,7 +554,15 @@ int        S57_geo2prj(_S57_geo *geo)
     //return_if_null(geo);
 
     // FIXME: this break line/poly match
-    //_simplifyGEO(geo);
+    // FIX: call for object with centroid in area - this will
+    if ('A' == geo->obj_t) {
+        if ((0 == g_strcmp0(geo->name, "ISTZNE")) ||
+            (0 == g_strcmp0(geo->name, "TSSLPT")) ||
+            (0 == g_strcmp0(geo->name, "CTNARE")))
+        {
+            _simplifyGEO(geo);
+        }
+    }
 
     if (TRUE == _doInit)
         _initPROJ();
@@ -565,6 +577,9 @@ int        S57_geo2prj(_S57_geo *geo)
                 return FALSE;
         }
     }
+
+    // FIXME: proj ext to handle anti-meridian
+
 #endif  // S52_USE_PROJ
 
     return TRUE;
@@ -825,7 +840,8 @@ int        S57_setName(_S57_geo *geo, const char *name)
     return TRUE;
 }
 
-GCPTR      S57_getName(_S57_geo *geo)
+//GCPTR      S57_getName(_S57_geo *geo)
+CCHAR     *S57_getName(_S57_geo *geo)
 {
     return_if_null(geo);
     return_if_null(geo->name);
@@ -1144,9 +1160,31 @@ ObjExt_t   S57_getExt(_S57_geo *geo)
     return geo->ext;
 }
 
-gboolean   S57_cmpExt(ObjExt_t A, ObjExt_t B)
+//gboolean   S57_cmpExt(ObjExt_t A, ObjExt_t B)
+gboolean   S57_cmpExt(_S57_geo *geoA, _S57_geo *geoB)
 // TRUE if intersect else FALSE
+
+// Note: object in a cell are in same hemesphire - no need to check anti-meridian
+/* S-57 4.0.0 ann. B1
+2.1.8.2     180° Meridian of Longitude
+Clause  2.2  of  S-57  Appendix  B.1  –  ENC  Product  Specification,  describes  the  construct,  including
+geographic extent, to be used for ENC cells.  This clause does not address ENC cells that cross the
+180º  Meridian  of  Longitude. There  is  currently  no  production  software  or  ECDIS  system  that  can
+handle ENC cells that cross the 180º  Meridian, therefore to avoid ECDIS load and display issues ENC
+cells must not span the 180º Meridian of Longitude.
+*/
 {
+    ObjExt_t A = geoA->ext;
+    ObjExt_t B = geoB->ext;
+
+    if (B.N < A.S) return FALSE;
+    if (B.S > A.N) return FALSE;
+    if (B.E < A.W) return FALSE;
+    if (B.W > A.E) return FALSE;
+
+    return TRUE;
+
+    /*
     // N-S
     if (B.N < A.S) return FALSE;
     if (B.S > A.N) return FALSE;
@@ -1166,6 +1204,7 @@ gboolean   S57_cmpExt(ObjExt_t A, ObjExt_t B)
     }
 
     return TRUE;
+    */
 }
 
 S57_Obj_t  S57_getObjtype(_S57_geo *geo)
@@ -1575,6 +1614,8 @@ double     S57_setScamin(_S57_geo *geo, double scamin)
     // test useless since the only caller allready did that
     //return_if_null(geo);
 
+    // FIXME: should write SCAMIN value to attribs?
+
     geo->scamin = scamin;
 
     return geo->scamin;
@@ -1589,7 +1630,7 @@ double     S57_getScamin(_S57_geo *geo)
     if (0.0==geo->scamin || S57_RESET_SCAMIN==geo->scamin) {
         GString *valstr = S57_getAttVal(geo, "SCAMIN");
         if (NULL == valstr) {
-            // allway visible, except if scamin=1 set by DEPCNT02 and _UDWHAZ03 (via OBSTRN04, WRECKS02)
+            // allway visible, except if scamin=-1 set by DEPCNT02 and _UDWHAZ03 (via OBSTRN04, WRECKS02)
             if (S57_RESET_SCAMIN != geo->scamin)
                 geo->scamin = INFINITY;
         } else {
@@ -1745,7 +1786,8 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     return;
 }
 
-GCPTR      S57_getAtt(_S57_geo *geo)
+//GCPTR      S57_getAtt(_S57_geo *geo)
+CCHAR     *S57_getAtt(_S57_geo *geo)
 {
     return_if_null(geo);
 
@@ -2041,6 +2083,7 @@ gboolean   S57_isPtOnLine(_S57_geo *geoLine, double x, double y)
     return FALSE;
 }
 
+#if 0
 gboolean   S57_touchArea(_S57_geo *geoArea, _S57_geo *geo)
 // TRUE if A touch B else FALSE
 // A:P/L/A, B:A
@@ -2073,6 +2116,7 @@ gboolean   S57_touchArea(_S57_geo *geoArea, _S57_geo *geo)
 
     return FALSE;
 }
+#endif  // 0
 
 guint      S57_getGeoSize(_S57_geo *geo)
 {
