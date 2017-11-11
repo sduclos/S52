@@ -4,6 +4,16 @@
 #
 
 
+2017NOV11
+- simplify geo of ISTZNE, TSSLPT, CTNARE to optimise centroid computation
+- add build option -DS52_USE_CA_ENC to debug CA ENC in PL lookUpLUP()
+- fix touch logic in CS
+- replace test in CS to attVal OBJL by test to S57 obj str name
+- rename _intersectEXT() to _intersectCELL() to highlight special handly of anti-meridian
+
+2017OCT28
+- fix rounding in GL _ddmmss()
+
 2017OCT27
 - add S57_RESET_SCAMIN to doc magic nbr -1.0 to signal CS to reset S57 obj SCAMIN
 - fix touch() logic 
