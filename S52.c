@@ -3034,9 +3034,18 @@ int            S52_loadObject(const char *objname, void *shape)
 //
 //---------------------------------------------------
 
-static int        _intersectEXT(ObjExt_t A, ObjExt_t B)
+static int        _intersectCELL(ObjExt_t A, ObjExt_t B)
 // TRUE if intersec, FALSE if outside
-// A - ENC ext, B - view ext
+// A - ENC ext, B - view ext OR other cell
+/* S-57 4.0.0 ann. B1
+2.1.8.2     180° Meridian of Longitude
+Clause  2.2  of  S-57  Appendix  B.1  –  ENC  Product  Specification,  describes  the  construct,  including
+geographic extent, to be used for ENC cells.  This clause does not address ENC cells that cross the
+180º  Meridian  of  Longitude.    There  is  currently  no  production  software  or  ECDIS  system  that  can
+handle ENC cells that cross the 180º  Meridian, therefore to avoid ECDIS load and display issues ENC
+cells must not span the 180º Meridian of Longitude.
+*/
+
 {
     // N-S
     if (B.N < A.S) return FALSE;
@@ -3056,7 +3065,7 @@ static int        _intersectEXT(ObjExt_t A, ObjExt_t B)
         if (B.W > A.E) return FALSE;
     }
 
-    /* _intersectEXT
+    /* _intersectCELL
     if (B.N < A.S) return FALSE;
     if (B.S > A.N) return FALSE;
     if (B.E < A.W) return FALSE;
@@ -3087,7 +3096,7 @@ static int        _intersectM_COVR(_cell *cell, S57_geo *geoM_COVR)
         //PRINTF("DEBUG: check nav purp ci:%s cj:%s\n", c->dsid_intustr->str, cj->dsid_intustr->str);
 
         //  M_COVR intersect smaller scale extent
-        if (TRUE == _intersectEXT(c->geoExt, ext)) {
+        if (TRUE == _intersectCELL(c->geoExt, ext)) {
             return TRUE;
         }
     }
@@ -3460,7 +3469,7 @@ static int        _cullLights(void)
                 _cell *cellAbove = (_cell*) g_ptr_array_index(_cellList, k);
                 // skip if same scale
                 if (*cellAbove->legend.dsid_intustr->str > *c->legend.dsid_intustr->str) {
-                    if (TRUE == _intersectEXT(cellAbove->geoExt, oext)) {
+                    if (TRUE == _intersectCELL(cellAbove->geoExt, oext)) {
                         // check this: a chart above this light sector
                         // does not have the same lights (this would be a bug in S57)
                         S52_PL_setSupp(obj, TRUE);
@@ -3661,7 +3670,7 @@ static int        _cull(ObjExt_t ext)
             continue;
 #endif
         // is this chart visible
-        if (TRUE == _intersectEXT(c->geoExt, ext)) {
+        if (TRUE == _intersectCELL(c->geoExt, ext)) {
             _cullLayer(c);
         }
     }
@@ -3682,13 +3691,13 @@ static int        _drawRaster(void)
 {
     for (guint i=0; i<_rasterList->len; ++i) {
         S52_GL_ras *raster = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
-        // FIXME: no _intersectEXT() .. but GL scissor is ON .. so this migth not really help
+        // FIXME: no _intersectCELL() .. but GL scissor is ON .. so this migth not really help
         S52_GL_drawRaster(raster);
 
         /*
         // bathy
         if (FALSE == raster->isRADAR) {
-            if (TRUE == _intersectEXT(*cellExt, raster->gext)) {
+            if (TRUE == _intersectCELL(*cellExt, raster->gext)) {
                 S52_GL_drawRaster(raster);
             }
             continue;
@@ -3713,7 +3722,7 @@ static int        _drawLayer(ObjExt_t ext, int layer)
     for (guint i=_cellList->len-1; i>0; --i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
-        if (TRUE == _intersectEXT(c->geoExt, ext)) {
+        if (TRUE == _intersectCELL(c->geoExt, ext)) {
 
             // one layer
             //for (S52ObjectType j=S52_AREAS; j<S52_N_OBJ; ++j) {
@@ -4004,18 +4013,14 @@ static int        _draw(void)
 
         // ----------------------------------------------------------------------------
         // FIXME: extract to _LL2XY(guint npt, double *ppt);
-        //double xyz[6] = {c->geoExt.W, c->geoExt.S, 0.0, c->geoExt.E, c->geoExt.N, 0.0};
         pt3 pt[2] = {{c->geoExt.W, c->geoExt.S, 0.0}, {c->geoExt.E, c->geoExt.N, 0.0}};
         //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
-        //if (FALSE == S57_geo2prj3dv(2, (pt3*)xyz)) {
         if (FALSE == S57_geo2prj3dv(2, pt)) {
             PRINTF("WARNING: S57_geo2prj3dv() failed\n");
             g_assert(0);
         }
         //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
 
-        //S52_GL_prj2win(&xyz[0], &xyz[1]);
-        //S52_GL_prj2win(&xyz[3], &xyz[4]);
         S52_GL_prj2win(&pt[0].x, &pt[0].y);
         S52_GL_prj2win(&pt[1].x, &pt[1].y);
         // ----------------------------------------------------------------------------
@@ -4025,10 +4030,6 @@ static int        _draw(void)
             // FIXME: this also clip calibration symbol if overlap cell & NODATA
             // need to augment the box size for chart rotation, but MIO will overlap!
             //PRINTF("DEBUG: %f %f %f %f\n", xyz[0], xyz[1], xyz[3], xyz[4]);
-            //int x = floor(xyz[0]);
-            //int y = floor(xyz[1]);
-            //int w = floor(xyz[3] - xyz[0]);
-            //int h = floor(xyz[4] - xyz[1]);
             int x = floor(pt[0].x);
             int y = floor(pt[0].y);
             int w = floor(pt[1].x - pt[0].x);
@@ -4046,8 +4047,6 @@ static int        _draw(void)
         // draw radar / raster
         // Note: no raster in MARINER_CELL (i==1, cell idx 0)
         if ((1.0==S52_MP_get(S52_MAR_DISP_RADAR_LAYER)) && (1!=i)) {
-            // FIXME: foreach
-            //_drawRaster(&(c->geoExt));
             _drawRaster();
         }
 #endif
@@ -4785,21 +4784,16 @@ DLL int    STD S52_LL2xy(double *longitude, double *latitude)
     if (NULL == S57_getPrjStr())
         goto exit;
 
-
     // ----------------------------------------------------------------------------
     // FIXME: extract to _LL2XY(guint npt, double *ppt);
-    //double xyz[3] = {*longitude, *latitude, 0.0};
     pt3 pt = {*longitude, *latitude, 0.0};
     if (FALSE == S57_geo2prj3dv(1, &pt)) {
         PRINTF("WARNING: S57_geo2prj3dv() failed\n");
         goto exit;
     }
 
-    //S52_GL_prj2win(&xyz[0], &xyz[1]);
     S52_GL_prj2win(&pt.x, &pt.y);
 
-    //*longitude = xyz[0];
-    //*latitude  = xyz[1];
     *longitude = pt.x;
     *latitude  = pt.y;
 
@@ -5895,7 +5889,6 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
                 *dst++ = *src++;
             }
 
-
             if (FALSE == S57_geo2prj3dv(xyznbr, (pt3*)gxyz)) {
                 PRINTF("WARNING: projection failed\n");
                 g_assert(0);
@@ -5961,8 +5954,8 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
         return FALSE;
     }
 
-    // init TX & TE
-    S52_PL_resetParseText(obj);
+    // init TX & TE - now this call is done in S52_PL_resolveSMB()
+    //S52_PL_resetParseText(obj);
 
     // doCS now (intead of _app() - expensive)
     S52_PL_resolveSMB(obj, NULL);
@@ -6223,35 +6216,37 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
             .E = (lonBegin < lonEnd) ? lonBegin : lonEnd,
             .W = (lonBegin > lonEnd) ? lonBegin : lonEnd
         };
-        //ext.N = (latBegin > latEnd) ? latBegin : latEnd;
-        //ext.S = (latBegin < latEnd) ? latBegin : latEnd;
-        //ext.E = (lonBegin < lonEnd) ? lonBegin : lonEnd;
-        //ext.W = (lonBegin > lonEnd) ? lonBegin : lonEnd;
         // set pick to stack mode
         S52_MP_set(S52_MAR_DISP_CRSR_PICK, 2.0);
 
 
-                                                                       //   +-------------+
-        // save current view & set view of the pick                    //   |  | beam2    |
-        S52_GL_getViewPort(&x, &y, &w, &h);                            //   |  |          |
-        S52_GL_getPRJView(&ps, &pw, &pn, &pe);                         //   |--o A        |
-        S52_GL_getGEOView(&gs, &gw, &gn, &ge);                         //   |  \\\        |
-                                                                       //   |   \\\       |
-                                                                       //   |    \\\  LEG |
-                                                                       //   |     \\\     |
-        //double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};      //   |      \\\    |
-        //S57_geo2prj3dv(2, (pt3*)xyz);                                //   |       \\\   |
-                                                                       //   |        \\\  |
-                                                                       //   |        B o--|
-                                                                       //   |          |  |
-                                                                       //   |    beam2 |  |
-                                                                       //   +-------------+
+
+        // save current view & set view of the pick
+        S52_GL_getViewPort(&x, &y, &w, &h);
+        S52_GL_getPRJView(&ps, &pw, &pn, &pe);
+        S52_GL_getGEOView(&gs, &gw, &gn, &ge);
+
+        //   +-------------+
+        //   |  | beam2    |
+        //   |  |          |
+        //   |--o A        |
+        //   |  \\\        |
+        //   |   \\\       |
+        //   |    \\\  LEG |
+        //   |     \\\     |
+        //   |      \\\    |
+        //   |       \\\   |
+        //   |        \\\  |
+        //   |        B o--|
+        //   |          |  |
+        //   |    beam2 |  |
+        //   +-------------+
+
 
         pt3 pt[2] = {{ext.W, ext.S, 0.0}, {ext.E, ext.N, 0.0}};
         S57_geo2prj3dv(2, pt);
         S52_GL_setViewPort(w/2, h/2, 1, 1);             // if chart rotated --> x=w/2, y=h/2
         // FIXME: is -+beam2 the max
-        //S52_GL_setPRJView(xyz[1]-beam2, xyz[0]-beam2, xyz[4]+beam2, xyz[3]+beam2);  // snap to viewPort
         S52_GL_setPRJView(pt[0].y-beam2, pt[0].x-beam2, pt[1].y+beam2, pt[1].x+beam2);  // snap to viewPort
         // FIXME: augment GEO for -+beam2
         S52_GL_setGEOView(ext.S, ext.W, ext.N, ext.E);  // to cull obj
@@ -6271,7 +6266,7 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
                     continue;
 #endif
                 // is this chart visible
-                if (TRUE == _intersectEXT(c->geoExt, ext)) {
+                if (TRUE == _intersectCELL(c->geoExt, ext)) {
                     for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {
                         // FIXME: all object on S52_PRIO_HAZRDS layer of Mariners
 
@@ -6323,13 +6318,9 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
         S52_MP_set(S52_MAR_DISP_CRSR_PICK, oldCRSR_PICK);
 
         {
-            //double xyz[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
             pt3 pt[2] = {{lonBegin, latBegin, 0.0}, {lonEnd, latEnd, 0.0}};
-            //S57_geo2prj3dv(2, (pt3*)xyz);
             S57_geo2prj3dv(2, pt);
-            //double cog = ATAN2TODEG((*(pt3*)xyz));
             double cog = ATAN2TODEG(pt);
-            //double xyz2[5*3];
             pt3 p[5];  // first == last
 
             // experiment I - align guardzone on lat/lon
@@ -6409,36 +6400,26 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
 
             // CW
             // starboard
-            //xyz2[ 0] = xyz[0] + dlon;  // lonBeg
-            //xyz2[ 1] = xyz[1] - dlat;  // latBeg
             p[0].x = pt[0].x + dlon;  // lonBeg
             p[0].y = pt[0].y - dlat;  // latBeg
             p[0].z = 0.0;
 
             // port
-            //xyz2[ 3] = xyz[0] - dlon;  // lonBeg
-            //xyz2[ 4] = xyz[1] + dlat;  // latBeg
             p[1].x = pt[0].x - dlon;  // lonBeg
             p[1].y = pt[0].y + dlat;  // latBeg
             p[1].z = 0.0;
 
             // port
-            //xyz2[ 6] = xyz[3] - dlon;  // lonEnd
-            //xyz2[ 7] = xyz[4] + dlat;  // latEnd
             p[2].x = pt[1].x - dlon;  // lonEnd
             p[2].y = pt[1].y + dlat;  // latEnd
             p[2].z = 0.0;
 
             // sarboard
-            //xyz2[ 9] = xyz[3] + dlon;  // lonEnd
-            //xyz2[10] = xyz[4] - dlat;  // latEnd
             p[3].x = pt[1].x + dlon;  // lonEnd
             p[3].y = pt[1].y - dlat;  // latEnd
             p[3].z = 0.0;
 
             // loop line
-            //xyz2[12] = xyz2[ 0];       //
-            //xyz2[13] = xyz2[ 1];       //
             p[4].x = pt[0].x;       //
             p[4].y = pt[0].y;       //
             p[4].z = 0.0;
@@ -6451,9 +6432,6 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
 
     {   // create LEGLIN
         char   attval[80];
-        //double xyztmp[6] = {lonBegin, latBegin, 0.0, lonEnd, latEnd, 0.0};
-        //S57_geo2prj3dv(2, (pt3*)xyztmp);
-        //double cog = ATAN2TODEG(xyztmp);
 
         pt3 pt[2] = {{lonBegin, latBegin, 0.0}, {lonEnd, latEnd, 0.0}};
         S57_geo2prj3dv(2, pt);
@@ -6769,9 +6747,7 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
         double *ppt = NULL;
         S57_getGeoData(geo, 0, &npt, &ppt);
 
-        //double xyz[3] = {longitude, latitude, 0.0};
         pt3 p = {longitude, latitude, 0.0};
-        //if (FALSE == S57_geo2prj3dv(1, (pt3*)xyz)) {
         if (FALSE == S57_geo2prj3dv(1, &p)) {
             PRINTF("WARNING: S57_geo2prj3dv() fail\n");
             objH = FALSE;
@@ -6779,8 +6755,6 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
         }
 
         if (sz < npt) {
-            //ppt[sz*3 + 0] = xyz[0];
-            //ppt[sz*3 + 1] = xyz[1];
             ppt[sz*3 + 0] = p.x;
             ppt[sz*3 + 1] = p.y;
             ppt[sz*3 + 2] = data;
@@ -6788,8 +6762,6 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
         } else {
             // FIFO - if sz == npt, shift npt-1 coord
             memmove(ppt, ppt+3, (npt-1) * sizeof(double) * 3);
-            //ppt[((npt-1) * 3) + 0] = xyz[0];
-            //ppt[((npt-1) * 3) + 1] = xyz[1];
             ppt[((npt-1) * 3) + 0] = p.x;
             ppt[((npt-1) * 3) + 1] = p.y;
             ppt[((npt-1) * 3) + 2] = data;
@@ -6803,17 +6775,14 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
             S57_setExt(geo, longitude, latitude, longitude, latitude);
         } else {
             ObjExt_t ext = S57_getExt(geo);
-            //double xyz[3*3] = {longitude, latitude, 0.0, ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
             pt3 pt[3] = {{longitude, latitude, 0.0}, {ext.W, ext.S, 0.0}, {ext.E, ext.N, 0.0}};
 
-            //_setExt(geo, 3, xyz);
             _setExt(geo, 3, pt);
         }
         //*/
 
 #ifdef S52_USE_AFGLOW
         // update time for afterglow LINE
-        //if (0 == g_strcmp0("afgves", S57_getName(geo))) {
         if ((0 == g_strcmp0("afgves", S57_getName(geo))) ||
             (0 == g_strcmp0("afgshp", S57_getName(geo)))
            ) {
@@ -7158,7 +7127,6 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
         char unit       = 'm';
         char attval[80] = {'\0'};
 
-        //_updateGeo(obj, xyz);
         _updateGeo(obj, pt);
 
         // in Nautical Mile if > 1852m (1NM)
