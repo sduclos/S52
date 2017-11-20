@@ -1724,13 +1724,12 @@ static void       __dumpNODATAlayer(S52_obj *obj, gpointer dummy)
 
     S57_geo *geo = S52_PL_getGeo(obj);
 
-    // these render nothing
+     // not in PLib - noting to render
     if (0 == g_strcmp0(S57_getName(geo), "DSID"  )) return;
     if (0 == g_strcmp0(S57_getName(geo), "C_AGGR")) return;
     if (0 == g_strcmp0(S57_getName(geo), "C_ASSO")) return;
-    if (0 == g_strcmp0(S57_getName(geo), "M_NPUB")) return;
 
-    PRINTF("WARNING: objName:'%s' S52ObjectType:'%c' is on NODATA layer\n", S57_getName(geo), S57_getObjtype(geo));
+    PRINTF("WARNING: %s:%i:%c is on NODATA layer\n", S57_getName(geo), S57_getS57ID(geo), S57_getObjtype(geo));
 
     // debug
     //S57_dumpData(geo, FALSE);
