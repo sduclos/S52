@@ -11,13 +11,14 @@ Curent focus (top priority *):
     GL:
 *   -handle overlaping symbol at the center of the screen (find test case to debug)
     -send XYZ to GPU where Z=(idx col pal 6bits + trans 2bits) = 64 colors + 4 levels of transparancy = 8bits
-        -exp: peudo shadow map in GLSL using some bits left (32-8=24) [min GL ES2]
+        -exp: pseudo shadow map in GLSL using some bits left (32-8=24) [min GL ES2]
         -exp: use shadow to gage channel gabarie
     -implement pattern scale spacing (PASP field)
     -handle GLU_TESS_MAX_COORD, GLU_TESS_TOLERANCE (not implemented in libtess)
     -nice to have: fading chart boudary, calib symb, ..
 
     S52:
+    -fix raz rle $SCODETREPNT04, $SCODETREPNT05,
     -spot sounding (mouse hover depth feedback - vonoroide)
 
     PL:
@@ -38,7 +39,7 @@ Curent focus (top priority *):
     Testing:
     -S-64
     -apitrace: to record gl*() calls / playback / diff / optimisation
-    
+
 In a day:
     -libgdal.a: full build is heavy, build only with the final driver set (S57, PNG, shapefile)
     -code: static global variable should all be inside a context struct .. of course!
@@ -46,12 +47,12 @@ In a day:
     -OGR: IHOOCDD.XXX
     -GL: display 'dipping distance' of light (need the height of eye and sea level)
     -GL: bearing snap to light
-    -GL: optimisation - LOD --> reduce the nbr of vertex in area/line 
+    -GL: optimisation - LOD --> reduce the nbr of vertex in area/line
          (NP, need heuristique: http://en.wikipedia.org/wiki/Ramer-Douglas-Peucker_algorithm)
     -PL: implement vector instruction command: symbol call (SC), arc (AA)
     -PL: implement raster instruction for pattern and symbol (PBTM, SBTM)
     -PL: SCAMAX
-    
+
 
 
 DONE
