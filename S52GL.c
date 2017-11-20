@@ -655,7 +655,7 @@ static int       _computeCentroid(S57_geo *geo)
     //PRINTF("DEBUG: _SCAMIN:%f _scalex:%f\n", _SCAMIN, _scalex);
     char *str;
     int idx = _getLODidx(&str);
-    PRINTF("DEBUG:%s _SCAMIN:%f _scalex:%f %i:%s (npt:%i)\n", S57_getName(geo), _SCAMIN, _scalex, idx, str, npt);
+    //PRINTF("DEBUG:%s _SCAMIN:%f _scalex:%f %i:%s (npt:%i)\n", S57_getName(geo), _SCAMIN, _scalex, idx, str, npt);
 
 
 /*  IHO suggestion - aligned to radar scale
@@ -5455,24 +5455,19 @@ int        S52_GL_isSupp(S52_obj *obj)
         S57_geo *geo  = S52_PL_getGeo(obj);
         double scamin = S57_getScamin(geo);
 
-        /* debug
-        if (909 == S57_getS57ID(geo)) {
-            PRINTF("DEBUG: FOULAR FOUND\n");
-            //g_assert(0);
-        }
-        */
-
         if (scamin < _SCAMIN) {
             ++_oclip;
             return TRUE;
         }
-    } else {
-        // debug - when debug (S52_MAR_SCAMIN is OFF) suppress display where scamin is in reset state
+    }
+
+    /* debug - when debug (S52_MAR_SCAMIN is OFF) suppress display where scamin is in reset state
+    else {
         if (S57_RESET_SCAMIN == S57_getScamin(S52_PL_getGeo(obj))) {
             return TRUE;
         }
     }
-
+    */
     return FALSE;
 }
 
@@ -7555,7 +7550,6 @@ int        S52_GL_setScissor(int x, int y, int width, int height)
 }
 
 CCHAR     *S52_GL_getNameObjPick(void)
-
 {
     if (S52_GL_NONE != _crnt_GL_cycle) {
         PRINTF("ERROR: inside a GL cycle\n");
