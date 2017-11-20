@@ -22,15 +22,14 @@
 
 
 #include "S57data.h"    // S57_geo
-#include "S52utils.h"   // PRINTF()
+//#include "S52utils.h"   // PRINTF()
 
 #include <math.h>       // INFINITY, nearbyint()
 
 #ifdef S52_USE_PROJ
 static projPJ      _pjsrc   = NULL;   // projection source
 static projPJ      _pjdst   = NULL;   // projection destination
-//static char       *_pjstr   = NULL;
-static CCHAR       *_pjstr   = NULL;
+static CCHAR      *_pjstr   = NULL;
 static int         _doInit  = TRUE;   // will set new src projection
 static const char *_argssrc = "+proj=latlong +ellps=WGS84 +datum=WGS84";
 //static const char *_argsdst = "+proj=merc +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
@@ -79,7 +78,7 @@ typedef struct _S57_geo {
                                         //  8 - WOLDNM         + '\0'
                                         // 13 - ConnectedNode  + '\0'
 
-    S57_Obj_t    obj_t;       // PL & S57 - P/L/A
+    S57_Obj_t    objType;       // PL & S57 - P/L/A
 
     ObjExt_t     ext;         // geographic coordinate
     //ObjExt_t     extGEO;         // geographic coordinate
@@ -107,7 +106,7 @@ typedef struct _S57_geo {
     // scamin overide attribs val
     double       scamin;      // 0.0 - init needed
                               // -1.0 - RESET_SCAMIN val resetted by CS DEPCNT02, _UDWHAZ03 (via OBSTRN04, WRECKS02)
-                              // XX  - normal value from CS
+                              // XX  - normal value from CS/attVal
 
     // FIXME: SCAMAX
     // FIXME:
@@ -171,11 +170,13 @@ typedef struct _S57_geo {
 
 static GString *_attList = NULL;
 
+// tolerance used by: _inLine(), S57_isPtInSet(), posibly S57_cmpExt()
 //#define S57_GEO_TOLERANCE 0.0001     // *60*60 = .36'
 //#define S57_GEO_TOLERANCE 0.00001    // *60*60 = .036'   ; * 1852 =
-//#define S57_GEO_TOLERANCE 0.000001   // *60*60 = .0036'  ; * 1852 = 6.667 meter
-//#define S57_GEO_TOLERANCE 0.0000001  // *60*60 = .00036' ; * 1852 = 0.6667 meter
-#define S57_GEO_TOLERANCE 0.00000001   // *60*60 = .000036'; * 1852 = 0.06667 meter
+//#define S57_GEO_TOLERANCE 0.000001   // *60*60 = .0036'  ; * 1852 = 6.667 meter       _simplifyGEO(): CA27904A.000 (Gulf): CTNARE:4814 poly reduction: 80% 12683 (15064	->	2381)
+#define S57_GEO_TOLERANCE 0.0000001  // *60*60 = .00036' ; * 1852 = 0.6667 meter      _simplifyGEO(): CA27904A.000 (Gulf): CTNARE:4814 poly reduction: 40%  6309 (15064	->	8755)
+//#define S57_GEO_TOLERANCE 0.00000001   // *60*60 = .000036'; * 1852 = 0.06667 meter     _simplifyGEO(): CA27904A.000 (Gulf): CTNARE:4814 poly reduction:  8%  1302 (15064	->	13762)
+#define S57_GEO_TOL_LINES 0.000001
 
 int           _initPROJ()
 // Note: corrected for PROJ 4.6.0 ("datum=WGS84")
@@ -273,7 +274,7 @@ PROJCS["WGS 84 / Pseudo-Mercator",
     //const char *templ = "+proj=utm +lat_ts=%.6f +lon_0=%.6f +ellps=WGS84 +datum=WGS84 +unit=m +no_defs";
 
     if (NULL != _pjstr) {
-        PRINTF("WARNING: Merc projection allready set\n");
+        PRINTF("WARNING: Merc projection str allready set\n");
         return FALSE;
     }
 
@@ -295,7 +296,6 @@ PROJCS["WGS 84 / Pseudo-Mercator",
     return TRUE;
 }
 
-//GCPTR      S57_getPrjStr(void)
 CCHAR     *S57_getPrjStr(void)
 {
     return _pjstr;
@@ -388,18 +388,18 @@ static int    _inLine(pt3 A, pt3 B, pt3 C)
 {
     // test.1: A( 0, 0) B(2,2) C( 4, 4)
     // test.2: A(-2,-2) B(0,0) C(+2,+2)
-    //A.x=+2;A.y=+2;B.x=0;B.y=0;C.x=-2;C.y=-2;
-    //A.x=-2;A.y=-2;B.x=0;B.y=0;C.x=+2;C.y=+2;
+    //A.x=+2;A.y=+2;B.x=0  ;B.y=0  ;C.x=-2;C.y=-2;
+    //A.x=-2;A.y=-2;B.x=0  ;B.y=0  ;C.x=+2;C.y=+2;
     //A.x=-2;A.y=-2;B.x=-11;B.y=-11;C.x=+2;C.y=+2;
 
     // from: https://stackoverflow.com/questions/17692922/check-is-a-point-x-y-is-between-two-points-drawn-on-a-straight-line/17693189
     // if AC is vertical
     //if (A.x == C.x) return B.x == C.x;
-    if (ABS(A.x-C.x) < S57_GEO_TOLERANCE) return ABS(B.x-C.x) < S57_GEO_TOLERANCE;
+    if (ABS(A.x-C.x) < S57_GEO_TOL_LINES) return ABS(B.x-C.x) < S57_GEO_TOL_LINES;
 
     // if AC is horizontal
     //if (A.y == C.y) return B.y == C.y;
-    if (ABS(A.y-C.y) < S57_GEO_TOLERANCE) return ABS(B.y-C.y) < S57_GEO_TOLERANCE;
+    if (ABS(A.y-C.y) < S57_GEO_TOL_LINES) return ABS(B.y-C.y) < S57_GEO_TOL_LINES;
 
     // match the gradients (BUG: maybe after edit of '/' to '*')
     //return (A.x - C.x)*(A.y - C.y) == (C.x - B.x)*(C.y - B.y);
@@ -409,7 +409,7 @@ static int    _inLine(pt3 A, pt3 B, pt3 C)
     // so slope AC == slope BC
     //return (A.y-C.y)/(A.x-C.x) == (B.y-C.y)/(B.x-C.x);  // div 0, need test above
     //return (A.y-C.y)*(B.x-C.x) == (B.y-C.y)*(A.x-C.x);  // inf
-    return ABS(ABS((A.y-C.y)*(B.x-C.x)) - ABS((B.y-C.y)*(A.x-C.x))) < S57_GEO_TOLERANCE;  // inf
+    return ABS(ABS((A.y-C.y)*(B.x-C.x)) - ABS((B.y-C.y)*(A.x-C.x))) < S57_GEO_TOL_LINES;
 
     // determinant = (ax-cx)(by-cy) - (bx-cx)(ay-cy)
     //return (A.x - C.x)*(B.y - C.y) == (B.x - C.x)*(A.y - C.y);
@@ -505,7 +505,7 @@ static guint  _delInLineSeg(guint npt, double *ppt)
 static int    _simplifyGEO(_S57_geo *geo)
 {
     // LINE
-    if (S57_LINES_T == geo->obj_t) {
+    if (S57_LINES_T == geo->objType) {
 
         // need at least 3 pt
         if (2 < geo->linexyznbr) {
@@ -516,7 +516,7 @@ static int    _simplifyGEO(_S57_geo *geo)
             }
         }
 
-        // degenerate !
+        // degenerated after simplification!
         if (2 > geo->linexyznbr) {
             // FIXME: delete geo!
             PRINTF("WARNING: degenerated line: %i\n", geo->linexyznbr);
@@ -525,17 +525,17 @@ static int    _simplifyGEO(_S57_geo *geo)
     }
 
     // AREA
-    if (S57_AREAS_T == geo->obj_t) {
+    if (S57_AREAS_T == geo->objType) {
         for (guint i=0; i<geo->ringnbr; ++i) {
             if (3 < geo->ringxyznbr[i]) {
                 guint npt = _delInLineSeg(geo->ringxyznbr[i], geo->ringxyz[i]);
                 if (npt != geo->ringxyznbr[i]) {
-                    PRINTF("DEBUG: poly reduction: %i \t(%i\t->\t%i)\n", geo->ringxyznbr[i] - npt, geo->ringxyznbr[i], npt);
+                    PRINTF("DEBUG: %s:%i poly reduction: %i \t(%i\t->\t%i)\n", geo->name, geo->S57ID, geo->ringxyznbr[i] - npt, geo->ringxyznbr[i], npt);
                     geo->ringxyznbr[i] = npt;
                 }
             }
 
-            // degenerate !
+            // degenerated after simplification!
             if (3 > geo->ringxyznbr[i]) {
                 // FIXME: delete ring!
                 PRINTF("WARNING: ring with less than 3 vertex (%i)\n", geo->ringxyznbr[i]);
@@ -543,6 +543,10 @@ static int    _simplifyGEO(_S57_geo *geo)
             }
         }
     }
+
+    // debug -  CA27904A.000 (Gulf) CTNARE:4814 (caution area)
+    //if (4814 == geo->S57ID)
+    //    geo->highlight = TRUE;
 
     return TRUE;
 }
@@ -555,7 +559,7 @@ int        S57_geo2prj(_S57_geo *geo)
 
     // FIXME: this break line/poly match
     // FIX: call for object with centroid in area - this will
-    if ('A' == geo->obj_t) {
+    if ('A' == geo->objType) {
         if ((0 == g_strcmp0(geo->name, "ISTZNE")) ||
             (0 == g_strcmp0(geo->name, "TSSLPT")) ||
             (0 == g_strcmp0(geo->name, "CTNARE")))
@@ -669,7 +673,7 @@ S57_geo   *S57_setPOINT(geocoord *xyz)
         g_assert(0);
 
     geo->S57ID    = _S57ID++;
-    geo->obj_t    = S57_POINT_T;
+    geo->objType  = S57_POINT_T;
     geo->pointxyz = xyz;
 
     geo->ext.W    =  INFINITY;
@@ -693,7 +697,7 @@ S57_geo   *S57_setGeoLine(_S57_geo *geo, guint xyznbr, geocoord *xyz)
 {
     return_if_null(geo);
 
-    geo->obj_t      = S57_LINES_T;  // because some Edge objet default to _META_T when no geo yet
+    geo->objType    = S57_LINES_T;  // because some Edge objet default to _META_T when no geo yet
     geo->linexyznbr = xyznbr;
     geo->linexyz    = xyz;
 
@@ -712,7 +716,7 @@ S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
         g_assert(0);
 
     geo->S57ID      = _S57ID++;
-    geo->obj_t      = S57_LINES_T;
+    geo->objType    = S57_LINES_T;
     geo->linexyznbr = xyznbr;
     geo->linexyz    = xyz;
 
@@ -742,7 +746,7 @@ S57_geo   *S57_setMLINE(guint nLineCount, guint *linexyznbr, geocoord **linexyz)
         g_assert(0);
 
     geo->ID         = _ID++;
-    geo->obj_t      = MLINE_T;
+    geo->objType    = MLINE_T;
     geo->linenbr    = nLineCount;
     geo->linexyznbr = linexyznbr;
     geo->linexyz    = linexyz;
@@ -768,7 +772,7 @@ S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
         g_assert(0);
 
     geo->S57ID      = _S57ID++;
-    geo->obj_t      = S57_AREAS_T;
+    geo->objType    = S57_AREAS_T;
     geo->ringnbr    = ringnbr;
     geo->ringxyznbr = ringxyznbr;
     geo->ringxyz    = ringxyz;
@@ -802,7 +806,7 @@ S57_geo   *S57_set_META(void)
         g_assert(0);
 
     geo->S57ID  = _S57ID++;
-    geo->obj_t  = S57__META_T;
+    geo->objType= S57__META_T;
 
     geo->ext.W  =  INFINITY;
     geo->ext.S  =  INFINITY;
@@ -840,7 +844,6 @@ int        S57_setName(_S57_geo *geo, const char *name)
     return TRUE;
 }
 
-//GCPTR      S57_getName(_S57_geo *geo)
 CCHAR     *S57_getName(_S57_geo *geo)
 {
     return_if_null(geo);
@@ -855,7 +858,7 @@ guint      S57_getRingNbr(_S57_geo *geo)
 
     // since this is used with S57_getGeoData
     // META object don't need to be projected for rendering
-    switch (geo->obj_t) {
+    switch (geo->objType) {
         case S57_POINT_T:
         case S57_LINES_T:
             return 1;
@@ -872,14 +875,14 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
 {
     return_if_null(geo);
 
-    if  (S57_AREAS_T==geo->obj_t && geo->ringnbr<ringNo) {
+    if  (S57_AREAS_T==geo->objType && geo->ringnbr<ringNo) {
         PRINTF("WARNING: invalid ring number requested! \n");
         *npt = 0;
         g_assert(0);
         return FALSE;
     }
 
-    switch (geo->obj_t) {
+    switch (geo->objType) {
         case S57__META_T: *npt = 0; break;        // meta geo stuff (ex: C_AGGR)
 
         case S57_POINT_T:
@@ -914,7 +917,7 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
             //}
             break;
         default:
-            PRINTF("ERROR: object type invalid (%i)\n", geo->obj_t);
+            PRINTF("ERROR: object type invalid (%i)\n", geo->objType);
             g_assert(0);
             return FALSE;
     }
@@ -1174,8 +1177,26 @@ handle ENC cells that cross the 180º  Meridian, therefore to avoid ECDIS load a
 cells must not span the 180º Meridian of Longitude.
 */
 {
+    return_if_null(geoA);
+    return_if_null(geoB);
+
+    // debug
+    // FIXME: extent of parallele vert/horiz line will not intersect, diag parallele will
+    // FIX: augment ext to dominant lat/lon
+    if (S57_LINES_T==geoA->objType && S57_LINES_T==geoB->objType) {
+        PRINTF("FIXME: if vert/horiz, parallele lines will not ext. intersect\n");
+        g_assert(0);
+    }
+
     ObjExt_t A = geoA->ext;
     ObjExt_t B = geoB->ext;
+
+    //* check if point at same location within tolerance
+    if (S57_POINT_T==geoA->objType && S57_POINT_T==geoB->objType) {
+        if ((ABS(A.S-B.S) < S57_GEO_TOLERANCE) && (ABS(A.W-B.W) < S57_GEO_TOLERANCE))
+            return TRUE;
+    }
+    //*/
 
     if (B.N < A.S) return FALSE;
     if (B.S > A.N) return FALSE;
@@ -1183,28 +1204,6 @@ cells must not span the 180º Meridian of Longitude.
     if (B.W > A.E) return FALSE;
 
     return TRUE;
-
-    /*
-    // N-S
-    if (B.N < A.S) return FALSE;
-    if (B.S > A.N) return FALSE;
-
-    // E-W
-    if (B.W > B.E) {
-        // anti-meridian
-        if (((A.W < B.W) || (A.W > B.E)) && ((A.E < B.W) || (A.E > B.E))) {
-        //if ((B.E > A.W) && (B.W > A.E)) {
-        //if ((A.W < B.E) && (B.W > A.E))
-            return TRUE;
-        } else
-            return FALSE;
-    } else {
-        if (B.E < A.W) return FALSE;
-        if (B.W > A.E) return FALSE;
-    }
-
-    return TRUE;
-    */
 }
 
 S57_Obj_t  S57_getObjtype(_S57_geo *geo)
@@ -1212,7 +1211,7 @@ S57_Obj_t  S57_getObjtype(_S57_geo *geo)
     if (NULL == geo)
         return S57__META_T;
 
-    return geo->obj_t;
+    return geo->objType;
 }
 
 #if 0
@@ -1453,7 +1452,7 @@ int        S57_setTouchTOPMAR(_S57_geo *geo, S57_geo *touch)
 {
     return_if_null(geo);
 
-    //* debug
+    /* debug
     if ((0==g_strcmp0(touch->name, "LITFLT")) ||
         (0==g_strcmp0(touch->name, "LITVES")) ||
         (0==strncmp  (touch->name, "BOY", 3)))
@@ -1706,7 +1705,7 @@ static void   _printAttVal(GQuark key_id, gpointer data, gpointer user_data)
 int        S57_dumpData(_S57_geo *geo, int dumpCoords)
 // debug - if dumpCoords is TRUE dump all coordinates
 {
-    //return_if_null(geo);
+    return_if_null(geo);
 
     // dump stat mode
     if (NULL == geo) {
@@ -1721,25 +1720,25 @@ int        S57_dumpData(_S57_geo *geo, int dumpCoords)
         return TRUE;
     }
 
-    // noraml mode
+    // normal mode
     PRINTF("----------------\n");
     PRINTF("NAME  : %s\n", geo->name);
     PRINTF("S57ID : %i\n", geo->S57ID);
 
-    switch (geo->obj_t) {
-        case S57__META_T:  PRINTF("obj_t : _META_T\n"); break;
-        case S57_POINT_T:  PRINTF("obj_t : POINT_T\n"); break;
-        case S57_LINES_T:  PRINTF("obj_t : LINES_T\n"); break;
-        case S57_AREAS_T:  PRINTF("obj_t : AREAS_T\n"); break;
+    switch (geo->objType) {
+        case S57__META_T:  PRINTF("oType : S57__META_T\n"); break;
+        case S57_POINT_T:  PRINTF("oType : S57_POINT_T\n"); break;
+        case S57_LINES_T:  PRINTF("oType : S57_LINES_T\n"); break;
+        case S57_AREAS_T:  PRINTF("oType : S57_AREAS_T\n"); break;
         default:
-            PRINTF("WARNING: invalid object type; %i\n", geo->obj_t);
+            PRINTF("WARNING: invalid object type; %i\n", geo->objType);
     }
 
     // dump Att/Val
     g_datalist_foreach(&geo->attribs, _printAttVal, NULL);
 
     // dump extent
-    PRINTF("EXTENT: %f, %f  --  %f, %f\n", geo->ext.S, geo->ext.W, geo->ext.N, geo->ext.E);
+    PRINTF("EXT   : %f, %f  --  %f, %f\n", geo->ext.S, geo->ext.W, geo->ext.N, geo->ext.E);
 
     if (TRUE == dumpCoords) {
         guint     npt = 0;
@@ -1786,7 +1785,6 @@ static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
     return;
 }
 
-//GCPTR      S57_getAtt(_S57_geo *geo)
 CCHAR     *S57_getAtt(_S57_geo *geo)
 {
     return_if_null(geo);
@@ -2020,11 +2018,12 @@ gboolean   S57_isPtInRing(guint npt, pt3 *ppt, gboolean close, double x, double 
 gboolean   S57_isPtInSet(_S57_geo *geo, double x, double y)
 // TRUE if XY is the same as one in geo
 {
-    return_if_null(geo);
+    //return_if_null(geo);
 
     guint   npt;
     double *ppt;
 
+    // test overkill ?
     if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return FALSE;
 
@@ -2129,24 +2128,24 @@ guint      S57_setGeoSize(_S57_geo *geo, guint size)
 {
     return_if_null(geo);
 
-    if ((S57_POINT_T==geo->obj_t) && (size > 1)) {
+    if ((S57_POINT_T==geo->objType) && (size > 1)) {
         PRINTF("ERROR: POINT_T size\n");
         g_assert(0);
         return FALSE;
     }
-    if ((S57_LINES_T==geo->obj_t) && (size > geo->linexyznbr)) {
+    if ((S57_LINES_T==geo->objType) && (size > geo->linexyznbr)) {
         PRINTF("ERROR: LINES_T size\n");
         g_assert(0);
         return FALSE;
     }
-    if ((S57_AREAS_T==geo->obj_t) && (size > geo->ringxyznbr[0])) {
+    if ((S57_AREAS_T==geo->objType) && (size > geo->ringxyznbr[0])) {
         PRINTF("ERROR: AREAS_T size\n");
         g_assert(0);
         return FALSE;
     }
 
-    if (S57__META_T == geo->obj_t) {
-        PRINTF("ERROR: object type invalid (%i)\n", geo->obj_t);
+    if (S57__META_T == geo->objType) {
+        PRINTF("ERROR: object type invalid (%i)\n", geo->objType);
         g_assert(0);
         return FALSE;
     }
