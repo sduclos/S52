@@ -5,32 +5,32 @@
 
 static int      _s52_setupMarPar(void)
 {
-    //* S-64
-    //Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
+    /* S-64
+    // Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
     S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    4.0);  // sounding color
 
-    //Symbolized boundaries, Simplified symbols, Multicolour
+    // Symbolized boundaries, Simplified symbols, Multicolour
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND,  1.0);
     S52_setMarinerParam(S52_MAR_SYMPLIFIED_PNT,  1.0);
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);
     //*/
 
-    /* -- DEPTH COLOR ------------------------------------
+    //* -- DEPTH COLOR ------------------------------------
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
 
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);      // should trigger symb ISODGR01 at Q40 at Qc
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // should trigger symb ISODGR01 at Rimouski
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);      // should trigger symb ISODGR01 at Q40 at Qc
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // should trigger symb ISODGR01 at Rimouski ENC
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  4.0);
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // white chanel in Rimouski
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // white chanel in Rimouski ENC
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  2.0);
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  0.0);   // should trigger symb ISODGR01 at Rimouski
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  0.0);   // should trigger symb ISODGR01 at Rimouski ENC
 
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
@@ -61,16 +61,16 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);  // off (default ON)
 
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE);    // BASE always ON
-    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // STABDARD default
+    //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD);     // STABDARD (default)
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_OTHER);   // OTHER
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_BASE | S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
     //S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_STD | S52_MAR_DISP_CATEGORY_OTHER);
-    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);
+    S52_setMarinerParam(S52_MAR_DISP_CATEGORY,   S52_MAR_DISP_CATEGORY_SELECT);    // all (BASE + STD + OTHER)
 
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_NONE );  // none
-    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // Mariner Standard - default
+    //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_STD );   // Mariner Standard (default)
     //S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_OTHER);  // Mariner Other (EBL VRN)
-    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Standard(default) + Other)
+    S52_setMarinerParam(S52_MAR_DISP_LAYER_LAST, S52_MAR_DISP_LAYER_LAST_SELECT);   // All Mariner (Mar Standard + Mar Other)
 
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   0.0);     // DAY (default)
     //S52_setMarinerParam(S52_MAR_COLOR_PALETTE,   1.0);     // DAY DARK
@@ -103,7 +103,7 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_DISP_WHOLIN,     1.0);  // wholin auto placement: 0 - off, 1 - wholin, 2 - arc, 3 - wholin + arc  (default off)
 
     // cell's legend
-    //S52_setMarinerParam(S52_MAR_DISP_LEGEND,     1.0);  // show
+    S52_setMarinerParam(S52_MAR_DISP_LEGEND,     1.0);  // show
     //S52_setMarinerParam(S52_MAR_DISP_LEGEND,     0.0);   // hide (default)
 
     //S52_setMarinerParam(S52_MAR_DISP_DRGARE_PATTERN, 0.0);  // OFF
@@ -171,8 +171,8 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 0.0);  // default
     //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 1.0);
 
-    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);   // OFF
-    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);  // ON (default)
+    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);   // OFF
+    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);  // ON (default)
 
     //S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters) [0.0 - off]
     //S52_MAR_GUARDZONE_LENGTH    = 47,   // Danger/Indication Highlight used by Position (meters, user computed from speed/time or distance)
