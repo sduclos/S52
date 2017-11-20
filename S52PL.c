@@ -696,16 +696,16 @@ static int        _dumpATT(char *str)
 // debug
 {
     int   len = strlen(str);
-    //g_print("LUP ATT:");
-    printf("LUP ATT:");
+    g_print("LUP ATT:");
+    //printf("LUP ATT:");
     while (len != 0) {
-        //g_print(" %s", str);
-        printf(" %s", str);
+        g_print(" %s", str);
+        //printf(" %s", str);
         str += len+1;
         len = strlen(str);
     }
-    //g_print("\n");
-    printf("\n");
+    g_print("\n");
+    //printf("\n");
 
     return TRUE;
 }
@@ -717,32 +717,33 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
 //       of IHO ECDIS PRESENTATION LIBRARY USER'S MANUAL Ed/Rev 3.2 March 2000
 //       (IHO Special Publication No. 52 ANNEX A of APPENDIX 2 --S52-A-2)
 {
-    int trace          = FALSE;   //TRUE = debug
+    int trace          = FALSE;
+    //int trace          = TRUE;   // debug
     int best_nATTmatch = 0;  // best attribute value match
 
     return_if_null(LUPlist);
     return_if_null(geo);
 
     // setup default LUP to the first LUP
-    _LUP *LUP = LUPlist;
+    _LUP *bestLUP = LUPlist;
 
     /* debug
-    if (0 == g_strcmp0(LUPlist->OBCL, "SBDARE")) {
-        trace = 1;
+    if (TRUE==trace && 0==g_strcmp0(LUPlist->OBCL, "SBDARE") && 'A'==S57_getObjtype(geo)) {
+        //trace = TRUE;
         S57_dumpData(geo, FALSE);
     }
     */
     //GString *FIDNstr = S57_getAttVal(geo, "FIDN");
     //if (0==strcmp("2135158878", FIDNstr->str)) {
     //    trace = 1;
-    //    S57_dumpData(geo);
+    //    S57_dumpData(geo, FALSE);
     //    PRINTF("%s\n", FIDNstr->str);
     //}
 
     // default LUP [ref S52-A-2:8.3.3.2]
-    if (NULL == LUP->OBCLnext) {
-        if (NULL == LUP->ATTC)
-            return LUP;
+    if (NULL == bestLUP->OBCLnext) {
+        if (NULL == bestLUP->ATTC)
+            return bestLUP;
         else {
             // debug
             PRINTF("DEBUG: single look-up non-empty attribute, RCID:%i\n", LUPlist->RCID);
@@ -751,12 +752,12 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
     }
 
     // special case [S52-A-2:8.3.3.4(iii)]
-    if (0 == strncmp(LUP->OBCL, "TSSLPT", S52_LUP_NMLN)){
+    if (0 == strncmp(bestLUP->OBCL, "TSSLPT", S52_LUP_NMLN)){
         if (NULL == S57_getAttVal(geo, "ORIENT")) {
             // FIXME: hit this in S-64 ENC
             PRINTF("FIXME: TSSLPT found ... check this ... no ORIENT\n");
             //g_assert(0);
-            return LUP;
+            return bestLUP;
         }
     }
 
@@ -768,7 +769,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
     // for the one that have the complet attribute name/value match.
     // [S52-A-2:8.3.3.3]
     while (LUPlist) {
-        int      skipLUP   = 0;   //
+        int      skipLUP   = FALSE;   //
         int      nATTmatch = 0;   // nbr of att value match for this LUP
         // Note: ATTC was previously chopped at US (0x1F) replace by '\0' (abc\0def\0\0)
         char    *attLV     = (NULL == LUPlist->ATTC) ? NULL : LUPlist->ATTC->str; // ATTL+ATTV
@@ -778,8 +779,8 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
             continue;
         }
 
-        if (trace)
-            _dumpATT(attLV);
+        //if (trace)
+        //    _dumpATT(attLV);
 
         while ((*attLV != '\0') && !skipLUP) {
             char     attl[7] = {'\0'}; // attribute name
@@ -792,16 +793,15 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
             //strncat(attl, attlv, 6);  // src \0 never reach!
             memcpy(attl, attLV, 6);
 
-#ifdef S52_USE_CA_ENC
-            attv = S57_getAttVal(geo, attl);     // will NOT return EMPTY_NUMBER_MARKER
-#else
+//#ifdef S52_USE_CA_ENC
+            //attv = S57_getAttVal(geo, attl);     // will NOT return EMPTY_NUMBER_MARKER
+//#else
             attv = S57_getAttValALL(geo, attl);  // will return EMPTY_NUMBER_MARKER if there
-#endif  // S52_USE_CA_ENC
+//#endif  // S52_USE_CA_ENC
 
 
+            // attl name match
             if (NULL != attv) {
-                // attl name match
-
                 //PRINTF("attv: %s\n", attv->str);
 
                 // Check for a attribute value match.
@@ -814,6 +814,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
                 // special case [S52-A-2:8.3.3.4(i)]
                 // ie. use any attribute value (except value unknown)
                 // Note: ATTC str has x1F (US) replace by '\0'
+                // FIXME: SBDARE this match last LUP WATLEV4NATSUR
                 if ((attLV[6] == '\0') && (0!=g_strcmp0(attv->str, EMPTY_NUMBER_MARKER))){
                     ++nATTmatch;
                     //PRINTF("DEBUG: ATTC: %s INST: %s\n", LUPlist->ATTC->str, LUPlist->INST->str);
@@ -823,45 +824,35 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
                 } else {
                     // special case [S52-A-2:8.3.3.4(ii)]
                     // ie. match if value is unknown
+#ifdef S52_USE_CA_ENC
                     // debug - CA ENC
-                    //if ((attlv[6] == '?') && FALSE ) {  // OK for CA & S64 ENC
-
+                    if ((attLV[6] == '?') && FALSE ) {  // OK for CA & S64 ENC
+#else
                     if ((attLV[6] == '?') && (0==g_strcmp0(attv->str, EMPTY_NUMBER_MARKER)) ) {
+#endif
                         ++nATTmatch;
 
                         //PRINTF("DEBUG: ATTC: %s INST: %s\n", LUPlist->ATTC->str, LUPlist->INST->str);
                         //S57_dumpData(geo, FALSE);
                         //g_assert(0);
 
-                    // value check
                     } else {
-                        // no attribut value in LUP (ex ORIENT in TSSLPT)
-                        if (attLV[6] == '\0')
-                            ++nATTmatch;
-                        else {
-                            char *tmpVal = strstr(attv->str, attLV+6);
-                            // must match *exacly*
-                            // so '4,3,4' match '4,3,4,7' but not 3,4,3 (4,3 match)
-                            // the trick is to use the lenght of of the value of
-                            // the PLib *not* from S57
-                            //char *tmpVal = strncmp(attv->str, attlv+6, strlen(attlv)-6);
+                        // value check
+                        char *tmpVal = strstr(attv->str, attLV+6);
+                        // must match *exacly*
+                        // so '4,3,4' match '4,3,4,7' but not 3,4,3 (4,3 match)
+                        // the trick is to use the lenght of of the value of
+                        // the PLib *not* from S57
 
-                            // FIX: record the max lenght of att val str of a match
-                            if (NULL != tmpVal) {
-                                //int len = strlen(tmpVal);
-                                //if (len < attv->len
-                                //if (len >= best_attValLen) {
-                                //    best_attValLen = len;
-                                //    ++nATTmatch;
-                                //}
-                                int valS57 = atoi(attv->str);
-                                int valLUP = atoi(attLV+6);
-                                if (valS57 == valLUP)
-                                    ++nATTmatch;
-                            }
+                        // FIX: record the max lenght of att val str of a match
+                        if (NULL != tmpVal) {
+                            int valS57 = atoi(attv->str);
+                            int valLUP = atoi(attLV+6);
+                            if (valS57 == valLUP)
+                                ++nATTmatch;
+                        } else {
                             // skip this lookup
-                            else
-                                skipLUP = 1;
+                            skipLUP = TRUE;
                         }
                     }
                 }
@@ -876,14 +867,12 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
 
 
             } else {
-                skipLUP   = 1;
+                // no att value - no match
+                skipLUP   = TRUE;
                 nATTmatch = 0;
-                //nATTmatch = 1;
-                //PRINTF("SKIP\n");
+
                 //debug
-                PRINTF("DEBUG: NULL attVal for attName: %s\n", attLV);
-
-
+                //PRINTF("DEBUG: NULL attVal for attName: %s\n", attLV);
             }
 
         } // while
@@ -891,14 +880,17 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
         // BUG: the first match found is returned!
         //if (nATTmatch > best_nATTmatch) {
         // OR no match at all are discarded
-        //if ((0 != nATTmatch) && (nATTmatch > best_nATTmatch)) {
+        if ((0 != nATTmatch) && (nATTmatch > best_nATTmatch)) {
         // FIX: last best match found, but zero match discarded
         // this seem like a S52 bug
-        if ((0 != nATTmatch) && (nATTmatch >= best_nATTmatch)) {
+        //if ((0 != nATTmatch) && (nATTmatch >= best_nATTmatch)) {
                 best_nATTmatch = nATTmatch;
-                LUP = LUPlist;
-                if (trace)
-                    PRINTF("DEBUG: CANDIDATE(%i): %s\n", best_nATTmatch, LUPlist->ATTC->str);
+                bestLUP = LUPlist;
+                if (trace) {
+                    PRINTF("DEBUG: %s:CANDIDATE(%i): ----------------\n", bestLUP->OBCL, best_nATTmatch);
+                    if (NULL != bestLUP->ATTC)
+                        _dumpATT(bestLUP->ATTC->str);
+                }
         }
 
         LUPlist = LUPlist->OBCLnext;
@@ -906,10 +898,14 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
 
     } // while
 
-    if (trace)
-        PRINTF("DEBUG: SELECTED LUP: %s\n", LUP->INST->str);
+    if (trace) {
+        PRINTF("DEBUG: SELECTED LUP: %s\n", bestLUP->INST->str);
+        if (NULL != bestLUP->ATTC)
+            _dumpATT(bestLUP->ATTC->str);
+        //g_assert(0);
+    }
 
-    return LUP;
+    return bestLUP;
 }
 
 // command word
@@ -1071,7 +1067,7 @@ static gint       _freeAllText(GArray *cmdArray)
 
 static int        _resolveSMB(_S52_obj *obj, int alt)
 // return TRUE if there is a CS in the INST file for this LUP (alt)
-// also start to fill the command Array
+// also fill the command Array
 {
     // Note: no need to reparse line - obj of type LINE_T have no alternate symbology
     if (S57_LINES_T==S57_getObjtype(obj->geo) && 1==alt ) {
@@ -2131,8 +2127,7 @@ static CCHAR     *_getParamVal(S57_geo *geo, CCHAR *str, char *buf, int bsz)
                 double height = S52_atof(valstr->str);
 
                 // ajust datum
-                double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                height += datum;
+                height += S52_MP_get(S52_MAR_DATUM_OFFSET);
                 g_snprintf(buf, 4, "%4.1f", height);
 
                 return str;
@@ -2146,8 +2141,7 @@ static CCHAR     *_getParamVal(S57_geo *geo, CCHAR *str, char *buf, int bsz)
                 double height = S52_atof(valstr->str);
 
                 // ajust datum
-                double datum  = S52_MP_get(S52_MAR_DATUM_OFFSET);
-                height -= datum;
+                height -= S52_MP_get(S52_MAR_DATUM_OFFSET);
                 g_snprintf(buf, 4, "%4.1fm ", height);
 
                 return str;
@@ -2869,46 +2863,30 @@ static int        _linkLUP(_S52_obj *obj, int alt)
         if (0 == g_strcmp0(objName, "NEWOBJ")) {
             GString *syminsstr = S57_getAttVal(obj->geo, "SYMINS");
             PRINTF("FIXME: object name: %s SYMINS:%s\n", objName, syminsstr->str);
-
-/* FIXME: add rule attval SYMINS to PL
-0001    503017
-LUPT   34LU03017NILcursorP00009OSIMPLIFIED
-ATTC    1
-INST   58SY(CURSRA01);TX(_cursor_label,3,3,3,'15110',1,1,CURSR,78)
-DISC   12DISPLAYBASE
-LUCM    611010
-****    0
-0001    503444
-LUPT   35LU03444NILcursorP00009OPAPER_CHART
-ATTC    1
-INST   58SY(CURSRA01);TX(_cursor_label,3,3,3,'15110',1,1,CURSR,78)
-DISC   12DISPLAYBASE
-LUCM    611010
-****    0
-
-S57data.c:1525 in S57_dumpData(): NAME  : NEWOBJ
-S57data.c:1526 in S57_dumpData(): S57ID : 59
-S57data.c:1530 in S57_dumpData(): obj_t : POINT_T
-S57data.c:1515 in _printAttVal(): RCID: 265
-S57data.c:1515 in _printAttVal(): PRIM: 1
-S57data.c:1515 in _printAttVal(): GRUP: 2
-S57data.c:1515 in _printAttVal(): OBJL: 163
-S57data.c:1515 in _printAttVal(): RVER: 1
-S57data.c:1515 in _printAttVal(): AGEN: 1810
-S57data.c:1515 in _printAttVal(): FIDN: 86133589
-S57data.c:1515 in _printAttVal(): FIDS: 816
-S57data.c:1515 in _printAttVal(): LNAM: 071205224B550330
-S57data.c:1515 in _printAttVal(): NAME_RCNM: (1:110)
-S57data.c:1515 in _printAttVal(): NAME_RCID: (1:5)
-S57data.c:1515 in _printAttVal(): ORNT: (1:255)
-S57data.c:1515 in _printAttVal(): USAG: (1:255)
-S57data.c:1515 in _printAttVal(): MASK: (1:255)
-S57data.c:1515 in _printAttVal(): CLSDEF: Alarms test waypoint
-S57data.c:1515 in _printAttVal(): CLSNAM: Waypoint
-S57data.c:1515 in _printAttVal(): OBJNAM: WP3
-S57data.c:1515 in _printAttVal(): INFORM: Waypoint 3 to set test route
-S57data.c:1515 in _printAttVal(): SYMINS: SY(BRTHNO01);TE('%s','OBJNAM',2,1,2,'15110',4,-1,CHMGD,29)
-*/
+            /*
+            S57data.c:1525 in S57_dumpData(): NAME  : NEWOBJ
+            S57data.c:1526 in S57_dumpData(): S57ID : 59
+            S57data.c:1530 in S57_dumpData(): obj_t : POINT_T
+            S57data.c:1515 in _printAttVal(): RCID: 265
+            S57data.c:1515 in _printAttVal(): PRIM: 1
+            S57data.c:1515 in _printAttVal(): GRUP: 2
+            S57data.c:1515 in _printAttVal(): OBJL: 163
+            S57data.c:1515 in _printAttVal(): RVER: 1
+            S57data.c:1515 in _printAttVal(): AGEN: 1810
+            S57data.c:1515 in _printAttVal(): FIDN: 86133589
+            S57data.c:1515 in _printAttVal(): FIDS: 816
+            S57data.c:1515 in _printAttVal(): LNAM: 071205224B550330
+            S57data.c:1515 in _printAttVal(): NAME_RCNM: (1:110)
+            S57data.c:1515 in _printAttVal(): NAME_RCID: (1:5)
+            S57data.c:1515 in _printAttVal(): ORNT: (1:255)
+            S57data.c:1515 in _printAttVal(): USAG: (1:255)
+            S57data.c:1515 in _printAttVal(): MASK: (1:255)
+            S57data.c:1515 in _printAttVal(): CLSDEF: Alarms test waypoint
+            S57data.c:1515 in _printAttVal(): CLSNAM: Waypoint
+            S57data.c:1515 in _printAttVal(): OBJNAM: WP3
+            S57data.c:1515 in _printAttVal(): INFORM: Waypoint 3 to set test route
+            S57data.c:1515 in _printAttVal(): SYMINS: SY(BRTHNO01);TE('%s','OBJNAM',2,1,2,'15110',4,-1,CHMGD,29)
+            */
         } else {
             // debug
             S57_dumpData(obj->geo, FALSE);
@@ -3172,17 +3150,17 @@ S52_disPrio S52_PL_getDPRI(_S52_obj *obj)
 {
     return_if_null(obj);
 
-    // DSID has no LUP --put on nodata layer
+    // DSID has no LUP - put it on nodata layer
     if (NULL == obj->LUP)
         return S52_PRIO_NODATA;
 
     S52_disPrio dpri = (TRUE == obj->prioOverride) ? obj->oPrios.DPRI : obj->LUP->prios.DPRI;
 
-#ifdef S52_DEBUG
-    if ((0==dpri) && (0!=obj->LUP->INST->len)) {
-        PRINTF("DEBUG: rendering object on IHO layer 0 [%s:%s]\n", S57_getName(obj->geo), S52_PL_infoLUP(obj));
-    }
-#endif
+//#ifdef S52_DEBUG
+//    if ((0==dpri) && (0!=obj->LUP->INST->len)) {
+//        PRINTF("DEBUG: rendering object on IHO layer 0 [%s:%s]\n", S57_getName(obj->geo), S52_PL_infoLUP(obj));
+//    }
+//#endif
 
     return dpri;
 }
@@ -4789,7 +4767,7 @@ guint       S52_PL_getPalTableSz()
     return _colTables->len;
 }
 
-const char* S52_PL_getPalTableNm(unsigned int idx)
+const char *S52_PL_getPalTableNm(unsigned int idx)
 {
     if (NULL != _colTables) {
         _colTable *ct  = NULL;
