@@ -4,6 +4,14 @@
 #
 
 
+2017NOV16
+- mod PL lookUp to match first best match rather than the last
+- mod CS touch() logic for LIGHTS, BOYLAT
+
+2017NOV12
+- add macro _g_string_free() in CS to nullify var, complitness with _new()
+- replace _intersectGEO() in CS with call to S57_cmpEXT()
+
 2017NOV11
 - simplify geo of ISTZNE, TSSLPT, CTNARE to optimise centroid computation
 - add build option -DS52_USE_CA_ENC to debug CA ENC in PL lookUpLUP()
