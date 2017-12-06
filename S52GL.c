@@ -36,6 +36,13 @@
 // compiled with -std=gnu99 (or -std=c99 -D_POSIX_C_SOURCE=???) will define M_PI
 #include <math.h>         // sin(), cos(), atan2(), pow(), sqrt(), floor(), fabs(), INFINITY, M_PI
 
+#ifdef S52_USE_BACKTRACE
+// debug - backtrace() static func - test symbol collison
+// Note: will break static var
+//#define static
+#endif
+
+
 // FIXME: for C99
 #ifndef M_PI
 #    define M_PI 3.14159265358979323846
@@ -66,10 +73,10 @@ static GArray      *_tmpWorkBuffer = NULL;    // tmp buffer
 //static int          _identity_MODELVIEW_cnt = 0;   // count saving
 
 //* helper - save user center of view in degree
-typedef struct _view_t{
+typedef struct view_t {
     double cLat, cLon, rNM, north;     // center of screen (lat,long), range of view(NM)
-} _view_t;
-static _view_t _view = {0.0, 0.0, 0.0, 0.0};
+} view_t;
+static view_t _view = {0.0, 0.0, 0.0, 0.0};
 //*/
 
 // FIXME: optimisation in _computeCentroid() / _getLODidx()
@@ -107,11 +114,11 @@ static double       _SCAMIN    = 1.0;  // screen scale (SCAle MINimum in S57)
 static double       _scalex    = 1.0;  // meter per pixel in X
 static double       _scaley    = 1.0;  // meter per pixel in Y
 
-// projected view
+// projected view - anti-meridian OK
 static projUV _pmin = { INFINITY,  INFINITY};
 static projUV _pmax = {-INFINITY, -INFINITY};
-// _pmin, _pmax convert to GEO for culling object with their extent (in deg)
-// in _drawRaster(), _isOFFview(), _renderSY()/centroid
+// _pmin, _pmax convert to GEO for culling object with their extent (in deg) - anti-meridian OK
+// in _drawRaster(), _isOFFview(), _renderSY()/centroid, S52_GL_drawGraticule()
 static projUV _gmin = { INFINITY,  INFINITY};
 static projUV _gmax = {-INFINITY, -INFINITY};
 
@@ -131,8 +138,6 @@ typedef enum _VP {
     VP_NUM          // number of coord. systems type
 } VP;
 
-//#define Z_CLIP_PLANE 10000   // clipped beyon this plane
-//#define Z_CLIP_PLANE (S57_OVERLAP_GEO_Z + 1)
 #define Z_CLIP_PLANE (S57_OVERLAP_GEO_Z - 1)
 
 ////////////////////////////////////////////////////////////////////
@@ -399,7 +404,7 @@ static int       _getCentroid(guint npt, pt3 *v)
         pt3 p1 = v[i];
         pt3 p2 = v[j];
 
-        // decimation will create vertex of same coords - skip
+        // FIXME: decimation/simplification will create vertex of same coords - skip
         // Note: also close poly have same vertex at both end
         // x--x  x--x
         // |  |  |  |
@@ -416,7 +421,7 @@ static int       _getCentroid(guint npt, pt3 *v)
         ytmp += (p2.y + p1.y) * ai;
     }
 
-    // offset --coordinate are too big
+    // offset - coordinate are too big
     //double x = v[0].x;
     //double y = v[0].y;
 
@@ -446,11 +451,9 @@ static int       _getCentroid(guint npt, pt3 *v)
         if (1.0 == S52_MP_get(S52_MAR_DISP_CENTROIDS)) {
             return _findCentInside(npt, v);
         }
-        //return TRUE;
-
     } else {
         // FIXME: bizzard case of poly with no area!
-        // could be all vertex skipped
+        // could all vertex be skipped!
         PRINTF("WARNING: no area (0.0) npt:%i vert skipped:%i\n", npt, nSkip);
     }
 
@@ -458,8 +461,6 @@ static int       _getCentroid(guint npt, pt3 *v)
 }
 
 #if 0
-//*
-//static int       _getCentroidClose(guint npt, double *ppt)
 static int       _getCentroidClose(guint npt, pt3 *v)
 // Close Poly - return TRUE and centroid else FALSE
 {
@@ -474,15 +475,7 @@ static int       _getCentroidClose(guint npt, pt3 *v)
         return FALSE;
     }
 
-    // projected coordinate are just too big
-    // to compute a tiny area
-    //double offx = p[0];
-    //double offy = p[1];
-   //double offx = v[0].x;
-    //double offy = v[0].y;
-
     // debug
-    //if ((p[0] != p[(npt-1) * 3]) || (p[1] != p[((npt-1) * 3)+1])) {
     if ((v[0].x!=v[npt-1].x) || (v[0].y!=v[npt-1].y)) {
         PRINTF("WARNING: poly end points doesn't match\n");
         g_assert(0);
@@ -501,13 +494,6 @@ static int       _getCentroidClose(guint npt, pt3 *v)
         if (p1.x==p2.x && p1.y==p2.y)
             continue;
 
-        //GLdouble ai = (p[0]-offx) * (p[4]-offy) - (p[3]-offx) * (p[1]-offy);
-        //atmp += ai;
-        //xtmp += ((p[3]-offx) + (p[0]-offx)) * ai;
-        //ytmp += ((p[4]-offy) + (p[1]-offy)) * ai;
-
-        //p += 3;
-
         GLdouble ai =  p1.x * p2.y - p2.x * p1.y;
         atmp +=  ai;
         xtmp += (p2.x + p1.x) * ai;
@@ -516,12 +502,10 @@ static int       _getCentroidClose(guint npt, pt3 *v)
 
     // compute centroid
     if (atmp != 0.0) {
-        pt3 pt = {0.0, 0.0, 0.0};
-        //pt.x = (xtmp / (3.0 * atmp)) + offx;
-        //pt.y = (ytmp / (3.0 * atmp)) + offy;
-
-        pt.x = (xtmp / (3.0 * atmp));
-        pt.y = (ytmp / (3.0 * atmp));
+        //pt3 pt = {0.0, 0.0, 0.0};
+        //pt.x = (xtmp / (3.0 * atmp));
+        //pt.y = (ytmp / (3.0 * atmp));
+        pt3 pt = {xtmp / (3.0 * atmp), ytmp / (3.0 * atmp), 0.0};
 
         //PRINTF("XY(%s): %f, %f, %i \n", (atmp>=0.0) ? "CCW " : "CW", pt->x, pt->y, npt);
 
@@ -534,13 +518,11 @@ static int       _getCentroidClose(guint npt, pt3 *v)
 
         // use heuristique to find centroid
         if (1.0 == S52_MP_get(S52_MAR_DISP_CENTROIDS)) {
-            //_findCentInside(npt, (pt3*)ppt);
             return _findCentInside(npt, v);
         }
-        //return TRUE;
 
     } else {
-        // FIXME: bizzard case of poly with no area!
+        // FIXME: bizzard case of poly with no area (atmp == 0.0) !
         PRINTF("WARNING: no area (0.0)\n");
     }
 
@@ -549,6 +531,8 @@ static int       _getCentroidClose(guint npt, pt3 *v)
 //*/
 #endif  // 0
 
+#if 0
+//*
 static int       _getLODidx(char **str)
 {
     if (_SCAMIN <= 4000) {
@@ -575,6 +559,9 @@ static int       _getLODidx(char **str)
         return 1;
     }
 }
+//*/
+#endif  // 0
+
 
 //#if 0
 // code lifted from OpenCPN
@@ -633,7 +620,6 @@ static int       _getGratScale(double view_scale_ppm, double *majorSpacing, doub
 static int       _computeCentroid(S57_geo *geo)
 // return centroids
 // fill global array _centroid
-// FIXME: this is very expensive for large poly (good test case:CA279037.000, IT zone)
 {
 #ifdef S52_USE_GV
     // FIXME: there is a bug, tesselator fail
@@ -651,10 +637,9 @@ static int       _computeCentroid(S57_geo *geo)
         return FALSE;
     }
 
-
-    //PRINTF("DEBUG: _SCAMIN:%f _scalex:%f\n", _SCAMIN, _scalex);
-    char *str;
-    int idx = _getLODidx(&str);
+    // debug
+    //char *str;
+    //int idx = _getLODidx(&str);
     //PRINTF("DEBUG:%s _SCAMIN:%f _scalex:%f %i:%s (npt:%i)\n", S57_getName(geo), _SCAMIN, _scalex, idx, str, npt);
 
 
@@ -675,7 +660,7 @@ User bands Navigational
     // debug
     //GString *FIDNstr = S57_getAttVal(geo, "FIDN");
     //if (0==strcmp("2135158891", FIDNstr->str)) {
-    //    PRINTF("%s\n",FIDNstr->str);
+    //    PRINTF("%s\n", FIDNstr->str);
     //}
     //if (0 ==  g_strcmp0("ISTZNE", S57_getName(geo))) {
     //    PRINTF("ISTZNEA found\n");
@@ -722,20 +707,20 @@ User bands Navigational
     ptLOD1->y = ppt[3*(npt-1) + 1];
     */
 
-    ObjExt_t ext = S57_getExt(geo);
+    ObjExt_t ext = S57_getGeoExt(geo);
     pt3 pt[2] = {{ext.W, ext.S, 0.0}, {ext.E, ext.N, 0.0}};
     if (FALSE == S57_geo2prj3dv(2, pt))
         return FALSE;
 
     //PRINTF("%s VIEW EXT %f,%f -- %f,%f\n", S57_getName(geo), _pmin.u, _pmin.v, _pmax.u, _pmax.v);
 
-    // extent inside view, compute normal centroid, no clip
+    // extent inside view, compute normal centroid, no clip - anti-meridian OK
     if ((_pmin.u < pt[0].x) && (_pmin.v < pt[0].y) && (_pmax.u > pt[1].x) && (_pmax.v > pt[1].y)) {
         g_array_set_size(_centroids, 0);
 
         _getCentroid(npt, (pt3*)ppt);
-
         //_getCentroidClose(nptLOD1, pptLOD1);
+
         //PRINTF("no clip: %s\n", S57_getName(geo));
 
         return TRUE;
@@ -751,20 +736,24 @@ User bands Navigational
 
         //gluTessProperty(_tcen, GLU_TESS_BOUNDARY_ONLY, GLU_TRUE);
 
-        // debug
-        //PRINTF("npt: %i\n", npt);
-
         gluTessBeginPolygon(_tcen, NULL);
 
-        // place the area --CW (BUG: should be CCW!)
+        // place the area - CW (BUG: should be CCW!)
         gluTessBeginContour(_tcen);
 
-        //*
         for (guint i=0; i<npt-1; ++i) {
+            // FIXME: filter and clip poly because very expensive for large poly and large extent(good test case:CA279037.000, IT zone)
+            // FIX: full algo: move pt to dominant meridian/para (_pminmax) and delete privious if same edge
+            // if (i!=0) then (ppt-3) is the predesessor
+
+            // FIX: heuristic: probleme when line exit from the right of area objExt and then enter it for the left
+            // - ObjExt_t viewExt(_pmin/_pmax), ObjExt_t lineSegExt(min(x1,x2), min(y1,y2), max(x1,x2), max(y1,y2))
+            // - call S57_cmpExt(viewExt, lineSegExt);
+
+            // FIX: tesselate on GPU
             gluTessVertex(_tcen, (GLdouble*)ppt, (void*)ppt);
             ppt += 3;
         }
-        //*/
 
         /* LOD1
         ptLOD1 = (pt3*)pptLOD1;
@@ -1598,7 +1587,7 @@ static double    _getWorldGridRef(S52_obj *obj, double *LLx, double *LLy, double
     double h0 = tileHeightPix * _scaley;
 
     S57_geo *geo = S52_PL_getGeo(obj);
-    ObjExt_t ext = S57_getExt(geo);
+    ObjExt_t ext = S57_getGeoExt(geo);
     double xyz[6] = {ext.W, ext.S, 0.0, ext.E, ext.N, 0.0};
     if (FALSE == S57_geo2prj3dv(2, (pt3*)xyz))
         return FALSE;
@@ -2899,8 +2888,8 @@ static int       _renderSY(S52_obj *obj)
             double offset_y;
 
             // corner case where scrolling set area is clipped by view
-            ObjExt_t ext = S57_getExt(geo);
-            // FIXME: handle anti-meridian OR use projected coordinate
+            ObjExt_t ext = S57_getGeoExt(geo);
+            // Note: no need to handle anti-meridian - cell can't cross it
             if ((ext.S < _gmin.v) || (ext.N > _gmax.v) || (ext.W < _gmin.u) || (ext.E > _gmax.u)) {
                 // reset centroid
                 S57_newCentroid(geo);
@@ -3006,7 +2995,7 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
             pt3 pt, ptlen;
             double valnmr = S52_atof(valnmrstr->str);
 
-            ObjExt_t ext = S57_getExt(geo);
+            ObjExt_t ext = S57_getGeoExt(geo);
 
             // light position
             pt.x = ext.W;  // not used
@@ -3730,8 +3719,6 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
         //
         // overlapping Line Complex (LC) suppression
         //
-        //if (z1<0.0 && z2<0.0) {
-        //if (-S57_OVERLAP_GEO_Z==z1 && -S57_OVERLAP_GEO_Z==z2) {
         if (-S57_OVERLAP_GEO_Z==p1.z && -S57_OVERLAP_GEO_Z==p2.z) {
             //PRINTF("NOTE: this line segment (%s) overlap a line segment with higher prioritity (Z=%f)\n", S57_getName(geo), z1);
             continue;
@@ -5497,10 +5484,10 @@ int        S52_GL_isOFFview(S52_obj *obj)
 
 
     S57_geo *geo = S52_PL_getGeo(obj);
-    ObjExt_t ext = S57_getExt(geo);
+    ObjExt_t ext = S57_getGeoExt(geo);
 
     // FIXME: look for trick to bailout if func fail
-    //(TRUE==S57_getExt(geo, &x1, &y1, &x2, &y2)? TRUE : return FALSE;
+    //(TRUE==S57_getGeoExt(geo, &x1, &y1, &x2, &y2)? TRUE : return FALSE;
 
     // S-N limits
     if ((ext.N < _gmin.v) || (ext.S > _gmax.v)) {
@@ -5985,11 +5972,12 @@ int        S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize
 
 static char     *_ddmmss(double graticule)
 {
+    // FIXME: MAX: |dd* mm' ss"| 11 + \0
     static char str[80];
 
-    double rounding = 0.0001;
+    double rounding = 0.00005;
 
-    int deg = (int)(graticule + rounding);
+    int deg = (int) (graticule + rounding);
     int mm  = (int)((graticule - deg + rounding) * 60);
     int ss  = (int)((graticule - deg - mm/60.0 + rounding) * 3600);
 
@@ -6017,8 +6005,7 @@ int        S52_GL_drawGraticule(void)
     double scale = (_scalex > _scaley) ? _scalex/_dotpitch_mm_x : _scaley/_dotpitch_mm_y;
 
     // ----  graticule
-    if (FALSE != (int) S52_MP_get(S52_MAR_DISP_GRATICULE))
-    {
+    if (FALSE != (int) S52_MP_get(S52_MAR_DISP_GRATICULE)) {
         double MajorSpacing;
         double MinorSpacing;
 
@@ -6031,7 +6018,7 @@ int        S52_GL_drawGraticule(void)
         //_getGratScale(5.0/scale, &MajorSpacing, &MinorSpacing);
         _getGratScale(1.0/scale, &MajorSpacing, &MinorSpacing);
 
-        PRINTF("DEBUG: scale: %f, major: %f, minor: %f\n", 10.0/scale, MajorSpacing, MinorSpacing);
+        //PRINTF("DEBUG: scale: %f, major: %f, minor: %f\n", 10.0/scale, MajorSpacing, MinorSpacing);
 
         // draw minor
         if (1.0 == S52_MP_get(S52_MAR_DISP_GRATICULE) || 3.0 == S52_MP_get(S52_MAR_DISP_GRATICULE)) {
@@ -7542,7 +7529,8 @@ int        S52_GL_setScissor(int x, int y, int width, int height)
         glScissor(x-1, y-1, width+2, height+2);
     */
 
-    glScissor(x-1, y-1, width+2, height+2);
+    //glScissor(x-1, y-1, width+2, height+2);
+    glScissor(x-2, y-2, width+4, height+4);
 
     _checkError("S52_GL_setScisor().. -end-");
 
@@ -7744,7 +7732,7 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
 
         // get extent to compute center in pixels coords
         S57_geo  *geo = S52_PL_getGeo(obj);
-        ObjExt_t  ext = S57_getExt(geo);
+        ObjExt_t  ext = S57_getGeoExt(geo);
 
         // position
         pt3 pt;
