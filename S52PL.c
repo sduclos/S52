@@ -31,6 +31,13 @@
 #include <glib.h>
 #include <math.h>           // INFINITY
 
+#ifdef S52_USE_BACKTRACE
+// debug - backtrace() static func - test symbol collison
+// Note: will break static var
+//#define static
+#endif
+
+
 #define S52_COL_NUM   63    // number of color (#64 is transparent)
 #define S52_LUP_NMLN   6    // lookup name lenght
 
@@ -2860,7 +2867,12 @@ static int        _linkLUP(_S52_obj *obj, int alt)
     if (NULL != LUPlist) {
         obj->LUP = _lookUpLUP(LUPlist, obj->geo);
     } else {
-        if (0 == g_strcmp0(objName, "NEWOBJ")) {
+        PRINTF("WARNING: defaulting to QUESMRK1, no LUP found for object name: %s\n", objName);
+
+        // debug - show more info about missing LUP for S57 object
+        if (0 != g_strcmp0(objName, "NEWOBJ")) {
+            S57_dumpData(obj->geo, FALSE);
+        } else {
             GString *syminsstr = S57_getAttVal(obj->geo, "SYMINS");
             PRINTF("FIXME: object name: %s SYMINS:%s\n", objName, syminsstr->str);
             /*
@@ -2887,13 +2899,9 @@ static int        _linkLUP(_S52_obj *obj, int alt)
             S57data.c:1515 in _printAttVal(): INFORM: Waypoint 3 to set test route
             S57data.c:1515 in _printAttVal(): SYMINS: SY(BRTHNO01);TE('%s','OBJNAM',2,1,2,'15110',4,-1,CHMGD,29)
             */
-        } else {
-            // debug
-            S57_dumpData(obj->geo, FALSE);
         }
 
-        //
-        PRINTF("WARNING: defaulting to QUESMRK1, no LUP found for object name: %s\n", objName);
+        // setup default for missing
         obj->LUP = (_LUP*)g_tree_lookup(tbl, (gpointer*)DEFOBJ);
         if (NULL == obj->LUP) {
             PRINTF("ERROR: no PLIB! [%s]\n", objName);
@@ -3444,13 +3452,20 @@ int         S52_PL_setSYorient(_S52_obj *obj, double orient)
 {
     return_if_null(obj);
 
-    // clamp to [0..360[
-    //while (360.0 < orient)
-    while (360.0 <= orient)
-        orient -= 360.0;
+    // check invariant [0..360[
+    if (360.0 <= orient) {
+        orient = fmod(orient, 360.0);
+        PRINTF("DEBUG: check orient invariant safeguard actualy work\n");
 
-    while (orient < 0.0)
-        orient += 360.0;
+        g_assert(0);
+    }
+
+    if (orient < 0.0) {
+        orient = fmod(orient, 360.0);
+        PRINTF("DEBUG: check orient invariant safeguard actualy work\n");
+
+        g_assert(0);
+    }
 
     if ((0.0<=orient) && (orient<360.0)) {
         obj->auxInfo.orient = orient;
