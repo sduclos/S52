@@ -27,6 +27,13 @@
 
 #include <glib.h>       // TRUE, FALSE
 
+#ifdef S52_USE_BACKTRACE
+// debug - backtrace() static func - test symbol collison
+// Note: will break static var
+//#define static
+#endif
+
+
 ///////////////////////////////////////////////////////////////////
 //
 //   GLOBAL MARINER PARAMETER (will move out)
