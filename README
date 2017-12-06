@@ -12,12 +12,12 @@ OpENCview is a project to build an Open Source viewer of
 Electronic Navigational Chart (ENC).
 
 This release implement basic rendering of IHO' S-52
-(IHO, ECDIS PRESENTATION LIBRARY, USERS' MANUAL, Edition / revision 3.2,
-March 2000, Special Publication No. 52 ANNEX A of APPENDIX 2,
-published by the International Hydrographic Bureau, MONACO.)
-Note that the current Edition of the S-52 specification is 4.2 
-and is not available for free download as was Ed. 3.2 
-(S52/doc/pslb03_2.pdf) from IHO web site.
+(IHO, ECDIS PRESENTATION LIBRARY, USERS' MANUAL, Edition 3.2, March
+2000, Special Publication No. 52 ANNEX A of APPENDIX 2, published by
+the International Hydrographic Bureau, MONACO.) Note that the current
+Edition of the S-52 specification of Annex A (IHO ECDIS Presentation
+Library) is Edition 4.0(.2) - October 2014, and is not available for
+free download as was Ed. 3.2 (S52/doc/pslb03_2.pdf) from IHO web site.
 
 This software is not intended for general public but to
 interested party in the GIS/marine field.
