@@ -43,6 +43,13 @@
 #include <glib/gprintf.h> // g_sprintf()
 //#include <glib/gstdio.h>  // FILE
 
+#ifdef S52_USE_BACKTRACE
+// debug - backtrace() static func - test symbol collison
+// Note: will break static var
+//#define static
+#endif
+
+
 // Network
 #if defined(S52_USE_SOCK) || defined(S52_USE_DBUS) || defined(S52_USE_PIPE)
 #include "_S52.i"
@@ -63,7 +70,8 @@ typedef struct { double u, v; } projUV;
 
 static GTimer *_timer = NULL;
 
-// trap signal (ESC abort rendering)
+// trap signal (CTRL-C/SIGINT abort rendering)
+// abort long running process in _draw(), _drawLast() and _suppLineOverlap()
 // must be compiled with -std=gnu99 or -std=c99 -D_POSIX_C_SOURCE=199309L
 #include <unistd.h>      // getuid()
 #include <sys/types.h>
@@ -74,9 +82,10 @@ static volatile gint G_GNUC_MAY_ALIAS _atomicAbort;
 #ifdef _MINGW
 // not available on win32
 #else
-// 1) SIGHUP	 2) SIGINT	 3) SIGQUIT	 4) SIGILL	 5) SIGTRAP
-// 6) SIGABRT	 7) SIGBUS	 8) SIGFPE	 9) SIGKILL	10) SIGUSR1
-//11) SIGSEGV	12) SIGUSR2	13) SIGPIPE	14) SIGALRM	15) SIGTERM
+// $ kill -l  show all 64 interrupt
+// 1) SIGHUP   2) SIGINT   3) SIGQUIT   4) SIGILL    5) SIGTRAP
+// 6) SIGABRT  7) SIGBUS   8) SIGFPE    9) SIGKILL  10) SIGUSR1
+//11) SIGSEGV 12) SIGUSR2 13) SIGPIPE  14) SIGALRM  15) SIGTERM
 static struct sigaction _old_signal_handler_SIGINT;   //  2
 static struct sigaction _old_signal_handler_SIGQUIT;  //  3
 static struct sigaction _old_signal_handler_SIGTRAP;  //  5
@@ -658,6 +667,53 @@ int _app(void);
    return result;
 }
 */
+
+
+/* FIXME: add S52_USE_SHM as a S52 API
+   FIXME: add stat for malloc bytes in shm (or all S52 calls)
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/mman.h>
+
+void* create_shared_memory(size_t size) {
+  // Our memory buffer will be readable and writable:
+  int protection = PROT_READ | PROT_WRITE;
+
+  // The buffer will be shared (meaning other processes can access it), but
+  // anonymous (meaning third-party processes cannot obtain an address for it),
+  // so only this process and its children will be able to use it:
+  int visibility = MAP_ANONYMOUS | MAP_SHARED;
+
+  // The remaining parameters to `mmap()` are not important for this use case,
+  // but the manpage for `mmap` explains their purpose.
+  return mmap(NULL, size, protection, visibility, 0, 0);
+}
+#include <string.h>
+#include <unistd.h>
+
+int main() {
+  char* parent_message = "hello";  // parent process will write this message
+  char* child_message = "goodbye"; // child process will then write this one
+
+  void* shmem = create_shared_memory(128);
+
+  memcpy(shmem, parent_message, sizeof(parent_message));
+
+  int pid = fork();
+
+  if (pid == 0) {
+    printf("Child read: %s\n", shmem);
+    memcpy(shmem, child_message, sizeof(child_message));
+    printf("Child wrote: %s\n", shmem);
+
+  } else {
+    printf("Parent read: %s\n", shmem);
+    sleep(1);
+    printf("After 1s, parent read: %s\n", shmem);
+  }
+}
+*/
+
 //#include "unwind-minimal.h"
 #ifdef S52_USE_BACKTRACE
 #ifdef S52_USE_ANDROID
@@ -733,7 +789,7 @@ static int        _Unwind_Reason_Code _trace_func(struct _Unwind_Context *ctx, v
 }
 
 #if 0
-/*
+//*
 static guint      _GetLibraryAddress(const char* libraryName)
 {
     FILE* file = fopen("/proc/self/maps", "rt");
@@ -793,8 +849,8 @@ static int        _get_backtrace (void** buffer, int n)
 
     return i;
 }
-*/
-#endif
+//*/
+#endif  // 0
 
 static int        _unwind(void)
 {
@@ -892,7 +948,7 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
         return;
     }
 
-    //  3  - Quit (POSIX)
+    //  3  - Quit (POSIX), Ctrl + D
     if (SIGQUIT == sig) {
         PRINTF("NOTE: Signal SIGQUIT(%i) cought .. Quit\n", sig);
 
@@ -975,6 +1031,10 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
     // 10
     if (SIGUSR1 == sig) {
         PRINTF("NOTE: Signal 'User-defined 1' cought - SIGUSR1(%i)\n", sig);
+
+        // debug
+        _backtrace();
+
         return;
     }
     // 12
@@ -1025,10 +1085,11 @@ static int        _initSIG(void)
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_SIGINFO;  // -std=c99 -D_POSIX_C_SOURCE=199309L
 
-    //  2 - Interrupt (ANSI) - user press Ctrl-C to stop long
-    //  running process in _draw(), _drawLast() and _suppLineOverlap()
+    //  2 - Interrupt (ANSI) - Ctrl-C
+    // abort long running process in _draw(), _drawLast() and _suppLineOverlap()
     g_atomic_int_set(&_atomicAbort, FALSE);
     sigaction(SIGINT,  &sa, &_old_signal_handler_SIGINT);
+
     //  3 - Quit (POSIX)
     sigaction(SIGQUIT, &sa, &_old_signal_handler_SIGQUIT);
     //  5 - Trap (ANSI)
@@ -1074,17 +1135,6 @@ static int        _initPROJview(void)
     S57_setMercPrj(cLat, cLon);
     //S57_setMercPrj(0.0, cLon); // test - 0 cLat
     //S57_setMercPrj(0.0, 0.0);  // test - 0 cLat
-
-
-    /* debug
-    {
-        double xyz[3] = {_view.cLon, _view.cLat, 0.0};
-        if (FALSE == S57_geo2prj3dv(1, (pt3*)xyz)) {
-            return FALSE;
-        }
-        PRINTF("PROJ CENTER: lat:%f, lon:%f, rNM:%f\n", xyz[0], xyz[1], _view.rNM);
-    }
-    */
 
     return TRUE;
 }
@@ -1477,7 +1527,7 @@ static int        _suppLineOverlap(void)
                 // TSSLPT:5339 : MASK (IntegerList) = (7:1,2,255,255,255,255,2)
                 // 1 - mask, 2 - show, 255 - NULL, Masking is no relevant (exterior boundary truncated by the data limit)
 
-                // Note: use clip plane - Z_CLIP_PLANE = S57_OVERLAP_GEO_Z + 1
+                // Note: use clip plane: Z_CLIP_PLANE = S57_OVERLAP_GEO_Z - 1
 
                 /*
                 GString *maskstr = S57_getAttVal(geo, "MASK");
@@ -1805,7 +1855,7 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 char **S57FileCollector( const char *pszDataset );
 
 #if 0
-/* #include "iso8211.h"
+//* #include "iso8211.h"
 static int        _loadCATALOG(char *filename)
 {
     FILE *fd = NULL;
@@ -1826,7 +1876,7 @@ static int        _loadCATALOG(char *filename)
     poRecord = oModule.ReadRecord();
     if (NULL == poRecord)
         return NULL;
-
+    /*
     Field CATD: Catalog Directory field
         RCNM = `CD'
         RCID = 8
@@ -1840,7 +1890,7 @@ static int        _loadCATALOG(char *filename)
         ELON = 60.966667
         CRCS = `F25B3353'
         COMT = `'
-
+    */
     for ( ; poRecord != NULL; poRecord = oModule.ReadRecord()) {
         if (NULL != poRecord->FindField("CATD")) {
 
@@ -1862,7 +1912,7 @@ static int        _loadCATALOG(char *filename)
 
     return TRUE;
 }
-*/
+//*/
 #endif  // 0
 #endif  // S52_USE_OGR_FILECOLLECTOR
 
@@ -2852,7 +2902,7 @@ int            S52_loadObject(const char *objname, void *shape)
         // use gdal to get M_COVR if existe
         //if ((S57_AREAS_T==S57_getObjtype(geo)) && (0==g_strcmp0(objname, "M_COVR"))) {
         if (S57_AREAS_T == S57_getObjtype(geo)) {
-            ObjExt_t ext = S57_getExt(geo);
+            ObjExt_t ext = S57_getGeoExt(geo);
 
             // Note: debug obj on layer 0 moved up (layer 6-8) have no extent
 
@@ -3081,7 +3131,7 @@ cells must not span the 180º Meridian of Longitude.
 
 static int        _intersectM_COVR(_cell *cell, S57_geo *geoM_COVR)
 {
-    ObjExt_t ext = S57_getExt(geoM_COVR);
+    ObjExt_t ext = S57_getGeoExt(geoM_COVR);
 
     // skip Mariners Cell
     for (guint i=1; i<_cellList->len; ++i) {
@@ -3143,9 +3193,9 @@ static int        _appSclbdy(GArray *sclbdyList, S57_geo *geoM_COVR, char intu)
         _updateGeo(obj, (pt3*)ppt);
 
         // optimisation
-        ObjExt_t ext = S57_getExt(geoM_COVR);
+        ObjExt_t ext = S57_getGeoExt(geoM_COVR);
         S57_geo *geo = S52_PL_getGeo(obj);
-        S57_setExt(geo, ext.W, ext.S, ext.E, ext.N);
+        S57_setGeoExt(geo, ext.W, ext.S, ext.E, ext.N);
 
         g_array_append_val(sclbdyList, sclbdyH);
         //PRINTF("DEBUG: add sclbdy from %s:%i\n", S57_getName(geoM_COVR), S57_getS57ID(geoM_COVR));
@@ -3459,7 +3509,7 @@ static int        _cullLights(void)
         for (guint j=0; j<c->lights_sector->len; ++j) {
             S52_obj *obj  = (S52_obj *)g_ptr_array_index(c->lights_sector, j);
             S57_geo *geo  = S52_PL_getGeo(obj);
-            ObjExt_t oext = S57_getExt(geo);
+            ObjExt_t oext = S57_getGeoExt(geo);
 
             S52_PL_resolveSMB(obj, NULL);
 
@@ -4841,19 +4891,11 @@ DLL int    STD S52_setView(double cLat, double cLon, double rNM, double north)
         PRINTF("WARNING: FAIL, north outside [0..360[ (%f)\n", north);
         goto exit;
     }
-    //}
 
     // debug
     //PRINTF("lat:%f, long:%f, range:%f north:%f\n", cLat, cLon, rNM, north);
 
     ret = S52_GL_setView(cLat, cLon, rNM, north);
-
-    /* update local var _view
-    _view.cLat  = cLat;
-    _view.cLon  = cLon;
-    _view.rNM   = rNM;
-    _view.north = north;
-    */
 
 exit:
 
@@ -5807,7 +5849,7 @@ static int        _setExt(S57_geo *geo, guint npt, pt3 *pt)
         ++pt;
     }
 
-    S57_setExt(geo, ext.W, ext.S, ext.E, ext.N);
+    S57_setGeoExt(geo, ext.W, ext.S, ext.E, ext.N);
 
     return TRUE;
 }
@@ -6760,20 +6802,22 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
             S57_setGeoSize(geo, sz+1);
         } else {
             // FIFO - if sz == npt, shift npt-1 coord
-            memmove(ppt, ppt+3, (npt-1) * sizeof(double) * 3);
+            //memmove(ppt, ppt+3, (npt-1) * sizeof(double) * 3);
+            memmove(ppt, ppt+3, (npt-1) * sizeof(pt3));
             ppt[((npt-1) * 3) + 0] = p.x;
             ppt[((npt-1) * 3) + 1] = p.y;
             ppt[((npt-1) * 3) + 2] = data;
         }
 
-        //* ajuste extent - use for culling
-        // FIXME: LINES 'pastrk' and 'afgves' have extent that allway grow
-        // but pushPos is stack base, so the extent should be ajusted accordingly
+        //* set extent - use for culling
         if (0 == sz) {
             // first pos set extent directly
-            S57_setExt(geo, longitude, latitude, longitude, latitude);
+            S57_setGeoExt(geo, longitude, latitude, longitude, latitude);
         } else {
-            ObjExt_t ext = S57_getExt(geo);
+            // FIXME: LINES 'pastrk' and 'afgves' have extent that allway grow
+            // but pushPos is stack base, so the poped pos reduce the extent and the pushed pos augement it
+            // FIX: to be safe traverse the stack to recompute extent
+            ObjExt_t ext = S57_getGeoExt(geo);
             pt3 pt[3] = {{longitude, latitude, 0.0}, {ext.W, ext.S, 0.0}, {ext.E, ext.N, 0.0}};
 
             _setExt(geo, 3, pt);
@@ -6800,7 +6844,6 @@ exit:
     /*
     if (_SELECTED == objH) {
         // FIXME: get the real value
-        S52_setView(latitude, longitude, _view.rNM, _view.north);
         S52_draw();
     }
     */
@@ -6983,8 +7026,7 @@ exit:
 
     /*
     if (_SELECTED == objH) {
-
-        S52_setView(, , _view.rNM, _view.north);
+        // FIXME: get the real value
         S52_draw();
     }
     */
@@ -7111,8 +7153,6 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
             S52_GL_getView(&cLat, &cLon, &rNM, &north);
             lonA = cLon;
             latA = cLat;
-            //lonA = _view.cLon;
-            //latA = _view.cLat;
         }
         break;
     }
