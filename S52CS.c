@@ -34,12 +34,11 @@
 
 #define UNKNOWN_DEPTH -1000.0  // depth of 1km above sea level
 
-//#define COALNE   30   // Coastline
-//#define DEPARE   42   // Depth area
-//#define DEPCNT   43   // Depth contour
-//#define DRGARE   46   // Dredged area
-//#define UWTROC  153   // Underwater rock / awash rock
-//#define WRECKS  159   // Wreck
+#ifdef S52_USE_BACKTRACE
+// debug - backtrace() static func - test symbol collison
+// Note: will break static var
+//#define static
+#endif
 
 // loadCell() - keep ref on S57_geo for further proccessing in CS
 typedef struct _localObj {
@@ -79,6 +78,37 @@ static char    *_strpbrk(const char *s, const char *list)
                 return (char *)r;
 
     return NULL;
+}
+
+static int      _parseList(const char *str, char *buf)
+// Put a string of comma delimited number in an array (buf).
+// Return: the number of value in buf.
+// Assume: - number < 256,
+//         - list size less then LISTSIZE-1 .
+// Note: buf is \0 terminated for _strpbrk().
+// FIXME: use g_strsplit_set() instead!
+{
+    int i = 0;
+
+    if (NULL != str && *str != '\0') {
+        do {
+            if ( i>= LISTSIZE-1) {
+                PRINTF("WARNING: value in list lost!!\n");
+                break;
+            }
+
+            buf[i++] = (unsigned char) S52_atoi(str);
+
+            // skip digit
+            while('0'<=*str && *str<='9')
+                str++;
+
+        } while(*str++ != '\0');      // skip ',' or exit
+    }
+
+    buf[i] = '\0';
+
+    return i;
 }
 
 CCHAR    *S52_CS_version(void)
@@ -206,7 +236,7 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
             S57_geo *other = (S57_geo *) g_ptr_array_index(local->topmar_list, i);
 
             // skip if not at same position
-            if (FALSE == S57_cmpExt(geo, other))
+            if (FALSE == S57_cmpGeoExt(geo, other))
                 continue;
 
             if (NULL == S57_getTouchTOPMAR(geo)) {
@@ -220,6 +250,8 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
                     PRINTF("FIXME: more than 1 TOPMAR\n");
                     PRINTF("FIXME: (this msg will not repeat)\n");
                     silent = TRUE;
+
+                    g_assert(0);
                 }
             }
         }
@@ -237,58 +269,41 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
             S57_geo *light = (S57_geo *) g_ptr_array_index(local->lights_list, i);
 
             // skip if this light is not at buoy's position
-            if (FALSE == S57_cmpExt(geo, light))
+            if (FALSE == S57_cmpGeoExt(geo, light))
                 continue;
 
-            //if (NULL == S57_getTouchLIGHTS(geo))
-            //{
-                // WARNING: reverse chaining --could this collide with other
-                // lights sheme (next case --lights at the same position)
-
-                // debug
-                if (NULL != S57_getTouchLIGHTS(light)) {
-                    static int silent = FALSE;
-                    if (FALSE == silent) {
-                        PRINTF("FIXME: A) more than 1 LIGHT for the same BOYLAT\n");
-                        PRINTF("FIXME: (this msg will not repeat)\n");
-                        silent = TRUE;
-                    }
-                }
-
-                // reverse chaining
-                S57_setTouchLIGHTS(light, geo);
-
-                // bailout as soon as we got one
-                //break;
-            //}
-            /*
-            else {
-                // scan for other candidate
+            // debug
+            if (NULL != S57_getTouchLIGHTS(light)) {
                 static int silent = FALSE;
                 if (FALSE == silent) {
-                    PRINTF("FIXME: B) more than 1 LIGHT for the same BOYLAT\n");
+                    PRINTF("FIXME: A) more than 1 LIGHT for the same BOYLAT\n");
                     PRINTF("FIXME: (this msg will not repeat)\n");
                     silent = TRUE;
                 }
             }
-            */
+
+            // reverse chaining
+            S57_setTouchLIGHTS(light, geo);
+
+            // bailout as soon as we got one
+            break;
         }
         return TRUE;
     }
 
-
     ////////////////////////////////////////////
+    // LIGHTS05:sector
     // chaine light at same position
     if (0 == g_strcmp0(name, "LIGHTS")) {
         for (guint i=0; i<local->lights_list->len; ++i) {
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->lights_list, i);
 
-            // skip if allready processed / smae LIGHTS
+            // skip if allready processed / same LIGHTS
             if (S57_getS57ID(candidate) <= S57_getS57ID(geo))
                 continue;
 
             // skip if not at same position
-            if (FALSE == S57_cmpExt(geo, candidate))
+            if (FALSE == S57_cmpGeoExt(geo, candidate))
                 continue;
 
             // chaine lights
@@ -296,10 +311,10 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
                 S57_setTouchLIGHTS(geo, candidate);
 
                 // bailout as soon as we get one
-                break;
+                break;  // debug - comment this to scan all lights
             } else {
                 // parano
-                PRINTF("FIXME: more than 1 LIGHT for the same LIGHT\n");
+                PRINTF("FIXME: chaining prob.: more than 1 LIGHT touch this LIGHT\n");
                 g_assert(0);
             }
         }
@@ -344,6 +359,14 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
             return TRUE;
         }
 
+        // debug - DEPARE:3653
+        if (3653 == S57_getS57ID(geo)) {
+            PRINTF("DEBUG: line DEPARE:%u found\n", S57_getS57ID(geo));
+            //PRINTF("DEBUG: line DEPCNT:%u found\n", S57_getS57ID(geo));
+            //g_assert(0);
+            //S57_setHighlight(candidate, TRUE);
+        }
+
         guint   npt;
         double *ppt;
         if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
@@ -354,6 +377,8 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
         //if (2 < npt)
         //    ppt += 3;  // take the first EN
 
+        // select the next deeper contour as the safety contour
+        // when the contour requested is not in the database
         for (guint i=0; i<local->depcnt_list->len; ++i) {
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->depcnt_list, i);
 
@@ -361,7 +386,7 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
             if (S57_getS57ID(geo) == S57_getS57ID(candidate))
                 continue;
 
-            if (FALSE == S57_cmpExt(geo, candidate))
+            if (FALSE == S57_cmpGeoExt(geo, candidate))
                 continue;
 
             if (FALSE == S57_isPtInSet(candidate, ppt[0], ppt[1]))
@@ -384,7 +409,9 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
                 //*/
 
                 // is this area just above (shallower) then this geo
-                if (can_drval1 < drvalmin) {
+                //if (can_drval1 < drvalmin) {
+                // deeper
+                if (can_drval1 > drvalmin) {
                     drvalmin = can_drval1;
                     S57_setTouchDEPCNT(geo, candidate);
 
@@ -402,6 +429,7 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
         return TRUE;
     }
 
+    ////////////////////////////////////////
     // _UDWHAZ03 (via OBSTRN04, WRECKS02)
     // OBSTRN:A/L/P call OBSTRN04
     // UWTROC:P     call OBSTRN04
@@ -430,7 +458,7 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->udwhaz_list, i);
 
             // skip if not overlapping
-            if (FALSE == S57_cmpExt(geo, candidate))
+            if (FALSE == S57_cmpGeoExt(geo, candidate))
                 continue;
 
             //
@@ -501,6 +529,7 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
         }
     }
 
+    //////////////////////////////////////
     // _DEPVAL01
     // OBSTRN:A/L/P call OBSTRN04
     // UWTROC:P     call OBSTRN04
@@ -527,7 +556,7 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->depval_list, i);
 
             // skip if extent not overlapping
-            if (FALSE == S57_cmpExt(geo, candidate))
+            if (FALSE == S57_cmpGeoExt(geo, candidate))
                 continue;
 
             //
@@ -597,108 +626,6 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
     }
 
     return TRUE;
-}
-
-static int      _sectOverlap(S57_geo *geoA, S57_geo *geoB)
-// TRUE if A overlap B and arc of A is bigger, else FALSE
-{
-    //
-    // FIXME: overlap all-around light not showing
-    //
-
-    // check for extend arc radius
-    GString *Asectr1str = S57_getAttVal(geoA, "SECTR1");
-    GString *Asectr2str = S57_getAttVal(geoA, "SECTR2");
-    GString *Bsectr1str = S57_getAttVal(geoB, "SECTR1");
-    GString *Bsectr2str = S57_getAttVal(geoB, "SECTR2");
-
-    // check if sector present
-    if (NULL == Asectr1str ||
-        NULL == Asectr2str ||
-        NULL == Bsectr1str ||
-        NULL == Bsectr2str)
-        return FALSE;
-
-    {
-        double Asectr1 = S52_atof(Asectr1str->str);
-        double Asectr2 = S52_atof(Asectr2str->str);
-        double Bsectr1 = S52_atof(Bsectr1str->str);
-        double Bsectr2 = S52_atof(Bsectr2str->str);
-
-        if (Asectr1 > Asectr2) Asectr2 += 360;
-        if (Bsectr1 > Bsectr2) Bsectr2 += 360;
-
-        //if ((Bsectr1>=Asectr1 && Bsectr1<=Asectr2) ||
-        //    (Bsectr2>=Asectr1 && Bsectr2<=Asectr2)) {
-        if ((Bsectr1>Asectr1 && Bsectr1<Asectr2) ||
-            (Bsectr2>Asectr1 && Bsectr2<Asectr2)) {
-            double Asweep = Asectr2-Asectr1;
-            double Bsweep = Bsectr2-Bsectr1;
-            // is sector larger
-            if (Asweep >= Bsweep)
-                return TRUE;
-        }
-    }
-
-    return FALSE;
-}
-
-static int      _parseList(const char *str, char *buf)
-// Put a string of comma delimited number in an array (buf).
-// Return: the number of value in buf.
-// Assume: - number < 256,
-//         - list size less then LISTSIZE-1 .
-// Note: buf is \0 terminated for _strpbrk().
-// FIXME: use g_strsplit_set() instead!
-{
-    int i = 0;
-
-    if (NULL != str && *str != '\0') {
-        do {
-            if ( i>= LISTSIZE-1) {
-                PRINTF("WARNING: value in list lost!!\n");
-                break;
-            }
-
-            buf[i++] = (unsigned char) S52_atoi(str);
-
-            // skip digit
-            while('0'<=*str && *str<='9')
-                str++;
-
-        } while(*str++ != '\0');      // skip ',' or exit
-    }
-
-    buf[i] = '\0';
-
-    return i;
-}
-
-static CCHAR   *_selSYcol(char *buf)
-// WARNING: string must be store be the caller right after the call
-{
-    // FIXME: C1 3.1 use LIGHTS0x          and specs 3.2 use LIGHTS1x
-    const char *sym = ";SY(LIGHTDEF";      //sym = ";SY(LITDEF11";
-
-    // max 1 color
-    if ('\0' == buf[1]) {
-        if (_strpbrk(buf, "\003"))
-            sym = ";SY(LIGHTS01";          //sym = ";SY(LIGHTS11";
-        else if (_strpbrk(buf, "\004"))
-            sym = ";SY(LIGHTS02";          //sym = ";SY(LIGHTS12";
-        else if (_strpbrk(buf, "\001\006\013"))
-            sym = ";SY(LIGHTS03";          //sym = ";SY(LIGHTS13";
-    } else {
-        // max 2 color
-        if ('\0' == buf[2]) {
-            if (_strpbrk(buf, "\001") && _strpbrk(buf, "\003"))
-                sym = ";SY(LIGHTS01";      //sym = ";SY(LIGHTS11";
-            else if (_strpbrk(buf, "\001") && _strpbrk(buf, "\004"))
-                sym = ";SY(LIGHTS02";      //sym = ";SY(LIGHTS12";
-        }
-    }
-
-    return sym;
 }
 
 static GString *CLRLIN01 (S57_geo *geo)
@@ -930,7 +857,7 @@ static GString *DEPARE03 (S57_geo *geo)
     return DEPARE01(geo);
 }
 
-static gboolean _DEPCNTisSafetyCnt(S57_geo *geo)
+static gboolean _DEPCNT02_isSafetyCnt(S57_geo *geo)
 // true if safety contour else false
 {
 
@@ -953,7 +880,7 @@ static gboolean _DEPCNTisSafetyCnt(S57_geo *geo)
     }
     */
 
-    //* DEPCNT:5573, DEPCNT:4153
+    /* DEPCNT:5573, DEPCNT:4153
     //if (5573 == S57_getS57ID(geo)) {
     if (4153 == S57_getS57ID(geo)) {
         PRINTF("DEBUG: line DEPCNT:%u found\n", S57_getS57ID(geo));
@@ -984,7 +911,7 @@ static gboolean _DEPCNTisSafetyCnt(S57_geo *geo)
                 // adjuste datum
                 drval1touch += S52_MP_get(S52_MAR_DATUM_OFFSET);
 
-                // invariant: DRVAL1 <= SC <= DRVAL2
+                // invariant: DRVAL1 <= SC <= DRVAL2 (top of S52 3.2 DEPCNT02 Nassi flow chart)
                 if (drval2 >= S52_MP_get(S52_MAR_SAFETY_CONTOUR))
                     safety_contour = TRUE;
             }
@@ -1023,6 +950,14 @@ static GString *DEPCNT02 (S57_geo *geo)
     // DEPARE (line)
     if (0 == g_strcmp0(S57_getName(geo), "DEPARE")) {  // only DEPARE:L call CS(DEPCNT02)
 
+        // debug - DEPARE:3653
+        if (3653 == S57_getS57ID(geo)) {
+            PRINTF("DEBUG: line DEPARE:%u found\n", S57_getS57ID(geo));
+            //PRINTF("DEBUG: line DEPCNT:%u found\n", S57_getS57ID(geo));
+            //g_assert(0);
+            //S57_setHighlight(candidate, TRUE);
+        }
+
         // Note: if drval1 not given then set it to 0.0 (ie. LOW WATER LINE as FAIL-SAFE)
         GString *drval1str = S57_getAttVal(geo, "DRVAL1");
         double   drval1    = (NULL == drval1str) ? 0.0    : S52_atof(drval1str->str);
@@ -1039,7 +974,7 @@ static GString *DEPCNT02 (S57_geo *geo)
             }
         } else {
             // collect area DEPARE & DRGARE that touch this line
-            safety_contour = _DEPCNTisSafetyCnt(geo);
+            safety_contour = _DEPCNT02_isSafetyCnt(geo);
         }
 
     } else {
@@ -1055,7 +990,7 @@ static GString *DEPCNT02 (S57_geo *geo)
         } else {
             if (valdco > S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
                 // collect area DEPARE & DRGARE that touche this line
-                safety_contour = _DEPCNTisSafetyCnt(geo);
+                safety_contour = _DEPCNT02_isSafetyCnt(geo);
             }
         }
     }
@@ -1166,7 +1101,7 @@ static double   _DEPVAL01(S57_geo *geo, double least_depth)
 }
 
 #if 0
-/*
+//*
 static double   _DEPVAL02(S57_geo *geo, double least_depth)
 // PLib-4.0 draft
 // Remarks: If the value of the attribute VALSOU for a wreck, rock or obstruction is
@@ -1190,7 +1125,7 @@ static double   _DEPVAL02(S57_geo *geo, double least_depth)
 
     return _DEPVAL01(geo, least_depth);
 }
-*/
+//*/
 #endif  // 0
 
 static GString *LEGLIN02 (S57_geo *geo)
@@ -1260,6 +1195,129 @@ static GString *LEGLIN03 (S57_geo *geo)
 }
 
 static GString *_LITDSN01(S57_geo *geo);
+
+static CCHAR   *_LIGHTS05_getSYcol(char *buf)
+// WARNING: string must be store be the caller right after the call
+{
+    // FIXME: C1 3.1 use LIGHTS0x          and specs 3.2 use LIGHTS1x
+    const char *sym = ";SY(LIGHTDEF";      //sym = ";SY(LITDEF11";
+
+    // max 1 color
+    if ('\0' == buf[1]) {
+        if (_strpbrk(buf, "\003"))
+            sym = ";SY(LIGHTS01";          //sym = ";SY(LIGHTS11";
+        else if (_strpbrk(buf, "\004"))
+            sym = ";SY(LIGHTS02";          //sym = ";SY(LIGHTS12";
+        else if (_strpbrk(buf, "\001\006\013"))
+            sym = ";SY(LIGHTS03";          //sym = ";SY(LIGHTS13";
+    } else {
+        // max 2 color
+        if ('\0' == buf[2]) {
+            if (_strpbrk(buf, "\001") && _strpbrk(buf, "\003"))
+                sym = ";SY(LIGHTS01";      //sym = ";SY(LIGHTS11";
+            else if (_strpbrk(buf, "\001") && _strpbrk(buf, "\004"))
+                sym = ";SY(LIGHTS02";      //sym = ";SY(LIGHTS12";
+        }
+    }
+
+    return sym;
+}
+
+static int      _LIGHTS05_isSectAOverlapLargerB(S57_geo *geoA, S57_geo *geoB)
+// return 1/2 if A/B overlap and B larger(1) or A larger (2)
+// return 0 if no overlap
+//
+{
+    // check for extend arc radius
+    GString *Asectr1str = S57_getAttVal(geoA, "SECTR1");
+    GString *Asectr2str = S57_getAttVal(geoA, "SECTR2");
+    GString *Bsectr1str = S57_getAttVal(geoB, "SECTR1");
+    GString *Bsectr2str = S57_getAttVal(geoB, "SECTR2");
+
+    // check if sector present - check A is redundant
+    if (NULL == Asectr1str ||
+        NULL == Asectr2str ||
+        NULL == Bsectr1str ||
+        NULL == Bsectr2str)
+    {
+        return 0;
+    }
+
+    // A/B sectors
+    double Asectr1 = S52_atof(Asectr1str->str);
+    double Asectr2 = S52_atof(Asectr2str->str);
+    double Bsectr1 = S52_atof(Bsectr1str->str);
+    double Bsectr2 = S52_atof(Bsectr2str->str);
+
+    // FIXME: '>' or '>=
+    double Asectr2tmp = Asectr2;
+    double Bsectr2tmp = Bsectr2;
+    if (Asectr1 > Asectr2) Asectr2tmp += 360.0;
+    if (Bsectr1 > Bsectr2) Bsectr2tmp += 360.0;
+
+    // A/B sweeps
+    double Asweep = Asectr2tmp - Asectr1;
+    double Bsweep = Bsectr2tmp - Bsectr1;
+
+    if (Asweep >= 360.0) Asweep -= 360.0;
+    if (Bsweep >= 360.0) Bsweep -= 360.0;
+
+    /*
+    // debug - IHO_ECDIS_check:AA5TDS05.000:LNDMRK:P:35 - West: 43.812013, 68.924757
+    // debug - IHO_ECDIS_check:AA5TDS05.000:LNDMRK:P:36 - East: 43.810095, 68.928608
+
+    //if (43 == S57_getS57ID(geoA)) {  // red sector East
+    if (43 == S57_getS57ID(geoB)) {  // red sector East
+    //if (41 == S57_getS57ID(geoA)) {    // large yellow east
+    //if (38 == S57_getS57ID(geoA)) {    // small yellow east
+        //g_assert(0);
+        S57_dumpData(geoB, FALSE);
+        // A: 337 - 71 sweep: 94
+        // B:   5 - 30 sweep: 25
+        // B: 340 -350 sweep: 10
+    }
+    */
+
+    double AsectorHead = Asectr1 + Asweep;
+    double AsectorTail = Asectr2 - Asweep;
+    double BsectorHead = Bsectr1 + Bsweep;
+    double BsectorTail = Bsectr2 - Bsweep;
+
+    // FIXME: '>' or '>= - need agood test case
+    if ((AsectorTail<Bsectr1 && Bsectr1<Asectr2)     || (AsectorTail<Bsectr2 && Bsectr2<Asectr2)     ||
+        (Asectr1    <Bsectr1 && Bsectr1<AsectorHead) || (Asectr1    <Bsectr2 && Bsectr2<AsectorHead) ||
+        // same but reverse B/A
+        (BsectorTail<Asectr1 && Asectr1<Bsectr2)     || (BsectorTail<Asectr2 && Asectr2<Bsectr2)     ||
+        (Bsectr1    <Asectr1 && Asectr1<BsectorHead) || (Bsectr1    <Asectr2 && Asectr2<BsectorHead))
+
+    //   1     2
+    // A |-----|
+    // B  |---..
+    // B ..--|
+    // B |-----|
+    // A  |---..
+    // A ..--|
+
+    //if ((Asectr1<Bsectr1 && Bsectr1<Asectr2) || (Asectr1<Bsectr2 && Bsectr2<Asectr2) ||
+    //    (Bsectr1<Asectr1 && Asectr1<Bsectr2) || (Bsectr1<Asectr2 && Asectr2<Bsectr2) )
+    //if ((Bsectr1>Asectr1 && Bsectr1<Asectr2) || (Bsectr2>Asectr1 && Bsectr2<Asectr2) ||
+    //    (Asectr1>Bsectr1 && Asectr1<Bsectr2) || (Asectr2>Bsectr1 && Asectr2<Bsectr2) )
+    {   // sector do overlap
+
+        // B dominant
+        if (Asweep < Bsweep) {
+        // A dominant
+        //if (Asweep > Bsweep) {  // BUG: larger sector extended
+            return 1;
+        } else {
+            return 2;
+        }
+    }
+
+    return 0;
+}
+
+
 static GString *LIGHTS05 (S57_geo *geo)
 // Remarks: A light is one of the most complex S-57 objects. Its presentation depends on
 // whether it is a light on a floating or fixed platform, its range, it's colour and
@@ -1297,39 +1355,6 @@ static GString *LIGHTS05 (S57_geo *geo)
     char     colist[LISTSIZE]  = {'\0'};   // colour list
     GString *orientstr         = NULL;
     double   sweep             = 0.0;
-
-    // debug - 1556
-    //if (1555 == S57_getS57ID(geo)) {
-    //    PRINTF("lights found\n");
-    //}
-
-    // GB5X01SW.000: SLCONS: -32.542600, 60.922735  --  -32.527651, 60.937690
-    // 6105 sector:-32.542033, 60.923426  --  -32.542033, 60.923426
-    // 6107 sector:-32.542033, 60.923426  --  -32.542033, 60.923426
-    // FOGSIG:5782 touch all lights at LIGHTS:6105
-    // FOGSIG:5782:_LNAM_REFS_GEO = 0x1a41d70,0x1a6fa90,0x190b6d0,0x1a71510
-
-    /*
-    //if (6106 == S57_getS57ID(geo)) {
-    if (geo==0x1a41d70 || geo==0x1a6fa90 || geo==0x190b6d0 || geo==0x1a71510) {
-        PRINTF("lights found\n");
-        S57_dumpData(geo, FALSE);
-        //g_assert(0);
-    }
-    //*/
-
-    /*
-    //if (5977 == S57_getS57ID(geo)) {  // -32.553957, 61.291966  --  -32.553957, 61.291966
-    if (6105 == S57_getS57ID(geo)) {    // -32.542033, 60.923426  --  -32.542033, 60.923426
-        PRINTF("lights found\n");
-        S57_geo *tmp = geo;
-        while (NULL != tmp) {
-            S57_dumpData(tmp, FALSE);
-            tmp = S57_getTouchLIGHTS(tmp);
-        }
-        g_assert(0);
-    }
-    //*/
 
     // Note: valmnr is only use when rendering
     //valnmr = (NULL == valnmrstr) ? 9.0 : S52_atof(valnmrstr->str);
@@ -1387,13 +1412,13 @@ static GString *LIGHTS05 (S57_geo *geo)
 
         if (_strpbrk(catlit, "\001\020")) {
             if (NULL != orientstr){
-                g_string_append(lights05, _selSYcol(colist));
+                g_string_append(lights05, _LIGHTS05_getSYcol(colist));
                 g_string_sprintfa(lights05, ",%s)", orientstr->str);
                 g_string_append(lights05, ";TE('%03.0lf deg','ORIENT',3,3,3,'15110',3,1,CHBLK,23)" );
             } else
                 g_string_append(lights05, ";SY(QUESMRK1)");
         } else {
-            g_string_append(lights05, _selSYcol(colist));
+            g_string_append(lights05, _LIGHTS05_getSYcol(colist));
             if (flare_at_45)
                 g_string_append(lights05, ", 45)");
             else
@@ -1415,15 +1440,7 @@ static GString *LIGHTS05 (S57_geo *geo)
         return lights05;
     }
 
-    // Continuation B --sector light
-    /*
-    if (NULL == sectr1str) {
-        sectr1 = 0.0;  // clang - val never read
-        sectr2 = 0.0;  // clang - val never read
-    } else
-        sweep = (sectr1 > sectr2) ? sectr2-sectr1+360 : sectr2-sectr1;
-        */
-
+    // Continuation B - sector light
     if (NULL != sectr1str) {
         sweep = (sectr1 > sectr2) ? sectr2-sectr1+360 : sectr2-sectr1;
     }
@@ -1431,7 +1448,7 @@ static GString *LIGHTS05 (S57_geo *geo)
     if (sweep<1.0 || sweep==360.0) {
         // handle all-around light
 
-        g_string_append(lights05, _selSYcol(colist));
+        g_string_append(lights05, _LIGHTS05_getSYcol(colist));
         g_string_append(lights05, ",135)");
 
         GString *litdsn01 = _LITDSN01(geo);
@@ -1449,30 +1466,29 @@ static GString *LIGHTS05 (S57_geo *geo)
         g_string_append(lights05, ";LS(DASH,1,CHBLK)");
     }
 
-    for (S57_geo *geoTouch=S57_getTouchLIGHTS(geo); geoTouch!=NULL; geoTouch=S57_getTouchLIGHTS(geoTouch)) {
-        int extend_arc_radius = _sectOverlap(geo, geoTouch);
+    // check if LIGHT sector need processing
+    GString *extendstr = S57_getAttVal(geo, "_extend_arc_radius");
+    if ((NULL==extendstr) || ('N'==*extendstr->str)) {
 
-        // passe value via attribs to _renderAC()
-        if (TRUE == extend_arc_radius) {
-            GString *extradstr = S57_getAttVal(geoTouch, "_extend_arc_radius");
+        // init sector light overlap flag as a failsafe (NO extend radius)
+        S57_setAtt(geo, "_extend_arc_radius", "N");
 
-            if (NULL!=extradstr && 'Y'==*extradstr->str)
-                S57_setAtt(geo, "_extend_arc_radius", "N");
-            else
-                S57_setAtt(geo, "_extend_arc_radius", "Y");
+        for (S57_geo *geoTouch=S57_getTouchLIGHTS(geo); geoTouch!=NULL; geoTouch=S57_getTouchLIGHTS(geoTouch)) {
+            int overlap = _LIGHTS05_isSectAOverlapLargerB(geo, geoTouch);
 
-        } else
-            S57_setAtt(geo, "_extend_arc_radius", "N");
-
+            if (1 == overlap) {
+                S57_setAtt(geo,      "_extend_arc_radius", "Y");
+                S57_setAtt(geoTouch, "_extend_arc_radius", "N");
+            }
+            if (2 == overlap) {
+                S57_setAtt(geo,      "_extend_arc_radius", "N");
+                S57_setAtt(geoTouch, "_extend_arc_radius", "Y");
+            }
+        }
     }
 
     // setup sector
     {
-        {   // debug - lights sector at GB5X01SW.000: SLCONS: -32.542600, 60.922735  --  -32.527651, 60.937690
-            //PRINTF("DEBUG: lights sector found\n");
-            //S57_dumpData(geo, FALSE);
-        }
-
         char litvis[LISTSIZE] = {'\0'};  // light visibility
         GString *litvisstr = S57_getAttVal(geo, "LITVIS");
 
@@ -2800,66 +2816,54 @@ static GString *RESTRN01 (S57_geo *geo)
     return restrn01;
 }
 
-//static GString *_RESCSP01(S57_geo *geo)
 static GString *_RESCSP01(GString *restrnstr)
 // FIXME: pass GString *restrnstr
-// Remarks: See procedure RESTRN01
+// Remarks: See caller: RESTRN01, DEPARE01
 {
     GString *rescsp01         = NULL;
-    //GString *restrnstr        = S57_getAttVal(geo, "RESTRN");
-    //char     restrn[LISTSIZE] = {'\0'};   // restriction list
-    //const char *symb          = NULL;
+    char        restrn[LISTSIZE] = {'\0'};   // restriction list
+    const char *symb             = NULL;
+    _parseList(restrnstr->str, restrn);
 
-    //if ( NULL != restrnstr) {
-        char        restrn[LISTSIZE] = {'\0'};   // restriction list
-        const char *symb             = NULL;
-        _parseList(restrnstr->str, restrn);
+    if (_strpbrk(restrn, "\007\010\016")) {
+        // continuation A
+        if (_strpbrk(restrn, "\001\002\003\004\005\006"))
+            symb = ";SY(ENTRES61)";
+        else {
+            if (_strpbrk(restrn, "\011\012\013\014\015"))
+                symb = ";SY(ENTRES71)";
+            else
+                symb = ";SY(ENTRES51)";
 
-        if (_strpbrk(restrn, "\007\010\016")) {
-            // continuation A
-            if (_strpbrk(restrn, "\001\002\003\004\005\006"))
-                symb = ";SY(ENTRES61)";
+        }
+    } else {
+        if (_strpbrk(restrn, "\001\002")) {
+            // continuation B
+            if (_strpbrk(restrn, "\003\004\005\006"))
+                symb = ";SY(ACHRES61)";
             else {
-                if (_strpbrk(restrn, "\011\012\013\014\015"))
-                    symb = ";SY(ENTRES71)";
-                else
-                    symb = ";SY(ENTRES51)";
-
-            }
-        } else {
-            if (_strpbrk(restrn, "\001\002")) {
-                // continuation B
-                if (_strpbrk(restrn, "\003\004\005\006"))
-                    symb = ";SY(ACHRES61)";
-                else {
                     if (_strpbrk(restrn, "\011\012\013\014\015"))
                         symb = ";SY(ACHRES71)";
                     else
                         symb = ";SY(ACHRES51)";
                 }
-
-
+        } else {
+            if (_strpbrk(restrn, "\003\004\005\006")) {
+                // continuation C
+                if (_strpbrk(restrn, "\011\012\013\014\015"))
+                    symb = ";SY(FSHRES71)";
+                else
+                    symb = ";SY(FSHRES51)";
             } else {
-                if (_strpbrk(restrn, "\003\004\005\006")) {
-                    // continuation C
-                    if (_strpbrk(restrn, "\011\012\013\014\015"))
-                        symb = ";SY(FSHRES71)";
-                    else
-                        symb = ";SY(FSHRES51)";
-
-
-                } else {
-                    if (_strpbrk(restrn, "\011\012\013\014\015"))
-                        symb = ";SY(INFARE51)";
-                    else
-                        symb = ";SY(RSRDEF51)";
-
-                }
+                if (_strpbrk(restrn, "\011\012\013\014\015"))
+                    symb = ";SY(INFARE51)";
+                else
+                    symb = ";SY(RSRDEF51)";
             }
         }
+    }
 
-        rescsp01 = _g_string_new(rescsp01, symb);
-    //}
+    rescsp01 = _g_string_new(rescsp01, symb);
 
     return rescsp01;
 }
@@ -3889,7 +3893,7 @@ S52_CS_condSymb S52_CS_condTable[] = {
 
 
 #if 0
-/*
+//*
 Mariner Parameter           used in CS (via CS)
 
 S52_MAR_DEEP_CONTOUR        _SEABED01(via DEPARE01);
@@ -4038,5 +4042,5 @@ vestat
 WATLEV
 
 
-*/
+//*/
 #endif  // 0
