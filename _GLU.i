@@ -89,6 +89,7 @@ static S57_prim       *_diskPrimTmp = NULL;
 
 #ifdef S52_USE_OPENGL_VBO
 static _GLUquadricObj *_gluNewQuadric(void)
+// for completess with real gluNewQuadric()
 {
     static _GLUquadricObj qobj;
 
@@ -530,8 +531,8 @@ static GLint     _initGLU(void)
         gluTessProperty(_tUnion, GLU_TESS_BOUNDARY_ONLY, GLU_TRUE);
 
         // use _vertexs to hold Union
-        gluTessCallback(_tUnion, GLU_TESS_BEGIN,     (f)_begCin);  // do nothing
-        gluTessCallback(_tUnion, GLU_TESS_END,       (f)_endCin);    // do nothing
+        gluTessCallback(_tUnion, GLU_TESS_BEGIN,     (f)_begCin);       // do nothing
+        gluTessCallback(_tUnion, GLU_TESS_END,       (f)_endCin);       // do nothing
         gluTessCallback(_tUnion, GLU_TESS_VERTEX,    (f)_vertexUnion);  // fill _vertexs
         gluTessCallback(_tUnion, GLU_TESS_ERROR,     (f)_tessError);
         gluTessCallback(_tUnion, GLU_TESS_COMBINE,   (f)_combineCallback);
