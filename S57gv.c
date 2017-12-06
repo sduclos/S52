@@ -166,7 +166,7 @@ S57_geo   *S57_gvLoadObject(const char *objname, void *shape)
     }
 
     S57_setName(geo, objname);
-    S57_setExt(geo, rect.x, rect.y, rect.x+rect.width, rect.y+rect.height);
+    S57_setGeoExt(geo, rect.x, rect.y, rect.x+rect.width, rect.y+rect.height);
 
     _loadAtt(geo, (GvShape*)shape);
 
