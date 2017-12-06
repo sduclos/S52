@@ -28,6 +28,12 @@
 
 #include <glib.h>       // GPtrArray
 
+#ifdef S52_USE_BACKTRACE
+// debug - backtrace() static func - test symbol collison
+// Note: will break static var
+//#define static
+#endif
+
 
 // WARNING: must be in sync with S52.c:WORLD_SHP
 #define WORLD_BASENM   "--0WORLD"
@@ -43,7 +49,7 @@ static int        _setExtent(S57_geo *geo, OGRGeometryH geometry)
 
     OGR_G_GetEnvelope(geometry, &envelope);
 
-    S57_setExt(geo, envelope.MinX, envelope.MinY, envelope.MaxX, envelope.MaxY);
+    S57_setGeoExt(geo, envelope.MinX, envelope.MinY, envelope.MaxX, envelope.MaxY);
                   
     return TRUE;
 }
