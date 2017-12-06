@@ -125,6 +125,10 @@ static int _s52_setupMain(void)
     }
     //*/
 
+    // ECDIS_check-Instructions_for_Mariners.pdf
+    //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_ECDIS_check/ENC_ROOT/AA2TDS02.000", NULL);
+    //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_ECDIS_check/ENC_ROOT/AA5TDS05.000", NULL);  // light sector
+
     // S-64 ENC
     //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/ENC_ROOT/GB4X0000.000", NULL);
     //S52_loadCell("/home/sduclos/dev/gis/S57/IHO_S-64/ENC_ROOT/GB5X01NE.000", NULL);
