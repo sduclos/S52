@@ -39,7 +39,7 @@
 #define S57_RESET_SCAMIN     -1.0
 
 // push Z in geo - use as a clip plane for LS() and LC()
-#define S57_OVERLAP_GEO_Z 10.0
+#define S57_OVERLAP_GEO_Z   10.0
 
 // internal geo enum used to link S52 to S57 geo
 // S57 object type have a PLib enum: P,L,A
@@ -72,12 +72,17 @@ typedef enum S57_RCNM_t {
 } S57_RCNM_t;
 //*/
 
-// S52/S57 geo object extent (enveloppe in OGR parlance)
+// S52/S57 object geo extent (enveloppe in OGR parlance)
 typedef struct ObjExt_t {
     double W;        // LL - x1
     double S;        // LL - y1
     double E;        // UR - x2
     double N;        // UR - y2
+    //
+    // invarient: assume canonic -woulg  require a func() in struct to canonise
+    // for completess but all extent are allready LL-UR
+    //
+    //
 } ObjExt_t;
 
 typedef struct _S57_geo  S57_geo;
@@ -147,10 +152,10 @@ int       S57_getPrimIdx   (S57_prim *prim, unsigned int i, int *mode, int *firs
 int       S57_setPrimDList (S57_prim *prim, guint DList);
 
 // get/set extend
-int       S57_setExt(S57_geo *geo, double  W, double  S, double  E, double  N);
-ObjExt_t  S57_getExt(S57_geo *geo);
-//gboolean  S57_cmpExt(ObjExt_t A, ObjExt_t B);
-gboolean  S57_cmpExt(S57_geo *geoA, S57_geo *geoB);
+int       S57_setGeoExt(S57_geo *geo, double  W, double  S, double  E, double  N);
+ObjExt_t  S57_getGeoExt(S57_geo *geo);
+gboolean  S57_cmpGeoExt(S57_geo *geoA, S57_geo *geoB);
+gboolean  S57_cmpExt(ObjExt_t A, ObjExt_t B);
 
 // get geo type (P,L,A) of this object
 // Note: return the same thing as a call to S52_PL_getFTYP()
