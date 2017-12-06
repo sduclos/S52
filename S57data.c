@@ -26,6 +26,13 @@
 
 #include <math.h>       // INFINITY, nearbyint()
 
+#ifdef S52_USE_BACKTRACE
+// debug - backtrace() static func - test symbol collison
+// Note: will break static var
+//#define static
+#endif
+
+
 #ifdef S52_USE_PROJ
 static projPJ      _pjsrc   = NULL;   // projection source
 static projPJ      _pjdst   = NULL;   // projection destination
@@ -170,7 +177,7 @@ typedef struct _S57_geo {
 
 static GString *_attList = NULL;
 
-// tolerance used by: _inLine(), S57_isPtInSet(), posibly S57_cmpExt()
+// tolerance used by: _inLine(), S57_isPtInSet(), posibly S57_cmpGeoExt()
 //#define S57_GEO_TOLERANCE 0.0001     // *60*60 = .36'
 //#define S57_GEO_TOLERANCE 0.00001    // *60*60 = .036'   ; * 1852 =
 //#define S57_GEO_TOLERANCE 0.000001   // *60*60 = .0036'  ; * 1852 = 6.667 meter       _simplifyGEO(): CA27904A.000 (Gulf): CTNARE:4814 poly reduction: 80% 12683 (15064	->	2381)
@@ -384,7 +391,7 @@ int        S57_geo2prj3dv(guint npt, pt3 *data)
 //#if 0
 // FIXME: this break line/poly match
 static int    _inLine(pt3 A, pt3 B, pt3 C)
-// TRUE if BC is inline with AC or visa-versa (not AB)
+// TRUE if BC is inline with AC or visa-versa
 {
     // test.1: A( 0, 0) B(2,2) C( 4, 4)
     // test.2: A(-2,-2) B(0,0) C(+2,+2)
@@ -417,27 +424,24 @@ static int    _inLine(pt3 A, pt3 B, pt3 C)
     // ex: (0-4)(2-4) - (2-4)(0-4) = 8-8 = 0
 }
 
-//#if 0
-// FIXME: this break line/poly match
 static guint  _delInLineSeg(guint npt, double *ppt)
 // remove point ON the line segment
 {
-    pt3 *p = (pt3*)ppt;
-
-    //* FIXME NOT: optimisation: use pt3 newArr[npt];
+    //* FIXME: optimisation: use pt3 newArr[npt];
     // and only one memmove(ppt, newArr, sizeof(pt3) * j);  (see fail test bellow)
     //pt3 newArr[npt]; guint ii = 0, k = 0;
-    //
 
+    pt3  *p = (pt3*)ppt;
     guint j = npt;
     for (guint i=0; i<(npt-2); ++i) {
-        // don't lose Z
+
+        // don't lose Z  S57_OVERLAP_GEO_Z (and Z_CLIP_PLANE (S57_OVERLAP_GEO_Z - 1))
         if (p[1].z != p[2].z) {
             ++p;
             continue;
         }
 
-        //*
+        // remove p[1]
         if (TRUE == _inLine(p[0], p[1], p[2])) {
             // A--B--C,       3-0-2=1
             // 0--A--B--C,    4-1-2=1
@@ -447,19 +451,7 @@ static guint  _delInLineSeg(guint npt, double *ppt)
         } else {
             ++p;
         }
-        //*/
-
-        /*
-        if (TRUE == _inLine(p[0], p[k+1], p[k+2])) {
-            --j;
-            ++k;
-        } else {
-            newArr[ii++] = *p++;
-            p += k;
-        }
-        */
     }
-    //memmove(ppt, newArr, sizeof(pt3) * j);
 
 #ifdef S52_DEBUG
     /* debug: check for duplicate vertex
@@ -480,6 +472,16 @@ static guint  _delInLineSeg(guint npt, double *ppt)
 
     return j;
 
+    /*
+    if (TRUE == _inLine(p[0], p[k+1], p[k+2])) {
+        --j;
+        ++k;
+    } else {
+        newArr[ii++] = *p++;
+        p += k;
+    }
+    //memmove(ppt, newArr, sizeof(pt3) * j);
+    */
 
     /* FIXME: this fail
     pt3  newArr[npt];
@@ -558,11 +560,11 @@ int        S57_geo2prj(_S57_geo *geo)
     //return_if_null(geo);
 
     // FIXME: this break line/poly match
-    // FIX: call for object with centroid in area - this will
+    // FIX: call on area object with a sy() (centroid in area) and no AC() or AP()
     if ('A' == geo->objType) {
         if ((0 == g_strcmp0(geo->name, "ISTZNE")) ||
             (0 == g_strcmp0(geo->name, "TSSLPT")) ||
-            (0 == g_strcmp0(geo->name, "CTNARE")))
+            (0 == g_strcmp0(geo->name, "CTNARE")))   // LC()
         {
             _simplifyGEO(geo);
         }
@@ -581,9 +583,6 @@ int        S57_geo2prj(_S57_geo *geo)
                 return FALSE;
         }
     }
-
-    // FIXME: proj ext to handle anti-meridian
-
 #endif  // S52_USE_PROJ
 
     return TRUE;
@@ -737,7 +736,7 @@ S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
 }
 
 #if 0
-/*
+//*
 S57_geo   *S57_setMLINE(guint nLineCount, guint *linexyznbr, geocoord **linexyz)
 {
     _S57_geo *geo = g_new0(_S57_geo, 1);
@@ -757,7 +756,7 @@ S57_geo   *S57_setMLINE(guint nLineCount, guint *linexyznbr, geocoord **linexyz)
 
     return geo;
 }
-*/
+//*/
 #endif  // 0
 
 //S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz, S57_AW_t origAW)
@@ -1108,7 +1107,7 @@ int        S57_getPrimIdx(_S57_prim *prim, unsigned int i, int *mode, int *first
     return TRUE;
 }
 
-int        S57_setExt(_S57_geo *geo, double W, double S, double E, double N)
+int        S57_setGeoExt(_S57_geo *geo, double W, double S, double E, double N)
 // assume: extent canonical - W, S, E, N
 {
     return_if_null(geo);
@@ -1150,7 +1149,7 @@ int        S57_setExt(_S57_geo *geo, double W, double S, double E, double N)
     return TRUE;
 }
 
-ObjExt_t   S57_getExt(_S57_geo *geo)
+ObjExt_t   S57_getGeoExt(_S57_geo *geo)
 {
     // no extent: "$CSYMB", afgves, vessel, ..
     if (0 != isinf(geo->ext.W)) {  // inf
@@ -1163,8 +1162,7 @@ ObjExt_t   S57_getExt(_S57_geo *geo)
     return geo->ext;
 }
 
-//gboolean   S57_cmpExt(ObjExt_t A, ObjExt_t B)
-gboolean   S57_cmpExt(_S57_geo *geoA, _S57_geo *geoB)
+gboolean   S57_cmpGeoExt(_S57_geo *geoA, _S57_geo *geoB)
 // TRUE if intersect else FALSE
 
 // Note: object in a cell are in same hemesphire - no need to check anti-meridian
@@ -1185,25 +1183,84 @@ cells must not span the 180º Meridian of Longitude.
     // FIX: augment ext to dominant lat/lon
     if (S57_LINES_T==geoA->objType && S57_LINES_T==geoB->objType) {
         PRINTF("FIXME: if vert/horiz, parallele lines will not ext. intersect\n");
-        g_assert(0);
+        //g_assert(0);
     }
 
     ObjExt_t A = geoA->ext;
     ObjExt_t B = geoB->ext;
 
-    //* check if point at same location within tolerance
+    /* FIXME: do we need to check if point at same location are within tolerance
+     FIX: not required - produce the same result as cmpExt()
     if (S57_POINT_T==geoA->objType && S57_POINT_T==geoB->objType) {
-        if ((ABS(A.S-B.S) < S57_GEO_TOLERANCE) && (ABS(A.W-B.W) < S57_GEO_TOLERANCE))
-            return TRUE;
+
+        gboolean same = TRUE;
+
+        if ((ABS(A.S-B.S) < S57_GEO_TOLERANCE) && (ABS(A.W-B.W) < S57_GEO_TOLERANCE)) {
+            //return TRUE;
+            same = TRUE;
+        } else {
+            //return FALSE;
+            same = FALSE;
+        }
+
+        // debug - check that cmpExt() produce the same result
+        {
+            gboolean sameAlt = TRUE;
+            if (B.N < A.S)
+                sameAlt = FALSE;
+            else
+                if (B.E < A.W)
+                    sameAlt = FALSE;
+                else
+                    if (B.S > A.N)
+                        sameAlt = FALSE;
+                    else
+                        if (B.W > A.E)
+                            sameAlt = FALSE;
+
+            // debug - OK on GB4X0000.000, CA279037.000
+            PRINTF("DEBUG: cmp if S57_POINT_T A == S57_POINT_T B XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\n");
+            g_assert(same == sameAlt);
+
+            return same;
+        }
     }
     //*/
 
+    //return !S57_cmpExt(A, B);
+    return S57_cmpExt(A, B);
+ }
+
+gboolean   S57_cmpExt(ObjExt_t A, ObjExt_t B)
+// TRUE if extent of A intersect exent of B else FALSE
+// assume: canonic
+{
     if (B.N < A.S) return FALSE;
-    if (B.S > A.N) return FALSE;
     if (B.E < A.W) return FALSE;
+    if (B.S > A.N) return FALSE;
     if (B.W > A.E) return FALSE;
 
     return TRUE;
+
+    /* TRUE if B is outside A (and witch side of A) else FALSE
+    // box A side: 0 - touch, 1 - S, 2 - W, 3 - N, 4 - E
+
+    // FIXME: CW or CCW
+
+    // CW
+    if (B.N < A.S) return 1;
+    if (B.E < A.W) return 2;
+    if (B.S > A.N) return 3;
+    if (B.W > A.E) return 4;
+
+    // CCW
+    if (B.N < A.S) return 1;
+    if (B.W > A.E) return 4;
+    if (B.S > A.N) return 3;
+    if (B.E < A.W) return 2;
+
+    return FALSE;
+    */
 }
 
 S57_Obj_t  S57_getObjtype(_S57_geo *geo)
@@ -1215,7 +1272,7 @@ S57_Obj_t  S57_getObjtype(_S57_geo *geo)
 }
 
 #if 0
-/* return the number of attributes.
+//* return the number of attributes.
 static void   _countItems(GQuark key_id, gpointer data, gpointer user_data)
 {
     const gchar *attName  = g_quark_to_string(key_id);
@@ -1274,8 +1331,41 @@ int        S57_getAttributes(_S57_geo *geo, char **name, char **val)
   //  strcpy(val[tmp.currentIdx], "y");
   return tmp.currentIdx;
 }
-*/
-#endif
+
+void       S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax)
+{
+
+  _initPROJ();
+
+  {
+    projUV pc1, pc2;   // pixel center
+
+    pc1.v = lat;
+    pc1.u = lng;
+
+    pc1 = S57_geo2prj(pc1); // mercator center in meters
+
+    // lower right
+    pc2.u = (width/2.  + 0.5)*scale + pc1.u;
+    pc2.v = (height/2. + 0.5)*scale + pc1.v;
+    pc2 = S57_prj2geo(pc2);
+    *lngMax = pc2.u;
+    *latMax = pc2.v;
+    // upper left
+    pc2.u = -((width/2. )*scale + 0.5) + pc1.u;
+    pc2.v = -((height/2.)*scale + 0.5) + pc1.v;
+    pc2 = S57_prj2geo(pc2);
+    *lngMin = pc2.u;
+    *latMin = pc2.v;
+  }
+
+  PRINTF("lat/lng: %lf/%lf scale: %lf, w/h: %d/%d lat: %lf/%lf lng: %lf/%lf\n", lat, lng, scale, width, height, *latMin, *latMax, *lngMin, *lngMax);
+
+  //S57_donePROJ();
+
+}
+//*/
+#endif  // 0
 
 
 static guint   _qMax = 0;
@@ -1800,112 +1890,6 @@ CCHAR     *S57_getAtt(_S57_geo *geo)
     return _attList->str;
 }
 
-#if 0
-/*
-void       S57_getGeoWindowBoundary(double lat, double lng, double scale, int width, int height, double *latMin, double *latMax, double *lngMin, double *lngMax)
-{
-
-  _initPROJ();
-
-  {
-    projUV pc1, pc2;   // pixel center
-
-    pc1.v = lat;
-    pc1.u = lng;
-
-    pc1 = S57_geo2prj(pc1); // mercator center in meters
-
-    // lower right
-    pc2.u = (width/2.  + 0.5)*scale + pc1.u;
-    pc2.v = (height/2. + 0.5)*scale + pc1.v;
-    pc2 = S57_prj2geo(pc2);
-    *lngMax = pc2.u;
-    *latMax = pc2.v;
-    // upper left
-    pc2.u = -((width/2. )*scale + 0.5) + pc1.u;
-    pc2.v = -((height/2.)*scale + 0.5) + pc1.v;
-    pc2 = S57_prj2geo(pc2);
-    *lngMin = pc2.u;
-    *latMin = pc2.v;
-  }
-
-  PRINTF("lat/lng: %lf/%lf scale: %lf, w/h: %d/%d lat: %lf/%lf lng: %lf/%lf\n", lat, lng, scale, width, height, *latMin, *latMax, *lngMin, *lngMax);
-
-  //S57_donePROJ();
-
-}
-
-int        S57_sameChainNode(_S57_geo *geoA, _S57_geo *geoB)
-{
-
-    return_if_null(geoA);
-    return_if_null(geoB);
-
-    pt3 *pa   = (pt3 *)geoA->linexyz;
-    pt3 *pb   = (pt3 *)geoB->linexyz;
-    pt3 *bend = (pt3 *)&geoB->linexyz[(geoB->linexyznbr-1)*3];
-    //pt3 *bend = geoB->linexyz[geoB->linexyznbr-b-1];
-
-    // FIXME: what if a chain-node has the same point
-    // at both end of the chain!!
-    //if ((pb->x == bend->x) && (pb->y == bend->y))
-    //    g_assert(0);
-
-    // first point match
-    //if ((pa->x == pb->x) && (pa->y == pb->y))
-    //    reverse = FALSE;
-    //else {
-        // last point match
-    //    if ((pa->x == bend->x) && (pa->y == bend->y))
-    //        reverse = TRUE;
-    //    else
-            //no match
-    //        return FALSE;
-    //}
-
-    // can't be the same if not same lenght
-    if (geoA->linexyznbr != geoB->linexyznbr)
-        return FALSE;
-
-    guint i = 0;
-    if ((pa->x == pb->x) && (pa->y == pb->y)) {
-        pt3 *ptA = (pt3 *)geoA->linexyz;
-        pt3 *ptB = (pt3 *)geoB->linexyz;
-
-        for (i=0; i<geoA->linexyznbr; ++i) {
-            if ((ptA->x != ptB->x) || (ptA->x != ptB->x))
-                break;
-
-            ++ptA;
-            ++ptB;
-        }
-    }
-
-    // reach the end, then the're the same
-    if (i+1 >= geoA->linexyznbr)
-        return TRUE;
-
-    if ((pa->x == bend->x) && (pa->y == bend->y)) {
-        pt3 *ptA = (pt3 *)geoA->linexyz;
-        pt3 *ptB = (pt3 *)(geoB->linexyz + (geoB->linexyznbr-1)*3);
-
-        for (guint i=0; i<geoA->linexyznbr; ++i) {
-            if ((ptA->x != ptB->x) || (ptA->x != ptB->x))
-                break;
-
-            ++ptA;
-            --ptB;
-        }
-    }
-    // reach the end, then the're the same
-    if (i+1 >= geoA->linexyznbr)
-        return TRUE;
-
-    return FALSE;
-}
-*/
-#endif  // 0
-
 #ifdef S52_USE_WORLD
 S57_geo   *S57_setNextPoly(_S57_geo *geo, _S57_geo *nextPoly)
 {
@@ -2357,7 +2341,7 @@ int        S57_markOverlapGeo(_S57_geo *geo, _S57_geo *geoEdge)
         }
     }
 
-    // LS() use Z_CLIP_PLANE (S57_OVERLAP_GEO_Z+1) to clip overlap
+    // LS() use znear zfar Z_CLIP_PLANE (S57_OVERLAP_GEO_Z - 1) to clip overlap
     // LC() check for the value -S57_OVERLAP_GEO_Z
     for (guint j=0; j<nptEdge; ++j) {
         ppt[i*3 + 2] = -S57_OVERLAP_GEO_Z;
