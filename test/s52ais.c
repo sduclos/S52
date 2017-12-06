@@ -46,6 +46,7 @@ static GThread *_gpsClientThread = NULL;
 #include <winsock2.h>
 #endif
 
+
 ///////////////////////////////////////////////////////////////////////
 // Note: on systemd the gpsd -G option will not work
 // sudoedit /lib/systemd/system/gpsd.socket with gpsd host LAN IP
@@ -56,14 +57,14 @@ static GThread *_gpsClientThread = NULL;
 //#define GPSD_HOST "192.168.1.70"  // connect to GPSD on local network
 #define GPSD_HOST "192.168.1.73"  // connect to GPSD on local network
 #else  // S52_USE_ANDROID
-//#define GPSD_HOST "localhost"     // connect to local GPSD
+#define GPSD_HOST "localhost"     // connect to local GPSD
 //#define GPSD_HOST "127.0.0.1"     // connect to local GPSD
 //#define GPSD_HOST "192.168.1.67"  // connect to GPSD on local network
 //#define GPSD_HOST "192.168.1.68"  // connect to GPSD on local network
 //#define GPSD_HOST "192.168.1.69"  // connect to GPSD on local network
 //#define GPSD_HOST "192.168.1.72"  // connect to GPSD on local network
 //#define GPSD_HOST "192.168.1.73"  // connect to GPSD on local network
-#define GPSD_HOST "sduclos-ZBOX-CA320NANO.local" // connect to GPSD on local network (avahi - zeroconf)
+//#define GPSD_HOST "sduclos-ZBOX-CA320NANO.local" // connect to GPSD on local network (avahi - zeroconf)
 #endif  // S52_USE_ANDROID
 ///////////////////////////////////////////////////////////////////////
 
@@ -817,7 +818,7 @@ static int           _setAISInfo(unsigned int mmsi, unsigned int imo, char *call
 
     return TRUE;
 }
-#endif
+#endif  // 0
 
 static int           _setAISPos (unsigned int mmsi, double lat, double lon, double heading)
 {
@@ -898,7 +899,7 @@ static int           _setAISLab (unsigned int mmsi, const char *name)
     }
 
     // update label
-    if ('\0' != ais->name[0]) {
+    if ('\0' == ais->name[0]) {
         // FIXME: append name to file aisnamedb.txt for this mmsi
         //_writeName(ais->mmsi, name);
 
@@ -1317,7 +1318,7 @@ unsigned int radio;		    // radio status bits
         //unsigned int spare; // spare bits
 */
 
-        /*
+        /* FIXME: implement
         _setAISInfo(gpsdata->ais.mmsi,
                     gpsdata->ais.type5.imo,
                     gpsdata->ais.type5.callsign,
@@ -1328,7 +1329,7 @@ unsigned int radio;		    // radio status bits
                     gpsdata->ais.type5.minute,
                     gpsdata->ais.type5.draught,
                     gpsdata->ais.type5.destination);
-        */
+        //*/
 
         _setAISLab(gpsdata->ais.mmsi, gpsdata->ais.type5.shipname);
         _setAISDim(gpsdata->ais.mmsi,
