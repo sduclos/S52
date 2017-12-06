@@ -4,6 +4,12 @@
 #
 
 
+2017DEC06
+- fix algo for finding arc extend on LIGHTS05 when sector overlap (in AA5TDS05.000)
+
+2017DEC05
+- mob invariant check [0..360[ in S52_PL_setSYorient()
+
 2017NOV16
 - mod PL lookUp to match first best match rather than the last
 - mod CS touch() logic for LIGHTS, BOYLAT
