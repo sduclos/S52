@@ -5,6 +5,15 @@
 
 static int      _s52_setupMarPar(void)
 {
+    //* ECDIS_check-Instructions_for_Mariners.pdf
+    //Display STANDARD, 4 colour, Display Text, Symbolised Boundaries,
+    //Safety Contour: 10 metres, Safety Depth: 10 metres, Shallow Contour 2 metres, Deep Contour: 20 metres
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR, 10.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,   10.0);  // sounding color
+    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
+    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   20.0);
+    //*/
+
     /* S-64
     // Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
@@ -19,12 +28,13 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);
     //*/
 
-    //* -- DEPTH COLOR ------------------------------------
+    /* -- DEPTH COLOR ------------------------------------
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
 
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);      // should trigger symb ISODGR01 at Q40 at Qc
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);      // should trigger symb ISODGR01 at Q40 at Qc
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  8.0);      // should trigger symb ISODGR01 at Q40 at Qc
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // should trigger symb ISODGR01 at Rimouski ENC
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  4.0);
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // white chanel in Rimouski ENC
@@ -37,7 +47,8 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   12.0);
 
     // sounding color
-    S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    10.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    8.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    10.0);
     //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
 
     S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
@@ -171,7 +182,7 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 0.0);  // default
     //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 1.0);
 
-    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);   // OFF
+    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);   // OFF
     //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);  // ON (default)
 
     //S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters) [0.0 - off]
