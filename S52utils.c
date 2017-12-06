@@ -31,6 +31,12 @@
 #include <string.h>        // strlen()
 #include <unistd.h>        // write()
 
+#ifdef S52_USE_BACKTRACE
+// debug - backtrace() static func - test symbol collison
+// Note: will break static var
+//#define static
+#endif
+
 // debug - configuration file
 #ifdef S52_USE_ANDROID
 #define CFG_NAME   "/sdcard/s52droid/s52.cfg"
@@ -210,20 +216,26 @@ int      S52_utils_getConfig(CCHAR *label, char *vbuf)
 }
 
 #if defined(S52_DEBUG) || defined(S52_USE_LOGFILE)
+// FIXME: write strait to shm bypassing printf malloc so that mem stracking glib new
+// dump debug printf via tail -f /dev/shm/libS52.<isodata>.log
 void _printf(const char *file, int line, const char *function, const char *frmt, ...)
 // FIXME: filter msg type: NOTE:, DEBUG:, FIXME:, WARNING:, ERROR:
 {
     int  MAX = 1024;
     char buf[MAX];
     char headerfrmt[] = "%s:%i in %s(): ";
+    // get str size
     int  size = snprintf(buf, MAX, headerfrmt, file, line, function);
 
+    // fill the rest
     if (size < MAX) {
+        // get no of remaining char
         va_list argptr;
         va_start(argptr, frmt);
         int n = vsnprintf(&buf[size], (MAX-size), frmt, argptr);
         va_end(argptr);
 
+        // alloca sz
         char bufFinal[size + n + 1];
         memcpy(bufFinal, buf, size);
         va_start(argptr, frmt);
