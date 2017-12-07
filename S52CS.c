@@ -1223,9 +1223,11 @@ static CCHAR   *_LIGHTS05_getSYcol(char *buf)
     return sym;
 }
 
-static int      _LIGHTS05_isSectAOverlapLargerB(S57_geo *geoA, S57_geo *geoB)
-// return 1/2 if A/B overlap and B larger(1) or A larger (2)
-// return 0 if no overlap
+static int      _LIGHTS05_cmpSector(S57_geo *geoA, S57_geo *geoB)
+// return:
+// +1 - A has a smaller sector,
+//  0 - no overlap,
+// -1 - B has a smaller sector
 //
 {
     // check for extend arc radius
@@ -1262,55 +1264,25 @@ static int      _LIGHTS05_isSectAOverlapLargerB(S57_geo *geoA, S57_geo *geoB)
     if (Asweep >= 360.0) Asweep -= 360.0;
     if (Bsweep >= 360.0) Bsweep -= 360.0;
 
-    /*
-    // debug - IHO_ECDIS_check:AA5TDS05.000:LNDMRK:P:35 - West: 43.812013, 68.924757
-    // debug - IHO_ECDIS_check:AA5TDS05.000:LNDMRK:P:36 - East: 43.810095, 68.928608
-
-    //if (43 == S57_getS57ID(geoA)) {  // red sector East
-    if (43 == S57_getS57ID(geoB)) {  // red sector East
-    //if (41 == S57_getS57ID(geoA)) {    // large yellow east
-    //if (38 == S57_getS57ID(geoA)) {    // small yellow east
-        //g_assert(0);
-        S57_dumpData(geoB, FALSE);
-        // A: 337 - 71 sweep: 94
-        // B:   5 - 30 sweep: 25
-        // B: 340 -350 sweep: 10
-    }
-    */
-
+    // handle SECTR1/2 that overlap North
     double AsectorHead = Asectr1 + Asweep;
     double AsectorTail = Asectr2 - Asweep;
     double BsectorHead = Bsectr1 + Bsweep;
     double BsectorTail = Bsectr2 - Bsweep;
 
-    // FIXME: '>' or '>= - need agood test case
+    // FIXME: '>' or '>= - need a good test case
     if ((AsectorTail<Bsectr1 && Bsectr1<Asectr2)     || (AsectorTail<Bsectr2 && Bsectr2<Asectr2)     ||
         (Asectr1    <Bsectr1 && Bsectr1<AsectorHead) || (Asectr1    <Bsectr2 && Bsectr2<AsectorHead) ||
         // same but reverse B/A
         (BsectorTail<Asectr1 && Asectr1<Bsectr2)     || (BsectorTail<Asectr2 && Asectr2<Bsectr2)     ||
         (Bsectr1    <Asectr1 && Asectr1<BsectorHead) || (Bsectr1    <Asectr2 && Asectr2<BsectorHead))
-
-    //   1     2
-    // A |-----|
-    // B  |---..
-    // B ..--|
-    // B |-----|
-    // A  |---..
-    // A ..--|
-
-    //if ((Asectr1<Bsectr1 && Bsectr1<Asectr2) || (Asectr1<Bsectr2 && Bsectr2<Asectr2) ||
-    //    (Bsectr1<Asectr1 && Asectr1<Bsectr2) || (Bsectr1<Asectr2 && Asectr2<Bsectr2) )
-    //if ((Bsectr1>Asectr1 && Bsectr1<Asectr2) || (Bsectr2>Asectr1 && Bsectr2<Asectr2) ||
-    //    (Asectr1>Bsectr1 && Asectr1<Bsectr2) || (Asectr2>Bsectr1 && Asectr2<Bsectr2) )
     {   // sector do overlap
 
         // B dominant
         if (Asweep < Bsweep) {
-        // A dominant
-        //if (Asweep > Bsweep) {  // BUG: larger sector extended
-            return 1;
+            return  1;
         } else {
-            return 2;
+            return -1;
         }
     }
 
@@ -1474,13 +1446,13 @@ static GString *LIGHTS05 (S57_geo *geo)
         S57_setAtt(geo, "_extend_arc_radius", "N");
 
         for (S57_geo *geoTouch=S57_getTouchLIGHTS(geo); geoTouch!=NULL; geoTouch=S57_getTouchLIGHTS(geoTouch)) {
-            int overlap = _LIGHTS05_isSectAOverlapLargerB(geo, geoTouch);
+            int overlap = _LIGHTS05_cmpSector(geo, geoTouch);
 
             if (1 == overlap) {
                 S57_setAtt(geo,      "_extend_arc_radius", "Y");
                 S57_setAtt(geoTouch, "_extend_arc_radius", "N");
             }
-            if (2 == overlap) {
+            if (-1 == overlap) {
                 S57_setAtt(geo,      "_extend_arc_radius", "N");
                 S57_setAtt(geoTouch, "_extend_arc_radius", "Y");
             }
