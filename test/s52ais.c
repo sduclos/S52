@@ -1444,11 +1444,11 @@ static int           _connectGPSD(void)
 {
     int nWait = 0;
 
-    g_print("s52ais:_gpsdClientRead(): start looping ..\n");
+    g_print("s52ais:_connectGPSD(): start looping ..\n");
     memset(&_gpsdata, 0, sizeof(_gpsdata));
 
     while (0 != gps_open(GPSD_HOST, GPSD_PORT, &_gpsdata)) {   // android (gpsd 2.96)
-        g_print("s52ais:_gpsdClientRead(): no gpsd running or network error, wait 1 sec [err(%i): %s](%s:%s)\n",
+        g_print("s52ais:_connectGPSD(): no gpsd running or network error, wait 1 sec [err(%i): %s](%s:%s)\n",
                 errno, gps_errstr(errno), GPSD_HOST, GPSD_PORT);
 
         // try to connect to GPSD server, bailout after 10 failed attempt
@@ -1456,7 +1456,7 @@ static int           _connectGPSD(void)
 
         // FIXME: say "NO AIS SRC"
         if ((NULL==_ais_list) || (10 <= ++nWait)) {
-            g_print("s52ais:_gpsdClientRead() no AIS list (main exited) or no GPSD server.. terminate _gpsClientRead thread\n");
+            g_print("s52ais:_connectGPSD() no AIS list (main exited) or no GPSD server.. terminate _gpsClientRead thread\n");
 
             GMUTEXUNLOCK(&_ais_list_mutex);
 
@@ -1468,7 +1468,7 @@ static int           _connectGPSD(void)
     }
 
     if (-1 == gps_stream(&_gpsdata, WATCH_ENABLE|WATCH_NEWSTYLE, NULL)) {
-        g_print("s52ais:_gpsdClientRead():gps_stream() failed .. exiting\n");
+        g_print("s52ais:_connectGPSD():gps_stream() failed .. exiting\n");
         return FALSE;
     }
 
@@ -1494,7 +1494,7 @@ static int           _gpsdClientReadLoop(void)
     for (;;) {
         GMUTEXLOCK(&_ais_list_mutex);
         if (NULL == _ais_list) {
-            g_print("s52ais:_gpsdClientRead() no AIS list .. main exited .. terminate gpsRead thread\n");
+            g_print("s52ais:_gpsdClientReadLoop() no AIS list .. main exited .. terminate gpsRead thread\n");
             ret = TRUE;
 
             GMUTEXUNLOCK(&_ais_list_mutex);
@@ -1509,7 +1509,7 @@ static int           _gpsdClientReadLoop(void)
 
         //if (FALSE == gps_waiting(&_gpsdata,  500*1000)) {    // wait 0.5 sec     (500*1000 uSec)
         if (TRUE == gps_waiting(&_gpsdata,  500*1000)) {    // wait 0.5 sec     (500*1000 uSec)
-            //g_print("s52ais:_gpsdClientRead():gps_waiting() timed out\n");
+            //g_print("s52ais:_gpsdClientReadLoop():gps_waiting() timed out\n");
 
             //GMUTEXLOCK(&_ais_list_mutex);
             //_updateTimeTag();
@@ -1521,7 +1521,7 @@ static int           _gpsdClientReadLoop(void)
             ret = gps_read(&_gpsdata);
             if (0 < ret) {
                 // no error
-                //g_print("s52ais:_gpsdClientRead():gps_read() ..\n");
+                //g_print("s52ais:_gpsdClientReadLoop():gps_read() ..\n");
 
                 // handle AIS data
                 GMUTEXLOCK(&_ais_list_mutex);
@@ -1532,11 +1532,11 @@ static int           _gpsdClientReadLoop(void)
             }
 
             if (0 == ret) {
-                g_print("s52ais:_gpsdClientRead():gps_read(): NO DATA .. [ret=0, errno=%i]\n", errno);
+                g_print("s52ais:_gpsdClientReadLoop():gps_read(): NO DATA .. [ret=0, errno=%i]\n", errno);
                 g_usleep(1000 * 1000); // 1.0 sec
                 continue;
             } else {
-                g_print("s52ais:_gpsdClientRead():gps_read(): socket error 4 .. GPSD died [ret=%i, errno=%i]\n", ret, errno);
+                g_print("s52ais:_gpsdClientReadLoop():gps_read(): socket error 4 .. GPSD died [ret=%i, errno=%i]\n", ret, errno);
 
                 goto exit;
             }
