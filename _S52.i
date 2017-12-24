@@ -765,8 +765,10 @@ static gboolean            _handleSocket(GIOChannel *source, gchar *str_read)
 
     int   id = _handleS52method(str_read, result, err);
 
-    // FIXME: _encode() & g_snprintf() do basically the same thing and the resulting
+    // FIXME: _encode() call g_vsnprintf() & g_snprintf() do basically the same thing and the resulting
     // string is the same .. but only g_snprintf() string pass io channel !!!
+    //_encode(response, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}", id, (err[0] == '\0') ? "no error" : err, result);
+
     guint n  = g_snprintf(response, SOCK_BUF, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}",
                           id, (err[0] == '\0') ? "no error" : err, result);
 
