@@ -9,4 +9,4 @@ test: tests.c parson.c
 	./$@
 
 clean:
-	rm -f test *.o
+	rm -rf test *.o .makepp
