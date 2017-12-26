@@ -385,11 +385,13 @@ static int      _s52_draw_user(s52engine *engine)
     }
     */
 
-    static GTimeVal now;
-    g_get_current_time(&now);
-    now.tv_usec = 0;  // will print time without frac of sec
-    //S52_drawStr(100, engine->height - 100, "ARPAT", 3, g_time_val_to_iso8601(&now));
-    S52_drawStr(100, engine->height - 100, "CURSR", 3, g_time_val_to_iso8601(&now));
+    {   // draw time label
+        static GTimeVal now;
+        g_get_current_time(&now);
+        now.tv_usec = 0;  // will print time without frac of sec
+        //S52_drawStr(100, engine->height - 100, "ARPAT", 3, g_time_val_to_iso8601(&now));
+        S52_drawStr(100, engine->height - 100, "CURSR", 3, g_time_val_to_iso8601(&now));
+    }
 
     return TRUE;
 }
@@ -472,15 +474,21 @@ static int      _s52_draw_cb  (gpointer user_data)
         //_s52_draw_user(engine);
     }
 
-    //* draw AIS on last layer (IHO layer 9)
+    //* draw AIS/Mariners' on last layer (IHO layer 9)
     if (TRUE == engine->do_S52drawLast) {
 
 #ifdef USE_FAKE_AIS
         // update fake AIS - no draw call
         _s52_updtFakeAISdata(engine->state.cLat, engine->state.cLon);
 #endif
-        s52ais_updtAISLabel(TRUE);
 
+#ifdef USE_AIS
+        s52ais_updtAISLabel(TRUE);
+#endif
+        // simple case
+        //S52_drawLast();
+
+        //* test drawing above drawLast()
         // Note: need to handle EGL beg/end by hand to avoid flicker when calling _s52_draw_user()
         S52_setEGLCallBack((S52_EGL_cb)NULL, (S52_EGL_cb)NULL, NULL);
 
@@ -498,6 +506,7 @@ static int      _s52_draw_cb  (gpointer user_data)
         _egl_end(&engine->eglState, "LASTtest");
 
         S52_setEGLCallBack((S52_EGL_cb)_egl_beg, (S52_EGL_cb)_egl_end, &engine->eglState);
+        //*/
     }
     //*/
 
