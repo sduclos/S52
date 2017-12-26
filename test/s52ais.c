@@ -974,8 +974,11 @@ static int           _setAISSta (unsigned int mmsi, int status, int turn)
             _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, vestat, turn);
 #else
             S52_setVESSELstate(ais->vesselH, 0, vestat, turn);   // AIS sleeping
+#ifdef S52_USE_AFGLOW
             S52_setVESSELstate(ais->afglowH, 0, vestat, turn);   // afterglow
 #endif
+#endif  // SOCK
+
         } else {
             // AIS active / under way
             //int vestat       = 1;  // normal
@@ -985,8 +988,10 @@ static int           _setAISSta (unsigned int mmsi, int status, int turn)
 #else
 
             S52_setVESSELstate(ais->vesselH, 0, vestat, turn);   // AIS active
+#ifdef S52_USE_AFGLOW
             S52_setVESSELstate(ais->afglowH, 0, vestat, turn);   // afterglow
 #endif
+#endif  // SOCK
         }
 
         ais->status = status;
