@@ -38,12 +38,15 @@
 #include <string.h>
 #include <stdarg.h>
 
+// FIXME: if backtrace dont printf
 // FIXME: filter msg type: NOTE:, DEBUG:, FIXME:, WARNING:, ERROR:
-void _printf(const char *file, int line, const char *function, const char *frmt, ...);
-#define PRINTF(...) _printf(__FILE__, __LINE__, __func__, __VA_ARGS__)
-#else    // S52_DEBUG  S52_USE_LOGFILE
+void S52_utils_printf(const char *file, int line, const char *function, const char *frmt, ...);
+#define PRINTF(...) S52_utils_printf(__FILE__, __LINE__, __func__, __VA_ARGS__)
+//#define PRINTF(...)  (__VA_ARGS__)
+//#define PRINTF(...)
+#else    // S52_DEBUG | S52_USE_LOGFILE
 #define PRINTF(...)
-#endif  // S52_DEBUG  S52_USE_LOGFILE
+#endif  // S52_DEBUG | S52_USE_LOGFILE
 #endif  // SOLARIS
 
 #define SNPRINTF(b,n,f, ...) if (n <= g_snprintf(b,n,f,__VA_ARGS__)) {PRINTF("WARNING: str overflow\n");g_assert(0);}
@@ -82,6 +85,13 @@ double   S52_atof(CCHAR *str);
 #define  _g_new0(s,n)  (s*)S52_utils_new0(sizeof(s), n)
 char    *S52_utils_new0(size_t sz, int n);
 
+// trap
+int      S52_utils_initSIG(void);
+int      S52_utils_backtrace(void);
+int      S52_utils_getAtomicInt(void);
+void     S52_utils_setAtomicInt(int newVal);
+int      S52_utils_mtrace(void);
+int      S52_utils_muntrace(void);
 
 
 ///////////////////////////////////////////////////////////////////////////
