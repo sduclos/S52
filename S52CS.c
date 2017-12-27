@@ -34,12 +34,6 @@
 
 #define UNKNOWN_DEPTH -1000.0  // depth of 1km above sea level
 
-#ifdef S52_USE_BACKTRACE
-// debug - backtrace() static func - test symbol collison
-// Note: will break static var
-//#define static
-#endif
-
 // loadCell() - keep ref on S57_geo for further proccessing in CS
 typedef struct _localObj {
     GPtrArray *lights_list;  // list of: LIGHTS
@@ -1159,7 +1153,7 @@ static GString *LEGLIN02 (S57_geo *geo)
 
     /* FIXME: move to GL
     // TX: distance tags
-    if (0.0 < S52_MP_get(S52_MAR_DISTANCE_TAGS)) {
+    //if (0.0 < S52_MP_get(S52_MAR_DISTANCE_TAGS)) {
         g_string_append(leglin02, ";SY(PLNPOS02);TX(_disttags,3,1,2,'15112',0,0,CHBLK,51)");
     }
     */
@@ -1236,11 +1230,9 @@ static int      _LIGHTS05_cmpSector(S57_geo *geoA, S57_geo *geoB)
     GString *Bsectr1str = S57_getAttVal(geoB, "SECTR1");
     GString *Bsectr2str = S57_getAttVal(geoB, "SECTR2");
 
-    // check if sector present - check A is redundant
-    if (NULL == Asectr1str ||
-        NULL == Asectr2str ||
-        NULL == Bsectr1str ||
-        NULL == Bsectr2str)
+    // check if sector present
+    if (NULL==Asectr1str || NULL==Asectr2str ||  // redundant - caller did this allready
+        NULL==Bsectr1str || NULL==Bsectr2str)
     {
         return 0;
     }
@@ -1251,9 +1243,15 @@ static int      _LIGHTS05_cmpSector(S57_geo *geoA, S57_geo *geoB)
     double Bsectr1 = S52_atof(Bsectr1str->str);
     double Bsectr2 = S52_atof(Bsectr2str->str);
 
-    // FIXME: '>' or '>=
+    // FIXME: '<' or '<=
+    // debug - force same sector test case
+    //Bsectr1 = Asectr1;
+    //Bsectr2 = Asectr2;
+
+    // handle negative sweep
     double Asectr2tmp = Asectr2;
     double Bsectr2tmp = Bsectr2;
+
     if (Asectr1 > Asectr2) Asectr2tmp += 360.0;
     if (Bsectr1 > Bsectr2) Bsectr2tmp += 360.0;
 
@@ -1270,15 +1268,24 @@ static int      _LIGHTS05_cmpSector(S57_geo *geoA, S57_geo *geoB)
     double BsectorHead = Bsectr1 + Bsweep;
     double BsectorTail = Bsectr2 - Bsweep;
 
-    // FIXME: '>' or '>= - need a good test case
+    // FIXME: '<' or '<= - need a good test case
     if ((AsectorTail<Bsectr1 && Bsectr1<Asectr2)     || (AsectorTail<Bsectr2 && Bsectr2<Asectr2)     ||
         (Asectr1    <Bsectr1 && Bsectr1<AsectorHead) || (Asectr1    <Bsectr2 && Bsectr2<AsectorHead) ||
         // same but reverse B/A
         (BsectorTail<Asectr1 && Asectr1<Bsectr2)     || (BsectorTail<Asectr2 && Asectr2<Bsectr2)     ||
         (Bsectr1    <Asectr1 && Asectr1<BsectorHead) || (Bsectr1    <Asectr2 && Asectr2<BsectorHead))
+
+    /* '<=' break continous sectors
+    if ((AsectorTail<=Bsectr1 && Bsectr1<=Asectr2)     || (AsectorTail<=Bsectr2 && Bsectr2<=Asectr2)     ||
+        (Asectr1    <=Bsectr1 && Bsectr1<=AsectorHead) || (Asectr1    <=Bsectr2 && Bsectr2<=AsectorHead) ||
+        // same but reverse B/A
+        (BsectorTail<=Asectr1 && Asectr1<=Bsectr2)     || (BsectorTail<=Asectr2 && Asectr2<=Bsectr2)     ||
+        (Bsectr1    <=Asectr1 && Asectr1<=BsectorHead) || (Bsectr1    <=Asectr2 && Asectr2<=BsectorHead))
+    */
+
     {   // sector do overlap
 
-        // B dominant
+        // B dominant - ()?:;
         if (Asweep < Bsweep) {
             return  1;
         } else {
@@ -1924,7 +1931,22 @@ static GString *OBSTRN04 (S57_geo *geo)
         }
     }
 
+    // Note: this call reset scamin
     udwhaz03 = _UDWHAZ03(geo, depth_value);
+
+    // FIXME: if reset scamin then all other commad will be skipped
+    // FIX: set scamin right after the _UDWHAZ call
+    //S57_setScamin(geo, INFINITY);
+    if (S57_RESET_SCAMIN == S57_getScamin(geo)) {  // will get SCAMIN from attribs if available
+        S57_setScamin(geo, INFINITY);              // else set it by hand
+    }
+    // FIXME: check IHO ECDIS_check AA5TDS05.000:OBSTRN:L:47 ISODGR on vertical dotted line
+    /* FIX: no ISODGR in shallow in 3.2
+    if (47 == S57_getS57ID(geo)) {
+        PRINTF("DEBUG: 47 found\n");
+        //g_assert(0);
+    }
+    */
 
     if (S57_POINT_T == S57_getObjtype(geo)) {
         // Continuation A
@@ -1937,10 +1959,9 @@ static GString *OBSTRN04 (S57_geo *geo)
                 g_string_append(obstrn04, quapnt01->str);
                 _g_string_free(quapnt01, TRUE);
             }
-            _g_string_free(udwhaz03, TRUE);
 
-            //if (NULL != sndfrm02)
-                _g_string_free(sndfrm02, TRUE);
+            _g_string_free(udwhaz03, TRUE);
+            _g_string_free(sndfrm02, TRUE);
 
             return obstrn04;
         }
@@ -1948,19 +1969,6 @@ static GString *OBSTRN04 (S57_geo *geo)
         if (UNKNOWN_DEPTH != valsou) {
             if (valsou <= 20.0) {
                 GString *watlevstr = S57_getAttVal(geo, "WATLEV");
-                /*
-                GString *objlstr   = S57_getAttVal(geo, "OBJL");
-
-                // debug
-                if (NULL == objlstr) {
-                    PRINTF("ERROR: OBJL Attribute name missing\n");
-                    g_assert(0);
-                    return obstrn04;
-                }
-                int objl = S52_atoi(objlstr->str);
-                if (UWTROC == objl) {
-                */
-
                 if (0 == g_strcmp0(S57_getName(geo), "UWTROC")) {
                     if (NULL == watlevstr) {  // default
                         g_string_append(obstrn04, ";SY(DANGER01)");
@@ -1995,20 +2003,6 @@ static GString *OBSTRN04 (S57_geo *geo)
 
         } else {  // NO valsou
                 GString *watlevstr = S57_getAttVal(geo, "WATLEV");
-                /*
-                GString *objlstr   = S57_getAttVal(geo, "OBJL");
-
-                // debug
-                if (NULL == objlstr) {
-                    PRINTF("ERROR: no OBJL\n");
-                    g_assert(0);
-                    return obstrn04;
-                }
-
-                int objl = S52_atoi(objlstr->str);
-                if (UWTROC == objl) {
-                */
-
                 if (0 == g_strcmp0(S57_getName(geo), "UWTROC")) {
                     if (NULL == watlevstr)  // default
                        g_string_append(obstrn04, ";SY(UWTROC04)");
@@ -2052,11 +2046,8 @@ static GString *OBSTRN04 (S57_geo *geo)
         if (NULL != quapnt01)
             g_string_append(obstrn04, quapnt01->str);
 
-        //if (NULL != udwhaz03)
         _g_string_free(udwhaz03, TRUE);
-        //if (NULL != sndfrm02)
         _g_string_free(sndfrm02, TRUE);
-        //if (NULL != quapnt01)
         _g_string_free(quapnt01, TRUE);
 
         return obstrn04;
@@ -2116,9 +2107,7 @@ static GString *OBSTRN04 (S57_geo *geo)
                 }
             }
 
-            //if (NULL != udwhaz03)
             _g_string_free(udwhaz03, TRUE);
-            //if (NULL != sndfrm02)
             _g_string_free(sndfrm02, TRUE);
 
             return obstrn04;
@@ -2138,9 +2127,8 @@ static GString *OBSTRN04 (S57_geo *geo)
                     g_string_append(obstrn04, quapnt01->str);
                     _g_string_free(quapnt01, TRUE);
                 }
-                _g_string_free(udwhaz03, TRUE);
 
-                //if (NULL != sndfrm02)
+                _g_string_free(udwhaz03, TRUE);
                 _g_string_free(sndfrm02, TRUE);
 
                 return obstrn04;
@@ -2210,18 +2198,15 @@ static GString *OBSTRN04 (S57_geo *geo)
             if (NULL != quapnt01)
                 g_string_append(obstrn04, quapnt01->str);
 
-            //if (NULL != udwhaz03)
             _g_string_free(udwhaz03, TRUE);
-            //if (NULL != sndfrm02)
             _g_string_free(sndfrm02, TRUE);
-            //if (NULL != quapnt01)
             _g_string_free(quapnt01, TRUE);
 
             return obstrn04;
         }
     }
 
-    // FIXME: check if one exit point could do!!!
+    // FIXME: check if one exit point could do?
     return NULL;
 }
 
@@ -2329,13 +2314,13 @@ static GString *OWNSHP02 (S57_geo *geo)
 
         /*
         // vector stabilisation (symb place at the end of vector)
-        if (0.0 != S52_MP_get(S52_MAR_VECSTB)) {
+        //if (0.0 != S52_MP_get(S52_MAR_VECSTB)) {
             // ground
-            if (1.0 == S52_MP_get(S52_MAR_VECSTB))
+            //if (1.0 == S52_MP_get(S52_MAR_VECSTB))
                 g_string_append(ownshp02, ";SY(VECGND01)");
 
             // water
-            if (2.0 == S52_MP_get(S52_MAR_VECSTB))
+            //if (2.0 == S52_MP_get(S52_MAR_VECSTB))
                 g_string_append(ownshp02, ";SY(VECWTR01)");
         }
         */
@@ -3224,13 +3209,16 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
     GString *udwhaz03 = NULL;
     int      danger   = FALSE;
 
+    // FIXME: one return and set scamin to default here (intead of callers)
+    // if no set to INFINITY
+
     // first reset trigger scamin
     S57_setScamin(geo, S57_RESET_SCAMIN);
 
     if (depth_value <= S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
         S57_geo *geoTouch = S57_getTouchUDWHAZ(geo);
         if (NULL == geoTouch) {
-            PRINTF("DEBUG: NULL geo _UDWHAZ03/getTouchDEPARE\n");
+            PRINTF("DEBUG: NULL geo _UDWHAZ03/getTouchDEPARE - case where depth_value < S52_MAR_SAFETY_CONTOUR\n");
 
             // debug
             //S57_setHighlight(geo, TRUE);
@@ -3270,7 +3258,8 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
                 danger = TRUE;
             }
         }
-    } else {
+    }
+    else {
         return NULL;  // no danger
     }
 
@@ -3311,6 +3300,8 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
             }
             S57_setScamin(geo, INFINITY);
         }
+        // debug - danger = true, so must be allway visible !?!
+        //S57_setScamin(geo, INFINITY);
     } else {
         return NULL;  // no danger
     }
@@ -3590,6 +3581,7 @@ static GString *WRECKS02 (S57_geo *geo)
         }
     }
 
+    // Note: this call reset scamin
     udwhaz03 = _UDWHAZ03(geo, depth_value);
     quapnt01 = _QUAPNT01(geo);
 
@@ -3747,12 +3739,14 @@ static GString *WRECKS02 (S57_geo *geo)
         }
     }
 
-    //if (NULL != sndfrm02)
     _g_string_free(sndfrm02, TRUE);
-    //if (NULL != udwhaz03)
     _g_string_free(udwhaz03, TRUE);
-    //if (NULL != quapnt01)
     _g_string_free(quapnt01, TRUE);
+
+    // debug - scamin was reset by _UDWHAZ03() but not enabled where it should
+    if (S57_RESET_SCAMIN == S57_getScamin(geo)) {  // will get SCAMIN from attribs if available
+        S57_setScamin(geo, INFINITY);              // else set it by hand
+    }
 
     return wrecks02;
 }
