@@ -36,13 +36,6 @@
 // compiled with -std=gnu99 (or -std=c99 -D_POSIX_C_SOURCE=???) will define M_PI
 #include <math.h>         // sin(), cos(), atan2(), pow(), sqrt(), floor(), fabs(), INFINITY, M_PI
 
-#ifdef S52_USE_BACKTRACE
-// debug - backtrace() static func - test symbol collison
-// Note: will break static var
-//#define static
-#endif
-
-
 // FIXME: for C99
 #ifndef M_PI
 #    define M_PI 3.14159265358979323846
@@ -52,7 +45,6 @@
 ///////////////////////////////////////////////////////////////////
 // state
 static int          _doInit        = TRUE;    // initialize (but GL context --need main loop)
-static int          _ctxValidated  = FALSE;   // validate GL context
 static GPtrArray   *_objPick       = NULL;    // list of object picked
 static GString     *_strPick       = NULL;    // hold temps val
 //static int          _doHighlight   = FALSE;   // TRUE then _objhighlight point to the object to hightlight
@@ -256,9 +248,6 @@ typedef struct { double u, v; } projUV;
 
 //#define SHIPS_OUTLINE_MM    10.0   // 10 mm
 #define SHIPS_OUTLINE_MM     6.0   // 6 mm
-
-// symbol twice as big (see _pushScaletoPixel())
-#define STRETCH_SYM_FAC 2.0
 
 #define NM_METER 1852.0   // (not WGS84)
 
@@ -1820,12 +1809,6 @@ static int       _glCallList(S52_DListData *DListData)
 
             // same fragment param (color/pen_w/trans) but change in MODE
             while (TRUE == S57_getPrimIdx(DListData->prim[i], j, &mode, &first, &count)) {
-
-                // debug: how can this be !?
-                if (NULL == DListData->prim[i]) {
-                    g_assert(0);
-                    continue;
-                }
 
                 if (_TRANSLATE == mode) {
                     GArray *vert = S57_getPrimVertex(DListData->prim[i]);
@@ -3994,7 +3977,6 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
             DListData->crntPalIDX = -1;
         }
 
-        //if (FALSE == glIsBuffer(DList->vboIds[0])) {
         if (0 == DListData->vboIds[0]) {
             GLint slices = sweep/2.0;
             GLint loops  = 1;
@@ -4237,15 +4219,11 @@ static int       _renderAP_NODATA_layer0(void)
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
 
     // turn ON 'sampler2d'
-    //glUniform1f(_uTextOn,       1.0);
-
-    //*
     glUniform1f(_uPattOn,       1.0);
     glUniform1f(_uPattGridX,  pt0.x);
     glUniform1f(_uPattGridY,  pt0.y);
     glUniform1f(_uPattW,     tile_x);
     glUniform1f(_uPattH,     tile_y);
-    //*/
 
     glBindTexture(GL_TEXTURE_2D, _nodata_mask_texID);
 
@@ -4259,16 +4237,12 @@ static int       _renderAP_NODATA_layer0(void)
 
     glBindTexture(GL_TEXTURE_2D,  0);
 
-    //*
+     // turn OFF 'sampler2d'
     glUniform1f(_uPattOn,    0.0);
     glUniform1f(_uPattGridX, 0.0);
     glUniform1f(_uPattGridY, 0.0);
     glUniform1f(_uPattW,     0.0);
     glUniform1f(_uPattH,     0.0);
-    //*/
-
-    // turn OFF 'sampler2d'
-    //glUniform1f(_uTextOn,       0.0);
 
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
@@ -5193,6 +5167,9 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
     return vertex;
 }
 
+#if 0
+/*
+// call _buildSymbDL() insted - handle more than 1 subList since pattern can have many pen_w
 static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
 {
     // 'key' not used
@@ -5265,6 +5242,7 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
         return FALSE;
     }
 
+
 #ifdef S52_USE_OPENGL_VBO
     // using VBO we need to keep some info (mode, first, count)
     DListData->prim[0]   = _parseHPGL(vecObj, DListData->prim[0]);
@@ -5286,6 +5264,8 @@ static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
 
     return 0;
 }
+*/
+#endif  // 0
 
 static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
 {
@@ -5391,7 +5371,8 @@ static GLint     _createSymb(void)
 
     _glMatrixSet(VP_WIN);
 
-    S52_PL_traverse(S52_SMB_PATT, _buildPatternDL);
+    //S52_PL_traverse(S52_SMB_PATT, _buildPatternDL);
+    S52_PL_traverse(S52_SMB_PATT, _buildSymbDL);
     PRINTF("NOTE: PATT symbol finish\n");
 
     S52_PL_traverse(S52_SMB_LINE, _buildSymbDL);
@@ -5809,16 +5790,20 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     // quiet compiler
     (void)user_data;
 
-    /* FIXME: check atomic for each obj
-    // but _atomicAbort is local to S52.c!
-    g_atomic_int_get(&_atomicAbort);
-    if (TRUE == _atomicAbort) {
+    //*
+    int atomicAbort = S52_utils_getAtomicInt();
+    //g_atomic_int_get(&_atomicAbort);
+    if (TRUE == atomicAbort) {
         PRINTF("abort drawing .. \n");
-        _backtrace();
-        g_atomic_int_set(&_atomicAbort, FALSE);
+
+        S52_utils_backtrace();
+
+        S52_utils_setAtomicInt(FALSE);
+        //g_atomic_int_set(&_atomicAbort, FALSE);
+
         return TRUE;
     }
-    */
+    //*/
 
     // set fake color
     if (S52_GL_PICK == _crnt_GL_cycle) {
@@ -7004,6 +6989,7 @@ int        S52_GL_delRaster(S52_GL_ras *raster)
 static int       _validateGLcontext(void)
 // return TRUE if current GL context support S52 rendering
 {
+    static int _ctxValidated = FALSE;   // validate GL context
     if (TRUE == _ctxValidated)
         return TRUE;
     _ctxValidated = TRUE;
