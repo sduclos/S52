@@ -321,6 +321,7 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_SUPP_LINE_OVERLAP    \
                   -DS52_USE_C_AGGR_C_ASSO        \
                   -DS52_USE_DUAL_MON             \
+                  -DS52_USE_CA_ENC               \
                   -DS52_DEBUG $(DBG)
 
 # CFLAGS="-mthumb" CXXFLAGS="-mthumb" LIBS="-lstdc++" ./configure --host=arm-eabi \
@@ -493,12 +494,19 @@ s52eglw32     : libS52.dll   test/s52eglw32
 s52gtk2gps    : libS52.so    test/s52gtk2gps
 
 
+# debug - backtrace with local func name
+# 1 - $nm *.o| grep " t " > local_func.txt
+# 2 - sed -e "s/.*\( .*$\)/\1/" local_func.txt local_func2.txt
+# 3 - sort local_func2.txt | uniq > local_func3.txt
+# 5 - objcopy --globalize-symbols=local_func3.txt $@
+
 S52raz-3.2.rle.o: S52raz.s
 	$(CC) -c S52raz.s -o $@
 
 %.o: %.c *.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
+#objcopy --globalize-symbols=local_func3.txt $@
 S52GL.o: S52GL.c S52GL.h _GL1.i _GL2.i _GLU.i S52.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -525,6 +533,7 @@ libS52gl2.so:  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 	$(CC) -shared  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
 	-ln -sf libS52gl2.so libS52.so
 
+# -Wl,-Map=output.map
 libS52egl.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 	$(CC) -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
 	-ln -sf libS52egl.so libS52.so  # -sf soft link, -P hard link
@@ -693,6 +702,12 @@ doc: S52-$(LIBS52VERS).typelib
 #    make
 #done
 
+# debug gpsd on pointe-noir AIS tlenet
+# sudo service gpsd stop
+# sudo /usr/sbin/gpsd -N -D5 -F /var/run/gpsd.sock tcp://70.28.40.47:5000
+# wake up GPSD
+# telnet 127.0.0.1 2947
+# ?WATCH={"enable":true,"json":true}
 
 # git:
 #   git init (one time)
