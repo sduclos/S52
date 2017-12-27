@@ -31,12 +31,6 @@
 #include <glib.h>
 #include <math.h>           // INFINITY
 
-#ifdef S52_USE_BACKTRACE
-// debug - backtrace() static func - test symbol collison
-// Note: will break static var
-//#define static
-#endif
-
 
 #define S52_COL_NUM   63    // number of color (#64 is transparent)
 #define S52_LUP_NMLN   6    // lookup name lenght
@@ -348,8 +342,12 @@ typedef struct _S52_obj {
 
     _cmdWL      *cmdLorig[2];   // instruction list command (parsed LUP.INST)
 
+    // FIXME: optimisation: will resolve to the same string
+    // Note: RESARE02() call MP S52_MAR_SYMBOLIZED_BND (via _APP_CS == TRUE)
     GString     *CSinst[2];     // expanded (resolved) cond. symb. instruction list
+    //GString     *CSinst;     // expanded (resolved) cond. symb. instruction list
     _cmdWL      *CScmdL[2];     // parsed cond. symb. instruction list command
+    //_cmdWL      *CScmdL;     // parsed cond. symb. instruction list command
 
     // final command list (array):
     // normal command word + those once CS has been resolve and parsed
@@ -1077,7 +1075,7 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
 // also fill the command Array
 {
     // Note: no need to reparse line - obj of type LINE_T have no alternate symbology
-    if (S57_LINES_T==S57_getObjtype(obj->geo) && 1==alt ) {
+    if (1==alt && S57_LINES_T==S57_getObjtype(obj->geo)) {
         return FALSE;
     }
 
@@ -1090,13 +1088,25 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
     _freeCmdList(obj->CScmdL[alt]);
     obj->CScmdL[alt] = NULL;
 
+
     // search list for CS, start building command array
     _cmdWL *cmd = _initCmdA(obj, alt);
     if (NULL == cmd)
         return FALSE;
 
-    /* DEBUG: check that prio of alt 0/1 are the same - assume 0 then 1
-    if (1==alt && FALSE==obj->prioOveride) {  // make sure thi obj new (non initialize)
+    //
+    // CS found, merge cmd list in command array (normal + CS)
+    //
+
+    // ---------------------------------
+    // FIXME: optimisation: do not parse INSTRUCTION (_parseINST()) to relsove the same CS
+    // all but CS RESARE02 (that call S52_MAR_SYMBOLIZED_BND) - so obj->CScmdL[0] must be the same as obj->CScmdL[1]
+    // and when Mariner Param change, then CS must be re-resolve again and will have the same output
+    // FIXME: optimisation - no need for 2 CSinst, will resolve to the same thing
+
+
+    /* debug - OK PLib 3.2 - check that prio of alt 0/1 are the same - assume 0 then 1
+    if (1==alt && FALSE==obj->prioOveride) {  // make sure this obj new (non initialize)
         if (obj->oPrios.DPRI != obj->LUP->prios.DPRI ||
             obj->oPrios.RPRI != obj->LUP->prios.RPRI ||
             obj->oPrios.DISC != obj->LUP->prios.DISC ||
@@ -1105,10 +1115,8 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
             PRINTF("DEBUG: prio mismatch(%s)\n", S57_getName(obj->geo));
             g_assert(0);
         }
-   }
-   */
-
-    // CS found, merge cmd list in command array (normal + CS)
+    }
+    //*/
 
     // override with original LUP prio so that
     // if CS expdand to no OP in this code path
@@ -1120,11 +1128,6 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
     obj->oPrios.RPRI = obj->LUP->prios.RPRI;
     obj->oPrios.DISC = obj->LUP->prios.DISC;
     obj->oPrios.LUCM = obj->LUP->prios.LUCM;
-
-    //
-    // FIXME: optimisation: do not parse INSTRUCTION (_parseINST()) to relsove the same CS
-    // but CS call S52_MAR_SYMBOLIZED_BND in RESARE02 - so obj->CScmdL[0] must be the same as obj->CScmdL[1]
-    // and when Mariner Param change then CS must be re-resolve again
 
     // expand CS
     S52_CS_cb CScb = cmd->cmd.CS->CScb;
@@ -1173,6 +1176,16 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
         g_assert(0);
         return FALSE;
     }
+
+    /* FIXME: optimisation
+    {   // debug - same CS resolve to same cmdL
+        static guint S57ID = 0;
+        if (S57ID == S57_getS57ID(obj->geo)) {
+            g_assert(0==g_strcmp0(obj->CSinst[0]->str, obj->CSinst[1]->str));
+        }
+        S57ID = S57_getS57ID(obj->geo);
+    }
+    */
 
     // jump over this CS cmd
     cmd = cmd->next;
@@ -1256,16 +1269,10 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
 //
 // return number of color/pen_w/trans switch - number of sub-list in DList (VBO)
 {
-    // paranoia
-    return_if_null(str);
-    return_if_null(colRef);
-    return_if_null(colors);
-
-    int  nList = 0;   // number sub-list/sub-vector
-
     int  idx   = 0;   // pos in 'str'
 
-    int newSub = FALSE;
+    int subListNew = FALSE;
+    int subListNum = 0;     // number sub-list/sub-vector
 
     // descriptor
     struct {
@@ -1273,13 +1280,13 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
         char  ccolor;
         char  cpen_w;
         char  ctrans;
-    } desc = {0,0,'1','0'};
+    } desc = {0, 0, '1', '0'};
 
     // debug - Plib specific (not HPGL)
     if (S52_VC_SP!=*str && S52_VC__P!=*(str+1)) {
         PRINTF("DEBUG: color command is not the very first one\n");
         g_assert(0);
-        return nList;
+        return subListNum;
     }
 
     while ('\0' != str[idx]) {
@@ -1296,7 +1303,7 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
                 if (0 == desc.newIdx)
                     desc.newIdx = idx;
 
-                newSub = TRUE;
+                subListNew  = TRUE;
                 desc.ccolor = *c3;
             }
 
@@ -1318,7 +1325,7 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
                 if (0 == desc.newIdx)
                     desc.newIdx = idx;
 
-                newSub = TRUE;
+                subListNew  = TRUE;
                 desc.cpen_w = *c3;
             }
 
@@ -1338,7 +1345,7 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
                 if (0 == desc.newIdx)
                     desc.newIdx = idx;
 
-                newSub = TRUE;
+                subListNew  = TRUE;
                 desc.ctrans = *c3;
             }
 
@@ -1365,11 +1372,9 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
             continue;
         }
 
-        if (TRUE == newSub) {
+        if (TRUE == subListNew) {
             // copy the S52_Color struct (A <-- B)
             *colors = *_parseCol(desc.ccolor, colRef);
-            //colors->pen_w = desc.cpen_w;
-            //colors->trans = desc.ctrans;
             colors->fragAtt.pen_w = desc.cpen_w;
             colors->fragAtt.trans = desc.ctrans;
 
@@ -1378,9 +1383,9 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
             str[desc.newIdx] = S52_VC_NEW;
             desc.newIdx = 0;
 
-            ++nList;
+            ++subListNum;
 
-            newSub = FALSE;
+            subListNew = FALSE;
         }
 
         // advance to begining of next command (or '\0')
@@ -1396,12 +1401,12 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
     // FIXME: is a dynamic structure needed to prevent this!
     // Note that this will occure immediatly at start-up
     // and only if a home-made PLib is used.
-    if (MAX_SUBLIST < nList) {
+    if (MAX_SUBLIST < subListNum) {
         PRINTF("ERROR: buffer overflow about to occur\n");
         g_assert(0);
         return 0;
     }
-    if (0 == nList) {
+    if (0 == subListNum) {
         PRINTF("ERROR: no list\n");
         g_assert(0);
         return 0;
@@ -1413,7 +1418,7 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
         return 0;
     }
 
-    return nList;
+    return subListNum;
 }
 
 static int        _parseLBID(_PL *fp)
@@ -2820,7 +2825,7 @@ S52_Color  *S52_PL_getColor(const char *colorName)
         return _getColorAt(i-1);
     }
 
-    PRINTF("ERROR: no color name: %s\n", colorName);
+    PRINTF("ERROR: no color name match: %s\n", colorName);
     g_assert(0);
 
     return NULL;
@@ -2869,12 +2874,15 @@ static int        _linkLUP(_S52_obj *obj, int alt)
     } else {
         PRINTF("WARNING: defaulting to QUESMRK1, no LUP found for object name: %s\n", objName);
 
+        // ----------------------------------------------------------
         // debug - show more info about missing LUP for S57 object
         if (0 != g_strcmp0(objName, "NEWOBJ")) {
             S57_dumpData(obj->geo, FALSE);
         } else {
+            // Note: NEWOBJ must have SYMINS att command word
             GString *syminsstr = S57_getAttVal(obj->geo, "SYMINS");
             PRINTF("FIXME: object name: %s SYMINS:%s\n", objName, syminsstr->str);
+
             /*
             S57data.c:1525 in S57_dumpData(): NAME  : NEWOBJ
             S57data.c:1526 in S57_dumpData(): S57ID : 59
@@ -2900,6 +2908,7 @@ static int        _linkLUP(_S52_obj *obj, int alt)
             S57data.c:1515 in _printAttVal(): SYMINS: SY(BRTHNO01);TE('%s','OBJNAM',2,1,2,'15110',4,-1,CHMGD,29)
             */
         }
+        // ----------------------------------------------------------
 
         // setup default for missing
         obj->LUP = (_LUP*)g_tree_lookup(tbl, (gpointer*)DEFOBJ);
@@ -3043,10 +3052,11 @@ S57_geo    *S52_PL_delObj(_S52_obj *obj, gboolean nilAuxInfo)
     obj->CSinst[0] = NULL;
     obj->CSinst[1] = NULL;
 
-    if (obj->cmdAfinal[0]) g_array_free(obj->cmdAfinal[0], TRUE);
-    if (obj->cmdAfinal[1]) g_array_free(obj->cmdAfinal[1], TRUE);
+    if (NULL != obj->cmdAfinal[0]) g_array_free(obj->cmdAfinal[0], TRUE);
+    if (NULL != obj->cmdAfinal[1]) g_array_free(obj->cmdAfinal[1], TRUE);
     obj->cmdAfinal[0] = NULL;
     obj->cmdAfinal[1] = NULL;
+
     obj->crntA        = NULL;
     obj->crntAidx     = 0;
 
@@ -3252,7 +3262,7 @@ static int        _getAlt(_S52_obj *obj)
     if ((S57_POINT_T==S57_getObjtype(obj->geo)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMPLIFIED_PNT)))
         alt = 1;
 
-    // use alternate area symbol
+    // use alternate area boundary symbol
     if ((S57_AREAS_T==S57_getObjtype(obj->geo)) && (FALSE==(int) S52_MP_get(S52_MAR_SYMBOLIZED_BND)))
         alt = 1;
 
@@ -3322,7 +3332,7 @@ S52_CmdWrd  S52_PL_getCmdNext(_S52_obj *obj)
     return S52_CMD_NONE;
 }
 
-_cmdWL           *_getCrntCmd(_S52_obj *obj)
+static _cmdWL    *_getCrntCmd(_S52_obj *obj)
 {
     if (NULL == obj->crntA) {
         PRINTF("WARNING: internal inconsistency\n");
@@ -3844,9 +3854,6 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
         S52_Color *cList = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->colors: cmd->cmd.def->DListData.colors;
 
         S52_Color *colhigh = S52_PL_getColor("DNGHL");
-        //guint      nbr     = 0;     // number of color in list
-        //S52_Color *cList   = NULL;  // list of color
-        //_getDListParam(cmd, &nbr, &cList);
 
         if (S52_CMD_ARE_CO == cmd->cmdWord)
             cmd->cmd.DListData->crntPalIDX = -1;      // init
@@ -3859,21 +3866,7 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
             cList[i].B = colhigh->B;
         }
         return (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData : &cmd->cmd.def->DListData;
-
     }
-    //else {
-
-    /* same palette
-    if (S52_CMD_ARE_CO == cmd->cmdWord) {
-        //if ((NULL!=cmd->cmd.DListData) && (cmd->cmd.DListData->crntPalIDX==(int)S52_MP_get(S52_MAR_COLOR_PALETTE))) {
-        if (cmd->cmd.DListData->crntPalIDX == (int)S52_MP_get(S52_MAR_COLOR_PALETTE)) {
-            return cmd->cmd.DListData;
-        }
-    } else {
-        if (cmd->cmd.def->DListData.crntPalIDX == (int)S52_MP_get(S52_MAR_COLOR_PALETTE))
-            return &cmd->cmd.def->DListData;
-    }
-    */
 
     // same palette
     int crntPalIDX = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->crntPalIDX : cmd->cmd.def->DListData.crntPalIDX;
@@ -3882,78 +3875,26 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
     }
 
     // palette change - update new RGB
-    //guint      nbr   = 0;
-    //S52_Color *cList = NULL;
-    //_getDListParam(cmd, &nbr, &cList);
     guint      nbr   = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->nbr   : cmd->cmd.def->DListData.nbr;
     S52_Color *cList = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->colors: cmd->cmd.def->DListData.colors;
 
     if (S52_CMD_ARE_CO == cmd->cmdWord) {
-        // no need to init DList for light sector
-        //if (NULL == cmd->cmd.DListData) {
-            //PRINTF("DEBUG: no DListData in cmd\n");
-        //    return NULL;
-        //}
-
-        //nbr = cmd->cmd.DListData->nbr;
-        //c   = cmd->cmd.DListData->colors;
         cmd->cmd.DListData->crntPalIDX = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
     } else {
-        // debug
-        //if (NULL == cmd->cmd.def) {
-        //    PRINTF("DEBUG: no DListData in cmd.def\n");
-        //    g_assert(0);
-        //}
-        //nbr = cmd->cmd.def->DListData.nbr;
-        //c   = cmd->cmd.def->DListData.colors;
         cmd->cmd.def->DListData.crntPalIDX = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
     }
 
-    /* debug - trying to nail a curious bug
-    if (MAX_SUBLIST < nbr) {
-        PRINTF("ERROR: color index out of bound\n");
-        g_assert(0);
-        return NULL;
-    }
-    */
-
     for (guint i=0; i<nbr; ++i) {
-        /*
-        if (TRUE == S57_getHighlight(obj->geo)) {
-            S52_Color *colhigh = S52_PL_getColor("DNGHL");
-            //c[i] = *colhigh;
-            c[i].R = colhigh->R;
-            c[i].G = colhigh->G;
-            c[i].B = colhigh->B;
-        }
-        else
-        */
-        {
-            // this will also copy the 'cidx/trans/pen_w' from the color table
-            //c[i] = *col;
+        // this will also copy the 'cidx/trans/pen_w' from the color table
+        //c[i] = *col;
 
-            S52_Color *col = _getColorAt(cList[i].fragAtt.cidx);
-            cList[i].R = col->R;
-            cList[i].G = col->G;
-            cList[i].B = col->B;
-
-            /* debug - should be the same
-            if (c[i].cidx != cidx) {
-                PRINTF("ERROR: color index mismatch\n");
-                g_assert(0);
-                return NULL;
-            }
-            */
-        }
+        S52_Color *col = _getColorAt(cList[i].fragAtt.cidx);
+        cList[i].R = col->R;
+        cList[i].G = col->G;
+        cList[i].B = col->B;
     }
-
-    //if (S52_CMD_ARE_CO == cmd->cmdWord)
-    //    return  cmd->cmd.DListData;
-    //else
-    //    return &cmd->cmd.def->DListData;
 
     return (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData : &cmd->cmd.def->DListData;
-
 }
 
 S52_vec    *S52_PL_initVOCmd(_S52_symDef *def)
@@ -4788,7 +4729,7 @@ const char *S52_PL_getPalTableNm(unsigned int idx)
         _colTable *ct  = NULL;
         if (idx > _colTables->len-1) {
             // failsafe --select active one
-            idx = (int) S52_MP_get(S52_MAR_COLOR_PALETTE);
+            idx = (unsigned int) S52_MP_get(S52_MAR_COLOR_PALETTE);
             PRINTF("ERROR: unknown colors table\n");
             g_assert(0);
         }
