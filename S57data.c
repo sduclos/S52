@@ -26,13 +26,6 @@
 
 #include <math.h>       // INFINITY, nearbyint()
 
-#ifdef S52_USE_BACKTRACE
-// debug - backtrace() static func - test symbol collison
-// Note: will break static var
-//#define static
-#endif
-
-
 #ifdef S52_USE_PROJ
 static projPJ      _pjsrc   = NULL;   // projection source
 static projPJ      _pjdst   = NULL;   // projection destination
@@ -77,7 +70,7 @@ typedef struct _S57_prim {
 #define S57_GEO_NM_LN   13   // GDAL/OGR primitive max name length: "ConnectedNode"
 typedef struct _S57_geo {
     guint        S57ID;          // record ID / S52ObjectHandle use as index in S52_obj GPtrArray
-                                 // Note: must be the first member for S57GETS57ID(GEO)
+                                 // Note: must be the first member for S57_getS57ID(geo)
 
     //guint        s52objID;     // optimisation: numeric value of OBCL string
 
@@ -185,7 +178,14 @@ static GString *_attList = NULL;
 //#define S57_GEO_TOLERANCE 0.00000001   // *60*60 = .000036'; * 1852 = 0.06667 meter     _simplifyGEO(): CA27904A.000 (Gulf): CTNARE:4814 poly reduction:  8%  1302 (15064	->	13762)
 #define S57_GEO_TOL_LINES 0.000001
 
-int           _initPROJ()
+// when check for Z0=Z1=Z2
+//S57data.c:544 in _simplifyGEO(): CTNARE:4814 poly reduction: 0 (no reduction)
+// Z0=Z2
+//S57data.c:538 in _simplifyGEO(): DEBUG: CTNARE:4814 poly reduction: 12683 	(15064	->	2381)
+// no Z check
+//S57data.c:542 in _simplifyGEO(): DEBUG: CTNARE:4814 poly reduction: 12683 	(15064	->	2381)
+
+static int    _initPROJ()
 // Note: corrected for PROJ 4.6.0 ("datum=WGS84")
 {
     if (FALSE == _doInit)
@@ -435,19 +435,18 @@ static guint  _delInLineSeg(guint npt, double *ppt)
     guint j = npt;
     for (guint i=0; i<(npt-2); ++i) {
 
-        // don't lose Z  S57_OVERLAP_GEO_Z (and Z_CLIP_PLANE (S57_OVERLAP_GEO_Z - 1))
-        if (p[1].z != p[2].z) {
-            ++p;
-            continue;
-        }
-
-        // remove p[1]
-        if (TRUE == _inLine(p[0], p[1], p[2])) {
-            // A--B--C,       3-0-2=1
-            // 0--A--B--C,    4-1-2=1
-            // 0--A--B--C--0, 5-1-2=2
-            memmove(&p[1], &p[2], sizeof(pt3) * (npt - i - 2));
-            --j;
+        //if (p[0].z == p[1].z == p[2].z) {
+        if (p[0].z == p[2].z) {
+            // remove p[1]
+            if (TRUE == _inLine(p[0], p[1], p[2])) {
+                // A--B--C,       3-0-2=1
+                // 0--A--B--C,    4-1-2=1
+                // 0--A--B--C--0, 5-1-2=2
+                memmove(&p[1], &p[2], sizeof(pt3) * (npt - i - 2));
+                --j;
+            } else {
+                ++p;
+            }
         } else {
             ++p;
         }
@@ -666,6 +665,7 @@ S57_geo   *S57_setPOINT(geocoord *xyz)
 {
     return_if_null(xyz);
 
+    // FIXME: use g_slice()
     _S57_geo *geo = g_new0(_S57_geo, 1);
     //_S57_geo *geo = g_try_new0(_S57_geo, 1);
     if (NULL == geo)
@@ -709,6 +709,7 @@ S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
     // Edge might have 0 node
     //return_if_null(xyz);
 
+    // FIXME: use g_slice()
     _S57_geo *geo = g_new0(_S57_geo, 1);
     //_S57_geo *geo = g_try_new0(_S57_geo, 1);
     if (NULL == geo)
@@ -739,6 +740,7 @@ S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
 //*
 S57_geo   *S57_setMLINE(guint nLineCount, guint *linexyznbr, geocoord **linexyz)
 {
+    // FIXME: use g_slice()
     _S57_geo *geo = g_new0(_S57_geo, 1);
     //_S57_geo *geo = g_try_new0(_S57_geo, 1);
     if (NULL == geo)
@@ -765,6 +767,7 @@ S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
     return_if_null(ringxyznbr);
     return_if_null(ringxyz);
 
+    // FIXME: use g_slice()
     _S57_geo *geo = g_new0(_S57_geo, 1);
     //_S57_geo *geo = g_try_new0(_S57_geo, 1);
     if (NULL == geo)
@@ -799,6 +802,7 @@ S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
 
 S57_geo   *S57_set_META(void)
 {
+    // FIXME: use g_slice()
     _S57_geo *geo = g_new0(_S57_geo, 1);
     //_S57_geo *geo = g_try_new0(_S57_geo, 1);
     if (NULL == geo)
