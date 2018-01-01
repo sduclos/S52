@@ -8,19 +8,24 @@ static int      _s52_setupMarPar(void)
     //* ECDIS_check-Instructions_for_Mariners.pdf
     //Display STANDARD, 4 colour, Display Text, Symbolised Boundaries,
     //Safety Contour: 10 metres, Safety Depth: 10 metres, Shallow Contour 2 metres, Deep Contour: 20 metres
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR, 10.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,   10.0);  // sounding color
-    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
-    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   20.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR, 10.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,   10.0);  // sounding color
+    //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
+    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   20.0);
     //*/
 
-    /* S-64
+    //* S-64
     // Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR, 10.0);
     S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
 
     S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    4.0);  // sounding color
+
+    // S-44 2.1.1
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  8.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    8.0);  // sounding color
 
     // Symbolized boundaries, Simplified symbols, Multicolour
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND,  1.0);
