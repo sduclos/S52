@@ -902,7 +902,7 @@ DLL S52ObjectHandle STD S52_newOWNSHP(const char *label);
 // --- Vector, Dimension, ... of OWNSHP and VESSEL object -------------------
 
 /**
- * S52_setDimension:
+ * S52_setDimension: OWNSHP & VESSEL
  * @objH: (in) (transfer none): addressed S52ObjectHandle
  * @a:    (in): dist form foward
  * @b:    (in): dist from aft       (a + b = length)
@@ -977,7 +977,7 @@ DLL S52ObjectHandle STD S52_pushPosition(S52ObjectHandle objH, double latitude, 
 DLL S52ObjectHandle STD S52_newVESSEL(int vesrce, const char *label);
 
 /**
- * S52_setVESSELlabel:
+ * S52_setVESSELlabel: OWNSHP & VESSEL
  * @objH:     (in) (transfer none): addressed S52ObjectHandle
  * @newLabel: (in) (allow-none)   : NULL or a string
  *
