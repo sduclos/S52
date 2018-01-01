@@ -5396,17 +5396,6 @@ int        S52_GL_isSupp(S52_obj *obj)
 // TRUE if display of object is suppressed
 // also collect stat
 {
-    // debug
-    //if (0 == g_strcmp0("M_COVR", S52_PL_getOBCL(obj))) {
-    //    PRINTF("DEBUG: M_COVR FOUND\n");
-    //}
-    //if (0 == g_strcmp0("m_covr", S52_PL_getOBCL(obj))) {
-    //    PRINTF("DEBUG: m_covr FOUND\n");
-    //}
-    //if (0 == g_strcmp0("sclbdy", S52_PL_getOBCL(obj))) {
-    //    PRINTF("DEBUG: sclbdy FOUND\n");
-    //}
-
     // debug: some HO set a scamin on DISPLAYBASE obj!?
     // Note: obj on BASE can't be set to OFF
     if (DISPLAYBASE == S52_PL_getDISC(obj)) {
@@ -5418,10 +5407,10 @@ int        S52_GL_isSupp(S52_obj *obj)
         return TRUE;
     }
 
-    // SCAMIN ON > 0
-    if (FALSE != (int) S52_MP_get(S52_MAR_SCAMIN)) {
+    // SCAMIN ON apply filter
+    if (TRUE == (int) S52_MP_get(S52_MAR_SCAMIN)) {
         S57_geo *geo  = S52_PL_getGeo(obj);
-        double scamin = S57_getScamin(geo);
+        double scamin = S57_getScamin(geo);  // will fetch attribs scamin if RESET'ed
 
         if (scamin < _SCAMIN) {
             ++_oclip;
@@ -5429,14 +5418,7 @@ int        S52_GL_isSupp(S52_obj *obj)
         }
     }
 
-    /* debug - when debug (S52_MAR_SCAMIN is OFF) suppress display where scamin is in reset state
-    else {
-        if (S57_RESET_SCAMIN == S57_getScamin(S52_PL_getGeo(obj))) {
-            return TRUE;
-        }
-    }
-    */
-    return FALSE;
+    return FALSE;  // SCAMIN OFF - no suppression
 }
 
 int        S52_GL_isOFFview(S52_obj *obj)
