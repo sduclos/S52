@@ -842,7 +842,7 @@ static _LUP      *_lookUpLUP(_LUP *LUPlist, S57_geo *geo)
                         //g_assert(0);
 
                     } else {
-                        // value check
+                        // value check - no need to handle UTF with g_strstr
                         char *tmpVal = strstr(attv->str, attLV+6);
                         // must match *exacly*
                         // so '4,3,4' match '4,3,4,7' but not 3,4,3 (4,3 match)
