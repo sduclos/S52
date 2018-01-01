@@ -104,9 +104,7 @@ typedef struct _S57_geo {
     S57_prim    *prim;
 
     // scamin overide attribs val
-    double       scamin;      // 0.0 - init needed
-                              // -1.0 - RESET_SCAMIN val resetted by CS DEPCNT02, _UDWHAZ03 (via OBSTRN04, WRECKS02)
-                              // XX  - normal value from CS/attVal
+    double       scamin;      // 0.0 - S57_RESET_SCAMIN val resetted by CS DEPCNT02, _UDWHAZ03 (via OBSTRN04, WRECKS02)
 
     // FIXME: SCAMAX
     // FIXME:
@@ -680,8 +678,7 @@ S57_geo   *S57_setPOINT(geocoord *xyz)
     geo->ext.E    = -INFINITY;
     geo->ext.N    = -INFINITY;
 
-    //geo->scamin   =  INFINITY;
-    geo->scamin   =  0.0;
+    geo->scamin   =  S57_RESET_SCAMIN;
 
 #ifdef S52_USE_WORLD
     geo->nextPoly = NULL;
@@ -725,8 +722,7 @@ S57_geo   *S57_setLINES(guint xyznbr, geocoord *xyz)
     geo->ext.E      = -INFINITY;
     geo->ext.N      = -INFINITY;
 
-    //geo->scamin     =  INFINITY;
-    geo->scamin     =  0.0;
+    geo->scamin     =  S57_RESET_SCAMIN;
 
 
 #ifdef S52_USE_WORLD
@@ -784,8 +780,7 @@ S57_geo   *S57_setAREAS(guint ringnbr, guint *ringxyznbr, geocoord **ringxyz)
     geo->ext.E      = -INFINITY;
     geo->ext.N      = -INFINITY;
 
-    //geo->scamin     =  INFINITY;
-    geo->scamin     =  0.0;
+    geo->scamin     =  S57_RESET_SCAMIN;
 
 #ifdef S52_USE_WORLD
     geo->nextPoly   = NULL;
@@ -816,8 +811,7 @@ S57_geo   *S57_set_META(void)
     geo->ext.E  = -INFINITY;
     geo->ext.N  = -INFINITY;
 
-    //geo->scamin =  INFINITY;
-    geo->scamin =  0.0;
+    geo->scamin =  S57_RESET_SCAMIN;
 
 #ifdef S52_USE_WORLD
     geo->nextPoly = NULL;
@@ -1719,39 +1713,16 @@ double     S57_getScamin(_S57_geo *geo)
     // test useless since the only caller allready did that
     //return_if_null(geo);
 
-    // 0 - init, -1 - S57_RESET_SCAMIN: when debug (S52_MAR_SCAMIN is OFF) AP(FOULAR01) doesn't show
-    if (0.0==geo->scamin || S57_RESET_SCAMIN==geo->scamin) {
+    if (S57_RESET_SCAMIN == geo->scamin) {
         GString *valstr = S57_getAttVal(geo, "SCAMIN");
-        if (NULL == valstr) {
-            // allway visible, except if scamin=-1 set by DEPCNT02 and _UDWHAZ03 (via OBSTRN04, WRECKS02)
-            if (S57_RESET_SCAMIN != geo->scamin)
-                geo->scamin = INFINITY;
-        } else {
-            geo->scamin = S52_atof(valstr->str);
-        }
+        geo->scamin = (NULL == valstr) ? INFINITY : S52_atof(valstr->str);
     }
 
-    return geo->scamin;
-}
-
-#if 0
-double     S57_resetScamin(_S57_geo *geo)
-// reset scamin from att val
-{
-    // test useless since the only caller allready did that
-    //return_if_null(geo);
-
-    GString *valstr = S57_getAttVal(geo, "SCAMIN");
-
-    //double val = (NULL==valstr) ? INFINITY : S52_atof(valstr->str);
-    //double val = (NULL==valstr) ? UNKNOWN : S52_atof(valstr->str);
-    double val = (NULL==valstr) ? 0.0 : S52_atof(valstr->str);
-
-    geo->scamin = val;
+    // debug - parano, attribs scamin can't be 0
+    g_assert(0.0 != geo->scamin);
 
     return geo->scamin;
 }
-#endif  // 0
 
 #ifdef S52_USE_C_AGGR_C_ASSO
 int        S57_setRelationship(_S57_geo *geo, _S57_geo *geoRel)
@@ -1849,6 +1820,17 @@ int        S57_dumpData(_S57_geo *geo, int dumpCoords)
     return TRUE;
 }
 
+#ifdef S52_DEBUG
+guint      S57_getS57ID(_S57_geo *geo)
+// get the first field of S57_geo
+{
+    return_if_null(geo);
+
+//    return  geo->S57ID;
+    return (*(guint *)geo);
+}
+#endif  // S52_DEBUG
+
 static void   _getAtt(GQuark key_id, gpointer data, gpointer user_data)
 {
 
@@ -1929,12 +1911,6 @@ S57_geo   *S57_delNextPoly(_S57_geo *geo)
     return NULL;
 }
 #endif
-
-//guint      S57_getS57ID(_S57_geo *geo)
-//{
-//    return_if_null(geo);
-//    return  geo->S57ID;
-//}
 
 gboolean   S57_isPtInArea(_S57_geo *geo, double x, double y)
 // return TRUE if (x,y) inside geo area (close/open) else FALSE
