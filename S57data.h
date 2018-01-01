@@ -36,7 +36,8 @@
 #define S57_CELL_NAME_MAX_LEN 8  // cell name maximum lenght
 #define S57_OBJ_ATT_LEN       6  // attribute name lenght
 
-#define S57_RESET_SCAMIN     -1.0
+//#define S57_RESET_SCAMIN     -1.0
+#define S57_RESET_SCAMIN     0.0
 
 // push Z in geo - use as a clip plane for LS() and LC()
 #define S57_OVERLAP_GEO_Z   10.0
@@ -199,9 +200,12 @@ S57_geo  *S57_getRelationship(S57_geo *geo);
 // debug
 int       S57_dumpData(S57_geo *geo, int dumpCoords);
 
-#define   S57GETS57ID(GEO)    (*(guint *)GEO)
-#define   S57_getS57ID(geo) S57GETS57ID(geo)
-//guint     S57_getS57ID(S57_geo *geo);
+// get the first field of S57_geo
+#ifdef S52_DEBUG
+guint     S57_getS57ID(S57_geo *geo);
+#else
+#define   S57_getS57ID(geo) (*(guint *)geo)
+#endif  // S52_DEBUG
 
 #ifdef S52_USE_PROJ
 #include <proj_api.h>   // projXY, projUV, projPJ
