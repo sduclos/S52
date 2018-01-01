@@ -943,15 +943,6 @@ static GString *DEPCNT02 (S57_geo *geo)
 
     // DEPARE (line)
     if (0 == g_strcmp0(S57_getName(geo), "DEPARE")) {  // only DEPARE:L call CS(DEPCNT02)
-
-        // debug - DEPARE:3653
-        if (3653 == S57_getS57ID(geo)) {
-            PRINTF("DEBUG: line DEPARE:%u found\n", S57_getS57ID(geo));
-            //PRINTF("DEBUG: line DEPCNT:%u found\n", S57_getS57ID(geo));
-            //g_assert(0);
-            //S57_setHighlight(candidate, TRUE);
-        }
-
         // Note: if drval1 not given then set it to 0.0 (ie. LOW WATER LINE as FAIL-SAFE)
         GString *drval1str = S57_getAttVal(geo, "DRVAL1");
         double   drval1    = (NULL == drval1str) ? 0.0    : S52_atof(drval1str->str);
@@ -979,7 +970,7 @@ static GString *DEPCNT02 (S57_geo *geo)
         // adjuste datum
         valdco += S52_MP_get(S52_MAR_DATUM_OFFSET);
 
-        if (valdco == S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
+       if (valdco == S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
             safety_contour = TRUE;
         } else {
             if (valdco > S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
@@ -1931,22 +1922,7 @@ static GString *OBSTRN04 (S57_geo *geo)
         }
     }
 
-    // Note: this call reset scamin
     udwhaz03 = _UDWHAZ03(geo, depth_value);
-
-    // FIXME: if reset scamin then all other commad will be skipped
-    // FIX: set scamin right after the _UDWHAZ call
-    //S57_setScamin(geo, INFINITY);
-    if (S57_RESET_SCAMIN == S57_getScamin(geo)) {  // will get SCAMIN from attribs if available
-        S57_setScamin(geo, INFINITY);              // else set it by hand
-    }
-    // FIXME: check IHO ECDIS_check AA5TDS05.000:OBSTRN:L:47 ISODGR on vertical dotted line
-    /* FIX: no ISODGR in shallow in 3.2
-    if (47 == S57_getS57ID(geo)) {
-        PRINTF("DEBUG: 47 found\n");
-        //g_assert(0);
-    }
-    */
 
     if (S57_POINT_T == S57_getObjtype(geo)) {
         // Continuation A
@@ -2116,10 +2092,8 @@ static GString *OBSTRN04 (S57_geo *geo)
             // Continuation C (AREAS_T)
             GString *quapnt01 = _QUAPNT01(geo);
 
-            // FIXME: chenzunfeng note that if NULL!=udwhaz03 doesn't meen to show FOULAR01
-            // FIX: scan str for ISODGR or alternatively check if _UDWHAZ03 set scamin
-            //if (NULL != udwhaz03)  {
-            if ((NULL!=udwhaz03) && (INFINITY==S57_getScamin(geo))) {
+            // FIX: chenzunfeng note that if NULL!=udwhaz03 doesn't meen to show FOULAR01
+            if ((NULL!=udwhaz03) && (NULL!=strstr(udwhaz03->str, "ISODGR"))) {
                 g_string_append(obstrn04, ";AC(DEPVS);AP(FOULAR01)");
                 g_string_append(obstrn04, ";LS(DOTT,2,CHBLK)");
                 g_string_append(obstrn04, udwhaz03->str);
@@ -2206,7 +2180,7 @@ static GString *OBSTRN04 (S57_geo *geo)
         }
     }
 
-    // FIXME: check if one exit point could do?
+    // FIXME: check if one exit point could do? or goto exit !
     return NULL;
 }
 
@@ -3209,9 +3183,6 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
     GString *udwhaz03 = NULL;
     int      danger   = FALSE;
 
-    // FIXME: one return and set scamin to default here (intead of callers)
-    // if no set to INFINITY
-
     // first reset trigger scamin
     S57_setScamin(geo, S57_RESET_SCAMIN);
 
@@ -3224,8 +3195,8 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
             //S57_setHighlight(geo, TRUE);
             //S57_setScamin(geo, INFINITY);
 
-            // no need to process further - bailout
-            return NULL;  // no danger
+            // no danger - no need to process further - bailout
+            return NULL;
         }
 
         // DEPARE:L
@@ -3258,8 +3229,7 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
                 danger = TRUE;
             }
         }
-    }
-    else {
+    } else {
         return NULL;  // no danger
     }
 
@@ -3300,10 +3270,9 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
             }
             S57_setScamin(geo, INFINITY);
         }
+
         // debug - danger = true, so must be allway visible !?!
         //S57_setScamin(geo, INFINITY);
-    } else {
-        return NULL;  // no danger
     }
 
     return udwhaz03;
@@ -3581,16 +3550,12 @@ static GString *WRECKS02 (S57_geo *geo)
         }
     }
 
-    // Note: this call reset scamin
     udwhaz03 = _UDWHAZ03(geo, depth_value);
     quapnt01 = _QUAPNT01(geo);
 
     if (S57_POINT_T == S57_getObjtype(geo)) {
-        // FIXME: chenzunfeng note that if NULL!=udwhaz03 doesn't meen to show FOULAR01
-        // FIX: scan str for ISODGR or alternatively check if _UDWHAZ03 set scamin
-        //if (NULL != udwhaz03)  {
-        if ((NULL!=udwhaz03) && (INFINITY==S57_getScamin(geo))) {
-        //if (NULL != udwhaz03) {
+        // FIX: chenzunfeng note that if NULL!=udwhaz03 doesn't meen to show FOULAR01
+        if ((NULL!=udwhaz03) && (NULL!=strstr(udwhaz03->str, "ISODGR"))) {
             wrecks02 = _g_string_new(wrecks02, udwhaz03->str);
 
             if (NULL != quapnt01)
@@ -3742,11 +3707,6 @@ static GString *WRECKS02 (S57_geo *geo)
     _g_string_free(sndfrm02, TRUE);
     _g_string_free(udwhaz03, TRUE);
     _g_string_free(quapnt01, TRUE);
-
-    // debug - scamin was reset by _UDWHAZ03() but not enabled where it should
-    if (S57_RESET_SCAMIN == S57_getScamin(geo)) {  // will get SCAMIN from attribs if available
-        S57_setScamin(geo, INFINITY);              // else set it by hand
-    }
 
     return wrecks02;
 }
