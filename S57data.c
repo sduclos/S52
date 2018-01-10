@@ -854,7 +854,7 @@ guint      S57_getRingNbr(_S57_geo *geo)
     return_if_null(geo);
 
     // since this is used with S57_getGeoData
-    // META object don't need to be projected for rendering
+    // META object don't need to be projected for rendering (pick do)
     switch (geo->objType) {
         case S57_POINT_T:
         case S57_LINES_T:
@@ -872,15 +872,15 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
 {
     return_if_null(geo);
 
-    if  (S57_AREAS_T==geo->objType && geo->ringnbr<ringNo) {
-        PRINTF("WARNING: invalid ring number requested! \n");
+    if  (S57_AREAS_T==geo->objType && ringNo>=geo->ringnbr) {
+        PRINTF("WARNING: invalid ring no requested! \n");
         *npt = 0;
+        *ppt = NULL;
         g_assert(0);
         return FALSE;
     }
 
     switch (geo->objType) {
-        case S57__META_T: *npt = 0; break;        // meta geo stuff (ex: C_AGGR)
 
         case S57_POINT_T:
             if (NULL != geo->pointxyz) {
@@ -888,6 +888,7 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
                 *ppt = geo->pointxyz;
             } else {
                 *npt = 0;
+                *ppt = NULL;
             }
             break;
 
@@ -897,6 +898,7 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
                 *ppt = geo->linexyz;
             } else {
                 *npt = 0;
+                *ppt = NULL;
             }
             break;
 
@@ -906,6 +908,7 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
                 *ppt = geo->ringxyz[ringNo];
             } else {
                 *npt = 0;
+                *ppt = NULL;
             }
 
             // debug
@@ -913,6 +916,12 @@ int        S57_getGeoData(_S57_geo *geo, guint ringNo, guint *npt, double **ppt)
             //    PRINTF("DEBUG: AREA_T ringnbr:%i only exterior ring used\n", geodata->ringnbr);
             //}
             break;
+
+        case S57__META_T:
+            *npt = 0;
+            *ppt = NULL;
+            break;        // meta geo stuff (ex: C_AGGR)
+
         default:
             PRINTF("ERROR: object type invalid (%i)\n", geo->objType);
             g_assert(0);
@@ -1984,16 +1993,17 @@ gboolean   S57_isPtInSet(_S57_geo *geo, double x, double y)
 {
     //return_if_null(geo);
 
-    guint   npt;
-    double *ppt;
+    guint nr = S57_getRingNbr(geo);
+    for (guint i=0; i<nr; ++i) {
+        guint   npt;
+        double *ppt;
 
-    // test overkill ?
-    if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
-        return FALSE;
-
-    for (guint i=0; i<npt; ++i, ppt+=3) {
-        if (ABS(ppt[0]-x)<S57_GEO_TOLERANCE && ABS(ppt[1]-y)<S57_GEO_TOLERANCE)
-            return TRUE;
+        if (TRUE == S57_getGeoData(geo, i, &npt, &ppt)) {
+            for (guint j=0; j<npt; ++j, ppt+=3) {
+                if (ABS(ppt[0]-x)<S57_GEO_TOLERANCE && ABS(ppt[1]-y)<S57_GEO_TOLERANCE)
+                    return TRUE;
+            }
+        }
     }
 
     return FALSE;
