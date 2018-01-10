@@ -5817,6 +5817,11 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
         //if (TRUE == S57_getHighlight(geo))
         //    S57_setHighlight(geo, FALSE);
 
+        // FIXME: chart decoration has no textend - will allway pass here but pixel seldom drawn
+        /if (0 == g_strcmp0("$CSYMB", S52_PL_getOBCL(obj))) {
+            return TRUE;
+        }
+
         PRINTF("DEBUG: %i - pick: %s:%c:%i\n", _cIdx.color.r, S52_PL_getOBCL(obj), S57_getObjtype(geo), S57_getS57ID(geo));
     }
 
@@ -7169,7 +7174,7 @@ int        S52_GL_init(void)
             return FALSE;
         }
     }
-#endif
+#endif  // S52_USE_AFGLOW
 
     // ------------
     // setup mem buffer to save FB to
