@@ -4,6 +4,23 @@
 #
 
 
+2018JAN10
+- fix depcnt touch logic when mariner's SC not in ENC
+
+2018JAN01
+- refactor scamin attribs shortcut logic
+- add ISODGR str test instead of scamin test
+
+2017DEC23
+- fix replace call to _buildPatternDL by _buildSymbDL
+
+2017DEC11
+- refactor unix signal to glib signal wrapper to allow interaction with g_main_loop (if prsent)
+- mod set scamin to SCAMIN or INFINITY to debug CS WRECK02 / OBSTRN04 after reset in _UDWHAZ03()
+
+2017DEC10
+- move backtrace, atomic, signal form S52.c to S52utils.c
+
 2017DEC06
 - fix algo for finding arc extend on LIGHTS05 when sector overlap (in AA5TDS05.000)
 
