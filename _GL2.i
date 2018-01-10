@@ -1872,10 +1872,10 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
         //PRINTF("DEBUG: %s:  px dx/dy center-pivot X:%f Y:%f\n", S52_PL_getOBCL(obj), offset_x, offset_y);
 
         // move pattern to texture's center
-        //_glTranslated(tileWpx/2.0, tileHpx/2.0, 0.0);
         _glTranslated((tileWpx/2.0)-offset_x, (tileHpx/2.0)+offset_y, 0.0);
-        //PRINTF("DEBUG: tile px : W%6.1f x H%6.1f\n", tileWpx, tileHpx);
     }
+
+    // FIXME: flip texture on Y
 
     _fixDPI_glScaled();
 
