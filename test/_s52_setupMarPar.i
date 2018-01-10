@@ -18,14 +18,14 @@ static int      _s52_setupMarPar(void)
     // Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR, 10.0);
-    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR, 10.0);
+    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
+    //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    4.0);  // sounding color
 
-    S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    4.0);  // sounding color
-
-    // S-44 2.1.1
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  8.0);
-    //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    8.0);  // sounding color
+    // S-64 2.1.1
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  8.0);
+    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,    8.0);
+    S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    8.0);  // sounding color
 
     // Symbolized boundaries, Simplified symbols, Multicolour
     S52_setMarinerParam(S52_MAR_SYMBOLIZED_BND,  1.0);
@@ -184,10 +184,10 @@ static int      _s52_setupMarPar(void)
     //S52_MAR_DISP_RADAR_LAYER    = 45,   // display Raster: RADAR, Bathy, ... (on/off) (default off)
 
     // debug: draw all layer 0, then all layer 1, then all layer 2, ...
-    //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 0.0);  // default
-    //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 1.0);
+    //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 0.0);  // OFF (default)
+    //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 1.0);  // ON
 
-    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);   // OFF
+    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);   // OFF
     //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);  // ON (default)
 
     //S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters) [0.0 - off]
