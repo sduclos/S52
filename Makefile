@@ -702,9 +702,6 @@ doc: S52-$(LIBS52VERS).typelib
 #    make
 #done
 
-# debug gpsd on pointe-noir AIS tlenet
-# sudo service gpsd stop
-# sudo /usr/sbin/gpsd -N -D5 -F /var/run/gpsd.sock tcp://70.28.40.47:5000
 # wake up GPSD
 # telnet 127.0.0.1 2947
 # ?WATCH={"enable":true,"json":true}
