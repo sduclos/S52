@@ -182,10 +182,10 @@ int       S52_CS_add  (_localObj *local, S57_geo *geo)
 
 
     ///////////////////////////////////////////////
-    // for DEPCNT02: build ref to group 1 DEPARE:A and DRGARE:A (depcnt_list)
+    // 1 - for DEPCNT02: build ref to group 1 DEPARE:A and DRGARE:A (depcnt_list)
     // Note: the Nassi graph say to loop AREA of DEPARE and DRGARE
     //
-    // for _UDWHAZ03 (via OBSTRN04, WRECKS02)
+    // 2 - for _UDWHAZ03 (via OBSTRN04, WRECKS02)
     // build ref to group 1 DEPARE:A/L and DRGARE:A   (udwhaz_list)
     if ((0==g_strcmp0(name, "DEPARE")) ||    // LINE/AREA:
         (0==g_strcmp0(name, "DRGARE"))       // AREA:
@@ -321,58 +321,43 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
     // DEPCNT02
     // DEPCNT:L, DEPARE:L call CS(DEPCNT02)
     // depcnt_list: a set of DEPARE:A and DRGARE:A
-    // link to the shallower object that intersec this object
     // Note: S52 has no ordering of depcnt_list, so all candite are checked
     if ((0==g_strcmp0(name, "DEPCNT")) ||                                  // LINE
         (0==g_strcmp0(name, "DEPARE") && S57_LINES_T==S57_getObjtype(geo)) // LINE, AREA (www.s57.com 2017 say AREA only)
        )
     {
-        GString  *drvalstr = NULL;
-        //double    drvalmin    = 0.0;
-        double    drvalmin    = UNKNOWN_DEPTH;
+        // Note: depcnt_list is used by _DEPCNT02_isSC() only when the requested SC is not in the ENC
+        // and need to select the next deeper line available in the ENC
+        //
+        //     --- deeper -->
+        //
+        //       |                SC requested by Mariners'
+        //
+        //   |       |       |    edge/line available in the ENC
+        //
+        // ..+-------+-------+..
+        //   |   A   |   B   |    area (made of edge)
+        // ..+-------+-------+..
+        //
+        //           |            SC edge selected by _DEPCNT02_isSC()
 
-        CCHAR *name = S57_getName(geo);
-
-        // DEPCNT
-        if (0 == g_strcmp0(name, "DEPCNT")) {
-            //drvalstr = S57_getAttVal(geo, "VALDCO");  // mandatory!
-            drvalstr = S57_getAttValALL(geo, "VALDCO");  // mandatory!
-        } else {
-            // DEPARE
-            //drvalstr = S57_getAttVal(geo, "DRVAL1");  // mandatory!
-            drvalstr = S57_getAttValALL(geo, "DRVAL1");  // mandatory!
-        }
-
-        if (NULL != drvalstr) {
-            if (0 != g_strcmp0(drvalstr->str, EMPTY_NUMBER_MARKER)) {
-                drvalmin = S52_atof(drvalstr->str);
-            }
-        } else {
-            PRINTF("DEBUG: line DEPCNT/DEPARE:%u has no mandatory depth or (VALDCO/DRVAL1)\n", S57_getS57ID(geo));
-            //g_assert(0);
-            return TRUE;
-        }
-
-        // debug - DEPARE:3653
-        if (3653 == S57_getS57ID(geo)) {
-            PRINTF("DEBUG: line DEPARE:%u found\n", S57_getS57ID(geo));
-            //PRINTF("DEBUG: line DEPCNT:%u found\n", S57_getS57ID(geo));
-            //g_assert(0);
-            //S57_setHighlight(candidate, TRUE);
-        }
+        // find the shallowest area that share this edge
+        double    drvalmin = -UNKNOWN_DEPTH;  // 1000 m bellow surface
 
         guint   npt;
         double *ppt;
-        if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
+        if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt)) {
+            g_assert(0);
             return FALSE;
+        }
 
         // Note: a line segment is made of edge primtive  (CN - EN - .. - EN - CN)
-        // FIXME: find if that make a diff CN/EN
-        //if (2 < npt)
-        //    ppt += 3;  // take the first EN
+        // the first node (CN) is at the intersection off line in the flat graph
+        if (2 < npt)
+            ppt += 3;  // take the first EN
 
         // select the next deeper contour as the safety contour
-        // when the contour requested is not in the database
+        // when the contour requested is not in the ENC
         for (guint i=0; i<local->depcnt_list->len; ++i) {
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->depcnt_list, i);
 
@@ -387,36 +372,19 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
                 continue;
 
             //
-            // link to the line above this geo (DEPARE/DRGARE)
+            // this line do share edge with the candidate area
             //
 
-            // DRVAL1 mandatory DEPARE and DRGARE
+            // select the shallowest area for later _DEPCNT_isSC() test DRVAL1 < SC
+            // DRVAL1 mandatory DEPARE:A and DRGARE:A
             GString *can_drval1str = S57_getAttVal(candidate, "DRVAL1");
-            if (NULL != can_drval1str) {
-                double can_drval1 = S52_atof(can_drval1str->str);
+            double   can_drval1    = (NULL==can_drval1str) ? 0.0 : S52_atof(can_drval1str->str);
+            if (can_drval1 < drvalmin) {
+                drvalmin = can_drval1;
+                S57_setTouchDEPCNT(geo, candidate);
 
-                //* clear default
-                if (UNKNOWN_DEPTH == drvalmin) {
-                    drvalmin = can_drval1;
-                    continue;
-                }
-                //*/
-
-                // is this area just above (shallower) then this geo
-                //if (can_drval1 < drvalmin) {
-                // deeper
-                if (can_drval1 > drvalmin) {
-                    drvalmin = can_drval1;
-                    S57_setTouchDEPCNT(geo, candidate);
-
-                    /* debug
-                    if (5573 == S57_getS57ID(geo)) {
-                        //PRINTF("DEBUG: line DEPCNT:%u found\n", S57_getS57ID(geo));
-                        //g_assert(0);
-                        S57_setHighlight(candidate, TRUE);
-                    }
-                    */
-                }
+                // this shouldn't make any diff since these is no order in depcnt_list
+                //return;
             }
         } // for
 
@@ -440,9 +408,9 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
             return FALSE;
 
         // Note: a line segment is made of edge primtive  (CN - EN - .. - EN - CN)
-        // FIXME: find if that make a diff CN/EN
-        //if (2 < npt)
-        //    ppt += 3;  // take the first EN
+        // the first node (CN) is at the intersection off line in the flat graph
+        if (2 < npt)
+            ppt += 3;  // take the first EN
 
         // find the deepest group 1 under this geo
         //double depth_max = 0.0;
@@ -540,11 +508,12 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
             return FALSE;
 
         // Note: a line segment is made of edge primtive  (CN - EN - .. - EN - CN)
-        // FIXME: find if that make a diff CN/EN
+        // the first node (CN) is at the intersection off line in the flat graph
         if (2 < npt)
             ppt += 3;  // take the first EN
 
-        double least_depth = INFINITY;
+        //double least_depth = INFINITY;
+        double least_depth = UNKNOWN_DEPTH;
 
         for (guint i=0; i<local->depval_list->len; ++i) {
             S57_geo *candidate = (S57_geo *) g_ptr_array_index(local->depval_list, i);
@@ -597,7 +566,8 @@ int       S52_CS_touch(_localObj *local, S57_geo *geo)
                     continue;
 
                 double drval1 = S52_atof(drval1str->str);
-                if (isinf(least_depth)) {
+                //if (isinf(least_depth)) {
+                if (UNKNOWN_DEPTH == least_depth) {
                     least_depth = drval1;
                     S57_setTouchDEPVAL(geo, candidate);
                 }
@@ -851,39 +821,23 @@ static GString *DEPARE03 (S57_geo *geo)
     return DEPARE01(geo);
 }
 
-static gboolean _DEPCNT02_isSafetyCnt(S57_geo *geo)
+static gboolean _DEPCNT02_isSC(S57_geo *geo)
 // true if safety contour else false
 {
+    // invariant: DRVAL1 <= SC <= DRVAL2 (top of S52 3.2 DEPCNT02 Nassi flow chart)
 
-    /*
-    GString *drval1touchstr = NULL;
-    S57_geo *geoTouch       = S57_getTouchDEPCNT(geo);
-    if (NULL != geoTouch) {
-        drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
-    }
+    //     --- deeper -->
+    //
+    //       |                SC requested by Mariners'
+    //
+    //   |       |       |    edge available in the ENC
+    //
+    // ..+-------+-------+..
+    //   |       |       |    area (made of edge)
+    // ..+-------+-------+..
+    //
+    //           |            SC edge selected by this func _DEPCNT02_isSC()
 
-    double drval1touch = (NULL == drval1touchstr) ? 0.0 : S52_atof(drval1touchstr->str);
-
-    if (NULL != drval1touchstr) {
-        // adjuste datum
-        drval1touch += S52_MP_get(S52_MAR_DATUM_OFFSET);
-
-        if (drval1touch < S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
-            safety_contour = TRUE;
-        }
-    }
-    */
-
-    /* DEPCNT:5573, DEPCNT:4153
-    //if (5573 == S57_getS57ID(geo)) {
-    if (4153 == S57_getS57ID(geo)) {
-        PRINTF("DEBUG: line DEPCNT:%u found\n", S57_getS57ID(geo));
-    // DEPARE:3653
-    //if (3653 == S57_getS57ID(geo)) {
-    //    PRINTF("DEBUG: line DEPARE:%u found\n", S57_getS57ID(geo));
-        g_assert(0);
-    }
-    //*/
 
     gboolean safety_contour = FALSE;
 
@@ -891,26 +845,23 @@ static gboolean _DEPCNT02_isSafetyCnt(S57_geo *geo)
     if (NULL != geoTouch) {
         GString *drval1touchstr = S57_getAttVal(geoTouch, "DRVAL1");
         if (NULL != drval1touchstr) {
+
             double drval1touch = S52_atof(drval1touchstr->str);
 
             // adjuste datum
             drval1touch += S52_MP_get(S52_MAR_DATUM_OFFSET);
 
             if (drval1touch < S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
-
-                // Note: not is S52 - fix false positive safety_cnt
-                GString *drval2str = S57_getAttVal(geo, "DRVAL2");
-                double   drval2    = (NULL == drval2str) ? 0.0 : S52_atof(drval2str->str);
-
-                // adjuste datum
-                drval1touch += S52_MP_get(S52_MAR_DATUM_OFFSET);
-
-                // invariant: DRVAL1 <= SC <= DRVAL2 (top of S52 3.2 DEPCNT02 Nassi flow chart)
-                if (drval2 >= S52_MP_get(S52_MAR_SAFETY_CONTOUR))
-                    safety_contour = TRUE;
+                safety_contour = TRUE;
             }
         }
         // FIXME: document skip logic branch DRVAL1 not present
+    } else {
+        // FIXME: bizarre case where this DEPCNT/DEPARE doesn't touch any DEPARE/DRGARE - check upstream touch()
+        if (0 == g_strcmp0(S57_getName(geo), "DEPCNT")) {
+            PRINTF("FIXME: case where this DEPCNT doesn't touch any DEPARE/DRGARE - check upstream touch()\n");
+            //g_assert(0);
+        }
     }
 
     return safety_contour;
@@ -953,13 +904,16 @@ static GString *DEPCNT02 (S57_geo *geo)
         drval1 += S52_MP_get(S52_MAR_DATUM_OFFSET);
         drval2 += S52_MP_get(S52_MAR_DATUM_OFFSET);
 
+        // invariant: DRVAL1 <= SC <= DRVAL2 (top of S52 3.2 DEPCNT02 Nassi flow chart)
+        // is this line on SC
         if (drval1 <= S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
             if (drval2 >= S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
                 safety_contour = TRUE;
             }
         } else {
             // collect area DEPARE & DRGARE that touch this line
-            safety_contour = _DEPCNT02_isSafetyCnt(geo);
+            // get next deeper line
+            safety_contour = _DEPCNT02_isSC(geo);
         }
 
     } else {
@@ -975,7 +929,8 @@ static GString *DEPCNT02 (S57_geo *geo)
         } else {
             if (valdco > S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
                 // collect area DEPARE & DRGARE that touche this line
-                safety_contour = _DEPCNT02_isSafetyCnt(geo);
+                // get next deeper line
+                safety_contour = _DEPCNT02_isSC(geo);
             }
         }
     }
