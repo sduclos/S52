@@ -5818,7 +5818,7 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
         //    S57_setHighlight(geo, FALSE);
 
         // FIXME: chart decoration has no textend - will allway pass here but pixel seldom drawn
-        /if (0 == g_strcmp0("$CSYMB", S52_PL_getOBCL(obj))) {
+        if (0 == g_strcmp0("$CSYMB", S52_PL_getOBCL(obj))) {
             return TRUE;
         }
 
