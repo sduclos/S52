@@ -5420,7 +5420,6 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
     double   *gxyz    = NULL;
     double  **ggxyz   = NULL;
     guint    *gxyznbr = NULL;
-    //S52_obj  *obj     = NULL;
 
     if (0 != xyznbr) {
 
