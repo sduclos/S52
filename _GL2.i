@@ -175,13 +175,11 @@ static const GLubyte _dashpa_mask_bits[4] = {     // 4 x 8 bits = 32 bits
 //    0x01, 0x00, 0x00, 0x00
 //};
 
-
 // other pattern are created using FBO
-static GLuint         _fboID = 0;
-
-
+static GLuint        _fboID = 0;
 //---- PATTERN GL2 / GLES2 -----------------------------------------------------------
-//
+
+
 //static int _debugMatrix = 1;
 #define   MATRIX_STACK_MAX 8
 
@@ -802,6 +800,7 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
     _glLoadIdentity(GL_MODELVIEW);
 
     _glTranslated(x, y, 0.0);
+    // FIXME: rot then scale
 
     _pushScaletoPixel(FALSE);
 
@@ -962,14 +961,9 @@ static int       _initTexture(void)
     _32bitMask2RGBATex  (_dottpa_mask_bits, _dottpa_mask_rgba);
     _32bitMask2RGBATex  (_dashpa_mask_bits, _dashpa_mask_rgba);
 
-    glGenTextures(1, &_nodata_mask_texID);
-    glGenTextures(1, &_dottpa_mask_texID);
-    glGenTextures(1, &_dashpa_mask_texID);
-
-    _checkError("_initTexture -0-");
-
     // ------------
     // nodata pattern
+    glGenTextures(1, &_nodata_mask_texID);
     glBindTexture(GL_TEXTURE_2D, _nodata_mask_texID);
 
 #ifdef S52_USE_GLSC2
@@ -994,6 +988,7 @@ static int       _initTexture(void)
 
     // ------------
     // dott pattern
+    glGenTextures(1, &_dottpa_mask_texID);
     glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
 
 #ifdef S52_USE_GLSC2
@@ -1012,11 +1007,12 @@ static int       _initTexture(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
- 
+
     _checkError("_initTexture -2-");
 
     // ------------
     // dash pattern
+    glGenTextures(1, &_dashpa_mask_texID);
     glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
 
 #ifdef S52_USE_GLSC2
@@ -1043,8 +1039,6 @@ static int       _initTexture(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    glBindTexture  (GL_TEXTURE_2D, 0);
 
     _checkError("_initTexture -3.4-");
 
@@ -1080,9 +1074,9 @@ static int       _initTexture(void)
     //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    */
 
     glBindTexture  (GL_TEXTURE_2D, 0);
-    */
 
     return TRUE;
 }
@@ -1462,6 +1456,28 @@ static GLuint    _bindUnifrom(GLuint programObject)
     return programObject;
 }
 
+static int       _clearColor(void)
+{
+    //clear FB ALPHA before use, also put blue but doen't show up unless startup bug
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    //glClearColor(0, 0, 1, 1);     // blue
+    //glClearColor(1.0, 0.0, 0.0, 1.0);     // red
+    //glClearColor(1.0, 0.0, 0.0, 0.0);     // red
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+
+#ifdef S52_USE_TEGRA2
+    // xoom specific - clear FB to reset Tegra 2 CSAA (anti-aliase), define in gl2ext.h
+    //int GL_COVERAGE_BUFFER_BIT_NV = 0x8000;
+    glClear(GL_COLOR_BUFFER_BIT | GL_COVERAGE_BUFFER_BIT_NV);
+#else
+    glClear(GL_COLOR_BUFFER_BIT);
+#endif
+
+    _checkError("_clearColor() -1-");
+
+    return TRUE;
+}
+
 static int       _init_gl2(void)
 {
     //if (TRUE == glIsProgram(_programObject)) {
@@ -1515,7 +1531,10 @@ static int       _init_gl2(void)
     _glMatrixMode  (GL_MODELVIEW);
     _glLoadIdentity(GL_MODELVIEW);
 
+    _clearColor();
+    /*
     //clear FB ALPHA before use, also put blue but doen't show up unless startup bug
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     //glClearColor(0, 0, 1, 1);     // blue
     glClearColor(1.0, 0.0, 0.0, 1.0);     // red
     //glClearColor(1.0, 0.0, 0.0, 0.0);     // red
@@ -1528,6 +1547,7 @@ static int       _init_gl2(void)
 #else
     glClear(GL_COLOR_BUFFER_BIT);
 #endif
+    */
 
     _checkError("_init_es2() -fini-");
 
@@ -1573,7 +1593,41 @@ static int       _renderTile(S52_DListData *DListData)
     return TRUE;
 }
 
-static int       _initFBO(GLuint mask_texID)
+#if 0
+static int       _getAPTileDim(S52_DListData *DListData, double *w, double *h)
+// debug
+{
+    vertex_t min_x =  INFINITY;
+    vertex_t min_y =  INFINITY;
+    vertex_t max_x = -INFINITY;
+    vertex_t max_y = -INFINITY;
+
+    for (guint i=0; i<DListData->nbr; ++i) {
+        GArray *vert = S57_getPrimVertex(DListData->prim[i]);
+        vertex_t *v = (vertex_t*)vert->data;
+
+        for (guint j=0; j<vert->len; j+=3) {
+            vertex_t x = v[j+0];
+            vertex_t y = v[j+1];
+            //vertex_t z = v[j+2];
+            min_x = (x<min_x) ? x : min_x;
+            min_y = (y<min_y) ? y : min_y;
+            max_x = (x>max_x) ? x : max_x;
+            max_y = (y>max_y) ? y : max_y;
+        }
+    }
+
+    //*w = (max_x - min_x)/2.0;
+    //*h = (max_y - min_y)/2.0;
+    *w = (max_x - min_x) / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0);
+    *h = (max_y - min_y) / (S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 100.0);
+
+    return TRUE;
+}
+#endif  // 0
+
+static int       _bindFBO(GLuint mask_texID)
+// Frame Buffer Object
 {
     _checkError("_initFBO() -00-");
 
@@ -1634,63 +1688,49 @@ static int       _initFBO(GLuint mask_texID)
 
     _checkError("_initFBO() -end-");
 
+    // debug - test to get rid of artefact at start up
+    //glDeleteFramebuffers(1, &fboID);
+    //fboID = 0;
+
+
     return TRUE;
 }
 
 static int       _fixDPI_glScaled(void)
 {
     ////////////////////////////////////////////////////////////////
-    // DPI tweak for texture
+    // DPI tweak for texture/pattern
     //
     // FIXME: scale found by trial and error
-    // FIXME: dotpitch should do
+    // FIXME: dotpitch should do in normal case and user override via
+    // S52_MAR_DOTPITCH_MM_X/Y (will scale symb also!)
     //
+
 #ifdef S52_USE_ANDROID
 #ifdef S52_USE_TEGRA2
     // Xoom - S52_MAR_DOTPITCH_MM set to 0.3
-    double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 8.0;
-    double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 8.0;
+    double DPIfac = 8.0;
 #endif
 
 #ifdef S52_USE_ADRENO
     // Nexus 7 (2013) - 323ppi landscape -
-    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 1.0;
-    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 1.0;
+    //double fac = 1.0;
 
     // Nexus 7 (2013) - 323ppi landscape - S52_MAR_DOTPITCH_MM set to 0.2
-    double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 4.0;  // 4 or 5 OK
-    double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 4.0;  // 4 or 5 OK
+    double DPIfac = 4.0;
 #endif
-
-#else  // S52_USE_ANDROID
-
-#ifdef S52_USE_DUAL_MON
-    double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 8.0;
-    double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 8.0;
-#else
-    // normal case - nothing to fix
-    double scaleX = _dotpitch_mm_x;
-    double scaleY = _dotpitch_mm_y;
-
-    // -OR-
-    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X);
-    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y);
-
-    // debug - to fit pattern in tile
-    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 5.0;
-    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 5.0;
-    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 5.0;
-    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 5.0;
-    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 8.0;
-    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 8.0;
-    //double scaleX = S52_MP_get(S52_MAR_DOTPITCH_MM_X) / 10.0;
-    //double scaleY = S52_MP_get(S52_MAR_DOTPITCH_MM_Y) / 10.0;
-#endif  // S52_USE_DUAL_MON
 #endif  // S52_USE_ANDROID
 
     ////////////////////////////////////////////////////////////////
 
-    _glScaled(scaleX, -scaleY, 1.0);
+    // S52 symb unit = 0.01mm
+    double scaleX = 1.0 / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0);
+    double scaleY = 1.0 / (S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 100.0);
+    // debug
+    //double scaleX = 1.0 / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0 * DPIfac);
+    //double scaleY = 1.0 / (S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 100.0 * DPIfac);
+
+    _glScaled(scaleX, scaleY, 1.0);
 
     return TRUE;
 }
@@ -1710,13 +1750,43 @@ static int       _minPOT(int value)
     }
 }
 
+static GLuint    _initAPtexStore(GLsizei w, GLsizei h)
+{
+    GLuint maskTexID = 0;
+    glGenTextures(1, &maskTexID);
+    glBindTexture(GL_TEXTURE_2D, maskTexID);
+
+#ifdef S52_USE_GLSC2
+    // modern way
+    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, w, h);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+#else
+    // Note: GL_RGBA is needed for:
+    // - Vendor: Tungsten Graphics, Inc. - Renderer: Mesa DRI Intel(R) 965GM x86/MMX/SSE2
+    // - Vendor: Qualcomm                - Renderer: Adreno (TM) 320
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    // modern way
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA8_OES, w, h);
+    //_checkError("_renderTexure() -000-");
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+#endif
+
+    //_checkError("_initAPtexStore() -00-");
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    _checkError("_initAPtexStore() -0-");
+
+    return maskTexID;
+}
+
 static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, double stagOffsetPix)
 {
-    GLuint mask_texID = 0;
-
     GLsizei w = ceil(tileWpx);
     GLsizei h = ceil(tileHpx);
-
 
     if (FALSE == _GL_OES_texture_npot) {
         w = _minPOT(w);
@@ -1730,121 +1800,34 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
 
     _checkError("_renderTexure() -0000-");
 
-    glGenTextures(1, &mask_texID);
-    glBindTexture(GL_TEXTURE_2D, mask_texID);
+    GLuint mask_texID = _initAPtexStore(w, h);
 
-    // Note: GL_RGBA is needed for:
-    // - Vendor: Tungsten Graphics, Inc. - Renderer: Mesa DRI Intel(R) 965GM x86/MMX/SSE2
-    // - Vendor: Qualcomm                - Renderer: Adreno (TM) 320
-#ifdef S52_USE_GLSC2
-    // modern way
-    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, w, h);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-#else
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    // modern way
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA8_OES, w, h);
-    //_checkError("_renderTexure() -000-");
-    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-#endif
-
-    _checkError("_renderTexure() -00-");
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    _checkError("_renderTexure() -0-");
-
-
-    _initFBO(mask_texID);
+    _bindFBO(mask_texID);
 
     // save texture mask ID when everythings check ok
     S52_PL_setAPtexID(obj, mask_texID);
 
-    // Clear Color ------------------------------------------------
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-
-#ifdef S52_USE_TEGRA2
-    // xoom specific - clear FB to reset Tegra 2 CSAA (anti-aliase), define in gl2ext.h
-    //int GL_COVERAGE_BUFFER_BIT_NV = 0x8000;
-    glClear(GL_COLOR_BUFFER_BIT | GL_COVERAGE_BUFFER_BIT_NV);
-#else
-    glClear(GL_COLOR_BUFFER_BIT);
-#endif
-
-    // set color alpha
-    glUniform4f(_uColor, 0.0, 0.0, 0.0, 1.0);
-
-    _checkError("_renderTexure() -1-");
-
+    _clearColor();
 
     // render to texture -----------------------------------------
 
     _glMatrixSet(VP_WIN);
 
-    /* debug - draw X and Y axis
+    /* debug - draw X and Y axis + diagonal
     {
         _glLineWidth(1.0);
 
         // Note: line in X / Y need to start at +1 to show up
-#ifdef S52_USE_TEGRA2
-        pt3v lineW[2] = {{1.0, 1.0, 0.0}, {potW,  1.0, 0.0}};
-        pt3v lineH[2] = {{1.0, 1.0, 0.0}, { 1.0, potH, 0.0}};
-#else
-        pt3v lineW[2] = {{1.0, 1.0, 0.0}, {tileWpx,     1.0, 0.0}};
-        pt3v lineH[2] = {{1.0, 1.0, 0.0}, {    1.0, tileHpx, 0.0}};
-#endif
+        // FIXME: why -X !!
+        pt3v lineW[2] = {{0.0, 1.0, 0.0}, {  w, 1.0, 0.0}};  // left
+        pt3v lineH[2] = {{1.0, 0.0, 0.0}, {1.0,   h, 0.0}};  // down
+        //pt3v lineD[2] = {{5.0, 5.0, 0.0}, {  w,   h, 0.0}};  // diag
 
         _DrawArrays_LINE_STRIP(2, (vertex_t*)lineW);
         _DrawArrays_LINE_STRIP(2, (vertex_t*)lineH);
+        //_DrawArrays_LINE_STRIP(2, (vertex_t*)lineD);  // diag
     }
     //*/
-
-    /* debug
-    double tw = 0.0;  // tile width
-    double th = 0.0;  // tile height
-    double dx = 0.0;  // run length offset for STG pattern
-    S52_PL_getAPTileDim(obj, &tw,  &th,  &dx);
-
-    PRINTF("Tile   : %6.1f x %6.1f\n", tw,        th       );
-    PRINTF("pivot  : %6.1f x %6.1f\n", px,        py       );
-    PRINTF("bbox   : %6.1f x %6.1f\n", bbx,       bby      );
-    PRINTF("off    : %6.1f x %6.1f\n", (px-bbx),  (py-bby) );
-    PRINTF("off  px: %6.1f x %6.1f\n", offsetXpx, offsetYpx);
-    PRINTF("Tile px: %6.1f x %6.1f\n", tileWpx,   tileHpx  );
-
-    PRCARE  : tex: 32 x 32,   frac: 0.591071 x 0.592593
-    Tile    :  500.0 x  500.0
-    pivotx/y:  750.0 x  750.0
-    bbox_x/y:  750.0 x  250.0
-    offset  :    0.0 x  500.0
-    offsetpx:    0.0 x   19.0
-    Tile px :   18.9 x   19.0
-
-    DIAMOND1: PATD   55DIAMOND1VLINCON0000000000022500225002250043130112500093
-    tile px : W  75.0 x H 143.8
-    bbox_   : X1125.0 x Y  93.0
-    pivot_  : X2250.0 x Y2250.0
-.
-    DEPARE  : tex: 128 x 256, frac: 0.664955 x 0.638963
-    Tile    : 2250.0 x 4313.0
-    pivotx/y: 2250.0 x 2250.0
-    bbox_x/y: 1125.0 x   93.0
-    offset  : 1125.0 x 2157.0
-    offsetpx:   42.6 x   81.8
-    Tile px :   85.1 x  163.6
-
-    DRGARE  : tex: 16 x 16,   frac: 0.827500 x 0.829630
-    Tile    :  350.0 x  350.0
-    pivotx/y: 1500.0 x 1500.0
-    bbox_x/y: 1500.0 x 1300.0
-    offset  :    0.0 x  200.0
-    offsetpx:    0.0 x    7.6
-    Tile px :   13.2 x   13.3
-    */
 
     {   // set line/point width
         double   dummy = 0.0;
@@ -1855,27 +1838,11 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
         _glPointSize(pen_w - '0' + 1.0);  // sampler + AA soften pixel, so need enhencing a bit
     }
 
-    {   /* get pivot
-        double bbox_x = 0.0, bbox_y = 0.0;
-        double pivot_x= 0.0, pivot_y= 0.0;
-        S52_PL_getAPTilePos(obj, &bbox_x, &bbox_y, &pivot_x, &pivot_y);
-        //PRINTF("DEBUG: bbox_   : X%6.1f x Y%6.1f\n", bbox_x,  bbox_y);
-        //PRINTF("DEBUG: pivot_  : X%6.1f x Y%6.1f\n", pivot_x, pivot_y);
-        */
-
-        double offset_x = 0.0;
-        double offset_y = 0.0;
-        S52_PL_getPivotOffset(obj, &offset_x, &offset_y);
-        // --> pixel
-        offset_x /=  S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0;
-        offset_y /=  S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 100.0;
-        //PRINTF("DEBUG: %s:  px dx/dy center-pivot X:%f Y:%f\n", S52_PL_getOBCL(obj), offset_x, offset_y);
-
-        // move pattern to texture's center
-        _glTranslated((tileWpx/2.0)-offset_x, (tileHpx/2.0)+offset_y, 0.0);
-    }
-
-    // FIXME: flip texture on Y
+    // debug - locate drgare 2 dot symb
+    //_glTranslated(0.0, 0.0, 0.0);
+    //_glTranslated(0.0, 4.0, 0.0);
+    //_glTranslated(4.0, 4.0, 0.0);
+    //_glTranslated(4.0, 0.0, 0.0);
 
     _fixDPI_glScaled();
 
@@ -1886,7 +1853,8 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
         _glLoadIdentity(GL_MODELVIEW);
 
         if (TRUE == _GL_OES_texture_npot) {
-            _glTranslated(tileWpx + stagOffsetPix, tileHpx + (tileHpx/2.0), 0.0);
+            //_glTranslated((tileWpx/2.0) + stagOffsetPix, tileHpx + (tileHpx/2.0), 0.0);
+            _glTranslated((tileWpx/2.0) + stagOffsetPix, tileHpx, 0.0);
         } else {
             _glTranslated((w/2.0) + stagOffsetPix, (h/2.0), 0.0);
         }
@@ -1900,10 +1868,6 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
 
     glBindTexture(GL_TEXTURE_2D, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    // debug - test to get rid of artefact at start up
-    //glDeleteFramebuffers(1, &_fboID);
-    //_fboID = 0;
 
     _checkError("_renderTexure() -2-");
 
@@ -1938,6 +1902,12 @@ static int       _renderAP_gl2(S52_obj *obj)
 
     GLuint mask_texID = S52_PL_getAPtexID(obj);
     if (0 == mask_texID) {
+        // FIXME: refactor into init/build/draw APtex
+        // - initAPTex
+        // - initAPFBO
+        // - setAPtexID
+
+        // draw tex
         if (TRUE == glIsEnabled(GL_SCISSOR_TEST)) {
             // scissor box interfere with texture creation
             glDisable(GL_SCISSOR_TEST);
