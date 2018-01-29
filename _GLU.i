@@ -212,7 +212,7 @@ static int       _gluDisk(_GLUquadricObj* qobj, GLfloat innerRadius,
                           GLfloat outerRadius, GLint slices, GLint loops)
 {
     //
-    // FIXME: GL2 optimisation: draw a point instead of a filled disk
+    // FIXME: GL2/GLSL optimisation: draw a point instead of a filled disk
     // use fillMode & radius * dotpitch = pixel
     //
 
