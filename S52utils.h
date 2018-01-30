@@ -92,7 +92,7 @@ int      S52_utils_getAtomicInt(void);
 void     S52_utils_setAtomicInt(int newVal);
 int      S52_utils_mtrace(void);
 int      S52_utils_muntrace(void);
-
+void     S52_utils_gdbBreakPoint(void);
 
 ///////////////////////////////////////////////////////////////////////////
 //

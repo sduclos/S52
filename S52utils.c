@@ -177,9 +177,6 @@ static const char _version[] = S52_VERSION
 #ifdef  S52_USE_RASTER
       ",S52_USE_RASTER"
 #endif
-#ifdef  S52_USE_DUAL_MON
-      ",S52_USE_DUAL_MON"
-#endif
 #ifdef  S52_USE_C_AGGR_C_ASSO
       ",S52_USE_C_AGGR_C_ASSO"
 #endif
@@ -972,6 +969,10 @@ int      S52_utils_muntrace(void)
     return TRUE;
 }
 
+void     S52_utils_gdbBreakPoint(void)
+{
+    raise(SIGINT);
+}
 
 ///////////////////////////// J U N K ///////////////////////////////////
 #if 0
