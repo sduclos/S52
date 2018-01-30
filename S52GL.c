@@ -278,6 +278,7 @@ typedef struct _real_GL_ras {
 
 static
 inline void      _checkError(const char *msg)
+// FIXME: call with __FUNC_NAME__
 {
 #ifdef S52_DEBUG
 
@@ -1567,9 +1568,9 @@ static double    _getWorldGridRef(S52_obj *obj, double *LLx, double *LLy, double
     S52_PL_getAPTileDim(obj, &tw,  &th,  &dx);
 
     // convert tile unit (0.01mm) to pixel
-    double tileWidthPix  = tw / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
-    double tileHeightPix = th / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
-    double stagOffsetPix = dx / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
+    double tileWidthPix  = tw / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0);
+    double tileHeightPix = th / (S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 100.0);
+    double stagOffsetPix = dx / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0);
 
     // convert tile in pixel to world
     double w0 = tileWidthPix  * _scalex;
@@ -1940,8 +1941,9 @@ static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rota
     _glLoadIdentity(GL_MODELVIEW);
 
     _glTranslated(x, y, 0.0);
-    _glScaled(1.0, -1.0, 1.0);
-    _pushScaletoPixel(TRUE);
+    // FIXME: rot then scale
+    _glScaled(1.0, -1.0, 1.0);              // flip Y
+    _pushScaletoPixel(TRUE);                // FIXME: should be after rot like other call!
     _glRotated(rotation, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
     _glCallList(DListData);
@@ -1979,8 +1981,8 @@ static int       _renderSY_silhoutte(S52_obj *obj)
     int height; // length
     S52_PL_getSYbbox(obj, &width, &height);
 
-    double symLenPixel = height / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
-    double symBrdPixel = width  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
+    double symLenPixel = height / (S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 100.0);
+    double symBrdPixel = width  / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0);
 
     // 2 - compute ship's length in pixel
     GString *shpbrdstr = S57_getAttVal(geo, "shpbrd");
@@ -2046,8 +2048,8 @@ static int       _renderSY_CSYMB(S52_obj *obj)
         S52_PL_getSYbbox(obj, &width, &height);
 
         // 1 - compute symbol size in pixel
-        double scaleSymWPixel = width  / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
-        double scaleSymHPixel = height / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_Y));
+        double scaleSymWPixel = width  / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0);
+        double scaleSymHPixel = height / (S52_MP_get(S52_MAR_DOTPITCH_MM_Y) * 100.0);
 
         // 2 - compute symbol length in pixel
         // 3 - scale screen size
@@ -2146,6 +2148,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
             _win2prj(&x, &y);
 
             _glTranslated(x, y, 0.0);
+            // FIXME: rot then scale
             _glScaled(scalex,  scaley, 1.0);
             _glRotated(-_view.north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
@@ -2946,6 +2949,7 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
     GString *orientstr = S57_getAttVal(geo, "ORIENT");
     GString *sectr1str = S57_getAttVal(geo, "SECTR1");
     GString *sectr2str = S57_getAttVal(geo, "SECTR2");
+    // FIXME:  * 100.0
     double   leglenpix = 25.0 / S52_MP_get(S52_MAR_DOTPITCH_MM_X);
 
     GLdouble *ppt = NULL;
@@ -3105,6 +3109,7 @@ static int       _renderLS_ownshp(S52_obj *obj)
         _glLoadIdentity(GL_MODELVIEW);
 
         _glTranslated(ppt[0], ppt[1], 0.0);
+        // FIXME: rot then scale
         _glScaled(1.0, -1.0, 1.0);
         _glRotated(orient-90.0, 0.0, 0.0, 1.0);
 
@@ -3129,6 +3134,7 @@ static int       _renderLS_ownshp(S52_obj *obj)
         _glLoadIdentity(GL_MODELVIEW);
 
         _glTranslated(ppt[0], ppt[1], 0.0);
+        // FIXME: rot then scale
         _glScaled(1.0, -1.0, 1.0);
         _glRotated(orient, 0.0, 0.0, 1.0);
 
@@ -3205,6 +3211,7 @@ static int       _renderLS_vessel(S52_obj *obj)
             if (TRUE == S57_getGeoData(geo, 0, &npt, &ppt)) {
                 double headng = S52_atof(headngstr->str);
                 // draw a line 50mm in length
+                // FIXME:  * 100.0
                 pt3v pt[2] = {{0.0, 0.0, 0.0}, {50.0 / S52_MP_get(S52_MAR_DOTPITCH_MM_X), 0.0, 0.0}};
 
                 _glLoadIdentity(GL_MODELVIEW);
@@ -3878,7 +3885,7 @@ static int       _renderLC(S52_obj *obj)
     _glLineWidth(pen_w - '0');
     //_glLineWidth(pen_w - '0' + 0.375);
 
-    GLdouble symlen_pixl = symlen / (100.0 * S52_MP_get(S52_MAR_DOTPITCH_MM_X));
+    GLdouble symlen_pixl = symlen / (S52_MP_get(S52_MAR_DOTPITCH_MM_X) * 100.0);
     GLdouble symlen_wrld = symlen_pixl * _scalex;
 
     guint rNbr = S57_getRingNbr(geo);
@@ -3956,6 +3963,7 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
         if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
             return FALSE;
 
+        // FIXME:  * 100.0
         if (NULL!=extradstr && 'Y'==*extradstr->str) {
             radius = 25.0 / S52_MP_get(S52_MAR_DOTPITCH_MM_X);    // (not 25 mm on xoom)
         } else {
@@ -4684,6 +4692,7 @@ static int       _renderTXT(S52_obj *obj)
 
 
     // convert pivot point u/v offset to PRJ
+    // FIXME:  * 100.0
     double uoffs = ((bsize * PICA * xoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_X)) * _scalex;
     double voffs = ((bsize * PICA * yoffs) / S52_MP_get(S52_MAR_DOTPITCH_MM_Y)) * _scaley;
     // debug
@@ -4856,7 +4865,7 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
     // Note: transparency: '0'=0%(opaque), '1'=25%, '2'=50%, '3'=75%
 
     // FIXME: instruction EP (Edge Polygon), AA (Arc Angle) and SC (Symbol Call)
-    //        are not used i PLib/Chart-1 3.1, so not implemented.
+    //        are not used in PLib/Chart-1 3.1, so not implemented.
 
     GLenum    fillMode = GLU_SILHOUETTE;
     //GLenum    fillMode = GLU_FILL;
@@ -5596,76 +5605,7 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 #endif  // S52_USE_RADAR
 
     _real_GL_ras *rr = (_real_GL_ras*)raster;
-    if (0 == rr->texID) {
-        /* create GL texture
-        if (TRUE == raster->isRADAR) {
-
-            // no ALPHA in GLSC2
-#if !defined(S52_USE_GLSC2) && defined(S52_USE_RADAR)
-
-            glGenTextures(1, &rr->texID);
-            glBindTexture(GL_TEXTURE_2D, rr->texID);
-
-            // GLES2/XOOM ALPHA fail and if not POT
-            // FIXME: w h insted of npot
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, rr->npotX, rr->npotY, 0, GL_ALPHA, GL_UNSIGNED_BYTE, rr->texAlpha);
-            // modern way
-            //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_ALPHA, raster->npotX, raster->npotY);
-            //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_ALPHA, GL_UNSIGNED_BYTE, _fb_pixels);
-
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            _checkError("S52_GL_drawRaster() -1.0-");
-#endif  //!S52_USE_GLSC2 S52_USE_RADAR
-
-        } else {
-            // create raster / bathy
-            _newTexture(raster);
-
-            //glGenTextures(1, &raster->texID);
-            //glBindTexture(GL_TEXTURE_2D, raster->texID);
-            glGenTextures(1, &rr->texID);
-            glBindTexture(GL_TEXTURE_2D, rr->texID);
-
-            // GLES2/XOOM ALPHA fail and if not POT
-#ifdef S52_USE_GLSC2
-            // modern way
-            glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, rraster->npotX, rr->npotY);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, rr->npotX, rr->npotY, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-#else
-            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, raster->texAlpha);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rr->npotX, rr->npotY, 0, GL_RGBA, GL_UNSIGNED_BYTE, rr->texAlpha);
-            // modern way
-            //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY);
-            //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, raster->npotX, raster->npotY, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-
-            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, raster->npotX, raster->npotY, 0, GL_RGBA, GL_FLOAT, raster->data);
-            //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_FLOAT, raster->data);
-            //glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, raster->npotX, raster->npotY, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, raster->data);
-            //dword PackValues(byte x,byte y,byte z,byte w) {
-            //    return (x<<24)+(y<<16)+(z<<8)+(w);
-            //}
-#endif
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-            glBindTexture(GL_TEXTURE_2D, 0);
-
-            _checkError("S52_GL_drawRaster() -2.0-");
-
-            // debug
-            //PRINTF("DEBUG: MIN=%f MAX=%f\n", raster->min, raster->max);
-            PRINTF("DEBUG: MIN=%f MAX=%f\n", rr->min, rr->max);
-        }
-        */
-    } else {
+    if (0 != rr->texID) {
         // no ALPHA in GLSC2
 #if !defined(S52_USE_GLSC2)
         // update RADAR
@@ -5926,7 +5866,6 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     return TRUE;
 }
 
-//int        S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight)
 int        S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize)
 // draw string in world coords
 {
@@ -6937,7 +6876,6 @@ int        S52_GL_udtRaster(S52_GL_ras *raster)
     return TRUE;
 }
 
-//int        S52_GL_delRaster(S52_GL_ras *raster, int texOnly)
 int        S52_GL_delRaster(S52_GL_ras *raster)
 {
     //GPOINTER_TO_INT
@@ -7820,6 +7758,8 @@ int        S52_GL_getStrOffset(double *offset_x, double *offset_y, const char *s
     // scale offset
     //double uoffs  = ((PICA * *offset_x) / _dotpitch_mm_x) * _scalex;
     //double voffs  = ((PICA * *offset_y) / _dotpitch_mm_y) * _scaley;
+    // FIXME: bsize
+    // FIXME:  * 100.0
     double uoffs = ((PICA * *offset_x) / S52_MP_get(S52_MAR_DOTPITCH_MM_X)) * _scalex;
     double voffs = ((PICA * *offset_y) / S52_MP_get(S52_MAR_DOTPITCH_MM_Y)) * _scaley;
 
@@ -7948,6 +7888,7 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
             _glRotated(90.0-crntAngle, 0.0, 0.0, 1.0);
             // FIXME: radius too long (maybe because of symb width!)
             _glTranslated(dist - (0.5*_scalex), 0.0, 0.0);
+            // FIXME: rot then scale
             _glScaled(1.0, -1.0, 1.0);
             _glRotated(-90.0, 0.0, 0.0, 1.0);    // why -90.0 and not +90.0 .. because of inverted axis (glScale!)
 
