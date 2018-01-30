@@ -4,6 +4,11 @@
 #
 
 
+2018JAN26
+- fix/refactor GL2 pattern creation
+- del S52_USE_DUAL_MON
+- add programmatic gdb breakpoint via SIGINT
+
 2018JAN10
 - fix depcnt touch logic when mariner's SC not in ENC
 
