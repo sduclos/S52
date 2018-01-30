@@ -113,6 +113,7 @@ typedef struct _legend {
 
 } _legend;
 
+// FIXME: robustness: put cell data on stack one per mini-thread!
 typedef struct _cell {
     ObjExt_t   geoExt;     // cell geo extent
 
@@ -286,7 +287,7 @@ static guint       _mutexOwnerS57ID = 0;
         _cell *c = (_cell*) g_ptr_array_index(_cellList, k);       \
         for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) { \
             for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {    \
-                (func1);                                           \
+                func1;                                           \
             }                                                      \
         }                                                          \
     }
@@ -3245,28 +3246,14 @@ static int        _cull(ObjExt_t ext)
 
 #if defined(S52_USE_GL2)    || defined(S52_USE_GLES2)
 #if defined(S52_USE_RASTER) || defined(S52_USE_RADAR)
-//static int        _drawRaster(ObjExt_t *cellExt)
 static int        _drawRaster(void)
 {
     for (guint i=0; i<_rasterList->len; ++i) {
         S52_GL_ras *raster = (S52_GL_ras *) g_ptr_array_index(_rasterList, i);
-        // FIXME: no _intersectCELL() .. but GL scissor is ON .. so this migth not really help
+
+        // Note: no _intersectCELL() .. but GL scissor is ON ..
+        // so this migth not really help
         S52_GL_drawRaster(raster);
-
-        /*
-        // bathy
-        if (FALSE == raster->isRADAR) {
-            if (TRUE == _intersectCELL(*cellExt, raster->gext)) {
-                S52_GL_drawRaster(raster);
-            }
-            continue;
-        }
-
-        // radar
-        if (TRUE == raster->isRADAR) {
-            S52_GL_drawRaster(raster);
-        }
-        */
     }
 
     return TRUE;
@@ -3315,7 +3302,6 @@ static int        _drawLayer(ObjExt_t ext, int layer)
     return TRUE;
 }
 
-//static int        _drawLights(void)
 static void       _drawLights(S52_obj *obj, gpointer dummy)
 // draw all lights of all cells outside view extend
 // so that sector and legs show up on screen event if
