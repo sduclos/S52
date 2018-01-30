@@ -219,7 +219,6 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_PIPE         - same as DBus, in a day
 #
 # OpenGL:
-# -DS52_USE_DUAL_MON     - dual monitor mess up dotpitch in GL2/_fixDPI_glScaled()
 # -DS52_USE_EGL          - EGL callback from libS52
 # GL FIX FUNC:
 # -DS52_USE_GL1          - GL1.x
@@ -300,7 +299,6 @@ s52clutter s52clutter.js : CFLAGS =                         \
 #                  -DS52_USE_SUPP_LINE_OVERLAP
 #                  -DS52_USE_GLSC2
 #                  -DS52_USE_LCMS2
-#                  -DS52_USE_DUAL_MON
 #                  -DS52_USE_CA_ENC
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2` \
@@ -320,7 +318,6 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_RASTER               \
                   -DS52_USE_SUPP_LINE_OVERLAP    \
                   -DS52_USE_C_AGGR_C_ASSO        \
-                  -DS52_USE_DUAL_MON             \
                   -DS52_USE_CA_ENC               \
                   -DS52_DEBUG $(DBG)
 
@@ -503,14 +500,14 @@ s52gtk2gps    : libS52.so    test/s52gtk2gps
 S52raz-3.2.rle.o: S52raz.s
 	$(CC) -c S52raz.s -o $@
 
-%.o: %.c *.h
+%.o: %.c *.h Makefile
 	$(CC) $(CFLAGS) -c $< -o $@
 
 #objcopy --globalize-symbols=local_func3.txt $@
-S52GL.o: S52GL.c S52GL.h _GL1.i _GL2.i _GLU.i S52.h
+S52GL.o: S52GL.c S52GL.h _GL1.i _GL2.i _GLU.i S52.h Makefile
 	$(CC) $(CFLAGS) -c $< -o $@
 
-S52.o: S52.c _S52.i *.h
+S52.o: S52.c _S52.i *.h Makefile
 	$(CC) $(CFLAGS) -c $< -o $@
 
 ./lib/libtess/%.o: ./lib/libtess/%.c
