@@ -287,6 +287,8 @@ typedef struct _S52_vec {
     int        pivot_y;     // def->pos.line.pivot_y.LIRW;
     double     radius;      // disk radius
     _poly_mode pm;          // polygon mode
+
+    S52_SMBtblName symType; // debug - when PATT use bbox as ref pt
 } _S52_vec;
 
 // Note: order important --index to '_table[]'
@@ -3721,7 +3723,8 @@ int         S52_PL_getAPTileDim(_S52_obj *obj, double *w, double *h, double *dx)
     *h = cmd->cmd.def->pos.patt.minDist.PAMI;
 
     *w += tw;
-    *h += th;    //PRINTF("patt cover (pixel) tw:%f th:%f \n", tw, th);
+    *h += th;
+    //PRINTF("patt cover (pixel) tw:%f th:%f \n", tw, th);
 
     // pattern spacing (STG/LIN ie 'S'/'L')
     // LINEAR: & &   STAGGERED:  & &
@@ -3906,9 +3909,12 @@ S52_vec    *S52_PL_initVOCmd(_S52_symDef *def)
     }
 
     S52_vec *vecObj = g_new0(S52_vec, 1);
-    //S52_vec *vecObj = g_try_new0(S52_vec, 1);
+    //_S52_vec *vecObj = g_try_new0(S52_vec, 1);
     if (NULL == vecObj)
         g_assert(0);
+
+    //S52_SMBtblName
+    vecObj->symType = def->symType;     // debug LINE,PATT,SYMB
 
     vecObj->colRef  = def->colRef.LCRF->str;
     vecObj->str     = def->shape.line.vector.LVCT->str;
@@ -4040,15 +4046,30 @@ S52_vCmd    S52_PL_getNextVOCmd(_S52_vec *vecObj)
         }
 
         // read coordinate (x,y,x,y,...) into array (xyzxyzxyz...)
-        {   // origine pivot_x/y
-            double off_x = vecObj->pivot_x;
-            double off_y = vecObj->pivot_y;
+        {
+            // origine pivot_x/y
+            //double off_x = vecObj->pivot_x;
+            //double off_y = vecObj->pivot_y;
 
             // debug - origine bbox_x/y
             //double off_x = vecObj->bbx;
             //double off_y = vecObj->bby;
             //double off_x = 0.0;
             //double off_y = 0.0;
+
+            //*
+            double off_x = 0.0;
+            double off_y = 0.0;
+            if (S52_SMB_PATT == vecObj->symType) {
+                // origine bbox_x/y
+                off_x = vecObj->bbx;
+                off_y = vecObj->bby;
+            } else {
+                // origine pivot_x/y
+                off_x = vecObj->pivot_x;
+                off_y = vecObj->pivot_y;
+            }
+            //*/
 
             // start poly mode --keep last vertex
             if (PM_BEG != vecObj->pm) {
@@ -4661,6 +4682,7 @@ gboolean    S52_PL_getSupp(_S52_obj *obj)
 }
 
 int         S52_PL_getPivotOffset(_S52_obj *obj, double *offset_x, double *offset_y)
+//int         S52_PL_getAPOffset(_S52_obj *obj, double *offset_x, double *offset_y)
 {
     return_if_null(obj);
 
@@ -4681,8 +4703,19 @@ int         S52_PL_getPivotOffset(_S52_obj *obj, double *offset_x, double *offse
     int ppx = cmd->cmd.def->pos.symb.pivot_x.SYCL;
     int ppy = cmd->cmd.def->pos.symb.pivot_y.SYRW;
 
-    *offset_x = bbx - ppx + (bbw / 2);
-    *offset_y = bby - ppy + (bbh / 2);
+    //*offset_x = bbx - ppx + (bbw / 2.0);
+    //*offset_y = bby - ppy + (bbh / 2.0);
+
+    *offset_x = ppx - bbx + (bbw / 2.0);
+    *offset_y = ppy - bby + (bbh / 2.0);
+    //*offset_x = ppx - bbx;
+    //*offset_y = ppy - bby;
+
+    // debug
+    //*offset_x = (bbx > ppx) ? bbx - ppx + (bbw / 2) : ppx - bbx + (bbw / 2.0);
+    //*offset_y = (bby > ppy) ? bby - ppy + (bbh / 2) : ppy - bby + (bbh / 2.0);
+    //*offset_x = bbw / 2.0;
+    //*offset_y = bbh / 2.0;
 
     return TRUE;
 }
