@@ -164,10 +164,6 @@ static const char _version[] = S52_VERSION
 #ifdef  S52_USE_WORLD
       ",S52_USE_WORLD"
 #endif
-// DEPRECATED in GL2
-//#ifdef  S52_USE_SYM_VESSEL_DNGHL
-//      ",S52_USE_SYM_VESSEL_DNGHL"
-//#endif
 #ifdef  S52_USE_TXT_SHADOW
       ",S52_USE_TXT_SHADOW"
 #endif
