@@ -3250,24 +3250,9 @@ static GString *VESSEL01 (S57_geo *geo)
 
     // experimental: text label
     if (NULL != vlabelstr) {
-#ifdef S52_USE_SYM_VESSEL_DNGHL
-        /* experimental: close quarter - red
-        GString *vestatstr = S57_getAttVal(geo, "vestat");
-        if (NULL!=vestatstr && '3'==*vestatstr->str) {
-            S57_setHighlight(geo, TRUE);
-            //g_string_append(vessel01, ";TX(_vessel_label,3,3,3,'15110',1,1,DNGHL,76)"          );
-            //g_string_append(vessel01, ";TE('%03.0lf deg','cogcrs',3,3,3,'15109',1,2,DNGHL,77)" );
-            //g_string_append(vessel01, ";TE('%3.1lf kts','sogspd',3,3,3,'15109',5,2,DNGHL,78)"  );
-        } else {
-            S57_setHighlight(geo, FALSE);
-        }
-        */
-#endif
-        {
-            g_string_append(vessel01, ";TX(_vessel_label,3,3,3,'15110',1,1,ARPAT,76)"          );
-            g_string_append(vessel01, ";TE('%03.0lf deg','cogcrs',3,3,3,'15109',1,2,ARPAT,77)" );
-            g_string_append(vessel01, ";TE('%3.1lf kts','sogspd',3,3,3,'15109',5,2,ARPAT,78)"  );
-        }
+        g_string_append(vessel01, ";TX(_vessel_label,3,3,3,'15110',1,1,ARPAT,76)"          );
+        g_string_append(vessel01, ";TE('%03.0lf deg','cogcrs',3,3,3,'15109',1,2,ARPAT,77)" );
+        g_string_append(vessel01, ";TE('%3.1lf kts','sogspd',3,3,3,'15109',5,2,ARPAT,78)"  );
     }
 
 #ifdef S52_USE_SYM_AISSEL01
@@ -3287,15 +3272,6 @@ static GString *VESSEL01 (S57_geo *geo)
     // ARPA
     if (NULL!=vesrcestr && '1'==*vesrcestr->str) {
         g_string_append(vessel01, ";SY(ARPATG01)");
-
-#ifdef S52_USE_SYM_VESSEL_DNGHL
-        // experimental: ARPA target & close quarters
-        // Note: the LS() command word for ARPA trigger vector
-        // but not heading line will be drawn
-        //g_string_append(vessel01, ";SY(arpatg01);LS(SOLD,1,DNGHL)");
-#endif
-
-        // FIXME: move this to GL
         // add time mark (on ARPA vector)
         //if (0.0 != S52_MP_get(S52_MAR_VECMRK)) {
             // 6 min. and 1 min. symb.
@@ -3330,13 +3306,6 @@ static GString *VESSEL01 (S57_geo *geo)
         //if (NULL!=vestatstr && '1'==*vestatstr->str) {
             g_string_append(vessel01, ";SY(AISVES01)");
         //}
-
-#ifdef S52_USE_SYM_VESSEL_DNGHL
-        // experimental: active AIS target & close quarters - aisves01 symb in PLAUX_00.DAI
-        //if (NULL!=vestatstr && '3'==*vestatstr->str) {
-        //    g_string_append(vessel01, ";SY(aisves01);LS(SOLD,1,DNGHL)");
-        //}
-#endif
 
         // add heading line (50 mm)
         //if (TRUE == S52_MP_get(S52_MAR_HEADNG_LINE)) {
