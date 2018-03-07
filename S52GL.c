@@ -216,20 +216,6 @@ static guint   _npoly     = 0;     // total polys
 //static int   _DEBUG  = FALSE;
 //static guint _S57ID  = 0;
 
-// hold copy of FrameBuffer
-static guint          _fb_pixels_id   = 0;     // texture ID
-static unsigned char *_fb_pixels      = NULL;
-static guint          _fb_pixels_size = 0;
-static int            _fb_pixels_udp  = TRUE;  // TRUE flag that the FB changed
-#define _RGB           3
-#define _RGBA          4
-#ifdef S52_USE_ADRENO
-static int            _fb_pixels_format = _RGB;   // alpha blending done in shader
-#else
-static int            _fb_pixels_format = _RGBA;
-//static int            _fb_pixels_format = _RGB ;  // Note: on TEGRA2 RGB (3) very slow
-#endif
-
 
 // GL utility
 #include "_GLU.i"
@@ -339,6 +325,34 @@ GL_OUT_OF_MEMORY
 
     }
 #endif  // S52_DEBUG
+}
+
+static
+inline void      _glGenBuffers(GLuint *bufID)
+// wrapper on GPU alloc + check
+// FIXME: call with __FUNC_NAME__
+{
+    if (0 != *bufID) {
+        PRINTF("ERROR: glGenBuffers() fail\n");
+        g_assert(0);
+        return;
+    }
+
+    glGenBuffers(1, bufID);
+
+#ifdef S52_DEBUG
+    // Note: glIsBuffer() will fail but bufID is valid but not yet associated with
+    // a buffer object by calling glBindBuffer,
+    //if (FALSE == glIsBuffer(bufID) {
+
+    if (0 == *bufID) {
+        PRINTF("ERROR: glGenBuffers() fail\n");
+        g_assert(0);
+        return;
+    }
+#endif  // S52_DEBUG
+
+    return;
 }
 
 static int       _findCentInside  (guint npt, pt3 *v)
@@ -552,60 +566,6 @@ static int       _getLODidx(char **str)
 //*/
 #endif  // 0
 
-
-//#if 0
-// code lifted from OpenCPN
-// https://github.com/OpenCPN/OpenCPN/blob/a6588bd7231191aa3d7ec1ecb6f57b064e44ab73/src/chcanv.cpp
-/* @ChartCanvas::CalcGridSpacing
- **
- ** Calculate the major and minor spacing between the lat/lon grid
- **
- ** @param [r] WindowDegrees displayed number of lat or lan in the window
- ** @param [w] MajorSpacing  Major distance between grid lines
- ** @param [w] MinorSpacing  Minor distance between grid lines
- ** @return [void]
- */
-//void CalcGridSpacing( float view_scale_ppm, float& MajorSpacing, float&MinorSpacing )
-static int       _getGratScale(double view_scale_ppm, double *majorSpacing, double *minorSpacing)
-{
-    // 1' = 1/60 = 0.1666... for SCAMIN = ?
-    // table for calculating the distance between the grids
-    // [0] view_scale ppm [SD: pixel per meter?]
-    // [1] spacing between major grid lines in degrees
-    // [2] spacing between minor grid lines in degrees
-    //static const float lltab[][3] =
-    static double lltab[][3] = {
-        // ppm     major         minor
-        {0.0,      90.0,         30.0     },
-        {0.000001, 45.0,         15.0     },
-        {0.0002,   30.0,         10.0     },
-        {0.0003,   10.0,          2.0     },
-        {0.0008,    5.0,          1.0     },
-        {0.001,     2.0,         30.0/60.0},
-        {0.003,     1.0,         20.0/60.0},
-        {0.006,     0.5,         10.0/60.0},
-        {0.03,     15.0/60.0,     5.0/60.0},
-        {0.01,     10.0/60.0,     2.0/60.0},
-        {0.06,      5.0/60.0,     1.0/60.0},
-        {0.1,       2.0/60.0,     1.0/60.0},
-        {0.4,       1.0/60.0,     0.5/60.0},
-        {0.6,       0.5/60.0,     0.1/60.0},
-        {1.0,       0.2/60.0,     0.1/60.0},
-        {1e10,      0.1/60.0,     0.05/60.0}
-    };
-
-    unsigned int tabi;
-    for (tabi = 0; tabi<((sizeof lltab) / (sizeof *lltab)); ++tabi) {
-        if (view_scale_ppm < lltab[tabi][0])
-            break;
-    }
-
-    *majorSpacing = lltab[tabi][1]; // major latitude distance
-    *minorSpacing = lltab[tabi][2]; // minor latitude distance
-
-    return TRUE;
-}
-//#endif  // 0
 
 static int       _computeCentroid(S57_geo *geo)
 // return centroids
@@ -980,7 +940,7 @@ static void      _glUniformMatrix4fv_uModelview(void)
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
 
-    /*
+    /* optimisation test
     if (FALSE == _identity_MODELVIEW) {
         _glMatrixMode(GL_MODELVIEW);
         _glLoadIdentity(GL_MODELVIEW);
@@ -1297,57 +1257,48 @@ int        S52_GL_prj2win(double *x, double *y)
     return TRUE;
 }
 
-static void      _glLineStipple(GLint  factor,  GLushort  pattern)
-{
-#ifdef S52_USE_GL2
-    // silence gcc warning
-    (void)factor;
-    (void)pattern;
-
-    /*
-    static int silent = FALSE;
-    if (FALSE == silent) {
-        PRINTF("FIXME: GL2 line stipple\n");
-        PRINTF("       (this msg will not repeat)\n");
-        silent = TRUE;
-    }
-    //*/
-
-
-#else
-    glEnable(GL_LINE_STIPPLE);
-    glLineStipple(factor, pattern);
-#endif
-
-    return;
-}
-
 static void      _glLineWidth(GLfloat width)
 {
+    if (width <= 0.0) {
+        PRINTF("DEBUG: line width <= 0 found\n");
+        g_assert(0);
+    }
+
     // FIXME: debug dotpich correction
     glLineWidth(width);
 
     // debug GLES2 blending - NOP!
     //glLineWidth(width + 0.5);
 
+    _checkError("_glLineWidth() -0-");
+
     return;
 }
 
 static void      _glPointSize(GLfloat size)
 {
+    if (size <= 0.0) {
+        PRINTF("DEBUG: point size <= 0 found\n");
+        g_assert(0);
+    }
+
     // FIXME: test dotpich correction
 #ifdef S52_USE_GL2
-    //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
-    //then 'gl_PointSize' in the shader becomme active
+    //glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);  // undifined in GL2!
+    //glEnable(GL_PROGRAM_POINT_SIZE);         // undifined in GL2!
+    //then 'gl_PointSize/gl_PointCoord' in the shader becomme active
     glUniform1f(_uPointSize, size);
 #else
     glPointSize(size);
 #endif
 
+    _checkError("_glPointSize() -0-");
+
     return;
 }
 
 static GLvoid    _DrawArrays_LINE_STRIP(guint npt, vertex_t *ppt)
+// immediate
 {
     /*
     // debug - test move S52 layer on Z
@@ -1385,6 +1336,7 @@ static GLvoid    _DrawArrays_LINE_STRIP(guint npt, vertex_t *ppt)
 }
 
 static GLvoid    _DrawArrays_LINES(guint npt, vertex_t *ppt)
+// immediate
 // this is used when VRM line style is alternate line style
 // ie _normallinestyle == 'N'
 {
@@ -1437,6 +1389,8 @@ static int       _VBODrawArrays_AREA(S57_prim *prim)
 
         S57_getPrimIdx(prim, i, &mode, &first, &count);
 
+        glDrawArrays(mode, first, count);
+
         /*
         // FIXME: AP & AC filter one another
         if ((S52_CMD_WRD_FILTER_AP & (int) S52_MP_get(S52_CMD_WRD_FILTER)) {
@@ -1457,14 +1411,7 @@ static int       _VBODrawArrays_AREA(S57_prim *prim)
         }
         */
 
-        if (_TRANSLATE == mode) {
-            PRINTF("FIXME: _TRANSLATE\n");
-            g_assert(0);
-        } else {
-            glDrawArrays(mode, first, count);
-        }
     }
-
 
     _checkError("_VBODrawArrays_AREA()");
 
@@ -1473,7 +1420,7 @@ static int       _VBODrawArrays_AREA(S57_prim *prim)
 
 static int       _VBOCreate(S57_prim *prim)
 // return new vboID else FALSE.
-// Note that vboID set save by the caller
+// Note that vboID is save by the caller
 {
     guint     primNbr = 0;
     vertex_t *vert    = NULL;
@@ -1483,33 +1430,17 @@ static int       _VBOCreate(S57_prim *prim)
     if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
         return FALSE;
 
-    //if (GL_FALSE == glIsBuffer(vboID)) {
-    if (0 == vboID) {
-        glGenBuffers(1, &vboID);
+    _glGenBuffers(&vboID);
 
-        // glIsBuffer fail!
-        //if (GL_FALSE == glIsBuffer(vboID)) {
-        if (0 == vboID) {
-            PRINTF("ERROR: glGenBuffers() fail\n");
-            g_assert(0);
-            return FALSE;
-        }
+    // bind VBO in order to use
+    glBindBuffer(GL_ARRAY_BUFFER, vboID);
 
-        // bind VBO in order to use
-        glBindBuffer(GL_ARRAY_BUFFER, vboID);
+    // upload VBO data to GPU
+    glBufferData(GL_ARRAY_BUFFER, vertNbr*sizeof(vertex_t)*3, (const void *)vert, GL_STATIC_DRAW);
 
-        // upload VBO data to GPU
-        glBufferData(GL_ARRAY_BUFFER, vertNbr*sizeof(vertex_t)*3, (const void *)vert, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        _checkError("_VBOCreate()");
-
-    } else {
-        PRINTF("ERROR: VBO allready set!\n");
-        g_assert(0);
-        return FALSE;
-    }
+    _checkError("_VBOCreate()");
 
     return vboID;
 }
@@ -1676,9 +1607,10 @@ static cIdx _cIdx;
 
 
 #if 0
-//* MSAA experiment does the blending now
 static int       _setBlend(int blend)
+// MSAA experiment does the blending now
 // TRUE turn on blending if AA
+// will break GL2 text alpha
 {
     if (TRUE == (int) S52_MP_get(S52_MAR_ANTIALIAS)) {
         if (TRUE == blend) {
@@ -1702,11 +1634,17 @@ static int       _setBlend(int blend)
 
     return TRUE;
 }
-//*/
 #endif  // 0
 
 static int       _glColor4ub(GLubyte r, GLubyte g, GLubyte b, GLubyte a)
+// trans: '0' - 0% no transparency, '1' - 25%, '2' - 50%, '3' - 75%, '4' - 100%
 {
+    // debug
+    if (0 == a) {
+        PRINTF("DEBUG: alpha not set\n");
+        g_assert(0);
+    }
+
 #ifdef S52_USE_GL2
     GLfloat alpha = (4 - (a - '0')) * TRNSP_FAC_GLES2;
     glUniform4f(_uColor, r/255.0, g/255.0, b/255.0, alpha);
@@ -1720,7 +1658,7 @@ static int       _glColor4ub(GLubyte r, GLubyte g, GLubyte b, GLubyte a)
     return TRUE;
 }
 
-static GLubyte   _setFragAttrib(S52_Color *c, gboolean highlight)
+static GLubyte   _setFragAttrib(const S52_Color *c, gboolean highlight)
 // set fragment attributes: color/highlight, trans, pen_w
 // return transparancy/alpha
 {
@@ -1728,7 +1666,7 @@ static GLubyte   _setFragAttrib(S52_Color *c, gboolean highlight)
         // opaque
         _glColor4ub(_cIdx.color.r, _cIdx.color.g, _cIdx.color.b, '0');
 
-        return (GLubyte) 1;
+        return 1;
     }
 
     // FIXME: red / yellow (danger / warning)
@@ -1742,7 +1680,6 @@ static GLubyte   _setFragAttrib(S52_Color *c, gboolean highlight)
     }
 
     if (('0'!=c->fragAtt.trans) && (TRUE==(int) S52_MP_get(S52_MAR_ANTIALIAS))) {
-        // FIXME: blending always ON
         glEnable(GL_BLEND);
 
 #ifdef S52_USE_GL1
@@ -1764,7 +1701,7 @@ static GLubyte   _setFragAttrib(S52_Color *c, gboolean highlight)
     return c->fragAtt.trans;
 }
 
-static int       _glCallList(S52_DListData *DListData)
+static int       _glCallList(S52_DListData *DListData, gboolean highlight)
 // get color of each Display List then run it
 {
     if (NULL == DListData) {
@@ -1789,7 +1726,7 @@ static int       _glCallList(S52_DListData *DListData)
     for (guint i=0; i<DListData->nbr; ++i, ++lst, ++col) {
 
         //GLubyte trans =
-        _setFragAttrib(col, FALSE);
+        _setFragAttrib(col, highlight);
 
 #ifdef S52_USE_OPENGL_VBO
         GLuint vboId = DListData->vboIds[i];
@@ -1946,7 +1883,7 @@ static int       _renderSY_POINT_T(S52_obj *obj, double x, double y, double rota
     _pushScaletoPixel(TRUE);                // FIXME: should be after rot like other call!
     _glRotated(rotation, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
-    _glCallList(DListData);
+    _glCallList(DListData, S57_getHighlight(S52_PL_getGeo(obj)));
 
     _popScaletoPixel();
 
@@ -2014,7 +1951,7 @@ static int       _renderSY_silhoutte(S52_obj *obj)
         // Note: no -Y
         _glScaled(brdRatio, lenRatio, 1.0);
 
-        _glCallList(DListData);
+        _glCallList(DListData, S57_getHighlight(S52_PL_getGeo(obj)));
 
         _popScaletoPixel();
 
@@ -2080,14 +2017,14 @@ static int       _renderSY_CSYMB(S52_obj *obj)
             if (0 == g_strcmp0(attval->str, "SCALEB10")) {
                 // apply stretch
                 _glScaled(WRatio, HRatio, 1.0);
-                _glCallList(DListData);
+                _glCallList(DListData, S57_getHighlight(S52_PL_getGeo(obj)));
             }
         } else {
             // scale bar 10 NM
             if (0 == g_strcmp0(attval->str, "SCALEB11")) {
                 // apply stretch
                 _glScaled(WRatio, HRatio*10.0, 1.0);
-                _glCallList(DListData);
+                _glCallList(DListData, S57_getHighlight(S52_PL_getGeo(obj)));
             }
         }
 
@@ -2152,7 +2089,7 @@ static int       _renderSY_CSYMB(S52_obj *obj)
             _glScaled(scalex,  scaley, 1.0);
             _glRotated(-_view.north, 0.0, 0.0, 1.0);    // rotate coord sys. on Z
 
-            _glCallList(DListData);
+            _glCallList(DListData, S57_getHighlight(S52_PL_getGeo(obj)));
 
             return TRUE;
         }
@@ -2363,35 +2300,6 @@ static int       _renderSY_vessel(S52_obj *obj)
         _renderSY_silhoutte(obj);
         return TRUE;
     }
-
-#ifdef S52_USE_SYM_VESSEL_DNGHL
-    /* experimental: VESSEL close quarters situation; target red
-    if (NULL!=vestatstr && '3'==*vestatstr->str) {
-        GString *vesrcestr = S57_getAttVal(geo, "vesrce");
-        GString *headngstr = S57_getAttVal(geo, "headng");
-        double   headng    = (NULL==headngstr) ? 0.0 : S52_atof(headngstr->str);
-
-        // Note: no LUP for vesrce=3 (VTS)
-        //if (NULL!=vesrcestr && ('1'==*vesrcestr->str || '2'==*vesrcestr->str)) {
-        //    _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
-        //}
-
-        if (NULL!=vesrcestr && '2'==*vesrcestr->str) {
-            if (0 == S52_PL_cmpCmdParam(obj, "aisves01")) {
-                _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
-            }
-        }
-        if (NULL!=vesrcestr && '1'==*vesrcestr->str) {
-            if (0 == S52_PL_cmpCmdParam(obj, "arpatg01")) {
-                _renderSY_POINT_T(obj, ppt[0], ppt[1], headng);
-            }
-        }
-
-        // skip the reste
-        return TRUE;
-    }
-    //*/
-#endif
 
     // draw vector stabilization
     // FIXME: NO VECT STAB if target sleeping - (NULL!=vestatstr && '2'==*vestatstr->str)
@@ -2958,6 +2866,13 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
         return FALSE;
 
     /* debug
+    S52_Color *col;
+    char       dummy_s;   // style - L/S/T
+    char       pen_w;
+    S52_PL_getLSdata(obj, &pen_w, &dummy_s, &col);
+    */
+
+    /* debug
     {
         double orientA = -1;  // sync with 'no orient' value in getSYorient()
         double orientB = S52_PL_getSYorient(obj);
@@ -3080,7 +2995,7 @@ static int       _renderLS_LIGHTS05(S52_obj *obj)
     return TRUE;
 }
 
-static int       _renderLS_ownshp(S52_obj *obj)
+static int       _renderLS_ownshp(S52_obj *obj, char pen_w)
 {
     S57_geo *geo       = S52_PL_getGeo(obj);
     GString *headngstr = S57_getAttVal(geo, "headng");
@@ -3096,11 +3011,12 @@ static int       _renderLS_ownshp(S52_obj *obj)
     //   2px - vector
     //   1px - heading, beam brg
 
-    S52_Color *col;
-    char       style;   // L/S/T
+    /* debug
+    S52_Color *dummy_c;   // col
+    char       dummy_s;   // style - L/S/T
     char       pen_w;
-    S52_PL_getLSdata(obj, &pen_w, &style, &col);
-
+    S52_PL_getLSdata(obj, &pen_w, &dummy_s, &dummy_c);
+    */
 
     // draw heading line
     if ((NULL!=headngstr) && (TRUE==(int) S52_MP_get(S52_MAR_HEADNG_LINE)) && ('1'==pen_w)) {
@@ -3251,32 +3167,15 @@ static int       _renderLS_vessel(S52_obj *obj)
                 pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
 
 #ifdef S52_USE_GL2
-#ifdef S52_USE_SYM_VESSEL_DNGHL
-                /* 0 - undefined, 1 - AIS active, 2 - AIS sleeping, 3 - AIS active, close quarter (red)
-                GString *vestatstr = S57_getAttVal(geo, "vestat");
-                if (NULL!=vestatstr && '3'==*vestatstr->str) {
-                    double ppt[6] = {ppt[0], ppt[1], 0.0, ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0};
-                    _glLineWidth(3);
-                    _renderLS_gl2('S', 2, ppt);
-                }
-                */
-#endif  // S52_USE_SYM_VESSEL_DNGHL
-
                 _glUniformMatrix4fv_uModelview();
                 _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
 
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-                glBindTexture(GL_TEXTURE_2D,  0);
+#else  // S52_USE_GL2
 
-                glUniform1f(_uTextOn, 0.0);
-                glDisableVertexAttribArray(_aUV);
-                glDisableVertexAttribArray(_aPosition);
-#else
-                //pt3v pt[2] = {{ppt[0], ppt[1], 0.0}, {ppt[0]+veclenMX, ppt[1]+veclenMY, 0.0}};
-                //_glUniformMatrix4fv_uModelview();
                 _glLoadIdentity(GL_MODELVIEW);
                 _DrawArrays_LINE_STRIP(2, (vertex_t*)pt);
-#endif
+
+#endif // S52_USE_GL2
             }
         }
     }
@@ -3291,18 +3190,20 @@ static int       _renderLS_afterglow(S52_obj *obj)
         return TRUE;
 
     S57_geo   *geo = S52_PL_getGeo(obj);
-    guint      pti = S57_getGeoSize(geo);
     GLdouble  *ppt = NULL;
     guint      npt = 0;
-
     if (FALSE == S57_getGeoData(geo, 0, &npt, &ppt))
         return TRUE;
 
+    /* debug
     if (0 == npt) {
         PRINTF("DEBUG: afterglow npt = 0, .. exit\n");
         g_assert(0);
         return TRUE;
     }
+    */
+
+    guint pti = S57_getGeoSize(geo);
     if (0 == pti) {
         //PRINTF("DEBUG: afterglow pti = 0, .. exit\n");
         //g_assert(0);
@@ -3311,9 +3212,9 @@ static int       _renderLS_afterglow(S52_obj *obj)
 
     {   // set color
         S52_Color *col;
-        char       style;   // dummy
-        char       pen_w;   // dummy
-        S52_PL_getLSdata(obj, &pen_w, &style, &col);
+        char       dummy_s;  // style
+        char       dummy_p;  // pen_w
+        S52_PL_getLSdata(obj, &dummy_p, &dummy_s, &col);
         _setFragAttrib(col, S57_getHighlight(geo));
     }
 
@@ -3321,6 +3222,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
 
     //_checkError("_renderLS_afterglow() .. beg");
 
+    // FIXME: def point size
     _glPointSize(7.0);
 
 
@@ -3346,19 +3248,21 @@ static int       _renderLS_afterglow(S52_obj *obj)
     // convert an array of geo double (3) to float (3)
     _d2f(_tessWorkBuf_f, pti, ppt);
 
-    //_checkError("_renderLS_afterglow() .. -0-");
+    _checkError("_renderLS_afterglow() .. -0-");
     // turn ON after glow in shader
-    glUniform1f(_uGlowOn, 1.0);
+    //glUniform1f(_uGlowOn, 1.0);
+    glUniform1i(_uGlowOn, 1);
 
     // vertex array - fill vbo arrays
     glEnableVertexAttribArray(_aPosition);
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 0,  _tessWorkBuf_f->data);
-    //_checkError("_renderLS_afterglow() .. -0.1-");
+    _checkError("_renderLS_afterglow() .. -0.1-");
 
     // fill array with alpha
     glEnableVertexAttribArray(_aAlpha);
+    _checkError("_renderLS_afterglow() .. -1.0-");
     glVertexAttribPointer    (_aAlpha, 1, GL_FLOAT, GL_FALSE, 0, _aftglwColorArr->data);
-    //_checkError("_renderLS_afterglow() .. -1-");
+    _checkError("_renderLS_afterglow() .. -1.1-");
 
 #else  // S52_USE_GL2
 
@@ -3390,12 +3294,13 @@ static int       _renderLS_afterglow(S52_obj *obj)
     // 3 - draw
     _glUniformMatrix4fv_uModelview();
     glDrawArrays(GL_POINTS, 0, pti);
-    //_checkError("_renderLS_afterglow() .. -2-");
+    _checkError("_renderLS_afterglow() .. -2-");
 
 #ifdef S52_USE_GL2
     // 4 - done
     // turn OFF after glow
-    glUniform1f(_uGlowOn, 0.0);
+    //glUniform1f(_uGlowOn, 0.0);
+    glUniform1i(_uGlowOn, 0);
     glDisableVertexAttribArray(_aPosition);
     glDisableVertexAttribArray(_aAlpha);
 
@@ -3417,6 +3322,7 @@ static int       _renderLS_afterglow(S52_obj *obj)
 
 static int       _renderLS(S52_obj *obj)
 // Line Style
+// FIXME: GL1 is immediate but not GL2 - load vertex on GPU
 {
 #ifdef S52_USE_GV
     return FALSE;
@@ -3425,23 +3331,36 @@ static int       _renderLS(S52_obj *obj)
     if (S52_CMD_WRD_FILTER_LS & (int) S52_MP_get(S52_CMD_WRD_FILTER))
         return TRUE;
 
+    // COALNE 459
+    /* DEPCNT 537
+    if (459 == S57_getS57ID(S52_PL_getGeo(obj))) {
+        PRINTF("DEBUG: COALNE found\n");
+        //g_assert(0);
+    }
+    //*/
+
+    //S52_DListData *DListData = S52_PL_getDListData(obj);
+    //S52_Color *col           = DListData->colors;
+
     S52_Color *col;
-    char       style;   // L/S/T
+    char       style;   // L/S/T - use by normal command word LS()
     char       pen_w;
     S52_PL_getLSdata(obj, &pen_w, &style, &col);
-    _setFragAttrib(col, S57_getHighlight(S52_PL_getGeo(obj)));
 
+    _setFragAttrib(col, S57_getHighlight(S52_PL_getGeo(obj)));
+    // overwrite pen_w
     _glLineWidth(pen_w - '0');
+
+    // debug
     //_glLineWidth(pen_w - '0' + 0.1);  // WARNING: THIS +0.1 SLOW DOWN EVERYTHING
     //_glLineWidth(pen_w - '0' + 0.5);
     //_glLineWidth(pen_w - '0' + 0.375);
     //_glLineWidth(pen_w - '0' - 0.5);
-
-    // debug
     //glLineWidth(3.5);
 
     //_setBlend(TRUE);
 
+#ifdef S52_USE_GL1
     // Assuming pixel size at 0.3 mm.
     // Note: we can draw coded depth line because
     // pattern start is not reset a each new lines in a strip.
@@ -3468,40 +3387,23 @@ static int       _renderLS(S52_obj *obj)
             break;
 
     default:
-        // FIXME: DEBUG
             PRINTF("ERROR: invalid line style\n");
             g_assert(0);
             return FALSE;
     }
+#endif  // GL1
 
     {
         S57_geo  *geo = S52_PL_getGeo(obj);
-
         if (S57_POINT_T == S57_getObjtype(geo)) {
             if (0 == g_strcmp0("LIGHTS", S57_getName(geo)))
                 _renderLS_LIGHTS05(obj);
             else {
                 if (0 == g_strcmp0("ownshp", S57_getName(geo)))
-                    _renderLS_ownshp(obj);
+                    _renderLS_ownshp(obj, pen_w);
                 else {
                     if (0 == g_strcmp0("vessel", S57_getName(geo))) {
-#ifdef S52_USE_SYM_VESSEL_DNGHL
-                        /* AIS close quarters
-                        GString *vestatstr = S57_getAttVal(geo, "vestat");
-                        if (NULL!=vestatstr && '3'==*vestatstr->str) {
-                            if (0 == g_strcmp0("DNGHL", col->colName))
-                                _renderLS_vessel(obj);
-                            else
-                                // discard all other line not of DNGHL colour
-                                return TRUE;
-                        }
-                        else
-                        */
-#endif  // S52_USE_SYM_VESSEL_DNGHL
-                        {
-                            // normal line
-                            _renderLS_vessel(obj);
-                        }
+                        _renderLS_vessel(obj);
                     }
                 }
             }
@@ -3509,23 +3411,11 @@ static int       _renderLS(S52_obj *obj)
         else
         {
             // S57_LINES_T, S57_AREAS_T
-
-            // FIXME: case of pick AREA where the only commandword is LS()
-            // FIX: one more call to fillarea()
-            GLdouble *ppt     = NULL;
-            guint     npt     = 0;
-            S57_getGeoData(geo, 0, &npt, &ppt);
-
-            // get the current number of positon (this grow as GPS/AIS pos come in)
-            if (0 == g_strcmp0("pastrk", S57_getName(geo))) {
-                npt = S57_getGeoSize(geo);
-            }
-
             if (0 == g_strcmp0("ownshp", S57_getName(geo))) {
                 // what symbol for ownshp of type line or area ?
                 // when ownshp is a POINT_T type !!!
                 PRINTF("DEBUG: ownshp obj of type LINES_T, AREAS_T\n");
-                _renderLS_ownshp(obj);
+                _renderLS_ownshp(obj, pen_w);
                 g_assert(0);
             } else {
 #ifdef S52_USE_AFGLOW
@@ -3540,8 +3430,61 @@ static int       _renderLS(S52_obj *obj)
 #endif
                 {
 
+                    // FIXME: case of pick AREA where the only commandword is LS()
+                    // FIX: one more call to fillarea()
+                    GLdouble *ppt     = NULL;
+                    guint     npt     = 0;
+                    S57_getGeoData(geo, 0, &npt, &ppt);
+
+                    // get the current number of positon (this grow as GPS/AIS pos come in)
+                    if (0 == g_strcmp0("pastrk", S57_getName(geo))) {
+                        npt = S57_getGeoSize(geo);
+                    }
+
+
 #ifdef S52_USE_GL2
-                    _renderLS_gl2(style, npt, ppt);
+                    //glUniform1i(_uPalOn, 1);
+
+                    /* SOLD Line first pass - create VBO
+                    if ('L' == style) {
+                        S52_DListData *DListData = S52_PL_getDListData(obj);
+                        if (NULL == DListData) {
+                            DListData = S52_PL_newDListData(obj);
+                            DListData->create    =  FALSE;
+                            DListData->nbr       =  1;
+                            DListData->prim[0]   = S57_initPrim(NULL);
+                            DListData->crntPalID = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
+
+                            DListData->colors[0] = *col;
+                            DListData->colors[0].fragAtt.pen_w = pen_w;
+                            DListData->colors[0].fragAtt.trans = '0';  // 0% - no transparency
+
+                            // convert to float
+                            _d2f(_tessWorkBuf_f, npt, ppt);
+                            vertex_t *v = (vertex_t *)_tessWorkBuf_f->data;
+
+                            // fill prim
+                            S57_begPrim(DListData->prim[0], GL_LINE_STRIP);
+                            for (guint i=0; i<npt; ++i, v+=3) {
+                                S57_addPrimVertex(DListData->prim[0], v);
+                            }
+                            S57_endPrim(DListData->prim[0]);
+                            DListData->vboIds[0] = _VBOCreate(DListData->prim[0]);
+                        }
+
+                        _glLoadIdentity(GL_MODELVIEW);
+
+                        _glCallList(DListData, S57_getHighlight(S52_PL_getGeo(obj)));
+
+                        return TRUE;
+                    }
+                    //*/
+
+                    // render line style DOTT / DASH
+                    _renderLS_gl2(obj, style, npt, ppt);
+
+                    //glUniform1i(_uPalOn, -1);
+
 #else
                     //_glUniformMatrix4fv_uModelview();
                     _glLoadIdentity(GL_MODELVIEW);
@@ -3781,7 +3724,7 @@ static int       _renderLCring(S52_obj *obj, guint ringNo, double symlen_wrld)
 
             _pushScaletoPixel(TRUE);
 
-            _glCallList(DListData);
+            _glCallList(DListData, S57_getHighlight(S52_PL_getGeo(obj)));
 
             _popScaletoPixel();
 
@@ -3912,8 +3855,8 @@ static int       _renderAC_NODATA_layer0(void)
     // clear screen with color NODATA
     S52_Color *c = S52_PL_getColor("NODTA");
 
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    //glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
+    // mask set at init time and not
+    //glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
 #ifdef S52_USE_RADAR
     if (1.0 == S52_MP_get(S52_MAR_DISP_NODATA_LAYER)) {
@@ -3981,8 +3924,8 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
         S52_DListData *DListData = S52_PL_getDListData(obj);
         if (NULL == DListData) {
             DListData = S52_PL_newDListData(obj);
-            DListData->nbr        =  2;
-            DListData->crntPalIDX = -1;
+            DListData->nbr       =  2;
+            DListData->crntPalID = -1;
         }
 
         if (0 == DListData->vboIds[0]) {
@@ -4027,14 +3970,13 @@ static int       _renderAC_LIGHTS05(S52_obj *obj)
 
         //_setBlend(TRUE);
 
-
         _glLoadIdentity(GL_MODELVIEW);
 
         _glTranslated(ppt[0], ppt[1], 0.0);
         _pushScaletoPixel(FALSE);
 
         // use VBO
-        _glCallList(DListData);
+        _glCallList(DListData, S57_getHighlight(S52_PL_getGeo(obj)));
 
         _popScaletoPixel();
 
@@ -4061,10 +4003,10 @@ static int       _renderAC_VRMEBL01(S52_obj *obj)
     S52_DListData *DListData = S52_PL_getDListData(obj);
     if (NULL == DListData) {
         DListData = S52_PL_newDListData(obj);
-        DListData->nbr        =  1;
-        DListData->prim[0]    = S57_initPrim(NULL);
-        DListData->colors[0]  = *S52_PL_getColor("CURSR");
-        DListData->crntPalIDX = -1;
+        DListData->nbr       =  1;
+        DListData->prim[0]   = S57_initPrim(NULL);
+        DListData->colors[0] = *S52_PL_getColor("CURSR");
+        DListData->crntPalID = -1;
     }
 
     S52_Color *c = DListData->colors;
@@ -4148,12 +4090,13 @@ static int       _renderAC(S52_obj *obj)
         return TRUE;
     }
 
+#if 0
     //* experimental: skip NODTA color - passthrough layer 0
     // FIXME: check if this break S52_MAR_DISP_NODATA_LAYER OFF
     // FIXME: check if HO can  put something on group 1 bellow group 2 NODTA
     //        that break pasthrough layer 0
     if (0 == g_strcmp0(c->colName, "NODTA")) {
-        /* Note: UNSARE (unsurveyed area) on group 2
+        //* Note: UNSARE (unsurveyed area) on group 2
         if (S52_PRIO_GROUP1 != S52_PL_getDPRI(obj)) {
             // FIXME: skip return if group 2
             PRINTF("DEBUG: nodata on group 2\n");
@@ -4163,13 +4106,21 @@ static int       _renderAC(S52_obj *obj)
         return TRUE;
     }
     //*/
+#endif  // 0
 
 
     _setFragAttrib(c, S57_getHighlight(geo));
 
+    // FIXME: break cursor pick
+    // optimisation test: turn ON rgb lookup
+    //glUniform1i(_uPalOn, c->fragAtt.cidx);
+
     _glUniformMatrix4fv_uModelview();
 
     _fillArea(geo);
+
+    // optimisation test: turn OFF rgb lookup
+    //glUniform1i(_uPalOn,    -1);
 
     _checkError("_renderAC()");
 
@@ -4227,7 +4178,8 @@ static int       _renderAP_NODATA_layer0(void)
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
 
     // turn ON 'sampler2d'
-    glUniform1f(_uPattOn,       1.0);
+    //glUniform1f(_uPattOn,       1.0);
+    glUniform1i(_uPattOn,       1);
     glUniform1f(_uPattGridX,  pt0.x);
     glUniform1f(_uPattGridY,  pt0.y);
     glUniform1f(_uPattW,     tile_x);
@@ -4246,7 +4198,8 @@ static int       _renderAP_NODATA_layer0(void)
     glBindTexture(GL_TEXTURE_2D,  0);
 
      // turn OFF 'sampler2d'
-    glUniform1f(_uPattOn,    0.0);
+    //glUniform1f(_uPattOn,    0.0);
+    glUniform1i(_uPattOn,       0);
     glUniform1f(_uPattGridX, 0.0);
     glUniform1f(_uPattGridY, 0.0);
     glUniform1f(_uPattW,     0.0);
@@ -4445,19 +4398,13 @@ static int       _renderTXTAA(S52_obj *obj, S52_Color *color, double x, double y
             else
                 len = _freetype_gl_buffer->len;
 
-            glGenBuffers(1, &vboID);
-
-            // glIsBuffer() fail!
-            if (0 == vboID) {
-                PRINTF("ERROR: glGenBuffers() fail\n");
-                g_assert(0);
-                return FALSE;
-            }
-
-            S52_PL_setFreetypeGL_VBO(obj, vboID, _freetype_gl_buffer->len, strWpx, strHpx);
+            _glGenBuffers(&vboID);
 
             // bind VBOs for vertex array
             glBindBuffer(GL_ARRAY_BUFFER, vboID);      // for vertex coordinates
+
+            S52_PL_setFreetypeGL_VBO(obj, vboID, _freetype_gl_buffer->len, strWpx, strHpx);
+
             // upload freetype_gl data to GPU
             glBufferData(GL_ARRAY_BUFFER,
                          _freetype_gl_buffer->len * sizeof(_freetype_gl_vertex_t),
@@ -5176,106 +5123,6 @@ static S57_prim *_parseHPGL(S52_vec *vecObj, S57_prim *vertex)
     return vertex;
 }
 
-#if 0
-/*
-// call _buildSymbDL() insted - handle more than 1 subList since pattern can have many pen_w
-static GLint     _buildPatternDL(gpointer key, gpointer value, gpointer data)
-{
-    // 'key' not used
-    (void) key;
-    // 'data' not used
-    (void) data;
-
-    S52_symDef    *symDef    = (S52_symDef*)value;
-    S52_DListData *DListData = S52_PL_getDLData(symDef);
-
-    //PRINTF("PATTERN: %s\n", (char*)key);
-
-    // is this symbol need to be re-created (update PLib)
-    if (FALSE == DListData->create)
-        return FALSE;
-
-#ifdef S52_USE_OPENGL_VBO
-#if !defined(S52_USE_GLSC2)
-    if (TRUE == glIsBuffer(DListData->vboIds[0])) {
-        // Note: DL->nbr is 1 - all pattern in PLib have only one color
-        // but this is not in S52 specs (check this)
-        glDeleteBuffers(DListData->nbr, &DListData->vboIds[0]);
-
-        PRINTF("FIXME: debug this code path\n");
-        g_assert(0);
-        return FALSE;
-    }
-
-    // debug
-    if (MAX_SUBLIST < DListData->nbr) {
-        PRINTF("ERROR: sublist overflow -1-\n");
-        g_assert(0);
-        return FALSE;
-    }
-#endif  // !S52_USE_GLSC2
-#else   // S52_USE_OPENGL_VBO
-
-#if !defined(S52_USE_GLSC1)
-    // can't delete a display list - no garbage collector in GL SC
-    // first delete DL
-    //if (TRUE == glIsBuffer(DL->vboIds[0])) {
-    // GL1 win32
-    if (0 != DListData->vboIds[0]) {
-        glDeleteLists(DListData->vboIds[0], DListData->nbr);
-        DListData->vboIds[0] = 0;
-    }
-#endif
-
-    // then create new one
-    DListData->vboIds[0] = glGenLists(DListData->nbr);
-    if (0 == DListData->vboIds[0]) {
-        PRINTF("ERROR: glGenLists() failed .. exiting\n");
-        g_assert(0);
-        return FALSE;
-    }
-    glNewList(DListData->vboIds[0], GL_COMPILE);
-
-#endif  // S52_USE_OPENGL_VBO
-
-    S52_vec *vecObj = S52_PL_initVOCmd(symDef);
-
-    // set default
-    //_glLineWidth(1.0);
-
-    if (NULL == DListData->prim[0])
-        DListData->prim[0]  = S57_initPrim(NULL);
-    else {
-        PRINTF("ERROR: DL->prim[0] not NULL\n");
-        g_assert(0);
-        return FALSE;
-    }
-
-
-#ifdef S52_USE_OPENGL_VBO
-    // using VBO we need to keep some info (mode, first, count)
-    DListData->prim[0]   = _parseHPGL(vecObj, DListData->prim[0]);
-    DListData->vboIds[0] = _VBOCreate(DListData->prim[0]);
-
-    // set normal mode
-    //glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-#else   // S52_USE_OPENGL_VBO
-
-    DListData->prim[0] = _parseHPGL(vecObj, DListData->prim[0]);
-    glEndList();
-
-#endif  // S52_USE_OPENGL_VBO
-
-    S52_PL_doneVOCmd(vecObj);
-
-    _checkError("_buildPatternDL()");
-
-    return 0;
-}
-*/
-#endif  // 0
-
 static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
 {
     // 'key' not used
@@ -5308,9 +5155,7 @@ static GLint     _buildSymbDL(gpointer key, gpointer value, gpointer data)
     }
 #endif  // !S52_USE_GLSC1
 
-    //glGenBuffers(DL->nbr, &DL->vboIds[0]);
-
-#else
+#else  // S52_USE_OPENGL_VBO
 
 #if !defined(S52_USE_GLSC1)
     // in ES SC: can't delete a display list --no garbage collector
@@ -5654,7 +5499,8 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
     glEnableVertexAttribArray(_aPosition);
     glVertexAttribPointer    (_aPosition, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), ppt);
 
-    glUniform1f(_uTextOn, 1.0);
+    //glUniform1f(_uTextOn, 1.0);
+    glUniform1i(_uTextOn, 1);
     //glBindTexture(GL_TEXTURE_2D, raster->texID);
     glBindTexture(GL_TEXTURE_2D, rr->texID);
 
@@ -5665,7 +5511,8 @@ int        S52_GL_drawRaster(S52_GL_ras *raster)
 
     glBindTexture(GL_TEXTURE_2D,  0);
 
-    glUniform1f(_uTextOn, 0.0);
+    //glUniform1f(_uTextOn, 0.0);
+    glUniform1i(_uTextOn, 0);
 
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
@@ -5824,8 +5671,9 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
 
 #ifdef S52_USE_GL2
-     // turn ON 'sampler2d'
-    glUniform1f(_uBlitOn, 1.0);
+    // turn ON 'sampler2d'
+    //glUniform1f(_uBlitOn, 1.0);
+    glUniform1i(_uBlitOn, 1);
 
     GLfloat ppt[4*3 + 4*2] = {
         _pmin.u, _pmin.v, 0.0,   0.0 + scale_x + scale_z, 0.0 + scale_y + scale_z,
@@ -5847,7 +5695,8 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
     glFrontFace(GL_CCW);
 
     // turn OFF 'sampler2d'
-    glUniform1f(_uBlitOn, 0.0);
+    //glUniform1f(_uBlitOn, 0.0);
+    glUniform1i(_uBlitOn, 0);
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
 
@@ -5869,11 +5718,11 @@ int        S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, doubl
 int        S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize)
 // draw string in world coords
 {
+    // signal lone text
     S52_GL_cycle tmpCrntCycle = _crnt_GL_cycle;
     _crnt_GL_cycle = S52_GL_NONE;
 
     S52_Color *c = S52_PL_getColor("CHBLK");  // black
-    //_renderTXTAA(NULL, c, x, y, bsize, weight, str);
     _renderTXTAA(NULL, c, x, y, bsize, str);
 
     _crnt_GL_cycle = tmpCrntCycle;
@@ -5886,7 +5735,7 @@ static char     *_ddmmss(double graticule)
     // FIXME: MAX: |dd* mm' ss"| 11 + \0
     static char str[80];
 
-    double rounding = 0.00005;
+    const double rounding = 0.00005;
 
     int deg = (int) (graticule + rounding);
     int mm  = (int)((graticule - deg + rounding) * 60);
@@ -5901,11 +5750,74 @@ static char     *_ddmmss(double graticule)
     return str;
 }
 
-int        S52_GL_drawGraticule(void)
+static int       _getGratScale(double view_scale_ppm, double *majorSpacing, double *minorSpacing)
+// code lifted from OpenCPN
+// https://github.com/OpenCPN/OpenCPN/src/chcanv.cpp
+//void CalcGridSpacing( float view_scale_ppm, float& MajorSpacing, float&MinorSpacing )
+/* @ChartCanvas::CalcGridSpacing
+ **
+ ** Calculate the major and minor spacing between the lat/lon grid
+ **
+ ** @param [r] WindowDegrees displayed number of lat or lan in the window
+ ** @param [w] MajorSpacing  Major distance between grid lines
+ ** @param [w] MinorSpacing  Minor distance between grid lines
+ ** @return [void]
+ */
 {
+    // 1' = 1/60 = 0.1666... for SCAMIN = ?
+    // table for calculating the distance between the grids
+    // [0] view_scale ppm [SD: pixel per meter?]
+    // [1] spacing between major grid lines in degrees
+    // [2] spacing between minor grid lines in degrees
+    //static const float lltab[][3] =
+    static double lltab[][3] = {
+        // ppm     major         minor
+        {0.0,      90.0,         30.0     },
+        {0.000001, 45.0,         15.0     },
+        {0.0002,   30.0,         10.0     },
+        {0.0003,   10.0,          2.0     },
+        {0.0008,    5.0,          1.0     },
+        {0.001,     2.0,         30.0/60.0},
+        {0.003,     1.0,         20.0/60.0},
+        {0.006,     0.5,         10.0/60.0},
+        {0.03,     15.0/60.0,     5.0/60.0},
+        {0.01,     10.0/60.0,     2.0/60.0},
+        {0.06,      5.0/60.0,     1.0/60.0},
+        {0.1,       2.0/60.0,     1.0/60.0},
+        {0.4,       1.0/60.0,     0.5/60.0},
+        {0.6,       0.5/60.0,     0.1/60.0},
+        {1.0,       0.2/60.0,     0.1/60.0},
+        {1e10,      0.1/60.0,     0.05/60.0}
+    };
+
+    unsigned int tabi;
+    for (tabi = 0; tabi<((sizeof lltab) / (sizeof *lltab)); ++tabi) {
+        if (view_scale_ppm < lltab[tabi][0])
+            break;
+    }
+
+    *majorSpacing = lltab[tabi][1]; // major latitude distance
+    *minorSpacing = lltab[tabi][2]; // minor latitude distance
+
+    return TRUE;
+}
+
+#if 0
+static int       _drawGarticule(double grat, gboolean meridian, char suffix)
+{
+    pt3 pt[2] = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}};
+
+    pt[0].x = (TRUE == meridian) ? grat    : _gmin.u;
+    pt[0].y = (TRUE == meridian) ? _gmin.v : grat;
+    pt[1].x = (TRUE == meridian) ? grat    : _gmax.u;
+    pt[1].y = (TRUE == meridian) ? _gmin.v : grat;
+
+    S57_geo2prj3dv(2, pt);
+
     S52_Color *black = S52_PL_getColor("CHBLK");
-    black->fragAtt.pen_w = '1';
     _setFragAttrib(black, FALSE);
+    // overwrite col->pen_w
+    _glLineWidth(1);
 
     //_setBlend(TRUE);
 
@@ -5913,100 +5825,39 @@ int        S52_GL_drawGraticule(void)
 
 
     char str[80];
+    SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(grat)), suffix);
+    _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
+
+    //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
+    _renderLS_gl2('T', 2, (double*)pt);
+
+    return TRUE;
+}
+#endif  // 0
+
+int        S52_GL_drawGraticule(void)
+{
+    S52_Color *black = S52_PL_getColor("CHBLK");
+    _setFragAttrib(black, FALSE);
+
+    // overwrite col->pen_w
+    //_glLineWidth(0.5);  // to prevent MSAA doubling dott
+    _glLineWidth(1.0);
+
+    //_setBlend(FALSE);
+
+    _glUniformMatrix4fv_uModelview();
+
+    char str[80];
     double scale = (_scalex > _scaley) ? _scalex/_dotpitch_mm_x : _scaley/_dotpitch_mm_y;
 
-    // ----  graticule
-    if (FALSE != (int) S52_MP_get(S52_MAR_DISP_GRATICULE)) {
-        double MajorSpacing;
-        double MinorSpacing;
-
-        // FIXME: user should set that
-        //float TO_PPM = 5.0; // or set table for scale (also get str INTU)
-        // then add to MarPar SCALEFACTOR 1.0
-        // print table scale rather than computed scale
-
-        //_getGratScale(10.0/scale, &MajorSpacing, &MinorSpacing);
-        //_getGratScale(5.0/scale, &MajorSpacing, &MinorSpacing);
-        _getGratScale(1.0/scale, &MajorSpacing, &MinorSpacing);
-
-        //PRINTF("DEBUG: scale: %f, major: %f, minor: %f\n", 10.0/scale, MajorSpacing, MinorSpacing);
-
-        // draw minor
-        if (1.0 == S52_MP_get(S52_MAR_DISP_GRATICULE) || 3.0 == S52_MP_get(S52_MAR_DISP_GRATICULE)) {
-            // latitude
-            for (double lat=floor(_gmin.v); lat<_gmax.v; lat+=MinorSpacing) {
-                if (lat<_gmin.v)
-                    continue;
-
-                pt3 pt[2] = {{_gmin.u, lat, 0.0}, {_gmax.u, lat, 0.0}};
-                S57_geo2prj3dv(2, pt);
-
-                SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lat)), (0.0<lat)?'N':'S');
-                _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
-
-                //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
-                _renderLS_gl2('T', 2, (double*)pt);
-                //_renderLS_gl2('T', 1, (double*)pt);
-            }
-
-            // longitude
-            for (double lon=floor(_gmin.u); lon<_gmax.u; lon+=MinorSpacing) {
-                if (lon<_gmin.u)
-                    continue;
-
-                pt3 pt[2] = {{lon, _gmin.v, 0.0}, {lon, _gmax.v, 0.0}};
-                S57_geo2prj3dv(2, pt);
-
-                SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lon)), (0.0<lon)?'E':'W');
-                _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
-
-                //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
-                _renderLS_gl2('T', 2, (double*)pt);
-                //_renderLS_gl2('T', 1, (double*)pt);
-            }
-        }
-
-        // draw major
-        if (2.0 == S52_MP_get(S52_MAR_DISP_GRATICULE) || 3.0 == S52_MP_get(S52_MAR_DISP_GRATICULE)) {
-             // latitude
-            for (double lat=floor(_gmin.v); lat<_gmax.v; lat+=MajorSpacing) {
-                if (lat<_gmin.v)
-                    continue;
-
-                 pt3 pt[2] = {{_gmin.u, lat, 0.0}, {_gmax.u, lat, 0.0}};
-                S57_geo2prj3dv(2, pt);
-
-                SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lat)), (0.0<lat)?'N':'S');
-                _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
-
-                //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
-                _renderLS_gl2('S', 2, (double*)pt);
-            }
-
-            // longitude
-            for (double lon=floor(_gmin.u); lon<_gmax.u; lon+=MajorSpacing) {
-                if (lon<_gmin.u)
-                    continue;
-
-                pt3 pt[2] = {{lon, _gmin.v, 0.0}, {lon, _gmax.v, 0.0}};
-                S57_geo2prj3dv(2, pt);
-
-                SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lon)), (0.0<lon)?'E':'W');
-                _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
-
-                //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
-                _renderLS_gl2('S', 2, (double*)pt);
-                //_renderLS_gl2('S', 1, (double*)pt);
-            }
-       }
-     }
-
-    // ---- draw SCALE / _SCAMIN at bottom
-    {
+    // ---- draw SCALE / _SCAMIN
+    {   // FIXME: move to own func
         S52_Color *ninfo = S52_PL_getColor("NINFO");
 
         // scale at top
         // fixme: draw rounded scale from table
+        char str[80];
         SNPRINTF(str, 80, "SCALE: %.0f", scale * 1000.0);
         //_renderTXTAA(NULL, ninfo, _pmin.u+((_pmax.u - _pmin.u)/2.0), _pmin.v+(20*_scaley), 2, str);
         _renderTXTAA(NULL, ninfo, _pmin.u+((_pmax.u - _pmin.u)/2.0), _pmax.v-(20*_scaley), 2, str);
@@ -6016,8 +5867,128 @@ int        S52_GL_drawGraticule(void)
         //_renderTXTAA(NULL, ninfo, _pmin.u+((_pmax.u - _pmin.u)/2.0), _pmin.v+(5*_scaley), 1, str);
     }
 
+    // ----  graticule
+    if (0.0 == S52_MP_get(S52_MAR_DISP_GRATICULE))
+        return TRUE;
+
+    double MajorSpacing;
+    double MinorSpacing;
+
+    // FIXME: user could set density - add to MarPar SCALEFACTOR 1.0
+
+    // float TO_PPM = 5.0; // or set table for scale (also get str INTU)
+    // print table scale rather than computed scale - or round computed scale!
+
+    //_getGratScale(10.0/scale, &MajorSpacing, &MinorSpacing);
+    //_getGratScale(5.0/scale, &MajorSpacing, &MinorSpacing);
+    _getGratScale(1.0/scale, &MajorSpacing, &MinorSpacing);
+
+    // draw major
+    if (2.0 == S52_MP_get(S52_MAR_DISP_GRATICULE) || 3.0 == S52_MP_get(S52_MAR_DISP_GRATICULE)) {
+        // latitude
+        for (double lat=floor(_gmin.v); lat<_gmax.v; lat+=MajorSpacing) {
+            if (lat<_gmin.v)
+                continue;
+
+            //_drawGarticule(lat, FALSE, (0.0<lat)?'N':'S');
+            //*
+            pt3 pt[2] = {{_gmin.u, lat, 0.0}, {_gmax.u, lat, 0.0}};
+            S57_geo2prj3dv(2, pt);
+
+            SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lat)), (0.0<lat)?'N':'S');
+            _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
+
+            //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
+            _renderLS_gl2(NULL, 'S', 2, (double*)pt);
+            //*/
+        }
+
+        // longitude
+        for (double lon=floor(_gmin.u); lon<_gmax.u; lon+=MajorSpacing) {
+            if (lon<_gmin.u)
+                continue;
+
+            //_drawGarticule(lon, TRUE, (0.0<lon)?'E':'W');
+            //*
+            pt3 pt[2] = {{lon, _gmin.v, 0.0}, {lon, _gmax.v, 0.0}};
+            S57_geo2prj3dv(2, pt);
+
+            SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lon)), (0.0<lon)?'E':'W');
+            _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
+
+            //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
+            _renderLS_gl2(NULL, 'S', 2, (double*)pt);
+            //*/
+        }
+    }
+
+    const double TOLERANCE = MinorSpacing/2.0;  // minor
+
+    // draw minor
+    if (1.0 == S52_MP_get(S52_MAR_DISP_GRATICULE) || 3.0 == S52_MP_get(S52_MAR_DISP_GRATICULE)) {
+
+        // latitude
+        double dMajor = 0.0;
+        //for (double lat=floor(_gmin.v); lat<_gmax.v; lat+=MinorSpacing) {
+        for (double lat=floor(_gmin.v), dMinor=0.0; lat<_gmax.v; dMinor+=MinorSpacing, lat+=MinorSpacing) {
+            if (lat < _gmin.v)
+                continue;
+
+            // catch up dMinor
+            while (dMinor > dMajor)
+                dMajor += MajorSpacing;
+
+            if (ABS(dMajor-dMinor) < TOLERANCE)
+                continue;
+
+            //_drawGarticule(lat, TRUE, (0.0<lat)?'N':'S');
+            //*
+            pt3 pt[2] = {{_gmin.u, lat, 0.0}, {_gmax.u, lat, 0.0}};
+            S57_geo2prj3dv(2, pt);
+
+            SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lat)), (0.0<lat)?'N':'S');
+            _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
+
+            //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
+            _renderLS_gl2(NULL, 'T', 2, (double*)pt);
+            //*/
+        }
+
+        // longitude
+        dMajor = 0.0;
+        //for (double lon=floor(_gmin.u); lon<_gmax.u; lon+=MinorSpacing) {
+        for (double lon=floor(_gmin.u), dMinor=0.0; lon<_gmax.u; dMinor+=MinorSpacing, lon+=MinorSpacing) {
+            if (lon < _gmin.u) {
+                //dMajor += MajorSpacing;
+                continue;
+            }
+
+            // catch up dMinor
+            while (dMinor > dMajor) {
+                dMajor += MajorSpacing;
+            }
+
+            if (ABS(dMajor-dMinor) < TOLERANCE)
+                continue;
+
+            PRINTF("XXX DEBUG: min:%f maj:%f  dmin:%f, dmaj:%f\n", MinorSpacing, MajorSpacing, dMinor, dMajor);
+
+            //_drawGarticule(lon, TRUE, (0.0<lon)?'E':'W');
+            //*
+            pt3 pt[2] = {{lon, _gmin.v, 0.0}, {lon, _gmax.v, 0.0}};
+            S57_geo2prj3dv(2, pt);
+
+            SNPRINTF(str, 80, "%s%c", _ddmmss(fabs(lon)), (0.0<lon)?'E':'W');
+            _renderTXTAA(NULL, black, pt[0].x, pt[0].y, 1, str);
+
+            //PRINTF("DEBUG: gmin:%f gmax:%f  dlat:%f, lat: %f\n", _gmin.v, _gmax.v, _gmax.v-_gmin.v, i);
+            _renderLS_gl2(NULL, 'T', 2, (double*)pt);
+            //*/
+        }
+    }
+
     //printf("lat: %f, long: %f\n", lat, lon);
-    //_setBlend(FALSE);
+    //_setBlend(TRUE);
 
     return TRUE;
 }
@@ -6067,50 +6038,69 @@ static guchar   *_readFBPixels(vp_t vp)
 #ifdef S52_USE_GL2
     glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
 
+    // RGB
+    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, vp.w, vp.h, 0);
+    // debug
+    //glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, vp.w/2.0, vp.h/2.0, 0);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    _checkError("S52_GL_readFBPixels().. -GL2-");
+
+    return _fb_pixels;
+#endif  // S52_USE_GL2
+
 #ifdef S52_USE_GLSC2
+    glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
+
     int bufSize =  vp.w * vp.h * 4;
     _glReadnPixels(vp.x, vp.y, vp.w, vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
 
-    _checkError("S52_GL_readFBPixels().. -0-");
-
     //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, vp.w, vp.h);
-    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, vp.w, vp.h);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vp.w, vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    //glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, vp.w, vp.h);
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vp.w, vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
 
-    _checkError("S52_GL_readFBPixels().. -1-");
+    glBindTexture(GL_TEXTURE_2D, 0);
 
-#else  // S52_USE_GLSC2
+    _checkError("S52_GL_readFBPixels().. -GLSC2-");
+
+    return _fb_pixels;
+#endif  // S52_USE_GLSC2
 
 #ifdef S52_USE_TEGRA2
-    // Note: glCopyTexImage2D flip Y on TEGRA (Xoom)
+    // Note: glCopyTexImage2D flip Y on TEGRA (Xoom) for some reason
+
+    glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
+
     // Note: must be in sync with _fb_pixels_format
 
-    // copy FB --> MEM
     // RGBA
+
+    // copy FB --> MEM
     glReadPixels(vp.x, vp.y, vp.w, vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
     // copy MEM --> Texture
-    // RGBA
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, vp.w, vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+
     // modern way
     //glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, vp.w, vp.h,);
     //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, vp.w, vp.h,, 0, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
 
-#else   // S52_USE_TEGRA2
-    // RGB
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, vp.w, vp.h, 0);
-#endif  // S52_USE_TEGRA2
-#endif  // S52_USE_GLSC2
-
     glBindTexture(GL_TEXTURE_2D, 0);
 
-#else   // S52_USE_GL2
-    // GL1
-    glReadPixels(vp.x, vp.y, vp.w, vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-#endif  // S52_USE_GL2
-
-    _checkError("S52_GL_readFBPixels().. -end-");
+    _checkError("S52_GL_readFBPixels().. -TEGRA2-");
 
     return _fb_pixels;
+#endif  // S52_USE_TEGRA2
+
+
+#ifdef   S52_USE_GL1
+    glReadPixels(vp.x, vp.y, vp.w, vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+
+    _checkError("S52_GL_readFBPixels().. -GL1-");
+
+    return _fb_pixels;
+#endif  // S52_USE_GL1
+
 }
 
 static int       _drawFBPixels(void)
@@ -6128,7 +6118,8 @@ static int       _drawFBPixels(void)
     //_glMatrixSet(VP_PRJ);
 
     // turn ON 'sampler2d'
-    glUniform1f(_uBlitOn, 1.0);
+    //glUniform1f(_uBlitOn, 1.0);
+    glUniform1i(_uBlitOn, 1);
 
     GLfloat ppt[4*3 + 4*2] = {
         _pmin.u, _pmin.v, 0.0,   0.0, 0.0,
@@ -6150,7 +6141,8 @@ static int       _drawFBPixels(void)
     glFrontFace(GL_CCW);
 
     // turn OFF 'sampler2d'
-    glUniform1f(_uBlitOn, 0.0);
+    //glUniform1f(_uBlitOn, 0.0);
+    glUniform1i(_uBlitOn, 0);
 
     glDisableVertexAttribArray(_aUV);
     glDisableVertexAttribArray(_aPosition);
@@ -6436,7 +6428,9 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     //glDisable(GL_SAMPLE_COVERAGE);
 
     glActiveTexture(GL_TEXTURE0);  // default
-    glUniform1i(_uSampler2d0, 0);  // default
+    glUniform1i(_uSampler2d, 0);
+
+    // reset
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -6494,8 +6488,8 @@ int        S52_GL_begin(S52_GL_cycle cycle)
         //glDisable(GL_POLYGON_SMOOTH);  // NOT in "OpenGL ES SC"
         glDisable(GL_BLEND);
 
-        // 2014OCT14 - optimisation no color ditherring
-        glDisable(GL_DITHER);            // NOT in "OpenGL ES SC"
+        // 2014OCT14 - optimisation no color ditherring - allready OFF (see above)
+        //glDisable(GL_DITHER);            // NOT in "OpenGL ES SC"
 
         //glDisable(GL_FOG);             // NOT in "OpenGL ES SC", NOT in GLES2
         //glDisable(GL_LIGHTING);        // NOT in GLES2
@@ -6573,6 +6567,14 @@ int        S52_GL_begin(S52_GL_cycle cycle)
     }
     }  // switch()
 
+    /* FIXME: break cursor pick
+    // optimisation test:
+    GArray *rgba = S52_PL_getPalRGBA();
+    if (NULL != rgba) {
+        glUniform4fv(_uPalArray, 63, (GLfloat*)rgba->data);  // 63 - S52_COL_NUM
+    }
+    */
+
     _checkError("S52_GL_begin() - fini");
 
     return TRUE;
@@ -6590,7 +6592,7 @@ int        S52_GL_end(S52_GL_cycle cycle)
     switch(_crnt_GL_cycle) {
         // optimisation: pick case 1, read pixels once at the end of the pick cycle
         //case S52_GL_PICK: _pickFBPixels(NULL); _glMatrixDel(VP_PRJ); break;
-    case S52_GL_PICK: //_fb_pixels_udp=TRUE;  // FIXME: is this needed
+        case S52_GL_PICK: //_fb_pixels_udp=TRUE;  // FIXME: is this needed
                           glViewport(_vp.x, _vp.y, _vp.w, _vp.h);
                           _glMatrixDel(VP_PRJ);
                           break;
@@ -6656,7 +6658,7 @@ int        S52_GL_end(S52_GL_cycle cycle)
 
 #ifdef S52_USE_GL2
 #if !defined(S52_USE_GLSC2)
-    //* test - try save glsl prog after drawing - FAIL on Intel
+    /* test - try save glsl prog after drawing - FAIL on Intel
     // Note: this test to sae bin also in _GL2.i:_compShaderbin()
     static int silent = FALSE;
     if (FALSE == silent) {
@@ -6924,6 +6926,12 @@ static int       _validateGLcontext(void)
 
     _checkError("_contextValid() -0-");
 
+    PRINTF("DEBUG: sizeof   guint:%i\n", sizeof(guint));
+    PRINTF("DEBUG: sizeof   float:%i\n", sizeof(float));
+    PRINTF("DEBUG: sizeof GLfloat:%i\n", sizeof(GLfloat));
+    PRINTF("DEBUG: sizeof  double:%i\n", sizeof(double));
+
+
     //glGetBooleanv(GL_RGBA_MODE,    &m);    // not in "OpenGL ES SC" / GLES2
     glGetIntegerv(GL_RED_BITS,     &r);
     glGetIntegerv(GL_GREEN_BITS,   &g);
@@ -7089,66 +7097,11 @@ int        S52_GL_init(void)
         _aftglwColorArr = g_array_new(FALSE, FALSE, sizeof(unsigned char));
 #endif
 
-    // init vbo for color
-    if (0 == _vboIDaftglwColrID) {
-        glGenBuffers(1, &_vboIDaftglwColrID);
+    // FIXME: handle all GL gen/del buf and test alloc faillure at one place
+    _glGenBuffers(&_vboIDaftglwColrID);
+    _glGenBuffers(&_vboIDaftglwVertID);
 
-        // glIsBuffer() faild but _vboIDaftglwColrID is valid
-        if (0 == _vboIDaftglwColrID) {
-            PRINTF("ERROR: glGenBuffers() fail\n");
-            g_assert(0);
-            return FALSE;
-        }
-    }
-
-    // init VBO for vertex
-    if (0 == _vboIDaftglwVertID) {
-        glGenBuffers(1, &_vboIDaftglwVertID);
-
-        // glIsBuffer() failed but _vboIDaftglwVertID is valid
-        if (0 == _vboIDaftglwVertID) {
-            PRINTF("ERROR: glGenBuffers() fail\n");
-            g_assert(0);
-            return FALSE;
-        }
-    }
 #endif  // S52_USE_AFGLOW
-
-    // ------------
-    // setup mem buffer to save FB to
-    glGenTextures(1, &_fb_pixels_id);
-    glBindTexture  (GL_TEXTURE_2D, _fb_pixels_id);
-
-#ifdef S52_USE_TEGRA2
-    // Note: _fb_pixels must be in sync with _fb_pixels_format
-    glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-    // modern way
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
-    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-#else
-#ifdef S52_USE_GLSC2
-    // modern way
-    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
-#else
-    // old way
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp.w, _vp.h, 0);
-    // modern way
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
-#endif
-#endif
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
-
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    glBindTexture  (GL_TEXTURE_2D, 0);
-
 
     _doInit = FALSE;
 
@@ -7210,14 +7163,14 @@ int        S52_GL_done(void)
     // done texture object
 #if !defined(S52_USE_GLSC2)
     glDeleteTextures(1, &_nodata_mask_texID);
-    glDeleteTextures(1, &_dottpa_mask_texID);
-    glDeleteTextures(1, &_dashpa_mask_texID);
+    //glDeleteTextures(1, &_dottpa_mask_texID);
+    //glDeleteTextures(1, &_dashpa_mask_texID);
     glDeleteFramebuffers(1, &_fboID);
     glDeleteProgram(_programObject);
 #endif
 
-    _dashpa_mask_texID = 0;
-    _dottpa_mask_texID = 0;
+    //_dashpa_mask_texID = 0;
+    //_dottpa_mask_texID = 0;
     _nodata_mask_texID = 0;
     _fboID             = 0;
     _programObject     = 0;
@@ -7292,8 +7245,10 @@ int        S52_GL_setDotPitch(int w, int h, int wmm, int hmm)
         g_assert(0);
     }
 
-    _fb_pixels_size = w * h * _fb_pixels_format;
-    _fb_pixels      = g_new0(unsigned char, _fb_pixels_size);
+    // Note: this is of no use in GL2 as tex stay in GPU
+    // only used when FB need to be dump to disk
+    _fb_pixels_sz = w * h * _fb_pixels_format * sizeof(GLfloat);
+    _fb_pixels    = g_new0(unsigned char, _fb_pixels_sz);
 
     return TRUE;
 }
@@ -7380,12 +7335,16 @@ int        S52_GL_setViewPort(int x, int y, int width, int height)
     _vp.w = width;
     _vp.h = height;
 
+    // Note: this is of no use in GL2 as tex stay in GPU
+    // only used when FB need to be dump to disk
     guint sz = width * height * _fb_pixels_format;
-    if (_fb_pixels_size < sz) {
-        _fb_pixels_size = sz;
-        //_fb_pixels      = g_renew(unsigned char, _fb_pixels, _fb_pixels_size);
-        _fb_pixels      = g_renew(unsigned char, NULL, _fb_pixels_size);
-        PRINTF("DEBUG: pixels buffer resized (%i)\n", _fb_pixels_size);
+    if (_fb_pixels_sz < sz) {
+        _fb_pixels_sz = sz;
+        _fb_pixels    = g_renew(unsigned char, _fb_pixels, _fb_pixels_sz);
+
+        // debug
+        //_fb_pixels      = g_renew(unsigned char, NULL, _fb_pixels_sz);
+        PRINTF("DEBUG: pixels buffer resized (%i)\n", _fb_pixels_sz);
     }
 
     return TRUE;
@@ -7612,6 +7571,7 @@ CCHAR     *S52_GL_getNameObjPick(void)
 
 #include "gdal.h"  // GDAL stuff to write .PNG
 int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned int width, unsigned int height)
+// dump RGB to PNG
 // FIXME: width/height rounding error all over - fix: +0.5
 // to test 2 PNG using Python Imaging Library (PIL):
 // FIXME: move GDAL stuff to S52.c (and remove gdal.h)
@@ -7701,13 +7661,14 @@ int        S52_GL_dumpS57IDPixels(const char *toFilename, S52_obj *obj, unsigned
 #ifdef S52_USE_GL2
     // FIXME: arm adreno will break here
     // FIXME: must be in sync with _fb_pixels_format
-    //glReadPixels(x, y, width, height, GL_RGB,  GL_UNSIGNED_BYTE, pixels);
-    glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+    glReadPixels(x, y, width, height, GL_RGB,  GL_UNSIGNED_BYTE, pixels);
+    //glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 #ifdef S52_USE_GLSC2
     int bufSize =  _vp.w * _vp.h * 4;
     _glReadnPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, bufSize, _fb_pixels);
 #else
-    glReadPixels(_vp.x, _vp.y,  _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+    glReadPixels(_vp.x, _vp.y,  _vp.w, _vp.h, GL_RGB, GL_UNSIGNED_BYTE, _fb_pixels);
+    //glReadPixels(_vp.x, _vp.y,  _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
 #endif  // S52_USE_GLSC2
 
 #else
@@ -7894,7 +7855,7 @@ int              _drawArc(S52_obj *objA, S52_obj *objB)
 
             _pushScaletoPixel(TRUE);
 
-            _glCallList(DListData);
+            _glCallList(DListData, S57_getHighlight(S52_PL_getGeo(objA)));
 
             _popScaletoPixel();
 
@@ -7953,7 +7914,7 @@ int              _intersectLINES(double x1, double y1, double x2, double y2,
     // both denominator
     double f  = Ay*Bx - Ax*By;
 
-    //é alpha tets
+    // alpha test
     if (f > 0) {
         if (d<0 || d>f)
             return FALSE;
