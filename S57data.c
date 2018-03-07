@@ -84,19 +84,19 @@ typedef struct _S57_geo {
     //ObjExt_t     extGEO;         // geographic coordinate
     //ObjExt_t     extPRJ;         // projected coordinate
 
-    // length of geo data (POINT, LINE, AREA) currently in buffer
+    // length of geo data (POINT, LINE, AREA) currently in buffer (NOT capacity)
     guint        geoSize;        // max is 1 point / linexyznbr / ringxyznbr[0]
 
     // hold coordinate before and after projection
     // FIXME: why alloc xyz*1, easy to handle like the reste, but fragment mem !?!
     geocoord    *pointxyz;    // point (alloc)
 
-    guint        linexyznbr;  // line number of point XYZ (alloc)
+    guint        linexyznbr;  // line number of point XYZ (alloc/capacity)
     geocoord    *linexyz;     // line coordinate
 
     // area
     guint        ringnbr;     // number of ring
-    guint       *ringxyznbr;  // number coords per ring (alloc)
+    guint       *ringxyznbr;  // number coords per ring (alloc/capacity)
     geocoord   **ringxyz;     // coords of rings        (alloc)
 
     // hold tessalated geographic and projected coordinate of area
@@ -108,7 +108,7 @@ typedef struct _S57_geo {
 
     // FIXME: SCAMAX
     // FIXME:
-    // double drval1 init UNKOWN
+    // double drval1 init UNKNOWN
     // double drval2 init unknown
     // ...
 
@@ -390,6 +390,7 @@ int        S57_geo2prj3dv(guint npt, pt3 *data)
 // FIXME: this break line/poly match
 static int    _inLine(pt3 A, pt3 B, pt3 C)
 // TRUE if BC is inline with AC or visa-versa
+// FIXME: adjust S57_GEO_TOL_LINES to nav purpose (INTU) or LOD (_SCAMIN)
 {
     // test.1: A( 0, 0) B(2,2) C( 4, 4)
     // test.2: A(-2,-2) B(0,0) C(+2,+2)
