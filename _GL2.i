@@ -26,6 +26,23 @@ typedef double GLdouble;
 typedef GLUtesselator GLUtesselatorObj;
 typedef GLUtesselator GLUtriangulatorObj;
 
+// hold copy of FrameBuffer
+// Note: this is of no use in GL2 as tex stay in GPU
+// only used when FB need to be dump to disk
+static guint          _fb_pixels_id  = 0;     // texture ID
+static unsigned char *_fb_pixels     = NULL;
+static guint          _fb_pixels_sz  = 0;
+static int            _fb_pixels_udp = TRUE;  // TRUE flag that the FB changed
+#define _RGB           3
+#define _RGBA          4
+#ifdef S52_USE_ADRENO
+static int            _fb_pixels_format = _RGB;   // alpha blending done in shader
+#else
+static int            _fb_pixels_format = _RGBA;
+//static int            _fb_pixels_format = _RGB ;  // Note: on TEGRA2 RGB (3) very slow
+#endif
+
+
 ////////////////////////////////////////////////////////
 // forward decl
 static double      _getWorldGridRef(S52_obj *, double *, double *, double *, double *, double *, double *);
@@ -37,11 +54,15 @@ static int         _glMatrixSet(VP);
 static int         _glMatrixDel(VP);
 static int         _pushScaletoPixel(int);
 static int         _popScaletoPixel(void);
-static GLubyte     _setFragAttrib(S52_Color *, gboolean);
+static GLubyte     _setFragAttrib(const S52_Color *, gboolean);
 static void        _glLineWidth(GLfloat);
 static void        _glPointSize(GLfloat);
 static inline void _checkError(const char *);
-static GLvoid      _DrawArrays_LINE_STRIP(guint, vertex_t *);  // debug pattern
+static GLvoid      _DrawArrays_LINE_STRIP(guint, vertex_t *);
+static GLvoid      _DrawArrays_LINES(guint npt, vertex_t *ppt);
+static inline void _glGenBuffers(GLuint *);
+static int         _VBOCreate(S57_prim *);
+static int         _glCallList(S52_DListData *, gboolean);
 ////////////////////////////////////////////////////////
 
 
@@ -69,11 +90,16 @@ static GLint _uProjection = 0;
 static GLint _uModelview  = 0;
 static GLint _uColor      = 0;
 static GLint _uPointSize  = 0;
-static GLint _uSampler2d0 = 0;
-static GLint _uSampler2d1 = 0;
+static GLint _uSampler2d  = 0;
+//static GLint _uSampler2d1 = 0;
 static GLint _uBlitOn     = 0;
 static GLint _uTextOn     = 0;  // textured line and text from freetype-gl
 static GLint _uGlowOn     = 0;
+static GLint _uStipOn     = 0;
+//static GLint _uScaleOn    = 0;
+
+static GLint _uPalOn      = 0;
+static GLint _uPalArray   = 0;
 
 static GLint _uPattOn     = 0;
 static GLint _uPattGridX  = 0;
@@ -111,6 +137,7 @@ static GLint _aAlpha      = 0;
 static GLuint        _nodata_mask_texID = 0;
 static GLubyte       _nodata_mask_rgba[4*32*8*4]; // 32 * 32 * 4   // 8bits * 4col * 32row * 4rgba
 static const GLubyte _nodata_mask_bits[4*32] = {
+// Note: indianness
     0xFE, 0x00, 0x00, 0x00, // 1
     0xFE, 0x00, 0x00, 0x00, // 2
     0x00, 0x00, 0x00, 0x00, // 3
@@ -145,7 +172,7 @@ static const GLubyte _nodata_mask_bits[4*32] = {
     0x00, 0x00, 0x00, 0x00  // 8
 };
 
-// line DOTT PAttern
+// Line Style DOTT PAttern
 // dotpitch 0.3:  dott = 2 * 0.3,  space = 4 * 0.3  (6  px wide, 32 /  6 = 5.333)
 // 1100 0000 1100 0000 ...
 // dotpitch 0.15: dott = 4 * 0.15, space = 8 * 0.3  (12 px wide, 32 / 12 = 2.666)
@@ -153,15 +180,18 @@ static const GLubyte _nodata_mask_bits[4*32] = {
 static GLuint        _dottpa_mask_texID = 0;
 static GLubyte       _dottpa_mask_rgba[8*4*4];    // 32 * 4rgba = 8bits * 4col * 1row * 4rgba
 static const GLubyte _dottpa_mask_bits[4] = {     // 4 x 8 bits = 32 bits
-    0x03, 0x03, 0x03, 0x03
-//    0x00, 0x00, 0x00, 0x00
+// Note: indianness
+    //0x03, 0x03, 0x03, 0x03
+  0x30, 0x30, 0x30, 0x30
 };
 
-// DASH pattern
+// Line Style DASH pattern
 static GLuint        _dashpa_mask_texID = 0;
 static GLubyte       _dashpa_mask_rgba[8*4*4];    // 32 * 4rgba = 8bits * 4col * 1row * 4rgba
 static const GLubyte _dashpa_mask_bits[4] = {     // 4 x 8 bits = 32 bits
+// Note: indianness
     0xFF, 0xF0, 0xFF, 0xF0
+    //0xFF, 0xFF, 0xFF, 0xEF  // --> right most pixel is OFF
 };
 
 // OVERSC01
@@ -342,18 +372,7 @@ static int       _init_freetype_gl(void)
 
     _checkError("_init_freetype_gl() -2-");
 
-    if (0 == _freetype_gl_textureID)
-        glGenBuffers(1, &_freetype_gl_textureID);
-
-    // FIXME: glIsBuffer fail here
-    //if (GL_FALSE == glIsBuffer(_ftgl_textureID)) {
-    if (0 == _freetype_gl_textureID) {
-        PRINTF("ERROR: glGenBuffers() fail\n");
-        g_assert(0);
-        return FALSE;
-    }
-
-    _checkError("_init_freetype_gl() -end-");
+    _glGenBuffers(&_freetype_gl_textureID);
 
     if (NULL == _freetype_gl_buffer) {
         _freetype_gl_buffer = g_array_new(FALSE, FALSE, sizeof(_freetype_gl_vertex_t));
@@ -526,32 +545,37 @@ static int       _justifyTXTPos(double strWpx, double strHpx, char hjust, char v
 //
 
 static void      __make_z_rot_matrix(GLfloat angle, GLfloat *m)
+// called only by _glRotated()
 {
    float c = cos(angle * M_PI / 180.0);
    float s = sin(angle * M_PI / 180.0);
 
-   //memset(m, 0, sizeof(GLfloat) * 16);
-   //m[0] = m[5] = m[10] = m[15] = 1.0;
-   m[10] = m[15] = 1.0;
+   //m[10] = m[15] = 1.0f;
 
-   m[0] =  c;
-   m[1] =  s;
-   m[4] = -s;
-   m[5] =  c;
+   m[0]  =  c;
+   m[1]  =  s;
+   m[4]  = -s;
+   m[5]  =  c;
+   m[10] = 1.0f;
+   m[15] = 1.0f;
 }
 
 static void      __make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat *m)
+// called only by _glScaled()
 {
-   memset(m, 0, sizeof(GLfloat) * 16);
+   // caller allready done that
+    //memset(m, 0, sizeof(GLfloat) * 16);
+
    m[0]  = xs;
    m[5]  = ys;
    m[10] = zs;
-   m[15] = 1.0;
+   m[15] = 1.0f;
 }
 
 static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[4], GLfloat out[4])
+// called by _gluProject() / _gluUnProject()
 {
-    for (int i=0; i<4; i++) {
+    for (guint i=0; i<4; i++) {
         out[i] = in[0] * matrix[0*4+i] +
                  in[1] * matrix[1*4+i] +
                  in[2] * matrix[2*4+i] +
@@ -559,9 +583,46 @@ static void      __gluMultMatrixVecf(const GLfloat matrix[16], const GLfloat in[
     }
 }
 
-static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16])
+static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz,
+                             const GLfloat modelMatrix[16],
+                             const GLfloat projMatrix[16],
+                             const GLint   viewport[4],
+                             GLfloat* winx, GLfloat* winy, GLfloat* winz)
 {
-    GLfloat inv[16], det;
+    GLfloat in [4] = {objx, objy, objz, 1.0f};
+    GLfloat out[4] = {0.0f};
+
+    __gluMultMatrixVecf(modelMatrix, in,  out);
+    __gluMultMatrixVecf(projMatrix,  out, in);
+
+    if (0.0f == in[3])
+        return GL_FALSE;
+
+    in[0] /= in[3];
+    in[1] /= in[3];
+    in[2] /= in[3];
+
+    // Map x, y and z to range 0-1
+    in[0] = in[0] * 0.5f + 0.5f;
+    in[1] = in[1] * 0.5f + 0.5f;
+    in[2] = in[2] * 0.5f + 0.5f;
+
+    // Map x,y to viewport
+    in[0] = in[0] * viewport[2] + viewport[0];
+    in[1] = in[1] * viewport[3] + viewport[1];
+
+    *winx = in[0];
+    *winy = in[1];
+    *winz = in[2];
+
+    return GL_TRUE;
+}
+
+static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16])
+// called only by _gluUnProject()
+{
+    GLfloat inv[16] = {0.0f};
+    GLfloat det;
 
     inv[0] =   m[5]*m[10]*m[15] - m[5] *m[11]*m[14] - m[9] *m[6]*m[15]
              + m[9]*m[7] *m[14] + m[13]*m[6] *m[11] - m[13]*m[7]*m[10];
@@ -597,7 +658,7 @@ static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16])
              + m[4]*m[2] *m[9]  + m[8] *m[1] *m[6]  - m[8] *m[2]*m[5];
 
     det = m[0]*inv[0] + m[1]*inv[4] + m[2]*inv[8] + m[3]*inv[12];
-    if (0.0 == det) {
+    if (0.0f == det) {
         PRINTF("WARNING: det = 0, fail\n");
         return GL_FALSE;
     }
@@ -611,9 +672,10 @@ static int       __gluInvertMatrixf(const GLfloat m[16], GLfloat invOut[16])
 }
 
 static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GLfloat r[16])
+// called only by _gluUnProject()
 {
-    for (int i=0; i<4; ++i) {
-        for (int j=0; j<4; ++j) {
+    for (guint i=0; i<4; ++i) {
+        for (guint j=0; j<4; ++j) {
             r[i*4+j] = a[i*4+0] * b[0*4+j] +
                        a[i*4+1] * b[1*4+j] +
                        a[i*4+2] * b[2*4+j] +
@@ -622,80 +684,48 @@ static void      __gluMultMatricesf(const GLfloat a[16], const GLfloat b[16], GL
     }
 }
 
-static GLint     _gluProject(GLfloat objx, GLfloat objy, GLfloat objz,
-                             const GLfloat modelMatrix[16],
-                             const GLfloat projMatrix[16],
-                             const GLint   viewport[4],
-                             GLfloat* winx, GLfloat* winy, GLfloat* winz)
-{
-    GLfloat in [4] = {objx, objy, objz, 1.0};
-    GLfloat out[4] = {0.0, 0.0, 0.0, 0.0};
-
-    __gluMultMatrixVecf(modelMatrix, in,  out);
-    __gluMultMatrixVecf(projMatrix,  out, in);
-
-    if (0.0 == in[3])
-        return GL_FALSE;
-
-    in[0] /= in[3];
-    in[1] /= in[3];
-    in[2] /= in[3];
-
-    /* Map x, y and z to range 0-1 */
-    in[0] = in[0] * 0.5f + 0.5f;
-    in[1] = in[1] * 0.5f + 0.5f;
-    in[2] = in[2] * 0.5f + 0.5f;
-
-    /* Map x,y to viewport */
-    in[0] = in[0] * viewport[2] + viewport[0];
-    in[1] = in[1] * viewport[3] + viewport[1];
-
-    *winx = in[0];
-    *winy = in[1];
-    *winz = in[2];
-
-    return GL_TRUE;
-}
-
 static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
                                const GLfloat modelMatrix[16],
                                const GLfloat projMatrix[16],
                                const GLint   viewport[4],
                                GLfloat* objx, GLfloat* objy, GLfloat* objz)
 {
-    GLfloat finalMatrix[16];
+    GLfloat finalMatrix[16] = {0.0f};
     GLfloat in [4];
     GLfloat out[4];
 
     __gluMultMatricesf(modelMatrix, projMatrix, finalMatrix);
     if (GL_FALSE == __gluInvertMatrixf(finalMatrix, finalMatrix)) {
         PRINTF("WARNING: __gluInvertMatrixf() fail\n");
+        g_assert(0);
         return GL_FALSE;
     }
 
-    in[0]=winx;
-    in[1]=winy;
-    in[2]=winz;
-    in[3]=1.0;
+    in[0] = winx;
+    in[1] = winy;
+    in[2] = winz;
+    in[3] = 1.0f;
 
-    /* Map x and y from window coordinates */
+    // Map x and y from window coordinates
     in[0] = (in[0] - viewport[0]) / viewport[2];
     in[1] = (in[1] - viewport[1]) / viewport[3];
 
-    /* Map to range -1 to 1 */
+    // Map to range -1 to 1
     in[0] = in[0] * 2 - 1;
     in[1] = in[1] * 2 - 1;
     in[2] = in[2] * 2 - 1;
 
     __gluMultMatrixVecf(finalMatrix, in, out);
-    if (0.0 == out[3]) {
+    if (0.0f == out[3]) {
         PRINTF("WARNING: __gluMultMatrixVecf() fail [out[3]=0]\n");
+        g_assert(0);
         return GL_FALSE;
     }
 
     out[0] /= out[3];
     out[1] /= out[3];
     out[2] /= out[3];
+
     *objx = out[0];
     *objy = out[1];
     *objz = out[2];
@@ -705,9 +735,9 @@ static GLint     _gluUnProject(GLfloat winx, GLfloat winy, GLfloat winz,
 
 static void      _multiply(GLfloat *m, GLfloat *n)
 {
-    GLfloat tmp[16] = {0};
+    GLfloat tmp[16] = {0.0f};
 
-   for (int i = 0; i < 16; i++) {
+   for (guint i = 0; i < 16; i++) {
       div_t    d      = div(i, 4);
       GLfloat *row    = n + d.quot * 4;
       GLfloat *column = m + d.rem;
@@ -735,7 +765,7 @@ static void      _glTranslated(double x, double y, double z)
 
 static void      _glScaled(double x, double y, double z)
 {
-    GLfloat m[16];
+    GLfloat m[16] = {0.0f};
 
     __make_scale_matrix((GLfloat) x, (GLfloat) y, (GLfloat) z, m);
 
@@ -751,7 +781,7 @@ static void      _glScaled(double x, double y, double z)
 static void      _glRotated(double angle, double x, double y, double z)
 // rotate on Z
 {
-    GLfloat m[16] = {0};
+    GLfloat m[16] = {0.0f};
     // FIXME: handle only 0.0==x 0.0==y 1.0==z
     // silence warning for now
     (void)x;
@@ -793,7 +823,8 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
     }
 
     // turn ON 'sampler2d'
-    glUniform1f(_uTextOn, 1.0);
+    //glUniform1f(_uTextOn, 1.0);
+    glUniform1i(_uTextOn, 1);
 
     glBindTexture(GL_TEXTURE_2D, _freetype_gl_atlas->id);
 
@@ -814,7 +845,8 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
     _popScaletoPixel();
 
     glBindTexture(GL_TEXTURE_2D, 0);
-    glUniform1f(_uTextOn, 0.0);
+    //glUniform1f(_uTextOn, 0.0);
+    glUniform1i(_uTextOn, 0);
 
     // disconnect buffer
     glDisableVertexAttribArray(_aUV);
@@ -896,190 +928,6 @@ static int       _loadProcEXT()
     return TRUE;
 }
 #endif  // S52_USE_EGL
-
-static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
-// make a RGBA texture from 32x32 bitmask
-{
-    memset(rgba_mask, 0, 4*32*8*4);
-
-    for (int i=0; i<(4*32); ++i) {
-        if (mask[i] & (1<<0)) {
-            //rgba_mask[(i*4*8)+0] = 0;  // R
-            //rgba_mask[(i*4*8)+1] = 0;  // G
-            //rgba_mask[(i*4*8)+2] = 0;  // B
-            rgba_mask[(i*4*8)+3] = 255;   // A
-        }
-        if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
-        if (mask[i] & (1<<2)) rgba_mask[(i*4*8)+11] = 255;  // A
-        if (mask[i] & (1<<3)) rgba_mask[(i*4*8)+15] = 255;  // A
-        if (mask[i] & (1<<4)) rgba_mask[(i*4*8)+19] = 255;  // A
-        if (mask[i] & (1<<5)) rgba_mask[(i*4*8)+23] = 255;  // A
-        if (mask[i] & (1<<6)) rgba_mask[(i*4*8)+27] = 255;  // A
-        if (mask[i] & (1<<7)) rgba_mask[(i*4*8)+31] = 255;  // A
-    }
-
-    return TRUE;
-}
-
-static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
-// make a RGBA texture from 32x1 bitmask (those used by glPolygonStipple() in OpenGL 1.x)
-{
-    memset(rgba_mask, 0, 8*4*4);  // 32x4B (rgda)
-    for (int i=0; i<4; ++i) {     // 4 bytes
-        if (mask[i] & (1<<0)) {
-            //rgba_mask[(i*4*8)+0] = 0;   // R
-            //rgba_mask[(i*4*8)+1] = 0;   // G
-            //rgba_mask[(i*4*8)+2] = 0;   // B
-            rgba_mask[(i*4*8)+3] = 255;   // A
-        }
-        if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
-        if (mask[i] & (1<<2)) rgba_mask[(i*4*8)+11] = 255;  // A
-        if (mask[i] & (1<<3)) rgba_mask[(i*4*8)+15] = 255;  // A
-        if (mask[i] & (1<<4)) rgba_mask[(i*4*8)+19] = 255;  // A
-        if (mask[i] & (1<<5)) rgba_mask[(i*4*8)+23] = 255;  // A
-        if (mask[i] & (1<<6)) rgba_mask[(i*4*8)+27] = 255;  // A
-        if (mask[i] & (1<<7)) rgba_mask[(i*4*8)+31] = 255;  // A
-    }
-
-    return TRUE;
-}
-
-static int       _initTexture(void)
-{
-    if (0 != _nodata_mask_texID)
-        return TRUE;
-
-    _checkError("_initTexture -00-");
-
-    // load texture on GPU ----------------------------------
-
-    // FIXME: send GL_APHA instead of RGBA - convertion of bits to bytes instead of RGBA
-    // FIXME: GLSC2 doesn't have GL_ALPHA nor glTexStorage2D()
-    // fill _rgba_nodata_mask - expand bitmask to a RGBA buffer
-    // that will acte as a stencil in the fragment shader
-    _1024bitMask2RGBATex(_nodata_mask_bits, _nodata_mask_rgba);
-    _32bitMask2RGBATex  (_dottpa_mask_bits, _dottpa_mask_rgba);
-    _32bitMask2RGBATex  (_dashpa_mask_bits, _dashpa_mask_rgba);
-
-    // ------------
-    // nodata pattern
-    glGenTextures(1, &_nodata_mask_texID);
-    glBindTexture(GL_TEXTURE_2D, _nodata_mask_texID);
-
-#ifdef S52_USE_GLSC2
-    // modern way
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, 32, 32);
-    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, 32, 32);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 32, GL_RGBA, GL_UNSIGNED_BYTE, _nodata_mask_rgba);
-#else  // S52_USE_GLSC2
-    // old way
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 32, 0, GL_RGBA, GL_UNSIGNED_BYTE, _nodata_mask_rgba);
-    //glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 32, 32, 0, GL_ALPHA, GL_UNSIGNED_BYTE, _nodata_mask_bits);
-    // modern way
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, 32, 32);
-    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 32, GL_RGBA, GL_UNSIGNED_BYTE, _nodata_mask_rgba);
-#endif  // S52_USE_GLSC2
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    _checkError("_initTexture -1-");
-
-    // ------------
-    // dott pattern
-    glGenTextures(1, &_dottpa_mask_texID);
-    glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
-
-#ifdef S52_USE_GLSC2
-    // modern way
-    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA, 32, 1);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 1, GL_RGBA, GL_UNSIGNED_BYTE, _dottpa_mask_rgba);
-#else
-    // old way
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dottpa_mask_rgba);
-    // modern way
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, 32, 1);
-    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 1, GL_RGBA, GL_UNSIGNED_BYTE, _dottpa_mask_rgba);
-#endif
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    _checkError("_initTexture -2-");
-
-    // ------------
-    // dash pattern
-    glGenTextures(1, &_dashpa_mask_texID);
-    glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
-
-#ifdef S52_USE_GLSC2
-    // modern way
-    // FIXME: GL_INVALID_ENUM at run-time when compiled for GLSC2 and linked to GLESv2
-    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGBA8_OES, 32, 1);  // GL_INVALID_OPERATION
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RED_EXT, 32, 1);  // GL_INVALID_OPERATION
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_R8_EXT, 32, 1);  // GL_INVALID_OPERATION
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_ALPHA8_EXT, 32, 1);  // GL_INVALID_OPERATION
-    _checkError("_initTexture -3.1-");
-
-    // FIXME: GL_INVALID_OPERATION at run-time when compiled for GLSC2 andlinked to GLESv2
-    // because no previous call to glTexImage2D or glCopyTexImage2D witch don't exist in GLSC2!
-    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 1, GL_RGBA,      GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 1, GL_RGBA8_OES, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
-    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 32, 1, GL_RED_EXT, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
-    _checkError("_initTexture -3.2-");
-#else
-    // old way
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 32, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, _dashpa_mask_rgba);
-
-#endif
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    _checkError("_initTexture -3.4-");
-
-    // ------------
-    /* setup mem buffer to save FB to
-    glGenTextures(1, &_fb_pixels_id);
-    glBindTexture  (GL_TEXTURE_2D, _fb_pixels_id);
-
-#ifdef S52_USE_TEGRA2
-    // Note: _fb_pixels must be in sync with _fb_pixels_format
-    glTexImage2D   (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-    // modern way
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA, _vp.w, _vp.h);
-    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-#else
-#ifdef S52_USE_GLSC2
-    // modern way
-    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
-#else
-    // old way
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 0, 0, _vp.w, _vp.h, 0);
-    // modern way
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGB, _vp.w, _vp.h);
-#endif
-#endif
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
-
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    */
-
-    glBindTexture  (GL_TEXTURE_2D, 0);
-
-    return TRUE;
-}
 
 #if !defined(S52_USE_GLSC2)
 static int       _saveShaderBin(GLuint programObject)
@@ -1248,53 +1096,84 @@ static GLuint    _compShaderSrc(GLuint programObject)
     // ----------------------------------------------------------------------
     PRINTF("DEBUG: GL_VERTEX_SHADER\n");
 
-    // FIXME: check this stringify
-    //#define STRINGIFY(...) #__VA_ARGS__
+    #define STRINGIFY(STR) #STR
 
-    //Note: #version directive default to 1.10 (bad)
-    //static const char vertSrc[] = STRINGIFY(
+    // Note: if no #version directive will default to 1.10 (bad)
+    // Note: no "es" in V1.00
     static const char vertSrc[] =
-        "#version 100\n"  // no "es" in V1.00
+        "#version 100\n"
         //"#version 130\n"  // not supported
         //"#version 300 es\n"
 
-        //"precision lowp float;                                          \n"
-        "precision mediump float;                                       \n"
-        //"precision highp   float;                                       \n"
+        STRINGIFY(
 
-        "uniform   mat4  uProjection;                                   \n"
-        "uniform   mat4  uModelview;                                    \n"
-        "uniform   float uPointSize;                                    \n"
+        //precision lowp float;
+        precision mediump float;
+        //precision highp   float;
 
-        "uniform   float uPattOn;                                       \n"
-        "uniform   float uPattGridX;                                    \n"
-        "uniform   float uPattGridY;                                    \n"
-        "uniform   float uPattW;                                        \n"
-        "uniform   float uPattH;                                        \n"
+        precision mediump int;
 
-        "attribute vec2  aUV;                                           \n"
-        "attribute vec4  aPosition;                                     \n"
-        "attribute float aAlpha;                                        \n"
+        uniform mat4    uProjection;
+        uniform mat4    uModelview;
+        uniform float   uPointSize;
 
-        "varying   vec2  v_texCoord;                                    \n"
-        "varying   vec4  v_acolor;                                      \n"
-        "varying   float v_pattOn;                                      \n"
-        "varying   float v_alpha;                                       \n"
+        uniform int     uPattOn;
+        uniform float   uPattGridX;
+        uniform float   uPattGridY;
+        uniform float   uPattW;
+        uniform float   uPattH;
 
-        "void main(void)                                                \n"
-        "{                                                              \n"
-        "    v_alpha      = aAlpha;                                     \n"
-        "    gl_PointSize = uPointSize;                                 \n"
-        "    gl_Position  = uProjection * uModelview * aPosition;       \n"
-        "    if (1.0 == uPattOn) {                                      \n"
-//        "        v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;    \n"
-//        "        v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;    \n"
-        "        v_texCoord.x = (uPattGridX - aPosition.x) / uPattW;    \n"
-        "        v_texCoord.y = (uPattGridY - aPosition.y) / uPattH;    \n"
-        "    } else {                                                   \n"
-        "        v_texCoord = aUV;                                      \n"
-        "    }                                                          \n"
-        "}                                                              \n";
+        uniform float   uStipOn;
+        //uniform float   uScaleOn;
+
+        // optimisation test - color LUP
+        uniform int     uPalOn;
+        uniform vec4    uPalArray[63];  // 63 - S52_COL_NUM
+
+        attribute vec4  aPosition;
+        attribute float aAlpha;
+        attribute vec2  aUV;
+
+        varying vec2    v_texCoord;
+        varying float   v_alpha;
+        varying vec4    v_color;
+        varying float   v_dist;
+
+        void main(void)
+        {
+            vec4     pos = aPosition;
+            v_alpha      = aAlpha;
+            gl_PointSize = uPointSize;
+
+            if (1 == uPattOn) {
+                //v_texCoord.x = (aPosition.x - uPattGridX) / uPattW;
+                //v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;
+                v_texCoord.x = (uPattGridX - aPosition.x) / uPattW;
+                v_texCoord.y = (uPattGridY - aPosition.y) / uPattH;
+            } else if (0 <= uPalOn) {
+                // optimisation test -> uPalOn = aPosition.z;
+                //v_color = uPalArray[uPalOn];
+
+                //v_texCoord = mod(gl_Position.xy, vec2(32.0, 0.0));
+                //v_texCoord = mod(gl_Position.xy, vec2(32.0, 1.0));
+                //v_texCoord.x = mod(gl_Position.xy, vec2(32.0, 1.0)).x;
+                //v_texCoord.y = mod(gl_Position.xy, vec2(1.0, 32.0)).y;
+                //v_texCoord = mod(gl_Position.xy, vec2(32.0, 1.0)) * aUV;
+                //v_texCoord = mod(gl_Position.xy, vec2(32.0, 1.0)) + aUV;
+                //v_texCoord = mod(gl_Position.xy, vec2(32.0, 32.0));
+                //v_texCoord = (uProjection * uModelview * vec4(aUV,1.0,1.0) * vec4(320000.0/2.0,320000.0/2.0,1.0,1.0)).xy;
+                //v_texCoord = vec2(mod(length(aUV)*(10.0), 32.0), 0.0);
+                ;
+            } else if (0.0 < uStipOn) {
+                v_dist     = pos.z;
+                pos.z      = 0.0;
+                v_texCoord = aUV;
+            } else {
+                v_texCoord = aUV;
+            }
+
+            gl_Position  = uProjection * uModelview * pos;
+        });
 
     GLuint vertexShader = _loadShaderSrc(GL_VERTEX_SHADER, vertSrc);
 
@@ -1305,63 +1184,104 @@ static GLuint    _compShaderSrc(GLuint programObject)
     static const char fragSrc[] =
         "#version 100\n"
 
-        //"precision lowp float;                      \n"
-        "precision mediump float;                   \n"
+        STRINGIFY(
 
-        "uniform sampler2D uSampler2d0;              \n"
-        "uniform sampler2D uSampler2d1;              \n"
-        "uniform float     uFlatOn;                 \n"
-        "uniform float     uBlitOn;                 \n"
-        "uniform float     uTextOn;                 \n"
-        "uniform float     uPattOn;                 \n"
-        "uniform float     uGlowOn;                 \n"
+        //precision lowp float;
+        precision mediump float;
+        //precision highp   float;
 
-        "uniform vec4      uColor;                  \n"
+        uniform sampler2D uSampler2d;
 
-        "varying vec2      v_texCoord;              \n"
-        "varying float     v_alpha;                 \n"
+        uniform int   uBlitOn;
+        uniform int   uTextOn;
+        uniform int   uPattOn;
+        uniform int   uGlowOn;
+        uniform float uStipOn;
 
-        "void main(void)                            \n"
-        "{                                          \n"
-        "    if (1.0 == uBlitOn) {                  \n"
-        "        gl_FragColor = texture2D(uSampler2d0, v_texCoord);               \n"
-//        "        gl_FragColor.rgb = texture2D(uSampler2d0, v_texCoord).rgb;               \n"
-//        "        gl_FragColor.a = texture2D(uSampler2d1, v_texCoord).a;               \n"
-//        "        gl_FragColor = texture2D(uSampler2d1, v_texCoord);               \n"
-        "    } else {                                                            \n"
-        "        if (1.0 == uTextOn) {                                           \n"
-//        "            gl_FragColor = texture2D(uSampler2d0, v_texCoord);           \n"
-//        "            vec4 _sample = texture2D(uSampler2d0, v_texCoord);            \n"
-#ifdef S52_USE_GLSC2
-        // GLSC2 has no GL_ALPHA in freetype-gl/texture_atlas_new() use GL_RED
-        "            gl_FragColor.a   = texture2D(uSampler2d0, v_texCoord).r;                                \n"
-#else
-        "            gl_FragColor.a   = texture2D(uSampler2d0, v_texCoord).a;                                \n"
-#endif
-        "            gl_FragColor.rgb = uColor.rgb;                              \n"
-        "        } else {                                                        \n"
-        "            if (1.0 == uPattOn) {                                       \n"
-        "                gl_FragColor = texture2D(uSampler2d0, v_texCoord);       \n"
-        "                gl_FragColor.rgb = uColor.rgb;                          \n"
-        "            } else {                                                    \n"
+        uniform vec4  uColor;
+
+        //uniform float uScaleOn;
+
+        uniform int   uPalOn;
+
+        varying vec2  v_texCoord;
+        varying float v_alpha;
+        varying float v_dist;
+
+        void main(void) {
+
+            if (1 == uBlitOn) {
+                gl_FragColor = texture2D(uSampler2d, v_texCoord);
+                //gl_FragColor.rgb = texture2D(uSampler2d, v_texCoord).rgb;
+                //gl_FragColor.a = texture2D(uSampler2d1, v_texCoord).a;
+                //gl_FragColor = texture2D(uSampler2d1, v_texCoord);
+            } else if (1 == uTextOn) {
+                //gl_FragColor = texture2D(uSampler2d, v_texCoord);
+                //vec4 _sample = texture2D(uSampler2d, v_texCoord);
+//#ifdef S52_USE_GLSC2
+                // GLSC2 has no GL_ALPHA in freetype-gl/texture_atlas_new() use GL_RED
+                // gl_FragColor.a   = texture2D(uSampler2d, v_texCoord).r;
+//#else
+                gl_FragColor.a   = texture2D(uSampler2d, v_texCoord).a;
+//#endif
+                gl_FragColor.rgb = uColor.rgb;
+            } else if (1 == uPattOn) {
+                gl_FragColor = texture2D(uSampler2d, v_texCoord);
+                gl_FragColor.rgb = uColor.rgb;
+            })
+
 #ifdef S52_USE_AFGLOW
-        "                if (0.0 < uGlowOn) {                                    \n"
-        "                    float dist = distance(vec2(0.5,0.5), gl_PointCoord);\n"
-        "                    if (0.5 < dist) {                                   \n"
-        "                        discard;                                        \n"
-        "                    } else {                                            \n"
-        "                        gl_FragColor   = uColor;                        \n"
-        "                        gl_FragColor.a = v_alpha;                       \n"
-        "                    }                                                   \n"
-        "                } else                                                  \n"
+        STRINGIFY(
+            else if (1 == uGlowOn) {
+                float dist = distance(vec2(0.5,0.5), gl_PointCoord);
+                if (0.5 < dist) {
+                    discard;
+                } else {
+                    gl_FragColor   = uColor;
+                    gl_FragColor.a = v_alpha;
+                }
+            })
 #endif
-        "                {                          \n"
-        "                    gl_FragColor = uColor; \n"
-        "                }                          \n"
-        "            }                              \n"
-        "        }                                  \n"
-        "    }                                      \n"
-        "}                                          \n";
+        STRINGIFY(
+            else if (0.0 < uStipOn) {
+                vec2 tex_n = v_texCoord;
+                //tex_n.x   *= v_dist / uScaleOn / 32.0;
+                tex_n.x   *= v_dist / uStipOn / 32.0;
+                //tex_n.x   *= v_dist;
+                //tex_n.y   *= v_dist / uScaleOn / 32.0;
+                gl_FragColor.a   = texture2D(uSampler2d, tex_n).a;
+                gl_FragColor.rgb = uColor.rgb;
+                //gl_FragColor.a = 1.0;
+                //gl_FragColor = vec4(v_dist, 0.0, 0.0, 1.0);
+
+                /* FIXME: stippled graticule fail whem rotating
+                // will fail on NW-SE line segment
+                gl_FragColor = uColor;
+                int mody = int(mod(gl_FragCoord.y, 16.0));
+                int modx = int(mod(gl_FragCoord.x, 16.0));
+                if (1 == uStipOn) {
+                    if (((16-modx)>mody && mody>(8-modx)) || (mody>(24-modx)))
+                        discard;
+                } else { // 2
+                    //int result = int(mod(gl_FragCoord.x + gl_FragCoord.y, 2.0));
+                    int result = int(mod(gl_FragCoord.x + gl_FragCoord.y, 4.0));
+                    bool dis = result == 0;
+                    //if (dis)
+                    if (!dis)
+                        discard;
+                }
+                 */
+            } else {
+
+                //
+                // normal case last!
+                //
+
+                gl_FragColor = uColor;
+            }
+        })
+
+        ;  // this signal the string end
 
     GLuint fragmentShader = _loadShaderSrc(GL_FRAGMENT_SHADER, fragSrc);
 
@@ -1428,6 +1348,7 @@ static GLuint    _bindAttrib(GLuint programObject)
 {
     //load all attributes
     _aPosition   = glGetAttribLocation(programObject, "aPosition");
+    //_aPosition2  = glGetAttribLocation(programObject, "aPosition2");
     _aUV         = glGetAttribLocation(programObject, "aUV");
     _aAlpha      = glGetAttribLocation(programObject, "aAlpha");
 
@@ -1440,12 +1361,19 @@ static GLuint    _bindUnifrom(GLuint programObject)
     _uModelview  = glGetUniformLocation(programObject, "uModelview");
     _uColor      = glGetUniformLocation(programObject, "uColor");
     _uPointSize  = glGetUniformLocation(programObject, "uPointSize");
-    _uSampler2d0 = glGetUniformLocation(programObject, "uSampler2d0");
-    _uSampler2d1 = glGetUniformLocation(programObject, "uSampler2d1");
+    _uSampler2d  = glGetUniformLocation(programObject, "uSampler2d");
 
     _uBlitOn     = glGetUniformLocation(programObject, "uBlitOn");
     _uTextOn     = glGetUniformLocation(programObject, "uTextOn");
     _uGlowOn     = glGetUniformLocation(programObject, "uGlowOn");
+    _uStipOn     = glGetUniformLocation(programObject, "uStipOn");
+    //_uScaleOn    = glGetUniformLocation(programObject, "uScaleOn");
+
+    // optimisation test
+    _uPalOn      = glGetUniformLocation(programObject, "uPalOn");
+    _uPalArray   = glGetUniformLocation(programObject, "uPalArray");
+
+    _uColor      = glGetUniformLocation(programObject, "uColor");
 
     _uPattOn     = glGetUniformLocation(programObject, "uPattOn");
     _uPattGridX  = glGetUniformLocation(programObject, "uPattGridX");
@@ -1458,11 +1386,8 @@ static GLuint    _bindUnifrom(GLuint programObject)
 
 static int       _clearColor(void)
 {
-    //clear FB ALPHA before use, also put blue but doen't show up unless startup bug
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    //glClearColor(0, 0, 1, 1);     // blue
-    //glClearColor(1.0, 0.0, 0.0, 1.0);     // red
-    //glClearColor(1.0, 0.0, 0.0, 0.0);     // red
+    //clear FB ALPHA before use
+    //glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glClearColor(0.0, 0.0, 0.0, 0.0);
 
 #ifdef S52_USE_TEGRA2
@@ -1474,6 +1399,126 @@ static int       _clearColor(void)
 #endif
 
     _checkError("_clearColor() -1-");
+
+    return TRUE;
+}
+
+static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
+// make a RGBA texture from 32x32 bitmask (a la glPolygonStipple() in OpenGL 1.x)
+{
+    memset(rgba_mask, 0, 4*32*8*4);
+
+    for (int i=0; i<(4*32); ++i) {
+        if (mask[i] & (1<<0)) {
+            //rgba_mask[(i*4*8)+0] = 0;  // R
+            //rgba_mask[(i*4*8)+1] = 0;  // G
+            //rgba_mask[(i*4*8)+2] = 0;  // B
+            rgba_mask[(i*4*8)+3] = 255;   // A
+        }
+        if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
+        if (mask[i] & (1<<2)) rgba_mask[(i*4*8)+11] = 255;  // A
+        if (mask[i] & (1<<3)) rgba_mask[(i*4*8)+15] = 255;  // A
+        if (mask[i] & (1<<4)) rgba_mask[(i*4*8)+19] = 255;  // A
+        if (mask[i] & (1<<5)) rgba_mask[(i*4*8)+23] = 255;  // A
+        if (mask[i] & (1<<6)) rgba_mask[(i*4*8)+27] = 255;  // A
+        if (mask[i] & (1<<7)) rgba_mask[(i*4*8)+31] = 255;  // A
+    }
+
+    return TRUE;
+}
+
+static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
+// make a RGBA texture from 32x1 bitmask (a la glLineStipple() in OpenGL 1.x)
+{
+    memset(rgba_mask, 0, 8*4*4);  // 32x4B (rgda)
+    for (int i=0; i<4; ++i) {     // 4 bytes
+        if (mask[i] & (1<<0)) {
+            //rgba_mask[(i*4*8)+0] = 0;   // R
+            //rgba_mask[(i*4*8)+1] = 0;   // G
+            //rgba_mask[(i*4*8)+2] = 0;   // B
+            rgba_mask[(i*4*8)+3] = 255;   // A
+        }
+        if (mask[i] & (1<<1)) rgba_mask[(i*4*8)+ 7] = 255;  // A
+        if (mask[i] & (1<<2)) rgba_mask[(i*4*8)+11] = 255;  // A
+        if (mask[i] & (1<<3)) rgba_mask[(i*4*8)+15] = 255;  // A
+        if (mask[i] & (1<<4)) rgba_mask[(i*4*8)+19] = 255;  // A
+        if (mask[i] & (1<<5)) rgba_mask[(i*4*8)+23] = 255;  // A
+        if (mask[i] & (1<<6)) rgba_mask[(i*4*8)+27] = 255;  // A
+        if (mask[i] & (1<<7)) rgba_mask[(i*4*8)+31] = 255;  // A
+    }
+
+    return TRUE;
+}
+
+static GLuint    _initAPtexStore(GLsizei w, GLsizei h, GLvoid *data)
+// alloc GPU storage & load texture
+{
+    // FIXME: send GL_APHA instead of RGBA - convertion of bits to bytes instead of RGBA
+    // FIXME: GLSC2 doesn't have GL_ALPHA nor glTexStorage2D()
+    GLuint maskTexID = 0;
+    glGenTextures(1, &maskTexID);
+    glBindTexture(GL_TEXTURE_2D, maskTexID);
+
+#ifdef S52_USE_GLSC2
+    // modern way
+    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, w, h);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
+#else
+    // Note: GL_RGBA is needed for:
+    // - Vendor: Tungsten Graphics, Inc. - Renderer: Mesa DRI Intel(R) 965GM x86/MMX/SSE2
+    // - Vendor: Qualcomm                - Renderer: Adreno (TM) 320
+    //if (NULL == data)
+    //    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_FLOAT, data);
+    //else
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    // modern way
+    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA8_OES, w, h);
+    //_checkError("_renderTexure() -000-");
+    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+#endif
+
+    //_checkError("_initAPtexStore() -00-");
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glBindTexture  (GL_TEXTURE_2D, 0);
+
+    _checkError("_initAPtexStore() -0-");
+
+    return maskTexID;
+}
+
+static int       _initAPTexture(void)
+{
+    if (0 != _nodata_mask_texID)
+        return TRUE;
+
+    _checkError("_initTexture -00-");
+
+    // fill _rgba_nodata_mask - expand bitmask to a RGBA buffer
+    // that will acte as a stencil in the fragment shader
+    _1024bitMask2RGBATex(_nodata_mask_bits, _nodata_mask_rgba);
+    _32bitMask2RGBATex  (_dottpa_mask_bits, _dottpa_mask_rgba);
+    _32bitMask2RGBATex  (_dashpa_mask_bits, _dashpa_mask_rgba);
+
+    // nodata pattern
+    _nodata_mask_texID = _initAPtexStore(32, 32, _nodata_mask_rgba);
+
+    // dott pattern
+    _dottpa_mask_texID = _initAPtexStore(32, 1, _dottpa_mask_rgba);
+
+    // dash pattern
+    _dashpa_mask_texID = _initAPtexStore(32, 1, _dashpa_mask_rgba);
+
+    // setup mem buffer to save FB to
+    _fb_pixels_id      = _initAPtexStore(_vp.w, _vp.h, NULL);
+
+    // debug
+    //_fb_pixels_id      = _initAPtexStore(0, 0, NULL);
+    //glGenTextures(1, &_fb_pixels_id);
 
     return TRUE;
 }
@@ -1499,7 +1544,7 @@ static int       _init_gl2(void)
     _loadProcEXT();
 #endif
 
-    _initTexture();
+    _initAPTexture();
 
     _programObject = _loadShaderBin();
     if (0 == _programObject) {
@@ -1531,31 +1576,25 @@ static int       _init_gl2(void)
     _glMatrixMode  (GL_MODELVIEW);
     _glLoadIdentity(GL_MODELVIEW);
 
-    _clearColor();
-    /*
     //clear FB ALPHA before use, also put blue but doen't show up unless startup bug
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     //glClearColor(0, 0, 1, 1);     // blue
-    glClearColor(1.0, 0.0, 0.0, 1.0);     // red
+    //glClearColor(1.0, 0.0, 0.0, 1.0);     // red
     //glClearColor(1.0, 0.0, 0.0, 0.0);     // red
-    //glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
 
-#ifdef S52_USE_TEGRA2
-    // xoom specific - clear FB to reset Tegra 2 CSAA (anti-aliase), define in gl2ext.h
-    //int GL_COVERAGE_BUFFER_BIT_NV = 0x8000;
-    glClear(GL_COLOR_BUFFER_BIT | GL_COVERAGE_BUFFER_BIT_NV);
-#else
-    glClear(GL_COLOR_BUFFER_BIT);
-#endif
-    */
+    _clearColor();
 
-    _checkError("_init_es2() -fini-");
+    // turn OFF rgb lookup
+    glUniform1i(_uPalOn, -1);
 
     return TRUE;
 }
 
 static int       _renderTile(S52_DListData *DListData)
 {
+    _checkError("_renderTile() -0-");
+
     glUniformMatrix4fv(_uModelview,  1, GL_FALSE, _mvm[_mvmTop]);
 
     glEnableVertexAttribArray(_aPosition);
@@ -1588,7 +1627,7 @@ static int       _renderTile(S52_DListData *DListData)
 
     glDisableVertexAttribArray(_aPosition);
 
-    _checkError("_renderTile() -0-");
+    _checkError("_renderTile() -1-");
 
     return TRUE;
 }
@@ -1658,6 +1697,7 @@ static int       _bindFBO(GLuint mask_texID)
         case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
             PRINTF("Incomplete missing attachment. (GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT)(FBO - 820)\n");
             break;
+
 // Not in GL
 //            case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
 //                PRINTF("Incomplete dimensions. (GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT)(FBO - 820)");
@@ -1682,6 +1722,8 @@ static int       _bindFBO(GLuint mask_texID)
             PRINTF("ERROR: Some video driver error or programming error occured. Framebuffer object status is invalid. (FBO - 823)");
             break;
         }
+
+        g_assert(0);
 
         return FALSE;
     }
@@ -1750,39 +1792,6 @@ static int       _minPOT(int value)
     }
 }
 
-static GLuint    _initAPtexStore(GLsizei w, GLsizei h)
-{
-    GLuint maskTexID = 0;
-    glGenTextures(1, &maskTexID);
-    glBindTexture(GL_TEXTURE_2D, maskTexID);
-
-#ifdef S52_USE_GLSC2
-    // modern way
-    glTexStorage2D (GL_TEXTURE_2D, 0, GL_RGB, w, h);
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-#else
-    // Note: GL_RGBA is needed for:
-    // - Vendor: Tungsten Graphics, Inc. - Renderer: Mesa DRI Intel(R) 965GM x86/MMX/SSE2
-    // - Vendor: Qualcomm                - Renderer: Adreno (TM) 320
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    // modern way
-    //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA8_OES, w, h);
-    //_checkError("_renderTexure() -000-");
-    //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-#endif
-
-    //_checkError("_initAPtexStore() -00-");
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    _checkError("_initAPtexStore() -0-");
-
-    return maskTexID;
-}
-
 static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, double stagOffsetPix)
 {
     GLsizei w = ceil(tileWpx);
@@ -1800,14 +1809,14 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
 
     _checkError("_renderTexure() -0000-");
 
-    GLuint mask_texID = _initAPtexStore(w, h);
+    GLuint mask_texID = _initAPtexStore(w, h, NULL);
 
     _bindFBO(mask_texID);
 
     // save texture mask ID when everythings check ok
     S52_PL_setAPtexID(obj, mask_texID);
 
-    _clearColor();
+    //_clearColor();
 
     // render to texture -----------------------------------------
 
@@ -1834,9 +1843,15 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
         char     pen_w = '1';
         S52_PL_getLCdata(obj, &dummy, &pen_w);
 
+
         _glLineWidth(pen_w - '0' + 1.0);  // must enlarge line glsl sampler
+
+        _checkError("_renderTexure() -0-");
+
         _glPointSize(pen_w - '0' + 1.0);  // sampler + AA soften pixel, so need enhencing a bit
     }
+
+    _checkError("_renderTexure() -1-");
 
     // debug - locate drgare 2 dot symb
     //_glTranslated(0.0, 0.0, 0.0);
@@ -1926,7 +1941,8 @@ static int       _renderAP_gl2(S52_obj *obj)
 
     _glUniformMatrix4fv_uModelview();
 
-    glUniform1f(_uPattOn,    1.0);
+    //glUniform1f(_uPattOn,    1.0);
+    glUniform1i(_uPattOn,       1);
     // make no diff on mesa if it is 0.0 but not on Xoom (tegra2)
     glUniform1f(_uPattGridX, LLx);
     glUniform1f(_uPattGridY, LLy);
@@ -1939,7 +1955,8 @@ static int       _renderAP_gl2(S52_obj *obj)
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    glUniform1f(_uPattOn,    0.0);
+    //glUniform1f(_uPattOn,    0.0);
+    glUniform1i(_uPattOn,    0);
     glUniform1f(_uPattGridX, 0.0);
     glUniform1f(_uPattGridY, 0.0);
     glUniform1f(_uPattW,     0.0);
@@ -1950,35 +1967,42 @@ static int       _renderAP_gl2(S52_obj *obj)
     return TRUE;
 }
 
-static int       _renderLS_gl2(char style, guint npt, double *ppt)
+static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
 {
-    _d2f(_tessWorkBuf_f, npt, ppt);
+    float texUV[4] = {
+        0.0, 0.0,
+        1.0, 1.0
+        //32.0, 1.0
+    };
 
     switch (style) {
 
-        case 'L': // SOLD --correct
-            // but this stippling break up antialiase
-            //glLineStipple(1, 0xFFFF);
-            _glUniformMatrix4fv_uModelview();
-            _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
+        // SOLD
+        case 'L': //_DrawArrays_LINE_STRIP(npt, v);
+                  //return TRUE;
+                  break;
 
-            return TRUE;
+        // DASH (dash 3.6mm, space 1.8mm)
+        case 'S': glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
+                  //glUniform1f(_uScaleOn, _scalex);
+                  //glUniform1i(_uStipOn, 1);
+                  glUniform1f(_uStipOn, _scalex);
 
-        case 'S': // DASH (dash 3.6mm, space 1.8mm) --incorrect  (last space 1.8mm instead of 1.2mm)
-            //glEnable(GL_LINE_STIPPLE);
-            //_glLineStipple(3, 0x7777);
-            //glLineStipple(2, 0x9248);  // !!
-            glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
-            // debug
-            //return TRUE;
-            break;
+                  glEnableVertexAttribArray(_aUV);
+                  glVertexAttribPointer(_aUV, 2, GL_FLOAT, GL_FALSE, 0, texUV);
 
-        case 'T': // DOTT (dott 0.6mm, space 1.2mm) --correct
-            //glEnable(GL_LINE_STIPPLE);
-            //_glLineStipple(1, 0xFFF0);
-            //_glPointSize(pen_w - '0');
-            glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
-            break;
+                  break;
+
+        // DOTT (dott 0.6mm, space 1.2mm)
+        case 'T': glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
+                  //glUniform1f(_uScaleOn, _scalex);
+                  //glUniform1i(_uStipOn, 2);
+                  glUniform1f(_uStipOn, _scalex);
+
+                  glEnableVertexAttribArray(_aUV);
+                  glVertexAttribPointer(_aUV, 2, GL_FLOAT, GL_FALSE, 0, texUV);
+
+                  break;
 
         default:
             PRINTF("WARNING: invalid line style\n");
@@ -1986,33 +2010,156 @@ static int       _renderLS_gl2(char style, guint npt, double *ppt)
             return FALSE;
     }
 
-    // FIXME: use GL_POINTS if DOTT
-    glUniform1f(_uTextOn, 1.0);
     _glUniformMatrix4fv_uModelview();
 
-    float *v = (float *)_tessWorkBuf_f->data;
-    for (guint i=1; i<npt; ++i, ppt+=3, v+=3) {
-        float dx       = ppt[0] - ppt[3];
-        float dy       = ppt[1] - ppt[4];
+    // convert to float
+    _d2f(_tessWorkBuf_f, npt, ppt);
+    vertex_t *v = (vertex_t *)_tessWorkBuf_f->data;
+
+    if (NULL != obj) {
+        S52_DListData *DListData = S52_PL_getDListData(obj);
+        if (NULL == DListData) {
+            DListData = S52_PL_newDListData(obj);
+            DListData->create    =  FALSE;
+            DListData->nbr       =  1;
+            DListData->prim[0]   = S57_initPrim(NULL);
+            DListData->crntPalID = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
+
+            {
+                S52_Color *col;
+                char       style;   // L/S/T - use by normal command word LS()
+                char       pen_w;
+                S52_PL_getLSdata(obj, &pen_w, &style, &col);
+                DListData->colors[0] = *col;
+                DListData->colors[0].fragAtt.pen_w = pen_w;
+                DListData->colors[0].fragAtt.trans = '0';  // 0% - no transparency
+            }
+
+            // fill prim
+            if ('L' == style) {
+                S57_begPrim(DListData->prim[0], GL_LINE_STRIP);
+                for (guint i=0; i<npt; ++i, v+=3) {
+                    S57_addPrimVertex(DListData->prim[0], v);
+                }
+            } else {
+                S57_begPrim(DListData->prim[0], GL_LINES);
+                for (guint i=0; i<npt-1; ++i, v+=3) {
+                    // put dist in Z v[2]=v[5] = dist (ie sqrt(dx*dx + dy*dy)])
+                    float dx = v[0] - v[3];
+                    float dy = v[1] - v[4];
+                    float dist = sqrt(dx*dx + dy*dy);
+
+                    // dist / Z
+                    v[2] = v[5] = dist;
+
+                    // add p1
+                    S57_addPrimVertex(DListData->prim[0], v);
+
+                    // add p2
+                    S57_addPrimVertex(DListData->prim[0], v+3);
+                }
+            }
+            S57_endPrim(DListData->prim[0]);
+            DListData->vboIds[0] = _VBOCreate(DListData->prim[0]);
+        }
+
+
+        _glCallList(DListData, S57_getHighlight(S52_PL_getGeo(obj)));
+
+        // 1 - compute line legs length
+        // 2 - compute numger of repeate
+        // 4.a - send tex_n array for  GL_LINES to vertex shader
+        // 4.b - send _scalex to uniforme
+        // 5 - in vertex shader:
+        //     5.1 - compute tex_n - (dist  / _scalex) / 32 <-- flat throughout one line
+        //     5.2 - in frag shader:
+        //           5.3 - apply tex_n to UV.x *= tex_n
+
+    } else {
+        // draw graticule
+
+        // flush FB
+        //_clearColor();
+
+        float dx = v[0] - v[3];
+        float dy = v[1] - v[4];
+        float dist = sqrt(dx*dx + dy*dy);
+
+        // dist / Z
+        v[2] = v[5] = dist;
+
+        // immediate mode
+        //_DrawArrays_LINE_STRIP(npt, v);
+        _DrawArrays_LINES(npt, v);
+        /*
+        static int linecount = 0;
+        glReadPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
+        //glReadPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_FLOAT, _fb_pixels);
+
+        // def of one pixel
+        typedef struct _pixel {GLubyte r,g,b,a;} _pixel;
+        //typedef struct _pixel {GLfloat r,g,b,a;} _pixel;
+
+        GLubyte d = 0;
+        //GLfloat d = 0;
+
+        _pixel *ppixel = (_pixel *)_fb_pixels;
+        for (guint i=0; i<(_vp.w*_vp.h*4); i+=4, ++ppixel) {
+            //if (0 < ppixel->b && d != ppixel->r ) {
+            if (0 < ppixel->r && d<ppixel->r) {
+                d = ppixel->r;
+
+                PRINTF("DEBUG: rgba line no: %i, dist:%f --> %i\n", linecount++, dist/_scalex/32.0, d);
+                //PRINTF("DEBUG: rgba line no: %i, dist:%f --> %f\n", linecount++, dist, d);
+            }
+        }
+        */
+    }
+
+
+    glDisableVertexAttribArray(_aUV);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    //glUniform1i(_uStipOn, 0);
+    //glUniform1f(_uScaleOn, 0.0);
+
+    glUniform1f(_uStipOn, 0.0);
+
+    return TRUE;
+
+    // FIXME: do line stippling in shader!
+
+    //_glLoadIdentity(GL_MODELVIEW);
+
+
+    //glUniform1f(_uTextOn, 1.0);
+
+    // debug
+    //glUniform1i(_uPalOn, 2);
+
+    //glEnableVertexAttribArray(_aUV);
+
+    /*
+    for (guint i=1; i<npt; ++i,v+=3) {
+        float dx       = v[0] - v[3];
+        float dy       = v[1] - v[4];
         float leglen_m = sqrt(dx*dx + dy*dy);   // leg length in meter
         float leglen_px= leglen_m  / _scalex;   // leg length in pixel
         float tex_n    = leglen_px / 32.0;      // number of texture pattern - 1D 32x1 pixels
 
         float ptr[4] = {
             0.0,   0.0,
-            tex_n, 1.0
+            //tex_n, 1.0
+            1.0, 1.0
+            //32.0, 1.0
         };
 
-        glEnableVertexAttribArray(_aUV);
-        glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
+        //glVertexAttribPointer(_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
 
-        //_DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
-        _DrawArrays_LINE_STRIP(2, v);
+        //_DrawArrays_LINE_STRIP(2, v);
     }
+    //*/
 
-    glDisableVertexAttribArray(_aUV);
-    glBindTexture(GL_TEXTURE_2D,  0);
-    glUniform1f(_uTextOn, 0.0);
 
-    return TRUE;
 }
