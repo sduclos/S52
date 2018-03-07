@@ -15,7 +15,8 @@
 
 .POSIX:
 
-.PHONY: test/* clean distclean
+# FIXME: add target test/*
+.PHONY: clean distclean
 
 #------------------------------------------------------------------------------
 #  Makefile optimization tricks
@@ -203,8 +204,6 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_RADAR        - GL2 - radar mode: skip swapbuffer between DRAW & LAST cycle, skip read/write FB - set S52_MAR_DISP_RADAR_LAYER
 # -DS52_USE_RASTER       - GL2 - bathy raster (GeoTIFF) - set S52_MAR_DISP_RADAR_LAYER
 # -DS52_USE_AFGLOW       - experimental synthetic after glow
-# -DS52_USE_SYM_VESSEL_DNGHL
-#                        - DEPRECATED GL2 - vestat = 3, close quarter, show AIS in red (DNGHL)
 #
 # Debug:
 # -DS52_DEBUG            - add more info for debugging libS52 (ex _checkError() in S52GL.c)
@@ -687,7 +686,6 @@ S52-$(LIBS52VERS).typelib: S52-$(LIBS52VERS).gir
 doc: S52-$(LIBS52VERS).typelib
 	(cd /home/sduclos/dev/prog/doc-generator/introspection-doc-generator/; seed docs.js ../tmp S52;)
 	cp /home/sduclos/dev/prog/doc-generator/tmp/seed/* doc/tmp
-
 
 
 ############### Notes ##############################
