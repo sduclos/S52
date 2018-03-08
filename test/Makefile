@@ -87,9 +87,11 @@ s52gtk2gps: CFLAGS += `pkg-config --cflags --libs glib-2.0 libgps dbus-1 dbus-gl
 s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 
 #                     -DS52_USE_AFGLOW
+#                     -DUSE_AIS
 s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
+                     -DS52_USE_AFGLOW        \
                      -DUSE_AIS
 
 # debug - test object
@@ -360,11 +362,16 @@ S52-1.0.typelib: S52-1.0.gir
 	sudo cp S52-1.0.typelib $(GNOME3_SHELL_LIBS)/girepository-1.0/
 
 
-############### gtk3 test ##############################
+############### test ##############################
 
 gtk3: gtk3test.c
-	gcc `pkg-config --cflags gtk+-3.0` gtk3test.c `pkg-config --libs gtk+-3.0` -o gtk3test
+	$(CC) -g -Wall gtk3test.c `pkg-config --cflags --libs gtk+-3.0` -o gtk3test
 
+dl_test: dl_test.c
+	$(CC) -g -Wall dl_test.c -lpthread -o dl_test
+
+es2glsl_test: es2glsl_test.c
+	$(CC) -g -Wall es2glsl_test.c `pkg-config --cflags --libs glib-2.0 gio-2.0 glesv2 egl x11` -lm -o es2glsl_test
 
 ############### clean up ##############################
 #
