@@ -56,9 +56,6 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    10.0);
     //S52_setMarinerParam(S52_MAR_SAFETY_DEPTH,    15.0);
 
-    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GL1/GPU expentive)
-
 
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);   // 0.0 --> 5 shades (default)
     //S52_setMarinerParam(S52_MAR_TWO_SHADES,      1.0);   // 1.0 --> 2 shades
@@ -70,8 +67,11 @@ static int      _s52_setupMarPar(void)
     //--------------------------------------
     //*/
 
-    S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);    // on  (default OFF)
-    //S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   1.0);  // on  (default OFF)
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
+    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GL1/GPU expentive)
+
+    S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);  // on  (default OFF)
+    S52_setMarinerParam(S52_MAR_DISTANCE_TAGS,   1.0);  // on  (default OFF)
     S52_setMarinerParam(S52_MAR_HEADNG_LINE,     1.0);  // on  (default OFF)
     S52_setMarinerParam(S52_MAR_BEAM_BRG_NM,     1.0);  // on - 1NM (default OFF - 0.0)
     S52_setMarinerParam(S52_MAR_FULL_SECTORS,    0.0);  // off (default ON)
@@ -187,8 +187,8 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 0.0);  // OFF (default)
     //S52_setMarinerParam(S52_MAR_DISP_OVERLAP, 1.0);  // ON
 
-    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);   // OFF
-    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);  // ON (default)
+    //S52_setMarinerParam(S52_MAR_SHOW_TEXT,       0.0);   // OFF
+    S52_setMarinerParam(S52_MAR_SHOW_TEXT,       1.0);  // ON (default)
 
     //S52_MAR_GUARDZONE_BEAM      = 46,   // Danger/Indication Highlight used by LEGLIN&Position  (meters) [0.0 - off]
     //S52_MAR_GUARDZONE_LENGTH    = 47,   // Danger/Indication Highlight used by Position (meters, user computed from speed/time or distance)
@@ -209,13 +209,13 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_DISP_SCLBDY_UNION, 1.0);  // display all sclbdy (debug)
 
 
-    //* debug - use for timing rendering
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
+    /* debug - use for timing rendering
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_SY);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LS);
     //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_LC);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
-    //S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AC);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_AP);
+    S52_setMarinerParam(S52_CMD_WRD_FILTER, S52_CMD_WRD_FILTER_TX);
     //*/
 
     return TRUE;
