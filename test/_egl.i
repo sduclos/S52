@@ -476,6 +476,7 @@ static int      _egl_init       (EGLState *eglState)
         window = XCreateWindow(display, RootWindow(display, screen), 0, 0, WIDTH, HEIGHT, //1280, 1024,
                                0, visual->depth, InputOutput, visual->visual, mask, &wa);
                                //0, 0, InputOutput, NULL, mask, &wa);
+        XFree(visual);
 
         sh.flags = USPosition;
         sh.x = 0;
@@ -497,8 +498,7 @@ static int      _egl_init       (EGLState *eglState)
     // --- get eglSurface ------------------------------------------------
     /*  test double buffer
     const EGLint eglSurfaceAttribs[] = {
-        EGL_RENDER_BUFFER,
-        EGL_BACK_BUFFER,
+        EGL_RENDER_BUFFER, EGL_BACK_BUFFER,
         EGL_NONE,
     };
     eglSurface = eglCreateWindowSurface(eglDisplay, eglConfig, eglWindow, eglSurfaceAttribs);
