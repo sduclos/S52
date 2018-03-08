@@ -108,16 +108,18 @@ typedef struct S52_fragAtt {
     // FIXME: index of a GArray - pointer arithmetic - so guchar must be conveted gpointer!
     // #define g_ptr_array_index(array,index_) ((array)->pdata)[index_]
     // so i * sizeof(S52_Color)
+
+    // GLSL: passing fragAtt via Z lead to prob. of interpolation between vertex and fragment shader
+    // because passing cidx via varying will trigger interpolation so color lookup must be in the vertex shader
+
     guchar   cidx;      // 2^6: index of this color in palette [0..63], used as lookup when palette change
     char     pen_w;     // 2^2: using VBO's we need to know this, Display List store this but not VBO
-    char     trans;     // 2^2: command word can change this so 'trans' is linked to an object not a color
+    char     trans;     // 2^2: alpha: command word can change this so 'trans' is linked to an object not a color
     //--------------------------
 } S52_fragAtt;
 
 // color definition
 typedef struct S52_Color {
-    S52_fragAtt fragAtt;  //--- not S52 field --------
-
     char     colName[S52_PL_COL_NMLN +1];   // '\0' terminated
     double   x;
     double   y;
@@ -125,6 +127,10 @@ typedef struct S52_Color {
     guchar   R;
     guchar   G;
     guchar   B;
+    //guchar   A;  // alpha is in fragAtt.trans
+
+    //--- not S52 field --------
+    S52_fragAtt fragAtt;
 } S52_Color;
 
 // symbol's OpenGL Display List sub-list for color/pen_w/trans switch
@@ -137,7 +143,7 @@ typedef struct S52_DListData {
     S52_Color colors[MAX_SUBLIST];   // color of each Display List / VBO
     S57_prim *prim  [MAX_SUBLIST];   // hold PLib sym prim info for VBO
 
-    int       crntPalIDX;            // -1 - init, 0..n palette index
+    int       crntPalID;            // -1 - init, 0..n palette id
 } S52_DListData;
 
 // Vector Command (a la HPGL)
@@ -341,6 +347,8 @@ S52_obj       *S52_PL_getPrevLeg(S52_obj *obj);
 int            S52_PL_setTimeNow(S52_obj *obj);
 long           S52_PL_getTimeSec(S52_obj *obj);
 
+// optimisation test: get RGBA from current active palette
+GArray        *S52_PL_getPalRGBA(void);
 
 #ifdef S52_USE_FREETYPE_GL
 guint          S52_PL_getFreetypeGL_VBO(S52_obj *obj, guint *len, double *strWpx, double *strHpx, char *hjust, char *vjust);
