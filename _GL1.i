@@ -8,7 +8,6 @@
 // glLogicOp(GL_XOR);
 
 
-#define GL_GLEXT_PROTOTYPES  // glIsBuffer(), glGenBuffers(), glBindBuffer(), ...
 #include <GL/gl.h>
 #include "GL/glext.h"
 #include <GL/glu.h>
@@ -313,7 +312,7 @@ static int       _initCOGL(void)
 }
 #endif
 
-#if !defined(S52_USE_OPENGL_VBO)
+#ifdef S52_USE_OPENGL_VBO
 static int       _DrawArrays(S57_prim *prim)
 {
     guint     primNbr = 0;
@@ -389,54 +388,6 @@ static int       _callDList(S57_prim *prim)
     return TRUE;
 }
 #endif  // !S52_USE_OPENGL_VBO
-
-#if 0
-/* FIXME: same code as _renderAP_DRGARE_gl1
-static int       _renderAP_NODATA_gl1(S52_obj *obj)
-{
-    S57_geo       *geo       = S52_PL_getGeo(obj);
-    S52_DListData *DListData = S52_PL_getDListData(obj);
-
-    if (NULL != DListData) {
-        S52_Color *col = DListData->colors;
-        _setFragAttrib(col, S57_getHighlight(geo));
-
-        glEnable(GL_POLYGON_STIPPLE);
-        glPolygonStipple(_nodata_mask);
-
-        _fillArea(geo);
-
-        glDisable(GL_POLYGON_STIPPLE);
-
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
-static int       _renderAP_DRGARE_gl1(S52_obj *obj)
-{
-    S57_geo       *geo       = S52_PL_getGeo(obj);
-    S52_DListData *DListData = S52_PL_getDListData(obj);
-
-    if (NULL != DListData) {
-        S52_Color *col = DListData->colors;
-        _setFragAttrib(col, S57_getHighlight(geo));
-
-        glEnable(GL_POLYGON_STIPPLE);
-        glPolygonStipple(_drgare_mask);
-
-        _fillArea(geo);
-
-        glDisable(GL_POLYGON_STIPPLE);
-
-        return TRUE;
-    }
-
-    return FALSE;
-}
-*/
-#endif  // 0
 
 static int       _renderAP_mask_gl1(S52_obj *obj, const GLubyte *mask)
 {
@@ -647,4 +598,29 @@ static int       _renderAP_gl1(S52_obj *obj)
     _checkError("_renderAP()");
 
     return TRUE;
+}
+
+static void      _glLineStipple(GLint  factor,  GLushort  pattern)
+{
+#ifdef S52_USE_GL2
+    // silence gcc warning
+    (void)factor;
+    (void)pattern;
+
+    /*
+    static int silent = FALSE;
+    if (FALSE == silent) {
+        PRINTF("FIXME: GL2 line stipple\n");
+        PRINTF("       (this msg will not repeat)\n");
+        silent = TRUE;
+    }
+    //*/
+
+
+#else
+    glEnable(GL_LINE_STIPPLE);
+    glLineStipple(factor, pattern);
+#endif
+
+    return;
 }
