@@ -221,8 +221,8 @@ static int _s52_setupMain(void)
     // debug - M_QUAL - the U pattern
     // supresse display of adminitrative objects when
     // S52_MAR_DISP_CATEGORY is SELECT, to avoid cluttering
-    S52_setS57ObjClassSupp("M_QUAL", TRUE);  // supress display of the U pattern
-    //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U pattern
+    S52_setS57ObjClassSupp("M_QUAL", TRUE);  // supress display of the U/* pattern
+    //S52_setS57ObjClassSupp("M_QUAL", FALSE);  // display the U/* pattern (default)
 
     // debug
     //ret = S52_setS57ObjClassSupp ("M_QUAL", TRUE);  // OK - ret == TRUE  - first time
