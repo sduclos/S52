@@ -4,6 +4,21 @@
 #
 
 
+2018MAR06
+- mod move GL2 line stippling to fragment shader
+
+2018FEB14
+- del deprecate S52_USE_SYM_DNGHL test code path
+
+2018FEB09
+- mod g_tree_lookup() color to g_tree_lookup_extended() to trap invalid color name
+
+2018FEB05
+- del unuse GLSL var
+
+2018JAN30
+- refactor GL2 pattern storage on GPU
+
 2018JAN26
 - fix/refactor GL2 pattern creation
 - del S52_USE_DUAL_MON
