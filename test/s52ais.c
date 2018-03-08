@@ -37,6 +37,12 @@
 #include <glib/gprintf.h>   // g_sprintf()
 #include <glib/gstdio.h>    // g_stat()
 
+//#ifdef USE_FAKE_AIS
+//#include "_s52_setupOWNSHP.i"  // _s52_setupOWNSHP()
+//#include "_s52_setupVESSEL.i"  // _s52_setupVESSEL(), _s52_updFakeAIS()
+//#endif  // USE_FAKE_AIS
+
+
 // no thread needed in standalone
 #if !defined(S52AIS_STANDALONE)
 static GThread *_gpsClientThread = NULL;
@@ -1686,6 +1692,11 @@ int            s52ais_initAIS(void)
     }
 #endif
 
+//#ifdef USE_FAKE_AIS
+//    _s52_setupOWNSHP(engine->state.cLat, engine->state.cLon);
+//    _s52_setupVESSEL(engine->state.cLat, engine->state.cLon);
+//#endif
+
 // no thread needed in standalone
 #if !defined(S52AIS_STANDALONE)
     // not joinable - gps done will not wait
@@ -1866,9 +1877,9 @@ int main(int argc, char *argv[])
     if (FALSE == s52ais_initAIS())
         return FALSE;
 
-    _gpsdClientRead(NULL);
-
     g_timeout_add(500, s52ais_updtAISLabel, NULL);  // 0.5 sec
+
+    _gpsdClientStart(NULL);
 
 #ifdef S52_USE_ANDROID
     // clean up PID
