@@ -31,7 +31,7 @@ GIMP:
 
 1 - open, in GIMP, as layers
 
-2 - in layers mode selecte: Difference
+2 - in the layers window; select mode Difference for the top layer
 
 3 - optionally, use mask to enhance remaining pixels
 
