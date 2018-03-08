@@ -76,7 +76,6 @@ static GTimer *_timer = NULL;
 #include "_s52_setupPASTRK.i"  // _s52_setupPASTRK()
 #include "_s52_setupLEGLIN.i"  // _s52_setupLEGLIN(), _s52_setupIceRte()
 #include "_s52_setupCLRLIN.i"  // _s52_setupCLRLIN()
-//#include "_s52_setupmarfea.i"  // _s52_setupmarfea()
 #include "_s52_setupPRDARE.i"  // _s52_setupPRDARE()
 #include "_radar.i"            // _radar_init(), _radar_readLog(), _radar_done()
 #endif  // USE_TEST_OBJ
