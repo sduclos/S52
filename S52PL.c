@@ -127,10 +127,15 @@ typedef struct _S52_symDef {
 
     // ---- not a S52 fields ------------------------------------
     S52_SMBtblName symType;     // debug LINE,PATT,SYMB
+
+    // S52_obj are made of a number symDef
+    // this symDef is made of a number of fragment
+    // DList/VBO hold def of each fragment attribute for this sym (color/pen_w/trans)
     S52_DListData  DListData;   // GL Display List / VBO
 
 #if defined(S52_USE_GL2) || defined(S52_USE_GLES2)
-    guint          mask_texID;  // texture ID of pattern after running VBO
+    // texture def of pattern after running VBO
+    guint          mask_texID;  // tex ID
     int            potW;        // tex widht
     int            potH;        // tex height
 #endif
@@ -195,7 +200,6 @@ typedef struct _Text {
 typedef union _cmdDef {
     _S52_symDef     *def;
     //S52_CMD_SYM_PT,     // SY --SHOWPOINT
-    //S52_CMD_SIM_LN,     // LS --SHOWLINE
     //S52_CMD_COM_LN,     // LC --SHOWLINE COMPLEX
     //S52_CMD_ARE_PA,     // AP --SHOWAREA PATTERN
 
@@ -209,6 +213,7 @@ typedef union _cmdDef {
     // because there is no cmdDef for light sector, so put VBO here (ie no need struct _S52_cmdDef)
     S52_DListData   *DListData;  // for pattern in GLES2 this DL will create a texture
     //S52_CMD_ARE_CO,     // AC --SHOWAREA
+    //S52_CMD_SIM_LN,     // LS --SHOWLINE
 
 } _cmdDef;
 
@@ -228,7 +233,7 @@ typedef struct _cmdWL {
     //S52_CMD_ARE_PA,     // AP --SHOWAREA PATTERN
     //S52_CMD_CND_SY,     // CS --CALLSYMPROC (Conditional Symbology)
 
-    guchar         crntPal;  // optimisation: this 'cmd' is setup for 'palette N' colors
+    //guchar         crntPal;  // optimisation: this 'cmd' is setup for 'palette N' colors
 
     struct _cmdWL *next;
 } _cmdWL;
@@ -411,6 +416,8 @@ typedef struct _PL {
 } _PL;
 
 
+static GArray *_RGBA = NULL;
+static int     _crntPalNo = -1;  // -1 init
 #if 0
 /*
 char _S52AuxSymb[] =
@@ -1377,6 +1384,8 @@ static guint      _filterVector(char *str, char *colRef, S52_Color *colors)
         if (TRUE == subListNew) {
             // copy the S52_Color struct (A <-- B)
             *colors = *_parseCol(desc.ccolor, colRef);
+
+            // FIXME: don't use color array to pass fragAtt to specific S52 LUP
             colors->fragAtt.pen_w = desc.cpen_w;
             colors->fragAtt.trans = desc.ctrans;
 
@@ -1460,75 +1469,13 @@ static _colTable *_findColTbl(const char *tblName)
 }
 
 static int        _cms_xyL2rgb(S52_Color *c);  // forward decl
-#if 0
-/*
-static int        _readColor(_PL *fp)
-{
-
-    _readS52Line(fp, _pBuf);
-    while ( 0 != strncmp(_pBuf, "****", 4)) {
-        S52_Color c;
-
-        // debug
-        //PRINTF("%s\n", _pBuf);
-
-        memset(&c, 0, sizeof(S52_Color));
-        _chopAtEOL(_pBuf, ' ');
-        strncpy(c.colName, _pBuf+9, 5);
-        c.x = S52_atof(_pBuf+14);
-        c.y = S52_atof(_pBuf+21);
-        c.L = S52_atof(_pBuf+28);
-
-        c.trans = '0';  // default to opaque
-
-        _cms_xyL2rgb(&c);
-        // debug
-        //PRINTF("%s %f %f %f -> %i %i %i\n", c.colName, c.x, c.y, c.L, c.R, c.G, c.B);
-
-        if (NULL == _colref) {
-            g_array_append_val(ct.colors, c);
-        } else {
-            S52_Color *cref = (S52_Color *) g_tree_lookup(_colref, (gpointer*)c.colName);
-            if (NULL != cref) {
-
-                // check if color already loaded, if so
-                // update color value in table
-                //if (63 == ct.colors->len) {
-                if (S52_COL_NUM <= ct.colors->len) {
-                    // table full --update color
-                    S52_Color *c1 = &g_array_index(ct.colors, S52_Color, cref->cidx);
-                    guchar idx = cref->cidx;
-                    *c1        = c;
-                     c1->cidx  = idx;
-                } else {
-                    c.cidx = cref->cidx;
-                    g_array_insert_val(ct.colors, cref->cidx, c);
-                    //g_array_append_val(ct.colors, c);
-                }
-
-
-            } else {
-                // something broke the PLib !?
-                // or the first table was incomplet !?
-                //PRINTF("ERROR: color %s not in ref table: %p \n", c.colName, _colref);
-                PRINTF("ERROR: color %s not in ref table\n", c.colName);
-                g_assert(0);
-            }
-        }
-
-        _readS52Line(fp, _pBuf);
-    }
-}
-*/
-#endif  // 0
-
 static int        _readColor(_PL *fp, GArray *colors)
 {
     _readS52Line(fp, _pBuf);
     while ( 0 != strncmp(_pBuf, "****", 4)) {
         S52_Color c;
-
         memset(&c, 0, sizeof(S52_Color));
+
         //_chopAtEOL(_pBuf, ' ');
         _chopAtUS(_pBuf, ' ');
         strncpy(c.colName, _pBuf+9, 5);
@@ -1536,34 +1483,31 @@ static int        _readColor(_PL *fp, GArray *colors)
         c.x     = S52_atof(_pBuf+14);
         c.y     = S52_atof(_pBuf+21);
         c.L     = S52_atof(_pBuf+28);
-        c.fragAtt.trans = '0';  // default to opaque
+
+        c.fragAtt.trans = '0';  // default alpha to opaque
 
         _cms_xyL2rgb(&c);
         //PRINTF("%s %f %f %f -> %i %i %i\n", c.colName, c.x, c.y, c.L, c.R, c.G, c.B);
 
-        //S52_Color *cref = (S52_Color *) g_tree_lookup(_colref, (gpointer*)c.colName);
-        gpointer idx = g_tree_lookup(_colref, (gpointer*)c.colName);
-        if (NULL != idx) {
-            // color ref index - 1 == array index
-            int i = GPOINTER_TO_INT(idx) - 1;
-
-            if (i >= S52_COL_NUM) {
-                PRINTF("ERROR: color index i >= S52_COL_NUM\n");
-                g_assert(0);
-                return FALSE;
-            }
-
-            c.fragAtt.cidx = i; // optimisation
-
-            S52_Color *c1 = &g_array_index(colors, S52_Color, i);
-
-            *c1 = c;
-        } else {
-            // PLib 4.0 has 4 more color of MIO's: "MARBL", "MARCY", "MARMG", "MARWH"
+        gpointer orig_key = NULL;
+        gpointer idx      = NULL;
+        if (FALSE == g_tree_lookup_extended(_colref, (gpointer*)c.colName, &orig_key, &idx)) {
             PRINTF("WARNING: color %s not in ref table\n", c.colName);
             g_assert(0);
             return FALSE;
         }
+
+        int i = GPOINTER_TO_INT(idx);
+        if (i > S52_COL_NUM) {
+            PRINTF("ERROR: color index i > S52_COL_NUM\n");
+            g_assert(0);
+            return FALSE;
+        }
+
+        c.fragAtt.cidx = i;
+
+        S52_Color *c1 = &g_array_index(colors, S52_Color, i);
+        *c1 = c;
 
         _readS52Line(fp, _pBuf);
     }
@@ -1618,6 +1562,10 @@ static int        _parseCOLS(_PL *fp)
         // Note: only 63 color are loaded from PLib (#64 is TRANS)
         ct.colors    = g_array_new(FALSE, FALSE, sizeof(S52_Color));
         g_array_set_size(ct.colors, S52_COL_NUM);
+
+        // FIXME:
+        //ct.colors    = g_array_size_new(FALSE, FALSE, sizeof(S52_Color), S52_COL_NUM);
+        //g_array_set_size(ct.colors, 0);
 
         g_array_append_val(_colTables, ct);
 
@@ -1848,11 +1796,11 @@ static int        _parseLNST(_PL *fp)
 
     // not sure if new PLib symb can be NOT inserted
     if (TRUE == inserted) {
-        lnst->DListData.create     = TRUE;
-        lnst->DListData.crntPalIDX = -1;
-        lnst->DListData.nbr        = _filterVector(lnst->shape.line.vector.LVCT->str,
-                                                   lnst->colRef.LCRF->str,
-                                                   lnst->DListData.colors);
+        lnst->DListData.create    = TRUE;
+        lnst->DListData.crntPalID = -1;
+        lnst->DListData.nbr       = _filterVector(lnst->shape.line.vector.LVCT->str,
+                                                  lnst->colRef.LCRF->str,
+                                                  lnst->DListData.colors);
     }
 
     return TRUE;
@@ -1902,9 +1850,9 @@ static int        _parsePATT(_PL *fp)
     } while (inserted == FALSE);
 
     if (TRUE == inserted) {
-        patt->DListData.create     = TRUE;
-        patt->DListData.crntPalIDX = -1;
-        patt->DListData.nbr        = _filterVector(patt->shape.patt.vector.PVCT->str,
+        patt->DListData.create    = TRUE;
+        patt->DListData.crntPalID = -1;
+        patt->DListData.nbr       = _filterVector(patt->shape.patt.vector.PVCT->str,
                                                    patt->colRef.PCRF->str,
                                                    patt->DListData.colors);
     }
@@ -1953,9 +1901,9 @@ static int        _parseSYMB(_PL *fp)
     } while (inserted == FALSE );
 
     if (TRUE == inserted) {
-        symb->DListData.create     = TRUE;
-        symb->DListData.crntPalIDX = -1;
-        symb->DListData.nbr        = _filterVector(symb->shape.line.vector.SVCT->str,
+        symb->DListData.create    = TRUE;
+        symb->DListData.crntPalID = -1;
+        symb->DListData.nbr       = _filterVector(symb->shape.line.vector.SVCT->str,
                                                    symb->colRef.SCRF->str,
                                                    symb->DListData.colors);
     }
@@ -1974,9 +1922,9 @@ static int        _initPLtables()
     _colref = g_tree_new(_cmpCOL);
     //_colref = g_tree_new_full(_cmpCOL, NULL, NULL, NULL);
 
-    for (guint i=1; i<=S52_COL_NUM; ++i) {
+    for (guint i=0; i<S52_COL_NUM; ++i) {
         gpointer pint = GINT_TO_POINTER(i);
-        g_tree_insert(_colref, (gpointer)_colorName[i-1], pint);
+        g_tree_insert(_colref, (gpointer)_colorName[i], pint);
     }
 
     _table[LUP_LINE]     = g_tree_new_full(_cmpLUP, NULL, NULL, _delLUP);
@@ -2774,6 +2722,10 @@ int         S52_PL_done(void)
     g_hash_table_destroy(_objHash);
     _objHash = NULL;
 
+    if (NULL != _RGBA) g_array_free(_RGBA, TRUE);
+    _RGBA      = NULL;
+    _crntPalNo = -1;  // -1 init
+
     _initPLib = TRUE;
 
     return TRUE;
@@ -2790,6 +2742,7 @@ static S52_Color *_getColorAt(guchar index)
     }
     */
 
+    // [0..62]
     if (S52_COL_NUM-1 < index) {
         PRINTF("ERROR: color index out of bound\n");
         g_assert(0);
@@ -2809,6 +2762,7 @@ static S52_Color *_getColorAt(guchar index)
     S52_Color *c = &g_array_index(ct->colors, S52_Color, index);
 
     // FIXME: S52_Color.S52_fragAtt set good default or trap use uninialize
+    // FIX: clear colors array and move fragAtt to S52_RGB
 
     return c;
 }
@@ -2817,20 +2771,16 @@ S52_Color  *S52_PL_getColor(const char *colorName)
 {
     return_if_null(colorName);
 
-    gpointer idx = g_tree_lookup(_colref, (gpointer*)colorName);
-    if (NULL != idx) {
-
-        // IHO color index start at 1
-        guchar i = GPOINTER_TO_INT(idx);
-
-        // libS52 color index start at 0
-        return _getColorAt(i-1);
+    gpointer orig_key = NULL;
+    gpointer idx      = NULL;
+    if (FALSE == g_tree_lookup_extended(_colref, (gpointer*)colorName, &orig_key, &idx)) {
+        PRINTF("ERROR: no color name match: %s\n", colorName);
+        g_assert(0);
+        return NULL;
     }
+    guchar i = GPOINTER_TO_INT(idx);
 
-    PRINTF("ERROR: no color name match: %s\n", colorName);
-    g_assert(0);
-
-    return NULL;
+    return _getColorAt(i);
 }
 
 static int        _linkLUP(_S52_obj *obj, int alt)
@@ -3450,12 +3400,11 @@ int         S52_PL_getLSdata(_S52_obj *obj, char *pen_w, char *style, S52_Color 
     *pen_w = cmd->param[5];
     *style = cmd->param[2];
 
-    if (TRUE == S57_getHighlight(obj->geo)) {
-        *color = S52_PL_getColor("DNGHL");
-    } else {
-        // color can change because of dratf/depth - safety contour
-        *color = S52_PL_getColor(cmd->param+7);
-    }
+    // color can change because of draft/depth - safety contour
+    *color = S52_PL_getColor(cmd->param+7);
+
+    //color->fragAtt.pen_w = *pen_w;
+    //color->fragAtt.trans = '0';  // 0% - no trans
 
     return TRUE;
 }
@@ -3659,6 +3608,7 @@ S52_Color  *S52_PL_getACdata(_S52_obj *obj)
     if (NULL == cmd)
         return NULL;
 
+    /*
     S52_Color *color = NULL;
     if (TRUE == S57_getHighlight(obj->geo)) {
         color = S52_PL_getColor("DNGHL");
@@ -3666,7 +3616,12 @@ S52_Color  *S52_PL_getACdata(_S52_obj *obj)
         // color of water can change because of dratf/depth
         color = S52_PL_getColor(cmd->param);
     }
+    */
 
+    // color of water can change because of dratf/depth
+    S52_Color *color = S52_PL_getColor(cmd->param);
+
+    // FIXME: dont write into palette - return DListData
     if (cmd->param[5] == ',')
         color->fragAtt.trans = cmd->param[6];
     else
@@ -3813,6 +3768,7 @@ gint        S52_PL_traverse(S52_SMBtblName tableNm, GTraverseFunc callBack)
 
 S52_DListData *S52_PL_newDListData(_S52_obj *obj)
 // _renderAC_LIGHTS05() has no cmd->cmd.def / DList
+// also _renderLS SOLID
 {
     return_if_null(obj);
 
@@ -3820,7 +3776,8 @@ S52_DListData *S52_PL_newDListData(_S52_obj *obj)
     if (NULL == cmd)
         return NULL;
 
-    if ((NULL==cmd->cmd.DListData) && (S52_CMD_ARE_CO==cmd->cmdWord)) {
+    // assert that this call is valid
+    if ((NULL==cmd->cmd.DListData) && ((S52_CMD_ARE_CO==cmd->cmdWord) || (S52_CMD_SIM_LN==cmd->cmdWord))) {
         cmd->cmd.DListData = g_new0(S52_DListData, 1);
     } else {
         PRINTF("WARNING: internal inconsistency\n");
@@ -3840,18 +3797,32 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
     if (NULL == cmd)
         return NULL;
 
+    /*
     if (S52_CMD_SIM_LN == cmd->cmdWord) {
         PRINTF("DEBUG: S52_CMD_SIM_LN has no DList\n");
         g_assert(0);
         return NULL;
     }
+    */
+
+    // Note: cmd->cmd.def are populated during cell loading
 
     // light sector have not been computed yet (SCAMIN)
-    if ((S52_CMD_ARE_CO==cmd->cmdWord) && (NULL==cmd->cmd.DListData)){
+    // Line Style SOLID
+    if ((NULL==cmd->cmd.DListData) && ((S52_CMD_ARE_CO==cmd->cmdWord) || (S52_CMD_SIM_LN==cmd->cmdWord))){
         return NULL;
     }
 
-    // check if palette as change, iff not highlight
+#ifdef S52_DEBUG
+    // parano
+    if (NULL == cmd->cmd.def) {
+        PRINTF("WARNING: internal inconsistency\n");
+        g_assert(0);
+        return NULL;
+    }
+#endif
+
+    /* set all obj prim color to DNGHL if highlighted
     if (TRUE == S57_getHighlight(obj->geo)) {
         guint      nbr   = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->nbr   : cmd->cmd.def->DListData.nbr;
         S52_Color *cList = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->colors: cmd->cmd.def->DListData.colors;
@@ -3859,9 +3830,9 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
         S52_Color *colhigh = S52_PL_getColor("DNGHL");
 
         if (S52_CMD_ARE_CO == cmd->cmdWord)
-            cmd->cmd.DListData->crntPalIDX = -1;      // init
+            cmd->cmd.DListData->crntPalID = -1;      // init
         else
-            cmd->cmd.def->DListData.crntPalIDX = -1;  // init
+            cmd->cmd.def->DListData.crntPalID = -1;  // init
 
         for (guint i=0; i<nbr; ++i) {
             cList[i].R = colhigh->R;
@@ -3870,34 +3841,47 @@ S52_DListData *S52_PL_getDListData(_S52_obj *obj)
         }
         return (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData : &cmd->cmd.def->DListData;
     }
+    //*/
+
+    S52_DListData *DListData =
+        (S52_CMD_ARE_CO==cmd->cmdWord || S52_CMD_SIM_LN==cmd->cmdWord) ? cmd->cmd.DListData : &cmd->cmd.def->DListData;
 
     // same palette
-    int crntPalIDX = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->crntPalIDX : cmd->cmd.def->DListData.crntPalIDX;
-    if (crntPalIDX == (int)S52_MP_get(S52_MAR_COLOR_PALETTE)) {
-        return (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData : &cmd->cmd.def->DListData;
-    }
+    //int crntPalID = (S52_CMD_ARE_CO==cmd->cmdWord || S52_CMD_SIM_LN==cmd->cmdWord) ? cmd->cmd.DListData->crntPalID : cmd->cmd.def->DListData.crntPalID;
+    //if (crntPalID == (int)S52_MP_get(S52_MAR_COLOR_PALETTE)) {
+    //    return (S52_CMD_ARE_CO==cmd->cmdWord || S52_CMD_SIM_LN==cmd->cmdWord) ? cmd->cmd.DListData : &cmd->cmd.def->DListData;
+    //}
+    if (DListData->crntPalID == (int)S52_MP_get(S52_MAR_COLOR_PALETTE))
+        return DListData;
 
+    //
     // palette change - update new RGB
-    guint      nbr   = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->nbr   : cmd->cmd.def->DListData.nbr;
-    S52_Color *cList = (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData->colors: cmd->cmd.def->DListData.colors;
+    //
 
-    if (S52_CMD_ARE_CO == cmd->cmdWord) {
-        cmd->cmd.DListData->crntPalIDX = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
-    } else {
-        cmd->cmd.def->DListData.crntPalIDX = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
-    }
+    // check if palette as change, iff not highlight
+    //if (S52_CMD_ARE_CO==cmd->cmdWord || S52_CMD_SIM_LN==cmd->cmdWord) {
+    //    cmd->cmd.DListData->crntPalID = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
+    //} else {
+    //    cmd->cmd.def->DListData.crntPalID = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
+    //}
+    DListData->crntPalID = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
+
+    // FIXME: extract to struct RGB (fragAtt) to help refactor palette switching in GLSL
+    //guint      nbr   = (S52_CMD_ARE_CO==cmd->cmdWord) ? cmd->cmd.DListData->nbr   : cmd->cmd.def->DListData.nbr;
+    //S52_Color *cList = (S52_CMD_ARE_CO==cmd->cmdWord) ? cmd->cmd.DListData->colors: cmd->cmd.def->DListData.colors;
+    guint      nbr   = DListData->nbr;
+    S52_Color *cList = DListData->colors;
 
     for (guint i=0; i<nbr; ++i) {
-        // this will also copy the 'cidx/trans/pen_w' from the color table
-        //c[i] = *col;
-
+        // FIXME: extract to struct RGB (fragAtt) to help refactor palette switching in GLSL
         S52_Color *col = _getColorAt(cList[i].fragAtt.cidx);
         cList[i].R = col->R;
         cList[i].G = col->G;
         cList[i].B = col->B;
     }
 
-    return (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData : &cmd->cmd.def->DListData;
+    //return (S52_CMD_ARE_CO == cmd->cmdWord) ? cmd->cmd.DListData : &cmd->cmd.def->DListData;
+    return DListData;
 }
 
 S52_vec    *S52_PL_initVOCmd(_S52_symDef *def)
@@ -4845,10 +4829,40 @@ int         S52_PL_setTimeNow(_S52_obj *obj)
 }
 
 long        S52_PL_getTimeSec(_S52_obj *obj)
+
 {
     return_if_null(obj);
 
     return obj->auxInfo.time.tv_sec;
+}
+
+GArray     *S52_PL_getPalRGBA(void)
+// optimisation test: get RGBA from current active palette
+{
+    typedef struct {float r,g,b,a;} rgba_t;
+    rgba_t rgba;
+
+    if (NULL == _RGBA) {
+        _RGBA = g_array_sized_new(FALSE, FALSE, sizeof(rgba_t), S52_COL_NUM);
+    }
+
+    if (_crntPalNo == (int)S52_MP_get(S52_MAR_COLOR_PALETTE)) {
+        return NULL;
+    }
+    _crntPalNo = (int)S52_MP_get(S52_MAR_COLOR_PALETTE);
+
+    for (guint i=0; i<S52_COL_NUM; ++i) {
+        S52_Color *col = _getColorAt(i);
+        rgba.r = col->R/255.0;
+        rgba.g = col->G/255.0;
+        rgba.b = col->B/255.0;
+        rgba.a = 1.0;
+
+        rgba_t *c = &g_array_index(_RGBA, rgba_t, i);
+        *c = rgba;
+    }
+
+    return _RGBA;
 }
 
 #ifdef S52_USE_FREETYPE_GL
