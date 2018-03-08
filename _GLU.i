@@ -269,7 +269,7 @@ static void_cb_t _quadricError(GLenum err)
 
 static void_cb_t _edgeFlag(GLboolean flag)
 {
-    _startEdge = (GL_FALSE == flag)? GL_TRUE : GL_FALSE;
+    _startEdge = (GL_FALSE == flag) ? GL_TRUE : GL_FALSE;
 
     // debug
     //PRINTF("%i\n", flag);
@@ -358,6 +358,10 @@ static void_cb_t _vertex3d(GLvoid *data, S57_prim *prim)
     // cast to float after tess (double)
     double  *dptr = (double*)data;
     vertex_t d[3] = {dptr[0], dptr[1], dptr[2]};
+
+    // test shader
+    //d[2] = (GL_TRUE==_startEdge) ? 1.0 : 0.0;
+    //d[2] = (GL_TRUE==_startEdge) ? 0.0 : 1.0;
 
     S57_addPrimVertex(prim, d);
 
