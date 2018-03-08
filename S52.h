@@ -995,7 +995,7 @@ DLL S52ObjectHandle STD S52_setVESSELlabel(S52ObjectHandle objH, const char *new
  * S52_setVESSELstate: "ownshp", "vessel", "afgves", "afgshp"
  * @objH:         (in) (transfer none): addressed S52ObjectHandle
  * @vesselSelect: (in): 0 - undefined, 1 - selected (ON) and follow, 2 - de-seltected (OFF), (ie bracket symbol on vessel),
- * @vestat:       (in): 0 - undefined, 1 - AIS active, 2 - AIS sleeping, 3 - AIS active, close quarter (red)
+ * @vestat:       (in): 0 - undefined, 1 - AIS active, 2 - AIS sleeping, 3 - AIS active, close quarter (red) (GL2)
  * @vesselTurn:   (in): Turn rate is encoded as follows: [from gpsd doc]
  *         0       - not turning
  *         1..126  - turning right at up to 708 degrees per minute or higher
