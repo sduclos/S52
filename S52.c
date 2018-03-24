@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2017 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2018 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -1559,10 +1559,13 @@ static int        _loadRaster(const char *fname)
     }
 
     // no, convert to GeoTiff Mercator
+
+    // FIXME: call GDALRegister_XXXX() / OGRRegisterXXXX()
     GDALAllRegister();
+
     GDALDriverH driver = GDALGetDriverByName("GTiff");
     if (NULL == driver) {
-        PRINTF("WARNING: fail to get GDAL driver\n");
+        PRINTF("WARNING: fail to get GDAL/GTiff driver\n");
         return FALSE;
     }
 
@@ -6062,7 +6065,7 @@ DLL S52ObjectHandle STD S52_setDimension(S52ObjectHandle objH, double a, double 
     // debug
     _mutexOwner = "S52_setDimension";
 
-    PRINTF("objH:%u, a:%f, b:%f, c:%f, d:%f\n", objH, a, b, c, d);
+    PRINTF("objH:%u, a:%5.1f, b:%5.1f, c:%5.1f, d:%5.1f\n", objH, a, b, c, d);
 
     //  shpbrd: Ship's breadth (beam),
     //  shplen: Ship's length over all,
@@ -6115,7 +6118,7 @@ DLL S52ObjectHandle STD S52_setVector(S52ObjectHandle objH, int vecstb, double c
     S52_CHECK_MUTX_INIT;
 
     // debug
-    PRINTF("objH:%u, vecstb:%i, course:%f, speed:%f\n", objH, vecstb, course, speed);
+    PRINTF("objH:%u, vecstb:%i, course:%05.1f, speed:% 5.1f\n", objH, vecstb, course, speed);
 
     S52_obj *obj = S52_PL_isObjValid(objH);
     if (NULL == obj) {
