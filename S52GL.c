@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2017 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2018 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -5971,7 +5971,7 @@ int        S52_GL_drawGraticule(void)
             if (ABS(dMajor-dMinor) < TOLERANCE)
                 continue;
 
-            PRINTF("XXX DEBUG: min:%f maj:%f  dmin:%f, dmaj:%f\n", MinorSpacing, MajorSpacing, dMinor, dMajor);
+            //PRINTF("XXX DEBUG: min:%f maj:%f  dmin:%f, dmaj:%f\n", MinorSpacing, MajorSpacing, dMinor, dMajor);
 
             //_drawGarticule(lon, TRUE, (0.0<lon)?'E':'W');
             //*

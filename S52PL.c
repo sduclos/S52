@@ -4,7 +4,7 @@
 
 /*
     This file is part of the OpENCview project, a viewer of ENC.
-    Copyright (C) 2000-2017 Sylvain Duclos sduclos@users.sourceforge.net
+    Copyright (C) 2000-2018 Sylvain Duclos sduclos@users.sourceforge.net
 
     OpENCview is free software: you can redistribute it and/or modify
     it under the terms of the Lesser GNU General Public License as published by
@@ -2439,7 +2439,8 @@ static int        _cms_init()
 
     _XYZ2RGB = cmsCreateTransform(xyzp, TYPE_XYZ_DBL,              // input  (3 x double)
                                   rgbp, TYPE_RGB_8,                // output (3 x char)
-                                  INTENT_ABSOLUTE_COLORIMETRIC,    // intent
+                                  INTENT_ABSOLUTE_COLORIMETRIC,    // intent - Note: in lcms1 it look good but it is a bug
+                                                                   // that was fixed in lcms2
                                   //INTENT_RELATIVE_COLORIMETRIC,
 
                                   0                              // flags
@@ -2479,6 +2480,7 @@ static int        _cms_xyL2rgb(S52_Color *c)
     cmsCIEXYZ xyz    = { 0.0,  0.0,  0.0};  // 3 x double
     guchar    rgb[3] = {   0,    0,    0};
 
+    //*
     cmsxyY2XYZ(&xyz, &xyY);
 
     xyz.X /= 100.0;
@@ -2495,8 +2497,8 @@ static int        _cms_xyL2rgb(S52_Color *c)
     c->R = rgb[0];
     c->G = rgb[1];
     c->B = rgb[2];
-
     //PRINTF("DEBUG: %hhu, %hhu, %hhu \n", rgb[0], rgb[1], rgb[2]);
+    //*/
 
 
     // ---- by hand (not good - dark) ------------------------------------
@@ -2509,9 +2511,6 @@ static int        _cms_xyL2rgb(S52_Color *c)
     xyz.Z = ((1 - c->x - c->y) / c->y) * xyz.Y;
 
     // from OpenVG specs (for D65)
-    c->R =  (3.240479 * xyz.X) - (1.537150 * xyz.Y) - (0.498535 * xyz.Z);
-    c->G = -(0.969256 * xyz.X) + (1.875992 * xyz.Y) + (0.041556 * xyz.Z);
-    c->B =  (0.055648 * xyz.X) - (0.204043 * xyz.Y) + (1.057311 * xyz.Z);
     //double R =  (3.240479 * xyz.X) - (1.537150 * xyz.Y) - (0.498535 * xyz.Z);
     //double G = -(0.969256 * xyz.X) + (1.875992 * xyz.Y) + (0.041556 * xyz.Z);
     //double B =  (0.055648 * xyz.X) - (0.204043 * xyz.Y) + (1.057311 * xyz.Z);
@@ -2519,7 +2518,7 @@ static int        _cms_xyL2rgb(S52_Color *c)
     // ---- by hand (not good - dark) ------------------------------------
 
 
-    // ------ experiment -------------------------------------
+    // ------ experiment 1 -------------------------------------
     /* sRGB luminance(Y) values
     const double rY = 0.212655;
     const double gY = 0.715158;
@@ -2540,7 +2539,7 @@ static int        _cms_xyL2rgb(S52_Color *c)
             v *= 12.92;
         else
             v = 1.055*pow(v,1.0/2.4)-0.055;
-        return int(v*255+.5);
+        return int(v*255+0.5);
     }
 
     // GRAY VALUE ("brightness")
@@ -2571,7 +2570,89 @@ static int        _cms_xyL2rgb(S52_Color *c)
     //c->R = inv_gam_sRGB(R);
     //c->G = inv_gam_sRGB(G);
     //c->B = inv_gam_sRGB(B);
-    // ------ experiment -------------------------------------
+    // ------ experiment 1 -------------------------------------
+
+    // ------ experiment 2 -------------------------------------
+    /*
+    // xyL -> XYZ
+	//var z = 1.0 - x - y;
+	//var Y = (brightness / 254).toFixed(2);
+	//var X = (Y / y) * x;
+	//var Z = (Y / y) * z;
+    xyz.Y = c->L;
+    xyz.X = (c->x / c->y) * xyz.Y;
+    xyz.Z = ((1 - c->x - c->y) / c->y) * xyz.Y;
+
+	//Convert to RGB using Wide RGB D65 conversion
+	//var red 	=  X * 1.656492 - Y * 0.354851 - Z * 0.255038;
+	//var green = -X * 0.707196 + Y * 1.655397 + Z * 0.036152;
+    //var blue 	=  X * 0.051713 - Y * 0.121364 + Z * 1.011530;
+	//double R =  xyz.X * 1.656492 - xyz.Y * 0.354851 - xyz.Z * 0.255038;
+	//double G = -xyz.X * 0.707196 + xyz.Y * 1.655397 + xyz.Z * 0.036152;
+    //double B =  xyz.X * 0.051713 - xyz.Y * 0.121364 + xyz.Z * 1.011530;
+
+    // from OpenVG specs (for D65)
+    double R =  (3.240479 * xyz.X) - (1.537150 * xyz.Y) - (0.498535 * xyz.Z);
+    double G = -(0.969256 * xyz.X) + (1.875992 * xyz.Y) + (0.041556 * xyz.Z);
+    double B =  (0.055648 * xyz.X) - (0.204043 * xyz.Y) + (1.057311 * xyz.Z);
+
+	// If red, green or blue is larger than 1.0 set it back to the maximum of 1.0
+	//if ((red>blue) && (red>green) && (red>1.0)) {
+	//	green = green / red;
+	//	blue  = blue  / red;
+	//	red   = 1.0;
+	//} else if ((green>blue) && (green>red) && (green>1.0)) {
+	//	red   = red  / green;
+	//	blue  = blue / green;
+	//	green = 1.0;
+	//} else if ((blue>red) && (blue>green) && (blue>1.0)) {
+	//	red   = red   / blue;
+	//	green = green / blue;
+	//	blue  = 1.0;
+	//}
+
+    if ((R>B) && (R>G) && (R>1.0)) {
+		G = G / R;
+		B = B / R;
+		R = 1.0;
+	}
+	else if ((G>B) && (G>R) && (G>1.0)) {
+		R = R / G;
+		B = B / G;
+		G = 1.0;
+	}
+	else if ((B>R) && (B>G) && (B>1.0)) {
+		R = R / B;
+		R = R / B;
+		B = 1.0;
+	}
+
+	//Reverse gamma correction
+	//red 	= red   <= 0.0031308 ? 12.92 * red   : (1.0 + 0.055) * Math.pow(red,   (1.0 / 2.4)) - 0.055;
+	//green = green <= 0.0031308 ? 12.92 * green : (1.0 + 0.055) * Math.pow(green, (1.0 / 2.4)) - 0.055;
+	//blue 	= blue  <= 0.0031308 ? 12.92 * blue  : (1.0 + 0.055) * Math.pow(blue,  (1.0 / 2.4)) - 0.055;
+	R = (R <= 0.0031308) ? 12.92 * R : (1.0 + 0.055) * pow(R, (1.0 / 2.4)) - 0.055;
+	G = (G <= 0.0031308) ? 12.92 * G : (1.0 + 0.055) * pow(G, (1.0 / 2.4)) - 0.055;
+	B = (B <= 0.0031308) ? 12.92 * B : (1.0 + 0.055) * pow(B, (1.0 / 2.4)) - 0.055;
+
+
+	//Convert normalized decimal to decimal
+	//red 	= Math.round(red   * 255);
+	//green 	= Math.round(green * 255);
+	//blue 	= Math.round(blue  * 255);
+	c->R 	= R * 255;
+	c->G 	= G * 255;
+	c->B 	= B * 255;
+
+	//if (isNaN(red))
+	//	red = 0;
+	//if (isNaN(green))
+	//	green = 0;
+	//if (isNaN(blue))
+	//	blue = 0;
+	//return [red, green, blue];
+    // ------ experiment 2 -------------------------------------
+    */
 
     return TRUE;
 }
