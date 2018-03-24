@@ -3,6 +3,28 @@
 //
 // SD 2014MAY20
 //
+// Project:  OpENCview
+
+/*
+    This file is part of the OpENCview project, a viewer of ENC.
+    Copyright (C) 2000-2018 Sylvain Duclos sduclos@users.sourceforge.net
+
+    OpENCview is free software: you can redistribute it and/or modify
+    it under the terms of the Lesser GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    OpENCview is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    Lesser GNU General Public License for more details.
+
+    You should have received a copy of the Lesser GNU General Public License
+    along with OpENCview.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+//
 // Note: if this code is included it mean that S52_USE_GL2 is allready defined
 //       to get GLES2 specific code (ex GLSL ES) define S52_USE_GLES2 also.
 // Note: GL2 matrix stuff work with GL_DOUBLE normaly while GLES2 work only with GL_FLOAT
@@ -1081,7 +1103,7 @@ static GLuint    _loadShaderSrc(GLenum type, const char *shaderSrc)
 }
 
 static GLuint    _compShaderSrc(GLuint programObject)
-// compile source
+// compile vertex and fragment shader source
 {
     PRINTF("DEBUG: building '_programObject'\n");
     programObject = glCreateProgram();
@@ -1208,6 +1230,8 @@ static GLuint    _compShaderSrc(GLuint programObject)
         varying float v_alpha;
         varying float v_dist;
 
+        const float pixelsPerPattern = 32.0;
+
         void main(void) {
 
             if (1 == uBlitOn) {
@@ -1246,7 +1270,7 @@ static GLuint    _compShaderSrc(GLuint programObject)
             else if (0.0 < uStipOn) {
                 vec2 tex_n = v_texCoord;
                 //tex_n.x   *= v_dist / uScaleOn / 32.0;
-                tex_n.x   *= v_dist / uStipOn / 32.0;
+                tex_n.x   *= v_dist / uStipOn / pixelsPerPattern;
                 //tex_n.x   *= v_dist;
                 //tex_n.y   *= v_dist / uScaleOn / 32.0;
                 gl_FragColor.a   = texture2D(uSampler2d, tex_n).a;
