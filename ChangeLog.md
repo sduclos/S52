@@ -4,6 +4,9 @@
 #
 
 
+2018MAR24
+- mod format MarObj msg output
+
 2018MAR06
 - mod move GL2 line stippling to fragment shader
 
