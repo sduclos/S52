@@ -532,7 +532,7 @@ libS52gl2.so:  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 # -Wl,-Map=output.map
 libS52egl.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 	$(CC) -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
-	-ln -sf libS52egl.so libS52.so  # -sf soft link, -P hard link
+	-ln -sf libS52egl.so libS52.so  # -s soft link
 
 libS52gv.so: $(OBJS_S52) $(OBJS_GV)
 	$(CC) -shared $(OBJS_S52) $(OBJS_GV) $(LIBS) -o libS52.so
@@ -696,6 +696,9 @@ doc: S52-$(LIBS52VERS).typelib
 #do
 #    make
 #done
+
+# monitor network traffic
+# sudo iftop -i wlan0 (or wlp6s0)
 
 # wake up GPSD
 # telnet 127.0.0.1 2947
