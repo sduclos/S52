@@ -34,7 +34,7 @@ be used as a paper chart replacement.
 SCREENSHOT:
 ===========
 
-![GB4X0000.000] (S52/test/ref_dump/GB4X0000.png)
+ ![GB4X0000.000] (S52/test/ref_dump/GB4X0000.png)
 
 
 SPECIFICATION:
@@ -148,25 +148,25 @@ Various experimental targets are available:
 MAKEFILE BUILD FLAGS:
 =====================
 
-# -DS52_USE_COGL             : used to test text rendering from COGL
-# -DS52_USE_FTGL             : text rendering
-# -DS52_USE_GLC              : text rendering
-# -DS52_USE_FREETYPE_GL      : text rendering, need -DS52_USE_GLES2
-# -DS52_USE_LOGFILE          : log every S52_* in tmp file
-# -DS52_USE_SUPP_LINE_OVERLAP: suppress display of overlapping line (gdal/ogr need patching, see doc/ogrfeature.cpp.diff)
-# -DS52_USE_OGR_FILECOLLECTOR: call OGR S57FileCollector() to apply S57 update
-# -DS52_USE_DBUS             : mimic S52.h
-# -DS52_USE_SOCK             : same as DBus
-# -DS52_USE_PIPE             : same as DBus, in a day
-# -DS52_USE_GOBJECT          : for introspection
-# -DS52_USE_BACKTRACE        : stack unwinding
-# -DS52_USE_PROJ             : use PROJ4
-# -DS52_USE_GLIB2            : use glib-2.0
-# -DS52_USE_OPENGL_VBO       : GL VBO v1.x and up
-# -DS52_USE_EGL              : handle host window manager connection
-# -DS52_USE_GLES2            : OpenGL ES 2.0, need -DS52_USE_EGL and -DS52_USE_OPENGL_VBO
-# -DS52_USE_WORLD            : experiment to load world shapefile (see S52.c:201)
-# -DS52_DEBUG                : internal debug info
+ -DS52_USE_COGL             : used to test text rendering from COGL
+ -DS52_USE_FTGL             : text rendering
+ -DS52_USE_GLC              : text rendering
+ -DS52_USE_FREETYPE_GL      : text rendering, need -DS52_USE_GLES2
+ -DS52_USE_LOGFILE          : log every S52_* in tmp file
+ -DS52_USE_SUPP_LINE_OVERLAP: suppress display of overlapping line (gdal/ogr need patching, see doc/ogrfeature.cpp.diff)
+ -DS52_USE_OGR_FILECOLLECTOR: call OGR S57FileCollector() to apply S57 update
+ -DS52_USE_DBUS             : mimic S52.h
+ -DS52_USE_SOCK             : same as DBus
+ -DS52_USE_PIPE             : same as DBus, in a day
+ -DS52_USE_GOBJECT          : for introspection
+ -DS52_USE_BACKTRACE        : stack unwinding
+ -DS52_USE_PROJ             : use PROJ4
+ -DS52_USE_GLIB2            : use glib-2.0
+ -DS52_USE_OPENGL_VBO       : GL VBO v1.x and up
+ -DS52_USE_EGL              : handle host window manager connection
+ -DS52_USE_GLES2            : OpenGL ES 2.0, need -DS52_USE_EGL and -DS52_USE_OPENGL_VBO
+ -DS52_USE_WORLD            : experiment to load world shapefile (see S52.c:201)
+ -DS52_DEBUG                : internal debug info
 
 
 FILE LIST:
