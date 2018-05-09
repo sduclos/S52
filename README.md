@@ -34,7 +34,7 @@ be used as a paper chart replacement.
 SCREENSHOT:
 ===========
 
- ![GB4X0000.000] (S52/test/ref_dump/GB4X0000.png)
+![GB4X0000.000](https://github.com/sduclos/S52/blob/master/test/ref_dump/GB4X0000.png)
 
 
 SPECIFICATION:
