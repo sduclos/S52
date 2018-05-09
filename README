@@ -3,6 +3,7 @@ README: OpENCview project, libS52.so installation notes and disclaimer
 Sep 2004
 Feb 2009 -update to GTK2, mingw
 Jun 2012 -update to EGL/GLES2/ARM (Android/Xoom)
+Apr 2018 -screenshot
 
 
 INTRODUCTION:
@@ -28,6 +29,12 @@ DISCLAIMER:
 
 OpENCview is not indented for navigational use. It cannot
 be used as a paper chart replacement.
+
+
+SCREENSHOT:
+===========
+
+S-64 [GB4X0000.000] (S52/test/ref_dump/GB4X0000.png)
 
 
 SPECIFICATION:
