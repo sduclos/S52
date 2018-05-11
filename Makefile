@@ -217,7 +217,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 #
 # Network:
 # -DS52_USE_DBUS         - mimic S52.h
-# -DS52_USE_SOCK=2950    - set port number (same as DBus - socket & WebSocket - need ./lib/parson)
+# -DS52_USE_SOCK=2950    - set SOCK port number (same as DBus - socket & WebSocket - need ./lib/parson)
 # -DS52_USE_PIPE         - same as DBus, in a day
 #
 # OpenGL:
