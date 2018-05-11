@@ -247,6 +247,7 @@ static GLuint   _vboIDaftglwColrID = 0;
 // experimental
 static vertex_t _hazardZone[5*3];
 
+#ifdef S52_USE_RASTER
 // GL raster stuff - private
 typedef struct _real_GL_ras {
     S52_GL_ras ras;           // public raster interface
@@ -261,6 +262,7 @@ typedef struct _real_GL_ras {
     unsigned int   texID;
     unsigned char *texAlpha;  // size = potX * potY
 } _real_GL_ras;
+#endif  // S52_USE_RASTER
 
 static
 inline void      _checkError(const char *msg)
@@ -332,11 +334,13 @@ inline void      _glGenBuffers(GLuint *bufID)
 // wrapper on GPU alloc + check
 // FIXME: call with __FUNC_NAME__
 {
+    /*
     if (0 != *bufID) {
         PRINTF("ERROR: glGenBuffers() fail\n");
         g_assert(0);
         return;
     }
+    */
 
     glGenBuffers(1, bufID);
 
@@ -878,7 +882,8 @@ static void      _glLoadIdentity(int mode)
         g_assert(_crntMat == _mvm[_mvmTop]);
     }
 
-    memset(_crntMat, 0, sizeof(GLfloat) * 16);
+    //memset(_crntMat, 0, sizeof(GLfloat) * 16);
+    bzero(_crntMat, sizeof(GLfloat) * 16);
     _crntMat[0] = _crntMat[5] = _crntMat[10] = _crntMat[15] = 1.0;
 
     // optimisation - reset flag
@@ -1445,6 +1450,41 @@ static int       _VBOCreate(S57_prim *prim)
     return vboID;
 }
 
+#if 0  // debug - i965
+static int       _VBOCreate2_glCallList(S52_DListData *DListData)
+// return new vboID else FALSE.
+// Note that vboID is save by the caller
+{
+    S57_prim *prim    = DListData->prim[0];
+
+    guint     primNbr = 0;
+    vertex_t *vert    = NULL;
+    guint     vertNbr = 0;
+    guint     vboID   = 0;
+
+    if (FALSE == S57_getPrimData(prim, &primNbr, &vert, &vertNbr, &vboID))
+        return FALSE;
+
+    _glGenBuffers(&vboID);
+    DListData->vboIds[0] = vboID;
+
+    // bind VBO in order to use
+    glBindBuffer(GL_ARRAY_BUFFER, vboID);
+
+    // upload VBO data to GPU
+    glBufferData(GL_ARRAY_BUFFER, vertNbr*sizeof(vertex_t)*3, (const void *)vert, GL_STATIC_DRAW);
+
+    _glCallList(DListData, FALSE);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+
+    _checkError("_VBOCreate()");
+
+    return vboID;
+}
+#endif  // 0 - debug - i965
+
 static int       _VBODraw_AREA(S57_prim *prim)
 // run a VBO - only called by _fillArea()
 {
@@ -1730,7 +1770,7 @@ static int       _glCallList(S52_DListData *DListData, gboolean highlight)
 
 #ifdef S52_USE_OPENGL_VBO
         GLuint vboId = DListData->vboIds[i];
-        glBindBuffer(GL_ARRAY_BUFFER, vboId);         // for vertex coordinates
+        glBindBuffer(GL_ARRAY_BUFFER, vboId);  // for vertex coordinates
 
         // reset offset in VBO
 #ifdef S52_USE_GL2
@@ -1818,7 +1858,7 @@ static int       _glCallList(S52_DListData *DListData, gboolean highlight)
         }
 #endif
 
-    }
+    }  // for loop
 
 #ifdef S52_USE_GL2
     glDisableVertexAttribArray(_aPosition);
@@ -2728,7 +2768,8 @@ static int       _renderSY(S52_obj *obj)
     }
 
     //debug - skip AREAS_T (cost 30msec; from ~110ms to ~80ms on Estuaire du St-L CA279037.000)
-    //return TRUE;
+    if (2.0 == S52_MP_get(S52_MAR_DISP_CENTROIDS))
+        return TRUE;
 
     if (S57_AREAS_T == S57_getObjtype(geo)) {
         guint     npt = 0;
@@ -2776,6 +2817,10 @@ static int       _renderSY(S52_obj *obj)
             return TRUE;
         }
 
+        // FIXME: offset centroid if more than one land at the center of screen
+        // FIX: offset computed from last center and become new ref for center
+        //      offset to upper right of refCenter (or some placement rule)
+        //      (test case in Saguenay mouth - CA379035.000)
 
         {   // normal draw, also fill centroid
             double offset_x;
@@ -3429,7 +3474,6 @@ static int       _renderLS(S52_obj *obj)
                 else
 #endif
                 {
-
                     // FIXME: case of pick AREA where the only commandword is LS()
                     // FIX: one more call to fillarea()
                     GLdouble *ppt     = NULL;
@@ -4116,6 +4160,14 @@ static int       _renderAC(S52_obj *obj)
     //glUniform1i(_uPalOn, c->fragAtt.cidx);
 
     _glUniformMatrix4fv_uModelview();
+
+    //DEPARE:504 Nexus 7 (2013)
+    //DEPARE:493
+    if (493 == S57_getS57ID(geo)) {
+        PRINTF("DEBUG: DEPARE found (%i)\n", S57_getS57ID(geo));
+        // FIXME: dumpCol()
+        //S52_utils_gdbBreakPoint();
+    }
 
     _fillArea(geo);
 
@@ -5565,7 +5617,9 @@ int        S52_GL_draw(S52_obj *obj, gpointer user_data)
     if (TRUE == atomicAbort) {
         PRINTF("abort drawing .. \n");
 
+#ifdef S52_USE_BACKTRACE
         S52_utils_backtrace();
+#endif
 
         S52_utils_setAtomicInt(FALSE);
         //g_atomic_int_set(&_atomicAbort, FALSE);
@@ -5851,7 +5905,7 @@ int        S52_GL_drawGraticule(void)
     char str[80];
     double scale = (_scalex > _scaley) ? _scalex/_dotpitch_mm_x : _scaley/_dotpitch_mm_y;
 
-    // ---- draw SCALE / _SCAMIN
+    // ---- debug - draw SCALE / _SCAMIN
     {   // FIXME: move to own func
         S52_Color *ninfo = S52_PL_getColor("NINFO");
 
@@ -5868,8 +5922,8 @@ int        S52_GL_drawGraticule(void)
     }
 
     // ----  graticule
-    if (0.0 == S52_MP_get(S52_MAR_DISP_GRATICULE))
-        return TRUE;
+    //if (0.0 == S52_MP_get(S52_MAR_DISP_GRATICULE))
+    //    return TRUE;
 
     double MajorSpacing;
     double MinorSpacing;
@@ -6178,7 +6232,8 @@ static int       _pickFBPixels(S52_obj *obj)
     // Note: Nexus/Adreno ReadPixels must be POT, hence 8 x 8 extent
     int pixelsReadSz = _vp.w * _vp.h;
     cIdx pixelsRead[pixelsReadSz];  // buffer to collect pixels when in S52_GL_PICK mode
-    memset(pixelsRead, 0, sizeof(pixelsRead));
+    //memset(pixelsRead, 0, sizeof(pixelsRead));
+    bzero(pixelsRead, sizeof(pixelsRead));
 
     // failsafe
     if (S52_GL_PICK != _crnt_GL_cycle) {

@@ -81,8 +81,12 @@ int   S52_GL_begin(S52_GL_cycle cycle);
 int   S52_GL_draw(S52_obj *obj, gpointer user_data);
 // draw text
 int   S52_GL_drawText(S52_obj *obj, gpointer user_data);
+
+#ifdef S52_USE_RASTER
 // draw RADAR,Bathy,...
 int   S52_GL_drawRaster(S52_GL_ras *raster);
+#endif  // S52_USE_RASTER
+
 int   S52_GL_drawBlit(double scale_x, double scale_y, double scale_z, double north);
 //int   S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize, unsigned int weight);
 int   S52_GL_drawStrWorld(double x, double y, char *str, unsigned int bsize);
