@@ -120,8 +120,10 @@ static int      _radar_init()
         return FALSE;
     }
 
-    memset(_Polar_Matrix_Of_Coords, 0, sizeof(_Polar_Matrix_Of_Coords));
-    memset(_RADARtex,               0, sizeof(_RADARtex));
+    //memset(_Polar_Matrix_Of_Coords, 0, sizeof(_Polar_Matrix_Of_Coords));
+    //memset(_RADARtex,               0, sizeof(_RADARtex));
+    bzero(_Polar_Matrix_Of_Coords, sizeof(_Polar_Matrix_Of_Coords));
+    bzero(_RADARtex,               sizeof(_RADARtex));
 
     // calculate polar coords
     for (int ANGLE = 0; ANGLE < ANGLEmax; ANGLE++) {
