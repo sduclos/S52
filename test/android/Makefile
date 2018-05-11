@@ -2,6 +2,11 @@
 #
 # SD 2011NOV21
 
+# Note: root make: ~/S52/Makefile s52eglarm
+# set PATH to dev setup
+# export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games:
+# to Android BriDge (adb)
+#~/dev/prog/Android/android-4.0-sdk-linux/platform-tools$ sudo ./adb start-server
 
 # Note: to start s52ui/s52droid in android by hand
 # adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/.s52ui
