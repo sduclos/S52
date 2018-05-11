@@ -117,7 +117,13 @@ static const char _version[] = S52_VERSION
       ",S52_USE_DBUS"
 #endif
 #ifdef  S52_USE_SOCK
-      ",S52_USE_SOCK"
+      ",S52_USE_SOCK(port:"
+#define DEFTOSTR(s)    NUMTOSTR(s)
+#define NUMTOSTR(STR) #STR
+        DEFTOSTR(S52_USE_SOCK)
+      ")"
+#undef  NUMTOSTR
+#undef  DEFTOSTR
 #endif
 #ifdef  S52_USE_BACKTRACE
       ",S52_USE_BACKTRACE"
@@ -182,9 +188,12 @@ static const char _version[] = S52_VERSION
 #ifdef  S52_USE_CA_ENC
       ",S52_USE_CA_ENC"
 #endif
-"\n";
+//"\n";  // this messup JSON!
+    ;
+
 
 CCHAR   *S52_utils_version(void)
+// warning: no '\n'
 {
     return _version;
 }
@@ -238,8 +247,11 @@ int      S52_utils_getConfig(CCHAR *label, char *vbuf)
    return FALSE;
 }
 
+#if !defined(S52_USE_ANDROID)
 #if defined(S52_DEBUG) || defined(S52_USE_LOGFILE)
 #include <mcheck.h>  // mtrace(), muntrace()
+#endif  // S52_DEBUG || S52_USE_LOGFILE
+#endif  // !S52_USE_ANDROID
 
 
 //#if 0
@@ -259,6 +271,8 @@ int      S52_utils_getConfig(CCHAR *label, char *vbuf)
 //#if 0
 //#if 1
 //#include <mcheck.h>  // mtrace(), muntrace()
+static int    _shm_fd    = 0;
+//static CCHAR *_shm_name  = "libS52.mallocsz.txt";
 
 #define _LIBC
 #include <malloc.h>
@@ -274,11 +288,9 @@ static fn_malloc_hook_t _malloc_hook_orig = NULL;
 static fn_free_hook_t   _free_hook_orig   = NULL;
 
 static size_t _mem_alloc = 0;
-static int    _shm_fd    = 0;
-static CCHAR *_shm_name  = "libS52.mallocsz.txt";
 
+#if !defined(S52_USE_ANDROID)
 #define HEXSZ 21
-
 static char      *_addr2hex(size_t ptr)
 {
     static const char ascii[16]  = "0123456789ABCDEF";
@@ -399,7 +411,9 @@ static void       _done_hook(void)
 
 }
 //#endif  // 0
+#endif  // !S52_USE_ANDROID
 
+#if defined(S52_DEBUG) || defined(S52_USE_LOGFILE)
 void     S52_utils_printf(const char *file, int line, const char *function, const char *frmt, ...)
 // FIXME: filter msg type: NOTE:, DEBUG:, FIXME:, WARNING:, ERROR:
 {
@@ -431,13 +445,13 @@ void     S52_utils_printf(const char *file, int line, const char *function, cons
         //write(1, bufFinal, n+nn+1);
         printf("%s", bufFinal);
 
-#if !defined(S52_USE_LOGFILE)
+#ifdef S52_DEBUG
         // if user set a callback .. call it,
         // unless logging to file witch will call the cb
         if (NULL != _log_cb) {
             _log_cb(bufFinal);
         }
-#endif
+#endif  // S52_DEBUG
 
         if (nn > (n+1)) {
         //if (n > (MAX-size)) {
@@ -483,7 +497,7 @@ int      S52_utils_initLog(S52_log_cb log_cb)
 // set print handler
 // set tmp log file
 {
-    _shm_fd = shm_open(_shm_name, O_RDWR | O_CREAT | O_TRUNC, 0644 );
+    //_shm_fd = shm_open(_shm_name, O_RDWR | O_CREAT | O_TRUNC, 0644 );
 
     // debug - setup trace log
     //g_setenv("MALLOC_TRACE", "mem.log", TRUE);
@@ -522,14 +536,19 @@ int      S52_utils_doneLog()
     // mtrace
     //g_unsetenv("MALLOC_TRACE");
 
-    _log_cb = NULL;
+    if (NULL != _log_cb) {
+        _log_cb("S52_utils_doneLog(): done log_cb\n");
+        _log_cb = NULL;
+    }
 
 #ifdef S52_USE_LOGFILE
     g_set_print_handler(_oldPrintHandler);
     _oldPrintHandler = NULL;
 
-    if (0 != _logFile)
+    if (0 != _logFile) {
         close(_logFile);
+        _logFile = 0;
+    }
 #endif  // S52_USE_LOGFILE
 
     return TRUE;
@@ -806,6 +825,7 @@ int      S52_utils_backtrace(void)
 }
 #endif  // S52_USE_BACKTRACE
 
+#if !defined(S52_USE_ANDROID)
 //gboolean(*GSourceFunc) (gpointer user_data);
 static gboolean   _trapSIG(gpointer user_data)
 // Note: glib UNIX signal handling
@@ -932,6 +952,7 @@ int      S52_utils_initSIG(void)
 
     return TRUE;
 }
+#endif  // !S52_USE_ANDROID
 
 void     S52_utils_setAtomicInt(int newVal)
 {
@@ -947,6 +968,7 @@ int      S52_utils_getAtomicInt(void)
     return _atomicAbort;
 }
 
+#if !defined(S52_USE_ANDROID)
 int      S52_utils_mtrace(void)
 {
     //mtrace();
@@ -964,6 +986,7 @@ int      S52_utils_muntrace(void)
 
     return TRUE;
 }
+#endif  // !S52_USE_ANDROID
 
 void     S52_utils_gdbBreakPoint(void)
 {
