@@ -4,10 +4,11 @@
 # SD 2014APR25 - update Dart build file layout
 
 
-all:build/web/s52ui.dart.js
+all: build/web/s52ui.dart.js
 
 #DARTSDKPATH = /home/sduclos/dev/prog/dart/dart/dart-sdk/bin
-DARTSDKPATH = /usr/lib/dart/bin
+#DARTSDKPATH = /usr/lib/dart/bin
+DARTSDKPATH = /home/sduclos/mnt/prog/dart/dart-sdk/dart-sdk-1.15/bin
 
 # in DARTSDKPATH/dart2js script:  --heap_growth_rate=512
 # also add --no_use_inlining to save 1 sec of compilation time
