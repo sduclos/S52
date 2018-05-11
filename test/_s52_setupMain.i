@@ -281,5 +281,7 @@ static int _s52_setupMain(void)
     //plib-test1-rle_vect.rle
     //plib-test3-col.rle
 
+    LOGI("_s52_setupMain(): S52_getCellNameList() = %s\n", S52_getCellNameList());
+
     return TRUE;
 }
