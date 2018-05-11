@@ -35,7 +35,8 @@
 #include "S57ogr.h"     // S57_ogrLoadCell()
 #endif // S52_USE_GV
 
-#include <string.h>     // memmove(), memcpy()
+#include <string.h>     // memmove(), memcpy(), memset()
+#include <strings.h>    // bzero()
 #include <math.h>       // INFINITY
 #include <stdio.h>      // setbuf()
 #include <glib.h>       // GString, GArray, GPtrArray, guint64, ..
@@ -48,9 +49,11 @@
 #include <locale.h>      // setlocal()
 
 // Network
+//#if defined S52_USE_SOCK > 0
+//#ifdef S52_USE_SOCK
 #if defined(S52_USE_SOCK) || defined(S52_USE_DBUS) || defined(S52_USE_PIPE)
 #include "_S52.i"
-#endif
+#endif  // S52_USE_SOCK S52_USE_DBUS S52_USE_PIPE
 
 #include "gdal.h"       // GDAL_RELEASE_NAME and handle Raster
 
@@ -117,8 +120,9 @@ typedef struct _legend {
 typedef struct _cell {
     ObjExt_t   geoExt;     // cell geo extent
 
-    GString   *filename;  // encName/baseName
-    gchar     *encPath;   // original user path/name
+    //GString   *filename;  // encName/baseName
+    GString     *cellName;  // encName/baseName
+    const gchar *cellPath;   // original user path/name
                           // Note: MARINER_CELL has no encPath
 
     // S52 Object
@@ -273,6 +277,8 @@ static guint       _mutexOwnerS57ID = 0;
 #define S52_CHECK_MUTX_INIT_EGLBEG(tag)  GMUTEXLOCK(&_mp_mutex); S52_CHECK_INIT EGL_BEG(tag)
 
 // traverse Render Bin and call func1() on each bin
+//#define S52_disPrio   int  // C++
+//#define S52ObjectType int  // C++
 #define TRAV_RBIN_ij(func1)                                    \
     for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) { \
         for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {    \
@@ -287,7 +293,7 @@ static guint       _mutexOwnerS57ID = 0;
         _cell *c = (_cell*) g_ptr_array_index(_cellList, k);       \
         for (S52_disPrio i=S52_PRIO_NODATA; i<S52_PRIO_NUM; ++i) { \
             for (S52ObjectType j=S52__META; j<S52_N_OBJ; ++j) {    \
-                func1;                                           \
+                func1;                                             \
             }                                                      \
         }                                                          \
     }
@@ -498,11 +504,11 @@ static gint       _cmpCellINTU(gconstpointer a, gconstpointer b)
     _cell *B = *(_cell**) b;
 
     // Note: _marinerCell as no dsid_intustr
-    if (A->filename->str[2] ==  B->filename->str[2])
+    if (A->cellName->str[2] ==  B->cellName->str[2])
     //if (A->dsid_intustr->str[0] ==  B->dsid_intustr->str[0])
         return 0;
 
-    if (A->filename->str[2] >  B->filename->str[2])
+    if (A->cellName->str[2] >  B->cellName->str[2])
     //if (A->dsid_intustr->str[0] >  B->dsid_intustr->str[0])
         return -1;
     else
@@ -514,7 +520,7 @@ static guint      _isCellLoaded(const char *baseName)
 {
     for (guint i=0; i<_cellList->len; ++i) {
         _cell *c = (_cell*)g_ptr_array_index(_cellList, i);
-        if (0 == g_strcmp0(c->filename->str, baseName)) {
+        if (0 == g_strcmp0(c->cellName->str, baseName)) {
             //return TRUE;
             return i;
         }
@@ -540,7 +546,7 @@ static _cell     *_newCell(const char *filename)
 
         TRAV_RBIN_ij(cell->renderBin[i][j] = g_ptr_array_new_with_free_func((GDestroyNotify)_delObj))
 
-        cell->filename = g_string_new(baseName);
+        cell->cellName = g_string_new(baseName);
 
         cell->geoExt.S =  INFINITY;
         cell->geoExt.W =  INFINITY;
@@ -594,9 +600,10 @@ static void       _delObj(S52_obj *obj)
 
 static void       _freeCell(_cell *c)
 {
-    if (NULL != c->filename)
-        g_string_free(c->filename, TRUE);
-    g_free(c->encPath);
+    if (NULL != c->cellName)
+        g_string_free(c->cellName, TRUE);
+
+    g_free((gpointer)c->cellPath);
 
     TRAV_RBIN_ij(g_ptr_array_free(c->renderBin[i][j], TRUE));
 
@@ -721,7 +728,11 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     //
     // init signal handler
     //
+
+#if !defined(S52_USE_ANDROID)
+    // FIXME: handle signal
     S52_utils_initSIG();
+#endif  // S52_USE_ANDROID
 
     ///////////////////////////////////////////////////////////
     // init global info
@@ -798,8 +809,6 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
     // objects of this 'cell' will be drawn last (ie on top)
     // Note: most Mariners' Object land on the "fast" layer 9
     // But 'pastrk' (and other) are drawn on layer < 9.
-    //if (NULL == _cellList)
-    //    _cellList = g_ptr_array_new();
     if (NULL == _cellList)
         _cellList = g_ptr_array_new_with_free_func((GDestroyNotify)_freeCell);
 
@@ -839,7 +848,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
 #endif
 
 #ifdef S52_USE_SOCK
-    _initSock();
+    _initSock(S52_USE_SOCK);
 #endif
 
 #ifdef S52_USE_PIPE
@@ -910,6 +919,7 @@ DLL int    STD S52_done(void)
     g_string_free(_S57ClassList, TRUE); _S57ClassList = NULL;
     g_string_free(_S52ObjNmList, TRUE); _S52ObjNmList = NULL;
 
+#if !defined(S52_USE_ANDROID)
     // flush raster (bathy,..)
     // FIXME: foreach
     // this call free_func() if set
@@ -921,6 +931,7 @@ DLL int    STD S52_done(void)
     // this call free_func() if set
     g_ptr_array_free(_rasterList, TRUE);
     _rasterList = NULL;
+#endif  // !S52_USE_ANDROID
 
     // obj allready deleted
     g_ptr_array_free(_tmpRenderBin, TRUE);
@@ -1316,6 +1327,9 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
     g_ptr_array_add(_cellList, c);
     g_ptr_array_sort(_cellList, _cmpCellINTU);
 
+    // keep track of where the file is for S52_getCellNameList()
+    c->cellPath  = filename;
+
 #ifdef S52_USE_GV
     S57_gvLoadCell (filename, layer_cb);
 #else
@@ -1361,8 +1375,8 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 
 #ifdef S52_USE_OGR_FILECOLLECTOR
 // in libgdal.so
-// Note: must add 'extern "C"' to GDAL/OGR at S57.h:40
-// (is linking with g++ fix this)
+// Note: must add 'extern "C"' to GDAL/OGR at S57.h:40 (S57FileCollector())
+// gcc >= 4: extern "C" __attribute__ ((visibility ("default"))) (global symbol)
 char **S57FileCollector( const char *pszDataset );
 
 #if 0
@@ -1702,7 +1716,6 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 {
     int    ret   = FALSE;
     char  *fname = NULL;
-    //_cell *c     = NULL;
 
     S52_loadLayer_cb loadLayer_cb = S52_loadLayer;
 
@@ -1727,7 +1740,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 #endif
 
     // debug - if NULL check in file s52.cfg
-    // FIXME: _dupPath(
+    // FIXME: _dupPath()
     if (NULL == encPath) {
         valueBuf chartPath = {'\0'};
         // FIXME: refactor to return "const char *"
@@ -1758,6 +1771,9 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
             _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
         }
         g_free(basename);
+
+        //ret = TRUE;
+        //goto exit;
     }
 #endif
 
@@ -1828,11 +1844,14 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 
 
         char **encList = S57FileCollector(fname);
+        g_free(fname);
         if (NULL != encList) {
             for (guint i=0; NULL!=encList[i]; ++i) {
                 char *encName = encList[i];
-                _loadBaseCell(encName, loadLayer_cb, loadObject_cb);
-                g_free(encName);
+                if (NULL == _loadBaseCell(encName, loadLayer_cb, loadObject_cb)) {
+                    // FIXME: free()  or g_free() and then what adout _doneCell()
+                    g_free(encName);
+                }
             }
             g_free(encList);
         } else {
@@ -1842,6 +1861,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 
 #else   // S52_USE_OGR_FILECOLLECTOR
     if (NULL == _loadBaseCell(fname, loadLayer_cb, loadObject_cb)) {
+        g_free(fname);
         goto exit;
     }
 #endif  // S52_USE_OGR_FILECOLLECTOR
@@ -1858,11 +1878,9 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     // _app() specific to sector light
     _CULL_Lights = TRUE;
     // _app() - compute HO Data Limit
-    _APP_DATCVR = TRUE;
+    _APP_DATCVR  = TRUE;
 
 exit:
-
-    g_free(fname);
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -1939,10 +1957,8 @@ DLL int    STD S52_doneCell(const char *encPath)
     gchar *baseName = g_path_get_basename(fname);
     guint  i        = _isCellLoaded(baseName);
     if (0 < i) {
-        // this call free_func() if set
-        //_cell *c = (_cell*)
+        // this call free_func()/_freeCell()
         g_ptr_array_remove_index(_cellList, i);
-        //_freeCell(c);
         ret = TRUE;
     }
     g_free(baseName);
@@ -2548,7 +2564,7 @@ int            S52_loadObject(const char *objname, void *shape)
             _crntCell->legend.dsid_edtnstr = S57_getAttVal(geo, "DSID_EDTN");  // edition number
             _crntCell->legend.dsid_uadtstr = S57_getAttVal(geo, "DSID_UADT");  // edition date
             _crntCell->legend.dsid_intustr = S57_getAttVal(geo, "DSID_INTU");  // intended usage (navigational purpose)
-            if (_crntCell->filename->str[2] != *_crntCell->legend.dsid_intustr->str) {
+            if (_crntCell->cellName->str[2] != *_crntCell->legend.dsid_intustr->str) {
                 PRINTF("DEBUG: DSID_INTU mismatch filename nav purp\n");
                 //g_assert(0);
             }
@@ -2944,6 +2960,7 @@ static int        _app(void)
         _APP_CS = FALSE;
     }
 
+#if !defined(S52_USE_ANDROID)
     // 2.3 - texApha, when raster is bathy,
     // if S52_MAR_SAFETY_CONTOUR / S52_MAR_DEEP_CONTOUR / S52_MAR_DATUM_OFFSET has change
     if (TRUE == _APP_RASTER) {
@@ -2955,6 +2972,7 @@ static int        _app(void)
         }
         _APP_RASTER = FALSE;
     }
+#endif  // !S52_USE_ANDROID
 
     ////////////////////////////////////////////////////
     //
@@ -3438,13 +3456,13 @@ static int        _drawLegend(void)
             return FALSE;
 
         // ENC Name
-        if (NULL == c->filename) {
+        if (NULL == c->cellName) {
             // FIXME: can this happen
             __drawStrWorld(&pt, "ENC NAME: %s", "Unknown", 3);
 
             g_assert(0);
         } else {
-            __drawStrWorld(&pt, "%.8s", c->filename->str, 3);
+            __drawStrWorld(&pt, "%.8s", c->cellName->str, 3);
         }
 
         // DSID:DSPM_DUNI: units for depth
@@ -3729,7 +3747,7 @@ DLL int    STD S52_draw(void)
         //PRINTF("S52_draw() .. -1.4-\n");
 
         // draw graticule and scale
-        //if (FALSE != (int) S52_MP_get(S52_MAR_DISP_GRATICULE))
+        if (FALSE != (int) S52_MP_get(S52_MAR_DISP_GRATICULE))
             S52_GL_drawGraticule();
 
         // draw legend
@@ -4047,7 +4065,8 @@ DLL int    STD S52_loadPLib(const char *plibName)
         //
 
         _cell tmpCell;
-        memset(&tmpCell, 0, sizeof(_cell));
+        //memset(&tmpCell, 0, sizeof(_cell));
+        bzero(&tmpCell, sizeof(_cell));
 
         // init rbin
         TRAV_RBIN_ij(tmpCell.renderBin[i][j] = g_ptr_array_new_with_free_func((GDestroyNotify)_delObj));
@@ -4442,39 +4461,46 @@ exit:
 
 DLL int    STD S52_setViewPort(int pixels_x, int pixels_y, int pixels_width, int pixels_height)
 {
+    int ret = FALSE;
+
     S52_CHECK_MUTX_INIT;
 
     PRINTF("pixels_x:%i, pixels_y:%i, pixels_width:%i, pixels_height:%i\n", pixels_x, pixels_y, pixels_width, pixels_height);
 
     //_validate_screenPos(&x, &y);
 
-    S52_GL_setViewPort(pixels_x, pixels_y, pixels_width, pixels_height);
+    if (0<=pixels_width && 0<=pixels_height) {
+        ret = S52_GL_setViewPort(pixels_x, pixels_y, pixels_width, pixels_height);
+    } else {
+        PRINTF("WARNING: S52_setViewPort() failed (w/h<0)\n");
+    }
 
 exit:
 
     GMUTEXUNLOCK(&_mp_mutex);
 
-    return TRUE;
+    return ret;
 }
 
 static ObjExt_t   _getCellsExt(void)
 {
-    ObjExt_t extSum = {
-        .W =  INFINITY,
-        .S =  INFINITY,
-        .E = -INFINITY,
-        .N = -INFINITY
-    };
+    ObjExt_t extSum;
+    {
+        extSum.W =  INFINITY,
+        extSum.S =  INFINITY,
+        extSum.E = -INFINITY,
+        extSum.N = -INFINITY;
+    }
 
     for (guint i=0; i<_cellList->len; ++i) {
         _cell *c = (_cell*) g_ptr_array_index(_cellList, i);
 
         // Note: skip speudo ENC is cleaner than adjusting idx for diff config
         // for now just skip these pseudo cells
-        if (0 == g_strcmp0(MARINER_CELL, c->filename->str))
+        if (0 == g_strcmp0(MARINER_CELL, c->cellName->str))
             continue;
 #ifdef S52_USE_WORLD
-        if (0 == g_strcmp0(WORLD_SHP,    c->filename->str))
+        if (0 == g_strcmp0(WORLD_SHP,    c->cellName->str))
             continue;
 #endif
 
@@ -4598,7 +4624,7 @@ DLL int    STD S52_getCellExtent(const char *filename, double *S, double *W, dou
         for (guint i=0; i<_cellList->len; ++i) {
             _cell *c = (_cell*)g_ptr_array_index(_cellList, i);
 
-            if (0 == g_strcmp0(name, c->filename->str)) {
+            if (0 == g_strcmp0(name, c->cellName->str)) {
                 *S = c->geoExt.S;
                 *W = c->geoExt.W;
                 *N = c->geoExt.N;
@@ -4747,17 +4773,22 @@ DLL CCHAR *STD S52_pickAt(double pixels_x, double pixels_y)
     // --- compute pick view parameter -----------------------------
     // pick extent
 #define PIXELS_WH 8
-    ObjExt_t ext = {
+    ObjExt_t ext;
+    {
         //.N = pixels_y + 3,
         //.S = pixels_y - 4,
         //.E = pixels_x + 3,
         //.W = pixels_x - 4
-        .N = pixels_y + PIXELS_WH/2,
-        .S = pixels_y - PIXELS_WH/2,
-        .E = pixels_x + PIXELS_WH/2,
-        .W = pixels_x - PIXELS_WH/2
-    };
-    PRINTF("DEBUG: PICK PIXELS EXTENT (swne): %f, %f  %f, %f \n", ext.S, ext.W, ext.N, ext.E);
+        ext.N = pixels_y + PIXELS_WH/2,
+        ext.S = pixels_y - PIXELS_WH/2,
+        ext.E = pixels_x + PIXELS_WH/2,
+        ext.W = pixels_x - PIXELS_WH/2;
+    }
+    PRINTF("DEBUG: PICK PIXELS EXTENT (s/w-n/e): %.0f/%.0f - %.0f/%.0f \n", ext.S, ext.W, ext.N, ext.E);
+
+    // experiment - C oop
+    //ObjExt_t ext1 = S57_ext().init(&ext1, ext.W, ext.S, ext.E, ext.N);
+    //PRINTF("DEBUG: PICK PIXELS EXTENT (s/w-n/e): %.0f/%.0f - %.0f/%.0f \n", ext1.S, ext1.W, ext1.N, ext1.E);
 
     // this call use _vp in _win2prj()
     S52_GL_win2prj(&ext.W, &ext.S);
@@ -4914,9 +4945,9 @@ DLL CCHAR *STD S52_getS57ClassList(const char *cellName)
                 g_string_append_printf(_S57ClassList, ",%s", c->S57ClassList->str);
         } else {
             // check if filename is loaded
-            if (0 == g_strcmp0(cellName, c->filename->str)) {
+            if (0 == g_strcmp0(cellName, c->cellName->str)) {
                 // Mariner Cell
-                if (0 == g_strcmp0(MARINER_CELL, c->filename->str)) {
+                if (0 == g_strcmp0(MARINER_CELL, c->cellName->str)) {
                     GString *classList = g_string_new(MARINER_CELL);
                     TRAV_RBIN_ij(g_ptr_array_foreach(_marinerCell->renderBin[i][j], (GFunc)_getS57ClassList, classList));
 
@@ -4928,7 +4959,7 @@ DLL CCHAR *STD S52_getS57ClassList(const char *cellName)
                 }
                 // ENC cell
                 if (NULL != c->S57ClassList) {
-                    g_string_printf(_S57ClassList, "%s,%s", c->filename->str, c->S57ClassList->str);
+                    g_string_printf(_S57ClassList, "%s,%s", c->cellName->str, c->S57ClassList->str);
 
                     goto exit;
                 }
@@ -4983,7 +5014,7 @@ DLL CCHAR *STD S52_getObjList(const char *cellName, const char *className)
     for (guint k=0; k<_cellList->len; ++k) {
         _cell *c = (_cell*)g_ptr_array_index(_cellList, k);
 
-        if (0 == g_strcmp0(cellName, c->filename->str)) {
+        if (0 == g_strcmp0(cellName, c->cellName->str)) {
             TRAV_RBIN_ij(g_ptr_array_foreach(c->renderBin[i][j], (GFunc)_getObjList, (void*)className));
 
             // insert header
@@ -5047,16 +5078,16 @@ DLL CCHAR *STD S52_getCellNameList(void)
         _cell *c = (_cell*)g_ptr_array_index(_cellList, i);
 
         // MARINER_CELL has no encPath
-        if (NULL == c->encPath)
+        if (NULL == c->cellPath)
             continue;
 
         if (0 == _cellNameList->len)
-            g_string_append_printf(_cellNameList, "*%s",  c->encPath);
+            g_string_append_printf(_cellNameList, "*%s",  c->cellPath);
         else
-            g_string_append_printf(_cellNameList, ",*%s", c->encPath);
+            g_string_append_printf(_cellNameList, ",*%s", c->cellPath);
 
         GError *error = NULL;
-        gchar  *path  = g_path_get_dirname(c->encPath);
+        gchar  *path  = g_path_get_dirname(c->cellPath);
         GDir   *dir   = g_dir_open(path, 0, &error);
         if (NULL != error) {
             PRINTF("WARNING: g_dir_open() failed (%s)\n", error->message);
@@ -5761,12 +5792,27 @@ DLL S52ObjectHandle STD S52_newLEGLIN(int select, double plnspd, double wholinDi
             .E = -INFINITY
         };
         */
+        /*
         ObjExt_t ext = {
             .N = (latBegin > latEnd) ? latBegin : latEnd,
             .S = (latBegin < latEnd) ? latBegin : latEnd,
             .E = (lonBegin < lonEnd) ? lonBegin : lonEnd,
             .W = (lonBegin > lonEnd) ? lonBegin : lonEnd
         };
+        */
+
+        //* C/C++
+        ObjExt_t ext;
+        {
+            ext.N = (latBegin > latEnd) ? latBegin : latEnd,
+            ext.S = (latBegin < latEnd) ? latBegin : latEnd,
+            ext.E = (lonBegin < lonEnd) ? lonBegin : lonEnd,
+            ext.W = (lonBegin > lonEnd) ? lonBegin : lonEnd;
+        }
+        //*/
+        // debug - C oop
+        //ObjExt_t ext = S57_ext().init(&ext, latBegin, latEnd, lonBegin, lonEnd);
+
         // set pick to stack mode
         S52_MP_set(S52_MAR_DISP_CRSR_PICK, 2.0);
 
