@@ -42,9 +42,9 @@
 
 #define SOCK_BUF 2048
 
-static gchar               _setErr(char *err, gchar *errmsg)
+static gchar               _setErr(gchar *err, CCHAR *errmsg)
 {
-    g_snprintf(err, SOCK_BUF, "libS52.so:%s", errmsg);
+    g_snprintf(err, SOCK_BUF, "libS52.so:%s", (gchar*)errmsg);
 
     return TRUE;
 }
@@ -59,17 +59,17 @@ static int                 _encode(char *buffer, const char *frmt, ...)
     //PRINTF("n:%i\n", n);
 
     if (n < (SOCK_BUF-1)) {
-        buffer[n]   = '\0';
-        buffer[n+1] = '\0';
+        //buffer[n]   = '\0';
+        //buffer[n+1] = '\0';
         return TRUE;
     } else {
-        buffer[SOCK_BUF-1] = '\0';
+        //buffer[SOCK_BUF-1] = '\0';
         PRINTF("WARNING: g_vsnprintf(): fail - no space in buffer\n");
         return FALSE;
     }
 }
 
-static int                 _handleS52method(const gchar *str, char *result, char *err)
+static int                 _handleS52method(char *str, char *result, char *err)
 {
     // FIXME: use btree for name/function lookup
     // -OR-
@@ -105,6 +105,7 @@ static int                 _handleS52method(const gchar *str, char *result, char
 
     // start work - fetch cmdName parameters
     JSON_Array *paramsArr = json_object_get_array(obj, "params");
+
     if (NULL == paramsArr) {
         _setErr(err, "no params");
         _encode(result, "[0]");
@@ -294,7 +295,8 @@ static int                 _handleS52method(const gchar *str, char *result, char
         }
 
         const char *plibObjName = json_array_get_string(paramsArr, 0);
-        double      objType     = json_array_get_number(paramsArr, 1);
+        //double      objType     = json_array_get_number(paramsArr, 1);
+        S52ObjectType objType     = (S52ObjectType)json_array_get_number(paramsArr, 1);
         double      xyznbrmax   = json_array_get_number(paramsArr, 2);
         double     *xyz         = NULL;
         gchar      *listAttVal  = NULL;
@@ -340,7 +342,7 @@ static int                 _handleS52method(const gchar *str, char *result, char
             goto exit;
         }
 
-        double paramID = json_array_get_number(paramsArr, 0);
+        S52MarinerParameter paramID = (S52MarinerParameter)json_array_get_number(paramsArr, 0);
 
         double d = S52_getMarinerParam(paramID);
 
@@ -358,7 +360,8 @@ static int                 _handleS52method(const gchar *str, char *result, char
             goto exit;
         }
 
-        double paramID = json_array_get_number(paramsArr, 0);
+        //double paramID = json_array_get_number(paramsArr, 0);
+        S52MarinerParameter paramID = (S52MarinerParameter)json_array_get_number(paramsArr, 0);
         double val     = json_array_get_number(paramsArr, 1);
 
         double d = S52_setMarinerParam(paramID, val);
@@ -690,7 +693,8 @@ static int                 _handleS52method(const gchar *str, char *result, char
 
     //DLL const char * STD S52_version(void);
     if (0 == g_strcmp0(cmdName, "S52_version")) {
-        const char *version = S52_version();
+        //const char *version = S52_version();
+        const char *version = S52_utils_version();  // no newline '\n'
 
         _encode(result, "[\"%s\"]", version);
 
@@ -709,6 +713,7 @@ exit:
     //PRINTF("OUT STR:%s", result);
 
     json_value_free(val);
+
     return (int)id;
 }
 
@@ -791,6 +796,15 @@ static gboolean            _handleSocket(GIOChannel *source, gchar *str_read)
 
     guint n  = g_snprintf(response, SOCK_BUF, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}",
                           id, (err[0] == '\0') ? "no error" : err, result);
+
+    if (n < (SOCK_BUF-1)) {
+        response[n]   = '\0';
+        response[n+1] = '\0';
+    } else {
+        response[SOCK_BUF-1] = '\0';
+        PRINTF("WARNING: g_vsnprintf(): fail - no space in buffer\n");
+        g_snprintf(response, SOCK_BUF, "{\"id\":%i,\"error\":\"%s\",\"result\":%s}", id, "_S52.i:_handleSocket() error", "[]");
+    }
 
     return _sendResp(source, response, n);
 }
@@ -936,7 +950,7 @@ static gboolean            _socket_read_write(GIOChannel *source, GIOCondition c
             if (NULL != WSKeystr) {
                 return _handshakeWebSocket(source, WSKeystr);
             } else {
-                PRINTF("WARNING: unknown socket msg\n");
+                PRINTF("WARNING: unknown socket msg (%s)\n", str_read);
                 return FALSE;
             }
         }
@@ -995,7 +1009,7 @@ static gboolean            _new_connection(GSocketService    *service,
     return FALSE;
 }
 
-static int                 _initSock(void)
+static int                 _initSock(int port)
 {
     // FIXME: check that the glib loop is UP .. or start one
     //if (FALSE == g_main_loop_is_running(NULL)) {
@@ -1005,7 +1019,8 @@ static int                 _initSock(void)
     GError         *error          = NULL;
     GSocketService *service        = g_socket_service_new();
     GInetAddress   *address        = g_inet_address_new_any(G_SOCKET_FAMILY_IPV4);
-    GSocketAddress *socket_address = g_inet_socket_address_new(address, 2950); // GPSD use 2947
+    //GSocketAddress *socket_address = g_inet_socket_address_new(address, 2950); // GPSD use 2947
+    GSocketAddress *socket_address = g_inet_socket_address_new(address, port); // GPSD use 2947
 
     g_socket_listener_add_address(G_SOCKET_LISTENER(service), socket_address, G_SOCKET_TYPE_STREAM,
                                   G_SOCKET_PROTOCOL_TCP, NULL, NULL, &error);
@@ -1037,6 +1052,14 @@ static int                 _initSock(void)
 // async command and thread (here dbus)
 // Probably not async since it use glib main loop!
 //
+
+// FIXME: use GDBus instead
+// Note: DBus has to handle system-wide msg that slow the bus
+//* commented to hide it from 'make doc' g-ir-scanner
+#define S52_DBUS_OBJ_NAME  "nav.ecs.dbus"
+#define S52_DBUS_OBJ_PATH  "/nav/ecs/dbus"
+#define S52_DBUS_OBJ_IFACE "nav.ecs.dbus"
+//*/
 
 // FIXME: use GDBus (in Gio) instead (thread prob with low-level DBus API)
 #include <dbus/dbus.h>
