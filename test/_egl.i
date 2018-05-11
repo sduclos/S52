@@ -38,11 +38,14 @@ typedef struct EGLState {
     EGLContext          eglContext;
     EGLConfig           eglConfig;
 
+#if !defined(S52_USE_ANDROID)
 #ifdef GTK_MAJOR_VERSION
     GtkWidget          *window;
 #else
-    Display            *dpy;
+    Display            *dpy;  // X11
 #endif
+#endif  // !S52_USE_ANDROID
+
 } EGLState;
 
 typedef void (*PFNGLINSERTEVENTMARKEREXT)(int length, const char *marker);
@@ -63,31 +66,6 @@ static PFNGLINSERTEVENTMARKEREXT _glInsertEventMarkerEXT = NULL;
 #define EGL_CONTEXT_OPENGL_NO_ERROR_KHR   0x31B3
 
 static int _EGL_EXT_create_context_robustness = FALSE;
-
-static void     _egl_done       (EGLState *eglState)
-// Tear down the EGL context currently associated with the display.
-{
-    if (eglState->eglDisplay != EGL_NO_DISPLAY) {
-        eglMakeCurrent(eglState->eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-
-        if (eglState->eglContext != EGL_NO_CONTEXT) {
-            eglDestroyContext(eglState->eglDisplay, eglState->eglContext);
-            eglState->eglContext = EGL_NO_CONTEXT;
-        }
-
-#if !defined(S52_USE_ANDROID)
-        if (eglState->eglSurface != EGL_NO_SURFACE) {
-            eglDestroySurface(eglState->eglDisplay, eglState->eglSurface);
-            eglState->eglSurface = EGL_NO_SURFACE;
-        }
-#endif
-
-        eglTerminate(eglState->eglDisplay);
-        eglState->eglDisplay = EGL_NO_DISPLAY;
-    }
-
-    return;
-}
 
 static int      _egl_beg        (EGLState *eglState, const char *tag)
 {
@@ -279,12 +257,13 @@ static int      _egl_init       (EGLState *eglState)
         g_assert(0);
     }
 
-    EGLint major = 2;
+    EGLint major = 0;
     EGLint minor = 0;
     if (EGL_FALSE == eglInitialize(eglDisplay, &major, &minor)) {
         LOGE("eglInitialize() failed. [0x%x]\n", eglGetError());
         g_assert(0);
     }
+    LOGI("eglInitialize(): major:%i minor:%i\n", major, minor);
 
     LOGI("EGL Client API:%s\n", eglQueryString(eglDisplay, EGL_CLIENT_APIS));
     LOGI("EGL Version   :%s\n", eglQueryString(eglDisplay, EGL_VERSION));
@@ -339,11 +318,11 @@ static int      _egl_init       (EGLState *eglState)
         EGL_SURFACE_TYPE,       EGL_WINDOW_BIT,
 
         //EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES2_BIT,
-        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,  // GLES3 to get NPOT texture in blit
+        //EGL_RENDERABLE_TYPE, EGL_OPENGL_ES3_BIT,  // GLES3 to get NPOT texture in blit
 
         // this bit open access to ES3 functions on QCOM hardware pre-Android support for ES3
         // WARNING: this break MSAA on Android Kit-Kat 4.4.2, 4.4.3 - and -lGLESv3 Android.mk
-        //EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT_KHR,
+        EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT_KHR,
 
         EGL_RED_SIZE,           8,
         EGL_GREEN_SIZE,         8,
@@ -376,6 +355,7 @@ static int      _egl_init       (EGLState *eglState)
         // black frame flicker
         EGL_SAMPLE_BUFFERS,      1,
         EGL_SAMPLES,             1,
+
         //EGL_SAMPLES,             4,
         //EGL_SAMPLES,             8,
 
@@ -411,36 +391,51 @@ static int      _egl_init       (EGLState *eglState)
     // Here, the application chooses the configuration it desires. In this
     // sample, we have a very simplified selection process, where we pick
     // the first EGLConfig that matches our criteria
-    EGLConfig  eglConfig;
-    EGLint     eglNumConfigs = 0;
-
+    EGLint eglNumConfigs = 0;
     eglGetConfigs(eglDisplay, NULL, 0, &eglNumConfigs);
-    LOGI("eglNumConfigs = %i\n", eglNumConfigs);
     if (0 == eglNumConfigs) {
         LOGI("eglGetConfigs(): eglNumConfigs == zero matching config [0x%x]\n", eglGetError());
         g_assert(0);
     }
+    LOGI("eglNumConfigs = %i\n", eglNumConfigs);
 
     /*
-    for (int i = 0; i<eglNumConfigs; ++i) {
-        EGLint samples = 0;
-        //if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[i], EGL_SAMPLES, &samples))
-        //    LOGE(("eglGetConfigAttrib in loop for an EGL_SAMPLES fail at i = %i\n", i);
-        if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[i], EGL_SAMPLE_BUFFERS, &samples))
-            LOGE(("eglGetConfigAttrib in loop for an  EGL_SAMPLE_BUFFERS fail at i = %i\n", i);
+    {
+        EGLConfig eglConfig[eglNumConfigs];
 
-        if (samples > 0)
-            LOGE(("sample found: %i\n", samples);
+        for (int i = 0; i<eglNumConfigs; ++i) {
+            EGLint samples = 0;
 
+            //if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[i], EGL_SAMPLES, &samples))
+            //    LOGE(("eglGetConfigAttrib in loop for an EGL_SAMPLES fail at i = %i\n", i);
+
+            if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[i], EGL_SAMPLE_BUFFERS, &samples)) {
+                LOGE("eglGetConfigAttrib in loop for an  EGL_SAMPLE_BUFFERS fail at i = %i\n", i);
+
+                //if (samples > 0)
+                //    LOGE("sample found: %i\n", samples);
+            }
+        }
+
+        if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, &eglConfig, 1, &eglNumConfigs)) {
+            //if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, eglConfig, 27, &eglNumConfigs))
+            LOGI("eglChooseConfig(): call failed [0x%x]\n", eglGetError());
+            g_assert(0);
+        }
     }
     //*/
 
+
+    EGLConfig eglConfig = NULL;
     if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, &eglConfig, 1, &eglNumConfigs)) {
     //if (EGL_FALSE == eglChooseConfig(eglDisplay, eglConfigList, eglConfig, 27, &eglNumConfigs))
         LOGI("eglChooseConfig(): call failed [0x%x]\n", eglGetError());
         g_assert(0);
     }
-
+    if (NULL == eglConfig) {
+        LOGI("eglChooseConfig(): call failed eglConfig[0] == NULL\n");
+        g_assert(0);
+    }
 
     // --- get eglWindow ------------------------------------------------
 #ifdef S52_USE_ANDROID
@@ -448,15 +443,21 @@ static int      _egl_init       (EGLState *eglState)
     // guaranteed to be accepted by ANativeWindow_setBuffersGeometry().
     // As soon as we picked a EGLConfig, we can safely reconfigure the
     // ANativeWindow buffers to match, using EGL_NATIVE_VISUAL_ID.
-    EGLint vid;
+    EGLint vid = -1;
     if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vid)) {
     //if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig[5], EGL_NATIVE_VISUAL_ID, &vid))
         LOGE("ERROR: eglGetConfigAttrib() failed\n");
+        g_assert(0);
     }
-    // WARNING: do not use native get/set Width()/Height() has it break rotation
-    ANativeWindow_setBuffersGeometry(engine->app->window, 0, 0, vid);
 
-    eglWindow = (EGLNativeWindowType) engine->app->window;
+    // native android window
+    //eglWindow = (EGLNativeWindowType) engine->app->window;
+    eglWindow = (EGLNativeWindowType) eglState->eglWindow;
+
+    // WARNING: do not use native get/set Width()/Height() has it break rotation
+    //ANativeWindow_setBuffersGeometry(engine->app->window, 0, 0, vid);
+    ANativeWindow_setBuffersGeometry(eglWindow, 0, 0, vid);
+
 
 #elif GTK_MAJOR_VERSION
     eglWindow = (EGLNativeWindowType) GDK_WINDOW_XID(gtk_widget_get_window(eglState->window));
@@ -469,16 +470,20 @@ static int      _egl_init       (EGLState *eglState)
         long          screen  = 0;
         XVisualInfo  *visual  = NULL;
         XVisualInfo   tmplt;
-        int           vID, n;
+        int           n;
         Window        window  = 0;
         Display      *display = eglState->dpy;
 
 #ifdef S52_USE_GLES2
-        char         *title   = "EGL/OpenGL ES 2.0 on a Linux Desktop";
+        const char   *title   = "EGL/OpenGL ES 2.0 on a Linux Desktop";
 #else
-        char         *title   = "EGL/OpenGL 2.0 on a Linux Desktop";
+        const char   *title   = "EGL/OpenGL 2.0 on a Linux Desktop";
 #endif
-        eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vID);
+        EGLint vID = -1;
+        if (EGL_FALSE == eglGetConfigAttrib(eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &vID)) {
+            LOGE("ERROR: eglGetConfigAttrib() failed\n");
+            g_assert(0);
+        }
         tmplt.visualid = vID;
         visual = XGetVisualInfo(display, VisualIDMask, &tmplt, &n);
         if (NULL == visual) {
@@ -561,6 +566,7 @@ static int      _egl_init       (EGLState *eglState)
         EGL_NONE
     };
 
+#if !defined(S52_USE_ANDROID)
     if (TRUE == _EGL_EXT_create_context_robustness) {
         LOGI("DEBUG: create EGLcontext robustness\n");
         // will propagate to glGetGraphicsResetStatus() if GL_EXT_robustness is supported
@@ -570,10 +576,11 @@ static int      _egl_init       (EGLState *eglState)
         // 2 strategy available
         eglContextList[6] = EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_EXT;
         //eglContextList[7] = EGL_NO_RESET_NOTIFICATION,  // 0x31BE
-        eglContextList[7] = EGL_LOSE_CONTEXT_ON_RESET;  // 0x31BF
+        //eglContextList[7] = EGL_LOSE_CONTEXT_ON_RESET;  // 0x31BF
 
         eglContextList[8] = EGL_NONE;
     }
+#endif  // !S52_USE_ANDROID
 
 #if defined(S52_USE_GLES2)
     // GLES
@@ -640,4 +647,29 @@ static int      _egl_init       (EGLState *eglState)
     LOGI("_egl_init(): end ..\n");
 
     return EGL_TRUE;
+}
+
+static void     _egl_done       (EGLState *eglState)
+// Tear down the EGL context currently associated with the display.
+{
+    if (eglState->eglDisplay != EGL_NO_DISPLAY) {
+        eglMakeCurrent(eglState->eglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+
+        if (eglState->eglContext != EGL_NO_CONTEXT) {
+            eglDestroyContext(eglState->eglDisplay, eglState->eglContext);
+            eglState->eglContext = EGL_NO_CONTEXT;
+        }
+
+#if !defined(S52_USE_ANDROID)
+        if (eglState->eglSurface != EGL_NO_SURFACE) {
+            eglDestroySurface(eglState->eglDisplay, eglState->eglSurface);
+            eglState->eglSurface = EGL_NO_SURFACE;
+        }
+#endif
+
+        eglTerminate(eglState->eglDisplay);
+        eglState->eglDisplay = EGL_NO_DISPLAY;
+    }
+
+    return;
 }
