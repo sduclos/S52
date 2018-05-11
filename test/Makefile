@@ -25,17 +25,18 @@ all: s52gtk2egl    # GTK2 & GLES2 & EGL
 #CC   = tcc -fPIC
 
 # GCC
-#CC   = gcc -O0 -g -Wall -Wextra -pedantic -std=gnu99
-#CC   = gcc -O0 -g -Wall -Wextra -pedantic -pipe -std=c99 -D_POSIX_C_SOURCE=199309L  # for signal in ais_standalone
+#CC   = gcc -fPIC -O0 -g -Wall -Wextra -pedantic -std=gnu99
+#CC   = gcc -fPIC -O0 -g -Wall -Wextra -pedantic -pipe -std=c99 -D_POSIX_C_SOURCE=199309L  # for signal in ais_standalone
+CC   = gcc -fPIC -O0 -g -Wall -Wextra -pedantic -std=c99 -D_POSIX_C_SOURCE=199309L  # for signal in ais_standalone
 # test - compile C code as C++
 #CC   = g++ -fPIC -O0 -g -Wall
 #CXX   = g++ -O0 -g -Wall
 
 # CLANG
-CC   = clang -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
+#CC   = clang -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
 #CC   += --analyze
 #CC   += -fsanitize=address
-CXX  = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
+#CXX  = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
 
 MINGW = /usr/bin/i586-mingw32msvc-
 #MINGW = /usr/bin/i686-w64-mingw32-
@@ -88,6 +89,8 @@ s52glx:     CFLAGS = -I.. `pkg-config --cflags gl`
 
 #                     -DS52_USE_AFGLOW
 #                     -DUSE_AIS
+#DEMO_CFLAGS =
+#-I/usr/include/libdrm -D_GNU_SOURCE -DPTHREADS -Wall -Wpointer-arith -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -fno-strict-aliasing -Wbad-function-cast
 s52eglx:    CFLAGS = -I.. -I. `pkg-config --cflags egl glib-2.0 gthread-2.0 gobject-2.0 libgps`   \
                      -DS52_USE_EGL           \
                      -DS52_USE_GLES2         \
@@ -158,7 +161,7 @@ GTK2LIBS    = `pkg-config  --libs gtk+-2.0 gtkglext-1.0 gthread-2.0 gl`
 s52gtk2gl2 : GTK2LIBS = `pkg-config --libs gtk+-2.0 gtkglext-1.0 gthread-2.0`
 
 # Ubuntu 13+ need -lX11
-s52eglx   : LIBS    = `pkg-config --libs egl x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS) -lm
+s52eglx   : LIBS    = `pkg-config --libs glesv2 egl x11 glib-2.0 gio-2.0 gthread-2.0 gobject-2.0 libgps` $(S52_LIBS) -lm
 
 # same as s52eglx, add "gtk+-2.0"
 s52gtk2egl: LIBS    = `pkg-config --libs egl gtk+-2.0 libgps` $(S52_LIBS) -lm
