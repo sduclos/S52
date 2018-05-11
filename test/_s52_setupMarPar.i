@@ -34,7 +34,7 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   20.0);
     //*/
 
-    //* S-64
+    /* S-64
     // Shallow 2m, Safety contour 5 m, Deep contour 10 m, Safety depth 4 m
     S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);
@@ -53,21 +53,23 @@ static int      _s52_setupMarPar(void)
     S52_setMarinerParam(S52_MAR_TWO_SHADES,      0.0);
     //*/
 
-    /* -- DEPTH COLOR ------------------------------------
+    //* -- DEPTH COLOR ------------------------------------
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 10.0);
     //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 5.0);
-    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
+    //S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 2.0);
+    S52_setMarinerParam(S52_MAR_SHALLOW_CONTOUR, 0.0);
 
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  10.0);      // should trigger symb ISODGR01 at Q40 at Qc
-    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  8.0);      // should trigger symb ISODGR01 at Q40 at Qc
+    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  8.0);      // should trigger symb ISODGR01 at Q40 at Qc
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  5.0);       // should trigger symb ISODGR01 at Rimouski ENC
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  4.0);
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  3.0);     // white chanel in Rimouski ENC
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  2.0);
     //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  1.0);
-    //S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  0.0);   // should trigger symb ISODGR01 at Rimouski ENC
+    S52_setMarinerParam(S52_MAR_SAFETY_CONTOUR,  0.0);   // should trigger symb ISODGR01 at Rimouski ENC
 
-    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
+    S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   0.0);
+    //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   10.0);
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   11.0);
     //S52_setMarinerParam(S52_MAR_DEEP_CONTOUR,   12.0);
 
@@ -87,7 +89,7 @@ static int      _s52_setupMarPar(void)
     //--------------------------------------
     //*/
 
-    //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
+    S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 0.0);  // (default off)
     //S52_setMarinerParam(S52_MAR_SHALLOW_PATTERN, 1.0);  // ON (GL1/GPU expentive)
 
     S52_setMarinerParam(S52_MAR_SHIPS_OUTLINE,   1.0);  // on  (default OFF)
@@ -193,7 +195,11 @@ static int      _s52_setupMarPar(void)
     //S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 0.0);  // off (default)
     S52_setMarinerParam(S52_MAR_DISP_AFTERGLOW, 1.0);  // on
 
+    // CPU expensive
     //S52_MAR_DISP_CENTROIDS      = 41,   // display all centered symb of one area (on/off) (default off)
+    //S52_setMarinerParam(S52_MAR_DISP_CENTROIDS, 0.0);  // one centroid per area
+    //S52_setMarinerParam(S52_MAR_DISP_CENTROIDS, 1.0);  // show all (convex poly)
+    S52_setMarinerParam(S52_MAR_DISP_CENTROIDS, 2.0);  // debug - suppress display of centroid
 
     //S52_MAR_DISP_WORLD          = 42,   // display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
 
