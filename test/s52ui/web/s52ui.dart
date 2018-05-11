@@ -14,10 +14,15 @@ part 's52.dart';
 // Note: wsUri is replace, in shell,
 // by calling $firefox build/web/s52ui.html?ws://192.168.1.66:2950
 //var wsUri = 'ws://192.168.1.66:2950';
+//var wsUri = 'ws://192.168.1.70:2950';
 //var wsUri = 'ws://192.168.1.67:2950'; // xoom
 //var wsUri = 'ws://192.168.1.71:2950'; // xoom
-var wsUri = 'ws://192.168.1.69:2950'; // Nexus
+//var wsUri = 'ws://192.168.1.69:2950'; // Nexus
 //var wsUri = 'ws://127.0.0.1:2950';    // localhost
+var wsUri = 'ws://localhost:2950';    // localhost
+// remote s52droid via adb (USB)
+// adb forward tcp:2950 tcp:2950
+//var wsUri = 'ws://127.0.0.1:2950'; // Nexus
 
 S52 s52; // instance of S52 interface (using WebSocket)
 
