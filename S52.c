@@ -116,13 +116,13 @@ typedef struct _legend {
 
 } _legend;
 
-// FIXME: robustness: put cell data on stack one per mini-thread!
 typedef struct _cell {
-    ObjExt_t   geoExt;     // cell geo extent
+    ObjExt_t   geoExt;      // cell geo extent
 
     //GString   *filename;  // encName/baseName
-    GString     *cellName;  // encName/baseName
-    const gchar *cellPath;   // original user path/name
+    GString   *cellName;  // encName/baseName
+    CCHAR     *cellPath;  // original user path/name
+                          // to keep track of where the file is for S52_getCellNameList()
                           // Note: MARINER_CELL has no encPath
 
     // S52 Object
@@ -1327,9 +1327,6 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
     g_ptr_array_add(_cellList, c);
     g_ptr_array_sort(_cellList, _cmpCellINTU);
 
-    // keep track of where the file is for S52_getCellNameList()
-    c->cellPath  = filename;
-
 #ifdef S52_USE_GV
     S57_gvLoadCell (filename, layer_cb);
 #else
@@ -1378,6 +1375,7 @@ static _cell     *_loadBaseCell(char *filename, S52_loadLayer_cb loadLayer_cb, S
 // Note: must add 'extern "C"' to GDAL/OGR at S57.h:40 (S57FileCollector())
 // gcc >= 4: extern "C" __attribute__ ((visibility ("default"))) (global symbol)
 char **S57FileCollector( const char *pszDataset );
+void CSLDestroy(char **papszStrList);
 
 #if 0
 //* #include "iso8211.h"
@@ -1740,7 +1738,6 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
 #endif
 
     // debug - if NULL check in file s52.cfg
-    // FIXME: _dupPath()
     if (NULL == encPath) {
         valueBuf chartPath = {'\0'};
         // FIXME: refactor to return "const char *"
@@ -1768,12 +1765,18 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         gchar *basename = g_path_get_basename(fname);
         if (0 == g_strcmp0(basename, WORLD_SHP)) {
             PRINTF("NOTE: loading %s\n", fname);
-            _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
+            _cell *c = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
+            if (NULL != c) {
+                ret = TRUE;
+                c->cellPath = fname;
+            } else {
+                g_free(fname);
+            }
+            g_free(basename);
+
+            goto exit;
         }
         g_free(basename);
-
-        //ret = TRUE;
-        //goto exit;
     }
 #endif
 
@@ -1843,24 +1846,33 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
         //char **encList = S57FileCollector("CATALOG.031");
 
 
+        // Note: list created via GDAL/CSLAddString() /
+        // void CPL_DLL CPL_STDCALL CSLDestroy(char **papszStrList);
+
         char **encList = S57FileCollector(fname);
-        g_free(fname);
         if (NULL != encList) {
             for (guint i=0; NULL!=encList[i]; ++i) {
                 char *encName = encList[i];
-                if (NULL == _loadBaseCell(encName, loadLayer_cb, loadObject_cb)) {
-                    // FIXME: free()  or g_free() and then what adout _doneCell()
-                    g_free(encName);
+                _cell *c = _loadBaseCell(encName, loadLayer_cb, loadObject_cb);
+                if (NULL != c) {
+                    ret = TRUE;
+                    c->cellPath = g_strdup(encName);
                 }
             }
-            g_free(encList);
+            CSLDestroy(encList);
         } else {
             PRINTF("WARNING: S57FileCollector(%s) return NULL\n", fname);
+            g_free(fname);
+            goto exit;
         }
     }
 
 #else   // S52_USE_OGR_FILECOLLECTOR
-    if (NULL == _loadBaseCell(fname, loadLayer_cb, loadObject_cb)) {
+    _cell *c = _loadBaseCell(fname, loadLayer_cb, loadObject_cb);
+    if (NULL != c) {
+        ret = TRUE;
+        c->cellPath = fname;
+    } else {
         g_free(fname);
         goto exit;
     }
