@@ -2787,18 +2787,17 @@ static GString *_SEABED01(double drval1, double drval2)
             drval2 >  S52_MP_get(S52_MAR_SHALLOW_CONTOUR))
             arecol  = ";AC(DEPMS)";
 
-            if (drval1 >= S52_MP_get(S52_MAR_SAFETY_CONTOUR)  &&
-                drval2 >  S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
-                arecol  = ";AC(DEPMD)";
-                shallow = FALSE;
-            }
+        if (drval1 >= S52_MP_get(S52_MAR_SAFETY_CONTOUR)  &&
+            drval2 >  S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
+            arecol  = ";AC(DEPMD)";
+            shallow = FALSE;
+        }
 
-            if (drval1 >= S52_MP_get(S52_MAR_DEEP_CONTOUR)  &&
-                drval2 >  S52_MP_get(S52_MAR_DEEP_CONTOUR)) {
-                arecol  = ";AC(DEPDW)";
-                shallow = FALSE;
-            }
-
+        if (drval1 >= S52_MP_get(S52_MAR_DEEP_CONTOUR)  &&
+            drval2 >  S52_MP_get(S52_MAR_DEEP_CONTOUR)) {
+            arecol  = ";AC(DEPDW)";
+            shallow = FALSE;
+        }
     }
 
     seabed01 = _g_string_new(seabed01, arecol);
