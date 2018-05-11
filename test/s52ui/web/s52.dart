@@ -98,7 +98,12 @@ class S52 {
   Future<bool> initWS(var wsUri) {
     Completer completer = new Completer();
 
+    print('WebSocket start');
+
     _ws = new WebSocket(wsUri);
+    if (null == _ws)
+      print('WebSocket not connected, message not sent');
+
     _ws.onOpen.   listen((Event e)        {completer.complete(true);_drawLastTimer();});
     _ws.onMessage.listen((MessageEvent e) {_rcvMsg(e);});
     _ws.onClose.  listen((CloseEvent e)   {throw '_ws CLOSE:$e';});
@@ -106,9 +111,11 @@ class S52 {
 
     return completer.future;
   }
+
   _drawLastTimer() {
     // debug
-    //print('_drawLastTimer() ..');
+    print('_drawLastTimer() ..');
+
     if (null != _timer)
       return;
 
@@ -130,13 +137,13 @@ class S52 {
     try {
       data = JSON.decode(str);
     } catch (e) {
-      print ('rcvMsg(): malformed JSON throw the parser: $str');
-      throw ('rcvMsg(): malformed JSON throw the parser: $str');
+      print ('_rcvMsg(): malformed JSON throw the parser: $str');
+      throw ('_rcvMsg(): malformed JSON throw the parser: $str');
     }
 
     if ("no error" != data["error"]) {
-      print ("rcvMsg(): S52 call failed [$data]");
-      throw ("rcvMsg(): S52 call failed [$data]");
+      print ("_rcvMsg(): S52 call failed [$data]");
+      throw ("_rcvMsg(): S52 call failed [$data]");
     }
 
     // debug
