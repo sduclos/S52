@@ -79,11 +79,11 @@ typedef struct ObjExt_t {
     double S;        // LL - y1
     double E;        // UR - x2
     double N;        // UR - y2
-    //
-    // invarient: assume canonic -woulg  require a func() in struct to canonise
+
+    // invarient: assume canonic - would require a func() in struct to canonise
     // for completess but all extent are allready LL-UR
-    //
-    //
+    //init_cb init;
+
 } ObjExt_t;
 
 typedef struct _S57_geo  S57_geo;
