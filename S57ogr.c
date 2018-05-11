@@ -89,7 +89,7 @@ static int        _setAtt(S57_geo *geo, OGRFeatureH hFeature)
 DLL int   STD  S52_loadLayer(const char *layername, void *layer, S52_loadObject_cb loadObject_cb);
 static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_cb, S52_loadObject_cb loadObject_cb)
 {
-    OGRDataSourceH hDS     = NULL;;
+    OGRDataSourceH hDS     = NULL;
     OGRSFDriverH   hDriver = NULL;
 
     PRINTF("DEBUG: starting to load cell (%s)\n", filename);
@@ -98,6 +98,12 @@ static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_
 
     if (NULL == hDS) {
         PRINTF("WARNING: file loading failed (%s)\n", filename);
+        return FALSE;
+    }
+
+    if (NULL == hDriver) {
+        PRINTF("ERROR: OGR S57 driver not found\n");
+        g_assert(0);
         return FALSE;
     }
 
