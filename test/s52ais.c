@@ -32,6 +32,7 @@
 #include <errno.h>          //
 
 #include <string.h>         // memcpy()
+#include <strings.h>        // bzero()
 
 #include <glib.h>           //
 #include <glib/gprintf.h>   // g_sprintf()
@@ -685,7 +686,8 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
     // NEW AIS (not found hence new)
     {
         _ais_t newais;
-        memset(&newais, 0, sizeof(_ais_t));
+        //memset(&newais, 0, sizeof(_ais_t));
+        bzero(&newais, sizeof(_ais_t));
         newais.mmsi     = mmsi;
 
         // FIXME: check file for name for mmsi
@@ -1456,7 +1458,8 @@ static int           _connectGPSD(void)
     int nWait = 0;
 
     g_print("s52ais:_connectGPSD(): start looping ..\n");
-    memset(&_gpsdata, 0, sizeof(_gpsdata));
+    //memset(&_gpsdata, 0, sizeof(_gpsdata));
+    bzero(&_gpsdata, sizeof(_gpsdata));
 
     while (0 != gps_open(GPSD_HOST, GPSD_PORT, &_gpsdata)) {   // android (gpsd 2.96)
         g_print("s52ais:_connectGPSD(): no gpsd running or network error, wait 1 sec [err(%i): %s](%s:%s)\n",
@@ -1812,7 +1815,8 @@ static int           _initSIG(void)
 // SIGUSR2 	User-defined 2 	12
 {
     struct sigaction sa;
-    memset(&sa, 0, sizeof(sa));
+    //memset(&sa, 0, sizeof(sa));
+    bzero(&sa, sizeof(sa));
     sa.sa_sigaction = _trapSIG;
     //sigemptyset(&sa.sa_mask);
     //sa.sa_flags = SA_RESTART | SA_SIGINFO;
