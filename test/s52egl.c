@@ -33,7 +33,7 @@
 
 #include <stdio.h>        // printf()
 #include <stdlib.h>       // exit(0)
-#include <string.h>       // memset()
+#include <string.h>       // memset(), bzero()
 
 // compiled with -std=gnu99 instead of -std=c99 will define M_PI
 #include <math.h>         // sin(), cos(), atan2(), pow(), sqrt(), floor(), INFINITY, M_PI
@@ -265,6 +265,7 @@ static int      _s52_init     (s52engine *engine)
 
 #ifdef USE_LOG_CB
         // Nexus: no root, can't do: $ su -c "setprop log.redirect-stdio true"
+        //
         if (FALSE == S52_init(w, h, wmm, hmm, _s52_log_cb))
 #else
         if (FALSE == S52_init(w, h, wmm, hmm, NULL))
@@ -607,7 +608,7 @@ static int      _android_done_external_sensors(void)
 
     return TRUE;
 }
-#endif
+#endif  // 0 - DEPRECATED
 
 static int      _android_init_external_UI(s52engine *engine)
 // start Android HTML5 UI - also get GPS & Gyro from Android
@@ -786,7 +787,11 @@ static gpointer _android_display_init(gpointer user_data)
 {
     s52engine *engine = (s52engine*)user_data;
 
-    if (FALSE == _egl_init(engine)) {
+    engine->eglState.eglWindow = (EGLNativeWindowType) engine->app->window;
+
+
+    //if (FALSE == _egl_init(engine)) {
+    if (FALSE == _egl_init(&engine->eglState)) {
         LOGI("DEBUG: EGL allready up\n");
         return FALSE;
     }
@@ -1306,15 +1311,18 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             // NOTE: the docs say that at this point 'savedState' has already been freed
             // so this meen that NativeActivity use alloc()/free()
             if (NULL == engine->app->savedState) {
-                engine->app->savedState     = malloc(sizeof(s52droid_state_t));
-                engine->app->savedStateSize =        sizeof(s52droid_state_t);
+                //engine->app->savedState     = malloc(sizeof(s52droid_state_t));
+                //engine->app->savedStateSize =        sizeof(s52droid_state_t);
+                engine->app->savedState     = malloc(sizeof(s52view_state_t));
+                engine->app->savedStateSize =        sizeof(s52view_state_t);
             } else {
                 // just checking: this should not happend
                 LOGE("ERROR: APP_CMD_SAVE_STATE: savedState not NULL\n");
                 g_main_loop_quit(engine->main_loop);
             }
 
-            *((s52droid_state_t*)engine->app->savedState) = engine->state;
+            //*((s52droid_state_t*)engine->app->savedState) = engine->state;
+            *((s52view_state_t*)engine->app->savedState) = engine->state;
 
             break;
         }
@@ -1322,7 +1330,8 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             // window is being shown, get it ready
             LOGI("s52egl:--> APP_CMD_INIT_WINDOW\n");
 
-            if (EGL_NO_CONTEXT != engine->eglContext) {
+            //if (EGL_NO_CONTEXT != engine->eglContext) {
+            if (EGL_NO_CONTEXT != engine->eglState.eglContext) {
                 // debug
                 if (NULL == engine->app->window)
                     LOGI("s52egl:APP_CMD_INIT_WINDOW: ANativeWindow is NULL\n");
@@ -1330,10 +1339,12 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
                     LOGI("s52egl:APP_CMD_INIT_WINDOW: ANativeWindow is NOT NULL\n");
 
                 //LOGI("APP_CMD_INIT_WINDOW: before eglCreateWindowSurface():EGL error [0x%x]\n", eglGetError());
-                engine->eglSurface = eglCreateWindowSurface(engine->eglDisplay, engine->eglConfig, engine->app->window, NULL);
+                ///engine->eglSurface = eglCreateWindowSurface(engine->eglDisplay, engine->eglConfig, engine->app->window, NULL);
+                engine->eglState.eglSurface = eglCreateWindowSurface(engine->eglState.eglDisplay, engine->eglState.eglConfig, engine->app->window, NULL);
                 //engine->eglSurface = eglCreateWindowSurface(engine->eglDisplay, engine->eglConfig, app->window, NULL);
                 //LOGI("APP_CMD_INIT_WINDOW: EGL error [0x%x]\n", eglGetError());
-                eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext);
+                //eglMakeCurrent(engine->eglDisplay, engine->eglSurface, engine->eglSurface, engine->eglContext);
+                eglMakeCurrent(engine->eglState.eglDisplay, engine->eglState.eglSurface, engine->eglState.eglSurface, engine->eglState.eglContext);
             } else {
                 _android_display_init(engine);
             }
@@ -1347,9 +1358,8 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
             engine->do_S52draw     = FALSE;
             engine->do_S52drawLast = FALSE;
 
-            //_android_done_external_sensors();
-
-            _egl_done(engine);
+            //_egl_done(engine);
+            //_egl_done(&engine->eglState);
 
             break;
         }
@@ -1409,7 +1419,7 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
         }
         case APP_CMD_DESTROY: {
             LOGI("s52egl:--> APP_CMD_DESTROY\n");
-            if (TRUE == engine->app->destroyRequested) {
+            if (FALSE != engine->app->destroyRequested) {
                 LOGI("s52egl:DEBUG (check this): --> APP_CMD_DESTROY: destroyRequested flags is set\n");
                 //g_main_loop_quit(engine->state.main_loop);
             }
@@ -1419,7 +1429,20 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
 
             break;
         }
+        case APP_CMD_STOP: {
+            LOGI("s52egl:--> APP_CMD_STOP\n");
+            if (FALSE != engine->app->destroyRequested) {
+                LOGI("s52egl:DEBUG (check this): --> APP_CMD_STOP: destroyRequested flags is set\n");
+                //g_main_loop_quit(engine->state.main_loop);
+            } else {
+                LOGI("s52egl:DEBUG (check this): --> APP_CMD_STOP: destroyRequested flags is NOT set\n");
+            }
 
+            engine->do_S52draw     = FALSE;
+            engine->do_S52drawLast = FALSE;
+
+            break;
+        }
 
     // TODO: what about those !
     case APP_CMD_INPUT_CHANGED:
@@ -1439,9 +1462,6 @@ static void     _android_handle_cmd(struct android_app *app, int32_t cmd)
         break;
     case APP_CMD_PAUSE:
         LOGI("s52egl:TODO:--> APP_CMD_PAUSE\n");
-        break;
-    case APP_CMD_STOP:
-        LOGI("s52egl:TODO:--> APP_CMD_STOP\n");
         break;
     }
 }
@@ -1520,7 +1540,8 @@ void     android_main(struct android_app *app)
     // Make sure glue isn't stripped.
     app_dummy();
 
-    memset(&_engine, 0, sizeof(_engine));
+    //memset(&_engine, 0, sizeof(_engine));
+    bzero(&_engine, sizeof(_engine));
 
     //_engine.mutex = G_STATIC_MUTEX_INIT;  // protect engine
     //g_static_mutex_init(&_engine.mutex);
@@ -1586,7 +1607,8 @@ void     android_main(struct android_app *app)
 
     if (NULL != _engine.app->savedState) {
         // if re-starting - the process is already up
-        _engine.state = *(s52droid_state_t*)app->savedState;
+        //_engine.state = *(s52droid_state_t*)app->savedState;
+        _engine.state = *(s52view_state_t*)app->savedState;
 
         LOGI("s52egl:DEBUG: bypassing _init_S52(), reset state .. \n" );
         LOGI("s52egl:       cLat =%f\n", _engine.state.cLat           );
@@ -1624,7 +1646,7 @@ void     android_main(struct android_app *app)
                 source->process(app, source);
 
             // Check if we are exiting.
-            if (0 != _engine.app->destroyRequested) {
+            if (FALSE != _engine.app->destroyRequested) {
                 LOGI("s52egl:android_main(): IN while loop .. destroyRecquested\n");
                 goto exit;
             }
@@ -1641,16 +1663,14 @@ void     android_main(struct android_app *app)
 
 exit:
 
-
-    //_android_done_external_sensors();
-
 #ifdef USE_AIS
     s52ais_doneAIS();
 #endif
 
     _s52_done(&_engine);
 
-    _egl_done(&_engine);
+    //_egl_done(&_engine);
+    _egl_done(&_engine.eglState);
 
     AConfiguration_delete(_engine.config);
 
