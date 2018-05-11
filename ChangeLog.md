@@ -4,6 +4,18 @@
 #
 
 
+2018APR10
+- add check in S52_setViewPort() for w/h not negative
+
+2018APR07
+- add doc port number to use with socket (-DS52_USE_SOCK=2950)
+- fix s52eglarm (ARM) code path
+- mod refactor _SEABED01 misleading indentation
+- fix broken cell path used by S52_getCellNameList()
+
+2018APR25
+- mod when S52_MAR_DISP_CENTROIDS=2.0 skip area centroid (debug)
+
 2018MAR24
 - mod format MarObj msg output
 
