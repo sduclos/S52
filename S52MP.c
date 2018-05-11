@@ -519,9 +519,10 @@ int    S52_MP_set(S52MarinerParameter paramID, double val)
 
         case S52_MAR_DISP_DRGARE_PATTERN : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_NODATA_LAYER   : val = _validate_bool(val);                   break;
-        case S52_MAR_DISP_VESSEL_DELAY   : val = _validate_int(val);                    break;
+        case S52_MAR_DISP_VESSEL_DELAY   : val = _validate_int (val);                    break;
         case S52_MAR_DISP_AFTERGLOW      : val = _validate_bool(val);                   break;
-        case S52_MAR_DISP_CENTROIDS      : val = _validate_bool(val);                   break;
+        //case S52_MAR_DISP_CENTROIDS      : val = _validate_bool(val);                   break;
+        case S52_MAR_DISP_CENTROIDS      : val = _validate_int (val);                   break;
         case S52_MAR_DISP_WORLD          : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_RND_LN_END     : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_VRMEBL_LABEL   : val = _validate_bool(val);                   break;
@@ -531,7 +532,7 @@ int    S52_MP_set(S52MarinerParameter paramID, double val)
 
         case S52_MAR_GUARDZONE_BEAM      : val = _validate_positive(val);               break;
         case S52_MAR_GUARDZONE_LENGTH    : val = _validate_positive(val);               break;
-        case S52_MAR_GUARDZONE_ALARM     : val = _validate_int(val);                    break;
+        case S52_MAR_GUARDZONE_ALARM     : val = _validate_int (val);                    break;
 
         case S52_MAR_DISP_HODATA_UNION   : val = _validate_bool(val);                   break;
         case S52_MAR_DISP_SCLBDY_UNION   : val = _validate_bool(val);                   break;
