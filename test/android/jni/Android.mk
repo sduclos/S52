@@ -32,6 +32,7 @@ ARMTOOLCHAINPATH := /home/sduclos/dev/prog/Android/dev/android-19-toolchain
 S52DROIDINC      := /home/sduclos/S52/test/android/dist/sysroot/include
 # TEGRA: tadp: -fno-omit-frame-pointer -mno-thumb
 # NDK-BUILD add this: -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
+# ./adb logcat *:S s52droid
 #                    -DS52_USE_AFGLOW
 LOCAL_CFLAGS     := -g -O0 -std=c99 -Wall -DG_LOG_DOMAIN=\"s52droid\"                 \
                     -DS52_USE_ANDROID                                                 \
@@ -70,7 +71,7 @@ LOCAL_STATIC_LIBRARIES :=                                                       
 # NDK-BUILD add this: -march=armv7-a -Wl,--fix-cortex-a8
 
 #CYANOGENLIBS     := /home/sduclos/dev/prog/Android/xoom/cm/system/lib
-OMNILIBS         := /home/sduclos/dev/prog/Android/xoom/omni/system/lib
+#OMNILIBS         := /home/sduclos/dev/prog/Android/xoom/omni/system/lib
 S52DROIDLIBS     := /home/sduclos/S52/test/android/dist/sysroot/lib
 #LOCAL_LDLIBS     := -L$(CYANOGENLIBS)
 #LOCAL_LDLIBS     := -L$(OMNILIBS)
