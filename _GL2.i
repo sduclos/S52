@@ -29,6 +29,7 @@
 //       to get GLES2 specific code (ex GLSL ES) define S52_USE_GLES2 also.
 // Note: GL2 matrix stuff work with GL_DOUBLE normaly while GLES2 work only with GL_FLOAT
 
+#include <strings.h>  // bzero()
 
 // Note: GLES2 is a subset of GL2, so declaration in GLES2 header cover all GL2 decl use in the code
 #ifdef S52_USE_GLSC2
@@ -85,6 +86,9 @@ static GLvoid      _DrawArrays_LINES(guint npt, vertex_t *ppt);
 static inline void _glGenBuffers(GLuint *);
 static int         _VBOCreate(S57_prim *);
 static int         _glCallList(S52_DListData *, gboolean);
+
+// debug - i965
+//static int         _VBOCreate2_glCallList(S52_DListData *);
 ////////////////////////////////////////////////////////
 
 
@@ -120,8 +124,9 @@ static GLint _uGlowOn     = 0;
 static GLint _uStipOn     = 0;
 //static GLint _uScaleOn    = 0;
 
-static GLint _uPalOn      = 0;
-static GLint _uPalArray   = 0;
+// test - optimisation
+//static GLint _uPalOn      = 0;
+//static GLint _uPalArray   = 0;
 
 static GLint _uPattOn     = 0;
 static GLint _uPattGridX  = 0;
@@ -130,9 +135,9 @@ static GLint _uPattW      = 0;
 static GLint _uPattH      = 0;
 
 // glsl varying
-static GLint _aPosition   = 0;
-static GLint _aUV         = 0;
-static GLint _aAlpha      = 0;
+static GLint _aPosition   = -2;
+static GLint _aUV         = -2;
+static GLint _aAlpha      = -2;
 
 // alpha is 0.0 - 1.0
 #define TRNSP_FAC_GLES2   0.25
@@ -880,21 +885,25 @@ static int       _renderTXTAA_gl2(double x, double y, GLfloat *data, guint len)
 }
 
 typedef unsigned char u8;
+
+#if !defined(S52_USE_ANDROID)
 #ifdef S52_USE_GLSC2
 typedef void (GL_APIENTRYP PFNGLREADNPIXELSKHRPROC) (GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLsizei bufSize, void *data);
 static PFNGLREADNPIXELSKHRPROC            _glReadnPixels            = NULL;
 //typedef void (GL_APIENTRYP PFNGLTEXTURESTORAGE2DEXTPROC) (GLuint texture, GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height);
 static PFNGLTEXSTORAGE2DEXTPROC           _glTexStorage2DEXT        = NULL;
-#else
+#else  // S52_USE_GLSC2
 // Note: on Intel GL_PROGRAM_BINARY_LENGTH_OES is 0 - bailout
 // https://bugs.freedesktop.org/show_bug.cgi?id=87516
-static PFNGLGETGRAPHICSRESETSTATUSEXTPROC _glGetGraphicsResetStatus = NULL;
-static PFNGLREADNPIXELSEXTPROC            _glReadnPixels            = NULL;  // EXT fail with mesa-git/master(2016AUG28)
+// FIXME: trigger reset to test this call
+//static PFNGLGETGRAPHICSRESETSTATUSEXTPROC _glGetGraphicsResetStatus = NULL;
+
+//static PFNGLREADNPIXELSEXTPROC            _glReadnPixels            = NULL;  // EXT fail with mesa-git/master(2016AUG28)
 static PFNGLPROGRAMPARAMETERIEXTPROC      _glProgramParameteriEXT   = NULL;
 static PFNGLGETPROGRAMBINARYOESPROC       _glGetProgramBinaryOES    = NULL;
 static PFNGLPROGRAMBINARYOESPROC          _glProgramBinaryOES       = NULL;
 static PFNGLTEXSTORAGE2DEXTPROC           _glTexStorage2DEXT        = NULL;
-#endif
+#endif  // S52_USE_GLSC2
 
 #ifdef S52_USE_EGL
 static int       _loadProcEXT()
@@ -916,6 +925,7 @@ static int       _loadProcEXT()
     _glTexStorage2DEXT =   (PFNGLTEXSTORAGE2DEXTPROC)     eglGetProcAddress("glTexStorage2DEXT");
     PRINTF("DEBUG: eglGetProcAddress(glTexStorage2DEXT)      %s\n",     (NULL==_glTexStorage2DEXT)?"FAILED":"OK");
 #else
+    /* need gles2.h 20180316
     _glGetGraphicsResetStatus = (PFNGLGETGRAPHICSRESETSTATUSEXTPROC) eglGetProcAddress("glGetGraphicsResetStatusEXT");
     PRINTF("DEBUG: eglGetProcAddress(glGetGraphicsResetStatusEXT)       %s\n",     (NULL==_glGetGraphicsResetStatus)?"FAILED":"OK");
     if (NULL == _glGetGraphicsResetStatus) {
@@ -933,7 +943,7 @@ static int       _loadProcEXT()
         _glReadnPixels =       (PFNGLREADNPIXELSKHRPROC)      eglGetProcAddress("glReadnPixelsKHR");
         PRINTF("DEBUG: eglGetProcAddress(glReadnPixelsKHR)       %s\n",     (NULL==_glReadnPixels)?"FAILED":"OK");
     }
-
+    */
     _glProgramParameteriEXT = (PFNGLPROGRAMPARAMETERIEXTPROC)eglGetProcAddress("glProgramParameteriEXT");
     PRINTF("DEBUG: eglGetProcAddress(glProgramParameteriEXT) %s\n",     (NULL==_glProgramParameteriEXT)?"FAILED":"OK");
 
@@ -1005,6 +1015,7 @@ static int       _saveShaderBin(GLuint programObject)
 }
 #endif  // !S52_USE_GLSC2
 
+#ifdef S52_USE_GLSC2
 static GLuint    _loadShaderBin(void)
 // Load a binary GLSL shader from a file
 {
@@ -1064,6 +1075,8 @@ static GLuint    _loadShaderBin(void)
 
     return progId;
 }
+#endif  // !S52_USE_ANDROID
+#endif  // S52_USE_GLSC2
 
 #if !defined(S52_USE_GLSC2)
 static GLuint    _loadShaderSrc(GLenum type, const char *shaderSrc)
@@ -1150,7 +1163,7 @@ static GLuint    _compShaderSrc(GLuint programObject)
 
         // optimisation test - color LUP
         uniform int     uPalOn;
-        uniform vec4    uPalArray[63];  // 63 - S52_COL_NUM
+        //uniform vec4    uPalArray[63];  // 63 - S52_COL_NUM
 
         attribute vec4  aPosition;
         attribute float aAlpha;
@@ -1172,7 +1185,10 @@ static GLuint    _compShaderSrc(GLuint programObject)
                 //v_texCoord.y = (aPosition.y - uPattGridY) / uPattH;
                 v_texCoord.x = (uPattGridX - aPosition.x) / uPattW;
                 v_texCoord.y = (uPattGridY - aPosition.y) / uPattH;
-            } else if (0 <= uPalOn) {
+            }
+
+            /*
+            else if (0 <= uPalOn) {
                 // optimisation test -> uPalOn = aPosition.z;
                 //v_color = uPalArray[uPalOn];
 
@@ -1186,7 +1202,10 @@ static GLuint    _compShaderSrc(GLuint programObject)
                 //v_texCoord = (uProjection * uModelview * vec4(aUV,1.0,1.0) * vec4(320000.0/2.0,320000.0/2.0,1.0,1.0)).xy;
                 //v_texCoord = vec2(mod(length(aUV)*(10.0), 32.0), 0.0);
                 ;
-            } else if (0.0 < uStipOn) {
+            }
+            */
+
+            else if (0.0 < uStipOn) {
                 v_dist     = pos.z;
                 pos.z      = 0.0;
                 v_texCoord = aUV;
@@ -1224,7 +1243,7 @@ static GLuint    _compShaderSrc(GLuint programObject)
 
         //uniform float uScaleOn;
 
-        uniform int   uPalOn;
+        //uniform int   uPalOn;
 
         varying vec2  v_texCoord;
         varying float v_alpha;
@@ -1336,11 +1355,13 @@ static GLuint    _compShaderSrc(GLuint programObject)
     glAttachShader(programObject, fragmentShader);
     _checkError("_compShaderSrc() -1.1-");
 
+#if !defined(S52_USE_ANDROID)
 #define GL_PROGRAM_BINARY_RETRIEVABLE_HINT 0x8257
     if (NULL != _glProgramParameteriEXT) {
         _glProgramParameteriEXT(programObject, GL_PROGRAM_BINARY_RETRIEVABLE_HINT, GL_TRUE);
         _checkError("_compShaderSrc() -1.2-");
     }
+#endif  // !S52_USE_ANDROID
 
     glLinkProgram(programObject);
     GLint linked = GL_FALSE;
@@ -1349,6 +1370,7 @@ static GLuint    _compShaderSrc(GLuint programObject)
         // Note: migth need a draw() call before saving
         // to instanciate the prog (see S52_GL_end())
         _saveShaderBin(programObject);
+        ;
     } else {
         GLsizei length;
         GLchar  infoLog[2048];
@@ -1394,8 +1416,8 @@ static GLuint    _bindUnifrom(GLuint programObject)
     //_uScaleOn    = glGetUniformLocation(programObject, "uScaleOn");
 
     // optimisation test
-    _uPalOn      = glGetUniformLocation(programObject, "uPalOn");
-    _uPalArray   = glGetUniformLocation(programObject, "uPalArray");
+    //_uPalOn      = glGetUniformLocation(programObject, "uPalOn");
+    //_uPalArray   = glGetUniformLocation(programObject, "uPalArray");
 
     _uColor      = glGetUniformLocation(programObject, "uColor");
 
@@ -1430,7 +1452,8 @@ static int       _clearColor(void)
 static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
 // make a RGBA texture from 32x32 bitmask (a la glPolygonStipple() in OpenGL 1.x)
 {
-    memset(rgba_mask, 0, 4*32*8*4);
+    //memset(rgba_mask, 0, 4*32*8*4);
+    bzero(rgba_mask, 4*32*8*4);
 
     for (int i=0; i<(4*32); ++i) {
         if (mask[i] & (1<<0)) {
@@ -1454,7 +1477,9 @@ static int       _1024bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
 static int       _32bitMask2RGBATex(const GLubyte *mask, GLubyte *rgba_mask)
 // make a RGBA texture from 32x1 bitmask (a la glLineStipple() in OpenGL 1.x)
 {
-    memset(rgba_mask, 0, 8*4*4);  // 32x4B (rgda)
+    //memset(rgba_mask, 0, 8*4*4);  // 32x4B (rgda)
+    bzero(rgba_mask, 8*4*4);  // 32x4B (rgda)
+
     for (int i=0; i<4; ++i) {     // 4 bytes
         if (mask[i] & (1<<0)) {
             //rgba_mask[(i*4*8)+0] = 0;   // R
@@ -1557,41 +1582,49 @@ static int       _init_gl2(void)
 
     PRINTF("NOTE: begin GL2/GLSL init ..\n");
 
-    if (NULL == _tessWorkBuf_d)
-        _tessWorkBuf_d = g_array_new(FALSE, FALSE, sizeof(double)*3);
-    if (NULL == _tessWorkBuf_f)
-        _tessWorkBuf_f = g_array_new(FALSE, FALSE, sizeof(float)*3);
+    if (NULL == _tessWorkBuf_d) {
+        //_tessWorkBuf_d = g_array_new(FALSE, FALSE, sizeof(double)*3);
+        _tessWorkBuf_d = g_array_new(FALSE, FALSE, sizeof(GLdouble)*3);
+    }
+    if (NULL == _tessWorkBuf_f) {
+        //_tessWorkBuf_f = g_array_new(FALSE, FALSE, sizeof(float)*3);
+        _tessWorkBuf_f = g_array_new(FALSE, FALSE, sizeof(GLfloat)*3);
+    }
 
     _init_freetype_gl();
 
+    _initAPTexture();
+
+#if !defined(S52_USE_ANDROID)
 #ifdef S52_USE_EGL
     _loadProcEXT();
 #endif
+#endif  // !S52_USE_ANDROID
 
-    _initAPTexture();
-
+#ifdef S52_USE_GLSC2
     _programObject = _loadShaderBin();
     if (0 == _programObject) {
-#ifdef S52_USE_GLSC2
         PRINTF("WARNING: GLSC2/GLSL _loadShaderBin() failed .. \n");
         g_assert(0);
         return FALSE;
-#else  // S52_USE_GLSC2
-        _programObject = _compShaderSrc(_programObject);
-        if (0 == _programObject) {
-            PRINTF("WARNING: GL2/GLSL init .. failed\n");
-            g_assert(0);
-            return FALSE;
-        }
-#endif  // S52_USE_GLSC2
     }
+#else  // S52_USE_GLSC2
+    _programObject = _compShaderSrc(_programObject);
+    if (0 == _programObject) {
+        PRINTF("WARNING: GL2/GLSL init .. failed\n");
+        g_assert(0);
+        return FALSE;
+    }
+#endif  // S52_USE_GLSC2
 
     _bindAttrib (_programObject);
     _bindUnifrom(_programObject);
 
     //  init matrix stack
-    memset(_mvm, 0, sizeof(GLfloat) * 16 * MATRIX_STACK_MAX);
-    memset(_pjm, 0, sizeof(GLfloat) * 16 * MATRIX_STACK_MAX);
+    //memset(_mvm, 0, sizeof(GLfloat) * 16 * MATRIX_STACK_MAX);
+    //memset(_pjm, 0, sizeof(GLfloat) * 16 * MATRIX_STACK_MAX);
+    bzero(_mvm, sizeof(GLfloat) * 16 * MATRIX_STACK_MAX);
+    bzero(_pjm, sizeof(GLfloat) * 16 * MATRIX_STACK_MAX);
 
     //  init matrix
     _glMatrixMode  (GL_PROJECTION);
@@ -1610,7 +1643,7 @@ static int       _init_gl2(void)
     _clearColor();
 
     // turn OFF rgb lookup
-    glUniform1i(_uPalOn, -1);
+    //glUniform1i(_uPalOn, -1);
 
     return TRUE;
 }
@@ -1993,11 +2026,42 @@ static int       _renderAP_gl2(S52_obj *obj)
 
 static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
 {
+    // debug - i965 DRI3 bug, force DRI2 LIBGL_DRI3_DISABLE=1 (fail in gdb)
+    //S57ID = 891, name = SBDARE GB5X01NE.000 - bug mesa dri
+    /* S57ID = 5756 FSHZNE GB4X0000.000
+    if (NULL!=obj && (891==S57_getS57ID(S52_PL_getGeo(obj)))) {
+        //PRINTF("DEBUG: FSHZNE found\n");
+        PRINTF("DEBUG: SBDARE found\n");
+        //S52_utils_gdbBreakPoint();
+        //g_assert(0);
+    }
+    //*/
+
+    //* debug - skip big geo not solid that break DRI3 in gdb
+    if (('L'!=style) && (5056<=npt*16)) {
+        npt = 316;
+        return TRUE;
+    }
+    //*/
+
+    // convert to float
+    _d2f(_tessWorkBuf_f, npt, ppt);
+    vertex_t *v = (vertex_t *)_tessWorkBuf_f->data;
+
+    _glUniformMatrix4fv_uModelview();
+
+    /* debug - force immediat rendering of all line in solid line style
+    _DrawArrays_LINE_STRIP(npt, v);
+    return TRUE;
+    //*/
+
+    //* Note: must be in scope when calling _glCallList()
     float texUV[4] = {
         0.0, 0.0,
         1.0, 1.0
         //32.0, 1.0
     };
+    //*/
 
     switch (style) {
 
@@ -2008,19 +2072,20 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
 
         // DASH (dash 3.6mm, space 1.8mm)
         case 'S': glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
-                  //glUniform1f(_uScaleOn, _scalex);
-                  //glUniform1i(_uStipOn, 1);
                   glUniform1f(_uStipOn, _scalex);
 
                   glEnableVertexAttribArray(_aUV);
                   glVertexAttribPointer(_aUV, 2, GL_FLOAT, GL_FALSE, 0, texUV);
 
+                  // debug
+                  //if (NULL != obj) {
+                  //    S57_setHighlight(S52_PL_getGeo(obj), TRUE);
+                  //}
+
                   break;
 
         // DOTT (dott 0.6mm, space 1.2mm)
         case 'T': glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
-                  //glUniform1f(_uScaleOn, _scalex);
-                  //glUniform1i(_uStipOn, 2);
                   glUniform1f(_uStipOn, _scalex);
 
                   glEnableVertexAttribArray(_aUV);
@@ -2034,12 +2099,6 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
             return FALSE;
     }
 
-    _glUniformMatrix4fv_uModelview();
-
-    // convert to float
-    _d2f(_tessWorkBuf_f, npt, ppt);
-    vertex_t *v = (vertex_t *)_tessWorkBuf_f->data;
-
     if (NULL != obj) {
         S52_DListData *DListData = S52_PL_getDListData(obj);
         if (NULL == DListData) {
@@ -2051,9 +2110,9 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
 
             {
                 S52_Color *col;
-                char       style;   // L/S/T - use by normal command word LS()
+                char       styleDummy;   // L/S/T - use by normal command word LS()
                 char       pen_w;
-                S52_PL_getLSdata(obj, &pen_w, &style, &col);
+                S52_PL_getLSdata(obj, &pen_w, &styleDummy, &col);
                 DListData->colors[0] = *col;
                 DListData->colors[0].fragAtt.pen_w = pen_w;
                 DListData->colors[0].fragAtt.trans = '0';  // 0% - no transparency
@@ -2065,7 +2124,10 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
                 for (guint i=0; i<npt; ++i, v+=3) {
                     S57_addPrimVertex(DListData->prim[0], v);
                 }
+
+            //*
             } else {
+                // FIXME: plit VBO in 256 vertexs for i965 DRI3!
                 S57_begPrim(DListData->prim[0], GL_LINES);
                 for (guint i=0; i<npt-1; ++i, v+=3) {
                     // put dist in Z v[2]=v[5] = dist (ie sqrt(dx*dx + dy*dy)])
@@ -2083,12 +2145,22 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
                     S57_addPrimVertex(DListData->prim[0], v+3);
                 }
             }
+            //*/
+
             S57_endPrim(DListData->prim[0]);
             DListData->vboIds[0] = _VBOCreate(DListData->prim[0]);
+
+            // debug - DRI3 intel i965
+            //_VBOCreate2_glCallList(DListData);
         }
 
-
         _glCallList(DListData, S57_getHighlight(S52_PL_getGeo(obj)));
+
+    } else {
+        // draw graticule
+
+        // flush FB
+        //_clearColor();
 
         // 1 - compute line legs length
         // 2 - compute numger of repeate
@@ -2099,12 +2171,6 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
         //     5.2 - in frag shader:
         //           5.3 - apply tex_n to UV.x *= tex_n
 
-    } else {
-        // draw graticule
-
-        // flush FB
-        //_clearColor();
-
         float dx = v[0] - v[3];
         float dy = v[1] - v[4];
         float dist = sqrt(dx*dx + dy*dy);
@@ -2113,31 +2179,8 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
         v[2] = v[5] = dist;
 
         // immediate mode
-        //_DrawArrays_LINE_STRIP(npt, v);
+        g_assert(2 == npt);
         _DrawArrays_LINES(npt, v);
-        /*
-        static int linecount = 0;
-        glReadPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_UNSIGNED_BYTE, _fb_pixels);
-        //glReadPixels(_vp.x, _vp.y, _vp.w, _vp.h, GL_RGBA, GL_FLOAT, _fb_pixels);
-
-        // def of one pixel
-        typedef struct _pixel {GLubyte r,g,b,a;} _pixel;
-        //typedef struct _pixel {GLfloat r,g,b,a;} _pixel;
-
-        GLubyte d = 0;
-        //GLfloat d = 0;
-
-        _pixel *ppixel = (_pixel *)_fb_pixels;
-        for (guint i=0; i<(_vp.w*_vp.h*4); i+=4, ++ppixel) {
-            //if (0 < ppixel->b && d != ppixel->r ) {
-            if (0 < ppixel->r && d<ppixel->r) {
-                d = ppixel->r;
-
-                PRINTF("DEBUG: rgba line no: %i, dist:%f --> %i\n", linecount++, dist/_scalex/32.0, d);
-                //PRINTF("DEBUG: rgba line no: %i, dist:%f --> %f\n", linecount++, dist, d);
-            }
-        }
-        */
     }
 
 
@@ -2145,45 +2188,76 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
-    //glUniform1i(_uStipOn, 0);
-    //glUniform1f(_uScaleOn, 0.0);
-
     glUniform1f(_uStipOn, 0.0);
 
     return TRUE;
+}
 
-    // FIXME: do line stippling in shader!
+/*
+static int       _renderLS_gl2(char style, guint npt, double *ppt)
+{
+    _d2f(_tessWorkBuf_f, npt, ppt);
 
-    //_glLoadIdentity(GL_MODELVIEW);
+    switch (style) {
 
+        case 'L': // SOLD --correct
+            // but this stippling break up antialiase
+            //glLineStipple(1, 0xFFFF);
+            _glUniformMatrix4fv_uModelview();
+            _DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
 
-    //glUniform1f(_uTextOn, 1.0);
+            return TRUE;
 
-    // debug
-    //glUniform1i(_uPalOn, 2);
+        case 'S': // DASH (dash 3.6mm, space 1.8mm) --incorrect  (last space 1.8mm instead of 1.2mm)
+            //glEnable(GL_LINE_STIPPLE);
+            //_glLineStipple(3, 0x7777);
+            //glLineStipple(2, 0x9248);  // !!
+            glBindTexture(GL_TEXTURE_2D, _dashpa_mask_texID);
+            // debug
+            //return TRUE;
+            break;
 
-    //glEnableVertexAttribArray(_aUV);
+        case 'T': // DOTT (dott 0.6mm, space 1.2mm) --correct
+            //glEnable(GL_LINE_STIPPLE);
+            //_glLineStipple(1, 0xFFF0);
+            //_glPointSize(pen_w - '0');
+            glBindTexture(GL_TEXTURE_2D, _dottpa_mask_texID);
+            break;
 
-    /*
-    for (guint i=1; i<npt; ++i,v+=3) {
-        float dx       = v[0] - v[3];
-        float dy       = v[1] - v[4];
+        default:
+            PRINTF("WARNING: invalid line style\n");
+            g_assert(0);
+            return FALSE;
+    }
+
+    // FIXME: use GL_POINTS if DOTT
+    glUniform1f(_uTextOn, 1.0);
+    _glUniformMatrix4fv_uModelview();
+
+    float *v = (float *)_tessWorkBuf_f->data;
+    for (guint i=1; i<npt; ++i, ppt+=3, v+=3) {
+        float dx       = ppt[0] - ppt[3];
+        float dy       = ppt[1] - ppt[4];
         float leglen_m = sqrt(dx*dx + dy*dy);   // leg length in meter
         float leglen_px= leglen_m  / _scalex;   // leg length in pixel
         float tex_n    = leglen_px / 32.0;      // number of texture pattern - 1D 32x1 pixels
 
         float ptr[4] = {
             0.0,   0.0,
-            //tex_n, 1.0
-            1.0, 1.0
-            //32.0, 1.0
+            tex_n, 1.0
         };
 
-        //glVertexAttribPointer(_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
+        glEnableVertexAttribArray(_aUV);
+        glVertexAttribPointer    (_aUV, 2, GL_FLOAT, GL_FALSE, 0, ptr);
 
-        //_DrawArrays_LINE_STRIP(2, v);
+        //_DrawArrays_LINE_STRIP(npt, (vertex_t *)_tessWorkBuf_f->data);
+        _DrawArrays_LINE_STRIP(2, v);
     }
-    //*/
 
+    glDisableVertexAttribArray(_aUV);
+    glBindTexture(GL_TEXTURE_2D,  0);
+    glUniform1f(_uTextOn, 0.0);
 
+    return TRUE;
 }
+*/
