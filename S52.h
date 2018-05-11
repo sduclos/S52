@@ -130,6 +130,7 @@ typedef enum S52MarinerParameter {
     S52_MAR_DISP_AFTERGLOW      = 40,   // display synthetic afterglow (in PLAUX_00.DAI) for OWNSHP & VESSEL (on/off)
 
     S52_MAR_DISP_CENTROIDS      = 41,   // display all centered symb of one area (on/off) (default off)
+                                        // 2 - debug, suppress display of centroid
 
     S52_MAR_DISP_WORLD          = 42,   // display World - TM_WORLD_BORDERS_SIMPL-0.2.shp - (on/off) (default off)
 
@@ -536,6 +537,9 @@ DLL int    STD S52_doneCell        (const char *encPath);
  *
  * Use this call in conjuction with S52_setView() and S52_draw() to setup a magnifying glass
  * or an overview
+ *
+ * Note: width & height are in fact GLsizei, a pseudo unsigned int
+ * it is a 'int32' that can't be negative
  *
  *
  * Return: TRUE on success, else FALSE
@@ -1078,17 +1082,6 @@ DLL S52ObjectHandle STD S52_setVRMEBL(S52ObjectHandle objH, double pixels_x, dou
  * Return: TRUE on success, else FALSE
  */
 DLL int    STD S52_newCSYMB(void);
-
-
-// FIXME: use GDBus instead
-// Note: DBus has to handle system-wide msg that slow the bus
-#ifdef  S52_USE_DBUS
-//* commented to hide it from 'make doc' g-ir-scanner
-#define S52_DBUS_OBJ_NAME  "nav.ecs.dbus"
-#define S52_DBUS_OBJ_PATH  "/nav/ecs/dbus"
-#define S52_DBUS_OBJ_IFACE "nav.ecs.dbus"
-//*/
-#endif
 
 
 #ifdef __cplusplus
