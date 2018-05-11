@@ -67,6 +67,7 @@ DBG2   = -O0 -g2 -Wall -Wpedantic -Wextra
 DBG3   = -O0 -g3 -Wall -Wpedantic -Wextra -ggdb3 -fstack-protector-all -Wstrict-aliasing -Wstrict-overflow -Wno-uninitialized
 DBGOFF = -DG_DISABLE_ASSERT
 DBG    = $(DBG3)
+#DBG    = $(DBG0)
 
 
 # GCC 4.9: -fstack-protector-strong
@@ -101,18 +102,19 @@ DBG    = $(DBG3)
 
 # GCC
 # gcov: -fprofile-arcs -ftest-coverage
-#CC   = gcc -std=c99 -fPIC -pipe -D_POSIX_C_SOURCE=199309L # to get siginfo_t
+CC   = gcc -std=c99 -fPIC -pipe -D_POSIX_C_SOURCE=199309L # to get siginfo_t
 #CC  += -fsanitize=address -fno-omit-frame-pointer
 #CC   = gcc -std=c99 -fstack-check -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2
 #CC   = gcc -std=gnu99 -fPIC -DMALLOC_CHECK_=3 -D_FORTIFY_SOURCE=2 # need gnu99 to get M_PI and sigtrap()
 #CC   = g++ -fPIC -O0 -g -Wall  # test - compile C code as C++
-#CXX  = g++ -fPIC
+CXX  = g++ -fPIC
+#CXX  = g++ -fPIC -fpermissive  # warn goto jump from inner block
 
 # CLANG -fsanitize=cfi
-CC    = clang -std=c99 -pipe -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
+#CC    = clang -std=c99 -pipe -fPIC -O0 -g -Wall -Wextra -pedantic -D_POSIX_C_SOURCE=199309L
 #CC   += --analyze
 #CC   += -fsanitize=address
-CXX   = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
+#CXX   = clang++ -fPIC -O0 -g -Wall -Wextra -pedantic
 #CC    = $(CXX)
 
 # FIXME: check this
@@ -192,7 +194,8 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # S52/S57:
 # -DS52_USE_OGR_FILECOLLECTOR
 #                        - compile with g++ to use gdal/ogr s57filecollector()
-#                        - add 'extern "C"' to ogr/ogrsf_frmts/s57.h:40 S57FileCollector()  -or- compile S52 with g++
+#                        - add 'extern "C"' to ogr/ogrsf_frmts/s57.h:40 S57FileCollector()
+#                        - gcc >= 4: extern "C" __attribute__ ((visibility ("default"))) (global symbol)
 #                        - for Windows file path in CATALOG to work on unix apply patch in doc/s57filecollector.cpp.diff
 # -DS52_USE_SUPP_LINE_OVERLAP
 #                        - supress display of overlapping line (need OGR patch in doc/ogrfeature.cpp.diff)
@@ -214,7 +217,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 #
 # Network:
 # -DS52_USE_DBUS         - mimic S52.h
-# -DS52_USE_SOCK         - same as DBus - socket & WebSocket - need ./lib/parson
+# -DS52_USE_SOCK=2950    - set port number (same as DBus - socket & WebSocket - need ./lib/parson)
 # -DS52_USE_PIPE         - same as DBus, in a day
 #
 # OpenGL:
@@ -242,7 +245,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_PROJ         - Mercator Projection, used by all but s52gv and s52gv2
 
 # LCMS
-# -DS52_USE_LCMS2        - use lcms2 instead of lcms1 - Note: mod pkg-config to lcms2
+# -DS52_USE_LCMS2        - debug - use lcms2 instead of lcms1 - Note: mod pkg-config to lcms2
 
 
 # default CFLAGS for default target (s52gtk2)
@@ -252,7 +255,7 @@ CFLAGS = `pkg-config  --cflags glib-2.0 lcms gl ftgl`  \
          -DS52_USE_FTGL                                \
          -DS52_USE_GL1                                 \
          -DS52_USE_OPENGL_VBO                          \
-         -DS52_USE_SOCK                                \
+         -DS52_USE_SOCK=2950                           \
          -DS52_USE_PROJ                                \
          -DS52_DEBUG $(DBG)
 
@@ -299,9 +302,10 @@ s52clutter s52clutter.js : CFLAGS =                         \
 #                  -DS52_USE_GLSC2
 #                  -DS52_USE_LCMS2
 #                  -DS52_USE_CA_ENC
+#                  -DS52_USE_OGR_FILECOLLECTOR
+                  #`gdal-config --cflags`
 s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
-                  `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2` \
-                  `gdal-config --cflags`         \
+                  `pkg-config  --cflags glib-2.0 gio-2.0 lcms glesv2 freetype2 gdal` \
                   -I./lib/freetype-gl            \
                   -I./lib/libtess                \
                   -I./lib/parson                 \
@@ -311,13 +315,14 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_OPENGL_VBO           \
                   -DS52_USE_GLES2                \
                   -DS52_USE_FREETYPE_GL          \
-                  -DS52_USE_SOCK                 \
+                  -DS52_USE_SOCK=2950            \
                   -DS52_USE_TXT_SHADOW           \
                   -DS52_USE_AFGLOW               \
                   -DS52_USE_RASTER               \
                   -DS52_USE_SUPP_LINE_OVERLAP    \
                   -DS52_USE_C_AGGR_C_ASSO        \
                   -DS52_USE_CA_ENC               \
+                  -DS52_USE_OGR_FILECOLLECTOR    \
                   -DS52_DEBUG $(DBG)
 
 # CFLAGS="-mthumb" CXXFLAGS="-mthumb" LIBS="-lstdc++" ./configure --host=arm-eabi \
@@ -330,17 +335,18 @@ s52eglarm : ARMLIBS          = $(ARMTOOLCHAINROOT)/sysroot/usr/lib
 # Android 4.4.2: -O2 -O1 crash activity android:name = ".s52ui"
 # TEGRA: tadp: -fno-omit-frame-pointer -mno-thumb
 s52eglarm : CC     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16 -std=c99
-s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
+#s52eglarm : CXX    = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-g++ -fPIC -mthumb -march=armv7-a -mfloat-abi=softfp -mfpu=vfpv3-d16
 s52eglarm : AR     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ar
 s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 
 #                     -DS52_DEBUG $(DBG)
 #                     -DG_DISABLE_ASSERT
 #                     -DS52_USE_TEGRA2
+#                     -DS52_USE_LOGFILE
 s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/sysroot/include
 s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
 
-              DEFS = -DS52_USE_PROJ                        \
+s52eglarm :   DEFS = -DS52_USE_PROJ                        \
                      -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
                      -DS52_USE_OPENGL_VBO                  \
@@ -349,16 +355,16 @@ s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
                      -DS52_USE_ADRENO                      \
                      -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
-                     -DS52_USE_SOCK                        \
+                     -DS52_USE_SOCK=2950                   \
                      -DS52_USE_TXT_SHADOW                  \
                      -DS52_USE_AFGLOW                      \
-                     -DS52_USE_LOGFILE                     \
                      -DS52_DEBUG
 
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
                      -I$(S52DROIDINC)/glib-2.0             \
                      -I$(S52DROIDINC)/glib-2.0/include     \
+                     `pkg-config  --cflags freetype2`      \
                      -I./lib/freetype-gl                   \
                      -I./lib/libtess                       \
                      -I./lib/parson                        \
@@ -451,8 +457,9 @@ s52clutter, s52clutter.js : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl` \
 s52glx : LIBS = `pkg-config  --libs glib-2.0 lcms glu gl ftgl` \
                 `gdal-config --libs` -lproj
 
-s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms glesv2 freetype2` \
-                                      `gdal-config --libs` -lproj
+#s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms glesv2 freetype2` \
+#                                      `gdal-config --libs` -lproj
+s52eglx s52gtk2egl s52gtk3egl: LIBS = `pkg-config  --libs glib-2.0 gio-2.0 lcms glesv2 freetype2 gdal` -lproj
 
 
 # check this; gv use glib-1 S52 use glib-2
@@ -508,6 +515,7 @@ S52GL.o: S52GL.c S52GL.h _GL1.i _GL2.i _GLU.i S52.h Makefile
 
 S52.o: S52.c _S52.i *.h Makefile
 	$(CC) $(CFLAGS) -c $< -o $@
+#	$(CXX) $(CFLAGS) -c $< -o $@
 
 ./lib/libtess/%.o: ./lib/libtess/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
@@ -531,7 +539,7 @@ libS52gl2.so:  $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
 
 # -Wl,-Map=output.map
 libS52egl.so: $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) tags
-	$(CC) -shared $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
+	$(CC)  -shared $(LIBS) $(OBJS_S52) $(OBJS_TESS) $(OBJS_FREETYPE_GL) $(OBJ_PARSON) $(LIBS) -o $@
 	-ln -sf libS52egl.so libS52.so  # -s soft link
 
 libS52gv.so: $(OBJS_S52) $(OBJS_GV)
@@ -699,6 +707,7 @@ doc: S52-$(LIBS52VERS).typelib
 
 # monitor network traffic
 # sudo iftop -i wlan0 (or wlp6s0)
+# sudo lsof -i :portno
 
 # wake up GPSD
 # telnet 127.0.0.1 2947
