@@ -30,6 +30,7 @@
 
 #include <glib.h>
 #include <math.h>           // INFINITY
+#include <strings.h>        // bzero()
 
 
 #define S52_COL_NUM   63    // number of color (#64 is transparent)
@@ -1474,7 +1475,8 @@ static int        _readColor(_PL *fp, GArray *colors)
     _readS52Line(fp, _pBuf);
     while ( 0 != strncmp(_pBuf, "****", 4)) {
         S52_Color c;
-        memset(&c, 0, sizeof(S52_Color));
+        //memset(&c, 0, sizeof(S52_Color));
+        bzero(&c, sizeof(S52_Color));
 
         //_chopAtEOL(_pBuf, ' ');
         _chopAtUS(_pBuf, ' ');
@@ -3491,20 +3493,24 @@ int         S52_PL_getLSdata(_S52_obj *obj, char *pen_w, char *style, S52_Color 
 }
 
 int         S52_PL_setSYorient(_S52_obj *obj, double orient)
+// caller is user or PLib
 {
     return_if_null(obj);
 
-    // check invariant [0..360[
+    /* check invariant [0..360[
     if (360.0 <= orient) {
+        PRINTF("DEBUG: check orient invariant safeguard actualy work: before > 360 (%f)\n", orient);
         orient = fmod(orient, 360.0);
-        PRINTF("DEBUG: check orient invariant safeguard actualy work\n");
+        PRINTF("DEBUG: check orient invariant safeguard actualy work: after  > 360 (%f)\n", orient);
 
+        // FIXME: add target info
         g_assert(0);
     }
 
     if (orient < 0.0) {
+        PRINTF("DEBUG: check orient invariant safeguard actualy work: defore < 0 (%f)\n", orient);
         orient = fmod(orient, 360.0);
-        PRINTF("DEBUG: check orient invariant safeguard actualy work\n");
+        PRINTF("DEBUG: check orient invariant safeguard actualy work: after  < 0 (%f)\n", orient);
 
         g_assert(0);
     }
@@ -3514,6 +3520,24 @@ int         S52_PL_setSYorient(_S52_obj *obj, double orient)
         return TRUE;
     } else
         return FALSE;
+    */
+
+    // check invariant [0..360[
+    if ( !((0.0<=orient) && (orient<360.0)) ) {
+        // FIXME: add target info
+        PRINTF("DEBUG: check orient invariant safeguard actualy work: before (%f)\n", orient);
+        orient = fmod(orient, 360.0);
+        PRINTF("DEBUG: check orient invariant safeguard actualy work: after  (%f)\n", orient);
+
+        if (orient < 0.0)
+            orient += 360;
+
+        g_assert(0);
+    }
+
+    obj->auxInfo.orient = orient;
+
+    return TRUE;
 }
 
 double      S52_PL_getSYorient(_S52_obj *obj)
