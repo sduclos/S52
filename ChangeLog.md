@@ -4,10 +4,27 @@
 #
 
 
-2018APR10
+2018JUN07
+- mod rename flag _MINGW to S52_USE_MINGW
+- mod move specific MinGW include symbol to client
+
+2018JUN05
+- fix doc hex value of XOR'ed param
+
+2018MAY28
+- fix S52_setMarinerParam() skip diff test if param is XOR'ed
+
+2018MAY24
+- mod texture param CLAMP_TO_EDGE for framebuffer
+- mod skip save shader binary for android
+
+2018MAY14
+- add glFinish() to S52_GL_end() to normalize GPU timing
+
+2018MAY10
 - add check in S52_setViewPort() for w/h not negative
 
-2018APR07
+2018MAY07
 - add doc port number to use with socket (-DS52_USE_SOCK=2950)
 - fix s52eglarm (ARM) code path
 - mod refactor _SEABED01 misleading indentation
