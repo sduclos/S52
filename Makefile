@@ -713,14 +713,17 @@ doc: S52-$(LIBS52VERS).typelib
 #   git init (one time)
 #   git add <file>  (ex README)
 #   git commit -m "new"
-#   git remote add downstream https://git.com/sduclos/S52.git (one time !)
-#   git push -u downstream master (sync local .git with mirror git)
+#   git remote add origin https://git.com/sduclos/S52.git
 
-# add mirror URL
-#   git remote set-url --add --push downstream  https://github.com/sduclos/S52.git
-#   git remote set-url --add --push downstream  https://framagit.org/sduclos/S52.git
+# sync local .git with mirror git
+#   git push downstream master
 
+# add mirror URL to push to
+#   git remote set-url --add --push origin  https://github.com/sduclos/S52.git
+#   git remote set-url --add --push origin  https://framagit.org/sduclos/S52.git
+
+# list mirror
 #   git remote -v
-#   downstream https://github.com/sduclos/S52.git (fetch)
-#   downstream https://github.com/sduclos/S52.git (push)
-#   downstream https://framagit.org/sduclos/S52.git (push)
+#   origin https://github.com/sduclos/S52.git (fetch)
+#   origin https://github.com/sduclos/S52.git (push)
+#   origin https://framagit.org/sduclos/S52.git (push)
