@@ -239,7 +239,7 @@ OPENEV2_HOME = `pwd -P`/../../../openev2/trunk/src/lib/gv
 # -DS52_USE_ADRENO       - must be in sync with Android.mk (Nexus 7 (2013))
 #
 # MinGW:
-# -D_MINGW
+# -DS52_USE_MINGW
 #
 # PROJ4
 # -DS52_USE_PROJ         - Mercator Projection, used by all but s52gv and s52gv2
@@ -285,12 +285,12 @@ s52gtk2gl2 : CFLAGS =                                  \
          -DS52_DEBUG $(DBG)
 
 # FIXME: clutter use cogl not ftgl
+#         -DS52_USE_OGR_FILECOLLECTOR
 s52clutter s52clutter.js : CFLAGS =                         \
          `pkg-config  --cflags glib-2.0 lcms glu gl ftgl`   \
          `gdal-config --cflags`                             \
          -I/home/sduclos/dev/gis/gdal/gdal/frmts/iso8211/   \
          -DS52_USE_PROJ                                     \
-         -DS52_USE_OGR_FILECOLLECTOR                        \
          -DS52_USE_BACKTRACE                                \
          -DS52_USE_GOBJECT                                  \
          -DS52_USE_GL1                                      \
@@ -321,8 +321,6 @@ s52eglx s52gtk2egl s52gtk3egl : CFLAGS =         \
                   -DS52_USE_RASTER               \
                   -DS52_USE_SUPP_LINE_OVERLAP    \
                   -DS52_USE_C_AGGR_C_ASSO        \
-                  -DS52_USE_CA_ENC               \
-                  -DS52_USE_OGR_FILECOLLECTOR    \
                   -DS52_DEBUG $(DBG)
 
 # CFLAGS="-mthumb" CXXFLAGS="-mthumb" LIBS="-lstdc++" ./configure --host=arm-eabi \
@@ -339,13 +337,14 @@ s52eglarm : CC     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-gcc -fPIC -mt
 s52eglarm : AR     = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ar
 s52eglarm : RANLIB = $(ARMTOOLCHAINROOT)/bin/arm-linux-androideabi-ranlib
 
+s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/sysroot/include
+s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
+
 #                     -DS52_DEBUG $(DBG)
 #                     -DG_DISABLE_ASSERT
 #                     -DS52_USE_TEGRA2
 #                     -DS52_USE_LOGFILE
-s52eglarm : S52DROIDINC = /home/sduclos/S52/test/android/dist/sysroot/include
-s52eglarm : S52DROIDLIB = /home/sduclos/S52/test/android/dist/sysroot/lib
-
+#                     -DS52_USE_OGR_FILECOLLECTOR
 s52eglarm :   DEFS = -DS52_USE_PROJ                        \
                      -DS52_USE_EGL                         \
                      -DS52_USE_GLES2                       \
@@ -353,13 +352,11 @@ s52eglarm :   DEFS = -DS52_USE_PROJ                        \
                      -DS52_USE_FREETYPE_GL                 \
                      -DS52_USE_ANDROID                     \
                      -DS52_USE_ADRENO                      \
-                     -DS52_USE_OGR_FILECOLLECTOR           \
                      -DS52_USE_SUPP_LINE_OVERLAP           \
                      -DS52_USE_SOCK=2950                   \
                      -DS52_USE_TXT_SHADOW                  \
                      -DS52_USE_AFGLOW                      \
                      -DS52_DEBUG
-
 
 s52eglarm : CFLAGS = -I$(S52DROIDINC)                      \
                      -I$(S52DROIDINC)/glib-2.0             \
@@ -383,11 +380,11 @@ s52gv2 : CFLAGS = `pkg-config  --cflags glib-2.0 lcms`  \
                   -DGV_USE_DOUBLE_PRECISION_COORD       \
                   -I$(OPENEV2_HOME)
 
+#                      -DS52_USE_OGR_FILECOLLECTOR
 s52gtk2gps:  CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl dbus-1 dbus-glib-1`   \
                       `gdal-config --cflags`            \
                       -DS52_USE_FTGL                    \
                       -DS52_USE_PROJ                    \
-                      -DS52_USE_OGR_FILECOLLECTOR       \
                       -DS52_USE_SUPP_LINE_OVERLAP       \
                       -DS52_USE_DBUS                    \
                       -DS52_USE_GOBJECT                 \
@@ -396,8 +393,8 @@ s52gtk2gps:  CFLAGS = `pkg-config  --cflags glib-2.0 lcms ftgl dbus-1 dbus-glib-
 
 s52win32 : GDALPATH = ../../../gdal/gdal-1.7.2-mingw/
 
-#                      -DS52_DEBUG $(DBG2)                    \
-
+#                      -DS52_DEBUG $(DBG2)
+#                      -DS52_USE_OGR_FILECOLLECTOR
 s52win32 : CFLAGS   = -mms-bitfields                         \
                       -I../../mingw/gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
                       -I../../mingw/gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/lib/glib-2.0/include \
@@ -409,12 +406,12 @@ s52win32 : CFLAGS   = -mms-bitfields                         \
                       -DS52_USE_FTGL                         \
                       -DS52_USE_GL1                          \
                       -DS52_USE_PROJ                         \
-                      -DS52_USE_OGR_FILECOLLECTOR            \
                       -DS52_USE_LOGFILE                      \
                       -DG_DISABLE_ASSERT                     \
-                      -D_MINGW
+                      -DS52_USE_MINGW
 
 s52eglw32 : GDALPATH = ../../../gdal/gdal-1.7.2-mingw
+#                      -DS52_USE_OGR_FILECOLLECTOR
 s52eglw32 : CFLAGS   = -mms-bitfields                         \
                       -I../../mingw/gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
                       -I../../mingw/gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/lib/glib-2.0/include \
@@ -433,10 +430,9 @@ s52eglw32 : CFLAGS   = -mms-bitfields                         \
                       -DS52_USE_GL2                  \
                       -DS52_USE_GLES2                \
                       -DS52_USE_FREETYPE_GL          \
-                      -DS52_USE_OGR_FILECOLLECTOR    \
                       -DS52_USE_LOGFILE              \
                       -DG_DISABLE_ASSERT             \
-                      -D_MINGW                       \
+                      -DS52_USE_MINGW                \
                       -DS52_DEBUG $(DBG2)
 
 
@@ -617,8 +613,8 @@ test/s52gtk2gl2:
 test/s52gtk2gps:
 	(cd test; make s52gtk2gps)
 
-test/s52clutter:
-	 (cd test; make s52clutter)
+#test/s52clutter:
+#	 (cd test; make s52clutter)
 
 test/s52clutter.js:
 	 (cd test; make s52clutter.js)
@@ -717,28 +713,14 @@ doc: S52-$(LIBS52VERS).typelib
 #   git init (one time)
 #   git add <file>  (ex README)
 #   git commit -m "new"
-#   git remote add origin https://github.com/sduclos/S52.git (one time !)
-#   git push -u origin master (sync local .git with github !)
+#   git remote add downstream https://git.com/sduclos/S52.git (one time !)
+#   git push -u downstream master (sync local .git with mirror git)
 
-# --- do once ---
-# 0 - init
-# Assigns the original repo to a 'remote' called "upstream"
-# $ git remote add upstream https://github.com/rikulo/rikulo
+# add mirror URL
+#   git remote set-url --add --push downstream  https://github.com/sduclos/S52.git
+#   git remote set-url --add --push downstream  https://framagit.org/sduclos/S52.git
 
-# --- normal flow ---
-# 1 - sync .git with official git
-# Fetches any new changes from the original repo
-# Pulls in changes not present in your local repository,
-# without modifying your files
-# SD this will sync LOCAL .git with official Rikulo
-# $ git fetch upstream
-
-# 2 - sync LOCAL files with .git
-# Merges any changes fetched into your working files
-#
-# $ git merge upstream/master
-
-
-# 3 - sync .git with sduclos git on GitHub
-# Pushes commits (.git) to your remote repo stored on GitHub
-# $ git push origin master
+#   git remote -v
+#   downstream https://github.com/sduclos/S52.git (fetch)
+#   downstream https://github.com/sduclos/S52.git (push)
+#   downstream https://framagit.org/sduclos/S52.git (push)
