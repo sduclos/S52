@@ -189,7 +189,6 @@ typedef struct _ais_t {
 
     // -------------------------
     GTimeVal        lastUpdate;
-    // optimisation: don't call update() when target lost after X sec, show iso date
     int             lost;     // TRUE if target lost
     S52ObjectHandle vesselH;
 
@@ -610,7 +609,7 @@ static int           _writeName(guint mmsi, const char *name)
 static int           _readName(guint mmsi, char *name)
 {
 
-/*
+
 int      S52_utils_getConfig(CCHAR *label, char *vbuf)
 // return TRUE and string value in vbuf for label, FALSE if fail
 {
@@ -659,8 +658,6 @@ int      S52_utils_getConfig(CCHAR *label, char *vbuf)
 
    return FALSE;
 }
-*/
-
     return TRUE;
 }
 #endif  // 0
@@ -802,6 +799,11 @@ static _ais_t       *_getAIS    (unsigned int mmsi)
         //_signal_newVESSEL(_dbus, newais.vesselH, newais.name);
         _signal_newVESSEL(_dbus, newais.vesselH, label);
 #endif
+
+        // debug - red, set status to "close quarters" immeditly
+        //int vestat = 3;
+        //int turn   = 0;
+        //S52_setVESSELstate(ais->vesselH, 0, vestat, turn);   // AIS active
 
         return ais;
     }
@@ -990,7 +992,7 @@ static int           _setAISSta (unsigned int mmsi, int status, int turn)
         } else {
             // AIS active / under way
             //int vestat       = 1;  // normal
-            int vestat       = 3;  // debug: red, close quarters
+            int vestat       = 3;  // debug - red, close quarters
 #ifdef S52_USE_SOCK
             _encodeNsend("S52_setVESSELstate", "%lu,%i,%i,%i", ais->vesselH, 0, vestat, turn);
 #else
@@ -1029,10 +1031,8 @@ static int           _setAISDel (_ais_t *ais)
     _encodeNsend("S52_delMarObj", "%lu", ais->vesselH);
 #else
     ais->vesselH = S52_delMarObj(ais->vesselH);
-    //if (NULL != ais->vesselH) {
     if (FALSE != ais->vesselH) {
         g_print("s52ais:_setAISDel(): WARNING: unkown vesselH [%s]\n", ais->name);
-        //ais->vesselH = NULL;
         ais->vesselH = FALSE;
     }
 #endif
@@ -1042,10 +1042,8 @@ static int           _setAISDel (_ais_t *ais)
     _encodeNsend("S52_delMarObj", "%lu", ais->afglowH);
 #else
     ais->afglowH = S52_delMarObj(ais->afglowH);
-    //if (NULL != ais->afglowH) {
     if (FALSE != ais->afglowH) {
         g_print("s52ais:_setAISDel(): WARNING: unkown afglowH [%s]\n", ais->name);
-        //ais->afglowH = NULL;
         ais->afglowH = FALSE;
     }
 #endif
@@ -1139,8 +1137,9 @@ int            s52ais_updtAISLabel(int keepTargetAlive)
 
                     S52_setVESSELlabel(ais->vesselH, str);
 
-                    int status = 1;  // will trigger vestat 2 - AIS sleeping
-                    _setAISSta(ais->mmsi, status, 129 /* vesselTurn undefined */);
+                    int status = 1;   // will trigger vestat 2 - AIS sleeping
+                    int turn   = 129; // vessel Turn undefined
+                    _setAISSta(ais->mmsi, status, turn);
                     ais->lost = TRUE;
                 }
             } else {
@@ -1163,8 +1162,9 @@ int            s52ais_updtAISLabel(int keepTargetAlive)
                 ais->lost = FALSE;  // target reacquired
             }
 
-            int status = 0;  // normal sym under way, will trigger red - conspic / debug
-            _setAISSta(ais->mmsi, status, 129 /* vesselTurn undefined */);
+            int status = 0;   // normal sym under way, will trigger red - conspic / debug
+            int turn   = 129; // vessel Turn undefined
+            _setAISSta(ais->mmsi, status, turn);
 #endif
         }
     }
@@ -1425,8 +1425,8 @@ unsigned int radio;		    // radio status bits
             _setAISVec(gpsdata->ais.mmsi, course, speed);
 
             int turn   = 0;  // not turning
-            // debug close quarter, red
             int status = 0;  // under way
+            //int status = 3;  // debug - close quarter, red
             _setAISSta(gpsdata->ais.mmsi, status, turn);
         }
 
