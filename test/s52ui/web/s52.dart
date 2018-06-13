@@ -8,10 +8,12 @@ part of s52ui;
 //
 
 class Cmd {
+  String    _str;
   int       _id;
   Completer _completer;
 
   Cmd(String str, int id, Completer completer) {
+    _str       = str;
     _id        = id;
     _completer = completer;
   }
@@ -74,24 +76,24 @@ class S52 {
   static const int MAR_DISP_WORLD             = 42;
 
   static const int MAR_DISP_CATEGORY          = 14;
-  static const int MAR_DISP_CATEGORY_BASE     =        0;  //      0; 0000000
-  static const int MAR_DISP_CATEGORY_STD      =        1;  // 1 << 0; 0000001
-  static const int MAR_DISP_CATEGORY_OTHER    =        2;  // 1 << 1; 0000010
-  static const int MAR_DISP_CATEGORY_SELECT   =        4;  // 1 << 2; 0000100
+  static const int MAR_DISP_CATEGORY_BASE     =        0;  //      0; 000000
+  static const int MAR_DISP_CATEGORY_STD      =        1;  // 1 << 0; 000001
+  static const int MAR_DISP_CATEGORY_OTHER    =        2;  // 1 << 1; 000002
+  static const int MAR_DISP_CATEGORY_SELECT   =        4;  // 1 << 2; 000004
 
   static const int MAR_DISP_LAYER_LAST        = 27;
-  static const int MAR_DISP_LAYER_LAST_NONE   =        8;  // 1 << 3; 0001000
-  static const int MAR_DISP_LAYER_LAST_STD    =       16;  // 1 << 4; 0010000
-  static const int MAR_DISP_LAYER_LAST_OTHER  =       32;  // 1 << 5; 0100000
-  static const int MAR_DISP_LAYER_LAST_SELECT =       64;  // 1 << 6; 1000000
+  static const int MAR_DISP_LAYER_LAST_NONE   =        8;  // 1 << 3; 000008
+  static const int MAR_DISP_LAYER_LAST_STD    =       16;  // 1 << 4; 000010
+  static const int MAR_DISP_LAYER_LAST_OTHER  =       32;  // 1 << 5; 000020
+  static const int MAR_DISP_LAYER_LAST_SELECT =       64;  // 1 << 6; 000040
 
   static const int CMD_WRD_FILTER             = 33;
   static const int CMD_WRD_FILTER_SY          =        1;  // 1 << 0; 000001 - SY
-  static const int CMD_WRD_FILTER_LS          =        2;  // 1 << 1; 000010 - LS
-  static const int CMD_WRD_FILTER_LC          =        4;  // 1 << 2; 000100 - LC
-  static const int CMD_WRD_FILTER_AC          =        8;  // 1 << 3; 001000 - AC
-  static const int CMD_WRD_FILTER_AP          =       16;  // 1 << 4; 010000 - AP
-  static const int CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
+  static const int CMD_WRD_FILTER_LS          =        2;  // 1 << 1; 000002 - LS
+  static const int CMD_WRD_FILTER_LC          =        4;  // 1 << 2; 000004 - LC
+  static const int CMD_WRD_FILTER_AC          =        8;  // 1 << 3; 000008 - AC
+  static const int CMD_WRD_FILTER_AP          =       16;  // 1 << 4; 000010 - AP
+  static const int CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 000020 - TE & TX
 
   S52() {}  // init
 
@@ -160,14 +162,17 @@ class S52 {
       Cmd cmd = _queue.firstWhere((c) => c._id == data["id"], orElse: () => null);
 
       if (cmd == null) {
-        throw "rcvMsg(): ID mismatch";
+        throw "_rcvMsg(): ID mismatch";
       }
+
+      // debug
+      print('_sndMsg:${cmd._str} --> _rcvMsg:${evt.data} ');
 
       _skipTimer = false;
 
       return cmd._completer.complete(data['result']);
     } else {
-      throw ("rcvMsg(): queue empty!");
+      throw ("_rcvMsg(): queue empty!");
     }
   }
   Future<List> _sndMsg(String str) {
@@ -175,6 +180,10 @@ class S52 {
       throw 'WebSocket not connected, message not sent:$str';
     }
     _skipTimer = true;
+
+    // debug
+    //print('_sndMsg:${str}');
+
 
     //_stopwatch.reset();
     //_stopwatch.start();
