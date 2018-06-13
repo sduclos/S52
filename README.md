@@ -34,7 +34,7 @@ be used as a paper chart replacement.
 SCREENSHOT:
 ===========
 
-![GB4X0000.000](https://github.com/sduclos/S52/blob/master/test/ref_dump/GB4X0000.png)
+See S-64 test ENC GB4X0000 at S52/test/ref_dump/GB4X0000.png
 
 
 SPECIFICATION:
@@ -49,7 +49,11 @@ organization   specs          specs URL / Implementation URL
 IHO            S-52           IHO S-52 USERS' MANUAL, Ed. 3.2
                               www.iho.shom.fr/general/ecdis/pslb03_2.pdf
                               Implementor: Sylvain Duclos
+                              mirror:
                               cvs.sourceforge.net:/cvsxroot/openev/contrib/S52
+                              https://github.com/sduclos/S52.git
+                              https://framagit.org/sduclos/S52.git
+
 
 IHO            S-57           IHO S-57 Appendix B.1
                               www.iho.shom.fr/general/ecdis/20USOC.pdf
