@@ -65,9 +65,14 @@ static PFNGLINSERTEVENTMARKEREXT _glInsertEventMarkerEXT = NULL;
 #define EGL_KHR_create_context_no_error 1
 #define EGL_CONTEXT_OPENGL_NO_ERROR_KHR   0x31B3
 
+#define EGL_DUMP_SRF(attribute)                                                     \
+    eglQuerySurface(eglState->eglDisplay, eglState->eglSurface, attribute, &value); \
+    LOGI("_egl_dump(): %-26s = %i\n", #attribute, value);                              \
+    value = EGL_UNKNOWN;  // reset -1
+
 static int _EGL_EXT_create_context_robustness = FALSE;
 
-static int      _egl_beg        (EGLState *eglState, const char *tag)
+static int      _egl_beg (EGLState *eglState, const char *tag)
 {
     (void)eglState;
     (void)tag;
@@ -151,7 +156,7 @@ static int      _egl_beg        (EGLState *eglState, const char *tag)
     return TRUE;
 }
 
-static int      _egl_end        (EGLState *eglState, const char *tag)
+static int      _egl_end (EGLState *eglState, const char *tag)
 {
     (void)eglState;
     (void)tag;
@@ -174,10 +179,10 @@ static int      _egl_end        (EGLState *eglState, const char *tag)
     //    LOGE("_egl_end(): end of drawStr() [0x%x]\n", eglGetError());
     //}
 
-    if (EGL_FALSE == eglWaitGL()) {
-        LOGE("_egl_end(): eglWaitGL() failed - NO SWAP [0x%x]\n", eglGetError());
-        return FALSE;
-    }
+    //if (EGL_FALSE == eglWaitGL()) {
+    //    LOGE("_egl_end(): eglWaitGL() failed - NO SWAP [0x%x]\n", eglGetError());
+    //    return FALSE;
+    //}
 
     //g_timer_reset(_timer);
 
@@ -187,12 +192,48 @@ static int      _egl_end        (EGLState *eglState, const char *tag)
     }
 
     //double sec = g_timer_elapsed(_timer, NULL);
-    //LOGI("_egl_end():eglSwapBuffers(): %.0f msec --------------------------------------\n", sec * 1000);
+    //LOGI("_egl_end():eglSwapBuffers(): flushing pipe line took: %.0f msec --------------------------------------\n", sec * 1000);
 
     return TRUE;
 }
 
-static int      _egl_init       (EGLState *eglState)
+static int      _egl_dump(EGLState *eglState)
+{
+    EGLint value = EGL_UNKNOWN;  // -1
+
+    // Returns the ID of the EGL frame buffer configuration with respect to which the surface was created.
+    EGL_DUMP_SRF(EGL_CONFIG_ID);
+    // Returns the height of the surface in pixels.
+    EGL_DUMP_SRF(EGL_HEIGHT);
+    //Returns the horizontal dot pitch of the display on which a window surface is visible. The value returned is equal to the actual dot pitch, in pixels/meter, multiplied by the constant value EGL_DISPLAY_SCALING.
+    EGL_DUMP_SRF(EGL_HORIZONTAL_RESOLUTION);
+    // Returns the same attribute value specified when the surface was created with eglCreatePbufferSurface. For a window or pixmap surface, value is not modified.
+    EGL_DUMP_SRF(EGL_LARGEST_PBUFFER);
+    // Returns which level of the mipmap to render to, if texture has mipmaps.
+    EGL_DUMP_SRF(EGL_MIPMAP_LEVEL);
+    // Returns EGL_TRUE if texture has mipmaps, EGL_FALSE otherwise.
+    EGL_DUMP_SRF(EGL_MIPMAP_TEXTURE);
+    // Returns the filter used when resolving the multisample buffer. The filter may be either EGL_MULTISAMPLE_RESOLVE_DEFAULT or EGL_MULTISAMPLE_RESOLVE_BOX, as described for eglSurfaceAttrib.
+    EGL_DUMP_SRF(EGL_MULTISAMPLE_RESOLVE);
+    // Returns the aspect ratio of an individual pixel (the ratio of a pixel's width to its height). The value returned is equal to the actual aspect ratio multiplied by the constant value EGL_DISPLAY_SCALING.
+    EGL_DUMP_SRF(EGL_PIXEL_ASPECT_RATIO);
+    // Returns the buffer which client API rendering is requested to use. For a window surface, this is the same attribute value specified when the surface was created. For a pbuffer surface, it is always EGL_BACK_BUFFER. For a pixmap surface, it is always EGL_SINGLE_BUFFER. To determine the actual buffer being rendered to by a context, call eglQueryContext.
+    EGL_DUMP_SRF(EGL_RENDER_BUFFER);
+    // Returns the effect on the color buffer when posting a surface with eglSwapBuffers. Swap behavior may be either EGL_BUFFER_PRESERVED or EGL_BUFFER_DESTROYED, as described for eglSurfaceAttrib.
+    EGL_DUMP_SRF(EGL_SWAP_BEHAVIOR);
+    //Returns format of texture. Possible values are EGL_NO_TEXTURE, EGL_TEXTURE_RGB, and EGL_TEXTURE_RGBA.
+    EGL_DUMP_SRF(EGL_TEXTURE_FORMAT);
+    // Returns type of texture. Possible values are EGL_NO_TEXTURE, or EGL_TEXTURE_2D.
+    EGL_DUMP_SRF(EGL_TEXTURE_TARGET);
+    //Returns the vertical dot pitch of the display on which a window surface is visible. The value returned is equal to the actual dot pitch, in pixels/meter, multiplied by the constant value EGL_DISPLAY_SCALING.
+    EGL_DUMP_SRF(EGL_VERTICAL_RESOLUTION);
+    // Returns the width of the surface in pixels.
+    EGL_DUMP_SRF(EGL_WIDTH);
+
+    return TRUE;
+}
+
+static int      _egl_init(EGLState *eglState)
 {
     LOGI("_egl_init(): beg ..\n");
 
@@ -646,10 +687,12 @@ static int      _egl_init       (EGLState *eglState)
 
     LOGI("_egl_init(): end ..\n");
 
+    _egl_dump(eglState);
+
     return EGL_TRUE;
 }
 
-static void     _egl_done       (EGLState *eglState)
+static void     _egl_done(EGLState *eglState)
 // Tear down the EGL context currently associated with the display.
 {
     if (eglState->eglDisplay != EGL_NO_DISPLAY) {
