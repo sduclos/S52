@@ -314,10 +314,18 @@ static int       _f2d(GArray *tessWorkBuf_d, guint npt, vertex_t *ppt)
 
 static int       _d2f(GArray *tessWorkBuf_f, unsigned int npt, double *ppt)
 // convert array of double to array of float, geo to VBO
+// used by LS() command word - LC() line overlap info lost (S57_OVERLAP_GEO_Z)
 {
     g_array_set_size(tessWorkBuf_f, 0);
 
     for (guint i=0; i<npt; ++i) {
+
+        // debug
+        //if (0.0 != ppt[2]) {
+        //    PRINTF("DEBUG: S57_OVERLAP_GEO_Z found (%f)\n", ppt[2]);
+        //    g_assert(0);
+        //}
+
         float f[3] = {ppt[0], ppt[1], 0.0};  // flush S57_OVERLAP_GEO_Z
         g_array_append_val(tessWorkBuf_f, f);
         ppt += 3;
@@ -1366,12 +1374,7 @@ static GLuint    _compShaderSrc(GLuint programObject)
     glLinkProgram(programObject);
     GLint linked = GL_FALSE;
     glGetProgramiv(programObject, GL_LINK_STATUS, &linked);
-    if (GL_TRUE == linked){
-        // Note: migth need a draw() call before saving
-        // to instanciate the prog (see S52_GL_end())
-        _saveShaderBin(programObject);
-        ;
-    } else {
+    if (GL_FALSE == linked){
         GLsizei length;
         GLchar  infoLog[2048];
 
@@ -1381,6 +1384,12 @@ static GLuint    _compShaderSrc(GLuint programObject)
         g_assert(0);
         return 0;
     }
+
+#if !defined(S52_USE_ANDROID)
+    // Note: migth need a draw() call before saving
+    // to instanciate the prog (see S52_GL_end())
+    _saveShaderBin(programObject);
+#endif
 
     glUseProgram(programObject);
 
@@ -1516,17 +1525,13 @@ static GLuint    _initAPtexStore(GLsizei w, GLsizei h, GLvoid *data)
     // Note: GL_RGBA is needed for:
     // - Vendor: Tungsten Graphics, Inc. - Renderer: Mesa DRI Intel(R) 965GM x86/MMX/SSE2
     // - Vendor: Qualcomm                - Renderer: Adreno (TM) 320
-    //if (NULL == data)
-    //    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_FLOAT, data);
-    //else
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
     // modern way
     //_glTexStorage2DEXT (GL_TEXTURE_2D, 0, GL_RGBA8_OES, w, h);
     //_checkError("_renderTexure() -000-");
     //glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, 0);
 #endif
-
-    //_checkError("_initAPtexStore() -00-");
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_REPEAT);
@@ -1564,6 +1569,11 @@ static int       _initAPTexture(void)
 
     // setup mem buffer to save FB to
     _fb_pixels_id      = _initAPtexStore(_vp.w, _vp.h, NULL);
+    // FB bitblit need clamp
+    glBindTexture(GL_TEXTURE_2D, _fb_pixels_id);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glBindTexture  (GL_TEXTURE_2D, 0);
 
     // debug
     //_fb_pixels_id      = _initAPtexStore(0, 0, NULL);
@@ -1873,7 +1883,7 @@ static int       _renderTexure(S52_obj *obj, double tileWpx, double tileHpx, dou
     // save texture mask ID when everythings check ok
     S52_PL_setAPtexID(obj, mask_texID);
 
-    //_clearColor();
+    _clearColor();
 
     // render to texture -----------------------------------------
 
@@ -2037,20 +2047,18 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
     }
     //*/
 
-    //* debug - skip big geo not solid that break DRI3 in gdb
+    //* debug - skip big line not solid that break DRI3 in gdb
     if (('L'!=style) && (5056<=npt*16)) {
         npt = 316;
         return TRUE;
     }
     //*/
 
-    // convert to float
-    _d2f(_tessWorkBuf_f, npt, ppt);
-    vertex_t *v = (vertex_t *)_tessWorkBuf_f->data;
-
     _glUniformMatrix4fv_uModelview();
 
     /* debug - force immediat rendering of all line in solid line style
+    _d2f(_tessWorkBuf_f, npt, ppt);
+    vertex_t *v = (vertex_t *)_tessWorkBuf_f->data;
     _DrawArrays_LINE_STRIP(npt, v);
     return TRUE;
     //*/
@@ -2118,6 +2126,10 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
                 DListData->colors[0].fragAtt.trans = '0';  // 0% - no transparency
             }
 
+            // convert to float
+            _d2f(_tessWorkBuf_f, npt, ppt);
+            vertex_t *v = (vertex_t *)_tessWorkBuf_f->data;
+
             // fill prim
             if ('L' == style) {
                 S57_begPrim(DListData->prim[0], GL_LINE_STRIP);
@@ -2128,6 +2140,7 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
             //*
             } else {
                 // FIXME: plit VBO in 256 vertexs for i965 DRI3!
+                // FIXME: place Z in uniform
                 S57_begPrim(DListData->prim[0], GL_LINES);
                 for (guint i=0; i<npt-1; ++i, v+=3) {
                     // put dist in Z v[2]=v[5] = dist (ie sqrt(dx*dx + dy*dy)])
@@ -2154,10 +2167,13 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
             //_VBOCreate2_glCallList(DListData);
         }
 
+        // debug - DRI3 i965 bug
+        //glFlush();
+
         _glCallList(DListData, S57_getHighlight(S52_PL_getGeo(obj)));
 
     } else {
-        // draw graticule
+        // draw graticule - immediate
 
         // flush FB
         //_clearColor();
@@ -2170,6 +2186,10 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
         //     5.1 - compute tex_n - (dist  / _scalex) / 32 <-- flat throughout one line
         //     5.2 - in frag shader:
         //           5.3 - apply tex_n to UV.x *= tex_n
+
+        // convert to float
+        _d2f(_tessWorkBuf_f, npt, ppt);
+        vertex_t *v = (vertex_t *)_tessWorkBuf_f->data;
 
         float dx = v[0] - v[3];
         float dy = v[1] - v[4];
@@ -2195,6 +2215,7 @@ static int       _renderLS_gl2(S52_obj *obj, char style, guint npt, double *ppt)
 
 /*
 static int       _renderLS_gl2(char style, guint npt, double *ppt)
+// immediate line stippling
 {
     _d2f(_tessWorkBuf_f, npt, ppt);
 
