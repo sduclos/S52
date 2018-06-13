@@ -2,15 +2,16 @@
 #
 # SD 2011NOV21
 
-# Note: root make: ~/S52/Makefile s52eglarm
-# set PATH to dev setup
-# export PATH=/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games:
-# to Android BriDge (adb)
+# Note: root make target: ~/S52/Makefile s52eglarm
+# set PATH to dev setup: android-4.0-sdk-linux / android-ndk-r9d)
+# export PATH=$PATH:/home/sduclos/mnt/prog/Android/android-sdk/tools:/home/sduclos/mnt/prog/Android/android-ndk
+# and to Android BriDge (adb)
 #~/dev/prog/Android/android-4.0-sdk-linux/platform-tools$ sudo ./adb start-server
 
 # Note: to start s52ui/s52droid in android by hand
 # adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/.s52ui
 # adb shell am start -a android.intent.action.MAIN -n nav.ecs.s52droid/android.app.NativeActivity
+# bump log: ./adb logcat *:S s52droid
 
 # 07da448e               device usb:2-2 product:razor model:Nexus_7 device:flo
 #/etc/udev/rules.d/51-android.rules
@@ -156,3 +157,7 @@ distclean: clean
 # mksh
 # export COLUMNS=140
 # export LINES=60
+
+# to drive s52droid from PC via s52ui/html
+#./adb forward tcp:2950 tcp:2950
+#firefox file:///home/sduclos/S52/test/s52ui/build/web/s52ui.html?ws://localhost:2950
