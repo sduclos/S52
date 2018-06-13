@@ -115,11 +115,18 @@ static projUV _gmin = { INFINITY,  INFINITY};
 static projUV _gmax = {-INFINITY, -INFINITY};
 
 // current ViewPort
+// FIXME: x/y -> int,
+//        w/h -> uint32 - GLsizei 32bits, A non-negative binary integer, for sizes.
+// C99 <inttypes.h> <stdint.h> uint23_t min:0 max:UINT32_MAX
+// but if uint then width1-width2 is positive when width1<width2
+// https://www.khronos.org/registry/OpenGL-Refpages/es2.0/
+// GLES2: Viewport width and height are silently clamped to a range that depends on the implementation.
+//        To query this range, call glGet with argument GL_MAX_VIEWPORT_DIMS.
 typedef struct vp_t {
     guint x;
     guint y;
-    guint w;
-    guint h;
+    guint w;  // GLsizei (is functionally equivalent to GLuint)
+    guint h;  // GLsizei (is functionally equivalent to GLuint)
 } vp_t;
 static vp_t _vp;
 
@@ -1445,6 +1452,9 @@ static int       _VBOCreate(S57_prim *prim)
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+    // debug - DRI3 i965 bug
+    //glFlush();
+
     _checkError("_VBOCreate()");
 
     return vboID;
@@ -1820,6 +1830,10 @@ static int       _glCallList(S52_DListData *DListData, gboolean highlight)
                             glUniform4f(_uColor, col->R/255.0, col->G/255.0, col->B/255.0, (4 - (col->trans - '0')) * TRNSP_FAC_GLES2);
                         }
                         //*/
+
+                        // debug - DRI3 i965 bug
+                        //glFlush();
+
 
                         // normal draw
                         glDrawArrays(mode, first, count);
@@ -4160,14 +4174,6 @@ static int       _renderAC(S52_obj *obj)
     //glUniform1i(_uPalOn, c->fragAtt.cidx);
 
     _glUniformMatrix4fv_uModelview();
-
-    //DEPARE:504 Nexus 7 (2013)
-    //DEPARE:493
-    if (493 == S57_getS57ID(geo)) {
-        PRINTF("DEBUG: DEPARE found (%i)\n", S57_getS57ID(geo));
-        // FIXME: dumpCol()
-        //S52_utils_gdbBreakPoint();
-    }
 
     _fillArea(geo);
 
@@ -6724,6 +6730,12 @@ int        S52_GL_end(S52_GL_cycle cycle)
 #endif
 #endif  // GL2
 
+#ifdef S52_DEBUG
+    // debug - flush the GPU pipeline, normalize timing
+    //(change in timing inconclusive from test/s52eglx)
+    //glFinish();  // blocking call
+#endif  // S52_DEBUG
+
     _checkError("S52_GL_end() -fini-");
 
     _crnt_GL_cycle = S52_GL_NONE;
@@ -7028,6 +7040,10 @@ static int       _validateGLcontext(void)
 
 #ifdef S52_USE_GL2
         // FIXME: use macro SETGLEXTENSION(_GL_OES_texture_npot) ..
+
+        // FIXME: i965 DRI3 Intel driver bug on long line + texture/sppling,
+        ///force DRI2 LIBGL_DRI3_DISABLE=1 (GDB seem reable DRI3!)
+        //g_setenv("LIBGL_DRI3_DISABLE", "1", TRUE);
 
         // npot
         if (NULL != g_strrstr((const char *)extensions, "GL_OES_texture_npot")) {
