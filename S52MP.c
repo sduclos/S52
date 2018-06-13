@@ -165,8 +165,8 @@ static double _MARparamVal[] = {
                  // 14 - S52_MAR_DISP_CATEGORY
 //    S52_MAR_DISP_CATEGORY_BASE,     // 0,      0x000000  DISPLAY BASE
     S52_MAR_DISP_CATEGORY_STD,        // 1 << 0  0x000001  STANDARD (default)
-//    S52_MAR_DISP_CATEGORY_OTHER,    // 1 << 1  0x000010  OTHER
-//    S52_MAR_DISP_CATEGORY_SELECT,   // 1 << 2  0x000100  SELECT   (override)
+//    S52_MAR_DISP_CATEGORY_OTHER,    // 1 << 1  0x000002  OTHER
+//    S52_MAR_DISP_CATEGORY_SELECT,   // 1 << 2  0x000004  SELECT   (override)
 
       0,        // 15 - S52_MAR_COLOR_PALETTE --DAY_BRIGHT
 //    1,        // 15 - S52_MAR_COLOR_PALETTE --DAY_BLACKBACK
@@ -198,10 +198,10 @@ static double _MARparamVal[] = {
     0.0,      // 26 - display overlapping symbol (default to false, debug)
 
               // 27 - S52_MAR_DISP_LAYER_LAST to enable S52_drawLast()
-    //S52_MAR_DISP_LAYER_LAST_NONE,   // 1 << 3  0x0001000 - MARINERS' NONE
-    S52_MAR_DISP_LAYER_LAST_STD,      // 1 << 4  0x0010000 - MARINERS' STANDARD (default)
-    //S52_MAR_DISP_LAYER_LAST_OTHER,  // 1 << 5  0x0100000 - MARINERS' OTHER
-    //S52_MAR_DISP_LAYER_LAST_SELECT, // 1 << 6  0x1000000 - MARINERS' SELECT (override)
+    //S52_MAR_DISP_LAYER_LAST_NONE,   // 1 << 3  0x0000008 - MARINERS' NONE
+    S52_MAR_DISP_LAYER_LAST_STD,      // 1 << 4  0x0000010 - MARINERS' STANDARD (default)
+    //S52_MAR_DISP_LAYER_LAST_OTHER,  // 1 << 5  0x0000020 - MARINERS' OTHER
+    //S52_MAR_DISP_LAYER_LAST_SELECT, // 1 << 6  0x0000040 - MARINERS' SELECT (override)
 
     0.0,      // 28 - S52_MAR_ROT_BUOY_LIGHT (deg)
 
@@ -306,6 +306,7 @@ static double     _validate_int(double val)
 }
 
 static double     _validate_disp(double val)
+// Note: allow BASE bit for debugging
 {
     int crntMask = (int) S52_MP_get(S52_MAR_DISP_CATEGORY);
     int newMask  = (int) val;
@@ -320,6 +321,7 @@ static double     _validate_disp(double val)
         return crntMask;
     }
 
+    /* FIXME: useless test now !
     // check if the newMask has one of possible bit
     if (!(0 == newMask)                           &&
         !(S52_MAR_DISP_CATEGORY_BASE   & newMask) &&
@@ -329,8 +331,11 @@ static double     _validate_disp(double val)
 
         PRINTF("WARNING: ignoring category value (%i)\n", newMask);
 
+        g_assert(0);
+
         return crntMask;
     }
+    */
 
     //PRINTF("DEBUG: Display Priority before: crntMask:0x%x, newMask:0x%x)\n", crntMask, newMask);
 
@@ -360,6 +365,7 @@ static double     _validate_mar(double val)
         return crntMask;
     }
 
+    /* FIXME: useless test now !
     if (!(S52_MAR_DISP_LAYER_LAST_NONE   & newMask) &&
         !(S52_MAR_DISP_LAYER_LAST_STD    & newMask) &&
         !(S52_MAR_DISP_LAYER_LAST_OTHER  & newMask) &&
@@ -367,11 +373,13 @@ static double     _validate_mar(double val)
 
         PRINTF("WARNING: ignoring mariners' value (%i)\n", newMask);
 
+        g_assert(0);
+
         return crntMask;
     }
+    */
 
     if (newMask & crntMask) {
-        //crntMask &= ~newMask;
         crntMask -= newMask;
     } else
         crntMask += newMask;
@@ -391,10 +399,10 @@ static double     _validate_deg(double val)
     return val;
 }
 
-static double     _validate_filter(double mask)
+static double     _validate_filter(double val)
 {
     int crntMask = (int) S52_MP_get(S52_CMD_WRD_FILTER);
-    int newMask  = (int) mask;
+    int newMask  = (int) val;
     int maxMask  =
         S52_CMD_WRD_FILTER_SY +
         S52_CMD_WRD_FILTER_LS +
@@ -408,7 +416,7 @@ static double     _validate_filter(double mask)
         return crntMask;
     }
 
-    if (crntMask  & newMask)
+    if (crntMask & newMask)
         crntMask -= newMask;
     else
         crntMask += newMask;
