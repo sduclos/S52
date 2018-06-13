@@ -1121,12 +1121,6 @@ static GString *LEGLIN03 (S57_geo *geo)
         silent = TRUE;
     }
 
-
-    // next WP
-    //SY(WAYPNT11)
-
-
-
     //PRINTF("Mariner's object not drawn\n");
 
     GString *leglin03 = LEGLIN02(geo);
@@ -1239,6 +1233,7 @@ static int      _LIGHTS05_cmpSector(S57_geo *geoA, S57_geo *geoB)
         }
     }
 
+    // never reach
     return 0;
 }
 
@@ -2703,7 +2698,6 @@ static GString *RESTRN01 (S57_geo *geo)
 }
 
 static GString *_RESCSP01(GString *restrnstr)
-// FIXME: pass GString *restrnstr
 // Remarks: See caller: RESTRN01, DEPARE01
 {
     GString *rescsp01         = NULL;
@@ -2771,7 +2765,7 @@ static GString *_SEABED01(double drval1, double drval2)
 {
     GString *seabed01 = NULL;
     gboolean shallow  = TRUE;
-    const char *arecol   = ";AC(DEPIT)";
+    CCHAR   *arecol   = ";AC(DEPIT)";
 
     if (drval1 >= 0.0 && drval2 > 0.0)
         arecol  = ";AC(DEPVS)";
@@ -2784,8 +2778,9 @@ static GString *_SEABED01(double drval1, double drval2)
         }
     } else {
         if (drval1 >= S52_MP_get(S52_MAR_SHALLOW_CONTOUR) &&
-            drval2 >  S52_MP_get(S52_MAR_SHALLOW_CONTOUR))
+            drval2 >  S52_MP_get(S52_MAR_SHALLOW_CONTOUR)) {
             arecol  = ";AC(DEPMS)";
+        }
 
         if (drval1 >= S52_MP_get(S52_MAR_SAFETY_CONTOUR)  &&
             drval2 >  S52_MP_get(S52_MAR_SAFETY_CONTOUR)) {
@@ -3132,8 +3127,6 @@ static GString *_UDWHAZ03(S57_geo *geo, double depth_value)
 // and put in IMO category DISPLAYBASE (see (3), App.2, 1.3). This task
 // is performed by this conditional symbology procedure.
 {
-    // Note: will set scamin to INFINITY if SY(ISODGR01) is set
-
     GString *udwhaz03 = NULL;
     int      danger   = FALSE;
 
@@ -3690,12 +3683,12 @@ static GString *QUESMRK1 (S57_geo *geo)
     return err;
 }
 
+
 //--------------------------------
 //
 // JUMP TABLE SECTION
 //
 //--------------------------------
-
 
 // Note: CS marked '????' are stub that point to CS-1
 S52_CS_condSymb S52_CS_condTable[] = {
