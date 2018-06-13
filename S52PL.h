@@ -222,7 +222,7 @@ int            S52_PL_getLUCM(S52_obj *obj);
 //S52_LUPtnm     S52_PL_getTNAM(S52_obj *obj);
 // return plain text info for this type (TNAM) of lookup
 const char    *S52_PL_infoLUP(S52_obj *obj);
-// debug
+// debug - cursor pick
 const char    *S52_PL_getCMDstr(S52_obj *obj);
 
 // command word list handling
