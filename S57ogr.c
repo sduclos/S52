@@ -31,8 +31,6 @@
 // WARNING: must be in sync with S52.c:WORLD_SHP
 #define WORLD_BASENM   "--0WORLD"
 
-//gboolean _isUTF8 = FALSE;
-
 static int        _setExtent(S57_geo *geo, OGRGeometryH geometry)
 {
     return_if_null(geo);
@@ -79,10 +77,6 @@ static int        _setAtt(S57_geo *geo, OGRFeatureH hFeature)
         }
     }
 
-    //if (TRUE == _isUTF8) {
-    //    S57_setAtt(geo, "_isUTF8", "1");
-    //}
-
     return TRUE;
 }
 
@@ -126,7 +120,7 @@ static int        _ogrLoadCell(const char *filename, S52_loadLayer_cb loadLayer_
         OGRFeatureDefnH defn      = OGR_L_GetLayerDefn(ogrlayer);
         const char     *layername = OGR_FD_GetName(defn);
 
-#ifdef _MINGW
+#ifdef S52_USE_MINGW
         // on Windows 32 the callback is broken
         S52_loadLayer(layername, ogrlayer, NULL);
 #else
@@ -177,23 +171,12 @@ int            S57_ogrLoadLayer(const char *layername, void *ogrlayer, S52_loadO
         loadObject_cb = S52_loadObject;
     }
 
-    /* debug - CA ENC not UTF-8!
-    _isUTF8 = FALSE;
-    if (TRUE == OGR_L_TestCapability((OGRLayerH)ogrlayer, OLCStringsAsUTF8)) {
-        PRINTF("DEBUG: %s StringsAsUTF8\n",  layername);
-        _isUTF8 = TRUE;
-        //g_assert(0);
-    } else {
-        PRINTF("DEBUG: %s Strings Not UTF8\n",  layername);
-    }
-    //*/
-
     OGRFeatureH feature = NULL;
     while ( NULL != (feature = OGR_L_GetNextFeature((OGRLayerH)ogrlayer))) {
         // debug
         //PRINTF("layer:feature %X:%X\n",  ogrlayer, feature);
 
-#ifdef _MINGW
+#ifdef S52_USE_MINGW
         // on Windows 32 the callback is broken
         S52_loadObject(layername, feature);
 #else
