@@ -1070,7 +1070,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
         S52_getView(&engine->state.cLat, &engine->state.cLon, &engine->state.rNM, &engine->state.north);
 
         // short tap - cursor pick
-        /*
+        //*
         if (ticks < TICKS_PER_TAP) {
             new_x = (new_x < 10.0) ? 10.0 : new_x;
             new_y = (new_y < 10.0) ? 10.0 : new_y;
@@ -1089,7 +1089,7 @@ static int      _android_motion_event(s52engine *engine, AInputEvent *event)
             }
             return TRUE;
         }
-        */
+        //*/
 
         /*
         // long tap
@@ -2110,6 +2110,13 @@ static int      _X11_handleXevent(gpointer user_data)
                     engine->state.north -= 360.0;
                 _s52_setVwNDraw(engine, engine->state.cLat, engine->state.cLon, engine->state.rNM, engine->state.north);
             }
+
+            /* debug - test centroid optimisation LC()/SY()
+            if (XK_s == keysym || XK_S == keysym) {
+                // zoom on Tadousac (CA379035.000)
+                _s52_setVwNDraw(engine, 48.129267, -69.640679, 3.025748, 0.0);
+            }
+            */
 
 #ifdef S52_USE_RADAR
             engine->do_S52draw     = TRUE;
