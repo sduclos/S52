@@ -67,24 +67,24 @@ void _handleInput(int param, double value) {
       return;
 
     case S52.MAR_DISP_CATEGORY:      //= 14;
-      //S52_MAR_DISP_CATEGORY_BASE     =        0;  //      0; 0000000
-      //S52_MAR_DISP_CATEGORY_STD      =        1;  // 1 << 0; 0000001
-      //S52_MAR_DISP_CATEGORY_OTHER    =        2;  // 1 << 1; 0000010
-      //S52_MAR_DISP_CATEGORY_SELECT   =        4;  // 1 << 2; 0000100
+      //S52_MAR_DISP_CATEGORY_BASE     =        0;  //      0; 0000
+      //S52_MAR_DISP_CATEGORY_STD      =        1;  // 1 << 0; 0001
+      //S52_MAR_DISP_CATEGORY_OTHER    =        2;  // 1 << 1; 0002
+      //S52_MAR_DISP_CATEGORY_SELECT   =        4;  // 1 << 2; 0004
 
     case S52.MAR_DISP_LAYER_LAST:    //= 27;
-      //S52_MAR_DISP_LAYER_LAST_NONE   =        8;  // 1 << 3; 0001000
-      //S52_MAR_DISP_LAYER_LAST_STD    =       16;  // 1 << 4; 0010000
-      //S52_MAR_DISP_LAYER_LAST_OTHER  =       32;  // 1 << 5; 0100000
-      //S52_MAR_DISP_LAYER_LAST_SELECT =       64;  // 1 << 5; 1000000
+      //S52_MAR_DISP_LAYER_LAST_NONE   =        8;  // 1 << 3; 0008
+      //S52_MAR_DISP_LAYER_LAST_STD    =       16;  // 1 << 4; 0010
+      //S52_MAR_DISP_LAYER_LAST_OTHER  =       32;  // 1 << 5; 0020
+      //S52_MAR_DISP_LAYER_LAST_SELECT =       64;  // 1 << 5; 0040
 
     case S52.CMD_WRD_FILTER:         //= 33;
-      //S52_CMD_WRD_FILTER_SY          =        1;  // 1 << 0; 000001 - SY
-      //S52_CMD_WRD_FILTER_LS          =        2;  // 1 << 1; 000010 - LS
-      //S52_CMD_WRD_FILTER_LC          =        4;  // 1 << 2; 000100 - LC
-      //S52_CMD_WRD_FILTER_AC          =        8;  // 1 << 3; 001000 - AC
-      //S52_CMD_WRD_FILTER_AP          =       16;  // 1 << 4; 010000 - AP
-      //S52_CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 100000 - TE & TX
+      //S52_CMD_WRD_FILTER_SY          =        1;  // 1 << 0; 0001 - SY
+      //S52_CMD_WRD_FILTER_LS          =        2;  // 1 << 1; 0002 - LS
+      //S52_CMD_WRD_FILTER_LC          =        4;  // 1 << 2; 0004 - LC
+      //S52_CMD_WRD_FILTER_AC          =        8;  // 1 << 3; 0008 - AC
+      //S52_CMD_WRD_FILTER_AP          =       16;  // 1 << 4; 0010 - AP
+      //S52_CMD_WRD_FILTER_TX          =       32;  // 1 << 5; 0020 - TE & TX
 
       s52.setMarinerParam(param, value).then((ret) {
         s52.draw();
