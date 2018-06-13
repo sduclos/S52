@@ -386,8 +386,7 @@ int        S57_geo2prj3dv(guint npt, pt3 *data)
     return TRUE;
 }
 
-//#if 0
-// FIXME: this break line/poly match
+#if 0
 static int    _inLine(pt3 A, pt3 B, pt3 C)
 // TRUE if BC is inline with AC or visa-versa
 // FIXME: adjust S57_GEO_TOL_LINES to nav purpose (INTU) or LOD (_SCAMIN)
@@ -550,15 +549,19 @@ static int    _simplifyGEO(_S57_geo *geo)
 
     return TRUE;
 }
-//#endif  // 0
+#endif  // 0
 
 int        S57_geo2prj(_S57_geo *geo)
 {
-    // useless - rbin
+    // useless - called on eaaach geo from rbin
     //return_if_null(geo);
 
+    // FIXME: area not in GROUP1 (layer>1) - topologie not related to earth surface
+    //   - simplifyGEO at load-time fail to catch area with centroid
+    //   - simplifyGEO at APP()/resolve-time need to know if area allready simplified
+
     // FIXME: this break line/poly match
-    // FIX: call on area object with a sy() (centroid in area) and no AC() or AP()
+    /* FIX: call on area object with a SY() (centroid in area) and no AC() or AP()
     if ('A' == geo->objType) {
         if ((0 == g_strcmp0(geo->name, "ISTZNE")) ||
             (0 == g_strcmp0(geo->name, "TSSLPT")) ||
@@ -567,6 +570,7 @@ int        S57_geo2prj(_S57_geo *geo)
             _simplifyGEO(geo);
         }
     }
+    */
 
     if (TRUE == _doInit)
         _initPROJ();
