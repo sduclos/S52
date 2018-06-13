@@ -22,6 +22,14 @@
 
 
 
+#ifdef S52_USE_MINGW
+// get symbol for MINGW
+//#include <windows.h>
+#include <gdk/gdkwin32.h>
+#define DLL __declspec (dllexport)
+#define STD __stdcall
+#endif
+
 #include "S52.h"            // S52_init(), S52_loadCell(), ..
 
 #include <gtk/gtk.h>        // gtk_init(), ..
@@ -44,7 +52,7 @@
 
 #define  g_print printf     // prevent writing help() / dump() to log
 
-#ifdef _MINGW
+#ifdef S52_USE_MINGW
 //#define  g_print printf     // prevent writing help() / dump() to log
 #define  g_sprintf sprintf
 #else
