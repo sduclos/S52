@@ -27,11 +27,16 @@
 #include <gdk/gdkkeysyms-compat.h>  // compat GDK_a/GDK_KEY_a
 //#include <math.h>                   // INFINITY
 
-#ifdef _MINGW
+#ifdef S52_USE_MINGW
+// get symbol for MINGW
+//#include <windows.h>
 #include <gdk/gdkwin32.h>
-#else
+#define DLL __declspec (dllexport)
+#define STD __stdcall
+
+#else  // S52_USE_MINGW
 #include <gdk/gdkx.h>
-#endif
+#endif // S52_USE_MINGW
 
 #include "S52.h"
 
