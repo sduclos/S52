@@ -40,13 +40,13 @@ CC   = gcc -fPIC -O0 -g -Wall -Wextra -pedantic -std=c99 -D_POSIX_C_SOURCE=19930
 
 MINGW = /usr/bin/i586-mingw32msvc-
 #MINGW = /usr/bin/i686-w64-mingw32-
-#s52win32 : CC = $(MINGW)gcc -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
-s52win32 : CC = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
-#s52win32 : CC = $(MINGW)g++ -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW
-s52win32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
+#s52win32 : CC = $(MINGW)gcc -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT
+s52win32 : CC = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -m32
+#s52win32 : CC = $(MINGW)g++ -std=c99 -O0 -g -Wall -DG_DISABLE_ASSERT
+s52win32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -m32
 
-s52eglw32 : CC  = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
-s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
+s52eglw32 : CC  = $(MINGW)gcc -O0 -g -Wall -DG_DISABLE_ASSERT -m32
+s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -m32
 
 # NOTE: -malign-double: for 32bits system --useless on 64its
 # NOTE: GV_USE_DOUBLE_PRECISION_COORD not needed directly for S52
@@ -74,6 +74,7 @@ s52eglw32 : CXX = $(MINGW)g++ -O0 -g -Wall -DG_DISABLE_ASSERT -D_MINGW -m32
 # -DS52_USE_WORLD     - load world shapefile
 # -DS52_USE_SOCK      - in s52ais.c when build with S52AIS_STANDALONE use socket to call libS52
 # -DS52_USE_RADAR     - when in RADAR mode
+# -DS52_USE_MINGW     - MINGW build
 
 # default - s52gtk2
 CFLAGS = -I.. `pkg-config --cflags gtk+-2.0 gtkglext-1.0 gl`
@@ -287,7 +288,7 @@ s52eglw32: LIBS = $(S52_LIBS) -L$(GTKPATH)                    \
 #../../../mingw/libgps.a
 
 
-s52win32: CFLAGS = -DUSE_FAKE_AIS                                                            \
+s52win32: CFLAGS = -DUSE_FAKE_AIS -DS52_USE_MINGW                                                           \
                    -mms-bitfields                                                                            \
                    -I$(HOME)/dev/gis/openev-cvs/mingw//gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/gtk-2.0      \
                    -I$(HOME)/dev/gis/openev-cvs/mingw//gtk+-2.16/gtk+-bundle_2.16.6-20100912_win32/include/glib-2.0     \
@@ -299,7 +300,7 @@ s52win32: CFLAGS = -DUSE_FAKE_AIS                                               
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtkglext-2011/include/gtkglext-1.0              \
                    -I$(HOME)/dev/gis/openev-cvs/mingw/gtkglext-2011/lib/gtkglext-1.0/include
 
-s52eglw32:CFLAGS = -mms-bitfields                    \
+s52eglw32:CFLAGS = -mms-bitfields -DS52_USE_MINGW    \
                    -I$(GTKPATH)/../include           \
                    -I$(GTKPATH)/include/gtk-2.0      \
                    -I$(GTKPATH)/include/glib-2.0     \
