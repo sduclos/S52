@@ -59,7 +59,7 @@ static GPrintFunc _oldPrintHandler = NULL;
 //#include <locale.h>      // setlocal()
 static volatile gint G_GNUC_MAY_ALIAS _atomicAbort;
 
-#ifdef _MINGW
+#ifdef S52_USE_MINGW
 // not available on win32
 #else
 #include <glib-unix.h>
@@ -77,11 +77,11 @@ static volatile gint G_GNUC_MAY_ALIAS _atomicAbort;
 // 1) SIGHUP   2) SIGINT   3) SIGQUIT   4) SIGILL    5) SIGTRAP
 // 6) SIGABRT  7) SIGBUS   8) SIGFPE    9) SIGKILL  10) SIGUSR1
 //11) SIGSEGV 12) SIGUSR2 13) SIGPIPE  14) SIGALRM  15) SIGTERM
-#endif  // _MINGW
+#endif  // S52_USE_MINGW
 
 // not available on win32
 #ifdef S52_USE_BACKTRACE
-#if !defined(S52_USE_ANDROID) || !defined(_MINGW)
+#if !defined(S52_USE_ANDROID) || !defined(S52_USE_MINGW)
 #include <execinfo.h>  // backtrace(), backtrace_symbols()
 #endif
 #endif
@@ -89,8 +89,8 @@ static volatile gint G_GNUC_MAY_ALIAS _atomicAbort;
 
 // internal libS52.so version + build def's
 static const char _version[] = S52_VERSION
-#ifdef  _MINGW
-      ",_MINGW"
+#ifdef  S52_USE_MINGW
+      ",S52_USE_MINGW"
 #endif
 #ifdef  S52_USE_GV
       ",S52_USE_GV"
@@ -878,11 +878,11 @@ int      S52_utils_initSIG(void)
 // init signal handler
 {
 
-#ifdef _MINGW
+#ifdef S52_USE_MINGW
     signal(SIGINT,  _trapSIG);  //  2 - Interrupt (ANSI).
     signal(SIGSEGV, _trapSIG);  // 11 - Segmentation violation (ANSI).
 
-#else  // _MINGW
+#else  // S52_USE_MINGW
 
     //struct sigaction sa;
 
@@ -948,7 +948,7 @@ int      S52_utils_initSIG(void)
     //}
 
 
-#endif  // _MINGW
+#endif  // S52_USE_MINGW
 
     return TRUE;
 }
@@ -1041,7 +1041,7 @@ int      S52_xyL2rgb(double *xr, double *yg, double *Lb)
 
 #if 0
 
-#ifdef _MINGW
+#ifdef S52_USE_MINGW
 static void       _trapSIG(int sig)
 {
     //void  *buffer[100];
@@ -1066,7 +1066,7 @@ static void       _trapSIG(int sig)
     exit(sig);
 }
 
-#else  // _MINGW
+#else  // S52_USE_MINGW
 
 static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 {
@@ -1202,6 +1202,6 @@ static void       _trapSIG(int sig, siginfo_t *info, void *secret)
 */
 
 }
-#endif  // _MINGW
+#endif  // S52_USE_MINGW
 #endif  // 0
 
