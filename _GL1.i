@@ -35,7 +35,7 @@
 #include <GL/glu.h>
 
 // add missing def for MINGW
-#ifdef _MINGW
+#ifdef S52_USE_MINGW
 #define GL_ARRAY_BUFFER                   0x8892
 #define GL_STATIC_DRAW                    0x88E4
 #define GL_SHADING_LANGUAGE_VERSION       0x8B8C
