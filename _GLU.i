@@ -27,7 +27,7 @@
 //
 // tessallation
 // mingw specific, with gcc APIENTRY expand to nothing
-#ifdef _MINGW
+#ifdef S52_USE_MINGW
 #define _CALLBACK void __attribute__ ((__stdcall__))
 #else
 #define _CALLBACK void
@@ -677,7 +677,6 @@ void      S52_GLU_begUnion(void)
 }
 
 void      S52_GLU_addUnion(S57_geo *geo)
-//void      S52_GLU_addUnion(guint npt, double *ppt)
 {
     guint   npt = 0;
     double *ppt = NULL;
