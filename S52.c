@@ -254,7 +254,7 @@ static void      *_EGLctx = NULL;
 // Note: the mutex never have to do work with the main_loop already serializing call.
 // Note: that DBus and socket/WebSocket are running from the main loop but the handling is done from threads
 
-#if (defined(S52_USE_ANDROID) || defined(_MINGW))
+#if (defined(S52_USE_ANDROID) || defined(S52_USE_MINGW))
 static GStaticMutex  _mp_mutex = G_STATIC_MUTEX_INIT;
 #define GMUTEXLOCK   g_static_mutex_lock
 #define GMUTEXUNLOCK g_static_mutex_unlock
@@ -347,7 +347,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
 {
     S52_CHECK_MUTX;
 
-    PRINTF("NOTE: paramID:%i, val:%f\n", paramID, val);
+    PRINTF("NOTE: paramID:%i, new val:%f, old val:%f\n", paramID, val, S52_MP_get(paramID));
 
     // validate paranID
     if ((paramID<S52_MAR_ERROR) || (S52_MAR_NUM<=paramID)) {
@@ -357,10 +357,15 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
         return FALSE;
     }
 
-    // validate diff value
-    if (val == S52_MP_get(paramID)) {
-        GMUTEXUNLOCK(&_mp_mutex);
-        return FALSE;
+    // skip diff test if XOR
+    if ((S52_CMD_WRD_FILTER!=paramID) && (S52_MAR_DISP_CATEGORY!=paramID) && (S52_MAR_DISP_LAYER_LAST!=paramID)) {
+        // validate diff value
+        if (val == S52_MP_get(paramID)) {
+            PRINTF("WARNING: same Mariner's Parameter value (%i:%f)\n", paramID, val);
+
+            GMUTEXUNLOCK(&_mp_mutex);
+            return FALSE;
+        }
     }
 
     // palette val special handling
@@ -376,6 +381,7 @@ DLL int    STD S52_setMarinerParam(S52MarinerParameter paramID, double val)
     // validate and set
     int ret = S52_MP_set(paramID, val);
     if (FALSE == ret) {
+        PRINTF("WARNING: fail to set Mariner's Parameter value (%i:%f)\n", paramID, val);
         GMUTEXUNLOCK(&_mp_mutex);
         return FALSE;
     }
@@ -716,7 +722,7 @@ DLL int    STD S52_init(int screen_pixels_w, int screen_pixels_h, int screen_mm_
         return FALSE;
     }
 
-#if !defined(_MINGW)
+#if !defined(S52_USE_MINGW)
     // check if run as root
     if (0 == getuid()) {
         PRINTF("WARNING: do NOT run as SUPERUSER (root) .. exiting\n");
@@ -1732,7 +1738,7 @@ DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb
     }
 
 
-#ifdef _MINGW
+#ifdef S52_USE_MINGW
     // on Windows 32 the callback is broken
     loadObject_cb = S52_loadObject;
 #endif
@@ -3021,8 +3027,7 @@ static int        _app(void)
         _APP_DATCVR = FALSE;
     }
 
-    // debug
-    //PRINTF("_app(): -1-\n");
+    //PRINTF("DEBUG: _app(): -fini-\n");
 
     return TRUE;
 }
@@ -3272,7 +3277,7 @@ static int        _cull(ObjExt_t ext)
     S52_GL_setGEOView(LLv, LLu, URv, URu);
 
     // debug
-    //PRINTF("DEBUG: nbr of object culled: %i (%i)\n", _nCull, _nTotal);
+    //PRINTF("DEBUG: _cull(): -fini- STAT: nbr of object culled: %i (%i)\n", _nCull, _nTotal);
 
     return TRUE;
 }
@@ -3353,7 +3358,7 @@ static void       _drawLights(S52_obj *obj, gpointer dummy)
     // also light are drawn last (ie after all cells)
     // so a sector is not shoped by an other cell next to it
 
-    //for (guint i=_cellList->len; i>0 ; --i) {
+    //for (guint i=_cellList->len; i>0; --i) {
     //    _cell *c = (_cell*) g_ptr_array_index(_cellList, i-1);
     /*
     for (guint i=_cellList->len-1; i>0; --i) {
@@ -3653,7 +3658,7 @@ DLL int    STD S52_draw(void)
     int ret = FALSE;
 
     // do not wait if an other thread is allready drawing
-#if (defined(S52_USE_ANDROID) || defined(_MINGW))
+#if (defined(S52_USE_ANDROID) || defined(S52_USE_MINGW))
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
 #else
     if (FALSE == g_mutex_trylock(&_mp_mutex)) {
@@ -3790,13 +3795,13 @@ DLL int    STD S52_draw(void)
 exit:
 
 #if !defined(S52_USE_RADAR)
-    EGL_END(DRAW);
+    EGL_END(DRAW);  // non blocking - buffer swap buffer after flushing pipe
 #endif
 
 #ifdef S52_DEBUG
     {
-        gdouble sec = g_timer_elapsed(_timer, NULL);
-        PRINTF("    DRAW: %.0f msec --------------------------------------\n", sec * 1000);
+        gdouble usec = g_timer_elapsed(_timer, NULL);
+        PRINTF("    DRAW: %.0f msec --------------------------------------\n", usec * 1000);
         //S57_dumpData(NULL, FALSE);
     }
 #endif
@@ -3924,7 +3929,7 @@ DLL int    STD S52_drawLast(void)
 {
     int ret = FALSE;
 
-#if (defined(S52_USE_ANDROID) || defined(_MINGW))
+#if (defined(S52_USE_ANDROID) || defined(S52_USE_MINGW))
     // do not wait if an other thread is allready drawing
     if (FALSE == g_static_mutex_trylock(&_mp_mutex)) {
 #else
@@ -4316,17 +4321,17 @@ DLL int    STD S52_drawBlit(double scale_x, double scale_y, double scale_z, doub
         PRINTF("WARNING: S52_GL_begin() failed\n");
     }
 
+
+exit:
+
+    EGL_END(BLIT);
+
 #ifdef S52_DEBUG
     {
         //gdouble sec = g_timer_elapsed(_timer, NULL);
         //PRINTF("DRAWBLIT: %.0f msec\n", sec * 1000);
     }
 #endif
-
-
-exit:
-
-    EGL_END(BLIT);
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -4750,7 +4755,7 @@ DLL CCHAR *STD S52_pickAt(double pixels_x, double pixels_y)
 
 #if !defined(S52_USE_C_AGGR_C_ASSO)
     if (3.0 == S52_MP_get(S52_MAR_DISP_CRSR_PICK)) {
-        PRINTF("WARNING: mode 3 need -DS52_USE_C_AGGR_C_ASSO\n");
+        PRINTF("WARNING: S52_MAR_DISP_CRSR_PICK mode 3 need -DS52_USE_C_AGGR_C_ASSO\n");
         goto exit;
     }
 #endif
@@ -4764,7 +4769,7 @@ DLL CCHAR *STD S52_pickAt(double pixels_x, double pixels_y)
         goto exit;
     }
 
-    // debug - this kludge worh, why?
+    // debug - this kludge work, why?
     //pixels_x -= 4;
     //pixels_y -= 4;
 
@@ -4862,13 +4867,6 @@ DLL CCHAR *STD S52_pickAt(double pixels_x, double pixels_y)
     //PRINTF("DEBUG: OBJECT PICKED (%6.1f, %6.1f): %s\n", pixels_x, pixels_y, name);
 
 
-#ifdef S52_DEBUG
-    {
-        gdouble sec = g_timer_elapsed(_timer, NULL);
-        PRINTF("DEBUG:     PICKAT: %.0f msec\n", sec * 1000);
-    }
-#endif
-
 cleanup:
     // restore view
     S52_GL_setViewPort(x, y,  w,  h );
@@ -4881,6 +4879,13 @@ cleanup:
 exit:
 
     EGL_END(PICK);
+
+#ifdef S52_DEBUG
+    {
+        gdouble sec = g_timer_elapsed(_timer, NULL);
+        PRINTF("DEBUG:     PICKAT: %.0f msec\n", sec * 1000);
+    }
+#endif
 
     GMUTEXUNLOCK(&_mp_mutex);
 
@@ -5548,9 +5553,6 @@ static S52ObjectHandle     _newMarObj(const char *plibObjName, S52ObjectType obj
         S57_doneData(geo, NULL);
         return FALSE;
     }
-
-    // init TX & TE - now this call is done in S52_PL_resolveSMB()
-    //S52_PL_resetParseText(obj);
 
     // doCS now (intead of _app() - expensive)
     S52_PL_resolveSMB(obj, NULL);
