@@ -36,11 +36,9 @@
 #ifndef _S52_H_
 #define _S52_H_
 
-#ifdef _MINGW
-#include <windows.h>
+#ifdef S52_USE_MINGW
 #define DLL __declspec (dllexport)
 #define STD __stdcall
-#else
 #define DLL
 #define STD
 #endif
@@ -150,7 +148,7 @@ typedef enum S52MarinerParameter {
     S52_MAR_DISP_HODATA_UNION   = 49,   // When CATEGORY_SELECT: 0 - union HO data limit "m_covr" (default), 1 - all HO data limit "M_COVR+m_covr" (debug)
                                         // Note: m_covr:BASE, M_COVR:OTHER
     S52_MAR_DISP_SCLBDY_UNION   = 50,   // When CATEGORY_SELECT: 0 - scldbU, union Scale Boundary (default), 1 - sclbdy, all Scale Boundary (debug)
-    // Note: sclbdU:STD, sclbdy:STD
+                                        // Note: sclbdU:STD, sclbdy:STD
 
     // FIXME: S52_MAR_DISP_ISODGR       // display ISODGR in swallow
 
@@ -160,36 +158,36 @@ typedef enum S52MarinerParameter {
 // [3] debug - command word filter for profiling
 typedef enum S52_CMD_WRD_FILTER_t {
     S52_CMD_WRD_FILTER_OFF = 0,        // not used
-    S52_CMD_WRD_FILTER_SY  = 1 << 0,   // 0x000001 - SY
-    S52_CMD_WRD_FILTER_LS  = 1 << 1,   // 0x000010 - LS
-    S52_CMD_WRD_FILTER_LC  = 1 << 2,   // 0x000100 - LC
-    S52_CMD_WRD_FILTER_AC  = 1 << 3,   // 0x001000 - AC
-    S52_CMD_WRD_FILTER_AP  = 1 << 4,   // 0x010000 - AP
-    S52_CMD_WRD_FILTER_TX  = 1 << 5    // 0x100000 - TE & TX
+    S52_CMD_WRD_FILTER_SY  = 1 << 0,   // 0x0001 - SY
+    S52_CMD_WRD_FILTER_LS  = 1 << 1,   // 0x0002 - LS
+    S52_CMD_WRD_FILTER_LC  = 1 << 2,   // 0x0004 - LC
+    S52_CMD_WRD_FILTER_AC  = 1 << 3,   // 0x0008 - AC
+    S52_CMD_WRD_FILTER_AP  = 1 << 4,   // 0x0010 - AP
+    S52_CMD_WRD_FILTER_TX  = 1 << 5    // 0x0020 - TE & TX
 } S52_CMD_WRD_FILTER_t;
 
 // [1] S52_MAR_DISP_CATEGORY / S52_MAR_DISP_LAYER_LAST
-// 0x0000000 - DISPLAYBASE: only objects of the DISPLAYBASE category are shown (always ON)
-// 0x0000001 - STANDARD:    only objects of the categorys DISPLAYBASE and STANDARD are shown (default)
-// 0x0000010 - OTHER:       only objects of the categorys DISPLAYBASE and OTHER are shown
-// 0x0000100 - SELECT:      initialy all objects are show (DISPLAYBASE + STANDARD + OHTER.) (see [2])
-// 0x0001000 - MARINERS' NONE:     - when set, a call to S52_drawLast() output nothing
-// 0x0010000 - MARINERS' STANDARD: - (default!)
-// 0x0100000 - MARINERS' OTHER:    -
-// 0x1000000 - MARINERS' SELECT:   - (see [2])
+// 0x0000 - DISPLAYBASE: only objects of the DISPLAYBASE category are shown (always ON)
+// 0x0001 - STANDARD:    only objects of the categorys DISPLAYBASE and STANDARD are shown (default)
+// 0x0012 - OTHER:       only objects of the categorys DISPLAYBASE and OTHER are shown
+// 0x0104 - SELECT:      initialy all objects are show (DISPLAYBASE + STANDARD + OHTER.) (see [2])
+// 0x0008 - MARINERS' NONE:     - when set, a call to S52_drawLast() output nothing
+// 0x0010 - MARINERS' STANDARD: - (default!)
+// 0x0020 - MARINERS' OTHER:    -
+// 0x0040 - MARINERS' SELECT:   - (see [2])
 // [2] the display/supression of objects on STANDARD and/or OHTER is set via S52_setS57ObjClassSupp()
 
 typedef enum S52_MAR_DISP_CATEGORY_t {
-    S52_MAR_DISP_CATEGORY_BASE     = 0,        // 0x0000000 - DISPLAY BASE
-    S52_MAR_DISP_CATEGORY_STD      = 1 << 0,   // 0x0000001 - STANDARD
-    S52_MAR_DISP_CATEGORY_OTHER    = 1 << 1,   // 0x0000010 - OTHER
-    S52_MAR_DISP_CATEGORY_SELECT   = 1 << 2,   // 0x0000100 - SELECT
+    S52_MAR_DISP_CATEGORY_BASE     = 0,        // 0x0000 - DISPLAY BASE
+    S52_MAR_DISP_CATEGORY_STD      = 1 << 0,   // 0x0001 - STANDARD
+    S52_MAR_DISP_CATEGORY_OTHER    = 1 << 1,   // 0x0002 - OTHER
+    S52_MAR_DISP_CATEGORY_SELECT   = 1 << 2,   // 0x0004 - SELECT
 
     //S52_MAR_DISP_LAYER_LAST  - MARINERS' CATEGORY (drawn on top - last)
-    S52_MAR_DISP_LAYER_LAST_NONE   = 1 << 3,   // 0x0001000 - MARINERS' NONE
-    S52_MAR_DISP_LAYER_LAST_STD    = 1 << 4,   // 0x0010000 - MARINERS' STANDARD
-    S52_MAR_DISP_LAYER_LAST_OTHER  = 1 << 5,   // 0x0100000 - MARINERS' OTHER
-    S52_MAR_DISP_LAYER_LAST_SELECT = 1 << 6    // 0x1000000 - MARINERS' SELECT
+    S52_MAR_DISP_LAYER_LAST_NONE   = 1 << 3,   // 0x0008 - MARINERS' NONE
+    S52_MAR_DISP_LAYER_LAST_STD    = 1 << 4,   // 0x0010 - MARINERS' STANDARD
+    S52_MAR_DISP_LAYER_LAST_OTHER  = 1 << 5,   // 0x0020 - MARINERS' OTHER
+    S52_MAR_DISP_LAYER_LAST_SELECT = 1 << 6    // 0x0040 - MARINERS' SELECT
 } S52_MAR_DISP_CATEGORY_t;
 
 
@@ -507,7 +505,7 @@ typedef int (*S52_loadObject_cb)(const char *objname, /* OGRFeatureH */ void *fe
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int    STD S52_loadCell(const char *encPath,  S52_loadObject_cb loadObject_cb);
+DLL int    STD S52_loadCell(const char *encPath, S52_loadObject_cb loadObject_cb);
 
 /**
  * S52_doneCell:
@@ -518,7 +516,7 @@ DLL int    STD S52_loadCell(const char *encPath,  S52_loadObject_cb loadObject_c
  *
  * Return: TRUE on success, else FALSE
  */
-DLL int    STD S52_doneCell        (const char *encPath);
+DLL int    STD S52_doneCell(const char *encPath);
 // ---- CHART LOADING (cell) -------------------------------------------
 
 
