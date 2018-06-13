@@ -519,7 +519,7 @@ static int        _readS52Line(_PL *fp, char *buf)
    return len;
 }
 */
-#endif
+#endif  // 0
 
 static int        _readS52Line(_PL *fp, char *buf)
 // copy a line from fp into buf return number of
@@ -1130,7 +1130,7 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
 
     // override with original LUP prio so that
     // if CS expdand to no OP in this code path
-    // obj will be move to there default renderBin
+    // obj will be move to thiere default renderBin
     obj->prioOverride = TRUE;
 
     // reset original priority from LUP
@@ -1205,6 +1205,38 @@ static int        _resolveSMB(_S52_obj *obj, int alt)
         cmd = cmd->next;
     }
 
+    // FIXME: optimisation: for area: do LC() before SY() so that when the GPU pixelize LC()
+    // leave time for the CPU centroid computation of SY()
+    // example; CTNARE symbolisation is:
+    //  SY(CTNARE51);LC(CTNARE51)
+    // and should be:
+    //  LC(CTNARE51);SY(CTNARE51)
+    // to take advantage of the inherent parallelisation in modern CPU/GPU
+
+    // Note: change in timing inconclusive from test/s52eglx at Tadousac (CA379035.000)
+
+    // FIXME: this break cmdL order in forech(draw())
+    /*
+    if (S57_AREAS_T == S57_getObjtype(obj->geo)) {
+        GArray *cmdList = obj->cmdAfinal[alt];
+
+        // Note: no need to the last command (if it's a SY() then it is already last)
+        for (guint i=0; i<cmdList->len-1; ++i) {
+            _cmdWL *cmd = &g_array_index(cmdList, _cmdWL, i);
+
+            // move SY() to last
+            if (S52_CMD_SYM_PT == cmd->cmdWord) {
+                // Note: no clear_func set via g_array_set_clear_func(GArray *, NULL);
+                g_array_remove_index_fast(cmdList, i);
+                g_array_append_val(cmdList, cmd);
+
+                // assume only one SY() per area (make no sense otherwise)
+                return TRUE;
+            }
+        }
+    }
+    //*/
+
     return TRUE;
 }
 
@@ -1222,6 +1254,15 @@ void        S52_PL_resolveSMB(_S52_obj *obj, gpointer dummy)
     // Then: pull new command word from CS (wich could have diffent text)
     _resolveSMB(obj, 0);
     _resolveSMB(obj, 1);
+
+    // FIXME: detect centroid: lone area (ie no AC() or AP()) object with a SY() in any cmdLfinal[0/1]
+    // lone geo area that are topologicaly distinct (ex: not in group 1)
+    // see also test in S57_geo2prj() on: ISTZNE, TSSLPT, CTNARE and probably other
+    // call S57.c:_simplifyGEO(geo) to optimise costly controid computation
+    // FIXME: area not in GROUP1 (layer>1)
+    //   - simplifyGEO at load-time fail to catch area with centroid
+    //   - simplifyGEO at resolve-time need to know if area allready simplified
+    // FIX: catch erea at load-time not in GROUP1 (but after line overlap analysis)
 
     //return TRUE;
     return;
@@ -3346,23 +3387,19 @@ S52_CmdWrd  S52_PL_getCmdNext(_S52_obj *obj)
     obj->crntAidx++;
     if (obj->crntAidx < obj->crntA->len) {
         _cmdWL *cmd = &g_array_index(obj->crntA, _cmdWL, obj->crntAidx);
-        // debug: can this array call return NULL!
         if (NULL == cmd) {
+            // debug: overkill - how can this array call return NULL!
             PRINTF("DEBUG: no cmd word\n");
             g_assert(0);
             return S52_CMD_NONE;
         } else {
             return cmd->cmdWord;
         }
-    }
-    //*
-    else
-    {
-        //PRINTF("DEBUG: crntAidx at end of command word array\n");
+    } else {
+        //PRINTF("DEBUG: crntAidx at end of command word array .. reset idx=0\n");
         //g_assert(0);
         obj->crntAidx = 0;
     }
-    //*/
 
     return S52_CMD_NONE;
 }
@@ -3497,42 +3534,13 @@ int         S52_PL_setSYorient(_S52_obj *obj, double orient)
 {
     return_if_null(obj);
 
-    /* check invariant [0..360[
-    if (360.0 <= orient) {
-        PRINTF("DEBUG: check orient invariant safeguard actualy work: before > 360 (%f)\n", orient);
-        orient = fmod(orient, 360.0);
-        PRINTF("DEBUG: check orient invariant safeguard actualy work: after  > 360 (%f)\n", orient);
-
-        // FIXME: add target info
-        g_assert(0);
-    }
-
-    if (orient < 0.0) {
-        PRINTF("DEBUG: check orient invariant safeguard actualy work: defore < 0 (%f)\n", orient);
-        orient = fmod(orient, 360.0);
-        PRINTF("DEBUG: check orient invariant safeguard actualy work: after  < 0 (%f)\n", orient);
-
-        g_assert(0);
-    }
-
-    if ((0.0<=orient) && (orient<360.0)) {
-        obj->auxInfo.orient = orient;
-        return TRUE;
-    } else
-        return FALSE;
-    */
-
     // check invariant [0..360[
     if ( !((0.0<=orient) && (orient<360.0)) ) {
-        // FIXME: add target info
-        PRINTF("DEBUG: check orient invariant safeguard actualy work: before (%f)\n", orient);
         orient = fmod(orient, 360.0);
-        PRINTF("DEBUG: check orient invariant safeguard actualy work: after  (%f)\n", orient);
 
-        if (orient < 0.0)
+        if (orient < 0.0) {
             orient += 360;
-
-        g_assert(0);
+        }
     }
 
     obj->auxInfo.orient = orient;
@@ -3626,6 +3634,7 @@ int         S52_PL_getSYbbox(_S52_obj *obj, int *width, int *height)
 }
 
 #if 0
+//#ifdef S52_DEPRECATE
 /*
 int         S52_PL_setSYspeed(_S52_obj *obj, double speed)
 {
