@@ -36,9 +36,9 @@
 #ifndef _S52_H_
 #define _S52_H_
 
-#ifdef S52_USE_MINGW
-#define DLL __declspec (dllexport)
-#define STD __stdcall
+#if !defined(S52_USE_MINGW)
+//#define DLL __declspec (dllexport)
+//#define STD __stdcall
 #define DLL
 #define STD
 #endif
